@@ -116,14 +116,14 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 │                           MICROSERVICES CORE                                │
 │                                                                             │
 │  ┌─────────────────┐   ┌─────────────────┐   ┌──────────────────────────┐   │
-│  │  Auth & User    │   │   Assessment    │   │   Scoring & Tier     │   │
-│  │  Service        │   │   Delivery      │   │   Engine             │   │
-│  │  (Clerk / JWT)  │   │   (FastAPI)     │   │   (IRT + Angoff)     │   │
+│  │  Auth & User    │   │   Assessment    │   │   Scoring Engine         │   │
+│  │  Service        │   │   Delivery      │   │   (NestJS +              │   │
+│  │  (Clerk / JWT)  │   │   (NestJS Core) │   │   Effect.ts Math)        │   │
 │  └─────────────────┘   └────────┬────────┘   └──────────────────────────┘   │
 │                                 │                                           │
 │                                 ▼                                           │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │  Async Task Queue (Celery + RabbitMQ / Redis)                         │  │
+│  │  Async Event Bus & Task Queue (Apache Kafka + BullMQ / Redis)         │  │
 │  │  • L2 Code Execution Sandbox Runner                                   │  │
 │  │  • L3 / L4 Claude Audio-Visual BARS Evaluator                         │  │
 │  │  • Vector Match Batch Generator                                       │  │
@@ -156,7 +156,7 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 - **Algorithm:** Distributed **Sliding Window Counter** combined with **Token Bucket** algorithm implemented in Redis via Lua scripts (`redis-cell` compliant).
 - **Enforcement Layers:**
   1. **Edge Gateway (Kong / NGINX / Cloudflare)**: Protects against DDoS, volumetric IP abuse, and scrapers.
-  2. **Application Middleware (FastAPI / Redis)**: Enforces role-based, tenant-based, candidate-session, and endpoint-specific limits.
+  2. **Application Middleware (NestJS Guards / Redis)**: Enforces role-based, tenant-based, candidate-session, and endpoint-specific limits.
   3. **LLM Proxy Engine**: Enforces token-per-minute (TPM) and request-per-minute (RPM) bucket constraints on the Anthropic Claude API.
 
 ### 4.2 Standard HTTP Rate Limit Headers
@@ -215,7 +215,67 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
 | `/api/v1/eval/claude` | 200 RPM / 10,000 TPM | Service Worker | `rl:llm:claude_proxy` | Controls Anthropic Claude API quota & prevents budget blowouts. |
 | `/api/v1/verify/{certificate_id}` | 20 req/min | Public IP | `rl:verify:ip:{ip}` | Protects public verification page against mass scraping. |
 | `/api/v1/placement/match` | 30 req/min | Institution ID | `rl:match:inst:{inst_id}` | Throttles heavy vector cosine matrix computations. |
-| `/api/v1/reports/export-pdf` | 5 req/min | User ID | `rl:export:user:{user_id}` | Throttles Puppeteer/PDF generation CPU tasks. |
+---
+
+### 4.5 Redis Caching Architecture, RAM Sizing & Invalidation Strategy
+
+> **Machine Capacity & Memory Impact:**  
+> Because Redis operates entirely in RAM, managing memory consumption is critical when scaling to 1 million candidates and 50,000 peak concurrent test takers. The table below details every cached data entity, key format, TTL, and RAM footprint estimate.
+
+#### 4.5.1 Data Inventory Planned for RAM Caching
+
+| Data Entity / Category | Key Pattern & Storage Type | Purpose & Optimization | TTL (Time-To-Live) | Est. Key Payload | RAM Sizing @ 50k Concurrency |
+|---|---|---|---|---|---|
+| **Active Assessment Session** | `session:assessment:{attempt_id}` (Hash) | Candidate active test state, answer drafts, timer status, item progress. | 2 Hours (120m) | ~2.5 KB | **~125 MB** (50,000 active test sessions) |
+| **Rate Limit Sliding Window** | `rl:{role}:{identifier}` (ZSet / Lua) | Rolling timestamp log for rate limit enforcement (Redis Lua script). | 60 Seconds | ~200 Bytes | **~20 MB** (100,000 rolling rate limit keys) |
+| **Auth Token & User Session** | `auth:token:{user_id}` (String) | Decoded JWT claims, institution ID, assigned track, RBAC permissions. | 15 Minutes | ~800 Bytes | **~40 MB** (50,000 active user tokens) |
+| **L1 Active Item Bank Forms** | `items:form:{track_id}:{level_id}` (String) | Pre-compiled active item sets per track form (eliminates DB joins during test start). | 24 Hours | ~45 KB | **~4.5 MB** (100 track/level active forms) |
+| **Cut Scores & Angoff Rubrics** | `cut_scores:track:{track_id}` (Hash) | Panel cut scores ($\mu, \sigma$), BARS rubrics per competency. | 7 Days | ~15 KB | **~0.3 MB** (20 track/level matrices) |
+| **Public Certificate Payload** | `verify:cert:{certificate_id}` (String) | Cached JSON payload for public verification (`verify.smart.com/cert/<UUID>`). | 1 Hour | ~4 KB | **~80 MB** (20,000 concurrent verifications) |
+| **Company JD Vector Cache** | `match:company:{jd_id}` (String) | Parsed JD threshold vectors & embedding representation. | 30 Minutes | ~12 KB | **~12 MB** (1,000 active JDs) |
+| **BullMQ Async Worker Queues** | `bull:queue:{queue_name}` (Stream) | Redis job queue buffers for L2 code sandbox and L3 audio evaluation jobs. | Managed by Queue | Variable | **~50 MB** (Buffered background jobs) |
+
+> **Total Memory Footprint Estimate:** **~331.8 MB RAM** under peak 50,000 concurrent candidates.  
+> **Provisioned Infrastructure:** Dual-node High-Availability Redis Cluster with **2 GB RAM**, leaving >80% headroom for unexpected traffic spikes.
+
+#### 4.5.2 Multi-Tier Cache Invalidation Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      EVENT-DRIVEN CACHE INVALIDATION                        │
+│                                                                             │
+│  [Candidate Submits Test] ──▶ Kafka Event: smart.assessment.submitted       │
+│                                           │                                 │
+│                                           ▼                                 │
+│                                 DEL session:assessment:{id}                 │
+│                                 DEL student:results:{student_id}            │
+│                                                                             │
+│  [Admin Updates Cut Score]──▶ Kafka Event: smart.track.updated              │
+│                                           │                                 │
+│                                           ▼                                 │
+│                                 DEL cut_scores:track:{track_id}             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Passive Time-To-Live (TTL) Eviction**:
+   - Every key stored in Redis MUST carry an explicit TTL. Keys without expiration are explicitly forbidden to prevent memory leaks.
+2. **Event-Driven Proactive Invalidation (Kafka → Redis Handler)**:
+   - **On Assessment Submission (`smart.assessment.submitted`)**: Instantly invalidates candidate active session `DEL session:assessment:{attempt_id}` and clears stale dashboard cache.
+   - **On Certificate Issuance (`smart.certificate.issued`)**: Purges stale candidate scorecards and updates `verify:cert:{certificate_id}` with new tier trail.
+   - **On Cut Score / Rubric Calibration Update (`smart.track.updated`)**: Triggers pattern invalidation `DEL cut_scores:track:{track_id}` across all API workers.
+   - **On Student Retest Approval (`smart.student.retested`)**: Flushes student scorecard cache `DEL student:results:{student_id}`.
+3. **Cache-Aside (Lazy Loading) Read Pattern**:
+   - API checks Redis first ──▶ If hit (95%+ target ratio), return RAM payload.
+   - If miss ──▶ Fetch from Supabase PostgreSQL ──▶ Populate Redis with standard TTL ──▶ Return payload.
+4. **Write-Through Batch Persistence**:
+   - Active answer drafts in L1 are written to Redis `session:assessment:{attempt_id}` immediately, then flushed asynchronously to Supabase PostgreSQL in 5-second batch intervals via BullMQ.
+
+#### 4.5.3 Redis Memory Eviction & Safety Controls
+- **Redis Maxmemory Policy:** Set strictly to `volatile-lru` (Least Recently Used among keys with an explicit expire set).
+- **Eviction Protection Guarantee:** Because all ephemeral assessment sessions and rate limit keys possess explicit TTLs, `volatile-lru` ensures that un-expiring configuration keys are never evicted during memory pressure.
+- **Automated Memory Health Alerts:**
+  - **70% Capacity Warning (1.4 GB / 2.0 GB)**: Triggers Slack/PagerDuty warning alert.
+  - **85% Capacity Critical (1.7 GB / 2.0 GB)**: Activates automatic emergency purging of expired volatile keys (`MEMORY PURGE`) and temporary reduction of verification cache TTL from 1 hour to 15 minutes.
 
 ---
 
@@ -463,7 +523,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 
 ### 8.1 Full Stack Developer
 - **Domain A: Frontend Engineering** (L1 MCQ → L2 Sandbox: React, Next.js, State Management, Responsive CSS)
-- **Domain B: Backend Engineering** (L1 MCQ → L2 Sandbox: REST APIs, Async Node/FastAPI, Middleware, Auth)
+- **Domain B: Backend Engineering** (L1 MCQ → L2 Sandbox: REST APIs, Async Node/NestJS, Middleware, Auth)
 - **Domain C: Data & Persistence** (L1 MCQ → L2 Sandbox: PostgreSQL SQL Queries, Indexing, MongoDB CRUD)
 - **Domain D: Engineering Practice** (L2 Scenario → L4 Defense: Git workflows, PR reviews, System Design fundamentals)
 - **Domain E: Technical Communication** (L3 Spoken BARS → L4 Defense: Justifying tech choices, debugging aloud)
@@ -628,19 +688,19 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 ### Sprint 1 — System Foundation, Database & Rate Limiting (Dev Sprint 1)
 
-**Sprint Goal:** Stand up core repository infrastructure, PostgreSQL schema, Clerk/FastAPI authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
+**Sprint Goal:** Stand up core repository infrastructure, Supabase PostgreSQL schema, Clerk/NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
 
 | Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
 |---|---|---|---|---|---|
-| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with FastAPI, Next.js 14, PostgreSQL 16, Redis, and RabbitMQ. | Tino | 5 pts | Critical |
+| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, Supabase (PostgreSQL 16 + pgvector), Redis 7, and Apache Kafka. | Tino | 5 pts | Critical |
 | **US-1.2** | PostgreSQL Schema Provisioning | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`). | Tino | 8 pts | Critical |
 | **US-1.3** | Auth & RBAC Middleware | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public. | Satheeswaran | 8 pts | Critical |
-| **US-1.4** | Redis Sliding Window Rate Limiting Engine | Build FastAPI rate limiting middleware with Redis Lua scripts supporting role-based and IP-based limits. | Tino | 8 pts | Critical |
+| **US-1.4** | Redis Sliding Window Rate Limiting Engine | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits. | Tino | 8 pts | Critical |
 | **US-1.5** | Granular Endpoint Rate Throttling Matrix | Implement specific throttles for auth, code execution, audio submit, and verification endpoints. | Tino | 5 pts | High |
-| **US-1.6** | Claude AI Proxy Service Setup | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM). | Ramansh | 8 pts | Critical |
-| **US-1.7** | pgvector Vector Store Provisioning | Initialize PostgreSQL `pgvector` extension and schema for storing domain competency rubrics and embeddings. | Ramansh | 5 pts | High |
+| **US-1.6** | Claude AI Proxy Service Setup | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | Ramansh | 8 pts | Critical |
+| **US-1.7** | pgvector Vector Store Provisioning | Initialize Supabase `pgvector` extension and schema for storing domain competency rubrics and embeddings. | Ramansh | 5 pts | High |
 | **US-1.8** | Student Profile & Track Enrollment API | Build REST endpoints for student onboarding and specialization track assignment. | Satheeswaran | 5 pts | High |
-| **US-1.9** | System Data Contracts & Pydantic Schemas | Document and commit shared data contracts between frontend Next.js and backend FastAPI services. | Tino | 5 pts | High |
+| **US-1.9** | System Data Contracts & Zod Schemas | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services. | Tino | 5 pts | High |
 
 **Sprint 1 Summary:** 9 Stories · 57 Story Points · Deliverable: Core infrastructure, Auth, Database, Rate Limiter, and Claude Proxy operational locally.
 
@@ -654,8 +714,8 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 |---|---|---|---|---|---|
 | **US-2.1** | L1 Assessment Delivery Service | Build real-time weighted MCQ assessment engine with timer enforcement and anti-cheat event logging. | Ramansh | 8 pts | Critical |
 | **US-2.2** | L2 Code & SQL Sandbox Execution Engine | Build isolated Docker container runner for evaluating candidate Python/Node code and SQL queries. | Tino | 8 pts | Critical |
-| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + FastAPI endpoint for uploading candidate audio defenses to AWS S3 / GCS. | Satheeswaran | 5 pts | High |
-| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline | Build async Celery pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude. | Ramansh | 8 pts | Critical |
+| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + NestJS endpoint for uploading candidate audio defenses to Cloudflare R2. | Satheeswaran | 5 pts | High |
+| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline | Build async BullMQ pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude. | Ramansh | 8 pts | Critical |
 | **US-2.5** | L4 AI Interactive Defense Engine | Implement real-time interactive defense simulation service backed by Claude 5 Sonnet. | Ramansh | 8 pts | Critical |
 | **US-2.6** | L5 Capstone Submission & Split Scoring | Build capstone deliverable upload handler and objective checklist auto-checker. | Satheeswaran | 5 pts | High |
 | **US-2.7** | IT Track Item Bank Ingestion (5 Roles) | Seed item banks, competency weights, and rubrics for 5 Tech tracks (Full Stack, AI/ML, DevOps, Cyber, Data Analyst). | Ramansh | 8 pts | Critical |
@@ -672,7 +732,7 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 | Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
 |---|---|---|---|---|---|
 | **US-3.1** | Job Description NLP Ingestion Service | Build PDF/Text JD upload handler utilizing Claude 5 Sonnet to parse required competency vectors. | Ramansh | 8 pts | Critical |
-| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in FastAPI to match candidates to JDs. | Ramansh | 8 pts | Critical |
+| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in NestJS to match candidates to JDs. | Ramansh | 8 pts | Critical |
 | **US-3.3** | TPO Cohort Readiness Dashboard | Build Next.js dashboard for Placement Directors showing batch readiness, Gold/Silver counts, and gap reports. | Satheeswaran | 8 pts | Critical |
 | **US-3.4** | Auto-Shortlist Generator & Export | Implement filterable candidate shortlist view with CSV/PDF export for recruiting drives. | Satheeswaran | 5 pts | High |
 | **US-3.5** | Student Diagnostic Portal & Gap Feedback | Build student UI displaying test results, itemized competency feedback, and retest scheduler. | Satheeswaran | 8 pts | Critical |

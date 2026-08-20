@@ -27,7 +27,7 @@ We evaluated **NestJS** and **Effect.ts** to determine the optimal backend found
 | Evaluation Criteria | NestJS (TypeScript) | Effect.ts (Effect.js) | SMART Engineering Decision |
 |---|---|---|---|
 | **Architecture & Structure** | Enterprise Modular Monolith / Microservices with out-of-the-box Domain-Driven Design (DDD). | Functional programming paradigm with explicit Effect types, fiber concurrency, and algebraic data types. | **NestJS** provides a standardized, maintainable architecture for a multi-developer engineering team. |
-| **Kafka & Microservice Transports** | Native `@nestjs/microservices` package supporting Apache Kafka, Redis, NATS, gRPC, and RabbitMQ out-of-the-box. | Requires custom wrapper code and third-party boilerplate to connect Kafka event consumers and producers. | **NestJS** wins for instant, production-tested Kafka event-driven integration. |
+| **Kafka & Microservice Transports** | Native `@nestjs/microservices` package supporting Apache Kafka, Redis, NATS, and gRPC out-of-the-box. | Requires custom wrapper code and third-party boilerplate to connect Kafka event consumers and producers. | **NestJS** wins for instant, production-tested Kafka event-driven integration. |
 | **Database & ORM Integration** | Seamless integration with **Prisma ORM** / TypeORM, supporting PostgreSQL 16 and `pgvector`. | Requires Schema / Equinox integrations or raw SQL client wrappers. | **NestJS + Prisma** provides instant migrations, type-safe queries, and seeding. |
 | **Job Queue & Async Workers** | First-class `@nestjs/bullmq` integration for Redis-backed background workers (L2 code sandbox, L3 audio evaluation). | Custom fiber-based queues require building queue persistence from scratch. | **NestJS + BullMQ** provides robust Redis job queues with retries and dead-letter queues. |
 | **Security & Middleware** | Built-in Guards, Interceptors, Pipes, and Middleware for JWT Auth, RBAC, and Redis Sliding Window Rate Limiting. | Pure functional error handling, but requires custom middleware wrappers for standard HTTP servers. | **NestJS** provides immediate security, rate-limiting, and middleware capabilities. |
@@ -62,6 +62,26 @@ All components in the SMART platform leverage open-source frameworks and technol
 | **Object Storage** | Cloudflare R2 (S3-compatible) | Cloudflare | Zero-egress S3-compatible cloud object storage for candidate audio defenses and PDF certificates. |
 | **Reverse Proxy & Gateway** | Cloudflare Workers + Kong Gateway | Apache 2.0 / Managed | Edge SSL termination, DDoS protection, and initial IP rate limiting. |
 | **Observability & Metrics** | Prometheus + Grafana + Loki | Apache 2.0 / AGPLv3 | Open-source LGTM stack for container metrics, rate-limit violation tracking, and logs. |
+
+---
+
+### 3.1 RAM Memory Sizing & Cache Invalidation Strategy
+
+Because RAM capacity directly governs machine sizing and server costs under peak load (50,000 active test takers), SMART defines a strict Redis memory inventory and invalidation protocol:
+
+#### RAM Inventory Breakdown (@ 50,000 Peak Concurrent Candidates)
+- **Active Assessment Sessions (`session:assessment:{id}`)**: 2.5 KB/user × 50,000 = **125 MB** (TTL: 2 hours).
+- **Rate Limit Sliding Window Logs (`rl:{role}:{id}`)**: 200 B/key × 100,000 = **20 MB** (TTL: 60 seconds).
+- **User Auth Tokens (`auth:token:{user_id}`)**: 800 B/user × 50,000 = **40 MB** (TTL: 15 minutes).
+- **L1 Active Item Bank Forms (`items:form:{track_id}`)**: 45 KB/form × 100 = **4.5 MB** (TTL: 24 hours).
+- **Public Verification Payloads (`verify:cert:{id}`)**: 4 KB/cert × 20,000 = **80 MB** (TTL: 1 hour).
+- **BullMQ Background Queues (`bull:queue:*`)**: Stream buffers = **50 MB**.
+- **Total Estimated RAM Memory Load**: **~331.8 MB** (Provisioned Node: 2 GB Redis Cluster with `volatile-lru` eviction).
+
+#### Invalidation Plan
+1. **Passive Eviction**: All cached keys enforce mandatory TTL expiration.
+2. **Event-Driven Invalidation**: Kafka topics (`smart.assessment.submitted`, `smart.track.updated`) issue immediate Redis `DEL` commands to purge stale assessment and cut-score caches.
+3. **Eviction Policy**: Set strictly to `volatile-lru` to protect active session keys with TTL while purging expired volatile keys under memory pressure.
 
 ---
 

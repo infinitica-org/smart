@@ -116,7 +116,7 @@ Refer to [ARCHITECTURE.md](file:///mnt/Data/Work%27s/Grad360%20/smart/ARCHITECTU
 ## 6. Complete Role Taxonomies (10 Role Tracks)
 
 ### 6.1 5 IT Role Tracks
-1. **Full Stack Developer**: Frontend (React/CSS), Backend (Node/FastAPI), Data (PostgreSQL/Mongo), Practice (Git/System Design), Comm (Trade-offs), Capstone.
+1. **Full Stack Developer**: Frontend (React/CSS), Backend (Node/NestJS), Data (PostgreSQL/Mongo), Practice (Git/System Design), Comm (Trade-offs), Capstone.
 2. **AI / ML Engineer**: Programming (Python/Pandas), ML Foundations (Supervised/Evaluation), GenAI (Prompting/RAG/Vector DBs), MLOps (Serving/Drift), Judgment (Bias/Uncertainty), Capstone.
 3. **Cloud / DevOps Engineer**: Systems (Linux/TCP-IP), Cloud (AWS/GCP/IAM), Containers (Docker/K8s), CI/CD (Actions/Terraform), Reliability (Logs/Incidents), Capstone.
 4. **Cybersecurity Analyst**: Networking (Firewalls/Hardening), Threat Landscape (OWASP/CVE), Detection (SIEM/Log correlation), Incident Response (Triage/Containment), Awareness, Capstone.
