@@ -91,7 +91,9 @@ SMART sits directly between academia and industry. It certifies readiness per sp
 
 ## 3. System Architecture & Scalability (1M Scale)
 
-> **Monorepo Blueprint:** For complete file-level repository structure and stack details, see [REPOSITORY_STRUCTURE.md](file:///mnt/Data/Work%27s/Grad360%20/smart/REPOSITORY_STRUCTURE.md).
+> **Monorepo & Services Blueprints:**  
+> • For complete file-level repository structure and stack details, see [REPOSITORY_STRUCTURE.md](file:///mnt/Data/Work%27s/Grad360%20/smart/REPOSITORY_STRUCTURE.md).  
+> • For decoupled microservices, Kafka interfaces, and developer work item assignments, see [SERVICES_VIEW.md](file:///mnt/Data/Work%27s/Grad360%20/smart/SERVICES_VIEW.md).
 
 Target Capacity: **1 Million Active Candidates per Placement Season** with a peak concurrency of **50,000 active test takers**.
 

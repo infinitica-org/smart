@@ -55,6 +55,7 @@ SMART is a **role-specific readiness certification platform**. It assesses candi
 
 ### Core Architecture & Technical Specifications
 - 📘 [Master System Architecture (`ARCHITECTURE.md`)](./ARCHITECTURE.md) — Comprehensive technical architecture, database schemas, level-tier mechanics, rate limiting matrix, and placement overlay.
+- 🧩 [Services View & Work Items (`SERVICES_VIEW.md`)](./SERVICES_VIEW.md) — Decoupled 8 microservices specification, Kafka event interfaces, and developer work item assignments.
 - 📐 [Repository & Monorepo Structure (`REPOSITORY_STRUCTURE.md`)](./REPOSITORY_STRUCTURE.md) — Turborepo Monorepo structure, NestJS vs. Effect.ts analysis, open-source stack breakdown, and Docker setup.
 - ⚙️ [Master Technical Framework (`docs/SMART_Master_Technical_Framework.md`)](./docs/SMART_Master_Technical_Framework.md) — High-level technical framework and scoring mechanics.
 - 📊 [Proposed Repo Structure (`docs/SMART_Proposed_Repo_Structure.md`)](./docs/SMART_Proposed_Repo_Structure.md) — Monorepo blueprint copy.
