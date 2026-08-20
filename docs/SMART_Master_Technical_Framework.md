@@ -137,6 +137,12 @@ Refer to [ARCHITECTURE.md](file:///mnt/Data/Work%27s/Grad360%20/smart/ARCHITECTU
 - **Candidate-Company Matching**: Vector cosine similarity between student level-tier profiles and parsed JD requirement vectors.
 - **Public Verification**: `verify.smart.com/cert/<UUID>` showing Tier Trail, Confidence Note, Calibration Employers, and dynamic QR Code.
 
+### 7.1 Enterprise Authentication & B2B Integration Model
+- **Authentication**: Dual-Token Strategy (Short-lived 15m Access JWT + HttpOnly 7-14d Secure Refresh Token) + Supabase Auth OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
+- **B2B API Key Access**: Dedicated `X-SMART-API-KEY` authenticated endpoints for university ERPs and recruiting partner integrations with custom token bucket quotas.
+- **Outbound Webhook Engine**: Real-time HTTP event dispatchers issuing cryptographically signed HMAC-SHA256 event payloads (`smart.certificate.issued`, `smart.placement.matched`).
+- **Synchronous vs. Asynchronous SLAs**: HTTP REST SLA < 200ms for active test player & verification lookup; Asynchronous BullMQ + Apache Kafka queues for L2 Docker code runner, L3 audio BARS grading, LLM generation, and PDF exports.
+
 ---
 
 ## 8. Detailed 5-Sprint Implementation Plan

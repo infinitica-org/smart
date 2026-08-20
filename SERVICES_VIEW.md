@@ -1,9 +1,9 @@
 # SMART — Services View & Work Item Breakdown Architecture
 
-> **Version:** v1.0 — Decoupled Microservices Specification  
+> **Version:** v2.0 — Decoupled Microservices & Execution SLA Specification  
 > **Last Updated:** 2026-08-20  
 > **Maintainer:** Infinitica Engineering Team  
-> **Purpose:** Single source of truth for SMART's decoupled service boundaries, data contracts, Kafka event topics, API endpoints, and work item assignments per developer.
+> **Purpose:** Single source of truth for SMART's decoupled service boundaries, auth strategy, sync/async execution SLAs, data contracts, Kafka event topics, API endpoints, and work item assignments per developer.
 
 ---
 
@@ -41,18 +41,19 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Developer Lead:** Satheeswaran
 - **Monorepo Path:** `apps/api-core/src/modules/auth`
 - **Core Responsibilities:**
-  - Supabase Auth & Clerk JWT token verification and user profile management.
+  - Short-Lived JWT Access Tokens (15m) + HttpOnly Secure Refresh Tokens (7–14d).
+  - Supabase Auth OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
   - Role-Based Access Control (RBAC) Guards for Super Admin, TPO, Student, and Public.
   - Student onboarding and track pre-assignment (Primary & Secondary specializations).
 - **Primary REST Endpoints:**
-  - `POST /api/v1/auth/login` — Authenticate user & issue JWT claims.
-  - `POST /api/v1/auth/refresh` — Refresh access token.
-  - `GET /api/v1/users/me` — Retrieve active user profile & track assignments.
-  - `PUT /api/v1/users/track` — Enroll or change specialization track.
+  - `POST /api/v1/auth/login` `[SYNC <150ms]` — Authenticate user & issue 15m JWT + HttpOnly refresh cookie.
+  - `POST /api/v1/auth/refresh` `[SYNC <100ms]` — Silent refresh of expired access token.
+  - `GET /api/v1/users/me` `[SYNC <50ms]` — Retrieve active user profile & track assignments.
+  - `PUT /api/v1/users/track` `[SYNC <100ms]` — Enroll or change specialization track.
 - **Kafka Topics Published:** `smart.user.created`, `smart.user.updated`
 - **Work Items / Deliverables:**
-  1. [ ] Implement JWT guard middleware and RBAC decorator (`@Roles('SUPER_ADMIN', 'TPO', 'STUDENT')`).
-  2. [ ] Build Supabase Auth user sync webhook listener.
+  1. [ ] Implement JWT access guard (15m) and HttpOnly secure refresh token rotation handler.
+  2. [ ] Build SAML 2.0 / OpenID Connect (OIDC) institutional SSO integration via Supabase Auth.
   3. [ ] Build student profile REST endpoints and track assignment service.
 
 ---
@@ -65,10 +66,10 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
   - Candidate answer drafting & Redis session state management (`session:assessment:{attempt_id}`).
   - Dynamic L1 form selection from active item banks & anti-cheat telemetry event logging.
 - **Primary REST Endpoints:**
-  - `POST /api/v1/assessment/start` — Initialize assessment attempt session.
-  - `GET /api/v1/assessment/next-item` — Fetch next question item for current attempt.
-  - `POST /api/v1/assessment/submit-l1` — Submit answer draft (Throttled at 10 req/min).
-  - `POST /api/v1/assessment/complete` — Finalize assessment attempt and trigger scoring.
+  - `POST /api/v1/assessment/start` `[SYNC <150ms]` — Initialize assessment attempt session in Redis.
+  - `GET /api/v1/assessment/next-item` `[SYNC <50ms]` — Fetch next question item for current attempt from warm cache.
+  - `POST /api/v1/assessment/submit-l1` `[SYNC <30ms]` — Submit answer draft (Throttled at 10 req/min).
+  - `POST /api/v1/assessment/complete` `[ASYNC BullMQ]` — Finalize assessment attempt & push to evaluation queue.
 - **Kafka Topics Published:** `smart.assessment.started`, `smart.assessment.submitted`
 - **Work Items / Deliverables:**
   1. [ ] Build assessment session manager backed by Redis `session:assessment:{id}`.
@@ -85,7 +86,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
   - Execution sandbox resource caps: 256 MB RAM, 1 CPU core, 5-second hard execution timeout.
   - BullMQ background queue processing to prevent CPU starvation on API workers.
 - **Primary REST Endpoints:**
-  - `POST /api/v1/assessment/compile-l2` — Execute code snippet against test case matrix (Throttled at 10 runs/min).
+  - `POST /api/v1/assessment/compile-l2` `[ASYNC BullMQ SLA 1-3s]` — Push code snippet to execution queue; returns `job_id`.
 - **Kafka Topics Consumed:** BullMQ job queue `bull:queue:sandbox_execution`
 - **Work Items / Deliverables:**
   1. [ ] Provision Docker Engine API runner with non-networked container configuration.
@@ -102,7 +103,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
   - Automatic failover to **Google Gemini API (Gemini 2.5 Pro / Flash)** during rate limits or outages.
   - RAG vector context insertion using Supabase `pgvector` competency embeddings.
 - **Primary REST Endpoints:**
-  - `POST /api/v1/eval/claude` — Proxy endpoint for structured JSON LLM completions.
+  - `POST /api/v1/eval/claude` `[ASYNC SLA 2-5s]` — Internal proxy endpoint for structured JSON LLM completions.
 - **Kafka Topics Consumed:** `smart.eval.requested`
 - **Kafka Topics Published:** `smart.eval.completed`
 - **Work Items / Deliverables:**
@@ -120,8 +121,8 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
   - L4 AI interactive defense simulation handler & L5 capstone deliverable split scoring.
   - Integration with Effect.ts functional math package (`packages/scoring-engine`) for IRT & Angoff cut score calculation.
 - **Primary REST Endpoints:**
-  - `POST /api/v1/assessment/evaluate-l3-l4` — Request async spoken BARS evaluation.
-  - `GET /api/v1/evaluation/results/:attempt_id` — Fetch itemized evaluation score breakdown.
+  - `POST /api/v1/assessment/evaluate-l3-l4` `[ASYNC BullMQ SLA 2-6s]` — Request async spoken BARS evaluation.
+  - `GET /api/v1/evaluation/results/:attempt_id` `[SYNC <80ms]` — Fetch itemized evaluation score breakdown.
 - **Kafka Topics Consumed:** `smart.assessment.submitted`
 - **Kafka Topics Published:** `smart.eval.completed`
 - **Work Items / Deliverables:**
@@ -137,17 +138,18 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Core Responsibilities:**
   - Job Description (JD) NLP parsing via Claude 5 Sonnet into structured threshold vectors.
   - Vector cosine similarity candidate-company matching engine using Supabase `pgvector`.
-  - TPO auto-shortlist generator and placement correlation tracking module.
+  - TPO auto-shortlist generator, B2B API Key matching API (`X-SMART-API-KEY`), and Outbound Webhooks (`smart.placement.matched`).
 - **Primary REST Endpoints:**
-  - `POST /api/v1/placement/ingest-jd` — Upload & parse JD PDF/text into threshold vectors.
-  - `POST /api/v1/placement/match` — Generate matched candidate shortlists (Throttled at 30 req/min).
-  - `GET /api/v1/tpo/shortlist` — Retrieve filterable candidate shortlist for recruiters.
+  - `POST /api/v1/placement/ingest-jd` `[ASYNC SLA 2-4s]` — Upload & parse JD PDF/text into threshold vectors.
+  - `POST /api/v1/placement/match` `[ASYNC SLA 1-3s]` — Generate matched candidate shortlists (Throttled at 30 req/min).
+  - `GET /api/v1/tpo/shortlist` `[SYNC <150ms]` — Retrieve filterable candidate shortlist for recruiters.
 - **Kafka Topics Consumed:** `smart.eval.completed`
 - **Kafka Topics Published:** `smart.placement.matched`
+- **Outbound Webhooks:** Sends HMAC-SHA256 signed JSON payload to employer endpoints on `smart.placement.matched`.
 - **Work Items / Deliverables:**
   1. [ ] Build JD NLP parser utilizing Claude 5 Sonnet to extract competency vectors.
   2. [ ] Implement vector cosine similarity search query against Supabase `pgvector`.
-  3. [ ] Build TPO shortlist generator API with CSV/PDF export capabilities.
+  3. [ ] Build B2B API Key handler and Webhook event dispatcher for employer integrations.
 
 ---
 
@@ -157,17 +159,18 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Core Responsibilities:**
   - Tier Trail JSON computation and headline tier issuance (Gold/Silver/Bronze).
   - Public verification URL handler (`verify.smart.com/cert/<UUID>`) with confidence note calculation.
-  - Cryptographically signed dynamic QR code generator & Cloudflare R2 PDF certificate upload.
+  - Cryptographically signed dynamic QR code generator, Cloudflare R2 PDF certificate upload, and Webhook dispatching (`smart.certificate.issued`).
 - **Primary REST Endpoints:**
-  - `GET /api/v1/verify/:certificate_id` — Public certificate verification view (Throttled at 20 req/min per IP).
-  - `POST /api/v1/certificates/issue` — Issue certificate record upon level completion.
-  - `GET /api/v1/certificates/export-pdf` — Download PDF certificate artifact.
+  - `GET /api/v1/verify/:certificate_id` `[SYNC <80ms]` — Public certificate verification view (Throttled at 20 req/min per IP).
+  - `POST /api/v1/certificates/issue` `[ASYNC BullMQ SLA 1-4s]` — Issue certificate record & trigger PDF generator upon level completion.
+  - `GET /api/v1/certificates/export-pdf` `[SYNC Direct R2 URL]` — Download PDF certificate artifact.
 - **Kafka Topics Consumed:** `smart.eval.completed`
 - **Kafka Topics Published:** `smart.certificate.issued`
+- **Outbound Webhooks:** Sends HMAC-SHA256 signed JSON payload to institutional ERPs on `smart.certificate.issued`.
 - **Work Items / Deliverables:**
   1. [ ] Build public verification view renderer displaying Tier Trail & Confidence Note.
   2. [ ] Build dynamic QR code generator signing certificate hashes with SHA-256.
-  3. [ ] Integrate Cloudflare R2 SDK for storing PDF certificates with zero egress fees.
+  3. [ ] Integrate Cloudflare R2 SDK and Webhook dispatcher for institutional verification.
 
 ---
 
@@ -176,13 +179,13 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Monorepo Path:** `apps/api-core/src/modules/rate-limiter` & Cloudflare Workers
 - **Core Responsibilities:**
   - Edge security, Cloudflare DDoS protection, and SSL termination.
-  - Redis sliding window log Lua script rate-limiting middleware (Super Admin 500/min, TPO 200/min, Student 60/min, Public 20/min).
+  - Redis sliding window log Lua script rate-limiting middleware (Super Admin 500/min, TPO 200/min, Student 60/min, Public 20/min, B2B API Keys 500/hour).
   - Standard HTTP rate limit header injection (`X-RateLimit-*`, `Retry-After`, HTTP status 429).
 - **Middleware Scope:** Intercepts 100% of incoming API requests.
 - **Kafka Topics Published:** `smart.rate_limit.exceeded`
 - **Work Items / Deliverables:**
   1. [ ] Build NestJS rate-limiting guard executing Redis sliding-window Lua scripts.
-  2. [ ] Implement role-based rate limit resolver extracting claims from JWT tokens.
+  2. [ ] Implement role-based and B2B API key rate limit resolver (`X-SMART-API-KEY`).
   3. [ ] Configure Cloudflare Workers edge rate-limiting rules for public verification.
 
 ---
@@ -191,10 +194,10 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 
 | Developer | Primary Service Ownership | Secondary Support | Target Sprint Focus |
 |---|---|---|---|
-| **Ramansh** | `assessment-service`, `claude-proxy-service`, `evaluation-service` | Item Bank Ingestion | Sprint 1: Claude Proxy<br>Sprint 2: Assessment Delivery & BARS Pipeline<br>Sprint 3: AI Defense Engine |
-| **Satheeswaran** | `auth-service`, `placement-service`, `certificate-service` | Web UI Portals | Sprint 1: Auth & RBAC<br>Sprint 3: Placement Matching & TPO Dashboard<br>Sprint 4: Verification & Certificates |
+| **Ramansh** | `assessment-service`, `claude-proxy-service`, `evaluation-service` | Item Bank Ingestion | Sprint 1: Claude Proxy & Fallback<br>Sprint 2: Assessment Delivery & BARS Pipeline<br>Sprint 3: AI Defense Engine |
+| **Satheeswaran** | `auth-service`, `placement-service`, `certificate-service` | Web UI Portals | Sprint 1: Auth (JWT/Refresh/SSO)<br>Sprint 3: Placement Matching & Webhooks<br>Sprint 4: Verification & B2B API Keys |
 | **Tino** | `sandbox-service`, `gateway-rate-limiter`, Monorepo Infra | Docker & K8s Ops | Sprint 1: Docker Stack & Redis Rate Limiter<br>Sprint 2: Code Sandbox Runner<br>Sprint 4: Edge Gateway & SSL Tuning |
 
 ---
 
-*This document defines the decoupled microservice boundaries, Kafka interfaces, and work item assignments for the SMART engineering team.*
+*This document defines the decoupled microservice boundaries, auth SLA matrix, Kafka interfaces, and work item assignments for the SMART engineering team.*

@@ -53,6 +53,24 @@ SMART sits directly between academia and industry. It certifies readiness per sp
 
 ---
 
+### 1.4 Enterprise Authentication & Dual API Access Model
+
+#### 1.4.1 Dual-Token Authentication & Identity Architecture
+To ensure high security while protecting backend databases from token validation churn under 50k peak concurrent load:
+- **Short-Lived JWT Access Tokens (15 Minutes)**: Sent via `Authorization: Bearer <JWT>` header for stateless, zero-DB-hit in-memory validation in NestJS Guards across all microservices.
+- **HttpOnly Secure Refresh Tokens (7–14 Days)**: Stored in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. When access tokens expire, Next.js / NestJS clients seamlessly issue silent refresh calls to `/api/v1/auth/refresh` without prompting the user.
+- **OAuth 2.0 / OIDC & Institutional SSO**: Integrated via Supabase Auth:
+  - **Candidates / Students**: Google Workspace & GitHub OAuth (one-click onboarding).
+  - **Institutions (Universities & Placement Offices)**: SAML 2.0 / OpenID Connect (OIDC) SSO for institutional university logins (e.g., `@psgtech.ac.in`, `@bits-pilani.ac.in`).
+
+#### 1.4.2 Dual API Access & External Webhook Infrastructure
+- **Internal Platform APIs (90% of traffic)**: Protected by JWT claims, CORS policies, and CSRF protection. Serves Next.js frontend applications (`web-student`, `web-tpo`, `web-admin`).
+- **Public Verification Endpoint**: `GET /api/v1/verify/:certificate_id` (`verify.smart.com`) is **publicly accessible** without authentication, enforced by Redis IP sliding-window rate limiters (20 req/min).
+- **B2B API Key Access (`X-SMART-API-KEY`)**: Dedicated, rate-limited REST endpoints for institutional ERPs and recruiting partners to query candidate readiness scorecards and verified badge metadata.
+- **Outbound Webhooks Engine**: Real-time HTTP event dispatchers (`smart.certificate.issued`, `smart.placement.matched`) sending cryptographically signed HMAC-SHA256 payloads to registered university & calibration employer endpoints.
+
+---
+
 ## 2. Decoupled AI Strategy — Claude Engine Architecture
 
 > **Architecture Directives:**
@@ -146,7 +164,25 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 │  │ pgvector Search   │   │ Active Sessions  │   │ L3 Audio & PDF Certs    │  │
 │  └──────────────────┘   └──────────────────┘   └─────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
-```
+---
+
+### 3.2 Synchronous vs. Asynchronous Execution SLA Matrix
+
+> **Latency Rule of Thumb:**  
+> Any HTTP operation with an execution SLA **< 200ms** runs **Synchronously**.  
+> Any execution involving Docker container sandboxes, audio processing, LLM generation, or batch matrix search MUST run **Asynchronously via BullMQ & Apache Kafka**.
+
+| Operation / Feature | Execution Mode | SLA Target | Transport / Queue | Architectural Rationale |
+|---|---|---|---|---|
+| **User Login & Token Refresh** | **Synchronous (HTTP)** | < 150 ms | NestJS Auth REST API | Immediate session setup required for UI render. |
+| **Fetch Next L1 MCQ Item** | **Synchronous (HTTP)** | < 50 ms | Redis Warm Cache (`items:form:*`) | Candidate test player speed; zero DB query hit. |
+| **Save L1 Answer Draft** | **Synchronous (HTTP)** | < 30 ms | Redis Session Hash (`session:assessment:*`)| Immediate answer draft receipt response. |
+| **Public Certificate Lookup** | **Synchronous (HTTP)** | < 80 ms | Redis Verification Cache (`verify:cert:*`)| Instant load on `verify.smart.com` for employers. |
+| **L2 Code / SQL Sandbox Execution**| **Asynchronous (BullMQ)** | 1.0 – 3.0 sec | `bull:queue:sandbox_execution` | Isolated Docker execution prevents CPU starvation on API workers. Returns `job_id` for polling/WebSocket. |
+| **L3 Audio Spoken Response Upload** | **Asynchronous (Direct Cloudflare R2)** | 500 ms (Upload) | Cloudflare R2 Presigned URL | Direct client-to-R2 upload bypasses backend API payload overhead. |
+| **Claude 5 Sonnet BARS Audio Grading**| **Asynchronous (BullMQ + Kafka)** | 2.0 – 6.0 sec | `bull:queue:audio_evaluation` & `smart.eval.requested` | LLM inference latency budget exceeds HTTP sync timeout. |
+| **PDF Certificate Generation** | **Asynchronous (BullMQ)** | 1.5 – 4.0 sec | `bull:queue:pdf_generation` | Puppeteer PDF render & Cloudflare R2 upload runs asynchronously post-scoring. |
+| **Candidate-JD Vector Matching** | **Asynchronous (Kafka Event)** | 1.0 – 3.0 sec | Kafka Topic `smart.placement.matched` | Supabase `pgvector` batch matrix computation runs in background. |
 
 ---
 
