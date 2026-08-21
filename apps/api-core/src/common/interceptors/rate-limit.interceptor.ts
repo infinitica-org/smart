@@ -1,21 +1,14 @@
-import type {
-  CallHandler,
-  ExecutionContext,
-  NestInterceptor} from '@nestjs/common';
-import {
-  HttpException,
-  HttpStatus,
-  Injectable
-} from '@nestjs/common';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Observable } from 'rxjs';
 import { API_PREFIX, RATE_LIMIT_HEADERS, ROUTES, type RouteSpec } from '@smart/contracts';
-import type { RateLimitService } from '../../modules/rate-limit/rate-limit.service.js';
+import { RateLimitService } from '../../modules/rate-limit/rate-limit.service.js';
 import type { RequestUser } from '../guards/jwt-auth.guard.js';
 
 @Injectable()
 export class RateLimitInterceptor implements NestInterceptor {
-  constructor(private readonly rateLimits: RateLimitService) {}
+  constructor(@Inject(RateLimitService) private readonly rateLimits: RateLimitService) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
     const http = context.switchToHttp();
@@ -30,7 +23,10 @@ export class RateLimitInterceptor implements NestInterceptor {
     const decision = await this.rateLimits.consume(route.rateLimit, identity, role, route.path);
 
     reply.header(RATE_LIMIT_HEADERS.limit, String(decision.limit));
-    reply.header(RATE_LIMIT_HEADERS.remaining, String(Math.max(0, decision.limit - decision.count)));
+    reply.header(
+      RATE_LIMIT_HEADERS.remaining,
+      String(Math.max(0, decision.limit - decision.count)),
+    );
     reply.header(RATE_LIMIT_HEADERS.reset, String(decision.policy.windowSeconds));
 
     if (!decision.allowed) {

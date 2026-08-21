@@ -1,12 +1,5 @@
-import type {
-  ArgumentsHost,
-  ExceptionFilter} from '@nestjs/common';
-import {
-  Catch,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { CORRELATION_HEADER } from '@smart/observability';
@@ -39,6 +32,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const raw = exception.getResponse();
       const body = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+      // Preserve structured readiness payloads (status/checks) when thrown as HttpException.
+      if (typeof body.status === 'string' && body.checks && typeof body.checks === 'object') {
+        void reply.status(status).send({ ...body, statusCode: status, traceId });
+        return;
+      }
       void reply.status(status).send({
         error: body.error ?? exception.name,
         message: body.message ?? exception.message,

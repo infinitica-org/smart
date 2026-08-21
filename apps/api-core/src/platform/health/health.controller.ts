@@ -1,16 +1,16 @@
-import { Controller, Get, Header, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Header, Inject, ServiceUnavailableException } from '@nestjs/common';
 import { API_PREFIX, type HealthStatus } from '@smart/contracts';
 import { collectMetrics, METRICS_CONTENT_TYPE } from '@smart/observability';
 import { Public } from '../../common/guards/public.decorator.js';
 import { env } from '../config/env.js';
-import type { PrismaService } from '../prisma/prisma.service.js';
-import type { RedisService } from '../redis/redis.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { RedisService } from '../redis/redis.service.js';
 
 @Controller()
 export class HealthController {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   @Public()
@@ -43,7 +43,9 @@ export class HealthController {
 
     const redisStart = Date.now();
     try {
-      await this.redis.connect();
+      if (this.redis.status === 'wait' || this.redis.status === 'end') {
+        await this.redis.connect();
+      }
       await this.redis.ping();
       checks.redis = { status: 'up', latencyMs: Date.now() - redisStart };
     } catch (error) {

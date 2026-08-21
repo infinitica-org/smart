@@ -19,6 +19,7 @@
     "lint:fix": "turbo run lint -- --fix",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:unit": "turbo run test --filter=!@smart/e2e --filter=!@smart/load-tests",
     "test:watch": "turbo run test:watch",
     "test:cov": "turbo run test:cov",
     "clean": "turbo run clean && rimraf node_modules .turbo",
@@ -60,7 +61,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [
       "prettier --write",
-      "eslint --fix --max-warnings=0"
+      "eslint --fix --max-warnings=0 --no-warn-ignored"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"

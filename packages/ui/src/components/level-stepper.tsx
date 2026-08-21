@@ -1,5 +1,5 @@
 import { LEVEL_DEFINITIONS } from '@smart/contracts';
-import { cn } from '../lib/cn.js';
+import { cn } from '../lib/cn';
 
 export type LevelState = 'locked' | 'active' | 'cleared';
 
@@ -18,7 +18,11 @@ export function LevelStepper({ unlockedThrough, current }: LevelStepperProps) {
     <ol className="flex flex-wrap gap-2" aria-label="Assessment levels">
       {LEVEL_DEFINITIONS.map((level) => {
         const state: LevelState =
-          level.level === current ? 'active' : level.level <= unlockedThrough ? 'cleared' : 'locked';
+          level.level === current
+            ? 'active'
+            : level.level <= unlockedThrough
+              ? 'cleared'
+              : 'locked';
         return (
           <li
             key={level.level}

@@ -6,14 +6,14 @@ Role-specific readiness certification. Candidates are assessed on a 5-level × 3
 
 ## Who owns what
 
-| Engineer | Role | Writes |
-|---|---|---|
-| **Tino** | System Architect & Review | Architecture, `@smart/contracts`, quality gates. **No feature code.** |
-| **Vishal V** | Senior Backend | Platform core: auth, Prisma, Redis, Kafka, rate limit, sandbox, infra |
-| **Satheswaran V** | Frontend + Full-stack | `@smart/ui`, `@smart/api-client`, student + TPO apps |
-| **Vishal Bharath R** | Full-stack + Backend | Assessment lifecycle, certificates, verify + admin apps |
-| **Ramansh** | AI Engineer | AI gateway, evaluation, matching, `@smart/prompts`, `@smart/scoring-engine` |
-| **Vedika G** | Data + AI/Backend | Catalog, calibration, item banks, placement records, analytics |
+| Engineer             | Role                      | Writes                                                                      |
+| -------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| **Tino**             | System Architect & Review | Architecture, `@smart/contracts`, quality gates. **No feature code.**       |
+| **Vishal V**         | Senior Backend            | Platform core: auth, Prisma, Redis, Kafka, rate limit, sandbox, infra       |
+| **Satheswaran V**    | Frontend + Full-stack     | `@smart/ui`, `@smart/api-client`, student + TPO apps                        |
+| **Vishal Bharath R** | Full-stack + Backend      | Assessment lifecycle, certificates, verify + admin apps                     |
+| **Ramansh**          | AI Engineer               | AI gateway, evaluation, matching, `@smart/prompts`, `@smart/scoring-engine` |
+| **Vedika G**         | Data + AI/Backend         | Catalog, calibration, item banks, placement records, analytics              |
 
 Enforced by [`.github/CODEOWNERS`](./.github/CODEOWNERS). Day-to-day: [`docs/delivery/ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md). How to contribute: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
@@ -25,19 +25,20 @@ Shared packages: `@smart/contracts` (frozen API), `@smart/scoring-engine`, `@sma
 
 ## Local development
 
-Requires Node **22.20** (see `.nvmrc`), pnpm 11, Docker optional but recommended.
+**Exact step-by-step commands (Windows + Unix):** [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md).
+
+Requires Node **22.20** (see `.nvmrc`), pnpm **11**, Docker optional but recommended.
 
 ```bash
 pnpm bootstrap          # install, start data plane, Prisma generate, seed
-pnpm doctor             # toolchain check
+pnpm doctor             # toolchain check (scripts/doctor.sh — needs bash)
 pnpm dev:api            # http://localhost:3000/health
-pnpm --filter @smart/web-student dev   # :3001
-pnpm --filter @smart/web-tpo dev       # :3002
-pnpm --filter @smart/web-admin dev     # :3003
-pnpm --filter @smart/web-verify dev    # :3004
+pnpm dev:web            # portals on :3001–:3004
 ```
 
-`pnpm infra:up` starts Postgres, Redis, Redpanda and MinIO only. App images are a separate profile (see VPS).
+`pnpm infra:up` starts Postgres, Redis (host **6380** → container 6379), Redpanda and MinIO only. App images are a separate profile (see VPS).
+
+> **Windows note:** host port `6379` is often already taken (svchost/WSL). Local `.env` uses `REDIS_URL=redis://127.0.0.1:6380`.
 
 Seeded accounts (local only), password `ChangeMe!Dev`:
 

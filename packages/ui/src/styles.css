@@ -3,3 +3,10 @@
  * Tokens live in `@smart/tailwind-config` so every portal renders the same Gold.
  */
 @import '@smart/tailwind-config/theme.css';
+
+/*
+ * Tailwind v4 only emits classes it can see. UI components live in this package
+ * (transpilePackages), outside each app's default scan roots — without @source,
+ * portals render unstyled HTML.
+ */
+@source './**/*.{ts,tsx}';

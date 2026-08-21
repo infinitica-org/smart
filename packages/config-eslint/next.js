@@ -18,6 +18,9 @@ export const next = tseslint.config(...base, {
   rules: {
     // The API boundary must be typed end to end (TEAM.md §2.3).
     '@typescript-eslint/no-explicit-any': 'error',
+    // Next portals may read NEXT_PUBLIC_* (and other public env) via process.env.
+    // The Nest-only process.env ban must not apply here.
+    'no-restricted-properties': 'off',
     // Raw fetch bypasses @smart/api-client, which owns auth refresh and 429 backoff.
     'no-restricted-globals': [
       'error',

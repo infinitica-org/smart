@@ -705,6 +705,9 @@ importers:
       '@smart/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@smart/tailwind-config':
+        specifier: workspace:*
+        version: link:../config-tailwind
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
@@ -721,9 +724,6 @@ importers:
       '@smart/eslint-config':
         specifier: workspace:*
         version: link:../config-eslint
-      '@smart/tailwind-config':
-        specifier: workspace:*
-        version: link:../config-tailwind
       '@smart/tsconfig':
         specifier: workspace:*
         version: link:../config-typescript

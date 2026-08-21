@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cn } from '../lib/cn.js';
+import { cn } from '../lib/cn';
 
 export interface AppShellProps {
   productName?: string;
@@ -24,7 +24,9 @@ export function AppShell({
   className,
 }: AppShellProps) {
   return (
-    <div className={cn('min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)]', className)}>
+    <div
+      className={cn('min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)]', className)}
+    >
       <header className="border-b border-[var(--surface-border)] bg-[var(--surface)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <div>

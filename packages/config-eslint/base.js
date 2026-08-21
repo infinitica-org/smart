@@ -12,10 +12,23 @@ import globals from 'globals';
  *   - no floating promises (a dropped promise in an assessment flow loses a candidate's work)
  *   - no unchecked non-null assertions
  *
+ * Note: the `process.env` ban is Nest/api-core only (`nest.js`). Next apps must
+ * read `NEXT_PUBLIC_*` at the edge; that is not a DoD violation.
+ *
  * Owner: Tino (System Architect).
  */
 export const base = tseslint.config(
-  { ignores: ['dist/**', '.next/**', '.turbo/**', 'coverage/**', 'generated/**', '**/generated/**', 'node_modules/**'] },
+  {
+    ignores: [
+      'dist/**',
+      '.next/**',
+      '.turbo/**',
+      'coverage/**',
+      'generated/**',
+      '**/generated/**',
+      'node_modules/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -42,22 +55,10 @@ export const base = tseslint.config(
       'no-var': 'error',
       'require-await': 'off',
       '@typescript-eslint/require-await': 'off',
-
-      // --- secrets & config hygiene: config comes from the validated config
-      //     service, never from a raw process.env read inside a module ---
-      'no-restricted-properties': [
-        'error',
-        {
-          object: 'process',
-          property: 'env',
-          message:
-            'Read configuration from the validated config service (@smart/api-core platform/config) — not process.env directly. See DEFINITION_OF_DONE.md §5.',
-        },
-      ],
     },
   },
   {
-    // Config files, scripts and tests legitimately read the raw environment.
+    // Config files, scripts and tests legitimately use console / looser typing.
     files: [
       '**/*.config.{ts,js,mjs,cjs}',
       '**/scripts/**',
@@ -67,7 +68,6 @@ export const base = tseslint.config(
       '**/env.ts',
     ],
     rules: {
-      'no-restricted-properties': 'off',
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
     },

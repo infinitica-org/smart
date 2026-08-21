@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { getRateLimitPolicy, type RateLimitPolicy } from '@smart/contracts';
 import { rateLimitRejections, rateLimitUtilisation } from '@smart/observability';
 import { env } from '../../platform/config/env.js';
-import type { RedisService } from '../../platform/redis/redis.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 import { SLIDING_WINDOW_LUA } from './sliding-window.lua.js';
 
 export interface RateLimitDecision {
@@ -18,9 +18,14 @@ export interface RateLimitDecision {
 export class RateLimitService {
   private readonly logger = new Logger(RateLimitService.name);
 
-  constructor(private readonly redis: RedisService) {}
+  constructor(@Inject(RedisService) private readonly redis: RedisService) {}
 
-  async consume(policyKey: string, identity: string, role: string, route: string): Promise<RateLimitDecision> {
+  async consume(
+    policyKey: string,
+    identity: string,
+    role: string,
+    route: string,
+  ): Promise<RateLimitDecision> {
     const policy = getRateLimitPolicy(policyKey);
     const windowMs = policy.windowSeconds * 1000;
     const key = policy.redisKey.replace('{id}', identity);

@@ -7,6 +7,7 @@ Read these in order before writing code:
 3. [`docs/delivery/DEFINITION_OF_DONE.md`](./docs/delivery/DEFINITION_OF_DONE.md) — merge bar
 4. [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md) — sprint calendar to 10 Sep 2026
 5. [`AGENTS.md`](./AGENTS.md) + [`.cursor/`](./.cursor/) — shared agent/human KB and workflow rules
+6. [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md) — **exact local commands**
 
 ## Rules that do not get waived
 
@@ -25,11 +26,12 @@ Personal Cursor notes (identity, working memory) live in `.cursor/local/` and ar
 
 ## Local loop
 
+Full command list: [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md).
+
 ```bash
 pnpm bootstrap          # install, start data plane, generate Prisma, seed
-pnpm doctor             # check toolchain
 pnpm dev:api            # Nest API on :3000
-pnpm --filter @smart/web-student dev
+pnpm dev:web            # all four portals :3001–:3004
 ```
 
 Seeded logins (local only): `student@smart.local` / `tpo@smart.local` / `admin@smart.local` — password `ChangeMe!Dev`.
