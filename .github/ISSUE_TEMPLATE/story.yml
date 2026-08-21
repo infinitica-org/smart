@@ -1,0 +1,31 @@
+name: Story
+description: Sprint work item
+title: "[Sx-XX-00] "
+labels: ["story"]
+body:
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options:
+        - Vishal V
+        - Satheswaran V
+        - Vishal Bharath R
+        - Ramansh
+        - Vedika G
+        - Tino (review only)
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2]
+    validations:
+      required: true
+  - type: textarea
+    id: ac
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true

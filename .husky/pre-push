@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Typecheck before push so nobody burns a CI slot (and 6 minutes of review
+# latency) on a compile error. Turbo only re-checks what changed.
+pnpm typecheck

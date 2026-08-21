@@ -1,0 +1,182 @@
+import {
+  API_PREFIX,
+  AssignedFormDtoSchema,
+  AttemptSessionDtoSchema,
+  AuthTokenResponseSchema,
+  AuthenticatedUserSchema,
+  CertificateDtoSchema,
+  JobAcceptedSchema,
+  NextItemDtoSchema,
+  PublicVerificationDtoSchema,
+  SandboxResultDtoSchema,
+  TrackDtoSchema,
+} from '@smart/contracts';
+import { z } from 'zod';
+import type { SmartApiClient } from './client.js';
+
+/**
+ * Typed endpoint bindings.
+ *
+ * One function per route, each naming the contract schema its response is
+ * validated against. This is where the frontend and the API meet: if a backend
+ * owner changes a response shape without changing the contract, the failure lands
+ * here with the route name in the message instead of as `undefined is not an
+ * object` inside a component.
+ *
+ * Owner: Satheswaran V. Add a binding when its route lands, not before.
+ */
+
+const prefixed = (path: string): string => `${API_PREFIX}${path}`;
+
+export function authApi(client: SmartApiClient) {
+  return {
+    login: (body: { email: string; password: string }) =>
+      client.post(prefixed('/auth/login'), body, { schema: AuthTokenResponseSchema }),
+
+    /**
+     * Refresh sends no body: the refresh token is an HttpOnly cookie, so it is
+     * never readable by JavaScript and never at risk from an XSS payload.
+     */
+    refresh: () =>
+      client.post(prefixed('/auth/refresh'), undefined, { schema: AuthTokenResponseSchema }),
+
+    logout: () => client.post<void>(prefixed('/auth/logout')),
+
+    me: () => client.get(prefixed('/users/me'), { schema: AuthenticatedUserSchema }),
+
+    enrollTrack: (body: { trackCode: string }) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/track'),
+        body,
+        schema: AuthenticatedUserSchema,
+      }),
+  };
+}
+
+export function catalogApi(client: SmartApiClient) {
+  return {
+    tracks: () =>
+      client.get(prefixed('/catalog/tracks'), {
+        schema: z.array(TrackDtoSchema),
+        anonymous: true,
+      }),
+
+    track: (trackCode: string) =>
+      client.get(prefixed(`/catalog/tracks/${trackCode}`), {
+        schema: TrackDtoSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function assessmentApi(client: SmartApiClient) {
+  return {
+    start: (body: { trackCode: string; levelNumber: number }) =>
+      client.post(prefixed('/assessment/start'), body, { schema: AssignedFormDtoSchema }),
+
+    /** Resume after a refresh, a dropped connection, or a closed laptop. */
+    session: (attemptId: string) =>
+      client.get(prefixed(`/assessment/${attemptId}/session`), {
+        schema: AttemptSessionDtoSchema,
+      }),
+
+    nextItem: (attemptId: string) =>
+      client.get(prefixed(`/assessment/${attemptId}/next-item`), { schema: NextItemDtoSchema }),
+
+    /**
+     * Answer drafts. Short timeout on purpose: this fires on every keystroke
+     * pause, and a slow save must fail fast and retry rather than queue behind
+     * itself while the candidate keeps typing.
+     */
+    saveAnswer: (body: unknown) =>
+      client.post<void>(prefixed('/assessment/submit-l1'), body, { timeoutMs: 5_000 }),
+
+    compileCode: (body: unknown) =>
+      client.post(prefixed('/assessment/compile-l2'), body, { schema: JobAcceptedSchema }),
+
+    sandboxResult: (jobId: string) =>
+      client.get(prefixed(`/assessment/sandbox/${jobId}`), { schema: SandboxResultDtoSchema }),
+
+    requestAudioUploadUrl: (body: unknown) =>
+      client.post(prefixed('/assessment/l3/upload-url'), body, {
+        schema: z.object({
+          uploadUrl: z.string(),
+          objectKey: z.string(),
+          expiresInSeconds: z.number(),
+        }),
+      }),
+
+    complete: (body: { attemptId: string }) =>
+      client.post(prefixed('/assessment/complete'), body, { schema: JobAcceptedSchema }),
+
+    /**
+     * Integrity telemetry. Fire-and-forget by design: a candidate's assessment
+     * must never break because an advisory signal failed to send.
+     */
+    reportIntegrityEvent: (body: unknown) =>
+      client
+        .post<void>(prefixed('/assessment/integrity-event'), body, { timeoutMs: 3_000 })
+        .catch(() => undefined),
+  };
+}
+
+export function certificateApi(client: SmartApiClient) {
+  return {
+    mine: () =>
+      client.get(prefixed('/certificates/mine'), { schema: z.array(CertificateDtoSchema) }),
+
+    setVisibility: (certificateId: string, isPublic: boolean) =>
+      client.patch(
+        prefixed(`/certificates/${certificateId}/visibility`),
+        { isPublic },
+        {
+          schema: CertificateDtoSchema,
+        },
+      ),
+
+    pdfUrl: (certificateId: string) =>
+      client.get(prefixed(`/certificates/${certificateId}/pdf`), {
+        schema: z.object({ url: z.string(), expiresInSeconds: z.number() }),
+      }),
+
+    /**
+     * Public verification. Anonymous, and the only endpoint an employer hits
+     * without an account — so it must never send an Authorization header that
+     * would make it look like an authenticated request in the logs.
+     */
+    verify: (certificateId: string) =>
+      client.get(prefixed(`/verify/${certificateId}`), {
+        schema: PublicVerificationDtoSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function placementApi(client: SmartApiClient) {
+  return {
+    ingestJd: (body: unknown) =>
+      client.post(prefixed('/placement/ingest-jd'), body, { schema: JobAcceptedSchema }),
+
+    match: (body: unknown) =>
+      client.post(prefixed('/placement/match'), body, { schema: JobAcceptedSchema }),
+
+    /** Reporting route: a longer timeout than the interactive default. */
+    shortlist: (query: Record<string, string | number | boolean | undefined>) =>
+      client.get(prefixed('/tpo/shortlist'), { query, timeoutMs: 30_000 }),
+
+    recordOutcome: (body: unknown) => client.post<void>(prefixed('/placement/outcomes'), body),
+  };
+}
+
+export function createSmartApi(client: SmartApiClient) {
+  return {
+    auth: authApi(client),
+    catalog: catalogApi(client),
+    assessment: assessmentApi(client),
+    certificates: certificateApi(client),
+    placement: placementApi(client),
+  };
+}
+
+export type SmartApi = ReturnType<typeof createSmartApi>;

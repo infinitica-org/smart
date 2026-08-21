@@ -1,0 +1,16 @@
+# Context is the monorepo root.
+node_modules
+**/node_modules
+.git
+.pnpm-store
+.next
+**/dist
+**/.turbo
+infra/docker/volumes
+coverage
+*.md
+docs
+!README.md
+.env
+.env.*
+!.env.example

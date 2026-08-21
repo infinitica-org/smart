@@ -1,0 +1,535 @@
+// SMART relational schema — maps ARCHITECTURE.md §5 plus identity, placement,
+// calibration and audit tables required by @smart/contracts.
+// Owner: Vishal V (schema + migrations). Domain columns are owned with the
+// module that writes them; changing an enum here is a contracts PR.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  INSTITUTION_ADMIN
+  PLACEMENT_STAFF
+  STUDENT
+  B2B_PARTNER
+}
+
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+  GITHUB
+  SAML
+  OIDC
+}
+
+enum TrackCategory {
+  TECH
+  MBA
+}
+
+enum TrackLaunchStatus {
+  DRAFT
+  AVAILABLE_NEW
+  VALIDATED_LEAD
+}
+
+enum CalibrationStatus {
+  NOT_CALIBRATED
+  PROVISIONAL
+  PANEL_CALIBRATED
+  RELIABILITY_VERIFIED
+}
+
+enum DomainCode {
+  A
+  B
+  C
+  D
+  E
+}
+
+enum LevelFormat {
+  MCQ
+  SANDBOX
+  AUDIO_BARS
+  DEFENSE
+  CAPSTONE
+}
+
+enum ItemType {
+  MCQ_SINGLE
+  MCQ_MULTI
+  NUMERIC_ENTRY
+  SHORT_ANSWER
+  CODE_TASK
+  SQL_TASK
+  SCENARIO_RESPONSE
+  SPOKEN_RESPONSE
+  DEFENSE_PROMPT
+  ARTIFACT_UPLOAD
+}
+
+enum DifficultyTag {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  EVALUATING
+  EVALUATED
+  ABANDONED
+  VOIDED
+}
+
+enum IntegrityFlag {
+  CLEAN
+  FLAGGED_TIMING
+  FLAGGED_PROCTOR
+  FLAGGED_SIMILARITY
+  FLAGGED_AUDIO
+  UNDER_REVIEW
+  CLEARED
+}
+
+enum Evaluator {
+  AUTO_MCQ
+  AUTO_NUMERIC
+  SANDBOX_CHECK
+  CHECKLIST
+  LLM_BARS
+  HUMAN_RATER
+  HYBRID
+}
+
+enum Tier {
+  GOLD
+  SILVER
+  BRONZE
+  BELOW_BRONZE
+}
+
+enum CertifiableTier {
+  GOLD
+  SILVER
+  BRONZE
+}
+
+enum CertificateStatus {
+  PENDING_ISSUE
+  BLOCKED_INTEGRITY
+  ISSUED
+  SUPERSEDED
+  REVOKED
+}
+
+enum JdParseStatus {
+  PENDING
+  PARSED
+  FAILED
+  MANUALLY_CORRECTED
+}
+
+enum PlacementOutcome {
+  NOT_SHORTLISTED
+  SHORTLISTED
+  INTERVIEWED
+  OFFERED
+  ACCEPTED
+  DECLINED
+}
+
+enum AiProvider {
+  ANTHROPIC
+  GOOGLE
+}
+
+model Institution {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  domain    String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users           User[]
+  jobDescriptions JobDescription[]
+  webhooks        WebhookEndpoint[]
+
+  @@map("institutions")
+}
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  email          String       @unique
+  fullName       String       @map("full_name")
+  passwordHash   String?      @map("password_hash")
+  role           UserRole
+  provider       AuthProvider @default(PASSWORD)
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  institutionId  String?      @map("institution_id") @db.Uuid
+  institution    Institution? @relation(fields: [institutionId], references: [id])
+  primaryTrackId String?      @map("primary_track_id") @db.Uuid
+  primaryTrack   Track?       @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
+  secondaryTrackId String?    @map("secondary_track_id") @db.Uuid
+  secondaryTrack Track?       @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  refreshTokens RefreshToken[]
+  attempts      Attempt[]
+  certificates  Certificate[]
+  placements    PlacementRecord[]
+
+  @@index([institutionId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  familyId  String   @map("family_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, familyId])
+  @@map("refresh_tokens")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  keyPrefix  String    @map("key_prefix")
+  keyHash    String    @unique @map("key_hash")
+  role       UserRole  @default(B2B_PARTNER)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("api_keys")
+}
+
+model Track {
+  id               String             @id @default(uuid()) @db.Uuid
+  code             String             @unique
+  name             String
+  category         TrackCategory
+  launchStatus     TrackLaunchStatus  @default(DRAFT) @map("launch_status")
+  calibrationStatus CalibrationStatus @default(NOT_CALIBRATED) @map("calibration_status")
+  foundationWeight Decimal            @default(0) @map("foundation_weight") @db.Decimal(4, 2)
+  capstoneBrief    String             @map("capstone_brief")
+  communicationDomain DomainCode      @map("communication_domain")
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  competencies     Competency[]
+  levels           Level[]
+  primaryUsers     User[]             @relation("UserPrimaryTrack")
+  secondaryUsers   User[]             @relation("UserSecondaryTrack")
+  certificates     Certificate[]
+  jobDescriptions  JobDescription[]
+  placements       PlacementRecord[]
+  calibrationPanels CalibrationPanel[]
+
+  @@map("tracks")
+}
+
+model Competency {
+  id              String     @id @default(uuid()) @db.Uuid
+  trackId         String     @map("track_id") @db.Uuid
+  track           Track      @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  domainCode      DomainCode @map("domain_code")
+  name            String
+  subDomain       String     @map("sub_domain")
+  realWorldWeight Decimal    @map("real_world_weight") @db.Decimal(4, 2)
+  assessedAtLevels Int[]     @map("assessed_at_levels")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  items Item[]
+
+  @@index([trackId, domainCode])
+  @@map("competencies")
+}
+
+model Level {
+  id              String      @id @default(uuid()) @db.Uuid
+  trackId         String      @map("track_id") @db.Uuid
+  track           Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  levelNumber     Int         @map("level_number")
+  name            String
+  format          LevelFormat
+  durationMinutes Int         @map("duration_minutes")
+  itemCount       Int         @default(0) @map("item_count")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  items       Item[]
+  attempts    Attempt[]
+  results     LevelResult[]
+  cutScores   CutScore[]
+  panels      CalibrationPanel[]
+
+  @@unique([trackId, levelNumber])
+  @@map("levels")
+}
+
+model Item {
+  id             String        @id @default(uuid()) @db.Uuid
+  levelId        String        @map("level_id") @db.Uuid
+  level          Level         @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  competencyId   String        @map("competency_id") @db.Uuid
+  competency     Competency    @relation(fields: [competencyId], references: [id])
+  itemType       ItemType      @map("item_type")
+  stem           String
+  modelAnswer    Json?         @map("model_answer")
+  difficultyTag  DifficultyTag @map("difficulty_tag")
+  active         Boolean       @default(true)
+  formCode       String        @default("A") @map("form_code")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  options   ItemOption[]
+  responses Response[]
+
+  @@index([levelId, active, formCode])
+  @@map("items")
+}
+
+model ItemOption {
+  id        String  @id @default(uuid()) @db.Uuid
+  itemId    String  @map("item_id") @db.Uuid
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  label     String
+  text      String
+  isCorrect Boolean @map("is_correct")
+
+  @@map("item_options")
+}
+
+model CalibrationPanel {
+  id        String   @id @default(uuid()) @db.Uuid
+  trackId   String   @map("track_id") @db.Uuid
+  track     Track    @relation(fields: [trackId], references: [id])
+  levelId   String   @map("level_id") @db.Uuid
+  level     Level    @relation(fields: [levelId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  panelists Panelist[]
+  estimates AngoffEstimate[]
+
+  @@map("calibration_panels")
+}
+
+model Panelist {
+  id         String           @id @default(uuid()) @db.Uuid
+  panelId    String           @map("panel_id") @db.Uuid
+  panel      CalibrationPanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  name       String
+  roleTitle  String           @map("role_title")
+  employer   String
+
+  estimates AngoffEstimate[]
+
+  @@map("panelists")
+}
+
+model AngoffEstimate {
+  id         String           @id @default(uuid()) @db.Uuid
+  panelId    String           @map("panel_id") @db.Uuid
+  panel      CalibrationPanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  panelistId String           @map("panelist_id") @db.Uuid
+  panelist   Panelist         @relation(fields: [panelistId], references: [id], onDelete: Cascade)
+  tier       CertifiableTier
+  estimate   Decimal          @db.Decimal(5, 2)
+
+  @@unique([panelistId, tier])
+  @@map("angoff_estimates")
+}
+
+model CutScore {
+  id        String          @id @default(uuid()) @db.Uuid
+  levelId   String          @map("level_id") @db.Uuid
+  level     Level           @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  tier      CertifiableTier
+  mean      Decimal         @db.Decimal(5, 2)
+  sd        Decimal         @db.Decimal(5, 2)
+  published Boolean         @default(false)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([levelId, tier])
+  @@map("cut_scores")
+}
+
+model Attempt {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  levelId       String        @map("level_id") @db.Uuid
+  level         Level         @relation(fields: [levelId], references: [id])
+  formCode      String        @default("A") @map("form_code")
+  status        AttemptStatus @default(IN_PROGRESS)
+  integrityFlag IntegrityFlag @default(CLEAN) @map("integrity_flag")
+  startedAt     DateTime      @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt   DateTime?     @map("completed_at") @db.Timestamptz(6)
+  expiresAt     DateTime      @map("expires_at") @db.Timestamptz(6)
+
+  responses Response[]
+  result    LevelResult?
+  events    IntegrityEvent[]
+
+  @@index([userId, status])
+  @@map("attempts")
+}
+
+model Response {
+  id           String     @id @default(uuid()) @db.Uuid
+  attemptId    String     @map("attempt_id") @db.Uuid
+  attempt      Attempt    @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  itemId       String     @map("item_id") @db.Uuid
+  item         Item       @relation(fields: [itemId], references: [id])
+  answer       Json?
+  score        Decimal?   @db.Decimal(5, 2)
+  maxScore     Decimal    @default(100) @map("max_score") @db.Decimal(5, 2)
+  evaluatedBy  Evaluator? @map("evaluated_by")
+  evaluatedAt  DateTime?  @map("evaluated_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  audits AiEvaluationAudit[]
+
+  @@unique([attemptId, itemId])
+  @@map("responses")
+}
+
+model LevelResult {
+  id              String   @id @default(uuid()) @db.Uuid
+  attemptId       String   @unique @map("attempt_id") @db.Uuid
+  attempt         Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  levelId         String   @map("level_id") @db.Uuid
+  level           Level    @relation(fields: [levelId], references: [id])
+  rawScore        Decimal  @map("raw_score") @db.Decimal(5, 2)
+  tierAwarded     Tier     @map("tier_awarded")
+  confidenceBand  String   @map("confidence_band")
+  borderline      Boolean  @default(false)
+  issuedAt        DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+
+  @@map("level_results")
+}
+
+model Certificate {
+  id                 String            @id @default(uuid()) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId            String            @map("track_id") @db.Uuid
+  track              Track             @relation(fields: [trackId], references: [id])
+  highestLevelCleared Int              @map("highest_level_cleared")
+  headlineTier       CertifiableTier   @map("headline_tier")
+  tierTrail          Json              @map("tier_trail")
+  status             CertificateStatus @default(PENDING_ISSUE)
+  isPublic           Boolean           @default(false) @map("is_public")
+  verificationSlug   String            @unique @map("verification_slug")
+  issuedAt           DateTime?         @map("issued_at") @db.Timestamptz(6)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, trackId])
+  @@map("certificates")
+}
+
+model JobDescription {
+  id                String         @id @default(uuid()) @db.Uuid
+  institutionId     String         @map("institution_id") @db.Uuid
+  institution       Institution    @relation(fields: [institutionId], references: [id])
+  trackId           String?        @map("track_id") @db.Uuid
+  track             Track?         @relation(fields: [trackId], references: [id])
+  companyName       String         @map("company_name")
+  roleTitle         String         @map("role_title")
+  rawText           String         @map("raw_text")
+  status            JdParseStatus  @default(PENDING)
+  thresholds        Json?
+  parseConfidence   Decimal?       @map("parse_confidence") @db.Decimal(4, 3)
+  manuallyCorrected Boolean        @default(false) @map("manually_corrected")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  parsedAt          DateTime?      @map("parsed_at") @db.Timestamptz(6)
+
+  placements PlacementRecord[]
+
+  @@map("job_descriptions")
+}
+
+model PlacementRecord {
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  user        User              @relation(fields: [userId], references: [id])
+  trackId     String            @map("track_id") @db.Uuid
+  track       Track             @relation(fields: [trackId], references: [id])
+  jdId        String?           @map("jd_id") @db.Uuid
+  jd          JobDescription?   @relation(fields: [jdId], references: [id])
+  cycle       String
+  outcome     PlacementOutcome  @default(NOT_SHORTLISTED)
+  companyName String?           @map("company_name")
+  packageLpa  Decimal?          @map("package_lpa") @db.Decimal(5, 2)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([trackId, cycle])
+  @@map("placement_records")
+}
+
+model IntegrityEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  attemptId String   @map("attempt_id") @db.Uuid
+  attempt   Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  flag      IntegrityFlag
+  detail    Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("integrity_events")
+}
+
+model WebhookEndpoint {
+  id            String      @id @default(uuid()) @db.Uuid
+  institutionId String      @map("institution_id") @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  url           String
+  secretHash    String      @map("secret_hash")
+  events        String[]
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("webhook_endpoints")
+}
+
+model AiEvaluationAudit {
+  id               String     @id @default(uuid()) @db.Uuid
+  responseId       String?    @map("response_id") @db.Uuid
+  response         Response?  @relation(fields: [responseId], references: [id])
+  promptRef        String     @map("prompt_ref")
+  provider         AiProvider
+  model            String
+  promptTokens     Int        @map("prompt_tokens")
+  completionTokens Int        @map("completion_tokens")
+  usedFallback     Boolean    @default(false) @map("used_fallback")
+  estimatedCostUsd Decimal    @map("estimated_cost_usd") @db.Decimal(10, 6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("ai_evaluation_audits")
+}
+
+model RateLimitLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  identifier      String
+  route           String
+  policy          String
+  violationsCount Int       @default(1) @map("violations_count")
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([identifier, createdAt])
+  @@map("rate_limit_logs")
+}

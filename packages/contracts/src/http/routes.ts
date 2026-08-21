@@ -1,0 +1,163 @@
+/**
+ * Canonical API route registry.
+ *
+ * One place where every path, its owner, its RBAC roles, its rate-limit policy
+ * and its latency budget are declared together. This is what lets the architect
+ * audit the whole HTTP surface in one file, and what lets `@smart/api-client`
+ * stay in sync without guessing.
+ *
+ * Adding an endpoint means adding an entry here. An endpoint with no entry has
+ * no declared limit and no declared roles, and fails review.
+ *
+ * Owner: Tino (System Architect).
+ */
+
+import type { UserRole } from '../domain/enums.js';
+
+export const API_PREFIX = '/api/v1' as const;
+
+/**
+ * How tight the latency budget is, and why.
+ *
+ * ARCHITECTURE.md §3.2 sets < 200 ms for "the active test player and the
+ * verification lookup" — not for every endpoint. A cohort analytics report that
+ * takes 300 ms is fine; a 300 ms `next-item` call during a timed exam is not.
+ * Making the distinction explicit stops the budget from being either violated
+ * silently or applied so broadly that it becomes meaningless.
+ */
+export type RouteCriticality =
+  /** In the candidate's timed exam path, or the employer verification path. Hard 200 ms ceiling. */
+  | 'CANDIDATE_CRITICAL'
+  /**
+   * A live LLM turn (the L4 interactive defense). Latency is bounded by the
+   * model, not by our code, so it gets its own budget and the P1 priority lane
+   * that reserves 40 % of AI quota — a candidate mid-defense must never queue
+   * behind a batch JD parse.
+   */
+  | 'LLM_INTERACTIVE'
+  /** Interactive but not exam-timed: dashboards, auth handshakes, admin actions. */
+  | 'INTERACTIVE'
+  /** Aggregation and reporting. Slower is acceptable; correctness matters more. */
+  | 'REPORTING';
+
+export interface RouteSpec {
+  readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  readonly path: string;
+  readonly module: string;
+  readonly owner: string;
+  readonly roles: readonly UserRole[];
+  /** Key into ENDPOINT_RATE_LIMITS / ROLE_RATE_LIMITS. */
+  readonly rateLimit: string;
+  readonly execution: 'SYNC' | 'ASYNC';
+  readonly criticality: RouteCriticality;
+  /** Latency budget for SYNC routes (ARCHITECTURE.md §3.2). */
+  readonly slaMs?: number;
+  readonly summary: string;
+}
+
+/** Latency ceiling per criticality class. Asserted in CI by the contract invariants. */
+export const LATENCY_BUDGET_MS: Readonly<Record<RouteCriticality, number>> = {
+  CANDIDATE_CRITICAL: 200,
+  LLM_INTERACTIVE: 6_000,
+  INTERACTIVE: 500,
+  REPORTING: 1_000,
+} as const;
+
+export const ROUTES: readonly RouteSpec[] = [
+  /* ------------------------------ auth & users ---------------------------- */
+  { method: 'POST', path: '/auth/login', module: 'auth', owner: 'Vishal V', roles: ['PUBLIC'], rateLimit: 'auth.login', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Password login; issues access token + refresh cookie.' },
+  { method: 'POST', path: '/auth/sso/start', module: 'auth', owner: 'Vishal V', roles: ['PUBLIC'], rateLimit: 'auth.login', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Begin OAuth / SAML / OIDC flow.' },
+  { method: 'POST', path: '/auth/sso/callback', module: 'auth', owner: 'Vishal V', roles: ['PUBLIC'], rateLimit: 'auth.login', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 300, summary: 'Complete SSO handshake.' },
+  { method: 'POST', path: '/auth/refresh', module: 'auth', owner: 'Vishal V', roles: ['PUBLIC'], rateLimit: 'auth.refresh', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 100, summary: 'Rotate refresh token, issue new access token.' },
+  { method: 'POST', path: '/auth/logout', module: 'auth', owner: 'Vishal V', roles: ['STUDENT', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 80, summary: 'Revoke the refresh token family.' },
+  { method: 'GET', path: '/users/me', module: 'users', owner: 'Vishal V', roles: ['STUDENT', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 50, summary: 'Current profile and track enrolments.' },
+  { method: 'PUT', path: '/users/me/track', module: 'users', owner: 'Vishal V', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 100, summary: 'Enroll on or change a specialisation track.' },
+  { method: 'POST', path: '/admin/api-keys', module: 'auth', owner: 'Vishal V', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Issue a B2B API key.' },
+
+  /* -------------------------------- catalog -------------------------------- */
+  { method: 'GET', path: '/catalog/tracks', module: 'catalog', owner: 'Vedika G', roles: ['PUBLIC'], rateLimit: 'role.public', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 80, summary: 'All tracks with domains and levels.' },
+  { method: 'GET', path: '/catalog/tracks/:trackCode', module: 'catalog', owner: 'Vedika G', roles: ['PUBLIC'], rateLimit: 'role.public', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 80, summary: 'One track with competencies.' },
+  { method: 'GET', path: '/catalog/readiness', module: 'catalog', owner: 'Vedika G', roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 200, summary: 'Item-bank and calibration readiness per track.' },
+
+  /* ------------------------------- assessment ------------------------------ */
+  { method: 'POST', path: '/assessment/start', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 150, summary: 'Open an attempt; assigns a parallel form.' },
+  { method: 'GET', path: '/assessment/:attemptId/session', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 50, summary: 'Resume state after refresh or reconnect.' },
+  { method: 'GET', path: '/assessment/:attemptId/next-item', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 50, summary: 'Next item from the warm cache; zero DB hit.' },
+  { method: 'POST', path: '/assessment/submit-l1', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'assessment.submitL1', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 30, summary: 'Save an answer draft (write-through to Redis).' },
+  { method: 'POST', path: '/assessment/compile-l2', module: 'sandbox', owner: 'Vishal V', roles: ['STUDENT'], rateLimit: 'assessment.compileL2', criticality: 'CANDIDATE_CRITICAL', execution: 'ASYNC', summary: 'Queue code/SQL execution; returns a jobId.' },
+  { method: 'GET', path: '/assessment/sandbox/:jobId', module: 'sandbox', owner: 'Vishal V', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 50, summary: 'Poll sandbox execution result.' },
+  { method: 'POST', path: '/assessment/l3/upload-url', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 100, summary: 'Presigned R2 URL for direct audio upload.' },
+  { method: 'POST', path: '/assessment/evaluate-l3-l4', module: 'evaluation', owner: 'Ramansh', roles: ['STUDENT'], rateLimit: 'assessment.evaluateL3L4', criticality: 'CANDIDATE_CRITICAL', execution: 'ASYNC', summary: 'Queue BARS or defense evaluation.' },
+  { method: 'POST', path: '/assessment/complete', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'ASYNC', summary: 'Finalise attempt; emits smart.assessment.submitted.' },
+  { method: 'POST', path: '/assessment/integrity-event', module: 'assessment', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 30, summary: 'Client integrity telemetry (advisory).' },
+  { method: 'GET', path: '/evaluation/results/:attemptId', module: 'evaluation', owner: 'Ramansh', roles: ['STUDENT', 'INSTITUTION_ADMIN'], rateLimit: 'role.student', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 80, summary: 'Itemised score and tier breakdown.' },
+
+  /* ------------------------------ L4 defense ------------------------------- */
+  { method: 'POST', path: '/defense/start', module: 'evaluation', owner: 'Ramansh', roles: ['STUDENT'], rateLimit: 'assessment.evaluateL3L4', criticality: 'LLM_INTERACTIVE', execution: 'SYNC', slaMs: 2000, summary: 'Open an interactive L4 defense session (P1 lane).' },
+  { method: 'POST', path: '/defense/reply', module: 'evaluation', owner: 'Ramansh', roles: ['STUDENT'], rateLimit: 'assessment.evaluateL3L4', criticality: 'LLM_INTERACTIVE', execution: 'SYNC', slaMs: 5000, summary: 'Submit a defense turn, receive the follow-up question.' },
+
+  /* ------------------------------- calibration ----------------------------- */
+  { method: 'POST', path: '/calibration/panels', module: 'calibration', owner: 'Vedika G', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Create a calibration panel for a track+level.' },
+  { method: 'POST', path: '/calibration/estimates', module: 'calibration', owner: 'Vedika G', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 200, summary: 'Record panelist Angoff estimates.' },
+  { method: 'POST', path: '/calibration/cut-scores/publish', module: 'calibration', owner: 'Vedika G', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 300, summary: 'Derive mu±sigma and publish; emits smart.track.updated.' },
+  { method: 'GET', path: '/calibration/cut-scores/:trackCode', module: 'calibration', owner: 'Vedika G', roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 80, summary: 'Published cut scores per level.' },
+
+  /* ------------------------------- certificate ----------------------------- */
+  { method: 'POST', path: '/certificates/issue', module: 'certificate', owner: 'Vishal Bharath R', roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'], rateLimit: 'certificate.issue', criticality: 'INTERACTIVE', execution: 'ASYNC', summary: 'Issue a certificate; blocked on an integrity hold.' },
+  { method: 'GET', path: '/certificates/mine', module: 'certificate', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 80, summary: 'The student\u2019s own certificates.' },
+  { method: 'PATCH', path: '/certificates/:certificateId/visibility', module: 'certificate', owner: 'Vishal Bharath R', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 100, summary: 'Student-controlled public visibility toggle.' },
+  { method: 'GET', path: '/certificates/:certificateId/pdf', module: 'certificate', owner: 'Vishal Bharath R', roles: ['STUDENT', 'INSTITUTION_ADMIN'], rateLimit: 'role.student', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 120, summary: 'Signed direct R2 download URL.' },
+  { method: 'GET', path: '/verify/:certificateId', module: 'certificate', owner: 'Vishal Bharath R', roles: ['PUBLIC'], rateLimit: 'verify.certificate', criticality: 'CANDIDATE_CRITICAL', execution: 'SYNC', slaMs: 80, summary: 'PUBLIC verification payload. Redis cached, 1h TTL.' },
+
+  /* -------------------------------- placement ------------------------------ */
+  { method: 'POST', path: '/placement/ingest-jd', module: 'placement', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'], rateLimit: 'placement.ingestJd', criticality: 'INTERACTIVE', execution: 'ASYNC', summary: 'Upload and parse a JD into threshold vectors.' },
+  { method: 'POST', path: '/placement/match', module: 'matching', owner: 'Ramansh', roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'B2B_PARTNER'], rateLimit: 'placement.match', criticality: 'INTERACTIVE', execution: 'ASYNC', summary: 'Generate an explainable candidate shortlist.' },
+  { method: 'GET', path: '/tpo/shortlist', module: 'placement', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'], rateLimit: 'role.placementStaff', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Filterable shortlist for a recruiting drive.' },
+  { method: 'GET', path: '/tpo/shortlist/export', module: 'placement', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'], rateLimit: 'role.placementStaff', criticality: 'REPORTING', execution: 'ASYNC', summary: 'CSV / PDF / XLSX export.' },
+  { method: 'POST', path: '/placement/outcomes', module: 'placement', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'], rateLimit: 'role.placementStaff', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Record a real interview/offer outcome.' },
+
+  /* -------------------------------- analytics ------------------------------ */
+  { method: 'GET', path: '/analytics/cohort-readiness', module: 'analytics', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'SUPER_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 250, summary: 'Gold/Silver/Bronze distribution per track.' },
+  { method: 'GET', path: '/analytics/gap-report', module: 'analytics', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'SUPER_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 300, summary: 'Ranked batch competency gaps.' },
+  { method: 'GET', path: '/analytics/correlation', module: 'analytics', owner: 'Vedika G', roles: ['INSTITUTION_ADMIN', 'SUPER_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 300, summary: 'Tier vs interview/offer conversion.' },
+  { method: 'GET', path: '/student/growth-report', module: 'analytics', owner: 'Vedika G', roles: ['STUDENT'], rateLimit: 'role.student', criticality: 'REPORTING', execution: 'SYNC', slaMs: 200, summary: 'Itemised gap feedback for the student.' },
+
+  /* ------------------------------- platform ops ---------------------------- */
+  { method: 'GET', path: '/admin/platform-health', module: 'analytics', owner: 'Vedika G', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 250, summary: 'Super admin system health surface.' },
+  { method: 'GET', path: '/admin/ai-health', module: 'ai-gateway', owner: 'Ramansh', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 200, summary: 'Provider circuits, token buckets, spend, scoring pause state.' },
+  { method: 'GET', path: '/admin/integrity-queue', module: 'assessment', owner: 'Vishal Bharath R', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'REPORTING', execution: 'SYNC', slaMs: 200, summary: 'Attempts awaiting integrity review.' },
+  { method: 'POST', path: '/admin/integrity-queue/:attemptId/resolve', module: 'assessment', owner: 'Vishal Bharath R', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 200, summary: 'Clear or void a flagged attempt.' },
+  { method: 'PUT', path: '/admin/rate-limits/:policyKey', module: 'rate-limit', owner: 'Vishal V', roles: ['SUPER_ADMIN'], rateLimit: 'role.superAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 100, summary: 'Runtime rate-limit override.' },
+  { method: 'POST', path: '/admin/webhooks', module: 'webhooks', owner: 'Vishal Bharath R', roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'], rateLimit: 'role.institutionAdmin', criticality: 'INTERACTIVE', execution: 'SYNC', slaMs: 150, summary: 'Register an outbound webhook endpoint.' },
+] as const;
+
+export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {
+  return ROUTES.find((route) => route.method === method && route.path === path);
+}
+
+export function routesOwnedBy(owner: string): readonly RouteSpec[] {
+  return ROUTES.filter((route) => route.owner === owner);
+}
+
+export function routesForModule(module: string): readonly RouteSpec[] {
+  return ROUTES.filter((route) => route.module === module);
+}
+
+/**
+ * Synchronous routes whose declared SLA exceeds the budget for their
+ * criticality class. Asserted empty in CI — a route that cannot meet its budget
+ * must either be optimised or reclassified deliberately, never left to drift.
+ */
+export function routesExceedingLatencyBudget(): readonly RouteSpec[] {
+  return ROUTES.filter(
+    (route) =>
+      route.execution === 'SYNC' &&
+      route.slaMs !== undefined &&
+      route.slaMs > LATENCY_BUDGET_MS[route.criticality],
+  );
+}
+
+/** Routes in the candidate's timed exam path or the employer verification path. */
+export function candidateCriticalRoutes(): readonly RouteSpec[] {
+  return ROUTES.filter((route) => route.criticality === 'CANDIDATE_CRITICAL');
+}

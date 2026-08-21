@@ -1,0 +1,36 @@
+{
+  "name": "@smart/web-tpo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TPO console. Owner: Satheswaran V.",
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rimraf .next .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@smart/api-client": "workspace:*",
+    "@smart/contracts": "workspace:*",
+    "@smart/ui": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tailwind-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

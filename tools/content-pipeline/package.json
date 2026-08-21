@@ -1,0 +1,30 @@
+{
+  "name": "@smart/content-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Item-bank and calibration ingestion CLI. Owner: Vedika G.",
+  "type": "module",
+  "bin": { "smart-content": "./src/cli.ts" },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "validate:staged": "tsx src/cli.ts validate",
+    "clean": "rimraf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@smart/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

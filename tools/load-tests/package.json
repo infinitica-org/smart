@@ -1,0 +1,12 @@
+{
+  "name": "@smart/load-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "k6 load tests for candidate-critical paths. Owner: Vishal V.",
+  "scripts": {
+    "test": "echo 'Run with: k6 run src/assessment.js (requires k6 CLI)'",
+    "typecheck": "echo skip",
+    "lint": "echo skip",
+    "clean": "echo skip"
+  }
+}

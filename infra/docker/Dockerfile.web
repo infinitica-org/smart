@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+#   docker build -f infra/docker/Dockerfile.web --build-arg APP=web-student -t smart-web-student .
+FROM node:22.20.0-bookworm-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
+WORKDIR /app
+
+ARG APP=web-student
+ENV NEXT_TELEMETRY_DISABLED=1
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY packages ./packages
+COPY apps ./apps
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+COPY . .
+ARG APP=web-student
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+RUN pnpm --filter @smart/${APP}... build
+
+FROM node:22.20.0-bookworm-slim AS runner
+ARG APP=web-student
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP=$APP
+WORKDIR /app
+RUN useradd --system --uid 10001 smart
+COPY --from=build --chown=smart:smart /app/apps/${APP}/.next/standalone ./
+COPY --from=build --chown=smart:smart /app/apps/${APP}/.next/static ./apps/${APP}/.next/static
+COPY --from=build --chown=smart:smart /app/apps/${APP}/public ./apps/${APP}/public
+USER smart
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+CMD ["sh", "-c", "node apps/$APP/server.js"]

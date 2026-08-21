@@ -1,0 +1,5 @@
+{
+  "extends": "@smart/tsconfig/library.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "noEmit": true },
+  "include": ["src/**/*"]
+}

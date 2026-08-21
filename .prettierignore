@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+out
+.next
+.turbo
+coverage
+generated
+pnpm-lock.yaml
+playwright-report
+test-results
+infra/docker/volumes
+apps/api-core/generated
+CHANGELOG.md

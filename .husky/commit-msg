@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Conventional Commits + module scope + ticket reference.
+# See commitlint.config.mjs. Example:
+#   feat(rate-limit): sliding window lua guard (S1-VV-04)
+pnpm commitlint --edit "$1"

@@ -1,0 +1,66 @@
+# --- dependencies ---
+node_modules/
+.pnpm-store/
+
+# --- build output ---
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# --- prisma generated client (regenerated via `pnpm db:generate`) ---
+apps/api-core/generated/
+apps/api-core/src/generated/
+generated/prisma/
+
+# --- environment & secrets ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+!infra/**/*.example.key
+secrets/
+
+# --- test & coverage ---
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# --- logs ---
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- local infra volumes ---
+infra/docker/volumes/
+infra/docker/.data/
+
+# --- editors & OS ---
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# --- ai/agent tooling caches ---
+.claude/
+.windsurf/
+.agents/
+skills-lock.json
+
+# --- misc ---
+.cache/
+tmp/
+*.local

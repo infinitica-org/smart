@@ -1,0 +1,72 @@
+{
+  "name": "smart-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SMART — Role-Specific Readiness Certification Platform (Turborepo monorepo)",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22.20.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@smart/api-core",
+    "dev:web": "turbo run dev --filter=@smart/web-*",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:cov": "turbo run test:cov",
+    "clean": "turbo run clean && rimraf node_modules .turbo",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\"",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:apps": "docker compose -f infra/docker/docker-compose.yml --profile apps up -d --build",
+    "infra:vps": "docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs up -d --build",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs down",
+    "infra:reset": "docker compose -f infra/docker/docker-compose.yml down -v",
+    "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "infra:ps": "docker compose -f infra/docker/docker-compose.yml ps",
+    "db:generate": "pnpm --filter @smart/api-core db:generate",
+    "db:migrate": "pnpm --filter @smart/api-core db:migrate",
+    "db:deploy": "pnpm --filter @smart/api-core db:deploy",
+    "db:reset": "pnpm --filter @smart/api-core db:reset",
+    "db:studio": "pnpm --filter @smart/api-core db:studio",
+    "db:seed": "pnpm --filter @smart/api-core db:seed",
+    "content": "pnpm --filter @smart/content-pipeline start",
+    "e2e": "pnpm --filter @smart/e2e test",
+    "load": "pnpm --filter @smart/load-tests test",
+    "bootstrap": "bash ./scripts/bootstrap.sh",
+    "doctor": "bash ./scripts/doctor.sh",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "26.2.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.3.0",
+    "prettier": "3.9.6",
+    "rimraf": "6.0.1",
+    "turbo": "2.10.11",
+    "typescript": "5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "tools/content-pipeline/data/**/*.json": [
+      "pnpm --filter @smart/content-pipeline validate:staged"
+    ]
+  }
+}

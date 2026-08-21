@@ -1,0 +1,15 @@
+{
+  "name": "@smart/tailwind-config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Tailwind CSS 4 theme tokens for SMART. Owner: Satheswaran V (design system), architect review.",
+  "exports": {
+    "./theme.css": "./theme.css",
+    "./postcss": "./postcss.config.mjs"
+  },
+  "files": ["theme.css", "postcss.config.mjs"],
+  "dependencies": {
+    "@tailwindcss/postcss": "catalog:",
+    "tailwindcss": "catalog:"
+  }
+}

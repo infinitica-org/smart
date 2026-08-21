@@ -1,0 +1,40 @@
+{
+  "name": "@smart/prompts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Immutable, versioned LLM prompt registry with output guardrails. Every AI grade cites the promptRef that produced it. Owner: Ramansh.",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@smart/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

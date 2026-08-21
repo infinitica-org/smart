@@ -1,0 +1,103 @@
+/**
+ * SMART design tokens — Tailwind CSS 4 (CSS-first configuration).
+ *
+ * Every SMART surface imports this file. The tier colours in particular are
+ * product identity, not styling preference: Gold / Silver / Bronze must render
+ * identically on the student portal, the TPO dashboard, the admin console and
+ * the public verification page, because an employer compares them side by side.
+ *
+ * Owner: Satheswaran V (design system). Token additions need architect review.
+ */
+
+@import 'tailwindcss';
+
+@theme {
+  /* ---------------------------------------------------------------- brand */
+  --color-brand-50: oklch(0.97 0.02 250);
+  --color-brand-100: oklch(0.94 0.04 250);
+  --color-brand-200: oklch(0.88 0.07 250);
+  --color-brand-300: oklch(0.8 0.11 250);
+  --color-brand-400: oklch(0.71 0.15 250);
+  --color-brand-500: oklch(0.62 0.18 250);
+  --color-brand-600: oklch(0.53 0.19 250);
+  --color-brand-700: oklch(0.45 0.17 250);
+  --color-brand-800: oklch(0.37 0.14 250);
+  --color-brand-900: oklch(0.29 0.1 250);
+
+  /* --------------------------------------------------- certification tiers */
+  --color-tier-gold: oklch(0.79 0.15 85);
+  --color-tier-gold-fg: oklch(0.28 0.06 85);
+  --color-tier-silver: oklch(0.82 0.02 250);
+  --color-tier-silver-fg: oklch(0.32 0.01 250);
+  --color-tier-bronze: oklch(0.68 0.11 45);
+  --color-tier-bronze-fg: oklch(0.26 0.05 45);
+  --color-tier-below: oklch(0.6 0.02 250);
+  --color-tier-below-fg: oklch(0.98 0 0);
+
+  /* ------------------------------------------------------------- semantic */
+  --color-success: oklch(0.68 0.16 150);
+  --color-warning: oklch(0.78 0.15 75);
+  --color-danger: oklch(0.6 0.21 25);
+  --color-info: oklch(0.68 0.14 235);
+
+  /* ------------------------------------------------------ assessment state */
+  /* Used by the L1–L5 level stepper: locked / active / cleared. */
+  --color-level-locked: oklch(0.55 0.01 250);
+  --color-level-active: oklch(0.62 0.18 250);
+  --color-level-cleared: oklch(0.68 0.16 150);
+
+  /* ------------------------------------------------------------ typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* ----------------------------------------------------------------- misc */
+  --radius-card: 0.75rem;
+  --radius-badge: 9999px;
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 0.1), 0 1px 2px oklch(0 0 0 / 0.06);
+}
+
+@layer base {
+  :root {
+    --surface: oklch(1 0 0);
+    --surface-muted: oklch(0.98 0.003 250);
+    --surface-border: oklch(0.92 0.005 250);
+    --text-primary: oklch(0.22 0.01 250);
+    --text-muted: oklch(0.52 0.01 250);
+  }
+
+  .dark {
+    --surface: oklch(0.18 0.01 250);
+    --surface-muted: oklch(0.23 0.012 250);
+    --surface-border: oklch(0.31 0.012 250);
+    --text-primary: oklch(0.97 0.003 250);
+    --text-muted: oklch(0.7 0.01 250);
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--surface);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The assessment player is used under exam conditions — respect reduced
+     motion so animation never distracts a candidate under time pressure. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* WCAG 2.1 AA: a visible focus ring is mandatory on the player (TEAM.md §2.3). */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}

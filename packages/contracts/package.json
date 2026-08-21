@@ -1,0 +1,37 @@
+{
+  "name": "@smart/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SMART cross-module contract: domain enums, DTOs and Kafka event payloads. THE integration boundary — architect-owned.",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

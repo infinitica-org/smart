@@ -1,0 +1,103 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'tools/*'
+  - 'tests/*'
+
+# Packages allowed to run postinstall build scripts. pnpm blocks all build
+# scripts by default (supply-chain hardening) — this is the explicit allowlist.
+# Adding to this list is a security decision: architect review required.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - prisma
+  - sharp
+
+# Single source of truth for versions shared across every workspace. Individual
+# package.json files reference these with "catalog:" instead of a literal range,
+# so an upgrade is a one-line change reviewed by the architect.
+catalog:
+  # --- language & tooling ---
+  typescript: 5.9.3
+  '@types/node': 26.2.0
+  eslint: 9.39.5
+  prettier: 3.9.6
+  vitest: 4.1.11
+
+  # --- runtime contracts ---
+  zod: 4.4.3
+  effect: 3.22.1
+
+  # --- backend ---
+  '@nestjs/common': 11.2.1
+  '@nestjs/core': 11.2.1
+  '@nestjs/config': 4.0.4
+  '@nestjs/platform-fastify': 11.2.1
+  '@nestjs/swagger': 11.4.7
+  '@nestjs/jwt': 11.0.2
+  '@nestjs/bullmq': 11.0.5
+  '@nestjs/microservices': 11.2.1
+  '@nestjs/terminus': 11.1.1
+  '@nestjs/testing': 11.2.1
+  reflect-metadata: 0.2.2
+  rxjs: 7.8.2
+  fastify: 5.12.1
+  prisma: 7.9.1
+  '@prisma/client': 7.9.1
+  '@prisma/adapter-pg': 7.9.1
+  pg: 8.16.3
+  '@types/pg': 8.23.1
+  dotenv: 17.2.1
+  tsx: 4.20.6
+  'class-validator': 0.14.2
+  'class-transformer': 0.5.1
+  ioredis: 6.0.0
+  bullmq: 6.2.0
+  kafkajs: 2.2.4
+  pino: 10.3.1
+  'pino-http': 11.0.0
+  'pino-pretty': 13.1.3
+  'nestjs-pino': 4.6.1
+  'prom-client': 15.1.3
+
+  # --- frontend ---
+  next: 16.3.2
+  react: 19.2.8
+  'react-dom': 19.2.8
+  '@types/react': 19.2.7
+  '@types/react-dom': 19.2.4
+  tailwindcss: 4.3.3
+  '@tailwindcss/postcss': 4.3.3
+  '@tanstack/react-query': 5.101.4
+  zustand: 5.0.15
+  'lucide-react': 1.33.0
+  recharts: 3.10.1
+  clsx: 2.1.1
+  'tailwind-merge': 3.4.0
+
+  # --- ai providers (gateway module only) ---
+  '@anthropic-ai/sdk': 0.120.0
+  '@google/genai': 2.18.0
+
+minimumReleaseAgeExclude:
+  - '@next/env@16.3.2'
+  - '@next/swc-darwin-arm64@16.3.2'
+  - '@next/swc-darwin-x64@16.3.2'
+  - '@next/swc-linux-arm64-gnu@16.3.2'
+  - '@next/swc-linux-arm64-musl@16.3.2'
+  - '@next/swc-linux-x64-gnu@16.3.2'
+  - '@next/swc-linux-x64-musl@16.3.2'
+  - '@next/swc-win32-arm64-msvc@16.3.2'
+  - '@next/swc-win32-x64-msvc@16.3.2'
+  - next@16.3.2
+
+allowBuilds:
+  '@prisma/engines': true
+  '@prisma/client': true
+  '@scarf/scarf': false
+  esbuild: true
+  prisma: true
+  sharp: true
+  '@tailwindcss/oxide': true

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Fast local gate. The full gate lives in CI (.github/workflows/ci.yml) — this
+# hook only catches what is cheap to catch, so committing stays fast.
+pnpm lint-staged

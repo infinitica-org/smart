@@ -1,0 +1,44 @@
+{
+  "name": "@smart/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed HTTP client for the SMART API: contract-validated responses, refresh rotation, 429 backoff, correlation propagation. Owner: Satheswaran V.",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./query-keys": {
+      "types": "./dist/query-keys.d.ts",
+      "default": "./dist/query-keys.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@smart/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,64 @@
+import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
+import { ObservabilityInterceptor } from './common/interceptors/observability.interceptor.js';
+import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor.js';
+import { AiGatewayModule } from './modules/ai-gateway/ai-gateway.module.js';
+import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { AssessmentModule } from './modules/assessment/assessment.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { CalibrationModule } from './modules/calibration/calibration.module.js';
+import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { CertificateModule } from './modules/certificate/certificate.module.js';
+import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
+import { MatchingModule } from './modules/matching/matching.module.js';
+import { PlacementModule } from './modules/placement/placement.module.js';
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
+import { SandboxModule } from './modules/sandbox/sandbox.module.js';
+import { UsersModule } from './modules/users/users.module.js';
+import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
+import { ConfigModule } from './platform/config/config.module.js';
+import { env } from './platform/config/env.js';
+import { HealthModule } from './platform/health/health.module.js';
+import { KafkaModule } from './platform/kafka/kafka.module.js';
+import { PrismaModule } from './platform/prisma/prisma.module.js';
+import { RedisModule } from './platform/redis/redis.module.js';
+
+@Module({
+  imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: env.LOG_LEVEL,
+        transport: env.LOG_PRETTY ? { target: 'pino-pretty', options: { colorize: true } } : undefined,
+      },
+    }),
+    ConfigModule,
+    PrismaModule,
+    RedisModule,
+    KafkaModule,
+    HealthModule,
+    RateLimitModule,
+    AuthModule,
+    UsersModule,
+    CatalogModule,
+    AssessmentModule,
+    SandboxModule,
+    EvaluationModule,
+    AiGatewayModule,
+    CalibrationModule,
+    CertificateModule,
+    MatchingModule,
+    PlacementModule,
+    AnalyticsModule,
+    WebhooksModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_INTERCEPTOR, useClass: ObservabilityInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
+  ],
+})
+export class AppModule {}
