@@ -4,35 +4,35 @@ Canonical: `ARCHITECTURE.md`, `REPOSITORY_STRUCTURE.md`, `README.md`.
 
 ## Stack (as shipped in repo)
 
-| Layer | Choice |
-|---|---|
-| Monorepo | Turborepo + pnpm · Node 22.20 |
-| API | NestJS 11 + Fastify |
-| Web | Next.js 16 · four apps (student, tpo, admin, verify) |
-| DB | PostgreSQL + pgvector (Prisma steward: Vishal V) |
-| Cache / queues | Redis 7 · BullMQ |
-| Events | Redpanda (Kafka API) |
-| Object store | MinIO local / R2 prod |
-| AI | Claude primary · Gemini failover via `ai-gateway` only |
-| Scoring math | Effect.ts in `@smart/scoring-engine` |
+| Layer          | Choice                                                 |
+| -------------- | ------------------------------------------------------ |
+| Monorepo       | Turborepo + pnpm · Node 22.20                          |
+| API            | NestJS 11 + Fastify                                    |
+| Web            | Next.js 16 · four apps (student, tpo, admin, verify)   |
+| DB             | PostgreSQL + pgvector (Prisma steward: Vishal V)       |
+| Cache / queues | Redis 7 · BullMQ                                       |
+| Events         | Redpanda (Kafka API)                                   |
+| Object store   | MinIO local / R2 prod                                  |
+| AI             | Claude primary · Gemini failover via `ai-gateway` only |
+| Scoring math   | Effect.ts in `@smart/scoring-engine`                   |
 
 ## Local ports (truth)
 
-| Port | Service |
-|---|---|
-| 3000 | `api-core` (`/health`, Swagger TBD `/api/docs`) |
-| 3001–3004 | web-student, web-tpo, web-admin, web-verify |
-| 5432 | Postgres |
-| 6379 | Redis |
-| 19092 | Redpanda (see `KAFKA_BROKERS` in env) |
-| 9000 / 9001 | MinIO / console |
+| Port        | Service                                                          |
+| ----------- | ---------------------------------------------------------------- |
+| 3000        | `api-core` (`/health`, Swagger TBD `/api/docs`)                  |
+| 3001–3004   | web-student, web-tpo, web-admin, web-verify                      |
+| 5432        | Postgres                                                         |
+| 6380        | Redis (host; container still 6379 — Windows often occupies 6379) |
+| 19092       | Redpanda (see `KAFKA_BROKERS` in env)                            |
+| 9000 / 9001 | MinIO / console                                                  |
 
 ## Sync vs async (SLA)
 
-| Mode | Rule | Examples |
-|---|---|---|
-| **Sync** | p95 target often ≪ 200 ms | login/refresh, next-item, L1 draft, public verify |
-| **Async** | job_id + Kafka/BullMQ | L2 sandbox, L3/L4 eval, PDF cert, vector match |
+| Mode      | Rule                      | Examples                                          |
+| --------- | ------------------------- | ------------------------------------------------- |
+| **Sync**  | p95 target often ≪ 200 ms | login/refresh, next-item, L1 draft, public verify |
+| **Async** | job_id + Kafka/BullMQ     | L2 sandbox, L3/L4 eval, PDF cert, vector match    |
 
 ## Scale targets
 

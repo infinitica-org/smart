@@ -35,9 +35,21 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "volatile-lru"]
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "512mb",
+        "--maxmemory-policy",
+        "volatile-lru",
+        "--bind",
+        "0.0.0.0",
+        "--protected-mode",
+        "no",
+      ]
     ports:
-      - "6379:6379"
+      # Host 6380 — Windows often already binds 6379 (svchost/WSL), which ECONNRESETs ioredis.
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -93,7 +105,13 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 20s
       timeout: 5s
       retries: 8

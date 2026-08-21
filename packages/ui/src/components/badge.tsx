@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import type { Tier } from '@smart/contracts';
 import { TIER_LABEL } from '@smart/contracts';
-import { cn } from '../lib/cn.js';
+import { cn } from '../lib/cn';
 
 /**
  * Certification-tier badge. Colours come from the shared theme tokens so a Gold

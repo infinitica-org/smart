@@ -10,7 +10,9 @@
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css"
   },
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -20,13 +22,13 @@
   },
   "dependencies": {
     "@smart/contracts": "workspace:*",
+    "@smart/tailwind-config": "workspace:*",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
     "@smart/eslint-config": "workspace:*",
-    "@smart/tailwind-config": "workspace:*",
     "@smart/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

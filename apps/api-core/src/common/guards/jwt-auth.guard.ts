@@ -1,12 +1,7 @@
-import type {
-  CanActivate,
-  ExecutionContext} from '@nestjs/common';
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
-import type { Reflector } from '@nestjs/core';
-import type { JwtService } from '@nestjs/jwt';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import type { FastifyRequest } from 'fastify';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 
@@ -19,8 +14,8 @@ export interface RequestUser {
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private readonly jwt: JwtService,
-    private readonly reflector: Reflector,
+    @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {

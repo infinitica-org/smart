@@ -11,6 +11,13 @@
 
 @import 'tailwindcss';
 
+/* Monorepo sources — relative to this file (packages/config-tailwind). */
+@source '../ui/src/**/*.{ts,tsx}';
+@source '../../apps/web-student/src/**/*.{ts,tsx}';
+@source '../../apps/web-tpo/src/**/*.{ts,tsx}';
+@source '../../apps/web-admin/src/**/*.{ts,tsx}';
+@source '../../apps/web-verify/src/**/*.{ts,tsx}';
+
 @theme {
   /* ---------------------------------------------------------------- brand */
   --color-brand-50: oklch(0.97 0.02 250);

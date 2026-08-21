@@ -2,17 +2,19 @@
 
 Condensed shared knowledge. Canonical detail stays in repo docs.
 
-| Sheet | When to open |
-|---|---|
-| [product.md](./product.md) | What SMART is |
-| [architecture-cheat.md](./architecture-cheat.md) | Stack, ports, sync/async |
-| [ownership.md](./ownership.md) | Who owns paths / topics — deep dive: `TEAM.md` + `ENGINEER_GUIDES.md` |
-| [seams.md](./seams.md) | Four integration seams |
-| [rate-limits.md](./rate-limits.md) | Throttle matrix |
-| [redis-keys.md](./redis-keys.md) | Key patterns + TTLs |
-| [kafka-topics.md](./kafka-topics.md) | Topics + producers |
-| [doc-authority.md](./doc-authority.md) | Which doc wins on conflict |
-| [commits-and-prs.md](./commits-and-prs.md) | Commit subject + PR label tags |
+| Sheet                                            | When to open                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------- |
+| [product.md](./product.md)                       | What SMART is                                                         |
+| [architecture-cheat.md](./architecture-cheat.md) | Stack, ports, sync/async                                              |
+| [ownership.md](./ownership.md)                   | Who owns paths / topics — deep dive: `TEAM.md` + `ENGINEER_GUIDES.md` |
+| [seams.md](./seams.md)                           | Four integration seams                                                |
+| [rate-limits.md](./rate-limits.md)               | Throttle matrix                                                       |
+| [redis-keys.md](./redis-keys.md)                 | Key patterns + TTLs                                                   |
+| [kafka-topics.md](./kafka-topics.md)             | Topics + producers                                                    |
+| [doc-authority.md](./doc-authority.md)           | Which doc wins on conflict                                            |
+| [commits-and-prs.md](./commits-and-prs.md)       | Commit subject + PR label tags                                        |
+
+**Full local setup:** [`docs/delivery/LOCAL_DEV.md`](../../docs/delivery/LOCAL_DEV.md)
 
 Personal scratch + prefs: **`.cursor/local/`** (gitignored) — `preferences.md` is durable across agents.
 
