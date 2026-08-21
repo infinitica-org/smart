@@ -1,0 +1,14 @@
+---
+description: Content pipeline and catalog data conventions
+globs: tools/content-pipeline/**/*,apps/api-core/src/modules/{catalog,calibration}/**/*.ts
+alwaysApply: false
+---
+
+# Content & calibration
+
+- Items live as reviewed Git JSON — no ad-hoc SQL inserts for banks.
+- Every item needs `competency_id`, `real_world_weight`, `difficulty_tag`, model answer.
+- Weights must sum to 1.0 per track/level — enforce in `content-pipeline validate`.
+- Parallel forms + exposure/retirement live in `catalog`; assessment never queries `items` raw.
+- Cut scores = Angoff μ±σ from panels; never hardcode Gold/Silver/Bronze thresholds in eval code.
+- "Validated lead" requires recorded panel + Cronbach's α ≥ 0.70.

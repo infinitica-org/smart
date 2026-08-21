@@ -1,0 +1,30 @@
+---
+description: NestJS api-core and platform conventions
+globs: apps/api-core/**/*.ts,packages/observability/**/*.ts,infra/**/*
+alwaysApply: false
+---
+
+# api-core conventions
+
+## Layout
+
+```
+apps/api-core/src/
+  main.ts, app.module.ts
+  platform/     # config, prisma, redis, kafka, health, otel (owner: VV)
+  common/       # filters, guards, interceptors, pipes (owner: VV)
+  modules/<bc>/ # one Nest module per bounded context (see ownership)
+```
+
+## Patterns
+
+- Cross-module I/O via `@smart/contracts` + Kafka — not deep imports of another BC's internals.
+- Zod at HTTP boundary; Prisma for persistence; Redis keys always have explicit TTL.
+- Structured pino logs with `traceId`; Prometheus metric on new hot paths.
+- Swagger on every new endpoint; module `README.md` updated; runbook if it can page.
+- Read config from `platform/config/env.ts` only — never scatter `process.env`.
+- LLM calls only through `modules/ai-gateway` (Ramansh). No direct Anthropic/Gemini SDKs elsewhere.
+
+## Schema changes
+
+Non-VV engineers: file an issue for Vishal V (table, field, type, ticket). Do not run `prisma migrate dev` yourself.

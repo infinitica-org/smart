@@ -1,0 +1,89 @@
+---
+description: Commit message format and PR title/body/label (tag) guidelines
+alwaysApply: true
+---
+
+# Commits & PRs (tags required)
+
+Source of truth for allowed types/scopes: `commitlint.config.mjs`. Labels: `docs/delivery/AGILE_PLAN.md` §4.
+
+## Commit message (mandatory)
+
+```
+<type>(<scope>): <imperative summary> (<TICKET>)
+```
+
+| Part | Rules |
+|---|---|
+| **type** | `feat` `fix` `perf` `refactor` `test` `docs` `build` `ci` `chore` `revert` `content` `prompt` `adr` |
+| **scope** | Exactly one from commitlint `scope-enum` (e.g. `auth`, `rate-limit`, `infra`, `docs`, `repo`) — **never empty** |
+| **summary** | Imperative, lowercase start, no trailing `.`, ≤ ~72 chars in the subject; header ≤ 100 |
+| **ticket** | `(S<n>-<INITIALS>-<nn>)` at end of subject, e.g. `(S0-VV-04)` |
+
+**Examples**
+
+```text
+feat(rate-limit): sliding window lua guard (S1-VV-04)
+fix(auth): invalidate refresh token family on reuse (S1-VV-01)
+docs(repo): add agent kb and workflow rules (S0-TN-01)
+chore(infra): healthchecks for redis and redpanda (S0-VV-01)
+```
+
+**Body (optional but preferred for non-trivial changes)**
+
+```text
+Why this change exists in 1–3 lines.
+
+- key implementation note
+- follow-up / out of scope
+```
+
+Refuse vague subjects (`update stuff`, `fix`, `wip`) and commits missing type, scope, or ticket.
+
+## Pull request
+
+### Title
+
+Same shape as the commit subject (Conventional Commit + ticket). Squash-merge uses it.
+
+### Body
+
+Fill `.github/PULL_REQUEST_TEMPLATE.md`:
+
+- **Ticket** id
+- **What changed, and why**
+- DoD checkboxes
+
+Also include: risk/rollback note if infra/auth/migrations; link related contract PR if any.
+
+### Labels (tags) — apply with `gh pr create --label` / `gh pr edit --add-label`
+
+Every PR must have **at least one priority**, **one area**, and **the sprint** label:
+
+| Kind | Labels |
+|---|---|
+| Priority | `P0-blocker` · `P1` · `P2-droppable` |
+| Area | `area:backend` · `area:frontend` · `area:ai` · `area:data` · `area:infra` · `area:contracts` |
+| Sprint | `sprint-0` … `sprint-5` |
+| Optional | `needs-contract` · `needs-content` · `blocked` |
+
+**Example**
+
+```bash
+gh pr create --base develop \
+  --title "feat(rate-limit): sliding window lua guard (S1-VV-04)" \
+  --body "$(cat <<'EOF'
+## Ticket
+S1-VV-04
+
+## What changed, and why
+…
+
+## Definition of Done
+- [x] …
+EOF
+)" \
+  --label "P0-blocker" --label "area:backend" --label "sprint-1"
+```
+
+Base branch: **`develop`**. Do not open untagged PRs.

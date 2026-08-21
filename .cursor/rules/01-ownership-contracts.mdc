@@ -1,0 +1,39 @@
+---
+description: Module ownership and contract-first rules for the whole team
+alwaysApply: true
+---
+
+# Ownership & contract-first
+
+## Resolve who you are helping
+
+1. Read `.cursor/local/IDENTITY.md` if present (gitignored).
+2. Else use the engineer named in the user message.
+3. Else ask once: which engineer (TN/VV/SV/VB/RM/VG)?
+4. For role depth, open **`TEAM.md`** (their §) and **`docs/delivery/ENGINEER_GUIDES.md`** (their §). Do not assume Vishal V.
+
+Quick map: `.cursor/kb/ownership.md`.
+
+## Ownership (TEAM.md / CODEOWNERS — authoritative)
+
+| Owner | Initials | Owns |
+|---|---|---|
+| Tino | TN | contracts, ADRs, CI, delivery docs — **no feature code**; mandatory reviewer |
+| Vishal V | VV | platform, auth, users, rate-limit, sandbox, prisma, infra, scripts, observability, load-tests |
+| Satheswaran V | SV | ui, api-client, web-student, web-tpo, e2e |
+| Vishal Bharath R | VB | assessment, certificate, webhooks, web-verify, web-admin |
+| Ramansh | RM | ai-gateway, evaluation, matching, scoring-engine, prompts |
+| Vedika G | VG | catalog, calibration, placement, analytics, content-pipeline |
+
+Do not merge into another owner's module without their review. Open a PR.
+
+## Contract-first
+
+1. Cross-module types live only in `@smart/contracts`.
+2. Consumer proposes schema → Tino merges → implement in parallel against the merged type.
+3. No parallel DTOs. No `any` / `as unknown as` at boundaries.
+4. Every route declares RBAC + rate-limit policy. Unlimited endpoints do not ship.
+
+## Prisma
+
+Only **Vishal V** authors migrations. Others open an issue (table, field, type, ticket); he batches forward-only migrations.

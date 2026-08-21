@@ -1,0 +1,18 @@
+---
+description: Load personal IDENTITY + preferences from .cursor/local
+alwaysApply: true
+---
+
+# Personal local context (per developer, gitignored)
+
+At the start of substantive work, read if present:
+
+1. `.cursor/local/IDENTITY.md` — who you are helping (initials, role)
+2. `.cursor/local/preferences.md` — durable prefs across agents/chats
+3. `.cursor/local/working-memory.md` — current sprint/ticket focus
+
+**Preferences win** over generic assistant habits for communication style, PR/commit asking rules, and role defaults — but they **never** override team rules in `02-dev-workflow.mdc`, ownership, contracts, or DoD.
+
+If `preferences.md` is missing, continue with team defaults; suggest copying `preferences.example.md`.
+
+Role detail (owned paths, non-negotiables): `TEAM.md` + `docs/delivery/ENGINEER_GUIDES.md` for that person — **not** a duplicated playbook folder.

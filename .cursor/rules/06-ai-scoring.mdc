@@ -1,0 +1,15 @@
+---
+description: AI gateway, prompts, and scoring-engine conventions
+globs: apps/api-core/src/modules/{ai-gateway,evaluation,matching}/**/*.ts,packages/prompts/**/*.ts,packages/scoring-engine/**/*.ts
+alwaysApply: false
+---
+
+# AI & scoring conventions
+
+- All LLM traffic through `ai-gateway`. Direct SDK imports elsewhere are a blocking defect.
+- Structured, schema-validated JSON only — never regex a tier from prose.
+- Prompts are versioned immutably (`*.vN.ts`); in-place edits forbidden. Ship golden-set results with prompt PRs.
+- Evaluation emits **raw scores**; tier assignment uses Vedika's published `cut_scores` + `scoring-engine`.
+- Auto-pause automated scoring when Cohen's κ < 0.65.
+- `scoring-engine` stays pure Effect.ts: no I/O, no `Date.now()`, no randomness.
+- Stub the gateway in CI — never live LLM calls in tests.

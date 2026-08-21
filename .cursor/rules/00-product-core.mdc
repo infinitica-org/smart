@@ -1,0 +1,31 @@
+---
+description: SMART product vision, values, GA target — always on
+alwaysApply: true
+---
+
+# SMART — Product Core
+
+**One-liner:** Role-specific readiness certification. Shows who's ready for a job track — and shows its work.
+
+**GA:** 10 September 2026, 18:00 IST. Code freeze 8 Sep 23:59 IST. Sprint 5 = test/harden only (no features).
+
+## Values (product, not marketing)
+
+1. **Precision over breadth** — certify per specialization track, never a generic score.
+2. **Transparency over authority** — methodology, weights, Angoff cutoffs are inspectable.
+3. **Honesty over inflation** — every report carries a Confidence Note (sample size, α, calibration maturity).
+
+## Certification model
+
+- Grid: **5 levels × 3 tiers** (Gold / Silver / Bronze). Below Bronze = no tier.
+- L1 MCQ → L2 sandbox/SQL → L3 spoken BARS → L4 defense → L5 capstone.
+- Student-controlled, publicly verifiable certificate (`web-verify`).
+- North-star metric: **interview/offer conversion for Gold vs cohort baseline**.
+
+## Tracks (V1)
+
+10 tracks: 5 IT + 5 MBA. MBA has shared foundation (~25–30%) + specialization. Validated leads: Finance, Business Analytics.
+
+## Doc authority
+
+When docs conflict: **`TEAM.md` + `.github/CODEOWNERS` > `ARCHITECTURE.md` > older `SERVICES_VIEW.md` ownership tables.** Port truth: API `:3000`, web apps `:3001–3004` (README / `env.ts`), not the inverted ports in `ENGINEER_GUIDES`.

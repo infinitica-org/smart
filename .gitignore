@@ -60,6 +60,13 @@ Thumbs.db
 .agents/
 skills-lock.json
 
+# --- Cursor: personal agent context (team .cursor/rules + .cursor/kb stay tracked) ---
+.cursor/local/**
+!.cursor/local/README.md
+!.cursor/local/IDENTITY.example.md
+!.cursor/local/preferences.example.md
+!.cursor/local/working-memory.example.md
+
 # --- misc ---
 .cache/
 tmp/

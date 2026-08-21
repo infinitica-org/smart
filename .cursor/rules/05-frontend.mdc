@@ -1,0 +1,15 @@
+---
+description: Next.js apps and shared UI conventions
+globs: apps/web-*/**/*.{ts,tsx},packages/ui/**/*.{ts,tsx},packages/api-client/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend conventions
+
+- Types and fetch surface come from `@smart/contracts` via `@smart/api-client` — zero `any` at the API boundary.
+- Shared visuals live in `packages/ui`; do not duplicate `TierBadge` / `TierTrail` / `ConfidenceNote` in apps.
+- Assessment player: server is the clock; never decide attempt expiry client-side.
+- Handle `429` + `Retry-After` in the client; debounce assessment drafts (10 req/min submit budget).
+- Prefer Server Components by default; keep `"use client"` low in the tree.
+- L3 audio uploads go **direct to R2/MinIO via presigned URL** — do not proxy large media through the API.
+- WCAG 2.1 AA on the player; Lighthouse ≥ 90 on verify + student dashboard targets.
