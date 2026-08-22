@@ -52,3 +52,10 @@ pnpm format:check
 - Edit paths owned by the active engineer (see `TEAM.md` / `.cursor/kb/ownership.md`).
 - Cross-module types: PR to `@smart/contracts` **first**, wait for merge, then implement.
 - Tino writes **no** feature code; agents must not invent feature work under his name.
+
+## Backlog / issues
+
+- Ticket **content** lives in `tools/zoho-sprint0/backlog.mjs` and `tools/zoho-sprint1/backlog.mjs`.
+- After editing backlog, sync **GitHub Issues only**: `node tools/backlog/sync-github.mjs`.
+- **Do not** call Zoho MCP to update item descriptions or create items unless the user explicitly asks.
+- See `.cursor/kb/backlog-issues.md`.

@@ -1,5 +1,7 @@
 # Contributing to SMART
 
+**New engineer?** Start here: [`docs/delivery/ENGINEER_START_CHECKLIST.md`](./docs/delivery/ENGINEER_START_CHECKLIST.md) — access, bootstrap, sign-off, first ticket, PR workflow.
+
 Read these in order before writing code:
 
 1. [`TEAM.md`](./TEAM.md) — who owns which path

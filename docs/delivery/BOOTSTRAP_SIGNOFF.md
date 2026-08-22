@@ -2,6 +2,8 @@
 
 > Every engineer completes this checklist once on a **fresh clone** before Sprint 1 work starts.
 > Post proof in standup (screenshot or pasted terminal output).
+>
+> Full onboarding path: [`ENGINEER_START_CHECKLIST.md`](./ENGINEER_START_CHECKLIST.md).
 
 ## Steps
 
