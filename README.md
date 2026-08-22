@@ -15,7 +15,7 @@ Role-specific readiness certification. Candidates are assessed on a 5-level × 3
 | **Ramansh**          | AI Engineer               | AI gateway, evaluation, matching, `@smart/prompts`, `@smart/scoring-engine` |
 | **Vedika G**         | Data + AI/Backend         | Catalog, calibration, item banks, placement records, analytics              |
 
-Enforced by [`.github/CODEOWNERS`](./.github/CODEOWNERS). Day-to-day: [`docs/delivery/ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md). How to contribute: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+Enforced by [`.github/CODEOWNERS`](./.github/CODEOWNERS). **New engineers:** [`ENGINEER_START_CHECKLIST.md`](./docs/delivery/ENGINEER_START_CHECKLIST.md) · Day-to-day: [`ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md) · [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Stack
 

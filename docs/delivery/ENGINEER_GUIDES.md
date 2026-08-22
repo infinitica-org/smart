@@ -6,6 +6,8 @@
 
 **Common to everyone — do this first (30 minutes):**
 
+Full checklist (access → bootstrap → first PR): [`ENGINEER_START_CHECKLIST.md`](./ENGINEER_START_CHECKLIST.md).
+
 ```bash
 git clone <repo> smart-platform && cd smart-platform
 corepack enable && corepack prepare pnpm@11.22.0 --activate   # or: npm i -g pnpm@11.22.0
