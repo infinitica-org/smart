@@ -93,7 +93,9 @@ export const CreateApiKeyRequestSchema = z.object({
   label: z.string().min(3).max(80),
   institutionId: UuidSchema.nullable(),
   /** Scopes are additive and least-privilege by default. */
-  scopes: z.array(z.enum(['verify:read', 'placement:match', 'candidate:read', 'webhook:manage'])).min(1),
+  scopes: z
+    .array(z.enum(['verify:read', 'placement:match', 'candidate:read', 'webhook:manage']))
+    .min(1),
   expiresAt: IsoDateTimeSchema.nullable(),
 });
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>;

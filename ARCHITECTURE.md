@@ -33,30 +33,36 @@
 ## 1. System Vision & Core Philosophy
 
 SMART is a **role-specific readiness certification platform**. It assesses candidates against real competency requirements for a specific job track — not a generic aptitude score — and issues a criterion-referenced **Gold / Silver / Bronze** certificate that is:
+
 - **Transparent** about its own methodology.
 - **Honest** about its calibration maturity.
 - **Student-controlled** and publicly verifiable.
 - **Backed by correlation data** from real hiring outcomes.
 
 ### 1.1 One-Liner
-*SMART tells you who's actually ready for the job — and shows its work.*
+
+_SMART tells you who's actually ready for the job — and shows its work._
 
 ### 1.2 Placement Infrastructure Positioning
+
 SMART sits directly between academia and industry. It certifies readiness per specialization track based on real competencies that hiring managers demand. The ultimate metric for SMART is **Placement Conversion Rate** — tracked via whether certified students achieve higher interview-to-offer rates than non-certified baselines.
 
 ### 1.3 Core Values
-| Value | Engineering & Product Definition |
-|---|---|
-| **Precision over breadth** | One role track certified with deep rigor beats five shallow tests. Certificates are issued per specialization, never as a generic score. |
-| **Transparency over authority** | Scoring methodology, item weights, and Angoff cutoffs are exposed. Anyone can inspect how a tier was determined. |
-| **Honesty over inflation** | Every report carries a **Confidence Note** stating sample size, Cronbach's alpha, and calibration maturity. Nothing is labeled "standardized" without empirical proof. |
+
+| Value                           | Engineering & Product Definition                                                                                                                                       |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Precision over breadth**      | One role track certified with deep rigor beats five shallow tests. Certificates are issued per specialization, never as a generic score.                               |
+| **Transparency over authority** | Scoring methodology, item weights, and Angoff cutoffs are exposed. Anyone can inspect how a tier was determined.                                                       |
+| **Honesty over inflation**      | Every report carries a **Confidence Note** stating sample size, Cronbach's alpha, and calibration maturity. Nothing is labeled "standardized" without empirical proof. |
 
 ---
 
 ### 1.4 Enterprise Authentication & Dual API Access Model
 
 #### 1.4.1 Dual-Token Authentication & Identity Architecture
+
 To ensure high security while protecting backend databases from token validation churn under 50k peak concurrent load:
+
 - **Short-Lived JWT Access Tokens (15 Minutes)**: Sent via `Authorization: Bearer <JWT>` header for stateless, zero-DB-hit in-memory validation in NestJS Guards across all microservices.
 - **HttpOnly Secure Refresh Tokens (7–14 Days)**: Stored in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. When access tokens expire, Next.js / NestJS clients seamlessly issue silent refresh calls to `/api/v1/auth/refresh` without prompting the user.
 - **OAuth 2.0 / OIDC & Institutional SSO**: Integrated via Supabase Auth:
@@ -64,6 +70,7 @@ To ensure high security while protecting backend databases from token validation
   - **Institutions (Universities & Placement Offices)**: SAML 2.0 / OpenID Connect (OIDC) SSO for institutional university logins (e.g., `@psgtech.ac.in`, `@bits-pilani.ac.in`).
 
 #### 1.4.2 Dual API Access & External Webhook Infrastructure
+
 - **Internal Platform APIs (90% of traffic)**: Protected by JWT claims, CORS policies, and CSRF protection. Serves Next.js frontend applications (`web-student`, `web-tpo`, `web-admin`).
 - **Public Verification Endpoint**: `GET /api/v1/verify/:certificate_id` (`verify.smart.com`) is **publicly accessible** without authentication, enforced by Redis IP sliding-window rate limiters (20 req/min).
 - **B2B API Key Access (`X-SMART-API-KEY`)**: Dedicated, rate-limited REST endpoints for institutional ERPs and recruiting partners to query candidate readiness scorecards and verified badge metadata.
@@ -74,6 +81,7 @@ To ensure high security while protecting backend databases from token validation
 ## 2. Decoupled AI Strategy — Claude Engine Architecture
 
 > **Architecture Directives:**
+>
 > 1. **Orion Decoupling:** Orion RAG is being developed separately by a parallel team. SMART does **NOT** depend on or wait for Orion APIs.
 > 2. **Claude AI Engine & Gemini Fallback:** SMART directly integrates with **Anthropic's Claude 5 Sonnet & Claude 4.7 API** as its core intelligence layer, backed by automatic failover to the **Google Gemini API (Gemini 2.5 Pro / Flash)**.
 > 3. **Native Vector RAG:** SMART manages its own RAG vector store using Supabase **`pgvector`** (or ChromaDB in local development) to store domain competency blueprints, Angoff rubrics, and evaluation benchmarks.
@@ -100,6 +108,7 @@ To ensure high security while protecting backend databases from token validation
 ```
 
 ### 2.1 Primary & Fallback AI Responsibilities
+
 - **Claude 5 Sonnet (Primary)**: Handlers for L3 spoken response grading, L4 interactive defense simulation, L5 capstone qualitative evaluation, and unstructured Job Description (JD) NLP parsing.
 - **Claude 4.7 (Primary)**: Handlers for rapid MCQ item generation, candidate response pre-tokenization, basic intent classification, and initial rubric keyword matching.
 - **Google Gemini 2.5 Pro / Flash (Automatic Fallback Engine)**: Seamless failover target triggered automatically when Anthropic API returns HTTP 429 (rate limit), 5xx (server error), or timeout exceptions.
@@ -115,7 +124,7 @@ To ensure high security while protecting backend databases from token validation
 
 Target Capacity: **1 Million Active Candidates per Placement Season** with a peak concurrency of **50,000 active test takers**.
 
-```
+````
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             EDGE GATEWAY LAYER                              │
 │              Cloudflare DDoS Protection + Kong API Gateway                  │
@@ -168,8 +177,8 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 
 ### 3.2 Synchronous vs. Asynchronous Execution SLA Matrix
 
-> **Latency Rule of Thumb:**  
-> Any HTTP operation with an execution SLA **< 200ms** runs **Synchronously**.  
+> **Latency Rule of Thumb:**
+> Any HTTP operation with an execution SLA **< 200ms** runs **Synchronously**.
 > Any execution involving Docker container sandboxes, audio processing, LLM generation, or batch matrix search MUST run **Asynchronously via BullMQ & Apache Kafka**.
 
 | Operation / Feature | Execution Mode | SLA Target | Transport / Queue | Architectural Rationale |
@@ -204,8 +213,10 @@ X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 59
 X-RateLimit-Reset: 1771574400
 Retry-After: 60
-```
+````
+
 When a client exceeds their rate limit, the API immediately returns HTTP status `429 Too Many Requests` with a structured error body:
+
 ```json
 {
   "error": "rate_limit_exceeded",
@@ -218,14 +229,14 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
 
 ### 4.3 Detailed Role-Based Rate Limits
 
-| User Role | Endpoint Scope | Max Requests / Min | Burst Capacity | Window | Action on Violation |
-|---|---|---|---|---|---|
-| **Super Admin** | All Administrative APIs (`/api/v1/admin/*`) | 500 req/min | 100 | 60s | 429 Error + Warning Alert Log |
-| **Institution Admin (TPO)** | Cohort & Placement APIs (`/api/v1/tpo/*`) | 200 req/min | 50 | 60s | 429 Error + Temporary 2-min Throttling |
-| **Placement Officer Staff** | Shortlist & Filtering (`/api/v1/tpo/shortlist`) | 150 req/min | 40 | 60s | 429 Error |
-| **Student (General Navigation)** | Profile, Dashboard, Results (`/api/v1/student/*`) | 60 req/min | 15 | 60s | 429 Error |
-| **Student (Active Assessment)** | Submit Answers (`/api/v1/assessment/submit-l1`) | 10 req/min | 3 | 60s | 429 Error + Session Integrity Log |
-| **Unauthenticated / Public** | Certificate Verification (`/api/v1/verify/*`) | 20 req/min per IP | 5 | 60s | 429 Error + Cloudflare IP Challenge |
+| User Role                        | Endpoint Scope                                    | Max Requests / Min | Burst Capacity | Window | Action on Violation                    |
+| -------------------------------- | ------------------------------------------------- | ------------------ | -------------- | ------ | -------------------------------------- |
+| **Super Admin**                  | All Administrative APIs (`/api/v1/admin/*`)       | 500 req/min        | 100            | 60s    | 429 Error + Warning Alert Log          |
+| **Institution Admin (TPO)**      | Cohort & Placement APIs (`/api/v1/tpo/*`)         | 200 req/min        | 50             | 60s    | 429 Error + Temporary 2-min Throttling |
+| **Placement Officer Staff**      | Shortlist & Filtering (`/api/v1/tpo/shortlist`)   | 150 req/min        | 40             | 60s    | 429 Error                              |
+| **Student (General Navigation)** | Profile, Dashboard, Results (`/api/v1/student/*`) | 60 req/min         | 15             | 60s    | 429 Error                              |
+| **Student (Active Assessment)**  | Submit Answers (`/api/v1/assessment/submit-l1`)   | 10 req/min         | 3              | 60s    | 429 Error + Session Integrity Log      |
+| **Unauthenticated / Public**     | Certificate Verification (`/api/v1/verify/*`)     | 20 req/min per IP  | 5              | 60s    | 429 Error + Cloudflare IP Challenge    |
 
 ### 4.4 Granular Endpoint-Specific Throttling Matrix
 
@@ -243,16 +254,17 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
    └──────────────────┘       └──────────────────┘       └──────────────────┘
 ```
 
-| Target Endpoint | Rate Limit | Scope | Redis Key Format | Technical Rationale |
-|---|---|---|---|---|
-| `/api/v1/auth/login` | 10 req/min | IP Address | `rl:auth:ip:{ip}` | Prevents credential stuffing and brute-force attacks. |
-| `/api/v1/auth/refresh` | 20 req/min | IP + User UUID | `rl:refresh:{user_id}` | Prevents token generation spamming. |
-| `/api/v1/assessment/submit-l1` | 10 req/min | Candidate Session | `rl:l1_sub:{attempt_id}` | Prevents automated submission script spamming during L1. |
-| `/api/v1/assessment/compile-l2` | 10 req/min | Candidate Session | `rl:l2_compile:{candidate_id}` | Protects Docker code execution sandbox from CPU/Memory exhaustion. |
-| `/api/v1/assessment/evaluate-l3-l4` | 5 req/min | Candidate Session | `rl:l3_eval:{candidate_id}` | Throttles high-cost audio/video LLM evaluation requests. |
-| `/api/v1/eval/claude` | 200 RPM / 10,000 TPM | Service Worker | `rl:llm:claude_proxy` | Controls Anthropic Claude API quota & prevents budget blowouts. |
-| `/api/v1/verify/{certificate_id}` | 20 req/min | Public IP | `rl:verify:ip:{ip}` | Protects public verification page against mass scraping. |
-| `/api/v1/placement/match` | 30 req/min | Institution ID | `rl:match:inst:{inst_id}` | Throttles heavy vector cosine matrix computations. |
+| Target Endpoint                     | Rate Limit           | Scope             | Redis Key Format               | Technical Rationale                                                |
+| ----------------------------------- | -------------------- | ----------------- | ------------------------------ | ------------------------------------------------------------------ |
+| `/api/v1/auth/login`                | 10 req/min           | IP Address        | `rl:auth:ip:{ip}`              | Prevents credential stuffing and brute-force attacks.              |
+| `/api/v1/auth/refresh`              | 20 req/min           | IP + User UUID    | `rl:refresh:{user_id}`         | Prevents token generation spamming.                                |
+| `/api/v1/assessment/submit-l1`      | 10 req/min           | Candidate Session | `rl:l1_sub:{attempt_id}`       | Prevents automated submission script spamming during L1.           |
+| `/api/v1/assessment/compile-l2`     | 10 req/min           | Candidate Session | `rl:l2_compile:{candidate_id}` | Protects Docker code execution sandbox from CPU/Memory exhaustion. |
+| `/api/v1/assessment/evaluate-l3-l4` | 5 req/min            | Candidate Session | `rl:l3_eval:{candidate_id}`    | Throttles high-cost audio/video LLM evaluation requests.           |
+| `/api/v1/eval/claude`               | 200 RPM / 10,000 TPM | Service Worker    | `rl:llm:claude_proxy`          | Controls Anthropic Claude API quota & prevents budget blowouts.    |
+| `/api/v1/verify/{certificate_id}`   | 20 req/min           | Public IP         | `rl:verify:ip:{ip}`            | Protects public verification page against mass scraping.           |
+| `/api/v1/placement/match`           | 30 req/min           | Institution ID    | `rl:match:inst:{inst_id}`      | Throttles heavy vector cosine matrix computations.                 |
+
 ---
 
 ### 4.5 Redis Caching Architecture, RAM Sizing & Invalidation Strategy
@@ -262,16 +274,16 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
 
 #### 4.5.1 Data Inventory Planned for RAM Caching
 
-| Data Entity / Category | Key Pattern & Storage Type | Purpose & Optimization | TTL (Time-To-Live) | Est. Key Payload | RAM Sizing @ 50k Concurrency |
-|---|---|---|---|---|---|
-| **Active Assessment Session** | `session:assessment:{attempt_id}` (Hash) | Candidate active test state, answer drafts, timer status, item progress. | 2 Hours (120m) | ~2.5 KB | **~125 MB** (50,000 active test sessions) |
-| **Rate Limit Sliding Window** | `rl:{role}:{identifier}` (ZSet / Lua) | Rolling timestamp log for rate limit enforcement (Redis Lua script). | 60 Seconds | ~200 Bytes | **~20 MB** (100,000 rolling rate limit keys) |
-| **Auth Token & User Session** | `auth:token:{user_id}` (String) | Decoded JWT claims, institution ID, assigned track, RBAC permissions. | 15 Minutes | ~800 Bytes | **~40 MB** (50,000 active user tokens) |
-| **L1 Active Item Bank Forms** | `items:form:{track_id}:{level_id}` (String) | Pre-compiled active item sets per track form (eliminates DB joins during test start). | 24 Hours | ~45 KB | **~4.5 MB** (100 track/level active forms) |
-| **Cut Scores & Angoff Rubrics** | `cut_scores:track:{track_id}` (Hash) | Panel cut scores ($\mu, \sigma$), BARS rubrics per competency. | 7 Days | ~15 KB | **~0.3 MB** (20 track/level matrices) |
-| **Public Certificate Payload** | `verify:cert:{certificate_id}` (String) | Cached JSON payload for public verification (`verify.smart.com/cert/<UUID>`). | 1 Hour | ~4 KB | **~80 MB** (20,000 concurrent verifications) |
-| **Company JD Vector Cache** | `match:company:{jd_id}` (String) | Parsed JD threshold vectors & embedding representation. | 30 Minutes | ~12 KB | **~12 MB** (1,000 active JDs) |
-| **BullMQ Async Worker Queues** | `bull:queue:{queue_name}` (Stream) | Redis job queue buffers for L2 code sandbox and L3 audio evaluation jobs. | Managed by Queue | Variable | **~50 MB** (Buffered background jobs) |
+| Data Entity / Category          | Key Pattern & Storage Type                  | Purpose & Optimization                                                                | TTL (Time-To-Live) | Est. Key Payload | RAM Sizing @ 50k Concurrency                 |
+| ------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------ | ---------------- | -------------------------------------------- |
+| **Active Assessment Session**   | `session:assessment:{attempt_id}` (Hash)    | Candidate active test state, answer drafts, timer status, item progress.              | 2 Hours (120m)     | ~2.5 KB          | **~125 MB** (50,000 active test sessions)    |
+| **Rate Limit Sliding Window**   | `rl:{role}:{identifier}` (ZSet / Lua)       | Rolling timestamp log for rate limit enforcement (Redis Lua script).                  | 60 Seconds         | ~200 Bytes       | **~20 MB** (100,000 rolling rate limit keys) |
+| **Auth Token & User Session**   | `auth:token:{user_id}` (String)             | Decoded JWT claims, institution ID, assigned track, RBAC permissions.                 | 15 Minutes         | ~800 Bytes       | **~40 MB** (50,000 active user tokens)       |
+| **L1 Active Item Bank Forms**   | `items:form:{track_id}:{level_id}` (String) | Pre-compiled active item sets per track form (eliminates DB joins during test start). | 24 Hours           | ~45 KB           | **~4.5 MB** (100 track/level active forms)   |
+| **Cut Scores & Angoff Rubrics** | `cut_scores:track:{track_id}` (Hash)        | Panel cut scores ($\mu, \sigma$), BARS rubrics per competency.                        | 7 Days             | ~15 KB           | **~0.3 MB** (20 track/level matrices)        |
+| **Public Certificate Payload**  | `verify:cert:{certificate_id}` (String)     | Cached JSON payload for public verification (`verify.smart.com/cert/<UUID>`).         | 1 Hour             | ~4 KB            | **~80 MB** (20,000 concurrent verifications) |
+| **Company JD Vector Cache**     | `match:company:{jd_id}` (String)            | Parsed JD threshold vectors & embedding representation.                               | 30 Minutes         | ~12 KB           | **~12 MB** (1,000 active JDs)                |
+| **BullMQ Async Worker Queues**  | `bull:queue:{queue_name}` (Stream)          | Redis job queue buffers for L2 code sandbox and L3 audio evaluation jobs.             | Managed by Queue   | Variable         | **~50 MB** (Buffered background jobs)        |
 
 > **Total Memory Footprint Estimate:** **~331.8 MB RAM** under peak 50,000 concurrent candidates.  
 > **Provisioned Infrastructure:** Dual-node High-Availability Redis Cluster with **2 GB RAM**, leaving >80% headroom for unexpected traffic spikes.
@@ -309,6 +321,7 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
    - Active answer drafts in L1 are written to Redis `session:assessment:{attempt_id}` immediately, then flushed asynchronously to Supabase PostgreSQL in 5-second batch intervals via BullMQ.
 
 #### 4.5.3 Redis Memory Eviction & Safety Controls
+
 - **Redis Maxmemory Policy:** Set strictly to `volatile-lru` (Least Recently Used among keys with an explicit expire set).
 - **Eviction Protection Guarantee:** Because all ephemeral assessment sessions and rate limit keys possess explicit TTLs, `volatile-lru` ensures that un-expiring configuration keys are never evicted during memory pressure.
 - **Automated Memory Health Alerts:**
@@ -493,6 +506,7 @@ SMART evaluates candidates on a **2-Axis Grid**:
 ```
 
 ### 6.1 The 5 Levels Definition
+
 - **L1 (Foundation Knowledge)**: Weighted Item Response scoring. Measures recall and foundational understanding via MCQs and numeric entry items.
 - **L2 (Applied / Programming)**: Sandboxed code execution, SQL query evaluation, or structured applied scenario analysis.
 - **L3 (Communication & Domain Knowledge)**: Spoken structured response evaluated by **Claude 5 Sonnet** using a Behaviorally Anchored Rating Scale (BARS).
@@ -500,13 +514,17 @@ SMART evaluates candidates on a **2-Axis Grid**:
 - **L5 (Capstone Project)**: End-to-end deliverable upload evaluated via split scoring (50% objective checklist + 30% practitioner judgment rubric + 20% presentation).
 
 ### 6.2 Cut Score Calibration Mechanics (Angoff Method)
+
 Cut scores are established by a 3–5 practitioner panel per track:
 $$\text{Cut}_{\text{Gold}} = \mu_{\text{panel}} \pm \sigma_{\text{panel}}$$
+
 - $\mu_{\text{panel}}$ = Mean percentage score predicted by panelists for a borderline ready-now candidate.
 - $\sigma_{\text{panel}}$ = Standard Deviation, displayed on certificates as the **Confidence Band**.
 
 ### 6.3 Level 2/3 BARS Scoring & Consensus Engine
+
 Constructed responses are graded against a **Behaviorally Anchored Rating Scale (BARS)** using **mode-based consensus**:
+
 1. Panel establishes explicit behavior anchors for Gold, Silver, and Bronze.
 2. Claude 5 Sonnet evaluates student submissions against the mode-consensus rubric.
 3. **Inter-rater reliability (Cohen's Kappa $\kappa$)** is tracked against human-graded calibration sets. Automated scoring requires $\kappa \ge 0.65$.
@@ -530,12 +548,15 @@ Constructed responses are graded against a **Behaviorally Anchored Rating Scale 
 ```
 
 ### 7.1 LLM Token Bucket Management & Priority Queuing
+
 To prevent hitting Anthropic API limits, all LLM traffic routes through the `ClaudeProxyService` with three priority queues:
+
 1. **Priority 1 (Real-time Candidate Testing)**: L4 interactive defense sessions (Immediate execution, reserve 40% quota).
 2. **Priority 2 (Asynchronous Assessment)**: L3 spoken response grading (Execution within 30 seconds).
 3. **Priority 3 (Batch Processing)**: JD parsing and placement vector generation (Execution during off-peak hours).
 
 ### 7.2 Claude Evaluation Prompt Template
+
 ```json
 {
   "system_prompt": "You are the SMART BARS Evaluation Engine. Evaluate the candidate's spoken transcript against the anchor rubrics for the given competency. Return JSON only.",
@@ -560,6 +581,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 ## 8. Domain Taxonomy 1 — IT Role Tracks (5 Roles)
 
 ### 8.1 Full Stack Developer
+
 - **Domain A: Frontend Engineering** (L1 MCQ → L2 Sandbox: React, Next.js, State Management, Responsive CSS)
 - **Domain B: Backend Engineering** (L1 MCQ → L2 Sandbox: REST APIs, Async Node/NestJS, Middleware, Auth)
 - **Domain C: Data & Persistence** (L1 MCQ → L2 Sandbox: PostgreSQL SQL Queries, Indexing, MongoDB CRUD)
@@ -568,6 +590,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 - **L5 Capstone**: Full Stack Web App Feature Deliverable + Live Demo Video.
 
 ### 8.2 AI / ML Engineer
+
 - **Domain A: Programming & Data** (L1 MCQ → L2 Sandbox: Core Python, Pandas dataframe manipulation)
 - **Domain B: ML Foundations** (L1 MCQ → L2 Sandbox: Supervised learning, evaluation metrics F1/Recall, overfitting)
 - **Domain C: Applied GenAI & LLMs** (L2 Sandbox → L3 Spoken: Prompt engineering patterns, RAG pipelines, Vector DBs, Model limits)
@@ -576,6 +599,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 - **L5 Capstone**: End-to-End ML/GenAI Pipeline Build & Evaluation Notebook.
 
 ### 8.3 Cloud / DevOps Engineer
+
 - **Domain A: Systems Foundations** (L1 MCQ → L2 Sandbox: Linux bash scripting, permissions, TCP/IP networking)
 - **Domain B: Cloud Platform Fundamentals** (L1 MCQ → L2 Sandbox: AWS/GCP compute, S3 storage, IAM access control)
 - **Domain C: Containerization & Orchestration** (L1 MCQ → L2 Sandbox: Dockerfile authoring, K8s Pods/Deployments)
@@ -584,6 +608,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 - **L5 Capstone**: Containerized App Deployment with Automated CI/CD & Monitoring Pipeline.
 
 ### 8.4 Cybersecurity Analyst
+
 - **Domain A: Networking & Systems** (L1 MCQ: Network protocols, OS hardening, firewall rules)
 - **Domain B: Threat Landscape** (L1 MCQ: Phishing, OWASP Top 10, CVE severity classification)
 - **Domain C: Detection & Analysis** (L1 MCQ → L2 Sandbox: Log correlation, SIEM query basics)
@@ -592,6 +617,7 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 - **L5 Capstone**: Incident Triage & Defense Documentation Package.
 
 ### 8.5 Data Analyst
+
 - **Domain A: Data Querying & Manipulation** (L1 MCQ → L2 Sandbox: Complex SQL joins/window functions, Python pandas)
 - **Domain B: Statistics & Interpretation** (L1 MCQ → L3 Spoken: Descriptive stats, correlation vs causation, hypothesis intuition)
 - **Domain C: Visualization & BI Tooling** (L2 Sandbox: Dashboard design in PowerBI/Tableau, chart selection)
@@ -604,9 +630,11 @@ To prevent hitting Anthropic API limits, all LLM traffic routes through the `Cla
 ## 9. Domain Taxonomy 2 — MBA Role Tracks (5 Roles)
 
 ### 9.1 Shared Foundation Layer (25–30% of MBA Score)
+
 Taken once by all MBA students: Business Communication, Quantitative Data Interpretation, Case Judgment, Stakeholder Ethics.
 
 ### 9.2 Specialization Tracks
+
 1. **Finance (Lead Track)**: Financial statement analysis, Valuation (DCF, Comps), Applied 3-statement financial modeling, Working capital & risk reasoning.
 2. **Business Analytics (Lead Track)**: SQL data querying, Statistical business interpretation, Data-to-insight communication, Dataset recommendation case.
 3. **Marketing**: Market sizing & segmentation, Campaign positioning case judgment, Marketing metrics (CAC, LTV, ROMI), Consumer behavior reasoning.
@@ -628,6 +656,7 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 ```
 
 ### 10.1 JD NLP Ingestion Pipeline
+
 - Employers or TPOs upload unstructured Job Descriptions (PDF/Text).
 - **Claude 5 Sonnet** parses JDs into structured SMART threshold vectors:
   ```json
@@ -644,6 +673,7 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
   ```
 
 ### 10.2 Matching Engine & Placement Feedback Loop
+
 - Candidates are scored using vector similarity:
   $$\text{MatchScore} = \cos(\vec{V}_{\text{candidate}}, \vec{V}_{\text{company}}) \times \prod \text{RuleFilters}$$
 - Auto-shortlists are generated for Placement Directors.
@@ -666,13 +696,13 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 ## 12. Stakeholder Feature Specifications
 
-| Feature | Super Admin | Institution Admin (TPO) | Student | Employer |
-|---|---|---|---|---|
-| **Global Analytics** | Full System Dashboard | Cohort Readiness View | Individual Scorecard | Verification View |
-| **Rate Limit Control** | Adjust System Limits | View Usage Throttles | N/A | N/A |
-| **Shortlist Generator** | N/A | Auto-Generate & Export | View Shortlist Status | Upload JD & Match |
-| **Gap Diagnostics** | Global Track Gaps | Batch Weakness Report | Itemized Gap Feedback | N/A |
-| **Retest Pathway** | Retest Policy Config | Approve Retests | Schedule Retest | N/A |
+| Feature                 | Super Admin           | Institution Admin (TPO) | Student               | Employer          |
+| ----------------------- | --------------------- | ----------------------- | --------------------- | ----------------- |
+| **Global Analytics**    | Full System Dashboard | Cohort Readiness View   | Individual Scorecard  | Verification View |
+| **Rate Limit Control**  | Adjust System Limits  | View Usage Throttles    | N/A                   | N/A               |
+| **Shortlist Generator** | N/A                   | Auto-Generate & Export  | View Shortlist Status | Upload JD & Match |
+| **Gap Diagnostics**     | Global Track Gaps     | Batch Weakness Report   | Itemized Gap Feedback | N/A               |
+| **Retest Pathway**      | Retest Policy Config  | Approve Retests         | Schedule Retest       | N/A               |
 
 ---
 
@@ -728,17 +758,17 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 **Sprint Goal:** Stand up core repository infrastructure, Supabase PostgreSQL schema, Clerk/NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
 
-| Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
-|---|---|---|---|---|---|
-| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, Supabase (PostgreSQL 16 + pgvector), Redis 7, and Apache Kafka. | Tino | 5 pts | Critical |
-| **US-1.2** | PostgreSQL Schema Provisioning | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`). | Tino | 8 pts | Critical |
-| **US-1.3** | Auth & RBAC Middleware | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public. | Satheeswaran | 8 pts | Critical |
-| **US-1.4** | Redis Sliding Window Rate Limiting Engine | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits. | Tino | 8 pts | Critical |
-| **US-1.5** | Granular Endpoint Rate Throttling Matrix | Implement specific throttles for auth, code execution, audio submit, and verification endpoints. | Tino | 5 pts | High |
-| **US-1.6** | Claude AI Proxy Service Setup | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | Ramansh | 8 pts | Critical |
-| **US-1.7** | pgvector Vector Store Provisioning | Initialize Supabase `pgvector` extension and schema for storing domain competency rubrics and embeddings. | Ramansh | 5 pts | High |
-| **US-1.8** | Student Profile & Track Enrollment API | Build REST endpoints for student onboarding and specialization track assignment. | Satheeswaran | 5 pts | High |
-| **US-1.9** | System Data Contracts & Zod Schemas | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services. | Tino | 5 pts | High |
+| Ticket ID  | Story Title                                        | Description & Acceptance Criteria                                                                                                  | Owner        | Points | Priority |
+| ---------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
+| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, Supabase (PostgreSQL 16 + pgvector), Redis 7, and Apache Kafka.               | Tino         | 5 pts  | Critical |
+| **US-1.2** | PostgreSQL Schema Provisioning                     | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`).  | Tino         | 8 pts  | Critical |
+| **US-1.3** | Auth & RBAC Middleware                             | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public.                              | Satheeswaran | 8 pts  | Critical |
+| **US-1.4** | Redis Sliding Window Rate Limiting Engine          | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits.                                | Tino         | 8 pts  | Critical |
+| **US-1.5** | Granular Endpoint Rate Throttling Matrix           | Implement specific throttles for auth, code execution, audio submit, and verification endpoints.                                   | Tino         | 5 pts  | High     |
+| **US-1.6** | Claude AI Proxy Service Setup                      | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | Ramansh      | 8 pts  | Critical |
+| **US-1.7** | pgvector Vector Store Provisioning                 | Initialize Supabase `pgvector` extension and schema for storing domain competency rubrics and embeddings.                          | Ramansh      | 5 pts  | High     |
+| **US-1.8** | Student Profile & Track Enrollment API             | Build REST endpoints for student onboarding and specialization track assignment.                                                   | Satheeswaran | 5 pts  | High     |
+| **US-1.9** | System Data Contracts & Zod Schemas                | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services.    | Tino         | 5 pts  | High     |
 
 **Sprint 1 Summary:** 9 Stories · 57 Story Points · Deliverable: Core infrastructure, Auth, Database, Rate Limiter, and Claude Proxy operational locally.
 
@@ -748,16 +778,16 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 **Sprint Goal:** Deliver full assessment delivery pipelines (L1–L5), Dockerized code execution sandbox, Claude 5 Sonnet BARS audio grading, and seed item banks for all 10 role tracks.
 
-| Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
-|---|---|---|---|---|---|
-| **US-2.1** | L1 Assessment Delivery Service | Build real-time weighted MCQ assessment engine with timer enforcement and anti-cheat event logging. | Ramansh | 8 pts | Critical |
-| **US-2.2** | L2 Code & SQL Sandbox Execution Engine | Build isolated Docker container runner for evaluating candidate Python/Node code and SQL queries. | Tino | 8 pts | Critical |
-| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + NestJS endpoint for uploading candidate audio defenses to Cloudflare R2. | Satheeswaran | 5 pts | High |
-| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline | Build async BullMQ pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude. | Ramansh | 8 pts | Critical |
-| **US-2.5** | L4 AI Interactive Defense Engine | Implement real-time interactive defense simulation service backed by Claude 5 Sonnet. | Ramansh | 8 pts | Critical |
-| **US-2.6** | L5 Capstone Submission & Split Scoring | Build capstone deliverable upload handler and objective checklist auto-checker. | Satheeswaran | 5 pts | High |
-| **US-2.7** | IT Track Item Bank Ingestion (5 Roles) | Seed item banks, competency weights, and rubrics for 5 Tech tracks (Full Stack, AI/ML, DevOps, Cyber, Data Analyst). | Ramansh | 8 pts | Critical |
-| **US-2.8** | MBA Track Item Bank Ingestion (5 Roles) | Seed item banks and rubrics for 5 MBA tracks (Finance, Business Analytics, Marketing, Ops, HR). | Satheeswaran | 8 pts | Critical |
+| Ticket ID  | Story Title                                         | Description & Acceptance Criteria                                                                                    | Owner        | Points | Priority |
+| ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
+| **US-2.1** | L1 Assessment Delivery Service                      | Build real-time weighted MCQ assessment engine with timer enforcement and anti-cheat event logging.                  | Ramansh      | 8 pts  | Critical |
+| **US-2.2** | L2 Code & SQL Sandbox Execution Engine              | Build isolated Docker container runner for evaluating candidate Python/Node code and SQL queries.                    | Tino         | 8 pts  | Critical |
+| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + NestJS endpoint for uploading candidate audio defenses to Cloudflare R2.                   | Satheeswaran | 5 pts  | High     |
+| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline            | Build async BullMQ pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude.          | Ramansh      | 8 pts  | Critical |
+| **US-2.5** | L4 AI Interactive Defense Engine                    | Implement real-time interactive defense simulation service backed by Claude 5 Sonnet.                                | Ramansh      | 8 pts  | Critical |
+| **US-2.6** | L5 Capstone Submission & Split Scoring              | Build capstone deliverable upload handler and objective checklist auto-checker.                                      | Satheeswaran | 5 pts  | High     |
+| **US-2.7** | IT Track Item Bank Ingestion (5 Roles)              | Seed item banks, competency weights, and rubrics for 5 Tech tracks (Full Stack, AI/ML, DevOps, Cyber, Data Analyst). | Ramansh      | 8 pts  | Critical |
+| **US-2.8** | MBA Track Item Bank Ingestion (5 Roles)             | Seed item banks and rubrics for 5 MBA tracks (Finance, Business Analytics, Marketing, Ops, HR).                      | Satheeswaran | 8 pts  | Critical |
 
 **Sprint 2 Summary:** 8 Stories · 58 Story Points · Deliverable: Complete multi-method L1–L5 evaluation engine working with Claude AI.
 
@@ -767,15 +797,15 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 **Sprint Goal:** Build the JD NLP parser, candidate-company vector matching algorithm, auto-shortlist generator, Super Admin control center, TPO dashboard, and Student growth portal.
 
-| Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
-|---|---|---|---|---|---|
-| **US-3.1** | Job Description NLP Ingestion Service | Build PDF/Text JD upload handler utilizing Claude 5 Sonnet to parse required competency vectors. | Ramansh | 8 pts | Critical |
-| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in NestJS to match candidates to JDs. | Ramansh | 8 pts | Critical |
-| **US-3.3** | TPO Cohort Readiness Dashboard | Build Next.js dashboard for Placement Directors showing batch readiness, Gold/Silver counts, and gap reports. | Satheeswaran | 8 pts | Critical |
-| **US-3.4** | Auto-Shortlist Generator & Export | Implement filterable candidate shortlist view with CSV/PDF export for recruiting drives. | Satheeswaran | 5 pts | High |
-| **US-3.5** | Student Diagnostic Portal & Gap Feedback | Build student UI displaying test results, itemized competency feedback, and retest scheduler. | Satheeswaran | 8 pts | Critical |
-| **US-3.6** | Super Admin Management Console | Build platform control center for user management, rate limit overrides, and system health monitoring. | Tino | 8 pts | High |
-| **US-3.7** | Correlation Record Tracking Module | Build backend feedback mechanism to log interview/offer outcomes per placement cycle. | Tino | 5 pts | Medium |
+| Ticket ID  | Story Title                              | Description & Acceptance Criteria                                                                             | Owner        | Points | Priority |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
+| **US-3.1** | Job Description NLP Ingestion Service    | Build PDF/Text JD upload handler utilizing Claude 5 Sonnet to parse required competency vectors.              | Ramansh      | 8 pts  | Critical |
+| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in NestJS to match candidates to JDs.      | Ramansh      | 8 pts  | Critical |
+| **US-3.3** | TPO Cohort Readiness Dashboard           | Build Next.js dashboard for Placement Directors showing batch readiness, Gold/Silver counts, and gap reports. | Satheeswaran | 8 pts  | Critical |
+| **US-3.4** | Auto-Shortlist Generator & Export        | Implement filterable candidate shortlist view with CSV/PDF export for recruiting drives.                      | Satheeswaran | 5 pts  | High     |
+| **US-3.5** | Student Diagnostic Portal & Gap Feedback | Build student UI displaying test results, itemized competency feedback, and retest scheduler.                 | Satheeswaran | 8 pts  | Critical |
+| **US-3.6** | Super Admin Management Console           | Build platform control center for user management, rate limit overrides, and system health monitoring.        | Tino         | 8 pts  | High     |
+| **US-3.7** | Correlation Record Tracking Module       | Build backend feedback mechanism to log interview/offer outcomes per placement cycle.                         | Tino         | 5 pts  | Medium   |
 
 **Sprint 3 Summary:** 7 Stories · 50 Story Points · Deliverable: Working Placement Overlay Engine and functional multi-role dashboards.
 
@@ -785,14 +815,14 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 **Sprint Goal:** Build public verification pipeline, QR code generation, Angoff cut-score confidence note calculator, edge gateway rate-limit tuning, and perform complete microservices integration.
 
-| Ticket ID | Story Title | Description & Acceptance Criteria | Owner | Points | Priority |
-|---|---|---|---|---|---|
-| **US-4.1** | Public Certificate Generation Pipeline | Build service to generate shareable certificate records with Tier Trail JSON and unique UUIDs. | Satheeswaran | 8 pts | Critical |
-| **US-4.2** | Public Verification Portal (`verify.smart.com`) | Build public responsive page displaying certified tier, methodology, calibration credits, and confidence note. | Satheeswaran | 8 pts | Critical |
-| **US-4.3** | Dynamic QR Code & PDF Exporter | Implement cryptographically signed QR code generator and PDF certificate exporter. | Satheeswaran | 5 pts | High |
-| **US-4.4** | Confidence Note & SD Calculator Engine | Implement automated calculation of Angoff standard deviation confidence bands and Cronbach's alpha. | Ramansh | 5 pts | High |
-| **US-4.5** | Kong / Edge Gateway Integration & Tuning | Configure Edge API Gateway rate limits, Cloudflare DDoS rules, and SSL termination. | Tino | 8 pts | Critical |
-| **US-4.6** | End-to-End Service Integration | Interconnect all microservices, message queues, and caching layers into a unified release candidate build. | Tino | 8 pts | Critical |
+| Ticket ID  | Story Title                                     | Description & Acceptance Criteria                                                                              | Owner        | Points | Priority |
+| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
+| **US-4.1** | Public Certificate Generation Pipeline          | Build service to generate shareable certificate records with Tier Trail JSON and unique UUIDs.                 | Satheeswaran | 8 pts  | Critical |
+| **US-4.2** | Public Verification Portal (`verify.smart.com`) | Build public responsive page displaying certified tier, methodology, calibration credits, and confidence note. | Satheeswaran | 8 pts  | Critical |
+| **US-4.3** | Dynamic QR Code & PDF Exporter                  | Implement cryptographically signed QR code generator and PDF certificate exporter.                             | Satheeswaran | 5 pts  | High     |
+| **US-4.4** | Confidence Note & SD Calculator Engine          | Implement automated calculation of Angoff standard deviation confidence bands and Cronbach's alpha.            | Ramansh      | 5 pts  | High     |
+| **US-4.5** | Kong / Edge Gateway Integration & Tuning        | Configure Edge API Gateway rate limits, Cloudflare DDoS rules, and SSL termination.                            | Tino         | 8 pts  | Critical |
+| **US-4.6** | End-to-End Service Integration                  | Interconnect all microservices, message queues, and caching layers into a unified release candidate build.     | Tino         | 8 pts  | Critical |
 
 **Sprint 4 Summary:** 6 Stories · 42 Story Points · Deliverable: 100% Feature Complete SMART Platform ready for Sprint 5 Testing.
 
@@ -826,16 +856,16 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Ticket ID | Testing Focus Area | Test Execution Details & Success Criteria | Owner | Points | Priority |
-|---|---|---|---|---|---|
-| **TS-5.1** | Automated Unit & Integration Testing | Execute comprehensive backend PyTest and frontend Jest test suites. Target: **>85% Code Coverage**. | Tino | 8 pts | Critical |
-| **TS-5.2** | End-to-End User Flow Automation | Build Playwright test scripts covering complete flow: Auth → Assessment L1–L5 → Certification → Verification. | Satheeswaran | 8 pts | Critical |
-| **TS-5.3** | Security Penetration & Vulnerability Audit | Conduct OWASP Top 10 vulnerability scan, SQL injection, XSS, and JWT manipulation audit. | Satheeswaran | 8 pts | Critical |
-| **TS-5.4** | 1M Scale Load & Stress Testing | Run K6 / Locust load simulation testing 50,000 concurrent candidate test sessions. Verify p95 response time <200ms. | Tino | 8 pts | Critical |
-| **TS-5.5** | Rate Limit System Stress Testing | Stress test Redis sliding window rate limiter under 100,000 req/min floods. Verify HTTP 429 compliance. | Tino | 8 pts | Critical |
-| **TS-5.6** | Claude AI Proxy Load & Error Fallback Test | Simulate Anthropic API rate limits (HTTP 429) and network failures. Verify retry backoff and queue fallback. | Ramansh | 8 pts | Critical |
-| **TS-5.7** | Pilot Institution UAT & Calibration Verification | Conduct User Acceptance Testing with 1 pilot institution cohort (50 students). Validate Angoff cut scores. | Ramansh | 8 pts | Critical |
-| **TS-5.8** | Production Bug Fixing & Performance Hardening | Resolve all Priority 1 & 2 bugs identified during testing. Optimize slow database queries and indexes. | All Team | 8 pts | Critical |
+| Ticket ID  | Testing Focus Area                               | Test Execution Details & Success Criteria                                                                           | Owner        | Points | Priority |
+| ---------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
+| **TS-5.1** | Automated Unit & Integration Testing             | Execute comprehensive backend PyTest and frontend Jest test suites. Target: **>85% Code Coverage**.                 | Tino         | 8 pts  | Critical |
+| **TS-5.2** | End-to-End User Flow Automation                  | Build Playwright test scripts covering complete flow: Auth → Assessment L1–L5 → Certification → Verification.       | Satheeswaran | 8 pts  | Critical |
+| **TS-5.3** | Security Penetration & Vulnerability Audit       | Conduct OWASP Top 10 vulnerability scan, SQL injection, XSS, and JWT manipulation audit.                            | Satheeswaran | 8 pts  | Critical |
+| **TS-5.4** | 1M Scale Load & Stress Testing                   | Run K6 / Locust load simulation testing 50,000 concurrent candidate test sessions. Verify p95 response time <200ms. | Tino         | 8 pts  | Critical |
+| **TS-5.5** | Rate Limit System Stress Testing                 | Stress test Redis sliding window rate limiter under 100,000 req/min floods. Verify HTTP 429 compliance.             | Tino         | 8 pts  | Critical |
+| **TS-5.6** | Claude AI Proxy Load & Error Fallback Test       | Simulate Anthropic API rate limits (HTTP 429) and network failures. Verify retry backoff and queue fallback.        | Ramansh      | 8 pts  | Critical |
+| **TS-5.7** | Pilot Institution UAT & Calibration Verification | Conduct User Acceptance Testing with 1 pilot institution cohort (50 students). Validate Angoff cut scores.          | Ramansh      | 8 pts  | Critical |
+| **TS-5.8** | Production Bug Fixing & Performance Hardening    | Resolve all Priority 1 & 2 bugs identified during testing. Optimize slow database queries and indexes.              | All Team     | 8 pts  | Critical |
 
 **Sprint 5 Summary:** 8 Quality Assurance Tasks · 64 Test Points · Deliverable: Fully audited, load-tested, hardened production-ready platform.
 
@@ -844,11 +874,13 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 ## 16. Observability, Logging & Rate Limit Monitoring
 
 ### 16.1 Metrics Stack
+
 - **Prometheus**: Collects API latency, container CPU/Memory, rate limit violation counts, and Redis connection metrics.
 - **Grafana**: Dashboards displaying real-time system health, HTTP status codes (2xx, 4xx, 429, 5xx), and Claude API token consumption.
 - **Datadog / Sentry**: Distributed tracing across microservices and frontend exception capturing.
 
 ### 16.2 Rate Limit Metrics Alerts
+
 ```yaml
 groups:
   - name: smart_rate_limiting_alerts
@@ -859,40 +891,40 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High rate limit violations detected on {{ $labels.endpoint }}"
+          summary: 'High rate limit violations detected on {{ $labels.endpoint }}'
       - alert: ClaudeAPITokenBucketExhausted
         expr: smart_claude_token_bucket_remaining < 1000
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Claude Proxy Service token bucket near exhaustion!"
+          summary: 'Claude Proxy Service token bucket near exhaustion!'
 ```
 
 ---
 
 ## 17. V1 Scope vs. Phase 2 Scope
 
-| Capability | In V1 (Scope Committed) | Phase 2 (Deferred) |
-|---|---|---|
-| **Role Tracks** | 5 IT Tracks + 5 MBA Tracks | SDE-2, Core Engineering, Legal Tracks |
-| **AI Management** | Native Claude 5 Sonnet / 4.7 Engine | External Orion Integration (when ready) |
-| **Rate Limiting** | Full Redis Sliding Window + Gateway Throttling | AI Dynamic Adaptive Throttling |
-| **Evaluation** | 5-Level Battery (L1 MCQ → L5 Capstone) | Adaptive IRT 2-Parameter Testing |
-| **Verification** | Public URL (`verify.smart.com`) + QR Code | Blockchain Verification Proofs |
-| **Dashboards** | Super Admin, TPO, Student, Verification | Employer Paid Search Portal |
+| Capability        | In V1 (Scope Committed)                        | Phase 2 (Deferred)                      |
+| ----------------- | ---------------------------------------------- | --------------------------------------- |
+| **Role Tracks**   | 5 IT Tracks + 5 MBA Tracks                     | SDE-2, Core Engineering, Legal Tracks   |
+| **AI Management** | Native Claude 5 Sonnet / 4.7 Engine            | External Orion Integration (when ready) |
+| **Rate Limiting** | Full Redis Sliding Window + Gateway Throttling | AI Dynamic Adaptive Throttling          |
+| **Evaluation**    | 5-Level Battery (L1 MCQ → L5 Capstone)         | Adaptive IRT 2-Parameter Testing        |
+| **Verification**  | Public URL (`verify.smart.com`) + QR Code      | Blockchain Verification Proofs          |
+| **Dashboards**    | Super Admin, TPO, Student, Verification        | Employer Paid Search Portal             |
 
 ---
 
 ## 18. Risk Management & Fallback Protocols
 
 1. **Anthropic API Outage / Rate Limit Breach**:
-   - *Protocol*: System automatically routes traffic to the **Google Gemini API (Gemini 2.5 Pro / Flash)** fallback engine with matching BARS prompt schemas, preventing submission delays while alerting the engineering team. Submissions remain queued in Redis/BullMQ without candidate data loss.
+   - _Protocol_: System automatically routes traffic to the **Google Gemini API (Gemini 2.5 Pro / Flash)** fallback engine with matching BARS prompt schemas, preventing submission delays while alerting the engineering team. Submissions remain queued in Redis/BullMQ without candidate data loss.
 2. **Redis Cache Layer Failure**:
-   - *Protocol*: API gateway falls back to in-memory local leaky bucket rate limiting while Redis cluster auto-recovers.
+   - _Protocol_: API gateway falls back to in-memory local leaky bucket rate limiting while Redis cluster auto-recovers.
 3. **High Candidate Concurrent Flood during Institutional Assessment**:
-   - *Protocol*: Gateway activates queueing room mode (Cloudflare Waiting Room) to admit candidates in controlled batches matching service capacity.
+   - _Protocol_: Gateway activates queueing room mode (Cloudflare Waiting Room) to admit candidates in controlled batches matching service capacity.
 
 ---
 
-*This document is the absolute single source of truth for the SMART technical architecture, rate limiting specification, Claude AI integration, domain mapping, and 5-sprint delivery roadmap.*
+_This document is the absolute single source of truth for the SMART technical architecture, rate limiting specification, Claude AI integration, domain mapping, and 5-sprint delivery roadmap._

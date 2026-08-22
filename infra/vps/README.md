@@ -6,12 +6,12 @@ This repo is intended to run on **one VPS** (2 vCPU / 4 GB RAM minimum; 4 vCPU /
 
 Create A records pointing at the VPS public IP:
 
-| Host | Service |
-|---|---|
-| `api.example.com` | Nest API |
-| `app.example.com` | Student portal |
-| `tpo.example.com` | TPO console |
-| `admin.example.com` | Admin console |
+| Host                 | Service                         |
+| -------------------- | ------------------------------- |
+| `api.example.com`    | Nest API                        |
+| `app.example.com`    | Student portal                  |
+| `tpo.example.com`    | TPO console                     |
+| `admin.example.com`  | Admin console                   |
 | `verify.example.com` | Public certificate verification |
 
 ## 2. Server setup

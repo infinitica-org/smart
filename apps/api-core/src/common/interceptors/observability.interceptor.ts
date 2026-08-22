@@ -1,14 +1,15 @@
-import type {
-  CallHandler,
-  ExecutionContext,
-  NestInterceptor} from '@nestjs/common';
-import {
-  Injectable
-} from '@nestjs/common';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { Observable} from 'rxjs';
+import type { Observable } from 'rxjs';
 import { tap } from 'rxjs';
-import { CORRELATION_HEADER, httpRequestDuration, httpRequestsTotal, resolveCorrelationId, runWithContext } from '@smart/observability';
+import {
+  CORRELATION_HEADER,
+  httpRequestDuration,
+  httpRequestsTotal,
+  resolveCorrelationId,
+  runWithContext,
+} from '@smart/observability';
 
 @Injectable()
 export class ObservabilityInterceptor implements NestInterceptor {

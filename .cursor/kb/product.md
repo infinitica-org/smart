@@ -10,11 +10,11 @@ For placement offices and students done with opaque employability scores: certif
 
 ## Three values
 
-| Value | Meaning |
-|---|---|
-| Precision over breadth | Deep per-track certs > shallow multi-track badges |
-| Transparency over authority | Cutoffs, weights, Angoff panels are visible |
-| Honesty over inflation | Confidence Note on every report (n, α, maturity) |
+| Value                       | Meaning                                           |
+| --------------------------- | ------------------------------------------------- |
+| Precision over breadth      | Deep per-track certs > shallow multi-track badges |
+| Transparency over authority | Cutoffs, weights, Angoff panels are visible       |
+| Honesty over inflation      | Confidence Note on every report (n, α, maturity)  |
 
 ## Certificate
 
@@ -25,13 +25,13 @@ For placement offices and students done with opaque employability scores: certif
 
 ## Levels (cognitive depth)
 
-| Level | Format |
-|---|---|
-| L1 | Foundation knowledge (weighted MCQ / numeric) |
-| L2 | Applied (code/SQL sandbox or structured scenario) |
-| L3 | Spoken response → Claude BARS |
-| L4 | Interactive defense (AI-simulated) |
-| L5 | Capstone (50% checklist / 30% rubric / 20% presentation) |
+| Level | Format                                                   |
+| ----- | -------------------------------------------------------- |
+| L1    | Foundation knowledge (weighted MCQ / numeric)            |
+| L2    | Applied (code/SQL sandbox or structured scenario)        |
+| L3    | Spoken response → Claude BARS                            |
+| L4    | Interactive defense (AI-simulated)                       |
+| L5    | Capstone (50% checklist / 30% rubric / 20% presentation) |
 
 ## Tracks
 

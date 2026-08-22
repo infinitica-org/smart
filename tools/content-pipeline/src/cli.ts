@@ -11,7 +11,9 @@ if (command === 'validate') {
   for (const track of TRACK_DEFINITIONS) {
     assertDomainWeightsSumToOne(track);
   }
-  process.stdout.write(`ok ${String(TRACK_DEFINITIONS.length)} tracks, domain weights sum to 1.0\n`);
+  process.stdout.write(
+    `ok ${String(TRACK_DEFINITIONS.length)} tracks, domain weights sum to 1.0\n`,
+  );
   process.exit(0);
 }
 

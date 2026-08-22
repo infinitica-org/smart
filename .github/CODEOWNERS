@@ -6,98 +6,97 @@
 # Later rules win. The first rule makes Tino (System Architect) a mandatory
 # reviewer on EVERY pull request; subsequent rules add the module owner.
 #
-# ACTION REQUIRED ON DAY 1 OF SPRINT 0:
-#   replace these placeholder handles with real GitHub usernames.
-#     @tino               -> Tino               (System Architect & Reviewer)
-#     @vishal-v           -> Vishal V           (Senior Backend Engineer)
-#     @satheswaran-v      -> Satheswaran V      (Frontend & Full-Stack Engineer)
-#     @vishal-bharath-r   -> Vishal Bharath R   (Full-Stack & Backend Engineer)
-#     @ramansh            -> Ramansh            (AI Engineer)
-#     @vedika-g           -> Vedika G           (Data & AI/Backend Engineer)
+# Team GitHub handles (see TEAM.md §1):
+#   @brittytino         Tino               (System Architect & Reviewer)
+#   @vis465             Vishal V           (Senior Backend Engineer)
+#   @Satheshwaran26     Satheswaran V      (Frontend & Full-Stack Engineer)
+#   @vishalbharath      Vishal Bharath R   (Full-Stack & Backend Engineer)
+#   @Ram9012            Ramansh            (AI Engineer)
+#   @11vedikaa          Vedika G           (Data & AI/Backend Engineer)
 
 # ---------------------------------------------------------------------------
 # 0. Global — the architect reviews everything
 # ---------------------------------------------------------------------------
-*                                       @tino
+*                                       @brittytino
 
 # ---------------------------------------------------------------------------
 # 1. Architecture, contracts and quality gates — architect only
 # ---------------------------------------------------------------------------
-/ARCHITECTURE.md                        @tino
-/SERVICES_VIEW.md                       @tino
-/REPOSITORY_STRUCTURE.md                @tino
-/TEAM.md                                @tino
-/README.md                              @tino
-/CONTRIBUTING.md                        @tino
-/docs/adr/                              @tino
-/docs/delivery/                         @tino
-/docs/engineering/                      @tino
-/.github/CODEOWNERS                     @tino
-/.github/workflows/                     @tino
-/turbo.json                             @tino
-/pnpm-workspace.yaml                    @tino
-/tsconfig.base.json                     @tino
-/package.json                           @tino
-/packages/contracts/                    @tino
-/packages/config-typescript/            @tino
-/packages/config-eslint/                @tino
-/packages/config-tailwind/              @tino
+/ARCHITECTURE.md                        @brittytino
+/SERVICES_VIEW.md                       @brittytino
+/REPOSITORY_STRUCTURE.md                @brittytino
+/TEAM.md                                @brittytino
+/README.md                              @brittytino
+/CONTRIBUTING.md                        @brittytino
+/docs/adr/                              @brittytino
+/docs/delivery/                         @brittytino
+/docs/engineering/                      @brittytino
+/.github/CODEOWNERS                     @brittytino
+/.github/workflows/                     @brittytino
+/turbo.json                             @brittytino
+/pnpm-workspace.yaml                    @brittytino
+/tsconfig.base.json                     @brittytino
+/package.json                           @brittytino
+/packages/contracts/                    @brittytino
+/packages/config-typescript/            @brittytino
+/packages/config-eslint/                @brittytino
+/packages/config-tailwind/              @brittytino
 
 # ---------------------------------------------------------------------------
 # 2. Vishal V — Senior Backend Engineer (Platform Core)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/main.ts              @vishal-v @tino
-/apps/api-core/src/app.module.ts        @vishal-v @tino
-/apps/api-core/src/platform/            @vishal-v @tino
-/apps/api-core/src/common/              @vishal-v @tino
-/apps/api-core/src/modules/auth/        @vishal-v @tino
-/apps/api-core/src/modules/users/       @vishal-v @tino
-/apps/api-core/src/modules/rate-limit/  @vishal-v @tino
-/apps/api-core/src/modules/sandbox/     @vishal-v @tino
-/apps/api-core/prisma/                  @vishal-v @tino
-/packages/observability/                @vishal-v @tino
-/infra/                                 @vishal-v @tino
-/scripts/                               @vishal-v @tino
-/tools/load-tests/                      @vishal-v @tino
+/apps/api-core/src/main.ts              @vis465 @brittytino
+/apps/api-core/src/app.module.ts        @vis465 @brittytino
+/apps/api-core/src/platform/            @vis465 @brittytino
+/apps/api-core/src/common/              @vis465 @brittytino
+/apps/api-core/src/modules/auth/        @vis465 @brittytino
+/apps/api-core/src/modules/users/       @vis465 @brittytino
+/apps/api-core/src/modules/rate-limit/  @vis465 @brittytino
+/apps/api-core/src/modules/sandbox/     @vis465 @brittytino
+/apps/api-core/prisma/                  @vis465 @brittytino
+/packages/observability/                @vis465 @brittytino
+/infra/                                 @vis465 @brittytino
+/scripts/                               @vis465 @brittytino
+/tools/load-tests/                      @vis465 @brittytino
 
 # ---------------------------------------------------------------------------
 # 3. Satheswaran V — Frontend & Full-Stack Engineer (Experience Layer)
 # ---------------------------------------------------------------------------
-/packages/ui/                           @satheswaran-v @tino
-/packages/api-client/                   @satheswaran-v @tino
-/apps/web-student/                      @satheswaran-v @tino
-/apps/web-tpo/                          @satheswaran-v @tino
-/tests/e2e/                             @satheswaran-v @tino
+/packages/ui/                           @Satheshwaran26 @brittytino
+/packages/api-client/                   @Satheshwaran26 @brittytino
+/apps/web-student/                      @Satheshwaran26 @brittytino
+/apps/web-tpo/                          @Satheshwaran26 @brittytino
+/tests/e2e/                             @Satheshwaran26 @brittytino
 
 # ---------------------------------------------------------------------------
 # 4. Vishal Bharath R — Full-Stack & Backend (Assessment Lifecycle & Trust Chain)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/assessment/  @vishal-bharath-r @tino
-/apps/api-core/src/modules/certificate/ @vishal-bharath-r @tino
-/apps/api-core/src/modules/webhooks/    @vishal-bharath-r @tino
-/apps/web-verify/                       @vishal-bharath-r @tino
-/apps/web-admin/                        @vishal-bharath-r @tino
+/apps/api-core/src/modules/assessment/  @vishalbharath @brittytino
+/apps/api-core/src/modules/certificate/ @vishalbharath @brittytino
+/apps/api-core/src/modules/webhooks/    @vishalbharath @brittytino
+/apps/web-verify/                       @vishalbharath @brittytino
+/apps/web-admin/                        @vishalbharath @brittytino
 
 # ---------------------------------------------------------------------------
 # 5. Ramansh — AI Engineer (LLM & Vector boundaries)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/ai-gateway/  @ramansh @tino
-/apps/api-core/src/modules/evaluation/  @ramansh @tino
-/apps/api-core/src/modules/matching/    @ramansh @tino
-/packages/scoring-engine/               @ramansh @tino
-/packages/prompts/                      @ramansh @tino
+/apps/api-core/src/modules/ai-gateway/  @Ram9012 @brittytino
+/apps/api-core/src/modules/evaluation/  @Ram9012 @brittytino
+/apps/api-core/src/modules/matching/    @Ram9012 @brittytino
+/packages/scoring-engine/               @Ram9012 @brittytino
+/packages/prompts/                      @Ram9012 @brittytino
 
 # ---------------------------------------------------------------------------
 # 6. Vedika G — Data & AI/Backend Engineer (Content & Data Spine)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/catalog/     @vedika-g @tino
-/apps/api-core/src/modules/calibration/ @vedika-g @tino
-/apps/api-core/src/modules/placement/   @vedika-g @tino
-/apps/api-core/src/modules/analytics/   @vedika-g @tino
-/tools/content-pipeline/                @vedika-g @tino
-/docs/product/                          @vedika-g @tino
-/docs/blueprints/                       @vedika-g @tino
+/apps/api-core/src/modules/catalog/     @11vedikaa @brittytino
+/apps/api-core/src/modules/calibration/ @11vedikaa @brittytino
+/apps/api-core/src/modules/placement/   @11vedikaa @brittytino
+/apps/api-core/src/modules/analytics/   @11vedikaa @brittytino
+/tools/content-pipeline/                @11vedikaa @brittytino
+/docs/product/                          @11vedikaa @brittytino
+/docs/blueprints/                       @11vedikaa @brittytino
 
 # Golden evaluation sets are co-owned: prompt changes must not silently
 # regress grading quality.
-/packages/prompts/src/templates/goldens/ @ramansh @vedika-g @tino
+/packages/prompts/src/templates/goldens/ @Ram9012 @11vedikaa @brittytino

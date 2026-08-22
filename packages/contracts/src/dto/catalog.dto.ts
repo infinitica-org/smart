@@ -104,9 +104,18 @@ export const ItemInternalDtoSchema = DeliverableItemDtoSchema.extend({
   expectedNumericAnswer: z.number().optional(),
   numericTolerance: z.number().optional(),
   modelAnswer: z.string().optional(),
-  checklistCriteria: z.array(z.object({ id: z.string(), text: z.string(), points: z.number() })).optional(),
+  checklistCriteria: z
+    .array(z.object({ id: z.string(), text: z.string(), points: z.number() }))
+    .optional(),
   sandboxTestCases: z
-    .array(z.object({ id: z.string(), input: z.string(), expectedOutput: z.string(), hidden: z.boolean() }))
+    .array(
+      z.object({
+        id: z.string(),
+        input: z.string(),
+        expectedOutput: z.string(),
+        hidden: z.boolean(),
+      }),
+    )
     .optional(),
   activeFlag: z.boolean(),
   exposureCount: z.number().int().nonnegative(),

@@ -4,7 +4,9 @@
   "private": true,
   "description": "Item-bank and calibration ingestion CLI. Owner: Vedika G.",
   "type": "module",
-  "bin": { "smart-content": "./src/cli.ts" },
+  "bin": {
+    "smart-content": "./src/cli.ts"
+  },
   "scripts": {
     "start": "tsx src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -30,6 +30,8 @@ jobs:
           DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
       - name: Lint
         run: pnpm lint
+      - name: Format check
+        run: pnpm format:check
 
   typecheck:
     name: typecheck
@@ -72,6 +74,27 @@ jobs:
           DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
       - name: Unit tests (Vitest)
         run: pnpm test:unit
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @smart/contracts build
+      - run: pnpm --filter @smart/api-core db:generate
+        env:
+          DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      - name: Build
+        run: pnpm build
 
   compose:
     name: compose config

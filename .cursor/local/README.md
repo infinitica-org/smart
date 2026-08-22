@@ -14,14 +14,14 @@ Edit all three. Agents are instructed to load them every session (`08-local-pref
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `IDENTITY.md` | Who you are (name, initials, role) |
+| File                 | Purpose                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| `IDENTITY.md`        | Who you are (name, initials, role)                                                                   |
 | **`preferences.md`** | **Durable prefs across agents** — verbosity, ask-before-commit, quality gates, standing instructions |
-| `working-memory.md` | Ephemeral sprint/ticket scratch |
+| `working-memory.md`  | Ephemeral sprint/ticket scratch                                                                      |
 
 ## Rules of thumb
 
-- Put anything you want **every** agent to remember about *you* in `preferences.md`
+- Put anything you want **every** agent to remember about _you_ in `preferences.md`
 - Put “what I’m doing this week” in `working-memory.md`
 - Never put secrets here if the machine is shared; still do not commit this folder’s private files

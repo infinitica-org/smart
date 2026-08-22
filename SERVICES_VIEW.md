@@ -10,6 +10,7 @@
 ## 1. Executive Summary & Decoupled Architecture
 
 Splitting SMART into 8 autonomous, decoupled microservice packages enables:
+
 1. **Parallel Developer Assignment**: Developers can take 100% ownership of specific services without code conflicts.
 2. **Decoupled Integration**: Microservices communicate asynchronously via **Apache Kafka** event topics and lightweight HTTP REST APIs using shared Zod/TypeScript DTO contracts (`packages/contracts`).
 3. **Independent Deployments**: Each service module can be updated, scaled, or debugged independently without impacting the rest of the platform.
@@ -38,6 +39,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ## 2. Decoupled Services Breakdown & Work Item Assignments
 
 ### Service 1: `auth-service` (Identity & Access Control)
+
 - **Developer Lead:** Satheeswaran
 - **Monorepo Path:** `apps/api-core/src/modules/auth`
 - **Core Responsibilities:**
@@ -59,6 +61,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 2: `assessment-service` (Assessment Delivery & Session State)
+
 - **Developer Lead:** Ramansh
 - **Monorepo Path:** `apps/api-core/src/modules/assessment`
 - **Core Responsibilities:**
@@ -79,6 +82,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 3: `sandbox-service` (Isolated Code Execution Engine)
+
 - **Developer Lead:** Tino
 - **Monorepo Path:** `apps/api-core/src/modules/sandbox`
 - **Core Responsibilities:**
@@ -96,6 +100,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 4: `claude-proxy-service` (AI Token Proxy & Fallback Engine)
+
 - **Developer Lead:** Ramansh
 - **Monorepo Path:** `apps/api-core/src/modules/claude-proxy`
 - **Core Responsibilities:**
@@ -114,6 +119,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 5: `evaluation-service` (BARS & Scoring Engine)
+
 - **Developer Lead:** Ramansh
 - **Monorepo Path:** `apps/api-core/src/modules/evaluation`
 - **Core Responsibilities:**
@@ -133,6 +139,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 6: `placement-service` (Company Overlay & Vector Matching)
+
 - **Developer Lead:** Satheeswaran
 - **Monorepo Path:** `apps/api-core/src/modules/placement`
 - **Core Responsibilities:**
@@ -154,6 +161,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 7: `certificate-service` (Certificate Generation & Public Verification)
+
 - **Developer Lead:** Satheeswaran
 - **Monorepo Path:** `apps/api-core/src/modules/certificate`
 - **Core Responsibilities:**
@@ -175,6 +183,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 ---
 
 ### Service 8: `gateway-rate-limiter` (Edge Security & Sliding Window Guards)
+
 - **Developer Lead:** Tino
 - **Monorepo Path:** `apps/api-core/src/modules/rate-limiter` & Cloudflare Workers
 - **Core Responsibilities:**
@@ -192,12 +201,12 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 
 ## 3. Work Item Assignment Matrix per Developer
 
-| Developer | Primary Service Ownership | Secondary Support | Target Sprint Focus |
-|---|---|---|---|
-| **Ramansh** | `assessment-service`, `claude-proxy-service`, `evaluation-service` | Item Bank Ingestion | Sprint 1: Claude Proxy & Fallback<br>Sprint 2: Assessment Delivery & BARS Pipeline<br>Sprint 3: AI Defense Engine |
-| **Satheeswaran** | `auth-service`, `placement-service`, `certificate-service` | Web UI Portals | Sprint 1: Auth (JWT/Refresh/SSO)<br>Sprint 3: Placement Matching & Webhooks<br>Sprint 4: Verification & B2B API Keys |
-| **Tino** | `sandbox-service`, `gateway-rate-limiter`, Monorepo Infra | Docker & K8s Ops | Sprint 1: Docker Stack & Redis Rate Limiter<br>Sprint 2: Code Sandbox Runner<br>Sprint 4: Edge Gateway & SSL Tuning |
+| Developer        | Primary Service Ownership                                          | Secondary Support   | Target Sprint Focus                                                                                                  |
+| ---------------- | ------------------------------------------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Ramansh**      | `assessment-service`, `claude-proxy-service`, `evaluation-service` | Item Bank Ingestion | Sprint 1: Claude Proxy & Fallback<br>Sprint 2: Assessment Delivery & BARS Pipeline<br>Sprint 3: AI Defense Engine    |
+| **Satheeswaran** | `auth-service`, `placement-service`, `certificate-service`         | Web UI Portals      | Sprint 1: Auth (JWT/Refresh/SSO)<br>Sprint 3: Placement Matching & Webhooks<br>Sprint 4: Verification & B2B API Keys |
+| **Tino**         | `sandbox-service`, `gateway-rate-limiter`, Monorepo Infra          | Docker & K8s Ops    | Sprint 1: Docker Stack & Redis Rate Limiter<br>Sprint 2: Code Sandbox Runner<br>Sprint 4: Edge Gateway & SSL Tuning  |
 
 ---
 
-*This document defines the decoupled microservice boundaries, auth SLA matrix, Kafka interfaces, and work item assignments for the SMART engineering team.*
+_This document defines the decoupled microservice boundaries, auth SLA matrix, Kafka interfaces, and work item assignments for the SMART engineering team._

@@ -289,6 +289,11 @@ export const CERTIFICATE_STATUSES = [
 export const CertificateStatusSchema = z.enum(CERTIFICATE_STATUSES);
 export type CertificateStatus = z.infer<typeof CertificateStatusSchema>;
 
-export const WEBHOOK_DELIVERY_STATUSES = ['PENDING', 'DELIVERED', 'RETRYING', 'DEAD_LETTERED'] as const;
+export const WEBHOOK_DELIVERY_STATUSES = [
+  'PENDING',
+  'DELIVERED',
+  'RETRYING',
+  'DEAD_LETTERED',
+] as const;
 export const WebhookDeliveryStatusSchema = z.enum(WEBHOOK_DELIVERY_STATUSES);
 export type WebhookDeliveryStatus = z.infer<typeof WebhookDeliveryStatusSchema>;
