@@ -11,12 +11,12 @@ When sources disagree, use this order:
 
 ## Known drift (logged 2026-08-21)
 
-| Topic | Wrong / stale | Prefer |
-|---|---|---|
-| Auth / sandbox ownership | `SERVICES_VIEW` assigns auth→Satheeswaran, sandbox→Tino | TEAM: **Vishal V** owns auth + sandbox |
-| Local ports | `ENGINEER_GUIDES` table (student:3000, api:4000) | README + `env.ts`: **API 3000**, webs **3001–3004** |
-| Nest/Next versions | Some docs say Nest 10 / Next 14 | README: Nest **11** / Next **16** |
-| Sprint count | ARCHITECTURE says 5 sprints | AGILE_PLAN: **6** (S0–S5) in 21 days |
-| Auth vendor | Occasional "Clerk" mentions | Dual JWT + SSO (Supabase Auth called out in architecture) — implement per contracts/TEAM |
+| Topic                    | Wrong / stale                                           | Prefer                                                                                   |
+| ------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Auth / sandbox ownership | `SERVICES_VIEW` assigns auth→Satheeswaran, sandbox→Tino | TEAM: **Vishal V** owns auth + sandbox                                                   |
+| Local ports              | `ENGINEER_GUIDES` table (student:3000, api:4000)        | README + `env.ts`: **API 3000**, webs **3001–3004**                                      |
+| Nest/Next versions       | Some docs say Nest 10 / Next 14                         | README: Nest **11** / Next **16**                                                        |
+| Sprint count             | ARCHITECTURE says 5 sprints                             | AGILE_PLAN: **6** (S0–S5) in 21 days                                                     |
+| Auth vendor              | Occasional "Clerk" mentions                             | Dual JWT + SSO (Supabase Auth called out in architecture) — implement per contracts/TEAM |
 
 Update this file when you discover new conflicts.

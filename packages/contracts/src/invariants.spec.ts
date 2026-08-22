@@ -67,7 +67,9 @@ describe('track registry', () => {
   });
 
   it('marks MBA Finance and Business Analytics as the validated lead tracks', () => {
-    const leads = TRACK_DEFINITIONS.filter((t) => t.launchStatus === 'VALIDATED_LEAD').map((t) => t.code);
+    const leads = TRACK_DEFINITIONS.filter((t) => t.launchStatus === 'VALIDATED_LEAD').map(
+      (t) => t.code,
+    );
     expect(leads.sort()).toEqual(['MBA_BUSINESS_ANALYTICS', 'MBA_FINANCE']);
   });
 
@@ -94,7 +96,9 @@ describe('level model', () => {
   it('scores every rubric-based level asynchronously', () => {
     for (const level of LEVEL_DEFINITIONS) {
       if (level.requiresRubricScoring) {
-        expect(level.scoringMode, `${level.code} must not block an HTTP request`).toBe('ASYNCHRONOUS');
+        expect(level.scoringMode, `${level.code} must not block an HTTP request`).toBe(
+          'ASYNCHRONOUS',
+        );
       }
     }
   });
@@ -123,7 +127,10 @@ describe('route registry', () => {
   // "Unlimited endpoints do not ship" — DEFINITION_OF_DONE.md §5.
   it('declares a registered rate limit policy for every route', () => {
     for (const route of ROUTES) {
-      expect(() => getRateLimitPolicy(route.rateLimit), `${route.method} ${route.path}`).not.toThrow();
+      expect(
+        () => getRateLimitPolicy(route.rateLimit),
+        `${route.method} ${route.path}`,
+      ).not.toThrow();
     }
   });
 

@@ -3,12 +3,12 @@
 **Tracked (git):** team rules + shared cheat sheets.  
 **Gitignored:** your identity, **preferences**, and working memory under `.cursor/local/` (examples + README stay tracked).
 
-| Path | Purpose |
-|---|---|
-| [`rules/*.mdc`](./rules/) | Always-on + path-scoped Cursor rules (workflow, ownership, DoD, …) |
-| [`kb/`](./kb/) | Shared cheat sheets for every engineer/agent |
-| [`local/`](./local/) | Per-developer IDENTITY + **preferences** + working memory |
-| [`../AGENTS.md`](../AGENTS.md) | Agent entrypoint |
+| Path                           | Purpose                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| [`rules/*.mdc`](./rules/)      | Always-on + path-scoped Cursor rules (workflow, ownership, DoD, …) |
+| [`kb/`](./kb/)                 | Shared cheat sheets for every engineer/agent                       |
+| [`local/`](./local/)           | Per-developer IDENTITY + **preferences** + working memory          |
+| [`../AGENTS.md`](../AGENTS.md) | Agent entrypoint                                                   |
 
 ## Setup for a new engineer
 

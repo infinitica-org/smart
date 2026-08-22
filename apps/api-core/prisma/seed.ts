@@ -48,7 +48,11 @@ async function main(): Promise<void> {
         if (existing) {
           await prisma.competency.update({
             where: { id: existing.id },
-            data: { realWorldWeight: weight, assessedAtLevels: [...domain.assessedAtLevels], subDomain: domain.name },
+            data: {
+              realWorldWeight: weight,
+              assessedAtLevels: [...domain.assessedAtLevels],
+              subDomain: domain.name,
+            },
           });
         } else {
           await prisma.competency.create({

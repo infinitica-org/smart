@@ -43,6 +43,7 @@
     "load": "pnpm --filter @smart/load-tests test",
     "bootstrap": "bash ./scripts/bootstrap.sh",
     "doctor": "bash ./scripts/doctor.sh",
+    "verify:handover": "bash ./scripts/verify-handover.sh",
     "prepare": "husky || true"
   },
   "devDependencies": {

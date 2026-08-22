@@ -16,12 +16,7 @@
 
 /** What the limit counts against. Determines the Redis key shape. */
 export type RateLimitScope =
-  | 'IP'
-  | 'USER'
-  | 'ATTEMPT'
-  | 'INSTITUTION'
-  | 'API_KEY'
-  | 'SERVICE_WORKER';
+  'IP' | 'USER' | 'ATTEMPT' | 'INSTITUTION' | 'API_KEY' | 'SERVICE_WORKER';
 
 export interface RateLimitPolicy {
   /** Stable identifier used by the guard decorator, e.g. `@RateLimit('assessment.submitL1')`. */
@@ -98,7 +93,8 @@ export const ROLE_RATE_LIMITS: readonly RateLimitPolicy[] = [
     windowSeconds: 3600,
     burst: 50,
     redisKey: 'rl:apikey:{id}',
-    rationale: 'Institutional ERP and recruiter integrations poll on a schedule, not interactively.',
+    rationale:
+      'Institutional ERP and recruiter integrations poll on a schedule, not interactively.',
   },
 ] as const;
 

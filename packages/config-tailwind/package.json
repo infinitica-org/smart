@@ -7,7 +7,10 @@
     "./theme.css": "./theme.css",
     "./postcss": "./postcss.config.mjs"
   },
-  "files": ["theme.css", "postcss.config.mjs"],
+  "files": [
+    "theme.css",
+    "postcss.config.mjs"
+  ],
   "dependencies": {
     "@tailwindcss/postcss": "catalog:",
     "tailwindcss": "catalog:"

@@ -92,7 +92,9 @@ export const CandidateMatchDtoSchema = z.object({
   /** Similarity after rule filters and threshold weighting. */
   matchScore: z.number().min(0).max(1),
   explanation: z.object({
-    thresholdsMet: z.array(z.object({ level: LevelNumberSchema, required: TierSchema, actual: TierSchema })),
+    thresholdsMet: z.array(
+      z.object({ level: LevelNumberSchema, required: TierSchema, actual: TierSchema }),
+    ),
     thresholdsMissed: z.array(
       z.object({ level: LevelNumberSchema, required: TierSchema, actual: TierSchema }),
     ),

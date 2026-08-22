@@ -55,7 +55,10 @@ export const UserCreatedDataSchema = z.object({
   institutionId: UuidSchema.nullable(),
   primaryTrack: TrackCodeSchema.nullable(),
 });
-export const UserCreatedEventSchema = envelopeSchema(SMART_TOPICS.userCreated, UserCreatedDataSchema);
+export const UserCreatedEventSchema = envelopeSchema(
+  SMART_TOPICS.userCreated,
+  UserCreatedDataSchema,
+);
 export type UserCreatedEvent = z.infer<typeof UserCreatedEventSchema>;
 
 export const UserUpdatedDataSchema = z.object({
@@ -64,7 +67,10 @@ export const UserUpdatedDataSchema = z.object({
   primaryTrack: TrackCodeSchema.nullable(),
   secondaryTrack: TrackCodeSchema.nullable(),
 });
-export const UserUpdatedEventSchema = envelopeSchema(SMART_TOPICS.userUpdated, UserUpdatedDataSchema);
+export const UserUpdatedEventSchema = envelopeSchema(
+  SMART_TOPICS.userUpdated,
+  UserUpdatedDataSchema,
+);
 export type UserUpdatedEvent = z.infer<typeof UserUpdatedEventSchema>;
 
 /* -------------------------------------------------------------------------- */
@@ -138,7 +144,10 @@ export const EvalRequestedDataSchema = z.object({
   transcript: z.string().nullable(),
   priority: z.enum(['P1_REALTIME', 'P2_ASYNC_EVAL', 'P3_BATCH']),
 });
-export const EvalRequestedEventSchema = envelopeSchema(SMART_TOPICS.evalRequested, EvalRequestedDataSchema);
+export const EvalRequestedEventSchema = envelopeSchema(
+  SMART_TOPICS.evalRequested,
+  EvalRequestedDataSchema,
+);
 export type EvalRequestedEvent = z.infer<typeof EvalRequestedEventSchema>;
 
 /**
@@ -167,7 +176,10 @@ export const EvalCompletedDataSchema = z.object({
   ),
   evaluatedAt: IsoDateTimeSchema,
 });
-export const EvalCompletedEventSchema = envelopeSchema(SMART_TOPICS.evalCompleted, EvalCompletedDataSchema);
+export const EvalCompletedEventSchema = envelopeSchema(
+  SMART_TOPICS.evalCompleted,
+  EvalCompletedDataSchema,
+);
 export type EvalCompletedEvent = z.infer<typeof EvalCompletedEventSchema>;
 
 /* -------------------------------------------------------------------------- */
@@ -176,12 +188,20 @@ export type EvalCompletedEvent = z.infer<typeof EvalCompletedEventSchema>;
 
 export const TrackUpdatedDataSchema = z.object({
   trackCode: TrackCodeSchema,
-  changeKind: z.enum(['CUT_SCORES_PUBLISHED', 'RUBRIC_REVISED', 'ITEMS_ROTATED', 'RELIABILITY_RECOMPUTED']),
+  changeKind: z.enum([
+    'CUT_SCORES_PUBLISHED',
+    'RUBRIC_REVISED',
+    'ITEMS_ROTATED',
+    'RELIABILITY_RECOMPUTED',
+  ]),
   affectedLevels: z.array(LevelNumberSchema),
   /** Cache keys the consumer should invalidate. */
   invalidateKeys: z.array(z.string()),
 });
-export const TrackUpdatedEventSchema = envelopeSchema(SMART_TOPICS.trackUpdated, TrackUpdatedDataSchema);
+export const TrackUpdatedEventSchema = envelopeSchema(
+  SMART_TOPICS.trackUpdated,
+  TrackUpdatedDataSchema,
+);
 export type TrackUpdatedEvent = z.infer<typeof TrackUpdatedEventSchema>;
 
 /* -------------------------------------------------------------------------- */

@@ -2,7 +2,7 @@
 
 ```yaml
 engineer: Your Name
-initials: XX   # TN | VV | SV | VB | RM | VG
+initials: XX # TN | VV | SV | VB | RM | VG
 role: Your role title
 guide: TEAM.md + docs/delivery/ENGINEER_GUIDES.md (your sections)
 default_base_branch: develop

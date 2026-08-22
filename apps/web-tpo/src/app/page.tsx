@@ -1,4 +1,14 @@
-import { AppShell, Alert, Button, Card, CardDescription, CardHeader, CardTitle, LevelStepper, TierBadge } from '@smart/ui';
+import {
+  AppShell,
+  Alert,
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  LevelStepper,
+  TierBadge,
+} from '@smart/ui';
 
 export default function Page() {
   return (
@@ -16,7 +26,9 @@ export default function Page() {
         <Card>
           <CardHeader>
             <CardTitle>Certification model</CardTitle>
-            <CardDescription>Gold / Silver / Bronze is criterion-referenced, never a curve.</CardDescription>
+            <CardDescription>
+              Gold / Silver / Bronze is criterion-referenced, never a curve.
+            </CardDescription>
           </CardHeader>
           <div className="flex flex-wrap gap-2">
             <TierBadge tier="GOLD" showLabel />
@@ -27,7 +39,9 @@ export default function Page() {
         <Card>
           <CardHeader>
             <CardTitle>Level progression</CardTitle>
-            <CardDescription>A level unlocks only at Bronze or above on the level below.</CardDescription>
+            <CardDescription>
+              A level unlocks only at Bronze or above on the level below.
+            </CardDescription>
           </CardHeader>
           <LevelStepper unlockedThrough={1} current={1} />
         </Card>

@@ -1,4 +1,5 @@
 # Smart — Level × Tier Technical Design
+
 **How "Level" and "Gold/Silver/Bronze" combine into one system, engineered specifically to produce evidence a company will actually act on.**
 
 ---
@@ -7,7 +8,7 @@
 
 Most assessment platforms have one axis: a score, turned into a badge. Smart needs **two axes, and they measure two different things**:
 
-- **Level = what kind of thinking was tested.** Not "harder questions" — a genuinely different cognitive task. Level 1 tests whether you *know* the right concept. Level 2 tests whether you can *apply* it to a realistic scenario. Level 3 tests whether you can *produce* the actual work output a professional produces, under judgment and ambiguity.
+- **Level = what kind of thinking was tested.** Not "harder questions" — a genuinely different cognitive task. Level 1 tests whether you _know_ the right concept. Level 2 tests whether you can _apply_ it to a realistic scenario. Level 3 tests whether you can _produce_ the actual work output a professional produces, under judgment and ambiguity.
 - **Tier (Gold/Silver/Bronze) = how well you performed within that kind of thinking.** Tier is always relative to a Level — "Gold at Level 1" and "Gold at Level 3" are not the same claim, and the certificate must never blur that.
 
 This isn't an arbitrary design choice — it's built directly from the strongest available research on what actually predicts job performance, and therefore what evidence actually moves a hiring manager. That research is the foundation of this whole document, so it comes first.
@@ -22,12 +23,14 @@ Recruiters aren't convinced by a score. They're convinced by **evidence that has
 
 The most cited body of research in personnel selection <cite index="25-1">analyzed decades of hiring studies and found that the strongest predictors of job performance are cognitive ability, work sample tests, personality measures, and structured interviews</cite>. Critically, <cite index="25-1">combining a cognitive ability measure with a structured interview produces meaningfully higher predictive accuracy than either alone</cite> — no single method, used alone, is enough. A later, more conservative re-analysis <cite index="29-1">confirmed the same ranking held up: general mental ability, structured interviews, and work samples remain at the top, while unstructured interviews, years of experience, and educational credentials sit near the bottom</cite>.
 
-**What this means for Smart, directly:** a single MCQ score, however well-designed, is exactly the kind of single-method evidence that research says is *not* enough on its own. A certificate built on one test format will always be weaker evidence than a certificate built on a **combination of methods** — which is precisely why Level 1/2/3 shouldn't be "the same test, harder." Each Level should deliberately be a **different method from the validated hierarchy**, so the final certificate is a structured, multi-method battery — the single strongest evidence design that exists in this field.
+**What this means for Smart, directly:** a single MCQ score, however well-designed, is exactly the kind of single-method evidence that research says is _not_ enough on its own. A certificate built on one test format will always be weaker evidence than a certificate built on a **combination of methods** — which is precisely why Level 1/2/3 shouldn't be "the same test, harder." Each Level should deliberately be a **different method from the validated hierarchy**, so the final certificate is a structured, multi-method battery — the single strongest evidence design that exists in this field.
 
 ### 1.2 Where "work samples" fit — and why Level 3 has to produce a real artifact, not another question
+
 <cite index="27-1">Work sample or job sample tests have consistently shown meaningful predictive validity for job performance</cite>, and the research specifically shows they are most reliable when they mirror **actual output the job requires** rather than a proxy for it. This is the direct justification for making Level 3 a real deliverable — an actual financial model file, an actual SQL query against a real dataset, an actual HR case memo — not a harder multiple-choice question. A hiring manager can look at that artifact and evaluate it the same way they'd evaluate a new hire's first deliverable.
 
 ### 1.3 Where structured judgment tasks (SJTs) fit — and why they need rubric discipline
+
 Structured judgment scenarios are well-studied and <cite index="36-1">have been shown to reliably measure competencies like professional judgment and decision-making, correlating with real on-the-job behaviors</cite> — but only when scored correctly. Research on SJT scoring specifically found that <cite index="35-1">the most commonly used scoring method (simple raw consensus scoring) actually produces the weakest validity, while methods like mode-based consensus scoring perform meaningfully better</cite>. This is a direct, technical instruction for how Level 2/3 judgment items must be scored (Section 4.3) — not a detail to leave to intuition later.
 
 ### 1.4 The one-sentence translation of all this research into Smart's architecture
@@ -38,16 +41,16 @@ Structured judgment scenarios are well-studied and <cite index="36-1">have been 
 
 ## 2. The Level definitions — full technical spec
 
-| | **Level 1 — Foundation** | **Level 2 — Applied** | **Level 3 — Judgment / Work Sample** |
-|---|---|---|---|
-| **What it tests** | Do you know the right concept, framework, or number | Can you apply it correctly inside a realistic scenario | Can you produce the actual deliverable a professional on day one would produce |
-| **Nearest validated method (Section 1)** | Job-knowledge / cognitive-ability-style testing | Situational judgment testing (SJT) | Work sample testing |
-| **Item format** | Single-best-answer MCQ, numeric-entry, short calculation | Scenario/vignette with a structured multi-part response (short constructed-response, not MCQ) | A real task: build the model, write the query, draft the memo, run the analysis — open-ended, tool-based |
-| **Example (Finance track)** | "Which of these correctly identifies a company's operating cash flow driver?" | "Given this 1-page company scenario, identify the 3 biggest valuation risks and justify each in 2–3 sentences" | "Here is a real (anonymized) company's 3 years of financials. Build a working 3-statement model and recommend a valuation range." |
-| **Time** | 45–60 min | 60–90 min | 2–4 hours (can be split across a window, not necessarily proctored in one sitting) |
-| **Scoring method** | Automated, right/wrong, item-weighted (Section 4.1) | Rubric-anchored human or trained-model scoring against model answers (Section 4.3) | Rubric-anchored expert scoring against a graded deliverable checklist (Section 4.4) |
-| **Reusable across cohorts?** | Yes, from a rotating item bank (Section 6) | Partially — scenarios rotate, rubric is fixed | No — task briefs must rotate every cohort to prevent solutions circulating |
-| **What a company reads this as** | "This person has the baseline knowledge — same as passing a licensing exam's knowledge section" | "This person can reason under realistic constraints, not just recall facts" | "This is what their actual work output looks like — treat it the way you'd treat a work sample in your own hiring process" |
+|                                          | **Level 1 — Foundation**                                                                        | **Level 2 — Applied**                                                                                          | **Level 3 — Judgment / Work Sample**                                                                                              |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **What it tests**                        | Do you know the right concept, framework, or number                                             | Can you apply it correctly inside a realistic scenario                                                         | Can you produce the actual deliverable a professional on day one would produce                                                    |
+| **Nearest validated method (Section 1)** | Job-knowledge / cognitive-ability-style testing                                                 | Situational judgment testing (SJT)                                                                             | Work sample testing                                                                                                               |
+| **Item format**                          | Single-best-answer MCQ, numeric-entry, short calculation                                        | Scenario/vignette with a structured multi-part response (short constructed-response, not MCQ)                  | A real task: build the model, write the query, draft the memo, run the analysis — open-ended, tool-based                          |
+| **Example (Finance track)**              | "Which of these correctly identifies a company's operating cash flow driver?"                   | "Given this 1-page company scenario, identify the 3 biggest valuation risks and justify each in 2–3 sentences" | "Here is a real (anonymized) company's 3 years of financials. Build a working 3-statement model and recommend a valuation range." |
+| **Time**                                 | 45–60 min                                                                                       | 60–90 min                                                                                                      | 2–4 hours (can be split across a window, not necessarily proctored in one sitting)                                                |
+| **Scoring method**                       | Automated, right/wrong, item-weighted (Section 4.1)                                             | Rubric-anchored human or trained-model scoring against model answers (Section 4.3)                             | Rubric-anchored expert scoring against a graded deliverable checklist (Section 4.4)                                               |
+| **Reusable across cohorts?**             | Yes, from a rotating item bank (Section 6)                                                      | Partially — scenarios rotate, rubric is fixed                                                                  | No — task briefs must rotate every cohort to prevent solutions circulating                                                        |
+| **What a company reads this as**         | "This person has the baseline knowledge — same as passing a licensing exam's knowledge section" | "This person can reason under realistic constraints, not just recall facts"                                    | "This is what their actual work output looks like — treat it the way you'd treat a work sample in your own hiring process"        |
 
 **Progression rule:** a student must clear **Level 1 at Bronze or above** before Level 2 unlocks, and **Level 2 at Bronze or above** before Level 3 unlocks. This isn't arbitrary gatekeeping — it mirrors the CFA-style progressive structure <cite index="17-1">where candidates move through a structured progression from knowledge to application and finally to judgement</cite>, and it also protects the integrity of Level 3: nobody should be attempting an unsupervised work-sample task before they've demonstrated the underlying knowledge exists.
 
@@ -57,12 +60,12 @@ Structured judgment scenarios are well-studied and <cite index="36-1">have been 
 
 Tier is never a raw percentage. It's a **band relative to the calibrated cut score for that specific Level**, because the meaning of "excellent" is different at each Level.
 
-| Tier | Level 1 meaning | Level 2 meaning | Level 3 meaning |
-|---|---|---|---|
-| **Gold** | Knows the domain cold — at or above the "ready now" cut score set by the practitioner panel, with a low error margin (see 4.2) | Applies concepts correctly under realistic constraints with minimal guidance — matches how the panel described a "would perform well in week one" candidate | Produced a deliverable that a panel practitioner rated as **usable with only minor revision** — the closest a pre-hire signal can get to "we could hand them a real task tomorrow" |
-| **Silver** | Solid knowledge with identifiable, specific gaps | Applies concepts correctly most of the time, but reasoning breaks down under ambiguity or edge cases | Produced a deliverable that is **directionally correct but needs real supervision** — hireable into a role with structured onboarding, not a fully autonomous one |
-| **Bronze** | Meets the minimum bar — core knowledge present, but not yet fluent | Attempts are structurally right but frequently incomplete or shallow | Deliverable shows genuine effort and partial competence but would need to be substantially redone by a supervisor |
-| **Below Bronze** (not a certified tier — internally tracked, shown only as a gap report, never a public "fail" label) | Below the minimum cut | Below the minimum cut | Below the minimum cut |
+| Tier                                                                                                                  | Level 1 meaning                                                                                                                | Level 2 meaning                                                                                                                                             | Level 3 meaning                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Gold**                                                                                                              | Knows the domain cold — at or above the "ready now" cut score set by the practitioner panel, with a low error margin (see 4.2) | Applies concepts correctly under realistic constraints with minimal guidance — matches how the panel described a "would perform well in week one" candidate | Produced a deliverable that a panel practitioner rated as **usable with only minor revision** — the closest a pre-hire signal can get to "we could hand them a real task tomorrow" |
+| **Silver**                                                                                                            | Solid knowledge with identifiable, specific gaps                                                                               | Applies concepts correctly most of the time, but reasoning breaks down under ambiguity or edge cases                                                        | Produced a deliverable that is **directionally correct but needs real supervision** — hireable into a role with structured onboarding, not a fully autonomous one                  |
+| **Bronze**                                                                                                            | Meets the minimum bar — core knowledge present, but not yet fluent                                                             | Attempts are structurally right but frequently incomplete or shallow                                                                                        | Deliverable shows genuine effort and partial competence but would need to be substantially redone by a supervisor                                                                  |
+| **Below Bronze** (not a certified tier — internally tracked, shown only as a gap report, never a public "fail" label) | Below the minimum cut                                                                                                          | Below the minimum cut                                                                                                                                       | Below the minimum cut                                                                                                                                                              |
 
 **Why there's no public "Fail" tier:** this is a product decision, not just a soft one — an institution cannot present a system to an academic council that publicly labels students "failed" (see the institutional-adoption analysis in the companion strategy document). Below-Bronze performance is fed back as a private, itemized gap report to the student and an aggregate to the institution, never displayed as a public certificate tier.
 
@@ -81,9 +84,10 @@ Level1_Score = Σ (item_correct[i] × competency_weight[i]) / Σ (competency_wei
 For v1, this is enough — a classical weighted-percentage model, fully explainable to a non-technical academic council in one sentence ("each question counts more or less depending on how important that skill is to the real job").
 
 **Phase 2 upgrade (not v1):** move Level 1 to a proper **Item Response Theory (IRT) 2-parameter model**, where each item has a calibrated difficulty and discrimination value learned from response data across cohorts. This unlocks:
+
 - **Adaptive testing** (each student gets a test tailored to their ability level — shorter, more precise, harder to "brute-force" by memorizing a fixed item bank)
 - **True ability estimates with a formal standard error**, not just a raw percentage
-This requires a real item-response dataset (multiple cohorts) to calibrate correctly — attempting it before that data exists produces unstable, untrustworthy difficulty estimates, so it must wait until Phase 2.
+  This requires a real item-response dataset (multiple cohorts) to calibrate correctly — attempting it before that data exists produces unstable, untrustworthy difficulty estimates, so it must wait until Phase 2.
 
 ### 4.2 Cut-score calculation with a confidence band (the "confidence note," made technical)
 
@@ -94,7 +98,7 @@ Cut_Gold   = mean(panelist_estimates_gold) ± SD(panelist_estimates_gold)
 Cut_Silver = mean(panelist_estimates_silver) ± SD(panelist_estimates_silver)
 ```
 
-If a student's score falls inside a cut-score's uncertainty band (e.g., scored 74 when the Gold cut is 75 ± 4), the certificate must say so explicitly: *"borderline Gold/Silver — cut-score confidence band overlaps this result."* This single mechanic is what makes the "confidence note" from the strategy document a real statistical object instead of a marketing phrase, and it's exactly the kind of visible-methodology detail that survives scrutiny from a skeptical recruiter or academic council.
+If a student's score falls inside a cut-score's uncertainty band (e.g., scored 74 when the Gold cut is 75 ± 4), the certificate must say so explicitly: _"borderline Gold/Silver — cut-score confidence band overlaps this result."_ This single mechanic is what makes the "confidence note" from the strategy document a real statistical object instead of a marketing phrase, and it's exactly the kind of visible-methodology detail that survives scrutiny from a skeptical recruiter or academic council.
 
 **Reliability reporting:** alongside every published cohort result, Smart computes and publishes **Cronbach's alpha (or KR-20 for right/wrong items)** per Level per track — the standard reliability statistic for "if this student retook a similar test tomorrow, how consistent would the result be." Below a reliability threshold (commonly 0.70 as an academic minimum), the track is flagged internally as "not yet stable" and the confidence note downgrades automatically — this is what keeps the "honesty over inflation" value enforced by the system itself, not by discipline.
 
@@ -109,6 +113,7 @@ Because research shows **raw consensus scoring is the weakest SJT scoring method
 ### 4.4 Level 3 scoring: deliverable checklist + practitioner review
 
 Level 3 is scored two ways, combined:
+
 - **Objective checklist (60% of score):** did the deliverable meet non-negotiable technical requirements (e.g., "model balances," "SQL query returns correct row count," "memo addresses all 3 required risk categories"). This part is auto-checkable in most cases (a financial model that doesn't balance, a query that errors out) and removes subjectivity from the pass/fail floor.
 - **Practitioner rubric review (40% of score):** a calibration-panel practitioner (or a rotating pool of trained reviewers using the same BARS-style anchors from 4.3) scores the deliverable's judgment quality — is the valuation range defensible, is the recommendation actionable, would a manager accept this with only light editing.
 
@@ -119,7 +124,9 @@ This split is deliberate: it keeps Level 3 defensible even before enough practit
 ## 5. The Level × Tier certificate architecture — what actually gets issued
 
 ### 5.1 The "current standing" model (not 9 separate certificates)
+
 A student doesn't collect 9 disconnected badges. Smart issues **one live certificate per track** that shows:
+
 - **Highest Level cleared** (this is the headline — "cleared Level 3")
 - **Tier achieved at that Level** ("Gold")
 - **Tier trail at every Level below it** (so a company can see the full shape of the candidate, not just the peak — e.g., "L1: Gold · L2: Gold · L3: Silver" tells a very different story than "L1: Silver · L2: Bronze · L3: Silver" even if both show "Level 3 reached")
@@ -128,12 +135,12 @@ This trail is itself evidence: research shows combining multiple methods predict
 
 ### 5.2 Reading the matrix — what each of the realistic combinations tells a hiring manager
 
-| Combination | What it signals to a company |
-|---|---|
-| **L3 Gold** (with L1/L2 Gold or Silver) | Ready now — deliverable-quality output validated by a practitioner rubric. This is the "shortlist immediately" signal. |
-| **L3 Silver, L2 Gold** | Strong reasoning, but needs supervised ramp-up before fully autonomous output — a legitimate, common, and honestly-labeled hire profile, not a rejection. |
-| **L2 Gold, L3 not yet attempted** | Strong applied reasoning, hasn't yet been tested on a real deliverable — useful for roles that are more analysis-heavy than production-heavy, and an honest "we haven't measured this yet" for roles that need production output. |
-| **L1 Gold only** | Knows the domain well but hasn't demonstrated applied or judgment-level skill yet — equivalent to "strong foundation, unproven in practice." This is intentionally NOT hidden or padded — a company seeing this knows exactly what has and hasn't been tested. |
+| Combination                             | What it signals to a company                                                                                                                                                                                                                                   |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **L3 Gold** (with L1/L2 Gold or Silver) | Ready now — deliverable-quality output validated by a practitioner rubric. This is the "shortlist immediately" signal.                                                                                                                                         |
+| **L3 Silver, L2 Gold**                  | Strong reasoning, but needs supervised ramp-up before fully autonomous output — a legitimate, common, and honestly-labeled hire profile, not a rejection.                                                                                                      |
+| **L2 Gold, L3 not yet attempted**       | Strong applied reasoning, hasn't yet been tested on a real deliverable — useful for roles that are more analysis-heavy than production-heavy, and an honest "we haven't measured this yet" for roles that need production output.                              |
+| **L1 Gold only**                        | Knows the domain well but hasn't demonstrated applied or judgment-level skill yet — equivalent to "strong foundation, unproven in practice." This is intentionally NOT hidden or padded — a company seeing this knows exactly what has and hasn't been tested. |
 
 ### 5.3 Why this design directly answers "how do we convince a company"
 
@@ -192,6 +199,7 @@ This is a materially different, and more convincing, artifact than "Ankita — G
 ## 9. What's in the 5-week v1 vs. what's engineered but deferred
 
 **Built in v1 (Finance + Business Analytics only):**
+
 - Level 1 (weighted scoring) and Level 2 (rubric/BARS scoring) fully live
 - Angoff-style cut scores with visible confidence bands
 - Certificate with tier trail (even if only L1+L2 exist at launch)
@@ -199,12 +207,13 @@ This is a materially different, and more convincing, artifact than "Ankita — G
 - Core data model above, minus IRT and adaptive delivery
 
 **Engineered in the design, deferred to Phase 2 once cohort data exists:**
+
 - Level 3 work-sample track (needs practitioner reviewer capacity — realistic to pilot with a small batch, not scale immediately)
 - IRT-based adaptive Level 1 delivery (needs multi-cohort response data to calibrate safely)
 - LLM-assisted Level 2/3 scoring at scale (needs a human-rated validation sample first, per Section 4.3's inter-rater threshold)
 - CorrelationRecord-powered public dashboard (needs 2+ real placement cycles to be non-trivial)
 
-This sequencing matters: shipping Level 3 or adaptive scoring before the underlying calibration data exists would produce a system that *looks* more advanced but is actually less defensible — exactly the failure mode Section 1 warns against.
+This sequencing matters: shipping Level 3 or adaptive scoring before the underlying calibration data exists would produce a system that _looks_ more advanced but is actually less defensible — exactly the failure mode Section 1 warns against.
 
 ---
 

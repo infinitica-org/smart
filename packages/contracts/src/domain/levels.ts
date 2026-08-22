@@ -39,7 +39,8 @@ export const LEVEL_DEFINITIONS: readonly LevelDefinition[] = [
     level: 1,
     code: 'L1',
     name: 'Foundation Knowledge',
-    measures: 'Recall and foundational understanding — can the candidate identify the right concept.',
+    measures:
+      'Recall and foundational understanding — can the candidate identify the right concept.',
     format: 'MCQ',
     defaultDurationMinutes: 100,
     requiresRubricScoring: false,

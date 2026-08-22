@@ -27,7 +27,11 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(32).default('local-dev-jwt-secret-change-me-now!!'),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_COOKIE_NAME: z.string().default('smart_refresh'),
-  REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 14),
+  REFRESH_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 14),
 
   CORS_ORIGINS: z
     .string()

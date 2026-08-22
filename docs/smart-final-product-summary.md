@@ -7,6 +7,7 @@
 Smart is a role-specific readiness certification platform. It assesses students against real competency requirements for a specific job track — not a generic employability score — and issues a criterion-referenced Gold/Silver/Bronze certificate that's transparent about its own methodology and honest about its own maturity. The certificate is student-controlled and verifiable, designed to be checked and trusted by an employer, not just filed away by an institution.
 
 **Positioning statement**
+
 > For placement offices and students who are done trusting opaque, one-size-fits-all employability scores — Smart certifies exactly what a specific role requires, shows its work, and tracks whether it's actually predicting real hiring outcomes. Unlike legacy assessment platforms that sell scale and generality, Smart sells precision and proof.
 
 **One-liner**
@@ -30,20 +31,20 @@ Smart tells you who's actually ready for the job — and shows its work.
 
 **Specialization layer** (~70–75%, track-specific):
 
-| Track | Core competencies |
-|---|---|
-| Finance | Financial statement analysis, valuation & capital budgeting, applied financial modeling, working-capital/risk reasoning |
-| Business Analytics | SQL/data querying, statistical reasoning, data-to-insight communication, applied case: dataset → recommendation |
-| Marketing | Market sizing & segmentation, positioning/campaign case judgment, marketing-metrics literacy, consumer-behavior reasoning |
-| Operations | Process/supply-chain problem solving, quantitative ops, quality/process-improvement reasoning, negotiation scenario judgment |
-| HR | Recruitment/talent scenario judgment, employee-relations case, HR-metrics literacy, policy/compliance judgment |
+| Track              | Core competencies                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Finance            | Financial statement analysis, valuation & capital budgeting, applied financial modeling, working-capital/risk reasoning      |
+| Business Analytics | SQL/data querying, statistical reasoning, data-to-insight communication, applied case: dataset → recommendation              |
+| Marketing          | Market sizing & segmentation, positioning/campaign case judgment, marketing-metrics literacy, consumer-behavior reasoning    |
+| Operations         | Process/supply-chain problem solving, quantitative ops, quality/process-improvement reasoning, negotiation scenario judgment |
+| HR                 | Recruitment/talent scenario judgment, employee-relations case, HR-metrics literacy, policy/compliance judgment               |
 
 **Launch sequencing — two validated, three available:**
 
-| Status | Tracks | Why |
-|---|---|---|
-| Validated lead | Finance, Business Analytics | Quantifiable, verifiable tasks — easiest to score rigorously and to correlate against real hiring outcomes at small sample sizes |
-| Available, labeled as newer | Marketing, Operations, HR | More judgment-based, harder to calibrate early — shipped honestly flagged as less-proven rather than held back entirely |
+| Status                      | Tracks                      | Why                                                                                                                              |
+| --------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Validated lead              | Finance, Business Analytics | Quantifiable, verifiable tasks — easiest to score rigorously and to correlate against real hiring outcomes at small sample sizes |
+| Available, labeled as newer | Marketing, Operations, HR   | More judgment-based, harder to calibrate early — shipped honestly flagged as less-proven rather than held back entirely          |
 
 **Track assignment:** institution pre-assigns each student's specialization based on declared major/elective; students may voluntarily add one additional track. Foundation is taken once.
 

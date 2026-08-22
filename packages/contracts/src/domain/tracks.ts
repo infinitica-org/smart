@@ -135,7 +135,12 @@ export const TRACK_DEFINITIONS: readonly TrackDefinition[] = [
       {
         code: 'C',
         name: 'Applied GenAI & LLMs',
-        topics: ['Prompt engineering patterns', 'RAG pipelines', 'Vector databases', 'Model limits'],
+        topics: [
+          'Prompt engineering patterns',
+          'RAG pipelines',
+          'Vector databases',
+          'Model limits',
+        ],
         weight: 0.24,
         assessedAtLevels: [2, 3],
       },
@@ -335,7 +340,10 @@ export const TRACK_DEFINITIONS: readonly TrackDefinition[] = [
       {
         code: 'E',
         name: 'Financial Communication & Judgment',
-        topics: ['Defending an assumption set', 'Explaining a recommendation to a non-finance stakeholder'],
+        topics: [
+          'Defending an assumption set',
+          'Explaining a recommendation to a non-finance stakeholder',
+        ],
         weight: 0.16,
         assessedAtLevels: [3, 4],
       },
