@@ -28,13 +28,13 @@
 
 ## Sign-off table
 
-| Engineer                            | Date | OS  | Bootstrap | verify-handover | Notes |
-| ----------------------------------- | ---- | --- | --------- | --------------- | ----- |
-| Tino (`@brittytino`)                |      |     | ☐         | ☐               |       |
-| Vishal V (`@vis465`)                |      |     | ☐         | ☐               |       |
-| Satheswaran V (`@Satheshwaran26`)   |      |     | ☐         | ☐               |       |
-| Vishal Bharath R (`@vishalbharath`) |      |     | ☐         | ☐               |       |
-| Ramansh (`@Ram9012`)                |      |     | ☐         | ☐               |       |
-| Vedika G (`@11vedikaa`)             |      |     | ☐         | ☐               |       |
+| Engineer                            | Date       | OS      | Bootstrap | verify-handover | Notes                                                          |
+| ----------------------------------- | ---------- | ------- | --------- | --------------- | -------------------------------------------------------------- |
+| Tino (`@brittytino`)                |            |         | ☐         | ☐               |                                                                |
+| Vishal V (`@vis465`)                | 2026-08-22 | Windows | ☑         | ☑               | health/seed/build/test verified; team portal verify at kickoff |
+| Satheswaran V (`@Satheshwaran26`)   |            |         | ☐         | ☐               |                                                                |
+| Vishal Bharath R (`@vishalbharath`) |            |         | ☐         | ☐               |                                                                |
+| Ramansh (`@Ram9012`)                |            |         | ☐         | ☐               |                                                                |
+| Vedika G (`@11vedikaa`)             |            |         | ☐         | ☐               |                                                                |
 
 When all six rows are checked, Sprint 0 exit criterion **“every engineer can run the full stack”** is met.
