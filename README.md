@@ -36,7 +36,7 @@ pnpm dev:api            # http://localhost:3000/health
 pnpm dev:web            # portals on :3001–:3004
 ```
 
-`pnpm infra:up` starts Postgres, Redis (host **6380** → container 6379), Redpanda and MinIO only. App images are a separate profile (see VPS).
+`pnpm infra:up` starts Postgres, Redis (host **6380** → container 6379), Redpanda, MinIO, Mailpit, and **Prisma Studio** (`http://localhost:5555`). App images are a separate profile (see VPS).
 
 > **Windows note:** host port `6379` is often already taken (svchost/WSL). Local `.env` uses `REDIS_URL=redis://127.0.0.1:6380`.
 

@@ -122,6 +122,25 @@ services:
       timeout: 5s
       retries: 10
 
+  # Prisma Studio — browse / edit Postgres rows against the live schema.
+  # UI: http://localhost:5555  (also: pnpm db:studio on the host)
+  prisma-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.prisma-studio
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../apps/api-core/prisma:/app/prisma:ro
+      - ../../apps/api-core/prisma.config.ts:/app/prisma.config.ts:ro
+    environment:
+      DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
+    ports:
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: ../..

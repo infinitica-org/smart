@@ -34,6 +34,7 @@ deep-read the sections that name your module) → `docs/delivery/AGILE_PLAN.md` 
 | 9090 / 3100 | Prometheus / Grafana                                     |
 | 3101        | Loki                                                     |
 | 8025 / 1025 | Mailpit UI / SMTP                                        |
+| 5555        | Prisma Studio (Postgres viewer — starts with `infra:up`) |
 
 ---
 
