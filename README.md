@@ -19,7 +19,7 @@ Enforced by [`.github/CODEOWNERS`](./.github/CODEOWNERS). **New engineers:** [`E
 
 ## Stack
 
-Turborepo + pnpm workspaces. Next.js 16 (four portals) · NestJS 11 / Fastify · PostgreSQL 16 + pgvector · Redis 7 · Redpanda (Kafka) · MinIO (S3) · Caddy.
+Turborepo + pnpm workspaces. Next.js 16 (four portals) · NestJS 11 / Fastify · PostgreSQL 16 + **pgvector** · Redis 7 · Redpanda (Kafka) · MinIO (S3) · Mailpit (dev SMTP) · Caddy.
 
 Shared packages: `@smart/contracts` (frozen API), `@smart/scoring-engine`, `@smart/prompts`, `@smart/observability`, `@smart/api-client`, `@smart/ui`.
 
@@ -27,18 +27,41 @@ Shared packages: `@smart/contracts` (frozen API), `@smart/scoring-engine`, `@sma
 
 **Exact step-by-step commands (Windows + Unix):** [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md).
 
-Requires Node **22.20** (see `.nvmrc`), pnpm **11**, Docker optional but recommended.
+Requires Node **22.20** (see `.nvmrc`), pnpm **11.22** (pinned in `packageManager`). Docker Desktop recommended for the data plane.
 
 ```bash
-pnpm bootstrap          # install, start data plane, Prisma generate, seed
+pnpm bootstrap          # install, start data plane, Prisma generate/migrate, seed
 pnpm doctor             # toolchain check (scripts/doctor.sh — needs bash)
-pnpm dev:api            # http://localhost:3000/health
+pnpm infra:up           # data plane only (see ports below)
+pnpm dev:api            # http://localhost:3000 — /health, /ready, /api/docs
 pnpm dev:web            # portals on :3001–:3004
 ```
 
-`pnpm infra:up` starts Postgres, Redis (host **6380** → container 6379), Redpanda and MinIO only. App images are a separate profile (see VPS).
+### Data plane (`pnpm infra:up`)
 
-> **Windows note:** host port `6379` is often already taken (svchost/WSL). Local `.env` uses `REDIS_URL=redis://127.0.0.1:6380`.
+| Service       | Host URL / port                          | Notes                                   |
+| ------------- | ---------------------------------------- | --------------------------------------- |
+| Postgres      | `localhost:5432`                         | `pgvector/pgvector:pg16`                |
+| Redis         | `localhost:6380` → container `6379`      | Windows often already binds host `6379` |
+| Redpanda      | `localhost:19092`                        | Kafka-compatible                        |
+| MinIO         | `localhost:9000` / console `:9001`       | S3-compatible                           |
+| Mailpit       | UI `http://localhost:8025`, SMTP `:1025` | Captured outbound mail                  |
+| Prisma Studio | `http://localhost:5555`                  | Browse/edit rows (same DB as the API)   |
+
+Optional Compose profiles:
+
+- `pnpm infra:obs` — Prometheus, Grafana, Loki
+- `pnpm infra:apps` — containerized API + four webs (VPS/integration style; no Next HMR)
+
+> **Windows / pnpm 9:** if `PATH` still surfaces standalone pnpm 9, wrapped scripts (`infra:*`, `db:*`, `bootstrap`) print a tip and continue (or re-exec via `npx pnpm@11.22.0`). **`pnpm install` stays strict** — put `%APPDATA%\npm` before `%LOCALAPPDATA%\pnpm`, or use Corepack. Details: [`LOCAL_DEV.md` §0](./docs/delivery/LOCAL_DEV.md).
+
+### API probes (after `pnpm dev:api`)
+
+| Path        | Purpose                                 |
+| ----------- | --------------------------------------- |
+| `/health`   | Liveness                                |
+| `/ready`    | Readiness (Postgres + Redis must be up) |
+| `/api/docs` | Swagger UI                              |
 
 Seeded accounts (local only), password `ChangeMe!Dev`:
 
@@ -53,6 +76,7 @@ One machine, Docker Compose, Caddy TLS. Full steps: [`infra/vps/README.md`](./in
 ```bash
 cp .env.example .env    # set JWT_SECRET, passwords, DNS hostnames
 bash scripts/deploy-vps.sh
+# or: pnpm infra:vps
 ```
 
 ## Quality
@@ -61,9 +85,10 @@ bash scripts/deploy-vps.sh
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm verify:handover   # optional live data-plane smoke (bash + Docker)
 ```
 
-CI runs the same on every PR. Merge bar: [`docs/delivery/DEFINITION_OF_DONE.md`](./docs/delivery/DEFINITION_OF_DONE.md).
+CI runs lint / typecheck / unit tests / build / compose config on every PR. Merge bar: [`docs/delivery/DEFINITION_OF_DONE.md`](./docs/delivery/DEFINITION_OF_DONE.md).
 
 ## Architecture docs
 
