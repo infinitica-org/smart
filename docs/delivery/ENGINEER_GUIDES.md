@@ -31,7 +31,9 @@ deep-read the sections that name your module) → `docs/delivery/AGILE_PLAN.md` 
 | 6380        | Redis (host port; container 6379)                        |
 | 9092        | Redpanda (Kafka)                                         |
 | 9001        | MinIO console (R2 stand-in)                              |
-| 9090 / 3030 | Prometheus / Grafana                                     |
+| 9090 / 3100 | Prometheus / Grafana                                     |
+| 3101        | Loki                                                     |
+| 8025 / 1025 | Mailpit UI / SMTP                                        |
 
 ---
 

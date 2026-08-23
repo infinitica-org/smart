@@ -138,7 +138,13 @@ Password for all: `ChangeMe!Dev`
 
 ## 5. What Docker does _not_ start by default
 
-`pnpm infra:up` / plain `docker compose up` starts **only the data plane**.
+`pnpm infra:up` / plain `docker compose up` starts the **data plane** (Postgres, Redis, Redpanda, MinIO, Mailpit) with healthchecks.
+
+Observability (Prometheus :9090, Grafana :3100, Loki :3101) is behind Compose profile **`obs`**:
+
+```powershell
+pnpm infra:obs     # Prometheus + Grafana + Loki
+```
 
 API + four webs live under Compose profile **`apps`** (heavier images, no Next HMR):
 
@@ -147,6 +153,8 @@ pnpm infra:apps    # build/run containerized api + webs — VPS/integration styl
 ```
 
 **Day-to-day:** data plane in Docker, API + frontends on the host (`dev:api` / `dev:web`). That is intentional.
+
+Mailpit UI: http://localhost:8025 (SMTP on host :1025).
 
 ---
 

@@ -26,6 +26,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\"",
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:obs": "docker compose -f infra/docker/docker-compose.yml --profile obs up -d",
     "infra:apps": "docker compose -f infra/docker/docker-compose.yml --profile apps up -d --build",
     "infra:vps": "docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs up -d --build",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs down",
