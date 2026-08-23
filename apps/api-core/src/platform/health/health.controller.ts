@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX, type HealthStatus } from '@smart/contracts';
 import { collectMetrics, METRICS_CONTENT_TYPE } from '@smart/observability';
 import { Public } from '../../common/guards/public.decorator.js';
@@ -6,6 +7,7 @@ import { env } from '../config/env.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 
+@ApiTags('health')
 @Controller()
 export class HealthController {
   constructor(
@@ -15,6 +17,7 @@ export class HealthController {
 
   @Public()
   @Get('/health')
+  @ApiOperation({ summary: 'Liveness probe — process is up' })
   liveness(): HealthStatus {
     return {
       status: 'ok',
@@ -26,6 +29,7 @@ export class HealthController {
 
   @Public()
   @Get('/ready')
+  @ApiOperation({ summary: 'Readiness probe — Postgres + Redis reachable' })
   async readiness(): Promise<HealthStatus> {
     const checks: HealthStatus['checks'] = {};
 
