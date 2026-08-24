@@ -48,6 +48,7 @@ const EnvSchema = z.object({
 
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
