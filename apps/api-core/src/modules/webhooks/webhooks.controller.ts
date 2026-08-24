@@ -1,10 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { API_PREFIX } from '@smart/contracts';
-import type { WebhooksService } from './webhooks.service.js';
+import { WebhooksService } from './webhooks.service.js';
 
 @Controller(`${API_PREFIX}/webhooks`)
 export class WebhooksController {
-  constructor(private readonly service: WebhooksService) {}
+  constructor(@Inject(WebhooksService) private readonly service: WebhooksService) {}
 
   @Get('_meta')
   meta() {

@@ -20,8 +20,8 @@ echo "==> SMART handover verification"
 echo "    API: $API_URL"
 echo
 
-check "GET /health" curl -sf "$API_URL/health" >/dev/null
-check "GET /ready" curl -sf "$API_URL/ready" >/dev/null
+check "GET /health" curl -sf -o /dev/null "$API_URL/health"
+check "GET /ready" curl -sf -o /dev/null "$API_URL/ready"
 
 TRACK_COUNT="$(curl -sf "$API_URL/api/v1/catalog/tracks" | node -e "
   let d='';

@@ -20,7 +20,7 @@ const EnvSchema = z.object({
     .string()
     .min(1)
     .default('postgresql://smart:smart@127.0.0.1:5432/smart?schema=public'),
-  REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6379'),
+  REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6380'),
   KAFKA_BROKERS: z.string().default('127.0.0.1:19092'),
   KAFKA_CLIENT_ID: z.string().default('smart-api-core'),
 

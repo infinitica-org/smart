@@ -1,11 +1,11 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param } from '@nestjs/common';
 import { API_PREFIX } from '@smart/contracts';
 import { Public } from '../../common/guards/public.decorator.js';
-import type { CatalogService } from './catalog.service.js';
+import { CatalogService } from './catalog.service.js';
 
 @Controller(`${API_PREFIX}/catalog`)
 export class CatalogController {
-  constructor(private readonly catalog: CatalogService) {}
+  constructor(@Inject(CatalogService) private readonly catalog: CatalogService) {}
 
   @Public()
   @Get('tracks')

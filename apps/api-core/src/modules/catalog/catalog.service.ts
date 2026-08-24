@@ -1,16 +1,16 @@
 import { Buffer } from 'node:buffer';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
   type TrackDto,
 } from '@smart/contracts';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listTracks(): Promise<TrackDto[]> {
     try {

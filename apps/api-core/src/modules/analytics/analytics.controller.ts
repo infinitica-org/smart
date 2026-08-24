@@ -1,10 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { API_PREFIX } from '@smart/contracts';
-import type { AnalyticsService } from './analytics.service.js';
+import { AnalyticsService } from './analytics.service.js';
 
 @Controller(`${API_PREFIX}/analytics`)
 export class AnalyticsController {
-  constructor(private readonly service: AnalyticsService) {}
+  constructor(@Inject(AnalyticsService) private readonly service: AnalyticsService) {}
 
   @Get('_meta')
   meta() {
