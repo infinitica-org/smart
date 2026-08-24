@@ -261,27 +261,31 @@ Two people implementing against an unmerged contract is the #1 cause of integrat
 
 ### 4.2 Branching & PR flow
 
+Full policy: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
+
 ```
-main ──────────────────────────────────────────────▶  protected, always deployable
+main ──────────────────────────────────────────────▶  production. Only @brittytino merges.
  │
- ├── develop ──────────────────────────────────────▶  integration branch, CI must be green
- │     │
- │     ├── feat/S1-VV-04-redis-rate-limit-guard
- │     ├── feat/S2-VB-11-attempt-timer-autosubmit
- │     └── fix/S2-RM-19-gemini-failover-timeout
- │
- └── release/2026-09-10 ───────────────────────────▶  cut at code freeze, hotfix only
+ └── qa ───────────────────────────────────────────▶  release candidate / UAT
+      │
+      └── dev ─────────────────────────────────────▶  team integration (default base)
+           │
+           ├── feat/S1-VV-04-redis-rate-limit-guard
+           ├── feat/S2-VB-11-attempt-timer-autosubmit
+           └── fix/S2-RM-19-gemini-failover-timeout
 ```
 
-Branch name: `<type>/<sprint>-<initials>-<ticket#>-<slug>`
-Initials: `TN` Tino · `VV` Vishal V · `SV` Satheswaran V · `VB` Vishal Bharath R · `RM` Ramansh · `VG` Vedika G
+- **`develop` is deprecated** — use **`dev`**.
+- Branch name: `<type>/S<sprint>-<initials>-<nn>-<slug>`
+- Initials: `TN` Tino · `VV` Vishal V · `SV` Satheswaran V · `VB` Vishal Bharath R · `RM` Ramansh · `VG` Vedika G
 
 **PR rules:**
 
 - Max **400 changed lines** of non-generated code. Bigger than that, split it.
 - Title follows Conventional Commits and names the ticket: `feat(rate-limit): sliding window Lua guard (S1-VV-04)`.
+- Feature PRs target **`dev`**. Promote `dev` → `qa` → `main` via separate promotion PRs (Tino / brittytino only on `main`).
 - Every PR: linked ticket, filled template, green CI, **Tino approval**, plus the owner's approval if it touches someone else's module.
-- **Squash merge only.** `develop` history is one commit per ticket.
+- **Squash merge only.** `dev` history is one commit per ticket.
 - A PR open >24 h without review is raised in standup, not left to rot.
 
 ### 4.3 Escalation path
