@@ -22,7 +22,7 @@ export class ObservabilityInterceptor implements NestInterceptor {
     reply.header(CORRELATION_HEADER, correlationId);
 
     const method = request.method;
-    const route = request.routeOptions.url ?? request.url;
+    const route = request.routeOptions?.url ?? request.url;
 
     return runWithContext({ correlationId, requestId: request.id, module: 'api-core' }, () =>
       next.handle().pipe(
