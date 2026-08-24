@@ -1,5 +1,5 @@
 name: Pull Request
-description: Open a change against develop / main
+description: Open a change against dev (default). Promote qa/main separately.
 body:
 
 - type: markdown

@@ -252,6 +252,8 @@ model Competency {
   subDomain       String     @map("sub_domain")
   realWorldWeight Decimal    @map("real_world_weight") @db.Decimal(4, 2)
   assessedAtLevels Int[]     @map("assessed_at_levels")
+  /// Nullable stub for S1-RM-03 (Ramansh owns writes). Schema steward: Vishal V.
+  embedding       Unsupported("vector(1536)")?
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   items Item[]

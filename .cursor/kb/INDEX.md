@@ -13,6 +13,7 @@ Condensed shared knowledge. Canonical detail stays in repo docs.
 | [kafka-topics.md](./kafka-topics.md)             | Topics + producers                                                    |
 | [doc-authority.md](./doc-authority.md)           | Which doc wins on conflict                                            |
 | [commits-and-prs.md](./commits-and-prs.md)       | Commit subject + PR label tags                                        |
+| [backlog-issues.md](./backlog-issues.md)         | Sprint backlog → GitHub Issues only (not Zoho)                        |
 
 **Full local setup:** [`docs/delivery/LOCAL_DEV.md`](../../docs/delivery/LOCAL_DEV.md)
 
