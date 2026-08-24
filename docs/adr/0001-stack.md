@@ -11,16 +11,16 @@ SMART must ship a role-specific certification platform (4 portals + API + AI eva
 
 ## Decision
 
-| Layer | Choice |
-| --- | --- |
-| API | NestJS 11 + Fastify (`apps/api-core`) |
-| Web | Next.js 16 (student, TPO, admin, verify) |
-| Data | PostgreSQL 16+ with `pgvector` |
-| Cache / limits | Redis 7 |
-| Events | Redpanda (Kafka API) |
-| Objects | MinIO (local) / R2 (prod) |
-| Shared types | `@smart/contracts` (Zod) |
-| Scoring math | `@smart/scoring-engine` (Effect.ts) |
+| Layer          | Choice                                                                  |
+| -------------- | ----------------------------------------------------------------------- |
+| API            | NestJS 11 + Fastify (`apps/api-core`)                                   |
+| Web            | Next.js 16 (student, TPO, admin, verify)                                |
+| Data           | PostgreSQL 16+ with `pgvector` (Docker or Supabase-hosted; Prisma only) |
+| Cache / limits | Redis 7                                                                 |
+| Events         | Redpanda (Kafka API)                                                    |
+| Objects        | MinIO (local) / R2 (prod)                                               |
+| Shared types   | `@smart/contracts` (Zod)                                                |
+| Scoring math   | `@smart/scoring-engine` (Effect.ts)                                     |
 
 ## Consequences
 

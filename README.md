@@ -71,12 +71,13 @@ Seeded accounts (local only), password `ChangeMe!Dev`:
 
 ## VPS hosting
 
-One machine, Docker Compose, Caddy TLS. Full steps: [`infra/vps/README.md`](./infra/vps/README.md).
+**kvm2** = `dev` + `qa`. **kvm4** = production (`main`). Full steps: [`infra/vps/README.md`](./infra/vps/README.md). Database policy: [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md).
 
 ```bash
-cp .env.example .env    # set JWT_SECRET, passwords, DNS hostnames
-bash scripts/deploy-vps.sh
-# or: pnpm infra:vps
+# on kvm2
+cp .env.qa.example .env.qa && bash scripts/deploy-vps.sh qa
+# on kvm4 (brittytino)
+cp .env.prod.example .env.prod && bash scripts/deploy-vps.sh prod
 ```
 
 ## Quality

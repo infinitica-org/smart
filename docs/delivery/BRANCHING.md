@@ -20,11 +20,11 @@ main  ──── always production-ready. Only @brittytino may push / merge.
            └── chore/S0-TN-03-enterprise-branches
 ```
 
-| Branch | Purpose | Who merges | Deploy target |
-| ------ | ------- | ---------- | ------------- |
-| **`dev`** | Daily integration. CI must be green. | Tino (+ module owner if cross-module) after PR review | Local / optional staging |
-| **`qa`** | Freeze candidate for UAT / pilot. No feature work — only promotion + hotfixes. | Tino | QA / pilot environment |
-| **`main`** | Production / GA truth. Always deployable. | **Only `@brittytino`** | Production / VPS GA |
+| Branch     | Purpose                                                                        | Who merges                                            | Deploy target                          |
+| ---------- | ------------------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------- |
+| **`dev`**  | Daily integration. CI must be green.                                           | Tino (+ module owner if cross-module) after PR review | **kvm2** `smart-dev` (ports, no Caddy) |
+| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — only promotion + hotfixes. | Tino                                                  | **kvm2** `smart-qa` (Caddy TLS)        |
+| **`main`** | Production / GA truth. Always deployable.                                      | **Only `@brittytino`**                                | **kvm4** `smart-prod`                  |
 
 Engineers **never** commit directly to `main`, `qa`, or `dev`.  
 Every change lands via a **pull request**.
@@ -55,10 +55,10 @@ Initials: `TN` · `VV` · `SV` · `VB` · `RM` · `VG`
 
 ## 3. Promotion flow (architect only)
 
-| Promotion | When | How |
-| --------- | ---- | --- |
-| `dev` → `qa` | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges |
-| `qa` → `main` | GA cut, or approved production release | PR titled `chore(repo): promote qa to main (S#)` — **only brittytino merges** |
+| Promotion     | When                                             | How                                                                           |
+| ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `dev` → `qa`  | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges                 |
+| `qa` → `main` | GA cut, or approved production release           | PR titled `chore(repo): promote qa to main (S#)` — **only brittytino merges** |
 
 Hotfix on production: branch from `main` → PR to `main` (brittytino) → cherry-pick / back-merge into `qa` and `dev`.
 
@@ -121,10 +121,10 @@ git branch -u origin/dev dev
 
 ## 6. Zoho ↔ GitHub
 
-| Tool | Use |
-| ---- | --- |
-| Zoho Sprints | Sprint board, status, points, epics |
-| GitHub Issues | Technical discussion, PR link, DoD evidence |
-| Ticket ID | Always `S#-XX-##` in Zoho title, GitHub title, commit, PR |
+| Tool          | Use                                                       |
+| ------------- | --------------------------------------------------------- |
+| Zoho Sprints  | Sprint board, status, points, epics                       |
+| GitHub Issues | Technical discussion, PR link, DoD evidence               |
+| Ticket ID     | Always `S#-XX-##` in Zoho title, GitHub title, commit, PR |
 
 Closing a ticket requires: PR squash-merged to **`dev`** (or promotion PR), Zoho → Done, GitHub issue → Closed.
