@@ -1,0 +1,27 @@
+{
+  "name": "@smart/next-config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Next.js configuration for SMART portals.",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf index.js index.d.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "next": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^15.0.0"
+  }
+}
