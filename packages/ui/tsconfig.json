@@ -2,6 +2,7 @@
   "extends": "@smart/tsconfig/react-library.json",
   "compilerOptions": {
     "noEmit": true,
+    "incremental": false,
     "declaration": false,
     "declarationMap": false,
     "rootDir": "./src",
