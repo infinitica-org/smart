@@ -1,0 +1,32 @@
+[
+  {
+    "itemId": "9ffde8ce-be15-4787-a86e-e7716377d848",
+    "trackCode": "TECH_FULLSTACK",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "791a42d5-bded-41ea-af52-f75103db92c6",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which hook do you use to run a side effect after a React component renders?",
+    "options": [
+      { "optionId": "opt-a", "label": "useEffect" },
+      { "optionId": "opt-b", "label": "useMemo" },
+      { "optionId": "opt-c", "label": "useCallback" }
+    ],
+    "correctOptionIds": ["opt-a"],
+    "itemWeight": 0.1
+  },
+  {
+    "itemId": "932d7f0d-f5ad-4c26-9981-a6463c873937",
+    "trackCode": "TECH_FULLSTACK",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "f6e024c0-d9bd-4863-9249-3b8dd9f20493",
+    "itemType": "NUMERIC_ENTRY",
+    "difficulty": "MEDIUM",
+    "promptText": "A REST API returns HTTP 429 with `retryAfterSeconds: 30`. After how many seconds should the client retry?",
+    "expectedNumericAnswer": 30,
+    "numericTolerance": 0,
+    "itemWeight": 0.1
+  }
+]
