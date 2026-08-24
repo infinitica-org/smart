@@ -9,7 +9,13 @@
 
 export { cn } from './lib/cn';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './components/button';
-export { TierBadge, type TierBadgeProps } from './components/badge';
+export {
+  TierBadge,
+  type TierBadgeProps,
+  Badge,
+  type BadgeProps,
+  type BadgeVariant,
+} from './components/badge';
 export { Card, CardDescription, CardHeader, CardTitle } from './components/card';
 export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
