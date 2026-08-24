@@ -735,12 +735,18 @@ importers:
 
   packages/ui:
     dependencies:
+      '@smart/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@smart/contracts':
         specifier: workspace:*
         version: link:../contracts
       '@smart/tailwind-config':
         specifier: workspace:*
         version: link:../config-tailwind
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.101.4(react@19.2.8)
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
