@@ -14,7 +14,7 @@ These rules are **not optional**. If a request would violate them, refuse that p
    `<type>/S<sprint>-<initials>-<nn>-<slug>`
    - Types: `feat` | `fix` | `chore` | `docs` | `refactor` | `test` | `perf`
    - Initials: `TN` `VV` `SV` `VB` `RM` `VG` (from `.cursor/local/IDENTITY.md` or the user)
-3. Create the branch from up-to-date **`dev`** (or `develop` only while migration is incomplete).
+3. Create the branch from up-to-date **`dev`**.
 4. One ticket → one branch → one PR. Do not pile unrelated tickets onto one branch.
 
 Policy: `docs/delivery/BRANCHING.md`.
