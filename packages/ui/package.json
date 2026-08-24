@@ -26,8 +26,10 @@
     "clean": "rimraf .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@smart/api-client": "workspace:*",
     "@smart/contracts": "workspace:*",
     "@smart/tailwind-config": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
     "tailwind-merge": "catalog:"

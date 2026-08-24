@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Card, CardHeader, CardTitle, CardDescription, Badge, TierBadge } from '@smart/ui';
+import { HealthProbeDemo } from '../../components/health-probe-demo';
 
 export default function DesignSystemPage() {
   return (
@@ -11,6 +12,13 @@ export default function DesignSystemPage() {
           Testing all components and tokens, including Tailwind 4 default dark mode.
         </p>
       </div>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold border-b border-[var(--surface-border)] pb-2">
+          Health Probe (Typed Client)
+        </h2>
+        <HealthProbeDemo />
+      </section>
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold border-b border-[var(--surface-border)] pb-2">
