@@ -17,7 +17,7 @@ Project rules in `.cursor/rules/*.mdc` always apply. **`02-dev-workflow.mdc` is 
 
 | Rule      | Requirement                                                                                                                              |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch    | Never commit to `main`/`qa`/`dev`. Feature branch from `dev`. See `docs/delivery/BRANCHING.md` |
+| Branch    | Never commit to `main`/`qa`/`dev`. Feature branch from `dev`. See `docs/delivery/BRANCHING.md`                                           |
 | Quality   | `pnpm lint` · `typecheck` · `test` · `format:check` before PR                                                                            |
 | Hooks     | Never `--no-verify`                                                                                                                      |
 | Delivery  | Shippable work ends in a **PR to `dev`** with required **labels** (`dev`→`qa`→`main`)                                                    |
