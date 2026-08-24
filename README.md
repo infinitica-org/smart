@@ -2,7 +2,7 @@
 
 Role-specific readiness certification. Candidates are assessed on a 5-level × 3-tier grid (Gold / Silver / Bronze) against real job-track competencies, then issued a student-controlled, publicly verifiable certificate.
 
-**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md).
+**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md). Architecture decisions: [`docs/adr/`](./docs/adr/). Branching: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 
 ## Who owns what
 
