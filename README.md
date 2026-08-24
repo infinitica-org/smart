@@ -2,7 +2,7 @@
 
 Role-specific readiness certification. Candidates are assessed on a 5-level × 3-tier grid (Gold / Silver / Bronze) against real job-track competencies, then issued a student-controlled, publicly verifiable certificate.
 
-**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md).
+**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md). Architecture decisions: [`docs/adr/`](./docs/adr/). Branching: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 
 ## Who owns what
 
@@ -71,12 +71,13 @@ Seeded accounts (local only), password `ChangeMe!Dev`:
 
 ## VPS hosting
 
-One machine, Docker Compose, Caddy TLS. Full steps: [`infra/vps/README.md`](./infra/vps/README.md).
+**kvm2** = `dev` + `qa`. **kvm4** = production (`main`). Full steps: [`infra/vps/README.md`](./infra/vps/README.md). Database policy: [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md).
 
 ```bash
-cp .env.example .env    # set JWT_SECRET, passwords, DNS hostnames
-bash scripts/deploy-vps.sh
-# or: pnpm infra:vps
+# on kvm2
+cp .env.qa.example .env.qa && bash scripts/deploy-vps.sh qa
+# on kvm4 (brittytino)
+cp .env.prod.example .env.prod && bash scripts/deploy-vps.sh prod
 ```
 
 ## Quality

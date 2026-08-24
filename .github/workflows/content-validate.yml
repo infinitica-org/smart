@@ -1,0 +1,30 @@
+name: Content Validate
+
+on:
+  pull_request:
+    branches: [main, qa, dev, develop]
+    paths:
+      - "tools/content-pipeline/**"
+      - "packages/contracts/src/domain/tracks.ts"
+      - "packages/contracts/src/domain/enums.ts"
+  push:
+    branches: [main, qa, dev, develop]
+    paths:
+      - "tools/content-pipeline/**"
+      - "packages/contracts/src/domain/tracks.ts"
+      - "packages/contracts/src/domain/enums.ts"
+
+concurrency:
+  group: ci-content-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  content-validate:
+    name: content validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Validate content
+        run: pnpm content validate

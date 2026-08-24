@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import type { CertificateService } from './certificate.service.js';
 
+@ApiTags('certificate')
 @Controller(`${API_PREFIX}/certificate`)
 export class CertificateController {
   constructor(private readonly service: CertificateService) {}

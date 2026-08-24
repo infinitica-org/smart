@@ -10,7 +10,7 @@ A ticket is `Done` when all of the following are true. Copy this into your PR an
 ## 1. Functional
 
 - [ ] Every acceptance criterion on the ticket is met.
-- [ ] Demoed on `develop` at the sprint review, or a `curl`/screenshot/screen recording is attached to the PR.
+- [ ] Demoed on `dev` at the sprint review, or a `curl`/screenshot/screen recording is attached to the PR.
 - [ ] The named failure modes are handled — not just the happy path. (Your module's
       "non-negotiables" in `TEAM.md` §2 are part of the acceptance criteria.)
 - [ ] Feature flag added if the change is risky or incomplete. Half-finished behaviour behind a
@@ -74,7 +74,7 @@ A ticket is `Done` when all of the following are true. Copy this into your PR an
 - [ ] Self-reviewed the diff before requesting review. Read it as if someone else wrote it.
 - [ ] **Tino approved** (mandatory, all PRs).
 - [ ] Module owner approved if the PR touches a module you don't own.
-- [ ] Squash-merged into `develop`.
+- [ ] Squash-merged into `dev`.
 - [ ] Ticket moved to `Done` **by the author**, with the merge commit linked.
 
 ---
@@ -84,7 +84,7 @@ A ticket is `Done` when all of the following are true. Copy this into your PR an
 A sprint is done when:
 
 - [ ] Every committed `P0` ticket is `Done`.
-- [ ] `develop` is green and deployable.
+- [ ] `dev` is green and deployable.
 - [ ] The sprint goal sentence from `AGILE_PLAN.md` is demonstrably true in a live demo.
 - [ ] Retro actions from the previous sprint were closed or explicitly carried with a reason.
 - [ ] The risk register was updated.
