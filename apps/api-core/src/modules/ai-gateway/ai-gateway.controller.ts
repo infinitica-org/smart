@@ -1,18 +1,43 @@
-import { Controller, Get } from '@nestjs/common';
-import { API_PREFIX } from '@smart/contracts';
-import type { AiGatewayService } from './ai-gateway.service.js';
+import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { API_PREFIX, type AiCompletionResponse, type AiHealthDto } from '@smart/contracts';
+import { Public } from '../../common/guards/public.decorator.js';
+import { AiGatewayService } from './ai-gateway.service.js';
 
-@Controller(`${API_PREFIX}/ai-gateway`)
+@Controller()
 export class AiGatewayController {
-  constructor(private readonly service: AiGatewayService) {}
+  constructor(@Inject(AiGatewayService) private readonly service: AiGatewayService) {}
 
-  @Get('_meta')
+  @Public()
+  @Get('/ai/health')
+  health(): Promise<AiHealthDto> {
+    return this.service.getHealth();
+  }
+
+  @Public()
+  @Get(`${API_PREFIX}/ai/health`)
+  versionedHealth(): Promise<AiHealthDto> {
+    return this.service.getHealth();
+  }
+
+  @Get(`${API_PREFIX}/admin/ai-health`)
+  adminAiHealth(): Promise<AiHealthDto> {
+    return this.service.getHealth();
+  }
+
+  @Get(`${API_PREFIX}/ai-gateway/_meta`)
   meta() {
     return {
       module: 'ai-gateway',
       owner: this.service.owner,
       purpose: this.service.purpose,
-      status: 'scaffold',
+      status: 'active',
     };
+  }
+
+  @Post(`${API_PREFIX}/ai-gateway/complete`)
+  complete(
+    @Body() body: Parameters<AiGatewayService['complete']>[0],
+  ): Promise<AiCompletionResponse> {
+    return this.service.complete(body);
   }
 }
