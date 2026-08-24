@@ -1,20 +1,23 @@
-import { TRACK_DEFINITIONS, assertDomainWeightsSumToOne } from '@smart/contracts';
+import { runValidate } from './validate.js';
 
 /**
  * Content pipeline entrypoint.
  * Owner: Vedika G.
  */
 
-const command = process.argv[2] ?? 'validate';
+const [command, ...rest] = process.argv.slice(2);
 
-if (command === 'validate') {
-  for (const track of TRACK_DEFINITIONS) {
-    assertDomainWeightsSumToOne(track);
+if ((command ?? 'validate') === 'validate') {
+  const report = runValidate(rest.length > 0 ? rest : undefined);
+  for (const message of report.messages) {
+    process.stderr.write(`${message}\n`);
   }
-  process.stdout.write(
-    `ok ${String(TRACK_DEFINITIONS.length)} tracks, domain weights sum to 1.0\n`,
-  );
-  process.exit(0);
+  if (report.ok) {
+    process.stdout.write(`ok ${String(report.itemCount)} item(s) validated\n`);
+    process.exit(0);
+  }
+  process.stderr.write('validation failed\n');
+  process.exit(1);
 }
 
 process.stderr.write(`Unknown command ${command}. Try: validate\n`);

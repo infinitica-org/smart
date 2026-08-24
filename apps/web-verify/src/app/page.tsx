@@ -1,52 +1,59 @@
-import {
-  AppShell,
-  Alert,
-  Button,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  LevelStepper,
-  TierBadge,
-} from '@smart/ui';
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 
 export default function Page() {
+  const router = useRouter();
+  const [certId, setCertId] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const cleanId = certId.trim();
+    if (!cleanId) {
+      setError('Certificate ID is required');
+      return;
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanId)) {
+      setError('Please enter a valid Certificate ID format (UUID)');
+      return;
+    }
+
+    setError('');
+    router.push(`/cert/${cleanId}`);
+  };
+
   return (
-    <AppShell
-      productName="SMART · Verify"
-      title="Certificate verification"
-      subtitle="Public anonymous lookup. No account required."
-      nav={<span className="text-sm text-[var(--text-muted)]">Owner: Vishal Bharath R</span>}
-    >
-      <div className="grid gap-6">
-        <Alert tone="info" title="Sprint 0 scaffold">
-          This portal is wired to @smart/ui and @smart/api-client. Feature work lands against
-          @smart/contracts — do not invent local DTO shapes.
-        </Alert>
-        <Card>
-          <CardHeader>
-            <CardTitle>Certification model</CardTitle>
-            <CardDescription>
-              Gold / Silver / Bronze is criterion-referenced, never a curve.
-            </CardDescription>
-          </CardHeader>
-          <div className="flex flex-wrap gap-2">
-            <TierBadge tier="GOLD" showLabel />
-            <TierBadge tier="SILVER" showLabel />
-            <TierBadge tier="BRONZE" showLabel />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Level progression</CardTitle>
-            <CardDescription>
-              A level unlocks only at Bronze or above on the level below.
-            </CardDescription>
-          </CardHeader>
-          <LevelStepper unlockedThrough={1} current={1} />
-        </Card>
-        <Button>Continue</Button>
-      </div>
-    </AppShell>
+    <div className="mx-auto max-w-lg py-12 animate-fade-in">
+      <Card>
+        <CardHeader>
+          <CardTitle>Verify a Credential</CardTitle>
+          <CardDescription>
+            Enter a cryptographically signed Certificate ID below to view the competency levels
+            validated by SMART.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-6">
+          <Input
+            label="Certificate ID (UUID)"
+            placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
+            value={certId}
+            onChange={(e) => {
+              setCertId(e.target.value);
+              if (error) setError('');
+            }}
+            error={error}
+            required
+          />
+          <Button type="submit" fullWidth>
+            Verify Certificate
+          </Button>
+        </form>
+      </Card>
+    </div>
   );
 }

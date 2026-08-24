@@ -202,7 +202,7 @@ export const ISSUABLE_INTEGRITY_FLAGS = ['CLEAN', 'CLEARED'] as const;
 /*                               AI providers                                 */
 /* -------------------------------------------------------------------------- */
 
-export const AI_PROVIDERS = ['ANTHROPIC', 'GOOGLE'] as const;
+export const AI_PROVIDERS = ['ANTHROPIC', 'GOOGLE', 'OPENROUTER'] as const;
 export const AiProviderSchema = z.enum(AI_PROVIDERS);
 export type AiProvider = z.infer<typeof AiProviderSchema>;
 

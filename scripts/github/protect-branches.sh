@@ -61,14 +61,12 @@ REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 echo "Repo: $REPO"
 echo "Actor: $(gh api user -q .login)"
 
-# Resolve tip for new long-lived branches (prefer develop, else main)
-SOURCE_REF="origin/develop"
+# Resolve tip for new long-lived branches (prefer `dev`, else main)
+SOURCE_REF="origin/dev"
 if ! git rev-parse --verify "$SOURCE_REF" >/dev/null 2>&1; then
   git fetch origin
 fi
-if git rev-parse --verify origin/develop >/dev/null 2>&1; then
-  SOURCE_REF="origin/develop"
-elif git rev-parse --verify origin/dev >/dev/null 2>&1; then
+if git rev-parse --verify origin/dev >/dev/null 2>&1; then
   SOURCE_REF="origin/dev"
 else
   SOURCE_REF="origin/main"
