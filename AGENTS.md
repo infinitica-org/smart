@@ -15,19 +15,20 @@ Project rules in `.cursor/rules/*.mdc` always apply. **`02-dev-workflow.mdc` is 
 
 ## Non-negotiable agent behaviour
 
-| Rule      | Requirement                                                                          |
-| --------- | ------------------------------------------------------------------------------------ |
-| Branch    | Never commit to `main`/`develop`. Use `feat/S#-XX-##-slug` (etc.)                    |
-| Quality   | `pnpm lint` · `typecheck` · `test` · `format:check` before PR                        |
-| Hooks     | Never `--no-verify`                                                                  |
-| Delivery  | Shippable work ends in a **PR to `develop`** with required **labels**                |
-| Commits   | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc` |
-| Size      | ≤ 400 hand-written LOC per PR; one ticket per PR                                     |
-| Contracts | Change `@smart/contracts` first; Tino merges                                         |
-| Ownership | Edit owned paths only; otherwise PR + owner review                                   |
-| Secrets   | Never commit `.env` / keys                                                           |
-| Merge     | Do not merge unless the user explicitly asks; Tino approves                          |
-| Prefs     | Honor `.cursor/local/preferences.md` when present                                    |
+| Rule      | Requirement                                                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch    | Never commit to `main`/`qa`/`dev`. Feature branch from `dev`. See `docs/delivery/BRANCHING.md`                                           |
+| Quality   | `pnpm lint` · `typecheck` · `test` · `format:check` before PR                                                                            |
+| Hooks     | Never `--no-verify`                                                                                                                      |
+| Delivery  | Shippable work ends in a **PR to `dev`** with required **labels** (`dev`→`qa`→`main`)                                                    |
+| Commits   | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`                                                     |
+| Size      | ≤ 400 hand-written LOC per PR; one ticket per PR                                                                                         |
+| Contracts | Change `@smart/contracts` first; Tino merges                                                                                             |
+| Ownership | Edit owned paths only; otherwise PR + owner review                                                                                       |
+| Secrets   | Never commit `.env` / keys                                                                                                               |
+| Merge     | Do not merge unless the user explicitly asks; Tino approves                                                                              |
+| Prefs     | Honor `.cursor/local/preferences.md` when present                                                                                        |
+| Backlog   | Edit `tools/zoho-sprint*/backlog.mjs`; sync **GitHub Issues only** via `tools/backlog/sync-github.mjs` — do not update Zoho unless asked |
 
 ## Product in one line
 

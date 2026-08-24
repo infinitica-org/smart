@@ -13,6 +13,8 @@ x-app-env: &app-env
   S3_BUCKET: smart
   LOG_PRETTY: "false"
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
 
 services:
   postgres:
@@ -23,7 +25,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
       POSTGRES_DB: smart
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -49,7 +51,7 @@ services:
       ]
     ports:
       # Host 6380 — Windows often already binds 6379 (svchost/WSL), which ECONNRESETs ioredis.
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -71,9 +73,15 @@ services:
       - --mode
       - dev-container
     ports:
-      - "19092:19092"
+      - "${REDPANDA_PORT:-19092}:19092"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -Eiq 'Healthy|ok'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   minio:
     image: minio/minio:latest
@@ -83,10 +91,55 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:8025/api/v1/info",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Prisma Studio — browse / edit Postgres rows against the live schema.
+  # UI: http://localhost:5555  (also: pnpm db:studio on the host)
+  prisma-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.prisma-studio
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../apps/api-core/prisma:/app/prisma:ro
+      - ../../apps/api-core/prisma.config.ts:/app/prisma.config.ts:ro
+    environment:
+      DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
+    ports:
+      - "${PRISMA_STUDIO_PORT:-5555}:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   api:
     build:
@@ -103,7 +156,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${API_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -131,7 +184,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3001:3000"
+      - "${STUDENT_PORT:-3001}:3000"
     profiles: ["apps"]
 
   web-tpo:
@@ -147,7 +200,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3002:3000"
+      - "${TPO_PORT:-3002}:3000"
     profiles: ["apps"]
 
   web-admin:
@@ -163,7 +216,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3003:3000"
+      - "${ADMIN_PORT:-3003}:3000"
     profiles: ["apps"]
 
   web-verify:
@@ -179,7 +232,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3004:3000"
+      - "${VERIFY_PORT:-3004}:3000"
     profiles: ["apps"]
 
   caddy:
@@ -204,7 +257,8 @@ services:
       - web-tpo
       - web-admin
       - web-verify
-    profiles: ["apps", "vps"]
+    # Only one stack per host should enable profile `vps` (binds :80/:443).
+    profiles: ["vps"]
 
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -213,7 +267,13 @@ services:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
     profiles: ["obs"]
 
   grafana:
@@ -221,10 +281,37 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-smart}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
     ports:
-      - "3100:3000"
+      # Host 3100 (not 3030) — keep Loki on 3101 to avoid collision.
+      - "${GRAFANA_PORT:-3100}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    profiles: ["obs"]
+
+  loki:
+    image: grafana/loki:3.4.2
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3101}:3100"
+    volumes:
+      - loki_data:/loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
     profiles: ["obs"]
 
 volumes:
@@ -236,3 +323,4 @@ volumes:
   caddy_config:
   prometheus_data:
   grafana_data:
+  loki_data:

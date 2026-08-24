@@ -1,21 +1,34 @@
 import { Buffer } from 'node:buffer';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
   type TrackDto,
 } from '@smart/contracts';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
+
+/** Scalar fields only — never select Unsupported("vector") embedding. */
+const competencySelect = {
+  id: true,
+  domainCode: true,
+  name: true,
+  subDomain: true,
+  realWorldWeight: true,
+  assessedAtLevels: true,
+} as const;
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listTracks(): Promise<TrackDto[]> {
     try {
       const rows = await this.prisma.track.findMany({
-        include: { competencies: true, levels: { orderBy: { levelNumber: 'asc' } } },
+        include: {
+          competencies: { select: competencySelect },
+          levels: { orderBy: { levelNumber: 'asc' } },
+        },
         orderBy: { code: 'asc' },
       });
       if (rows.length > 0) return rows.map(toTrackDto);
@@ -30,7 +43,10 @@ export class CatalogService {
     try {
       const row = await this.prisma.track.findUnique({
         where: { code: trackCode },
-        include: { competencies: true, levels: { orderBy: { levelNumber: 'asc' } } },
+        include: {
+          competencies: { select: competencySelect },
+          levels: { orderBy: { levelNumber: 'asc' } },
+        },
       });
       if (row) return toTrackDto(row);
     } catch {

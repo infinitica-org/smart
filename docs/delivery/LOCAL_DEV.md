@@ -9,16 +9,18 @@ If anything here disagrees with `README.md`, **this file wins for day-to-day com
 
 ## 0. Prerequisites (once per machine)
 
-| Tool               | Required                                         | Notes                                                            |
-| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------- |
-| **Node.js**        | `>= 22.20` (prefer exact `.nvmrc` → **22.20.0**) | `node -v`                                                        |
-| **pnpm**           | **`>= 11.0.0`** (repo pins `11.22.0`)            | `pnpm -v` — **9.x will fail** with `ERR_PNPM_UNSUPPORTED_ENGINE` |
-| **Docker Desktop** | Recommended                                      | Postgres, Redis, Redpanda, MinIO                                 |
-| **Git**            | Yes                                              | Feature branches only — see `CONTRIBUTING.md`                    |
+| Tool               | Required                                         | Notes                                                                                   |
+| ------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **Node.js**        | `>= 22.20` (prefer exact `.nvmrc` → **22.20.0**) | `node -v`                                                                               |
+| **pnpm**           | **`>= 11.0.0`** (repo pins `11.22.0`)            | Prefer `pnpm -v` → 11.x; `infra:*` / `db:*` / `bootstrap` auto-mitigate if PATH has 9.x |
+| **Docker Desktop** | Recommended                                      | Postgres, Redis, Redpanda, MinIO                                                        |
+| **Git**            | Yes                                              | Feature branches only — see `CONTRIBUTING.md`                                           |
 
 ### pnpm 11 on Windows (common failure)
 
-Standalone pnpm 9 often sits earlier on `PATH` than npm’s global pnpm 11.
+Standalone pnpm 9 often sits earlier on `PATH` than npm’s global pnpm 11. `pnpm infra:up` (and other wrapped scripts) still start: `scripts/ensure-pnpm.mjs` prints a tip and either runs Docker/bash directly or re-launches via `npx pnpm@11.22.0`. **`pnpm install` stays strict** (`preinstall`) — fix PATH or Corepack before installs.
+
+Permanent fix (recommended):
 
 ```powershell
 npm install -g pnpm@11.22.0
@@ -138,7 +140,13 @@ Password for all: `ChangeMe!Dev`
 
 ## 5. What Docker does _not_ start by default
 
-`pnpm infra:up` / plain `docker compose up` starts **only the data plane**.
+`pnpm infra:up` / plain `docker compose up` starts the **data plane** (Postgres, Redis, Redpanda, MinIO, Mailpit, **Prisma Studio**) with healthchecks.
+
+Observability (Prometheus :9090, Grafana :3100, Loki :3101) is behind Compose profile **`obs`**:
+
+```powershell
+pnpm infra:obs     # Prometheus + Grafana + Loki
+```
 
 API + four webs live under Compose profile **`apps`** (heavier images, no Next HMR):
 
@@ -147,6 +155,11 @@ pnpm infra:apps    # build/run containerized api + webs — VPS/integration styl
 ```
 
 **Day-to-day:** data plane in Docker, API + frontends on the host (`dev:api` / `dev:web`). That is intentional.
+
+| Tool              | URL                       | Notes                                                                                                            |
+| ----------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Mailpit           | http://localhost:8025     | Captured mail (SMTP :1025)                                                                                       |
+| **Prisma Studio** | **http://localhost:5555** | Browse/edit Postgres rows (same DB as the API). Starts with `pnpm infra:up`. Host alternative: `pnpm db:studio`. |
 
 ---
 
@@ -187,7 +200,7 @@ Branch / commit / PR rules: `CONTRIBUTING.md` and `.cursor/rules/09-commits-and-
 
 | Symptom                                    | Fix                                                                                             |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `ERR_PNPM_UNSUPPORTED_ENGINE` Got 9.x      | Use pnpm 11 — §0                                                                                |
+| `ERR_PNPM_UNSUPPORTED_ENGINE` Got 9.x      | Pull latest; `infra:*`/`db:*` auto-reexec. For installs / permanent fix — §0                    |
 | `/ready` redis down / ioredis `ECONNRESET` | Confirm `REDIS_URL=…6380` and `pnpm infra:up`; don’t use host 6379 on Windows                   |
 | TPO / `:3002` “protocol violation”         | Another process on 3002 (e.g. misconfigured local Redis). Free the port.                        |
 | Frontends unstyled                         | Pull latest (Tailwind `@source` for `@smart/ui`). Restart `pnpm dev:web`. Hard-refresh browser. |
