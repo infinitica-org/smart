@@ -1,0 +1,15 @@
+# Prisma Studio sidecar for the local data plane.
+# Prisma 7 Studio binds 127.0.0.1 only, so socat publishes :5555 on 0.0.0.0.
+# Schema + prisma.config.ts are bind-mounted from apps/api-core at runtime.
+FROM node:22-bookworm-slim
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl socat ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+RUN npm install --omit=dev prisma@7.9.1 dotenv
+
+EXPOSE 5555
+
+CMD ["sh", "-c", "socat TCP-LISTEN:5555,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:5556 & exec npx prisma studio --port 5556 --browser none --url \"$DATABASE_URL\""]

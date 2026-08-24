@@ -1,80 +1,80 @@
-# SMART on a VPS
+# SMART on VPS — kvm2 (dev/qa) and kvm4 (prod)
 
-This repo is intended to run on **one VPS** (2 vCPU / 4 GB RAM minimum; 4 vCPU / 8 GB recommended) with Docker Compose and Caddy for TLS.
+Policy: [`docs/delivery/BRANCHING.md`](../../docs/delivery/BRANCHING.md) ·
+database: [`docs/delivery/DATABASE.md`](../../docs/delivery/DATABASE.md) ·
+ADR-0009.
+
+| Host     | Git branch | Compose project | Public TLS (Caddy)                     |
+| -------- | ---------- | --------------- | -------------------------------------- |
+| **kvm2** | `dev`      | `smart-dev`     | No — use published ports (`3000–3004`) |
+| **kvm2** | `qa`       | `smart-qa`      | Yes — `*-qa` hostnames on :80/:443     |
+| **kvm4** | `main`     | `smart-prod`    | Yes — production hostnames             |
+
+Only **one** stack per machine may enable profile `vps` (Caddy). On kvm2 that is **qa**.
 
 ## 1. DNS
 
-Create A records pointing at the VPS public IP:
+**kvm2 (QA public):** `api-qa` / `app-qa` / `tpo-qa` / `admin-qa` / `verify-qa` → kvm2 IP.
 
-| Host                 | Service                         |
-| -------------------- | ------------------------------- |
-| `api.example.com`    | Nest API                        |
-| `app.example.com`    | Student portal                  |
-| `tpo.example.com`    | TPO console                     |
-| `admin.example.com`  | Admin console                   |
-| `verify.example.com` | Public certificate verification |
+**kvm4 (prod):** `api` / `app` / `tpo` / `admin` / `verify` → kvm4 IP.
 
-## 2. Server setup
+## 2. Server setup (each VPS)
 
 ```bash
-# Ubuntu 24.04 example
 sudo apt-get update
 sudo apt-get install -y git docker.io docker-compose-v2
-sudo usermod -aG docker "$USER"   # then log out/in
-git clone git@github.com:hiresapien/smart.git
+sudo usermod -aG docker "$USER"
+git clone https://github.com/infinitica-org/smart.git
 cd smart
+```
+
+On **kvm2**:
+
+```bash
+git checkout qa   # or deploy a specific tag
+cp .env.qa.example .env.qa
+# fill secrets + real hostnames
+bash scripts/deploy-vps.sh qa
+
+# optional second stack for integration:
+git checkout dev
+cp .env.dev.example .env.dev
+bash scripts/deploy-vps.sh dev
+```
+
+On **kvm4** (brittytino only):
+
+```bash
+git checkout main
+cp .env.prod.example .env.prod
+bash scripts/deploy-vps.sh prod
+```
+
+Open **80** and **443** on the host that runs Caddy (kvm2 qa, kvm4 prod).
+
+## 3. Database
+
+Default: Compose Postgres + pgvector (volume per `COMPOSE_PROJECT_NAME`).
+
+Optional: set `DATABASE_URL` to a **per-environment** Supabase Postgres URI. Enable `vector`. Do not share one Supabase project across env. Prisma remains the client — see `docs/delivery/DATABASE.md`.
+
+Migrations (VV only):
+
+```bash
+docker compose --env-file .env.qa -f infra/docker/docker-compose.yml --profile apps exec api \
+  npx prisma migrate deploy
+```
+
+## 4. Laptop (not a VPS)
+
+```bash
 cp .env.example .env
-```
-
-Edit `.env`:
-
-- `JWT_SECRET` — 32+ random characters
-- `POSTGRES_PASSWORD` / `MINIO_ROOT_PASSWORD`
-- `API_HOST`, `STUDENT_HOST`, `TPO_HOST`, `ADMIN_HOST`, `VERIFY_HOST`
-- `PUBLIC_API_URL` / `NEXT_PUBLIC_API_URL` = `https://api.example.com`
-- `CORS_ORIGINS` = the four https portal origins
-- `NODE_ENV=production`
-- `LOG_PRETTY=false`
-
-Open ports **80** and **443**. Caddy obtains Let's Encrypt certificates automatically.
-
-## 3. Deploy
-
-```bash
-bash scripts/deploy-vps.sh
-```
-
-That builds every image and starts:
-
-- PostgreSQL 16 + pgvector
-- Redis 7
-- Redpanda (Kafka API)
-- MinIO (S3-compatible; swap for Cloudflare R2 in prod by changing `S3_*`)
-- `api`, four Next.js apps
-- Caddy reverse proxy
-- Prometheus + Grafana (`--profile obs`)
-
-Then migrate and seed once:
-
-```bash
-docker compose -f infra/docker/docker-compose.yml --profile apps exec api \
-  sh -c 'npx prisma migrate deploy && npx tsx prisma/seed.ts'
-```
-
-## 4. Local data plane only
-
-Engineers on laptops do **not** need the app images:
-
-```bash
-pnpm infra:up     # postgres, redis, redpanda, minio
+pnpm infra:up
 pnpm dev:api
-pnpm --filter @smart/web-student dev
 ```
 
 ## 5. Health
 
-- API liveness: `GET /health`
-- API readiness: `GET /ready` (Postgres + Redis)
-- Metrics: `GET /api/v1/admin/metrics`
+- `GET /health` · `GET /ready` · `GET /api/v1/admin/metrics`
 
 Owner: Vishal V (infra) / Tino (release).

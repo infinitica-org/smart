@@ -126,7 +126,9 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log('Seed complete. Login as student@smart.local / ChangeMe!Dev');
+  console.log(
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels seeded. Login as student@smart.local / ChangeMe!Dev`,
+  );
   await prisma.$disconnect();
 }
 

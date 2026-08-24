@@ -20,6 +20,7 @@ const EnvSchema = z.object({
     .string()
     .min(1)
     .default('postgresql://smart:smart@127.0.0.1:5432/smart?schema=public'),
+  // Host 6380 matches infra/docker (Windows often already binds 6379).
   REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6380'),
   KAFKA_BROKERS: z.string().default('127.0.0.1:19092'),
   KAFKA_CLIENT_ID: z.string().default('smart-api-core'),
@@ -47,6 +48,7 @@ const EnvSchema = z.object({
 
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),

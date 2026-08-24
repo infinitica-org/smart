@@ -10,9 +10,10 @@
   "scripts": {
     "start": "tsx src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "eslint src scripts --max-warnings=0",
     "test": "vitest run",
     "validate:staged": "tsx src/cli.ts validate",
+    "schema:generate": "tsx scripts/generate-schema.ts",
     "clean": "rimraf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {

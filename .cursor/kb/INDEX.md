@@ -13,6 +13,7 @@ Condensed shared knowledge. Canonical detail stays in repo docs.
 | [kafka-topics.md](./kafka-topics.md)             | Topics + producers                                                    |
 | [doc-authority.md](./doc-authority.md)           | Which doc wins on conflict                                            |
 | [commits-and-prs.md](./commits-and-prs.md)       | Commit subject + PR label tags                                        |
+| [backlog-issues.md](./backlog-issues.md)         | Sprint backlog → GitHub Issues only (not Zoho)                        |
 
 **Full local setup:** [`docs/delivery/LOCAL_DEV.md`](../../docs/delivery/LOCAL_DEV.md)
 
@@ -20,7 +21,7 @@ Personal scratch + prefs: **`.cursor/local/`** (gitignored) — `preferences.md`
 
 ## Agent workflow (non-negotiable)
 
-Feature branch → lint/typecheck/test → commit (when asked) → **open PR to `develop`**. See `.cursor/rules/02-dev-workflow.mdc`.
+Feature branch → lint/typecheck/test → commit (when asked) → **open PR to `dev`**. See `.cursor/rules/02-dev-workflow.mdc`.
 
 ## Quick commands
 

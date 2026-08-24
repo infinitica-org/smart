@@ -6,6 +6,8 @@
 
 **Common to everyone — do this first (30 minutes):**
 
+Full checklist (access → bootstrap → first PR): [`ENGINEER_START_CHECKLIST.md`](./ENGINEER_START_CHECKLIST.md).
+
 ```bash
 git clone <repo> smart-platform && cd smart-platform
 corepack enable && corepack prepare pnpm@11.22.0 --activate   # or: npm i -g pnpm@11.22.0
@@ -29,7 +31,10 @@ deep-read the sections that name your module) → `docs/delivery/AGILE_PLAN.md` 
 | 6380        | Redis (host port; container 6379)                        |
 | 9092        | Redpanda (Kafka)                                         |
 | 9001        | MinIO console (R2 stand-in)                              |
-| 9090 / 3030 | Prometheus / Grafana                                     |
+| 9090 / 3100 | Prometheus / Grafana                                     |
+| 3101        | Loki                                                     |
+| 8025 / 1025 | Mailpit UI / SMTP                                        |
+| 5555        | Prisma Studio (Postgres viewer — starts with `infra:up`) |
 
 ---
 
