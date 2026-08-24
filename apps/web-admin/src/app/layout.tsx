@@ -15,9 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased flex animate-fade-in">
         <AdminSidebar />
         <main className="flex-1 p-8 overflow-y-auto w-full">
-          <div className="max-w-5xl mx-auto">
-            {children}
-          </div>
+          <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </body>
     </html>

@@ -33,7 +33,8 @@ export default function Page() {
         <CardHeader>
           <CardTitle>Verify a Credential</CardTitle>
           <CardDescription>
-            Enter a cryptographically signed Certificate ID below to view the competency levels validated by SMART.
+            Enter a cryptographically signed Certificate ID below to view the competency levels
+            validated by SMART.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-6">

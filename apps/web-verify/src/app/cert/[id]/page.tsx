@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, LevelStepper } from '@smart/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  LevelStepper,
+} from '@smart/ui';
 
 interface PageProps {
   params: Promise<{ id: string }>;

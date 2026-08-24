@@ -19,9 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </p>
               <h1 className="text-xl font-semibold tracking-tight">Trust & Verification</h1>
             </div>
-            <div className="text-xs text-[var(--text-muted)] font-medium">
-              Public Lookup Portal
-            </div>
+            <div className="text-xs text-[var(--text-muted)] font-medium">Public Lookup Portal</div>
           </div>
         </header>
 
