@@ -22,7 +22,12 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       this.available = true;
     } catch (error) {
       this.logger.warn(
-        `Kafka is not reachable at ${env.KAFKA_BROKERS}. Events will be skipped until it is. (${error instanceof Error ? error.message : 'unknown'})`,
+        {
+          event: 'kafka.emit_skipped',
+          brokers: env.KAFKA_BROKERS,
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        'Kafka is not reachable; events will be skipped until it is',
       );
     }
   }
@@ -33,7 +38,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   async emit(topic: string, key: string, value: unknown, module: string): Promise<void> {
     if (!this.available) {
-      this.logger.debug(`Skipping event ${topic} (Kafka down)`);
+      this.logger.debug({ event: 'kafka.emit_skipped', topic }, 'Skipping event (Kafka down)');
       return;
     }
     await this.producer.send({
