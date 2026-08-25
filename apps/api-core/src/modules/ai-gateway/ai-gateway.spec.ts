@@ -63,19 +63,29 @@ describe('AiGatewayAuditService', () => {
   it('calculates cost accurately across Claude and Gemini models', () => {
     const auditService = new AiGatewayAuditService();
 
+    // Claude 3.5 Sonnet: $3/1M prompt, $15/1M completion
+    // 10,000 prompt tokens = $0.03, 2,000 completion tokens = $0.03 -> $0.06
     const sonnetCost = auditService.calculateCostUsd('claude-3-5-sonnet-latest', 10_000, 2_000);
     expect(sonnetCost).toBe(0.06);
 
+    // Claude 3.5 Haiku: $0.80/1M prompt, $4.00/1M completion
+    // 10,000 prompt tokens = $0.008, 1,000 completion tokens = $0.004 -> $0.012
     const haikuCost = auditService.calculateCostUsd('claude-3-5-haiku-latest', 10_000, 1_000);
     expect(haikuCost).toBe(0.012);
 
+    // Gemini 2.5 Pro: $1.25/1M prompt, $5.00/1M completion
+    // 20,000 prompt tokens = $0.025, 4,000 completion tokens = $0.02 -> $0.045
     const geminiProCost = auditService.calculateCostUsd('gemini-2.5-pro', 20_000, 4_000);
     expect(geminiProCost).toBe(0.045);
 
+    // Gemini 2.5 Flash: $0.075/1M prompt, $0.30/1M completion
+    // 100,000 prompt tokens = $0.0075, 10,000 completion tokens = $0.003 -> $0.0105
     const geminiFlashCost = auditService.calculateCostUsd('gemini-2.5-flash', 100_000, 10_000);
     expect(geminiFlashCost).toBe(0.0105);
 
+    // Edge cases: 0 tokens
     expect(auditService.calculateCostUsd('claude-3-5-sonnet-latest', 0, 0)).toBe(0);
+    // Negative tokens handled safely as 0
     expect(auditService.calculateCostUsd('claude-3-5-sonnet-latest', -100, -50)).toBe(0);
   });
 
@@ -115,6 +125,7 @@ describe('AiGatewayAuditService', () => {
       estimatedCostUsd: result.estimatedCostUsd,
     });
 
+    // Verify no raw prompt or candidate PII is included in the payload
     expect(createCallArg.data.prompt).toBeUndefined();
     expect(createCallArg.data.candidateResponse).toBeUndefined();
     expect(createCallArg.data.email).toBeUndefined();
@@ -145,7 +156,7 @@ describe('AiGatewayAuditService', () => {
   });
 });
 
-describe('AiGatewayService Failover & Circuit Breaker', () => {
+describe('AiGatewayService Failover & Circuit Breaker with Auditing', () => {
   const sampleRequest: AiCompletionRequest = {
     promptRef: 'bars-l3@1',
     modelRole: 'PRIMARY_REASONING',
@@ -164,12 +175,14 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
       isTranscript: false,
       referenceNotes: [],
     },
-    correlation: {},
+    correlation: {
+      responseId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    },
     maxOutputTokens: 1024,
     temperature: 0,
   };
 
-  it('completes via primary provider (Anthropic) when healthy', async () => {
+  it('completes via primary provider (Anthropic) and records audit row', async () => {
     const mockAnthropic = {
       provider: 'ANTHROPIC' as const,
       isConfigured: true,
@@ -214,12 +227,20 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
       complete: vi.fn(),
     };
 
+    const mockPrisma = {
+      aiEvaluationAudit: {
+        create: vi.fn().mockResolvedValue({ id: 'audit-test-123' }),
+      },
+    };
+
     const cb = new AiCircuitBreaker({ failureThreshold: 2 });
+    const auditService = new AiGatewayAuditService(mockPrisma as never);
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     const result = await service.complete(sampleRequest);
@@ -227,11 +248,21 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     expect(result.provider).toBe('ANTHROPIC');
     expect(result.usedFallback).toBe(false);
     expect(result.model).toBe('claude-3-5-sonnet-latest');
+    expect(result.auditId).toBeDefined();
+    expect(result.estimatedCostUsd).toBeGreaterThan(0);
+    expect(result.latencyMs).toBe(120);
     expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
     expect(mockGoogle.complete).not.toHaveBeenCalled();
+    expect(mockPrisma.aiEvaluationAudit.create).toHaveBeenCalledTimes(1);
+
+    const auditData = mockPrisma.aiEvaluationAudit.create.mock.calls[0]?.[0].data;
+    expect(auditData.promptRef).toBe('bars-l3@1');
+    expect(auditData.provider).toBe('ANTHROPIC');
+    expect(auditData.usedFallback).toBe(false);
+    expect(auditData.responseId).toBe('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
   });
 
-  it('forces failover to Gemini 2.5 on Anthropic 429 Rate Limit (AC 1, AC 2, AC 3)', async () => {
+  it('forces failover to Gemini 2.5 and audits the fallback call', async () => {
     const mockAnthropic = {
       provider: 'ANTHROPIC' as const,
       isConfigured: true,
@@ -276,12 +307,20 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
       complete: vi.fn(),
     };
 
+    const mockPrisma = {
+      aiEvaluationAudit: {
+        create: vi.fn().mockResolvedValue({ id: 'audit-fallback-123' }),
+      },
+    };
+
     const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const auditService = new AiGatewayAuditService(mockPrisma as never);
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     const result = await service.complete(sampleRequest);
@@ -289,9 +328,16 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     expect(result.provider).toBe('GOOGLE');
     expect(result.usedFallback).toBe(true);
     expect(result.model).toBe('gemini-2.5-pro');
+    expect(result.auditId).toBeDefined();
+    expect(result.estimatedCostUsd).toBeGreaterThan(0);
     expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
     expect(mockGoogle.complete).toHaveBeenCalledTimes(1);
     expect(cb.getState('ANTHROPIC')).toBe('OPEN');
+
+    const auditData = mockPrisma.aiEvaluationAudit.create.mock.calls[0]?.[0].data;
+    expect(auditData.provider).toBe('GOOGLE');
+    expect(auditData.model).toBe('gemini-2.5-pro');
+    expect(auditData.usedFallback).toBe(true);
   });
 
   it('skips Anthropic immediately when its circuit is OPEN and routes to Gemini 2.5', async () => {
@@ -327,11 +373,13 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     const cb = new AiCircuitBreaker({ failureThreshold: 1 });
     cb.trip('ANTHROPIC');
 
+    const auditService = new AiGatewayAuditService();
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     const result = await service.complete(sampleRequest);
@@ -373,11 +421,13 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     };
 
     const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const auditService = new AiGatewayAuditService();
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     const result = await service.complete(sampleRequest);
@@ -408,11 +458,13 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     };
 
     const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const auditService = new AiGatewayAuditService();
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     await expect(service.complete(sampleRequest)).rejects.toThrow(AiGatewayAllProvidersFailedError);
@@ -458,11 +510,13 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     const cb = new AiCircuitBreaker();
     cb.trip('ANTHROPIC');
 
+    const auditService = new AiGatewayAuditService();
     const service = new AiGatewayService(
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
       cb,
+      auditService,
     );
 
     const health = await service.getHealth();
@@ -480,7 +534,8 @@ describe('AiGatewayController', () => {
     const google = new GoogleAdapter();
     const openrouter = new OpenRouterAdapter();
     const cb = new AiCircuitBreaker();
-    const service = new AiGatewayService(anthropic, google, openrouter, cb);
+    const auditService = new AiGatewayAuditService();
+    const service = new AiGatewayService(anthropic, google, openrouter, cb, auditService);
     const controller = new AiGatewayController(service);
 
     const health = await controller.health();

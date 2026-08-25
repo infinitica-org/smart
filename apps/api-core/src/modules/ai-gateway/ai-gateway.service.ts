@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -11,6 +10,7 @@ import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import type { AiProviderAdapter } from './ai-gateway.interface.js';
 import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
@@ -25,6 +25,7 @@ export class AiGatewayService {
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
     @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
+    @Inject(AiGatewayAuditService) private readonly auditService: AiGatewayAuditService,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -147,6 +148,17 @@ export class AiGatewayService {
           }),
         );
 
+        const { auditId, estimatedCostUsd } = await this.auditService.recordAudit({
+          promptRef: request.promptRef,
+          provider: result.provider,
+          model: result.model,
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+          usedFallback: isFallback,
+          responseId: request.correlation?.responseId,
+          latencyMs: result.latencyMs,
+        });
+
         return {
           output: result.output,
           provider: result.provider,
@@ -155,8 +167,8 @@ export class AiGatewayService {
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           latencyMs: result.latencyMs,
-          estimatedCostUsd: 0,
-          auditId: randomUUID(),
+          estimatedCostUsd,
+          auditId,
         };
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
