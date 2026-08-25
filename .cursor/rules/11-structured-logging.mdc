@@ -1,0 +1,21 @@
+---
+description: Structured server logging — pino, ALS correlation, no PII
+globs:
+  - apps/api-core/**/*.ts
+  - packages/observability/**/*.ts
+alwaysApply: false
+---
+
+# Structured logging (VV / platform)
+
+## Rules
+
+1. Use Nest `Logger` or `@smart/observability` `createLogger` / `logEvent` — never `console.log` (bootstrap `console.error` in `main.ts` only).
+2. Log **objects + message**: `logEvent(logger, 'warn', LOG_EVENTS.REDIS_DEGRADED, { policyKey }, '…')`.
+3. Event names come from `LOG_EVENTS` in `@smart/observability`. Do not invent free-text `event` strings.
+4. Correlation: rely on ALS (`runWithContext` / interceptor). Kafka produce must attach `CORRELATION_KAFKA_HEADER`; consumers use `runKafkaHandler`.
+5. Never log passwords, JWTs, emails, answers, transcripts, or raw Authorization headers — redaction paths exist; still do not put them in `msg`.
+6. Safe fields: `correlationId`, `userId`, `institutionId`, `attemptId`, `trackCode`, `route`, `statusCode`, `durationMs`.
+7. Levels: `error` = 5xx / lost work; `warn` = degraded; `info`/`log` = outcomes; `debug` = skip paths.
+
+See ADR-0010 and `packages/observability/src/log-events.ts`.

@@ -1,6 +1,7 @@
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { LOG_EVENTS, logEvent } from '@smart/observability';
 import { PrismaClient } from '../../generated/prisma/index.js';
 import { env } from '../config/env.js';
 
@@ -20,9 +21,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     try {
       await this.$connect();
     } catch (error) {
-      this.logger.warn(
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.POSTGRES_DEGRADED,
         {
-          event: 'postgres.degraded',
           err: error instanceof Error ? error.message : 'unknown',
         },
         'Postgres is not reachable; catalog will serve contract defaults until infra is up',

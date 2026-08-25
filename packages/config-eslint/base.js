@@ -49,6 +49,7 @@ export const base = tseslint.config(
 
       // --- correctness ---
       eqeqeq: ['error', 'always', { null: 'ignore' }],
+      // Prefer Nest Logger / @smart/observability. Warn in shared packages; Nest overrides to error.
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-return-await': 'off',
       'prefer-const': 'error',

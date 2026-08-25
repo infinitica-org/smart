@@ -13,5 +13,6 @@ Accepted ADRs for SMART. One decision per file. Owner: Tino (`@brittytino`).
 | [0007](./0007-migration-stewardship.md) | Prisma migration stewardship       | Accepted |
 | [0008](./0008-rate-limit-strategy.md)   | Rate-limit strategy                | Accepted |
 | [0009](./0009-env-topology.md)          | Branch, VPS, and database topology | Accepted |
+| [0010](./0010-structured-logging.md)    | Structured server logging          | Accepted |
 
 If an ADR conflicts with `ARCHITECTURE.md`, open a PR to fix the ADR or the architecture doc — do not leave them divergent.

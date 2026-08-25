@@ -1,7 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { getRateLimitPolicy, type RateLimitPolicy } from '@smart/contracts';
-import { rateLimitRejections, rateLimitUtilisation } from '@smart/observability';
+import {
+  LOG_EVENTS,
+  logEvent,
+  rateLimitRejections,
+  rateLimitUtilisation,
+} from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { SLIDING_WINDOW_LUA } from './sliding-window.lua.js';
@@ -59,9 +64,11 @@ export class RateLimitService {
       };
     } catch (error) {
       if (env.NODE_ENV === 'production') throw error;
-      this.logger.warn(
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.REDIS_DEGRADED,
         {
-          event: 'redis.degraded',
           policyKey,
           err: error instanceof Error ? error.message : 'unknown',
         },
