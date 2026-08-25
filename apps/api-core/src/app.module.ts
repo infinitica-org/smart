@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { buildPinoHttpOptions } from '@smart/observability';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
@@ -29,12 +30,13 @@ import { RedisModule } from './platform/redis/redis.module.js';
 @Module({
   imports: [
     LoggerModule.forRoot({
-      pinoHttp: {
+      pinoHttp: buildPinoHttpOptions({
+        serviceName: env.APP_NAME,
         level: env.LOG_LEVEL,
-        transport: env.LOG_PRETTY
-          ? { target: 'pino-pretty', options: { colorize: true } }
-          : undefined,
-      },
+        version: env.APP_VERSION,
+        environment: env.NODE_ENV,
+        pretty: env.LOG_PRETTY,
+      }),
     }),
     ConfigModule,
     PrismaModule,
