@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import type { AiProvider } from '@smart/contracts';
 
 export interface CircuitBreakerOptions {
@@ -21,14 +21,21 @@ export class CircuitBreakerOpenError extends Error {
   }
 }
 
-export class AiGatewayAllProvidersFailedError extends Error {
+export class AiGatewayAllProvidersFailedError extends HttpException {
   constructor(
     public readonly errors: Array<{ provider: AiProvider; message: string; circuitState: string }>,
   ) {
     const details = errors
       .map((e) => `[${e.provider} (${e.circuitState})]: ${e.message}`)
       .join(', ');
-    super(`AI Gateway: All providers failed or circuits are open. Details: ${details}`);
+    super(
+      {
+        error: 'ai_provider_unavailable',
+        message: `AI Gateway: All providers failed or circuits are open. Details: ${details}`,
+        details: errors.map((e) => ({ path: e.provider, message: e.message })),
+      },
+      503, // HttpStatus.SERVICE_UNAVAILABLE
+    );
     this.name = 'AiGatewayAllProvidersFailedError';
   }
 }
@@ -39,7 +46,7 @@ export function isCircuitBreakerTriggerError(error: unknown): boolean {
 
   const err = error as Record<string, unknown>;
   const status = (err.status ?? err.statusCode ?? err.status_code) as number | undefined;
-  if (typeof status === 'number' && (status === 429 || status >= 500)) {
+  if (typeof status === 'number' && (status === 429 || (status >= 500 && status < 600))) {
     return true;
   }
 
@@ -52,18 +59,13 @@ export function isCircuitBreakerTriggerError(error: unknown): boolean {
   if (
     message.includes('429') ||
     message.includes('rate limit') ||
-    message.includes('quota') ||
     message.includes('timeout') ||
     message.includes('timed out') ||
-    message.includes('overloaded') ||
+    message.includes('etimedout') ||
     message.includes('500') ||
     message.includes('502') ||
     message.includes('503') ||
-    message.includes('504') ||
-    message.includes('econnreset') ||
-    message.includes('etimedout') ||
-    message.includes('econnrefused') ||
-    message.includes('fetch failed')
+    message.includes('504')
   ) {
     return true;
   }

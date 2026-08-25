@@ -12,7 +12,7 @@ describe('AiCircuitBreaker (Unit Tests)', () => {
     expect(isCircuitBreakerTriggerError(new Error('Rate limit exceeded (429)'))).toBe(true);
     expect(isCircuitBreakerTriggerError(new Error('502 Bad Gateway'))).toBe(true);
     expect(isCircuitBreakerTriggerError(new Error('Request timed out'))).toBe(true);
-    expect(isCircuitBreakerTriggerError(new Error('fetch failed'))).toBe(true);
+    expect(isCircuitBreakerTriggerError(new Error('fetch failed'))).toBe(false);
     expect(isCircuitBreakerTriggerError(new CircuitBreakerOpenError('ANTHROPIC'))).toBe(true);
     expect(isCircuitBreakerTriggerError(new Error('Invalid schema'))).toBe(false);
   });
