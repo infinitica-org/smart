@@ -93,7 +93,7 @@ export class RateLimitService {
         policy,
       };
     } catch (error) {
-      if (env.NODE_ENV === 'production') throw error;
+      if (!failOpenOnRedisError(env.NODE_ENV)) throw error;
       this.logger.warn(
         `Rate limiter skipped (Redis down) for ${policyKey}. Local-only fail-open. ${error instanceof Error ? error.message : ''}`,
       );
@@ -149,4 +149,8 @@ function isUuid(value: string | null): value is string {
     typeof value === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   );
+}
+
+export function failOpenOnRedisError(nodeEnv: string): boolean {
+  return nodeEnv !== 'production';
 }
