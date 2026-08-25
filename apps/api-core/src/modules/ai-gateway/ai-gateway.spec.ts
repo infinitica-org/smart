@@ -3,6 +3,7 @@ import { AiHealthDtoSchema, type AiCompletionRequest } from '@smart/contracts';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { AiGatewayService } from './ai-gateway.service.js';
 import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
@@ -55,6 +56,92 @@ describe('ai-gateway adapters', () => {
         modelRole: 'PRIMARY_REASONING',
       }),
     ).rejects.toThrow(/not configured/);
+  });
+});
+
+describe('AiGatewayAuditService', () => {
+  it('calculates cost accurately across Claude and Gemini models', () => {
+    const auditService = new AiGatewayAuditService();
+
+    const sonnetCost = auditService.calculateCostUsd('claude-3-5-sonnet-latest', 10_000, 2_000);
+    expect(sonnetCost).toBe(0.06);
+
+    const haikuCost = auditService.calculateCostUsd('claude-3-5-haiku-latest', 10_000, 1_000);
+    expect(haikuCost).toBe(0.012);
+
+    const geminiProCost = auditService.calculateCostUsd('gemini-2.5-pro', 20_000, 4_000);
+    expect(geminiProCost).toBe(0.045);
+
+    const geminiFlashCost = auditService.calculateCostUsd('gemini-2.5-flash', 100_000, 10_000);
+    expect(geminiFlashCost).toBe(0.0105);
+
+    expect(auditService.calculateCostUsd('claude-3-5-sonnet-latest', 0, 0)).toBe(0);
+    expect(auditService.calculateCostUsd('claude-3-5-sonnet-latest', -100, -50)).toBe(0);
+  });
+
+  it('persists audit row to Prisma with all expected fields and no PII', async () => {
+    const mockPrisma = {
+      aiEvaluationAudit: {
+        create: vi.fn().mockResolvedValue({ id: 'mock-audit-uuid' }),
+      },
+    };
+
+    const auditService = new AiGatewayAuditService(mockPrisma as never);
+
+    const result = await auditService.recordAudit({
+      promptRef: 'bars-l3@1',
+      provider: 'ANTHROPIC',
+      model: 'claude-3-5-sonnet-latest',
+      promptTokens: 1500,
+      completionTokens: 300,
+      usedFallback: false,
+      responseId: '11111111-2222-3333-4444-555555555555',
+      latencyMs: 250,
+    });
+
+    expect(result.auditId).toBeDefined();
+    expect(result.estimatedCostUsd).toBeGreaterThan(0);
+    expect(mockPrisma.aiEvaluationAudit.create).toHaveBeenCalledTimes(1);
+
+    const createCallArg = mockPrisma.aiEvaluationAudit.create.mock.calls[0]?.[0];
+    expect(createCallArg.data).toMatchObject({
+      promptRef: 'bars-l3@1',
+      provider: 'ANTHROPIC',
+      model: 'claude-3-5-sonnet-latest',
+      promptTokens: 1500,
+      completionTokens: 300,
+      usedFallback: false,
+      responseId: '11111111-2222-3333-4444-555555555555',
+      estimatedCostUsd: result.estimatedCostUsd,
+    });
+
+    expect(createCallArg.data.prompt).toBeUndefined();
+    expect(createCallArg.data.candidateResponse).toBeUndefined();
+    expect(createCallArg.data.email).toBeUndefined();
+    expect(createCallArg.data.userId).toBeUndefined();
+  });
+
+  it('handles database write failure gracefully and logs error without crashing', async () => {
+    const mockPrisma = {
+      aiEvaluationAudit: {
+        create: vi.fn().mockRejectedValue(new Error('PostgreSQL connection timeout')),
+      },
+    };
+
+    const auditService = new AiGatewayAuditService(mockPrisma as never);
+
+    const result = await auditService.recordAudit({
+      promptRef: 'bars-l3@1',
+      provider: 'ANTHROPIC',
+      model: 'claude-3-5-sonnet-latest',
+      promptTokens: 500,
+      completionTokens: 100,
+      usedFallback: false,
+    });
+
+    expect(result.auditId).toBeDefined();
+    expect(result.estimatedCostUsd).toBeGreaterThan(0);
+    expect(mockPrisma.aiEvaluationAudit.create).toHaveBeenCalledTimes(1);
   });
 });
 
