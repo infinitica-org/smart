@@ -71,3 +71,4 @@ skills-lock.json
 .cache/
 tmp/
 *.local
+.auth0-mcp-state.json

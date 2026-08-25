@@ -38,6 +38,7 @@ describe('AuthService refresh rotation', () => {
       {
         signAsync: vi.fn(async (payload: { fam: string }) => `jwt.${payload.fam}`),
       } as never,
+      {} as never,
     );
 
     const login = await service.login('student@smart.local', 'ChangeMe!Dev');
@@ -63,6 +64,7 @@ describe('AuthService refresh rotation', () => {
       {
         signAsync: vi.fn(async () => 'jwt'),
       } as never,
+      {} as never,
     );
 
     await expect(service.refresh(undefined)).rejects.toBeInstanceOf(UnauthorizedException);

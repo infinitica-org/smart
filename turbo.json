@@ -5,7 +5,14 @@
   "concurrency": "20",
   "globalDependencies": ["tsconfig.base.json", ".env"],
   "globalEnv": ["NODE_ENV", "CI"],
-  "globalPassThroughEnv": ["DATABASE_URL", "REDIS_URL", "KAFKA_BROKERS"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "KAFKA_BROKERS",
+    "AUTH0_DOMAIN",
+    "AUTH0_CLIENT_ID",
+    "AUTH0_CLIENT_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

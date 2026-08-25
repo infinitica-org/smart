@@ -1,11 +1,37 @@
 import { scrypt as scryptCallback, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import type {
+  AuthProvider,
+  AuthTokenResponse,
+  AuthenticatedUser,
+  SsoStartResponse,
+} from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 import { hashRefreshToken } from './auth.cookies.js';
+import {
+  OAUTH_STATE_TTL_SECONDS,
+  auth0ConnectionFor,
+  buildAuthorizeUrl,
+  displayNameFromProfile,
+  emailDomain,
+  generatePkce,
+  isAllowedRedirectUri,
+  isSocialSsoProvider,
+  oauthStateKey,
+  randomOauthString,
+  resolveAuth0Settings,
+  type OauthStatePayload,
+} from './auth.oauth.js';
 
 const scrypt = promisify(scryptCallback);
 const JWT_ISS = 'smart-api';
@@ -27,6 +53,7 @@ export class AuthService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   async login(email: string, password: string): Promise<IssuedSession> {
@@ -41,6 +68,122 @@ export class AuthService {
         statusCode: 401,
       });
     }
+    return this.issueSession(user);
+  }
+
+  async ssoStart(
+    provider: AuthProvider,
+    redirectUri: string,
+    institutionDomain?: string,
+  ): Promise<SsoStartResponse> {
+    if (!isSocialSsoProvider(provider)) {
+      throw new BadRequestException({
+        error: 'invalid_provider',
+        message: 'This sprint supports Google and GitHub OAuth only (no SAML/OIDC).',
+        statusCode: 400,
+      });
+    }
+
+    const auth0 = resolveAuth0Settings(env);
+    if (!auth0) {
+      throw new ServiceUnavailableException({
+        error: 'auth0_not_configured',
+        message:
+          'Auth0 is not configured. Set AUTH0_DOMAIN, AUTH0_CLIENT_ID, and AUTH0_CLIENT_SECRET.',
+        statusCode: 503,
+      });
+    }
+
+    if (!isAllowedRedirectUri(redirectUri, env.CORS_ORIGINS)) {
+      throw new BadRequestException({
+        error: 'invalid_redirect_uri',
+        message: 'redirectUri origin must be in CORS_ORIGINS and path must be /auth/callback.',
+        statusCode: 400,
+      });
+    }
+
+    if (institutionDomain && !institutionDomain.includes('@')) {
+      const mapped = await this.prisma.institution.findUnique({
+        where: { domain: institutionDomain.toLowerCase() },
+      });
+      if (!mapped) {
+        throw new BadRequestException({
+          error: 'unknown_domain',
+          message: `No institution is mapped for domain ${institutionDomain}.`,
+          statusCode: 400,
+        });
+      }
+    }
+
+    const state = randomOauthString();
+    const nonce = randomOauthString();
+    const pkce = generatePkce();
+    const payload: OauthStatePayload = {
+      redirectUri,
+      provider,
+      codeVerifier: pkce.verifier,
+      nonce,
+    };
+
+    try {
+      await this.redis.set(
+        oauthStateKey(state),
+        JSON.stringify(payload),
+        'EX',
+        OAUTH_STATE_TTL_SECONDS,
+      );
+    } catch {
+      throw new ServiceUnavailableException({
+        error: 'oauth_state_unavailable',
+        message: 'Could not persist SSO state. Confirm Redis is running.',
+        statusCode: 503,
+      });
+    }
+
+    return {
+      state,
+      authorizationUrl: buildAuthorizeUrl({
+        domain: auth0.domain,
+        clientId: auth0.clientId,
+        redirectUri,
+        state,
+        nonce,
+        codeChallenge: pkce.challenge,
+        connection: auth0ConnectionFor(provider),
+        loginHint: institutionDomain?.includes('@') ? institutionDomain : undefined,
+      }),
+    };
+  }
+
+  async ssoCallback(code: string, state: string): Promise<IssuedSession> {
+    const auth0 = resolveAuth0Settings(env);
+    if (!auth0) {
+      throw new ServiceUnavailableException({
+        error: 'auth0_not_configured',
+        message:
+          'Auth0 is not configured. Set AUTH0_DOMAIN, AUTH0_CLIENT_ID, and AUTH0_CLIENT_SECRET.',
+        statusCode: 503,
+      });
+    }
+
+    const stored = await this.consumeOauthState(state);
+    const tokens = await this.exchangeAuth0Code(auth0, code, stored);
+    const profile = await this.fetchAuth0UserInfo(auth0, tokens.access_token);
+    const email = profile.email?.trim().toLowerCase();
+    if (!email) {
+      throw new UnauthorizedException({
+        error: 'email_required',
+        message: 'Auth0 profile did not include an email address.',
+        statusCode: 401,
+      });
+    }
+
+    const user = await this.upsertSsoUser({
+      email,
+      fullName: displayNameFromProfile({ ...profile, email }, email),
+      emailVerified: Boolean(profile.email_verified),
+      provider: stored.provider,
+    });
     return this.issueSession(user);
   }
 
@@ -86,6 +229,118 @@ export class AuthService {
       where: { tokenHash: hashRefreshToken(rawToken) },
     });
     if (row) await this.revokeFamily(row.familyId);
+  }
+
+  private async consumeOauthState(state: string): Promise<OauthStatePayload> {
+    let raw: string | null;
+    try {
+      raw = await this.redis.getdel(oauthStateKey(state));
+    } catch {
+      throw new ServiceUnavailableException({
+        error: 'oauth_state_unavailable',
+        message: 'Could not read SSO state. Confirm Redis is running.',
+        statusCode: 503,
+      });
+    }
+    if (!raw) {
+      throw new UnauthorizedException({
+        error: 'invalid_oauth_state',
+        message: 'SSO state is missing or expired. Start login again.',
+        statusCode: 401,
+      });
+    }
+    return JSON.parse(raw) as OauthStatePayload;
+  }
+
+  private async exchangeAuth0Code(
+    auth0: { domain: string; clientId: string; clientSecret: string },
+    code: string,
+    stored: OauthStatePayload,
+  ): Promise<{ access_token: string }> {
+    const response = await fetch(`https://${auth0.domain}/oauth/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: auth0.clientId,
+        client_secret: auth0.clientSecret,
+        code,
+        redirect_uri: stored.redirectUri,
+        code_verifier: stored.codeVerifier,
+      }),
+    });
+    const body = (await response.json()) as {
+      access_token?: string;
+      error_description?: string;
+    };
+    if (!response.ok || !body.access_token) {
+      throw new UnauthorizedException({
+        error: 'oauth_exchange_failed',
+        message: body.error_description ?? 'Auth0 authorization code exchange failed.',
+        statusCode: 401,
+      });
+    }
+    return { access_token: body.access_token };
+  }
+
+  private async fetchAuth0UserInfo(
+    auth0: { domain: string },
+    accessToken: string,
+  ): Promise<{ email?: string; email_verified?: boolean; name?: string; nickname?: string }> {
+    const response = await fetch(`https://${auth0.domain}/userinfo`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new UnauthorizedException({
+        error: 'oauth_profile_failed',
+        message: 'Could not load the Auth0 user profile.',
+        statusCode: 401,
+      });
+    }
+    return (await response.json()) as {
+      email?: string;
+      email_verified?: boolean;
+      name?: string;
+      nickname?: string;
+    };
+  }
+
+  private async upsertSsoUser(input: {
+    email: string;
+    fullName: string;
+    emailVerified: boolean;
+    provider: AuthProvider;
+  }) {
+    const domain = emailDomain(input.email);
+    const institution = domain
+      ? await this.prisma.institution.findUnique({ where: { domain } })
+      : null;
+
+    const existing = await this.prisma.user.findUnique({ where: { email: input.email } });
+    if (existing) {
+      return this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          fullName: existing.fullName || input.fullName,
+          emailVerified: existing.emailVerified || input.emailVerified,
+          provider: input.provider,
+          institutionId: existing.institutionId ?? institution?.id ?? null,
+        },
+        include: userInclude,
+      });
+    }
+
+    return this.prisma.user.create({
+      data: {
+        email: input.email,
+        fullName: input.fullName,
+        role: 'STUDENT',
+        provider: input.provider,
+        emailVerified: input.emailVerified,
+        institutionId: institution?.id ?? null,
+      },
+      include: userInclude,
+    });
   }
 
   private async issueSession(

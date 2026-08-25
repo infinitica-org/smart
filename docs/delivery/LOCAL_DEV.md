@@ -136,6 +136,17 @@ Password for all: `ChangeMe!Dev`
 - `tpo@smart.local`
 - `admin@smart.local`
 
+### Auth0 SSO
+
+The Auth0 application is a regular web app. Callbacks are the portal `/auth/callback` routes (student `:3001`, TPO `:3002`, admin `:3003`).
+
+1. Confirm `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, and `AUTH0_CLIENT_SECRET` are in repo-root `.env` (never commit them).
+2. In the Auth0 dashboard, enable **Google** and **GitHub** social connections for the SMART app.
+3. Redis must be up — SSO state is stored at `auth:oauth:state:{state}` with a 10-minute TTL.
+4. Student login: `pnpm --filter @smart/web-student dev` → http://localhost:3001/login
+
+Password login still works for seeded users when Auth0 is unset (SSO returns 503). SAML/OIDC are not in this ticket.
+
 ---
 
 ## 5. What Docker does _not_ start by default

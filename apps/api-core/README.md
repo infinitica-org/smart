@@ -26,3 +26,7 @@ Only Vishal V runs `prisma migrate`. Open an issue with table/column/type/reason
 ## Seed login
 
 `student@smart.local` / `ChangeMe!Dev` (see seed script for TPO/admin variants).
+
+## Auth0 SSO (Google + GitHub)
+
+`POST /api/v1/auth/sso/start` and `POST /api/v1/auth/sso/callback` use Auth0 (`regular_web`, authorization code + PKCE). Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET` in repo-root `.env`. Google maps to connection `google-oauth2`, GitHub to `github`. SAML/OIDC are out of this ticket and return 400. Email domain maps to `institutions.domain` on first login.

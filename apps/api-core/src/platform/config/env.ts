@@ -1,4 +1,20 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
+
+/**
+ * Load repo-root `.env` when the API is started from `apps/api-core`.
+ * Package-local `.env` overrides. Does not print file contents.
+ */
+function loadDotenvFiles(): void {
+  const rootEnv = resolve(process.cwd(), '../../.env');
+  const localEnv = resolve(process.cwd(), '.env');
+  if (existsSync(rootEnv)) loadDotenv({ path: rootEnv });
+  if (existsSync(localEnv)) loadDotenv({ path: localEnv, override: true });
+}
+
+loadDotenvFiles();
 
 /**
  * Validated process environment.
@@ -27,6 +43,10 @@ const EnvSchema = z.object({
 
   JWT_SECRET: z.string().min(32).default('local-dev-jwt-secret-change-me-now!!'),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+
+  AUTH0_DOMAIN: z.string().optional(),
+  AUTH0_CLIENT_ID: z.string().optional(),
+  AUTH0_CLIENT_SECRET: z.string().optional(),
   REFRESH_COOKIE_NAME: z.string().default('smart_refresh'),
   REFRESH_TTL_SECONDS: z.coerce
     .number()
