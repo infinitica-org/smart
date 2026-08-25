@@ -12,6 +12,7 @@ import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import type { AiProviderAdapter } from './ai-gateway.interface.js';
+import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
 @Injectable()
 export class AiGatewayService {
@@ -23,6 +24,7 @@ export class AiGatewayService {
     @Inject(AnthropicAdapter) private readonly anthropic: AnthropicAdapter,
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
+    @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -36,12 +38,24 @@ export class AiGatewayService {
     }
   }
 
+  getCircuitBreaker(): AiCircuitBreaker {
+    return this.circuitBreaker;
+  }
+
   async getHealth(): Promise<AiHealthDto> {
     const [anthropicHealth, googleHealth, openrouterHealth] = await Promise.all([
       this.anthropic.checkHealth(),
       this.google.checkHealth(),
       this.openrouter.checkHealth(),
     ]);
+
+    const resolveCircuitState = (
+      provider: AiProvider,
+      probeState: 'CLOSED' | 'OPEN' | 'HALF_OPEN',
+    ): 'CLOSED' | 'OPEN' | 'HALF_OPEN' => {
+      const cbState = this.circuitBreaker.getState(provider);
+      return cbState !== 'CLOSED' ? cbState : probeState;
+    };
 
     const resetDate = new Date(Date.now() + 60_000).toISOString();
 
@@ -50,19 +64,19 @@ export class AiGatewayService {
         {
           provider: 'ANTHROPIC',
           reachable: anthropicHealth.reachable,
-          circuitState: anthropicHealth.circuitState,
+          circuitState: resolveCircuitState('ANTHROPIC', anthropicHealth.circuitState),
           latencyMs: anthropicHealth.latencyMs,
         },
         {
           provider: 'GOOGLE',
           reachable: googleHealth.reachable,
-          circuitState: googleHealth.circuitState,
+          circuitState: resolveCircuitState('GOOGLE', googleHealth.circuitState),
           latencyMs: googleHealth.latencyMs,
         },
         {
           provider: 'OPENROUTER',
           reachable: openrouterHealth.reachable,
-          circuitState: openrouterHealth.circuitState,
+          circuitState: resolveCircuitState('OPENROUTER', openrouterHealth.circuitState),
           latencyMs: openrouterHealth.latencyMs,
         },
       ],
@@ -86,37 +100,52 @@ export class AiGatewayService {
   async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     const rendered = renderPromptRef(request.promptRef, request.variables);
 
-    const candidates: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [];
+    const candidateAdapters: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [
+      { provider: 'ANTHROPIC', adapter: this.anthropic },
+      { provider: 'GOOGLE', adapter: this.google },
+      { provider: 'OPENROUTER', adapter: this.openrouter },
+    ];
 
-    if (this.anthropic.isConfigured) {
-      candidates.push({ provider: 'ANTHROPIC', adapter: this.anthropic });
-    }
-    if (this.google.isConfigured) {
-      candidates.push({ provider: 'GOOGLE', adapter: this.google });
-    }
-    if (this.openrouter.isConfigured) {
-      candidates.push({ provider: 'OPENROUTER', adapter: this.openrouter });
-    }
+    const configured = candidateAdapters.filter((c) => c.adapter.isConfigured);
+    const candidates = configured.length > 0 ? configured : candidateAdapters;
 
-    if (candidates.length === 0) {
-      candidates.push({ provider: 'ANTHROPIC', adapter: this.anthropic });
-    }
+    const attemptedErrors: Array<{
+      provider: AiProvider;
+      message: string;
+      circuitState: string;
+    }> = [];
 
-    let lastError: unknown;
     for (let i = 0; i < candidates.length; i++) {
       const candidate = candidates[i];
       if (!candidate) continue;
-      const isFallback = i > 0;
+
+      const isFallback = candidate.provider !== 'ANTHROPIC';
+
+      if (!this.circuitBreaker.isCallAllowed(candidate.provider)) {
+        const state = this.circuitBreaker.getState(candidate.provider);
+        this.logger.warn(
+          `Circuit breaker is ${state} for ${candidate.provider}. Skipping to next fallback.`,
+        );
+        attemptedErrors.push({
+          provider: candidate.provider,
+          message: `Circuit breaker is ${state}`,
+          circuitState: state,
+        });
+        continue;
+      }
 
       try {
-        const result = await candidate.adapter.complete({
-          system: rendered.system,
-          prompt: rendered.user,
-          modelRole: request.modelRole,
-          temperature: request.temperature,
-          maxTokens: request.maxOutputTokens,
-          outputSchema: rendered.outputSchema,
-        });
+        const result = await this.circuitBreaker.execute(candidate.provider, (signal) =>
+          candidate.adapter.complete({
+            system: rendered.system,
+            prompt: rendered.user,
+            modelRole: request.modelRole,
+            temperature: request.temperature,
+            maxTokens: request.maxOutputTokens,
+            outputSchema: rendered.outputSchema,
+            signal,
+          }),
+        );
 
         return {
           output: result.output,
@@ -130,13 +159,19 @@ export class AiGatewayService {
           auditId: randomUUID(),
         };
       } catch (err) {
-        lastError = err;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const circuitState = this.circuitBreaker.getState(candidate.provider);
+        attemptedErrors.push({
+          provider: candidate.provider,
+          message: errMsg,
+          circuitState,
+        });
         this.logger.warn(
-          `Provider ${candidate.provider} failed: ${err instanceof Error ? err.message : String(err)}. Trying next fallback if available.`,
+          `Provider ${candidate.provider} failed: ${errMsg} (circuitState: ${circuitState}). Trying next fallback if available.`,
         );
       }
     }
 
-    throw lastError;
+    throw new AiGatewayAllProvidersFailedError(attemptedErrors);
   }
 }
