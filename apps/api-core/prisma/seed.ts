@@ -1,8 +1,35 @@
 import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
+
+const DATA_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../tools/content-pipeline/data',
+);
+
+interface RawOption {
+  optionId: string;
+  label: string;
+}
+
+interface RawItem {
+  itemId: string;
+  trackCode: string;
+  domainCode: string;
+  levelNumber: number;
+  itemType: string;
+  difficulty: string;
+  promptText: string;
+  options?: RawOption[];
+  correctOptionIds?: string[];
+  modelAnswer?: string;
+  itemWeight: number;
+}
 
 const DATABASE_URL =
   process.env['DATABASE_URL'] ?? 'postgresql://smart:smart@127.0.0.1:5432/smart?schema=public';
@@ -126,7 +153,58 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log('Seed complete. Login as student@smart.local / ChangeMe!Dev');
+  // Seed L1 item banks for the two VALIDATED_LEAD tracks
+  const itemFiles = [
+    path.join(DATA_DIR, 'mba-finance-l1.json'),
+    path.join(DATA_DIR, 'mba-business-analytics-l1.json'),
+  ];
+
+  let itemsSeeded = 0;
+  for (const filePath of itemFiles) {
+    const raw = await readFile(filePath, 'utf8');
+    const items: RawItem[] = JSON.parse(raw) as RawItem[];
+
+    for (const item of items) {
+      const track = await prisma.track.findUniqueOrThrow({ where: { code: item.trackCode } });
+      const level = await prisma.level.findUniqueOrThrow({
+        where: { trackId_levelNumber: { trackId: track.id, levelNumber: item.levelNumber } },
+      });
+      const competency = await prisma.competency.findFirstOrThrow({
+        where: { trackId: track.id, domainCode: item.domainCode },
+      });
+
+      const existing = await prisma.item.findUnique({ where: { id: item.itemId } });
+      if (!existing) {
+        await prisma.item.create({
+          data: {
+            id: item.itemId,
+            levelId: level.id,
+            competencyId: competency.id,
+            itemType: item.itemType,
+            stem: item.promptText,
+            difficultyTag: item.difficulty,
+            active: true,
+            formCode: 'A',
+            ...(item.modelAnswer ? { modelAnswer: item.modelAnswer } : {}),
+            options: item.options
+              ? {
+                  create: item.options.map((opt) => ({
+                    label: opt.optionId,
+                    text: opt.label,
+                    isCorrect: (item.correctOptionIds ?? []).includes(opt.optionId),
+                  })),
+                }
+              : undefined,
+          },
+        });
+        itemsSeeded += 1;
+      }
+    }
+  }
+
+  console.log(
+    `Seed complete — 10 tracks, 50 levels, ${String(itemsSeeded)} new item(s) seeded. Login: student@smart.local / ChangeMe!Dev`,
+  );
   await prisma.$disconnect();
 }
 
