@@ -5,8 +5,10 @@ import { TRACK_DEFINITIONS, assertDomainWeightsSumToOne } from '@smart/contracts
 import { runValidate } from './validate.js';
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
+const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '__fixtures__');
 const financeFile = path.join(dataDir, 'mba-finance-l1.json');
 const analyticsFile = path.join(dataDir, 'mba-business-analytics-l1.json');
+const badItemFile = path.join(fixturesDir, 'bad-item.json');
 
 describe('content pipeline', () => {
   it('accepts every published track definition', () => {
@@ -32,8 +34,9 @@ describe('content pipeline', () => {
     expect(report.itemCount).toBe(40);
   });
 
-  it('rejects a file containing an invalid item (missing required fields)', () => {
-    const report = runValidate(['__nonexistent_file__.json']);
+  it('rejects an item with correctOptionIds referencing a non-existent option (schema violation)', () => {
+    const report = runValidate([badItemFile]);
     expect(report.ok).toBe(false);
+    expect(report.messages.some((m) => m.includes('correctOptionIds'))).toBe(true);
   });
 });
