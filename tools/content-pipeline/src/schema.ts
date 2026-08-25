@@ -13,9 +13,12 @@ import {
  * Item authoring schema — the shape a content author commits as reviewed Git
  * JSON under `tools/content-pipeline/data/**\/*.json` (07-content-data.mdc).
  *
- * Mirrors ItemInternalDto from @smart/contracts minus server-managed fields
- * (activeFlag, exposureCount). competencyId is a placeholder UUID; seed.ts
- * resolves the real DB id by (trackCode, domainCode).
+ * This mirrors `ItemInternalDto` from `@smart/contracts` (minus the
+ * server-managed `activeFlag`/`exposureCount`) plus the placement fields
+ * (`trackCode`, `levelNumber`) an authored item needs before it has a
+ * database-assigned `competencyId` relation. Reuses the shared enums so this
+ * stays aligned with the catalog DTOs without editing the architect-owned
+ * `@smart/contracts` package.
  */
 export const ItemAuthoringSchema = z
   .object({
@@ -70,7 +73,7 @@ export const ItemAuthoringSchema = z
           path: ['correctOptionIds'],
         });
       } else {
-        const optionIds = new Set((item.options ?? []).map((o) => o.optionId));
+        const optionIds = new Set((item.options ?? []).map((option) => option.optionId));
         const unknown = item.correctOptionIds.filter((id) => !optionIds.has(id));
         if (unknown.length > 0) {
           ctx.issues.push({
@@ -90,6 +93,7 @@ export const ItemAuthoringSchema = z
         });
       }
     }
+
     if (item.itemType === 'NUMERIC_ENTRY' && item.expectedNumericAnswer === undefined) {
       ctx.issues.push({
         code: 'custom',
@@ -98,6 +102,7 @@ export const ItemAuthoringSchema = z
         path: ['expectedNumericAnswer'],
       });
     }
+
     if ((item.itemType === 'CODE_TASK' || item.itemType === 'SQL_TASK') && !item.runtime) {
       ctx.issues.push({
         code: 'custom',
@@ -106,6 +111,7 @@ export const ItemAuthoringSchema = z
         path: ['runtime'],
       });
     }
+
     if (
       (item.itemType === 'SPOKEN_RESPONSE' || item.itemType === 'DEFENSE_PROMPT') &&
       item.maxResponseSeconds === undefined

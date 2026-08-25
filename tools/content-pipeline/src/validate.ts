@@ -17,8 +17,10 @@ function defaultDataFiles(cwd: string): string[] {
 
 /**
  * Validates track domain-weight definitions plus every authored item file.
- * `files`, when provided (e.g. from lint-staged), narrows validation to those
- * paths instead of the full data/ directory.
+ * `files`, when provided (e.g. from `lint-staged`), narrows validation to
+ * those paths instead of the full `data/` directory. `cwd` defaults to the
+ * process's working directory, which is `tools/content-pipeline` for every
+ * npm script that invokes this CLI.
  */
 export function runValidate(files?: string[], cwd: string = process.cwd()): ValidationReport {
   const messages: string[] = [];
@@ -33,8 +35,8 @@ export function runValidate(files?: string[], cwd: string = process.cwd()): Vali
     }
   }
 
-  const targets = (files && files.length > 0 ? files : defaultDataFiles(cwd)).filter((f) =>
-    f.endsWith('.json'),
+  const targets = (files && files.length > 0 ? files : defaultDataFiles(cwd)).filter((file) =>
+    file.endsWith('.json'),
   );
 
   const seenItemIds = new Map<string, string>();

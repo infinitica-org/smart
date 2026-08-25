@@ -1,0 +1,13 @@
+{
+  "itemId": "1a0f181a-ee35-4054-856b-6274af450d82",
+  "trackCode": "TECH_FULLSTACK",
+  "domainCode": "A",
+  "levelNumber": 1,
+  "competencyId": "1e298a1e-993a-4175-ae53-d2617fba9fdf",
+  "itemType": "MCQ_SINGLE",
+  "difficulty": "EASY",
+  "promptText": "Which hook do you use to run a side effect after a React component renders?",
+  "options": [{ "optionId": "opt-a", "label": "useEffect" }],
+  "correctOptionIds": ["opt-does-not-exist"],
+  "itemWeight": 0.1
+}

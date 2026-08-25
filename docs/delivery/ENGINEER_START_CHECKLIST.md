@@ -5,7 +5,7 @@
 
 Complete every phase in order. Check boxes in your head or in a personal note — the only team-visible gate is [`BOOTSTRAP_SIGNOFF.md`](./BOOTSTRAP_SIGNOFF.md).
 
-**One-line summary:** clone → `pnpm bootstrap` → sign off → pick a GitHub issue → branch from `develop` → PR to `develop`. Zoho Sprints is an optional read-only mirror for sprint planning; **GitHub Issues are the backlog.**
+**One-line summary:** clone → `pnpm bootstrap` → sign off → pick a GitHub issue → branch from `dev` → PR to `dev`. Zoho Sprints is an optional read-only mirror for sprint planning; **GitHub Issues are the backlog.**
 
 ---
 
@@ -160,7 +160,7 @@ pnpm format:check
 ## Phase 7 — Open the PR
 
 - [ ] Push: `git push -u origin <branch>`
-- [ ] Open PR **into `develop`** (never commit directly to `main` or `develop`)
+- [ ] Open PR **into `dev`** (never commit directly to `main` or `dev`)
 - [ ] Title: Conventional Commit + ticket — e.g. `feat(auth): jwt access + refresh rotation (S1-VV-01)`
 - [ ] Fill [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) + DoD checkboxes
 - [ ] Labels applied (required on every PR):
@@ -179,7 +179,7 @@ pnpm format:check
 Example:
 
 ```bash
-gh pr create --base develop \
+gh pr create --base dev \
   --title "feat(auth): jwt access + refresh rotation (S1-VV-01)" \
   --label "P0-blocker" --label "area:backend" --label "sprint-1"
 ```
@@ -190,7 +190,7 @@ gh pr create --base develop \
 
 | Don’t                                      | Do instead                              |
 | ------------------------------------------ | --------------------------------------- |
-| Commit to `main` / `develop`               | Feature branch → PR to `develop`        |
+| Commit to `main` / `dev`                   | Feature branch → PR to `dev`            |
 | Commit `.env` or secrets                   | Use `.env.example` + local `.env`       |
 | Treat local commits as “done”              | Open PR; no PR = not delivered          |
 | Write feature code as Tino                 | Tino reviews; he does not ship features |

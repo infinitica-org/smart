@@ -1,0 +1,20 @@
+name: Setup Node + pnpm
+description: Checkout-adjacent toolchain for SMART CI (Node 22 from .nvmrc, pnpm 11.22)
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v5
+      with:
+        version: 11.22.0
+    - uses: actions/setup-node@v5
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+    - shell: bash
+      run: pnpm --filter @smart/contracts build
+    - shell: bash
+      env:
+        DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      run: pnpm --filter @smart/api-core db:generate
