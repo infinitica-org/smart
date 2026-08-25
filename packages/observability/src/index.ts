@@ -13,6 +13,7 @@
 export * from './redaction.js';
 export * from './logger.js';
 export * from './pino-http-options.js';
+export * from './kafka-context.js';
 export * from './metrics.js';
 export * from './correlation.js';
 

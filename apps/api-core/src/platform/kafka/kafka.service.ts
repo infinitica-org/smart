@@ -1,7 +1,12 @@
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { Kafka, type Producer } from 'kafkajs';
-import { kafkaEventsProduced } from '@smart/observability';
+import {
+  CORRELATION_KAFKA_HEADER,
+  getContext,
+  kafkaCorrelationHeaders,
+  kafkaEventsProduced,
+} from '@smart/observability';
 import { env } from '../config/env.js';
 
 @Injectable()
@@ -41,10 +46,33 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug({ event: 'kafka.emit_skipped', topic }, 'Skipping event (Kafka down)');
       return;
     }
-    await this.producer.send({
-      topic,
-      messages: [{ key, value: JSON.stringify(value) }],
-    });
-    kafkaEventsProduced.inc({ topic, producer_module: module });
+
+    const correlationId = getContext()?.correlationId;
+    const headers = kafkaCorrelationHeaders(correlationId);
+
+    try {
+      await this.producer.send({
+        topic,
+        messages: [
+          {
+            key,
+            value: JSON.stringify(value),
+            ...(headers ? { headers } : {}),
+          },
+        ],
+      });
+      kafkaEventsProduced.inc({ topic, producer_module: module });
+    } catch (error) {
+      this.logger.error(
+        {
+          event: 'kafka.emit_failed',
+          topic,
+          [CORRELATION_KAFKA_HEADER]: correlationId,
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        'Kafka emit failed',
+      );
+      throw error;
+    }
   }
 }
