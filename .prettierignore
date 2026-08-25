@@ -12,3 +12,8 @@ test-results
 infra/docker/volumes
 apps/api-core/generated
 CHANGELOG.md
+
+# tsc emit for @smart/next-config (outDir is the package root)
+packages/config-next/index.js
+packages/config-next/index.d.ts
+packages/config-next/*.map
