@@ -132,7 +132,12 @@ export class AiGatewayService {
       } catch (err) {
         lastError = err;
         this.logger.warn(
-          `Provider ${candidate.provider} failed: ${err instanceof Error ? err.message : String(err)}. Trying next fallback if available.`,
+          {
+            event: 'ai.provider_failed',
+            provider: candidate.provider,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'AI provider failed; trying next fallback if available',
         );
       }
     }

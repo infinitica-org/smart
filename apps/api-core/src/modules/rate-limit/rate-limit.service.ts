@@ -60,7 +60,12 @@ export class RateLimitService {
     } catch (error) {
       if (env.NODE_ENV === 'production') throw error;
       this.logger.warn(
-        `Rate limiter skipped (Redis down) for ${policyKey}. Local-only fail-open. ${error instanceof Error ? error.message : ''}`,
+        {
+          event: 'redis.degraded',
+          policyKey,
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        'Rate limiter skipped (Redis down); local-only fail-open',
       );
       return {
         allowed: true,

@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { buildPinoBaseOptions, getContext, type CreateLoggerOptions } from './logger.js';
+import {
+  buildPinoBaseOptions,
+  getContext,
+  type CreateLoggerOptions,
+  type LoggerContext,
+} from './logger.js';
 
 /**
  * nestjs-pino / pino-http options builder.
@@ -19,6 +24,10 @@ export const HTTP_AUTO_LOG_IGNORE_PATHS: readonly string[] = [
 
 export type BuildPinoHttpOptionsInput = CreateLoggerOptions;
 
+type RequestWithStashedContext = IncomingMessage & {
+  smartLogContext?: LoggerContext;
+};
+
 /**
  * Options object for `LoggerModule.forRoot({ pinoHttp })`.
  *
@@ -30,8 +39,8 @@ export function buildPinoHttpOptions(options: BuildPinoHttpOptionsInput): Record
 
   const pinoHttp: Record<string, unknown> = {
     ...base,
-    customProps: (_req: IncomingMessage, _res: ServerResponse) => {
-      const context = getContext();
+    customProps: (req: RequestWithStashedContext, _res: ServerResponse) => {
+      const context = getContext() ?? req.smartLogContext;
       return context ? { ...context } : {};
     },
     serializers: {
