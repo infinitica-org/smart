@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Post } from '@nestjs/common';
 import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
@@ -20,6 +20,12 @@ export class AuthController {
   login(@Body() body: unknown) {
     const parsed = PasswordLoginRequestSchema.parse(body);
     return this.auth.login(parsed.email, parsed.password);
+  }
+
+  @Post('logout')
+  @HttpCode(204)
+  logout() {
+    this.auth.logout();
   }
 
   @Public()

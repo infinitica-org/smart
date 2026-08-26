@@ -1,6 +1,6 @@
 'use client';
 
-import { getAccessToken } from '@smart/api-client';
+import { getAccessToken, clearAccessToken } from '@smart/api-client';
 import { SessionBootstrap, SmartApiProvider } from '@smart/ui';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -13,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         baseUrl={baseUrl}
         getAccessToken={getAccessToken}
         onUnauthorized={() => {
+          clearAccessToken();
           window.location.href = `${authUrl}/login`;
         }}
       >
