@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ConfidenceNote } from '@smart/ui';
 import type { ConfidenceNoteDto } from '@smart/contracts';
 

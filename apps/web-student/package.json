@@ -26,6 +26,7 @@
     "@smart/eslint-config": "workspace:*",
     "@smart/tailwind-config": "workspace:*",
     "@smart/tsconfig": "workspace:*",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
