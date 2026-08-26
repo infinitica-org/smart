@@ -30,6 +30,7 @@ export * from './dto/calibration.dto.js';
 export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
+export * from './dto/onboarding.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
