@@ -14,6 +14,7 @@ import { CalibrationModule } from './modules/calibration/calibration.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { CertificateModule } from './modules/certificate/certificate.module.js';
 import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
+import { InstitutionsModule } from './modules/institutions/institutions.module.js';
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { PlacementModule } from './modules/placement/placement.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
@@ -49,6 +50,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    InstitutionsModule,
     CatalogModule,
     AssessmentModule,
     SandboxModule,

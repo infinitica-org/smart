@@ -59,7 +59,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(derived, expected);
 }
 
-function toAuthenticatedUser(user: {
+export function toAuthenticatedUser(user: {
   id: string;
   email: string;
   fullName: string;
