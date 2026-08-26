@@ -6,7 +6,7 @@ x-app-env: &app-env
   REDIS_URL: redis://redis:6379
   KAFKA_BROKERS: redpanda:9092
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
-  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005,http://localhost}
   S3_ENDPOINT: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
@@ -15,6 +15,11 @@ x-app-env: &app-env
   LOG_LEVEL: ${LOG_LEVEL:-info}
   SMTP_HOST: mailpit
   SMTP_PORT: "1025"
+  SMTP_FROM: SMART Platform <noreply@smart.local>
+  AUTH_APP_URL: ${AUTH_APP_URL:-http://localhost:3005}
+  STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+  TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
+  ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
 
 services:
   postgres:
@@ -235,6 +240,25 @@ services:
       - "${VERIFY_PORT:-3004}:3000"
     profiles: ["apps"]
 
+  web-auth:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        APP: web-auth
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+    depends_on:
+      - api
+    ports:
+      - "${AUTH_PORT:-3005}:3000"
+    profiles: ["apps"]
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
@@ -246,6 +270,7 @@ services:
       TPO_HOST: ${TPO_HOST:-tpo.localhost}
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
+      AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -257,6 +282,7 @@ services:
       - web-tpo
       - web-admin
       - web-verify
+      - web-auth
     # Only one stack per host should enable profile `vps` (binds :80/:443).
     profiles: ["vps"]
 
