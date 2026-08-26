@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "concurrency": "11",
   "ui": "stream",
   "concurrency": "20",
   "globalDependencies": ["tsconfig.base.json", ".env"],
