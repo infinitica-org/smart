@@ -21,6 +21,7 @@ export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
 export { LevelStepper, type LevelState, type LevelStepperProps } from './components/level-stepper';
 export { AppShell, type AppShellProps } from './components/app-shell';
+export { SignOutButton, type SignOutButtonProps } from './components/sign-out-button';
 export { SessionBootstrap } from './session-bootstrap';
 export { ConfidenceNote, type ConfidenceNoteProps } from './components/confidence-note';
 export { Timer, type TimerProps } from './components/timer';

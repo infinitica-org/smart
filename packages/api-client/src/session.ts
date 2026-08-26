@@ -47,3 +47,18 @@ export function buildPortalRedirectUrl(baseUrl: string, accessToken: string): st
   url.searchParams.set('accessToken', accessToken);
   return url.toString();
 }
+
+/** Clears local tokens and sends the browser to the auth login page. */
+export async function signOutAndRedirect(options: {
+  logout: () => Promise<void>;
+  authAppUrl: string;
+}): Promise<void> {
+  try {
+    await options.logout();
+  } catch {
+    // Best-effort server revoke; always clear the local session.
+  }
+  clearAccessToken();
+  const base = options.authAppUrl.replace(/\/$/u, '');
+  window.location.href = `${base}/login`;
+}
