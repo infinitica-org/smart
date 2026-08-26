@@ -18,4 +18,8 @@
 	{$VERIFY_HOST} {
 		reverse_proxy web-verify:3000
 	}
+
+	{$AUTH_HOST} {
+		reverse_proxy web-auth:3000
+	}
 }
