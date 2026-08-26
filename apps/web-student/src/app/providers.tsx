@@ -1,22 +1,23 @@
 'use client';
 
-import { SmartApiProvider } from '@smart/ui';
+import { getAccessToken } from '@smart/api-client';
+import { SessionBootstrap, SmartApiProvider } from '@smart/ui';
+
+const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SmartApiProvider
-      baseUrl="http://localhost:3000" // Replace with real API URL in higher envs
-      getAccessToken={() => localStorage.getItem('access_token')}
-      refreshAccessToken={async () => {
-        // Stub for S0 - returning null forces logout, returning string is new token
-        console.warn('Stub: 401 triggered silent refresh');
-        return 'new-stub-token';
-      }}
-      onUnauthorized={() => {
-        console.warn('Unauthorized - redirect to login');
-      }}
-    >
-      {children}
-    </SmartApiProvider>
+    <SessionBootstrap>
+      <SmartApiProvider
+        baseUrl={baseUrl}
+        getAccessToken={getAccessToken}
+        onUnauthorized={() => {
+          window.location.href = `${authUrl}/login`;
+        }}
+      >
+        {children}
+      </SmartApiProvider>
+    </SessionBootstrap>
   );
 }

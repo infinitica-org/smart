@@ -10,18 +10,17 @@ import {
   TierBadge,
 } from '@smart/ui';
 
-export default function Page() {
+export default function DashboardPage() {
   return (
     <AppShell
-      productName="SMART · Placement"
-      title="TPO console"
-      subtitle="Cohort readiness, JD ingest, shortlists."
-      nav={<span className="text-sm text-[var(--text-muted)]">Owner: Satheswaran V</span>}
+      productName="SMART · Candidate"
+      title="Dashboard"
+      subtitle="Track enrolment, L1-L5 player, results."
+      nav={<span className="text-sm text-[var(--text-muted)]">Student portal</span>}
     >
       <div className="grid gap-6">
-        <Alert tone="info" title="Sprint 0 scaffold">
-          This portal is wired to @smart/ui and @smart/api-client. Feature work lands against
-          @smart/contracts — do not invent local DTO shapes.
+        <Alert tone="info" title="Welcome">
+          Your account is ready. Assessment and level content will appear here as features ship.
         </Alert>
         <Card>
           <CardHeader>
@@ -46,9 +45,6 @@ export default function Page() {
           <LevelStepper unlockedThrough={1} current={1} />
         </Card>
         <Button>Continue</Button>
-        <a href="/batches" className="text-sm underline block mt-4">
-          Manage batches and student invites
-        </a>
       </div>
     </AppShell>
   );
