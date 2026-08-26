@@ -11,4 +11,6 @@ playwright-report
 test-results
 infra/docker/volumes
 apps/api-core/generated
+packages/config-next/index.js
+packages/config-next/index.d.ts
 CHANGELOG.md
