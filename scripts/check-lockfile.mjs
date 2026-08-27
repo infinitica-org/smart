@@ -26,8 +26,8 @@ const packagesStart = afterImporters.search(/\npackages:\n/);
 const importerBlock =
   packagesStart === -1 ? afterImporters : afterImporters.slice(0, packagesStart);
 const importerPaths = new Set(
-  [...importerBlock.matchAll(/^ {2}(\.(?:\/)?|(?:apps|packages|tools|tests)\/[^:]+):/gm)].map((m) =>
-    m[1] === './' ? '.' : m[1],
+  [...importerBlock.matchAll(/^ {2}(\.(?:\/)?|(?:apps|packages|tools|tests)\/[^:]+):/gm)].map(
+    (m) => (m[1] === './' ? '.' : m[1]),
   ),
 );
 
