@@ -1,0 +1,47 @@
+// Grafana Alloy — ship Docker container logs to Loki (obs profile).
+// Discovers compose services; keeps `service` / `container` labels for LogQL.
+
+discovery.docker "smart" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "10s"
+}
+
+discovery.relabel "smart_logs" {
+  targets = discovery.docker.smart.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  // Drop noise containers without a compose service label.
+  rule {
+    source_labels = ["service"]
+    regex         = ""
+    action        = "drop"
+  }
+}
+
+loki.source.docker "smart" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.smart_logs.output
+  forward_to    = [loki.write.local.receiver]
+  relabel_rules = discovery.relabel.smart_logs.rules
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
