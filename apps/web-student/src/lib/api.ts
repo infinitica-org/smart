@@ -6,6 +6,30 @@ const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
 const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = input.toString();
 
+  if (url.includes('/auth/login') && init?.method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        accessToken: 'mock_access_token',
+        tokenType: 'Bearer',
+        expiresInSeconds: 900,
+        user: {
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          email: 'student@example.com',
+          fullName: 'Test Student',
+          role: 'STUDENT',
+          institutionId: null,
+          institutionName: null,
+          primaryTrack: null,
+          secondaryTrack: null,
+          provider: 'EMAIL',
+          emailVerified: true,
+          createdAt: new Date().toISOString(),
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   if (url.includes('/auth/sso/start') && init?.method === 'POST') {
     return new Response(
       JSON.stringify({
@@ -78,13 +102,30 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     );
   }
 
-  if (url.includes('/catalog/tracks') && init?.method === 'GET') {
+  if (url.includes('/institutions') && (!init || init.method === 'GET')) {
+    return new Response(
+      JSON.stringify([
+        {
+          id: '1',
+          name: 'Sri Ramakrishna College of Arts & Science',
+          location: 'Coimbatore',
+          type: 'Arts & Science',
+        },
+        { id: '2', name: 'ABC Engineering College', location: 'Bengaluru', type: 'Engineering' },
+        { id: '3', name: 'XYZ University', location: 'Chennai', type: 'University' },
+      ]),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/catalog/tracks') && (!init || init.method === 'GET')) {
     return new Response(
       JSON.stringify([
         {
           trackId: '11111111-1111-4111-8111-111111111111',
           code: 'MBA_FINANCE',
           name: 'MBA Finance',
+          description: 'Financial readiness and core concepts for management.',
           category: 'MBA',
           launchStatus: 'AVAILABLE_NEW',
           calibrationStatus: 'NOT_CALIBRATED',
@@ -107,7 +148,8 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         {
           trackId: '33333333-3333-4333-8333-333333333333',
           code: 'TECH_DATA_ANALYST',
-          name: 'Data Analyst',
+          name: 'Business Analytics',
+          description: 'Data analytics, reporting, and statistical modeling.',
           category: 'TECH',
           launchStatus: 'AVAILABLE_NEW',
           calibrationStatus: 'NOT_CALIBRATED',
@@ -124,6 +166,8 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   // eslint-disable-next-line no-restricted-globals
   return fetch(input, init);
 };
+
+export const smartFetch = IS_MOCK_ENV ? (mockFetch as typeof fetch) : fetch;
 
 export const apiClient = new SmartApiClient({
   baseUrl,
