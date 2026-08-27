@@ -162,13 +162,6 @@ enum InvitationStatus {
   REVOKED
 }
 
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  EXPIRED
-  REVOKED
-}
-
 model Institution {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
