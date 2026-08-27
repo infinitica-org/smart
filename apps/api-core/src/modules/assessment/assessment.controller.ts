@@ -11,9 +11,11 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
   type NextItemDto,
+  type SaveDraftResponse,
 } from '@smart/contracts';
 import type { FastifyRequest } from 'fastify';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -102,6 +104,27 @@ export class AssessmentController {
     return this.service.getNextItem(user.sub, attemptId);
   }
 
+  @Post('submit-l1')
+  @ApiOperation({ summary: 'Save an answer draft (write-through to Redis).' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Draft saved or superseded response' })
+  @ApiResponse({ status: 403, description: 'Forbidden student access or locked session' })
+  @ApiResponse({ status: 404, description: 'Attempt session not found' })
+  async submitL1(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<SaveDraftResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to submit answer draft',
+        statusCode: 403,
+      });
+    }
+    const dto = SaveDraftRequestSchema.parse(body);
+    return this.service.saveDraft(user.sub, dto);
+  }
   /**
    * S1-VG-03 — parallel-form selection with exposure tracking.
    * Returns the item form with the lowest average exposure for the requested level.
