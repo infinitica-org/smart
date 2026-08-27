@@ -1,0 +1,20 @@
+---
+description: Mandatory tests for every production behavior change
+alwaysApply: true
+---
+
+# Test coverage is part of the change
+
+Every PR that changes runtime behavior must add or update tests in the same PR.
+
+- Map each changed decision branch, acceptance criterion, and named failure mode to a test.
+- Test the happy path, rejection/error path, boundary values, and fallback/degraded behavior.
+- Every bug fix includes a regression test that fails before the fix.
+- Logic gets unit tests; process boundaries also get integration/contract tests.
+- Assert observable outcomes and important side effects; do not write tests that only execute code.
+
+Pure docs, comments, formatting, generated output, and non-behavioral config may omit tests only
+when the PR body states `Test exemption:` and explains why runtime behavior cannot change.
+
+Before commit/PR: list changed behaviors, confirm a test or valid exemption for each, then run
+affected tests and all quality gates in `02-dev-workflow.mdc`. Existing tests passing is not enough.

@@ -118,27 +118,35 @@ async function main(): Promise<void> {
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
   const passwordHash = await hashPassword('ChangeMe!Dev');
 
-  for (const account of [
+  const accounts: Array<{
+    email: string;
+    fullName: string;
+    role: 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'STUDENT';
+    primaryTrackId: string | null;
+  }> = [
     {
       email: 'admin@smart.local',
       fullName: 'SMART Super Admin',
-      role: 'SUPER_ADMIN' as const,
+      role: 'SUPER_ADMIN',
       primaryTrackId: null,
     },
     {
       email: 'tpo@smart.local',
       fullName: 'Pilot TPO',
-      role: 'INSTITUTION_ADMIN' as const,
+      role: 'INSTITUTION_ADMIN',
       primaryTrackId: null,
     },
     {
       email: 'student@smart.local',
       fullName: 'Pilot Student',
-      role: 'STUDENT' as const,
+      role: 'STUDENT',
       primaryTrackId: fullstack.id,
     },
-  ]) {
-    await prisma.user.upsert({
+  ];
+
+  const usersByEmail = new Map<string, { id: string }>();
+  for (const account of accounts) {
+    const user = await prisma.user.upsert({
       where: { email: account.email },
       update: { passwordHash },
       create: {
@@ -147,70 +155,42 @@ async function main(): Promise<void> {
         passwordHash,
         role: account.role,
         emailVerified: true,
-        institutionId: institution.id,
+        institutionId: account.role === 'SUPER_ADMIN' ? null : institution.id,
         primaryTrackId: account.primaryTrackId,
       },
     });
+    usersByEmail.set(account.email, user);
   }
 
-  // Seed L1 item banks for the two VALIDATED_LEAD tracks
-  const itemFiles = [
-    path.join(DATA_DIR, 'mba-finance-l1.json'),
-    path.join(DATA_DIR, 'mba-business-analytics-l1.json'),
-  ];
+  const tpo = usersByEmail.get('tpo@smart.local');
+  if (!tpo) throw new Error('Seed failed: tpo user missing');
 
-  let itemsSeeded = 0;
-  for (const filePath of itemFiles) {
-    const raw = await readFile(filePath, 'utf8');
-    const items: RawItem[] = JSON.parse(raw) as RawItem[];
-
-    for (const item of items) {
-      const track = await prisma.track.findUniqueOrThrow({ where: { code: item.trackCode } });
-      const level = await prisma.level.findUniqueOrThrow({
-        where: { trackId_levelNumber: { trackId: track.id, levelNumber: item.levelNumber } },
-      });
-      const competency = await prisma.competency.findFirstOrThrow({
-        where: { trackId: track.id, domainCode: item.domainCode },
-      });
-
-      const existing = await prisma.item.findUnique({ where: { id: item.itemId } });
-      if (!existing) {
-        await prisma.item.create({
-          data: {
-            id: item.itemId,
-            levelId: level.id,
-            competencyId: competency.id,
-            itemType: item.itemType,
-            stem: item.promptText,
-            difficultyTag: item.difficulty,
-            ...(item.modelAnswer ? { modelAnswer: item.modelAnswer } : {}),
-            options: item.options
-              ? {
-                  create: item.options.map((opt) => ({
-                    label: opt.optionId,
-                    text: opt.label,
-                    isCorrect: (item.correctOptionIds ?? []).includes(opt.optionId),
-                  })),
-                }
-              : undefined,
-          },
-        });
-        itemsSeeded += 1;
-      }
-    }
-  }
-
-  // Verify Finance items are in DB — proof for PR review
-  const financeCount = await prisma.item.count({
-    where: { level: { track: { code: 'MBA_FINANCE' } } },
+  const pilotBatch = await prisma.batch.upsert({
+    where: {
+      institutionId_name: {
+        institutionId: institution.id,
+        name: 'Pilot Batch 2026',
+      },
+    },
+    update: {},
+    create: {
+      institutionId: institution.id,
+      name: 'Pilot Batch 2026',
+      code: 'PILOT-2026',
+      createdById: tpo.id,
+    },
   });
-  const sampleFinanceItem = await prisma.item.findFirst({
-    where: { level: { track: { code: 'MBA_FINANCE' } } },
-    select: { id: true, stem: true, itemType: true, difficultyTag: true },
+
+  await prisma.user.update({
+    where: { email: 'student@smart.local' },
+    data: {
+      batchId: pilotBatch.id,
+      groupLabel: 'Section A',
+    },
   });
 
   console.log(
-    `Seed complete — 10 tracks, 50 levels, ${String(itemsSeeded)} new item(s) seeded. Login: student@smart.local / ChangeMe!Dev`,
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
   );
   console.log(`MBA_FINANCE items in DB: ${String(financeCount)}`);
   console.log('Sample Finance item:', JSON.stringify(sampleFinanceItem, null, 2));
