@@ -183,8 +183,6 @@ async function main(): Promise<void> {
             itemType: item.itemType,
             stem: item.promptText,
             difficultyTag: item.difficulty,
-            active: true,
-            formCode: 'A',
             ...(item.modelAnswer ? { modelAnswer: item.modelAnswer } : {}),
             options: item.options
               ? {
@@ -202,9 +200,20 @@ async function main(): Promise<void> {
     }
   }
 
+  // Verify Finance items are in DB — proof for PR review
+  const financeCount = await prisma.item.count({
+    where: { level: { track: { code: 'MBA_FINANCE' } } },
+  });
+  const sampleFinanceItem = await prisma.item.findFirst({
+    where: { level: { track: { code: 'MBA_FINANCE' } } },
+    select: { id: true, stem: true, itemType: true, difficultyTag: true },
+  });
+
   console.log(
     `Seed complete — 10 tracks, 50 levels, ${String(itemsSeeded)} new item(s) seeded. Login: student@smart.local / ChangeMe!Dev`,
   );
+  console.log(`MBA_FINANCE items in DB: ${String(financeCount)}`);
+  console.log('Sample Finance item:', JSON.stringify(sampleFinanceItem, null, 2));
   await prisma.$disconnect();
 }
 
