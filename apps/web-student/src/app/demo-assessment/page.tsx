@@ -13,6 +13,11 @@ import {
   LevelStepper,
   TierTrail,
   Button,
+  AssessmentHeader,
+  QuestionCard,
+  AnswerOption,
+  ProgressIndicator,
+  AssessmentNavigation,
 } from '@smart/ui';
 import type { ConfidenceNoteDto } from '@smart/contracts';
 
@@ -57,6 +62,38 @@ export default function DemoAssessmentPage() {
       subtitle="Testing the UI components for S1-SV-03"
     >
       <div className="grid gap-8 max-w-4xl mx-auto pb-12 mt-8">
+        {/* Assessment UI Primitives Demo */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Assessment UI Primitives</h2>
+          <div className="border border-[var(--surface-border)] rounded-md overflow-hidden bg-[var(--surface-muted)]">
+            <AssessmentHeader
+              title="Frontend Developer Assessment"
+              rightSlot={<Timer duration={3600} startedAt={startedAt} serverNow={serverNow} />}
+            />
+            <div className="p-6 bg-[var(--surface)]">
+              <ProgressIndicator current={3} total={20} className="mb-4" />
+
+              <QuestionCard questionText="Which statement about React hooks is correct?">
+                <AnswerOption label="Hooks can be called conditionally." selected={false} />
+                <AnswerOption
+                  label="Hooks can only be called inside class components."
+                  selected={false}
+                />
+                <AnswerOption
+                  label="Hooks must be called at the top level of a component."
+                  selected={true}
+                />
+                <AnswerOption
+                  label="Hooks replace all uses of lifecycle methods and Redux."
+                  selected={false}
+                />
+              </QuestionCard>
+
+              <AssessmentNavigation className="mt-8" />
+            </div>
+          </div>
+        </section>
+
         {/* Tier Trail & Level Stepper */}
         <section className="space-y-4">
           <h2 className="text-lg font-bold text-[var(--text-primary)]">

@@ -20,5 +20,13 @@ export { Timer, type TimerProps } from './components/timer';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';
 export { AudioRecorder, type AudioRecorderProps } from './components/audio-recorder';
 export { TierTrail, type TierTrailProps } from './components/tier-trail';
+export { AssessmentHeader, type AssessmentHeaderProps } from './components/assessment-header';
+export { QuestionCard, type QuestionCardProps } from './components/question-card';
+export { AnswerOption, type AnswerOptionProps } from './components/answer-option';
+export { ProgressIndicator, type ProgressIndicatorProps } from './components/progress-indicator';
+export {
+  AssessmentNavigation,
+  type AssessmentNavigationProps,
+} from './components/assessment-navigation';
 
 export const UI_VERSION = '0.1.0';
