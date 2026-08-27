@@ -204,6 +204,9 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     expect(result.model).toBe('gemini-2.5-pro');
     expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
     expect(mockGoogle.complete).toHaveBeenCalledTimes(1);
+    expect(mockGoogle.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(cb.getState('ANTHROPIC')).toBe('OPEN');
   });
 
@@ -260,7 +263,9 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
       provider: 'ANTHROPIC' as const,
       isConfigured: true,
       checkHealth: vi.fn(),
-      complete: vi.fn().mockRejectedValue(new Error('503 Service Unavailable')),
+      complete: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 })),
     };
 
     const mockGoogle = {

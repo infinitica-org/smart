@@ -94,6 +94,8 @@ export const AiCompletionResponseSchema = z.object({
   promptTokens: z.number().int().nonnegative(),
   completionTokens: z.number().int().nonnegative(),
   latencyMs: z.number().int().nonnegative(),
+  estimatedCostUsd: z.number().nonnegative(),
+  auditId: UuidSchema,
 });
 export type AiCompletionResponse = z.infer<typeof AiCompletionResponseSchema>;
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -127,6 +128,8 @@ export class AiGatewayService {
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           latencyMs: result.latencyMs,
+          estimatedCostUsd: 0,
+          auditId: randomUUID(),
         };
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -172,6 +175,8 @@ export class AiGatewayService {
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           latencyMs: result.latencyMs,
+          estimatedCostUsd: 0,
+          auditId: randomUUID(),
         };
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
