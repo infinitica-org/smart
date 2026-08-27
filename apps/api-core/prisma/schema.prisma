@@ -155,6 +155,13 @@ enum AiProvider {
   OPENROUTER
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 model Institution {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -162,10 +169,57 @@ model Institution {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users           User[]
+  batches         Batch[]
+  invitations     Invitation[]
   jobDescriptions JobDescription[]
   webhooks        WebhookEndpoint[]
 
   @@map("institutions")
+}
+
+model Batch {
+  id            String   @id @default(uuid()) @db.Uuid
+  institutionId String   @map("institution_id") @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  code          String?
+  createdById   String   @map("created_by_id") @db.Uuid
+  createdBy     User     @relation("BatchCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  members     User[]       @relation("BatchMembers")
+  invitations Invitation[]
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+  @@map("batches")
+}
+
+model Invitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  email         String
+  fullName      String           @map("full_name")
+  role          UserRole
+  institutionId String           @map("institution_id") @db.Uuid
+  institution   Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  batchId       String?          @map("batch_id") @db.Uuid
+  batch         Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  groupLabel    String?          @map("group_label")
+  userId        String           @map("user_id") @db.Uuid
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash     String           @unique @map("token_hash")
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt    DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  invitedById   String           @map("invited_by_id") @db.Uuid
+  invitedBy     User             @relation("InvitationInvitedBy", fields: [invitedById], references: [id])
+  lastSentAt    DateTime?        @map("last_sent_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([institutionId, status])
+  @@index([batchId])
+  @@index([userId])
+  @@map("invitations")
 }
 
 model User {
@@ -178,18 +232,25 @@ model User {
   emailVerified  Boolean      @default(false) @map("email_verified")
   institutionId  String?      @map("institution_id") @db.Uuid
   institution    Institution? @relation(fields: [institutionId], references: [id])
+  batchId        String?      @map("batch_id") @db.Uuid
+  batch          Batch?       @relation("BatchMembers", fields: [batchId], references: [id], onDelete: SetNull)
+  groupLabel     String?      @map("group_label")
   primaryTrackId String?      @map("primary_track_id") @db.Uuid
   primaryTrack   Track?       @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
   secondaryTrackId String?    @map("secondary_track_id") @db.Uuid
   secondaryTrack Track?       @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  refreshTokens RefreshToken[]
-  attempts      Attempt[]
-  certificates  Certificate[]
-  placements    PlacementRecord[]
+  refreshTokens       RefreshToken[]
+  attempts            Attempt[]
+  certificates        Certificate[]
+  placements          PlacementRecord[]
+  batchesCreated      Batch[]      @relation("BatchCreatedBy")
+  invitationsReceived Invitation[]
+  invitationsSent     Invitation[] @relation("InvitationInvitedBy")
 
   @@index([institutionId])
+  @@index([batchId])
   @@map("users")
 }
 
