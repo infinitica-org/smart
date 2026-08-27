@@ -6,6 +6,7 @@ import { cn } from '@smart/ui';
 
 const NAV_ITEMS = [
   { label: 'Platform Health', href: '/admin/health' },
+  { label: 'Institutions', href: '/admin/institutions' },
   { label: 'Integrity Queue', href: '/admin/integrity' },
   { label: 'User Directory', href: '/admin/users' },
   { label: 'Rate Limits', href: '/admin/rate-limits' },
