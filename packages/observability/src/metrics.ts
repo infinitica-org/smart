@@ -129,6 +129,13 @@ export const attemptsCompleted = new Counter({
   registers: [registry],
 });
 
+export const draftsSaved = new Counter({
+  name: 'smart_drafts_saved_total',
+  help: 'Answer drafts saved by track and level.',
+  labelNames: ['track_code', 'level_number'] as const,
+  registers: [registry],
+});
+
 /**
  * Tier distribution as a gauge.
  *

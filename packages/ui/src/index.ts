@@ -21,6 +21,13 @@ export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
 export { LevelStepper, type LevelState, type LevelStepperProps } from './components/level-stepper';
 export { AppShell, type AppShellProps } from './components/app-shell';
+export { SignOutButton, type SignOutButtonProps } from './components/sign-out-button';
+export { SessionBootstrap } from './session-bootstrap';
+export { ConfidenceNote, type ConfidenceNoteProps } from './components/confidence-note';
+export { Timer, type TimerProps } from './components/timer';
+export { CodeEditor, type CodeEditorProps } from './components/code-editor';
+export { AudioRecorder, type AudioRecorderProps } from './components/audio-recorder';
+export { TierTrail, type TierTrailProps } from './components/tier-trail';
 export * from './api-provider';
 
 export const UI_VERSION = '0.1.0';

@@ -1,8 +1,26 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX } from '@smart/contracts';
-import { AssessmentService } from './assessment.service.js';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  API_PREFIX,
+  SaveDraftRequestSchema,
+  StartAttemptRequestSchema,
+  type AttemptSessionDto,
+  type NextItemDto,
+  type SaveDraftResponse,
+} from '@smart/contracts';
+import type { FastifyRequest } from 'fastify';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { NextFormRequestDto } from './dto/next-form-request.dto.js';
+import { AssessmentService } from './assessment.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
 
 @ApiTags('assessment')
@@ -19,8 +37,93 @@ export class AssessmentController {
       module: 'assessment',
       owner: this.service.owner,
       purpose: this.service.purpose,
-      status: 'scaffold',
+      status: 'active',
     };
+  }
+
+  @Post('start')
+  @ApiOperation({ summary: 'Start an assessment attempt when level unlock rules pass' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Attempt started or existing active session returned' })
+  @ApiResponse({ status: 403, description: 'Level locked or invalid role' })
+  async startAttempt(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<AttemptSessionDto> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to start assessment attempt',
+        statusCode: 403,
+      });
+    }
+    const dto = StartAttemptRequestSchema.parse(body);
+    return this.service.startAttempt(user.sub, dto);
+  }
+
+  @Get(':attemptId/session')
+  @ApiOperation({ summary: 'Retrieve state of active assessment session' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Active session state' })
+  @ApiResponse({ status: 403, description: 'Forbidden access to session' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async getSession(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Param('attemptId') attemptId: string,
+  ): Promise<AttemptSessionDto> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to view assessment session',
+        statusCode: 403,
+      });
+    }
+    return this.service.getSession(user.sub, attemptId);
+  }
+
+  @Get(':attemptId/next-item')
+  @ApiOperation({ summary: 'Serve the next assessment item from the Redis warm cache.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Next item payload' })
+  @ApiResponse({ status: 403, description: 'Session forbidden, locked, or expired' })
+  @ApiResponse({ status: 404, description: 'Attempt or item bank not found' })
+  async nextItem(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Param('attemptId') attemptId: string,
+  ): Promise<NextItemDto> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to fetch next item',
+        statusCode: 403,
+      });
+    }
+    return this.service.getNextItem(user.sub, attemptId);
+  }
+
+  @Post('submit-l1')
+  @ApiOperation({ summary: 'Save an answer draft (write-through to Redis).' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Draft saved or superseded response' })
+  @ApiResponse({ status: 403, description: 'Forbidden student access or locked session' })
+  @ApiResponse({ status: 404, description: 'Attempt session not found' })
+  async submitL1(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<SaveDraftResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to submit answer draft',
+        statusCode: 403,
+      });
+    }
+    const dto = SaveDraftRequestSchema.parse(body);
+    return this.service.saveDraft(user.sub, dto);
   }
 
   /**

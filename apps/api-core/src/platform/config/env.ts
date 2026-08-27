@@ -37,8 +37,21 @@ const EnvSchema = z.object({
   CORS_ORIGINS: z
     .string()
     .default(
-      'http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004',
+      'http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005',
     ),
+
+  SMTP_HOST: z.string().default('127.0.0.1'),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('SMART Platform <noreply@smart.local>'),
+
+  AUTH_APP_URL: z.string().default('http://localhost:3005'),
+  STUDENT_APP_URL: z.string().default('http://localhost:3001'),
+  TPO_APP_URL: z.string().default('http://localhost:3002'),
+  ADMIN_APP_URL: z.string().default('http://localhost:3003'),
+
+  INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
   S3_REGION: z.string().default('us-east-1'),
