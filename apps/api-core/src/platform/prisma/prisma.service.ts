@@ -21,7 +21,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$connect();
     } catch (error) {
       this.logger.warn(
-        `Postgres is not reachable. Catalog will serve contract defaults until \`pnpm infra:up\` is run. (${error instanceof Error ? error.message : 'unknown'})`,
+        {
+          event: 'postgres.degraded',
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        'Postgres is not reachable; catalog will serve contract defaults until infra is up',
       );
     }
   }

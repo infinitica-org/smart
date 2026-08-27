@@ -142,7 +142,13 @@ export class AiGatewayService {
           circuitState,
         });
         this.logger.warn(
-          `Primary provider ANTHROPIC failed: ${errMsg} (circuitState: ${circuitState}). Failing over to GOOGLE.`,
+          {
+            event: 'ai.provider_failed',
+            provider: 'ANTHROPIC',
+            err: errMsg,
+            circuitState,
+          },
+          'AI provider failed; trying next fallback if available',
         );
       }
     } else if (this.anthropic.isConfigured) {
