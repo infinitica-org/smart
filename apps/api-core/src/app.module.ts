@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
 import { ObservabilityInterceptor } from './common/interceptors/observability.interceptor.js';
 import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor.js';
 import { AiGatewayModule } from './modules/ai-gateway/ai-gateway.module.js';
@@ -23,7 +24,9 @@ import { ConfigModule } from './platform/config/config.module.js';
 import { env } from './platform/config/env.js';
 import { HealthModule } from './platform/health/health.module.js';
 import { KafkaModule } from './platform/kafka/kafka.module.js';
+import { MailerModule } from './platform/mailer/mailer.module.js';
 import { PrismaModule } from './platform/prisma/prisma.module.js';
+import { QueueModule } from './platform/queue/queue.module.js';
 import { RedisModule } from './platform/redis/redis.module.js';
 
 @Module({
@@ -40,6 +43,8 @@ import { RedisModule } from './platform/redis/redis.module.js';
     PrismaModule,
     RedisModule,
     KafkaModule,
+    MailerModule,
+    QueueModule,
     HealthModule,
     RateLimitModule,
     AuthModule,
@@ -58,6 +63,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: ObservabilityInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
