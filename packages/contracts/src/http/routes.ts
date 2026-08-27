@@ -419,6 +419,18 @@ export const ROUTES: readonly RouteSpec[] = [
   /* ------------------------------- assessment ------------------------------ */
   {
     method: 'POST',
+    path: '/assessment/next-form',
+    module: 'assessment',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Select next item form (parallel-form rotation + exposure tracking)',
+  },
+  {
+    method: 'POST',
     path: '/assessment/start',
     module: 'assessment',
     owner: 'Vishal Bharath R',

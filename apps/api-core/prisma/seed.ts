@@ -1,8 +1,35 @@
 import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
+
+const DATA_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../tools/content-pipeline/data',
+);
+
+interface RawOption {
+  optionId: string;
+  label: string;
+}
+
+interface RawItem {
+  itemId: string;
+  trackCode: string;
+  domainCode: string;
+  levelNumber: number;
+  itemType: string;
+  difficulty: string;
+  promptText: string;
+  options?: RawOption[];
+  correctOptionIds?: string[];
+  modelAnswer?: string;
+  itemWeight: number;
+}
 
 const DATABASE_URL =
   process.env['DATABASE_URL'] ?? 'postgresql://smart:smart@127.0.0.1:5432/smart?schema=public';
@@ -165,6 +192,8 @@ async function main(): Promise<void> {
   console.log(
     `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
   );
+  console.log(`MBA_FINANCE items in DB: ${String(financeCount)}`);
+  console.log('Sample Finance item:', JSON.stringify(sampleFinanceItem, null, 2));
   await prisma.$disconnect();
 }
 

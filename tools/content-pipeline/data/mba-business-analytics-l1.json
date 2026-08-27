@@ -1,0 +1,761 @@
+[
+  {
+    "itemId": "890b67ad-ff1c-41f6-8cb2-ac20022e80e2",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "In SQL, which clause is used to filter rows based on a condition?",
+    "options": [
+      { "optionId": "a", "label": "GROUP BY" },
+      { "optionId": "b", "label": "WHERE" },
+      { "optionId": "c", "label": "HAVING" },
+      { "optionId": "d", "label": "ORDER BY" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "945cce7b-b450-4f9e-a709-1c342eec7e3e",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which Python library is most widely used for data manipulation and analysis in tabular form?",
+    "options": [
+      { "optionId": "a", "label": "NumPy" },
+      { "optionId": "b", "label": "Matplotlib" },
+      { "optionId": "c", "label": "Pandas" },
+      { "optionId": "d", "label": "Scikit-learn" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "0e502591-fe74-4c66-91c7-1ab2219cbb2f",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "In SQL, what is the difference between WHERE and HAVING?",
+    "options": [
+      {
+        "optionId": "a",
+        "label": "WHERE filters before aggregation; HAVING filters after aggregation"
+      },
+      { "optionId": "b", "label": "WHERE filters after GROUP BY; HAVING filters before GROUP BY" },
+      { "optionId": "c", "label": "Both are identical in function" },
+      { "optionId": "d", "label": "HAVING is used only with ORDER BY" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "02a6d2ff-8b4e-46fb-9f2c-2dfdc54d5596",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A LEFT JOIN between tables A and B returns:",
+    "options": [
+      { "optionId": "a", "label": "Only rows where both tables match" },
+      { "optionId": "b", "label": "All rows from A, with NULLs for unmatched rows in B" },
+      { "optionId": "c", "label": "All rows from B, with NULLs for unmatched rows in A" },
+      { "optionId": "d", "label": "All rows from both tables" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "d7acb838-4bed-46a4-ac95-49ce367fd1e8",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which of the following is a tidy data principle?",
+    "options": [
+      { "optionId": "a", "label": "Multiple variables stored in one column" },
+      { "optionId": "b", "label": "Each variable forms a column; each observation forms a row" },
+      { "optionId": "c", "label": "Data is stored in nested JSON only" },
+      { "optionId": "d", "label": "One table stores all data regardless of relationships" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "91ef24da-12e4-4fc2-b8f2-de27d423c303",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "pandas `df.groupby('region')['sales'].sum()` computes:",
+    "options": [
+      { "optionId": "a", "label": "Total sales for the entire dataset" },
+      { "optionId": "b", "label": "Total sales broken down by each region" },
+      { "optionId": "c", "label": "Average sales per region" },
+      { "optionId": "d", "label": "Number of rows per region" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "422dd9fd-34ce-4776-911f-36bd522424ce",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "To find duplicate rows in a pandas DataFrame, the most direct approach is:",
+    "options": [
+      { "optionId": "a", "label": "df.isnull().sum()" },
+      { "optionId": "b", "label": "df.duplicated().sum()" },
+      { "optionId": "c", "label": "df.unique()" },
+      { "optionId": "d", "label": "df.describe()" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "1421965d-1905-44ff-bc20-9630388ca767",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "In Excel, the VLOOKUP function is primarily used to:",
+    "options": [
+      { "optionId": "a", "label": "Create pivot charts" },
+      {
+        "optionId": "b",
+        "label": "Look up a value in the first column of a range and return a value in the same row"
+      },
+      { "optionId": "c", "label": "Sort data alphabetically" },
+      { "optionId": "d", "label": "Calculate running totals" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "114afe29-495b-4f1e-83f7-10f1d2029f60",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Which SQL aggregate function returns the number of non-NULL values in a column?",
+    "options": [
+      { "optionId": "a", "label": "SUM()" },
+      { "optionId": "b", "label": "COUNT(column_name)" },
+      { "optionId": "c", "label": "MAX()" },
+      { "optionId": "d", "label": "COUNT(*)" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "88fedbab-1999-4c1b-aa40-c0f37e30f5ac",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "c20e7352-ea0d-47bf-bb57-48b4a3ea6cf5",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "When joining two large tables, which SQL join type should you use to keep ALL records from the left table even if no match exists in the right table?",
+    "options": [
+      { "optionId": "a", "label": "INNER JOIN" },
+      { "optionId": "b", "label": "RIGHT JOIN" },
+      { "optionId": "c", "label": "LEFT JOIN" },
+      { "optionId": "d", "label": "CROSS JOIN" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "f66130c2-0ea4-4356-a53a-fad5fc2b1ace",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The median of a dataset is the value that:",
+    "options": [
+      { "optionId": "a", "label": "Occurs most frequently" },
+      { "optionId": "b", "label": "Falls exactly in the middle when data is sorted" },
+      { "optionId": "c", "label": "Is the arithmetic average of all values" },
+      { "optionId": "d", "label": "Is the largest minus the smallest value" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "e3a8a136-0e29-4297-b6e0-0dccc934eeb1",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "A p-value of 0.03 in a hypothesis test (significance level α = 0.05) means:",
+    "options": [
+      { "optionId": "a", "label": "Fail to reject the null hypothesis" },
+      {
+        "optionId": "b",
+        "label": "Reject the null hypothesis; the result is statistically significant"
+      },
+      { "optionId": "c", "label": "The effect size is 3%" },
+      { "optionId": "d", "label": "There is a 3% chance the alternative hypothesis is true" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "3d7f8de1-20f1-4c87-be66-349894724f16",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Standard deviation measures:",
+    "options": [
+      { "optionId": "a", "label": "The centre of a distribution" },
+      { "optionId": "b", "label": "The spread or variability of data around the mean" },
+      { "optionId": "c", "label": "The correlation between two variables" },
+      { "optionId": "d", "label": "The skewness of a distribution" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7a592e4d-c8fc-4f93-a9a3-01a7b10623f8",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A Pearson correlation coefficient of −0.85 indicates:",
+    "options": [
+      { "optionId": "a", "label": "No relationship between the variables" },
+      { "optionId": "b", "label": "A weak positive relationship" },
+      { "optionId": "c", "label": "A strong negative relationship" },
+      { "optionId": "d", "label": "A perfect positive relationship" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "505e3087-6b92-4be4-bd33-fb1527d719ef",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "In a normal distribution, approximately what percentage of data falls within one standard deviation of the mean?",
+    "options": [
+      { "optionId": "a", "label": "50%" },
+      { "optionId": "b", "label": "68%" },
+      { "optionId": "c", "label": "95%" },
+      { "optionId": "d", "label": "99.7%" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "9ef33a2f-5d75-49d6-b428-87a254523e91",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "Confounding variables in a study can lead to:",
+    "options": [
+      { "optionId": "a", "label": "Correct causal inference" },
+      { "optionId": "b", "label": "Spurious correlations that suggest false causation" },
+      { "optionId": "c", "label": "Lower standard deviation" },
+      { "optionId": "d", "label": "A higher p-value only" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "82d45c76-ff84-453b-bcf7-223f7c371317",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Type I error in hypothesis testing is:",
+    "options": [
+      { "optionId": "a", "label": "Failing to reject a false null hypothesis" },
+      { "optionId": "b", "label": "Rejecting a true null hypothesis (false positive)" },
+      { "optionId": "c", "label": "Setting α too high" },
+      { "optionId": "d", "label": "Using the wrong test statistic" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "3798a3e0-3e3c-430e-85a5-9a3ed32e47a5",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "Which statistical test is most appropriate to compare the means of two independent groups?",
+    "options": [
+      { "optionId": "a", "label": "Chi-square test" },
+      { "optionId": "b", "label": "Independent samples t-test" },
+      { "optionId": "c", "label": "ANOVA" },
+      { "optionId": "d", "label": "Paired t-test" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "0f8da623-4806-49e2-8895-dc0808cd1614",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "28487d44-42d7-4b3c-a0cc-5b98eee2bfb4",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Which measure of central tendency is most affected by extreme outliers?",
+    "options": [
+      { "optionId": "a", "label": "Median" },
+      { "optionId": "b", "label": "Mode" },
+      { "optionId": "c", "label": "Mean" },
+      { "optionId": "d", "label": "Interquartile range" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "fe16d601-ca06-4569-92df-2b617255cade",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "In Tableau or Power BI, a 'dimension' is best described as:",
+    "options": [
+      { "optionId": "a", "label": "A numeric field used for calculations" },
+      { "optionId": "b", "label": "A categorical field used to group or filter data" },
+      { "optionId": "c", "label": "A date field only" },
+      { "optionId": "d", "label": "A calculated KPI" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "2440a1f8-c8ae-43fe-8b2d-740fc2525f24",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A dashboard KPI tile shows revenue of ₹42 Cr with a red downward arrow. What additional context is essential to make this actionable?",
+    "options": [
+      { "optionId": "a", "label": "The font size and colour theme" },
+      {
+        "optionId": "b",
+        "label": "The target or prior period benchmark that establishes the direction"
+      },
+      { "optionId": "c", "label": "The number of decimal places shown" },
+      { "optionId": "d", "label": "The data source name" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "def9a859-e8a0-4c49-bfce-a6c139337c28",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Which chart type is best for showing a trend over time?",
+    "options": [
+      { "optionId": "a", "label": "Pie chart" },
+      { "optionId": "b", "label": "Line chart" },
+      { "optionId": "c", "label": "Scatter plot" },
+      { "optionId": "d", "label": "Treemap" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "c5019a44-1a36-46a7-a034-c8a6aa022dcc",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "In business intelligence, a 'measure' (or metric) is:",
+    "options": [
+      { "optionId": "a", "label": "A category like product name or region" },
+      {
+        "optionId": "b",
+        "label": "A quantitative value that can be aggregated, such as sales or profit"
+      },
+      { "optionId": "c", "label": "A filter applied to a report" },
+      { "optionId": "d", "label": "A date hierarchy" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "ede8b384-e3fc-432d-b37f-08d2615db469",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A heat map is most suited for showing:",
+    "options": [
+      { "optionId": "a", "label": "Part-to-whole relationships" },
+      { "optionId": "b", "label": "Distribution of a single variable" },
+      { "optionId": "c", "label": "Magnitude of values across two categorical dimensions" },
+      { "optionId": "d", "label": "Trend over time for a single metric" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "a4db939a-5603-46b9-b366-c88a03212678",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A star schema in a data warehouse consists of:",
+    "options": [
+      { "optionId": "a", "label": "Multiple fact tables joined to each other" },
+      { "optionId": "b", "label": "A central fact table surrounded by dimension tables" },
+      { "optionId": "c", "label": "Normalised tables only" },
+      { "optionId": "d", "label": "A single flat table with all data" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "1a2b3440-a5d9-4278-ae67-40e7c22157e0",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "b42f585f-5cc9-4e1e-a4f5-66517d358f5b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "An analyst notices their Power BI report loads slowly with 10M rows. The FIRST optimisation to try is:",
+    "options": [
+      { "optionId": "a", "label": "Add more visuals to the dashboard" },
+      {
+        "optionId": "b",
+        "label": "Switch to Import mode and apply query folding or pre-aggregate data at source"
+      },
+      { "optionId": "c", "label": "Export to Excel and use VLOOKUP" },
+      { "optionId": "d", "label": "Increase monitor resolution" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "88934e1b-431a-47ac-a594-0a59182c993b",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The first step in a data-driven business case is:",
+    "options": [
+      { "optionId": "a", "label": "Building a regression model" },
+      { "optionId": "b", "label": "Defining the business question and success metric clearly" },
+      { "optionId": "c", "label": "Choosing a visualisation tool" },
+      { "optionId": "d", "label": "Collecting all available data immediately" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "66055a33-b1af-4142-b154-2eebae1fe83f",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "An e-commerce company wants to reduce cart abandonment. Which analytical approach best identifies the key drop-off point?",
+    "options": [
+      { "optionId": "a", "label": "Funnel analysis of user steps from product page to checkout" },
+      { "optionId": "b", "label": "Calculating overall conversion rate only" },
+      { "optionId": "c", "label": "A/B testing the home page colour" },
+      { "optionId": "d", "label": "Cohort analysis of new vs. returning users" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "e3693338-5279-4fbe-abf7-8921091eb719",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Correlation between ice cream sales and drowning incidents is high. This most likely means:",
+    "options": [
+      { "optionId": "a", "label": "Ice cream causes drowning" },
+      {
+        "optionId": "b",
+        "label": "A third variable (hot weather) drives both — spurious correlation"
+      },
+      { "optionId": "c", "label": "Drowning causes ice cream sales" },
+      { "optionId": "d", "label": "The data is incorrect" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "4dfd15f7-cea3-4e2c-ac92-ad00f2a25149",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A retail chain's revenue is flat. Segment analysis shows urban stores grew 12% while rural stores declined 18%. The overall flat result is an example of:",
+    "options": [
+      { "optionId": "a", "label": "Regression to the mean" },
+      {
+        "optionId": "b",
+        "label": "Simpson's Paradox — aggregate trends masking opposite segment trends"
+      },
+      { "optionId": "c", "label": "Survivorship bias" },
+      { "optionId": "d", "label": "Overfitting" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "9148641b-afb8-42a5-aaff-8fada116fd15",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Customer Lifetime Value (CLV) is most useful for:",
+    "options": [
+      { "optionId": "a", "label": "Deciding how much to spend on acquiring a customer" },
+      { "optionId": "b", "label": "Measuring one-time transaction revenue" },
+      { "optionId": "c", "label": "Calculating inventory days" },
+      { "optionId": "d", "label": "Setting prices for individual products" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "f40108a9-8781-4f44-8082-af23123c6430",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "An A/B test compares two versions of a landing page. Statistical significance means:",
+    "options": [
+      { "optionId": "a", "label": "Version B is always better than A" },
+      { "optionId": "b", "label": "The observed difference is unlikely due to random chance" },
+      { "optionId": "c", "label": "The sample size is large enough" },
+      { "optionId": "d", "label": "Both versions perform equally" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "b25eb2cc-ccdb-4298-bf3f-21a2a4e4dcf4",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "Monthly active users dropped 20% but revenue is flat. Which analysis best explains whether this is a problem?",
+    "options": [
+      { "optionId": "a", "label": "Revenue per active user trend and cohort retention by segment" },
+      { "optionId": "b", "label": "Total headcount report" },
+      { "optionId": "c", "label": "Net Promoter Score survey" },
+      { "optionId": "d", "label": "Website page load time" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "bb55e67a-397b-441a-ac3e-44032be662bb",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "f324f30a-75eb-417b-9511-755f6b394099",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "RFM analysis segments customers by:",
+    "options": [
+      { "optionId": "a", "label": "Revenue, Forecast, and Margin" },
+      { "optionId": "b", "label": "Recency, Frequency, and Monetary value of purchases" },
+      { "optionId": "c", "label": "Region, Function, and Market" },
+      { "optionId": "d", "label": "Return on investment, Fixed costs, and Margin" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "cd41af79-dce6-4054-80c7-8accc8235fe2",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The 'pyramid principle' in data storytelling means:",
+    "options": [
+      { "optionId": "a", "label": "Start with all supporting data, end with the conclusion" },
+      {
+        "optionId": "b",
+        "label": "Lead with the main recommendation, then support it with evidence"
+      },
+      { "optionId": "c", "label": "Use a pyramid chart for all visualisations" },
+      { "optionId": "d", "label": "Always start with methodology before results" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "ac81c7b8-af95-4be8-b9d0-9729954485b7",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A business stakeholder asks 'why did sales drop last quarter?' The BEST analytical answer structure is:",
+    "options": [
+      { "optionId": "a", "label": "Show all raw data tables and let them interpret" },
+      {
+        "optionId": "b",
+        "label": "State the main cause, support with 2–3 data points, then propose a recommendation"
+      },
+      { "optionId": "c", "label": "List every possible hypothesis without narrowing down" },
+      { "optionId": "d", "label": "Defer to the finance team" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "a1a7e94b-a23b-4aab-bce0-49e278b8ef9f",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "When defending a data-driven recommendation challenged by a senior stakeholder, the best response is:",
+    "options": [
+      { "optionId": "a", "label": "Immediately withdraw the recommendation" },
+      {
+        "optionId": "b",
+        "label": "Acknowledge their concern, show the data behind your conclusion, and invite a specific counter-argument"
+      },
+      { "optionId": "c", "label": "Repeat your conclusion louder" },
+      { "optionId": "d", "label": "Change assumptions to match their view" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "79a99c28-a64c-4526-8ab7-d17ebef1f8d6",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A forecast model has high accuracy on training data but performs poorly on new data. This is called:",
+    "options": [
+      { "optionId": "a", "label": "Underfitting" },
+      { "optionId": "b", "label": "Data leakage" },
+      { "optionId": "c", "label": "Overfitting" },
+      { "optionId": "d", "label": "Selection bias" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "bf6bd42f-475a-4bfc-954f-c763a0b68191",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which visualisation principle helps the audience focus on the key insight?",
+    "options": [
+      { "optionId": "a", "label": "Show as many metrics as possible on one chart" },
+      {
+        "optionId": "b",
+        "label": "Reduce chart junk and highlight only the data that supports the message"
+      },
+      { "optionId": "c", "label": "Use 3D charts for impact" },
+      { "optionId": "d", "label": "Use at least 10 colours to distinguish series" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "53897f77-8da6-4db2-bd5e-a3ab36657741",
+    "trackCode": "MBA_BUSINESS_ANALYTICS",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "e75666d0-0774-4a23-bf4e-532201fab25c",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "When presenting a recommendation to cut a product line based on low margin data, the ethical analyst should:",
+    "options": [
+      { "optionId": "a", "label": "Exclude data that contradicts the recommendation" },
+      {
+        "optionId": "b",
+        "label": "Acknowledge limitations in the data and present alternative scenarios transparently"
+      },
+      { "optionId": "c", "label": "Round up margin figures to make the case stronger" },
+      { "optionId": "d", "label": "Avoid mentioning data sources" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  }
+]

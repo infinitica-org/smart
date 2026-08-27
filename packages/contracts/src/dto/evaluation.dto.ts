@@ -95,7 +95,8 @@ export const AiCompletionResponseSchema = z.object({
   completionTokens: z.number().int().nonnegative(),
   latencyMs: z.number().int().nonnegative(),
   estimatedCostUsd: z.number().nonnegative(),
-  auditId: UuidSchema,
+  /** `ai_evaluation_audits.id` after insert. Null when the row was not written. */
+  auditId: UuidSchema.nullable(),
 });
 export type AiCompletionResponse = z.infer<typeof AiCompletionResponseSchema>;
 

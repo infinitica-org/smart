@@ -11,7 +11,9 @@ import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
-import type { AiProviderAdapter } from './ai-gateway.interface.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
+import type { AiProviderAdapter, ModelCompletionResult } from './ai-gateway.interface.js';
+import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
 @Injectable()
 export class AiGatewayService {
@@ -23,6 +25,8 @@ export class AiGatewayService {
     @Inject(AnthropicAdapter) private readonly anthropic: AnthropicAdapter,
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
+    @Inject(AiGatewayAuditService) private readonly audit: AiGatewayAuditService,
+    @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -36,12 +40,24 @@ export class AiGatewayService {
     }
   }
 
+  getCircuitBreaker(): AiCircuitBreaker {
+    return this.circuitBreaker;
+  }
+
   async getHealth(): Promise<AiHealthDto> {
     const [anthropicHealth, googleHealth, openrouterHealth] = await Promise.all([
       this.anthropic.checkHealth(),
       this.google.checkHealth(),
       this.openrouter.checkHealth(),
     ]);
+
+    const resolveCircuitState = (
+      provider: AiProvider,
+      probeState: 'CLOSED' | 'OPEN' | 'HALF_OPEN',
+    ): 'CLOSED' | 'OPEN' | 'HALF_OPEN' => {
+      const cbState = this.circuitBreaker.getState(provider);
+      return cbState !== 'CLOSED' ? cbState : probeState;
+    };
 
     const resetDate = new Date(Date.now() + 60_000).toISOString();
 
@@ -50,19 +66,19 @@ export class AiGatewayService {
         {
           provider: 'ANTHROPIC',
           reachable: anthropicHealth.reachable,
-          circuitState: anthropicHealth.circuitState,
+          circuitState: resolveCircuitState('ANTHROPIC', anthropicHealth.circuitState),
           latencyMs: anthropicHealth.latencyMs,
         },
         {
           provider: 'GOOGLE',
           reachable: googleHealth.reachable,
-          circuitState: googleHealth.circuitState,
+          circuitState: resolveCircuitState('GOOGLE', googleHealth.circuitState),
           latencyMs: googleHealth.latencyMs,
         },
         {
           provider: 'OPENROUTER',
           reachable: openrouterHealth.reachable,
-          circuitState: openrouterHealth.circuitState,
+          circuitState: resolveCircuitState('OPENROUTER', openrouterHealth.circuitState),
           latencyMs: openrouterHealth.latencyMs,
         },
       ],
@@ -86,43 +102,31 @@ export class AiGatewayService {
   async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     const rendered = renderPromptRef(request.promptRef, request.variables);
 
-    const candidates: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [];
+    const attemptedErrors: Array<{
+      provider: AiProvider;
+      message: string;
+      circuitState: string;
+    }> = [];
 
-    if (this.anthropic.isConfigured) {
-      candidates.push({ provider: 'ANTHROPIC', adapter: this.anthropic });
-    }
-    if (this.google.isConfigured) {
-      candidates.push({ provider: 'GOOGLE', adapter: this.google });
-    }
-    if (this.openrouter.isConfigured) {
-      candidates.push({ provider: 'OPENROUTER', adapter: this.openrouter });
-    }
-
-    if (candidates.length === 0) {
-      candidates.push({ provider: 'ANTHROPIC', adapter: this.anthropic });
-    }
-
-    let lastError: unknown;
-    for (let i = 0; i < candidates.length; i++) {
-      const candidate = candidates[i];
-      if (!candidate) continue;
-      const isFallback = i > 0;
-
+    // Attempt ANTHROPIC (Primary)
+    if (this.anthropic.isConfigured && this.circuitBreaker.isCallAllowed('ANTHROPIC')) {
       try {
-        const result = await candidate.adapter.complete({
-          system: rendered.system,
-          prompt: rendered.user,
-          modelRole: request.modelRole,
-          temperature: request.temperature,
-          maxTokens: request.maxOutputTokens,
-          outputSchema: rendered.outputSchema,
-        });
-
+        const result = await this.circuitBreaker.execute('ANTHROPIC', (signal) =>
+          this.anthropic.complete({
+            system: rendered.system,
+            prompt: rendered.user,
+            modelRole: request.modelRole,
+            temperature: request.temperature,
+            maxTokens: request.maxOutputTokens,
+            outputSchema: rendered.outputSchema,
+            signal,
+          }),
+        );
         return {
           output: result.output,
           provider: result.provider,
           model: result.model,
-          usedFallback: isFallback,
+          usedFallback: false,
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           latencyMs: result.latencyMs,
@@ -130,13 +134,93 @@ export class AiGatewayService {
           auditId: randomUUID(),
         };
       } catch (err) {
-        lastError = err;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const circuitState = this.circuitBreaker.getState('ANTHROPIC');
+        attemptedErrors.push({
+          provider: 'ANTHROPIC',
+          message: errMsg,
+          circuitState,
+        });
         this.logger.warn(
-          `Provider ${candidate.provider} failed: ${err instanceof Error ? err.message : String(err)}. Trying next fallback if available.`,
+          `Primary provider ANTHROPIC failed: ${errMsg} (circuitState: ${circuitState}). Failing over to GOOGLE.`,
         );
       }
+    } else if (this.anthropic.isConfigured) {
+      const state = this.circuitBreaker.getState('ANTHROPIC');
+      attemptedErrors.push({
+        provider: 'ANTHROPIC',
+        message: `Circuit breaker is ${state}`,
+        circuitState: state,
+      });
+      this.logger.warn(`Circuit breaker is ${state} for ANTHROPIC. Failing over to GOOGLE.`);
     }
 
-    throw lastError;
+    // Attempt GOOGLE (Fallback)
+    if (this.google.isConfigured && this.circuitBreaker.isCallAllowed('GOOGLE')) {
+      try {
+        const result = await this.circuitBreaker.execute('GOOGLE', (signal) =>
+          this.google.complete({
+            system: rendered.system,
+            prompt: rendered.user,
+            modelRole: request.modelRole,
+            temperature: request.temperature,
+            maxTokens: request.maxOutputTokens,
+            outputSchema: rendered.outputSchema,
+            signal,
+          }),
+        );
+        return this.toCompletionResponse(request, result, true);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const circuitState = this.circuitBreaker.getState('GOOGLE');
+        attemptedErrors.push({
+          provider: 'GOOGLE',
+          message: errMsg,
+          circuitState,
+        });
+        this.logger.warn(
+          `Fallback provider GOOGLE failed: ${errMsg} (circuitState: ${circuitState}).`,
+        );
+      }
+    } else if (this.google.isConfigured) {
+      const state = this.circuitBreaker.getState('GOOGLE');
+      attemptedErrors.push({
+        provider: 'GOOGLE',
+        message: `Circuit breaker is ${state}`,
+        circuitState: state,
+      });
+      this.logger.warn(`Circuit breaker is ${state} for GOOGLE.`);
+    }
+
+    throw new AiGatewayAllProvidersFailedError(attemptedErrors);
+  }
+
+  private async toCompletionResponse(
+    request: AiCompletionRequest,
+    result: ModelCompletionResult,
+    usedFallback: boolean,
+  ): Promise<AiCompletionResponse> {
+    const recorded = await this.audit.record({
+      promptRef: request.promptRef,
+      provider: result.provider,
+      model: result.model,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      usedFallback,
+      responseId: request.correlation.responseId,
+    });
+
+    return {
+      output: result.output,
+      provider: result.provider,
+      model: result.model,
+      usedFallback,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      estimatedCostUsd: recorded.estimatedCostUsd,
+      auditId: recorded.auditId,
+    };
   }
 }
