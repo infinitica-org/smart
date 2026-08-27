@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -11,7 +10,8 @@ import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
-import type { AiProviderAdapter } from './ai-gateway.interface.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
+import type { AiProviderAdapter, ModelCompletionResult } from './ai-gateway.interface.js';
 
 @Injectable()
 export class AiGatewayService {
@@ -23,6 +23,7 @@ export class AiGatewayService {
     @Inject(AnthropicAdapter) private readonly anthropic: AnthropicAdapter,
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
+    @Inject(AiGatewayAuditService) private readonly audit: AiGatewayAuditService,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -118,17 +119,7 @@ export class AiGatewayService {
           outputSchema: rendered.outputSchema,
         });
 
-        return {
-          output: result.output,
-          provider: result.provider,
-          model: result.model,
-          usedFallback: isFallback,
-          promptTokens: result.promptTokens,
-          completionTokens: result.completionTokens,
-          latencyMs: result.latencyMs,
-          estimatedCostUsd: 0,
-          auditId: randomUUID(),
-        };
+        return this.toCompletionResponse(request, result, isFallback);
       } catch (err) {
         lastError = err;
         this.logger.warn(
@@ -138,5 +129,34 @@ export class AiGatewayService {
     }
 
     throw lastError;
+  }
+
+  private async toCompletionResponse(
+    request: AiCompletionRequest,
+    result: ModelCompletionResult,
+    usedFallback: boolean,
+  ): Promise<AiCompletionResponse> {
+    const recorded = await this.audit.record({
+      promptRef: request.promptRef,
+      provider: result.provider,
+      model: result.model,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      usedFallback,
+      responseId: request.correlation.responseId,
+    });
+
+    return {
+      output: result.output,
+      provider: result.provider,
+      model: result.model,
+      usedFallback,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      estimatedCostUsd: recorded.estimatedCostUsd,
+      auditId: recorded.auditId,
+    };
   }
 }
