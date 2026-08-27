@@ -14,6 +14,7 @@ import { AiCircuitBreaker } from './circuit-breaker.js';
     GoogleAdapter,
     OpenRouterAdapter,
     AiGatewayAuditService,
+    AiCircuitBreaker,
     AiGatewayService,
   ],
   exports: [AiGatewayService, AnthropicAdapter, GoogleAdapter, OpenRouterAdapter],

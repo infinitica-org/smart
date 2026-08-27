@@ -98,6 +98,7 @@ describe('AiGatewayService', () => {
       new AiGatewayAuditService(),
       new AiCircuitBreaker(),
     );
+    expect(service).toBeDefined();
   });
 
   it('completes via primary provider (Anthropic) when healthy', async () => {
