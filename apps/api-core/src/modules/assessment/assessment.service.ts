@@ -1,10 +1,15 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   AttemptSessionDto,
   AttemptStatus,
+  DeliverableItemDto,
+  DifficultyTag,
+  DomainCode,
   IntegrityFlag,
+  ItemType,
   LevelFormat,
   LevelNumber,
+  NextItemDto,
   StartAttemptRequest,
   Tier,
   TrackCode,
@@ -15,6 +20,7 @@ import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
 
 const SESSION_TTL_SECONDS = 7200; // 2 hours TTL per spec
+const ITEM_BANK_TTL_SECONDS = 86400; // 24 hours TTL per spec
 
 interface AttemptWithLevelAndResponses {
   id: string;
@@ -37,6 +43,7 @@ interface AttemptWithLevelAndResponses {
 
 @Injectable()
 export class AssessmentService {
+  private readonly logger = new Logger(AssessmentService.name);
   readonly owner = 'Vishal Bharath R';
   readonly purpose = 'Attempt lifecycle, item delivery, integrity.';
 
@@ -204,6 +211,117 @@ export class AssessmentService {
     const sessionDto = this.buildSessionDto(attempt);
     await this.saveRedisSession(sessionDto);
     return sessionDto;
+  }
+
+  async getNextItem(studentId: string, attemptId: string): Promise<NextItemDto> {
+    const session = await this.getSession(studentId, attemptId);
+
+    if (session.locked || session.serverRemainingSeconds <= 0) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Assessment session is locked or expired.',
+        statusCode: 403,
+      });
+    }
+
+    const currentItemIndex = session.currentItemIndex ?? 0;
+
+    if (session.totalItems > 0 && currentItemIndex >= session.totalItems) {
+      return {
+        attemptId: session.attemptId,
+        item: null,
+        index: currentItemIndex,
+        totalItems: session.totalItems,
+        serverRemainingSeconds: session.serverRemainingSeconds,
+      };
+    }
+
+    const itemBankKey = `items:form:${session.trackCode}:${session.levelNumber}:${session.formId}`;
+    let items: DeliverableItemDto[] = [];
+
+    try {
+      const cachedItemsJson = await this.redis.get(itemBankKey);
+      if (cachedItemsJson) {
+        items = JSON.parse(cachedItemsJson) as DeliverableItemDto[];
+      }
+    } catch {
+      // Fail open to DB query if Redis throws
+    }
+
+    if (items.length === 0) {
+      const dbItems = await this.prisma.item.findMany({
+        where: {
+          level: {
+            levelNumber: session.levelNumber,
+            track: { code: session.trackCode },
+          },
+          formCode: session.formId,
+          active: true,
+        },
+        include: {
+          competency: true,
+          options: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!dbItems || dbItems.length === 0) {
+        throw new NotFoundException(`Item bank for form ${session.formId} is empty.`);
+      }
+
+      items = dbItems.map((item) => ({
+        itemId: item.id,
+        competencyId: item.competencyId,
+        domainCode: (item.competency?.domainCode ?? 'A') as DomainCode,
+        itemType: item.itemType as ItemType,
+        difficulty: item.difficultyTag as DifficultyTag,
+        promptText: item.stem,
+        options:
+          item.options && item.options.length > 0
+            ? item.options.map((opt) => ({
+                optionId: opt.id,
+                label: opt.text ? `${opt.label}. ${opt.text}` : opt.label,
+              }))
+            : undefined,
+        itemWeight: 1,
+      }));
+
+      try {
+        await this.redis.setex(itemBankKey, ITEM_BANK_TTL_SECONDS, JSON.stringify(items));
+      } catch {
+        // Fail open
+      }
+    }
+
+    if (currentItemIndex >= items.length) {
+      return {
+        attemptId: session.attemptId,
+        item: null,
+        index: currentItemIndex,
+        totalItems: session.totalItems || items.length,
+        serverRemainingSeconds: session.serverRemainingSeconds,
+      };
+    }
+
+    const deliverableItem = items[currentItemIndex] ?? null;
+
+    this.logger.log(
+      {
+        attemptId,
+        formCode: session.formId,
+        index: currentItemIndex,
+        totalItems: session.totalItems || items.length,
+      },
+      'assessment.next-item-served',
+    );
+
+    return {
+      attemptId: session.attemptId,
+      item: deliverableItem,
+      index: currentItemIndex,
+      totalItems: session.totalItems || items.length,
+      serverRemainingSeconds: session.serverRemainingSeconds,
+    };
   }
 
   private buildSessionDto(attempt: AttemptWithLevelAndResponses): AttemptSessionDto {

@@ -9,7 +9,12 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX, StartAttemptRequestSchema, type AttemptSessionDto } from '@smart/contracts';
+import {
+  API_PREFIX,
+  StartAttemptRequestSchema,
+  type AttemptSessionDto,
+  type NextItemDto,
+} from '@smart/contracts';
 import type { FastifyRequest } from 'fastify';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { NextFormRequestDto } from './dto/next-form-request.dto.js';
@@ -74,6 +79,27 @@ export class AssessmentController {
       });
     }
     return this.service.getSession(user.sub, attemptId);
+  }
+
+  @Get(':attemptId/next-item')
+  @ApiOperation({ summary: 'Serve the next assessment item from the Redis warm cache.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Next item payload' })
+  @ApiResponse({ status: 403, description: 'Session forbidden, locked, or expired' })
+  @ApiResponse({ status: 404, description: 'Attempt or item bank not found' })
+  async nextItem(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Param('attemptId') attemptId: string,
+  ): Promise<NextItemDto> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to fetch next item',
+        statusCode: 403,
+      });
+    }
+    return this.service.getNextItem(user.sub, attemptId);
   }
 
   /**

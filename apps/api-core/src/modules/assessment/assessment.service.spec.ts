@@ -97,6 +97,9 @@ function createMockPrisma() {
         );
       }),
     },
+    item: {
+      findMany: vi.fn(async () => []),
+    },
   } as any;
 }
 
@@ -340,5 +343,145 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
         levelNumber: 1,
       }),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  describe('getNextItem (ST-04 / S1-VB-02)', () => {
+    const itemBankKey = 'items:form:TECH_FULLSTACK:1:A';
+    const mockItems = [
+      {
+        itemId: 'item-101',
+        competencyId: 'comp-1',
+        domainCode: 'A',
+        itemType: 'MCQ_SINGLE',
+        difficulty: 'MEDIUM',
+        promptText: 'What is the complexity of binary search?',
+        options: [
+          { optionId: 'opt-1', label: 'A. O(1)' },
+          { optionId: 'opt-2', label: 'B. O(log n)' },
+        ],
+        itemWeight: 1,
+      },
+      {
+        itemId: 'item-102',
+        competencyId: 'comp-1',
+        domainCode: 'A',
+        itemType: 'MCQ_SINGLE',
+        difficulty: 'HARD',
+        promptText: 'What is quicksort worst case?',
+        options: [
+          { optionId: 'opt-1', label: 'A. O(n^2)' },
+          { optionId: 'opt-2', label: 'B. O(n log n)' },
+        ],
+        itemWeight: 1,
+      },
+    ];
+
+    it('15. Warm-cache success: returns item from Redis with ZERO Prisma queries', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      redis._store.set(itemBankKey, JSON.stringify(mockItems));
+
+      vi.clearAllMocks();
+
+      const result = await service.getNextItem(STUDENT_ID, ATTEMPT_ID);
+
+      expect(result.attemptId).toBe(ATTEMPT_ID);
+      expect(result.index).toBe(0);
+      expect(result.totalItems).toBe(20);
+      expect(result.item?.itemId).toBe('item-101');
+      expect(result.item?.promptText).toBe('What is the complexity of binary search?');
+
+      expect(prisma.attempt.findUnique).not.toHaveBeenCalled();
+      expect(prisma.item.findMany).not.toHaveBeenCalled();
+    });
+
+    it('16. End of assessment: returns item null when currentItemIndex >= totalItems', async () => {
+      const session = await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      session.currentItemIndex = 20;
+      redis._store.set(`session:assessment:${ATTEMPT_ID}`, JSON.stringify(session));
+      redis._store.set(itemBankKey, JSON.stringify(mockItems));
+
+      const result = await service.getNextItem(STUDENT_ID, ATTEMPT_ID);
+
+      expect(result.attemptId).toBe(ATTEMPT_ID);
+      expect(result.item).toBeNull();
+      expect(result.index).toBe(20);
+    });
+
+    it('17. Forbidden student: throws ForbiddenException when session studentId does not match', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await expect(service.getNextItem(OTHER_STUDENT_ID, ATTEMPT_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('18. Missing session: throws NotFoundException when attempt session does not exist in Redis or DB', async () => {
+      await expect(
+        service.getNextItem(STUDENT_ID, '99999999-9999-9999-9999-999999999999'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('19. Locked/expired session: throws ForbiddenException', async () => {
+      const session = await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      session.status = 'SUBMITTED';
+      redis._store.set(`session:assessment:${ATTEMPT_ID}`, JSON.stringify(session));
+
+      await expect(service.getNextItem(STUDENT_ID, ATTEMPT_ID)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('20. Item-bank cache miss: lazy loads active items from Postgres and populates Redis with 86400 TTL', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      redis._store.delete(itemBankKey);
+
+      prisma.item.findMany = vi.fn(async () => [
+        {
+          id: 'item-201',
+          levelId: LEVEL1_ID,
+          competencyId: 'comp-1',
+          itemType: 'MCQ_SINGLE',
+          stem: 'What is a closure in JS?',
+          difficultyTag: 'EASY',
+          active: true,
+          formCode: 'A',
+          competency: { domainCode: 'A' },
+          options: [{ id: 'opt-1', label: 'A', text: 'Function with lexical scope' }],
+        },
+      ]);
+
+      const result = await service.getNextItem(STUDENT_ID, ATTEMPT_ID);
+
+      expect(prisma.item.findMany).toHaveBeenCalledTimes(1);
+      expect(redis.setex).toHaveBeenCalledWith(itemBankKey, 86400, expect.any(String));
+      expect(result.item?.itemId).toBe('item-201');
+      expect(result.item?.promptText).toBe('What is a closure in JS?');
+    });
+
+    it('21. Empty item bank: throws NotFoundException when Postgres has no active items for form', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      redis._store.delete(itemBankKey);
+      prisma.item.findMany = vi.fn(async () => []);
+
+      await expect(service.getNextItem(STUDENT_ID, ATTEMPT_ID)).rejects.toThrow(NotFoundException);
+    });
   });
 });
