@@ -31,7 +31,9 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.1.0",
     "eslint": "catalog:",
+    "jsdom": "^30.0.1",
     "rimraf": "6.0.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
