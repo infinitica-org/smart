@@ -173,6 +173,9 @@ export class AuthService {
       user: toAuthenticatedUser(user),
     };
   }
+
+  /** Stateless JWT today; refresh-token revocation lands in S1-VV-01. */
+  logout(): void {}
 }
 
 export function createRefreshToken(): string {
