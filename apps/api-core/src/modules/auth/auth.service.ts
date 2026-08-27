@@ -42,6 +42,9 @@ export class AuthService {
       user: dto,
     };
   }
+
+  /** Stateless JWT today; refresh-token revocation lands in S1-VV-01. */
+  logout(): void {}
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -59,7 +62,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(derived, expected);
 }
 
-function toAuthenticatedUser(user: {
+export function toAuthenticatedUser(user: {
   id: string;
   email: string;
   fullName: string;

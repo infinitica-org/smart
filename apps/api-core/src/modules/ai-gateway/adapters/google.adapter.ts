@@ -78,6 +78,7 @@ export class GoogleAdapter implements AiProviderAdapter {
         systemInstruction: options.system,
         temperature: options.temperature ?? 0,
         maxOutputTokens: options.maxTokens ?? 2048,
+        abortSignal: options.signal,
       },
     });
 

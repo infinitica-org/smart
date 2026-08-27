@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@smart/ui';
+import { cn, SignOutButton } from '@smart/ui';
+import { signOut } from '../lib/auth';
 
 const NAV_ITEMS = [
   { label: 'Platform Health', href: '/admin/health' },
+  { label: 'Institutions', href: '/admin/institutions' },
   { label: 'Integrity Queue', href: '/admin/integrity' },
   { label: 'User Directory', href: '/admin/users' },
   { label: 'Rate Limits', href: '/admin/rate-limits' },
@@ -44,6 +46,9 @@ export function AdminSidebar() {
           );
         })}
       </nav>
+      <div className="p-4 border-t border-[var(--surface-border)]">
+        <SignOutButton onSignOut={signOut} className="w-full justify-start" />
+      </div>
     </aside>
   );
 }
