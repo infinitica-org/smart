@@ -16,7 +16,6 @@ const EXEMPT_PATHS = new Set([
   `${API_PREFIX}/admin/metrics`,
   '/ai/health',
   `${API_PREFIX}/ai/health`,
-  `${API_PREFIX}/ai-gateway/complete`,
 ]);
 
 describe('declarative throttle matrix (S1-VV-05)', () => {

@@ -135,7 +135,7 @@ export class AssessmentController {
   @ApiOperation({
     summary: 'Select next item form (parallel-form rotation + exposure tracking)',
   })
-  @ApiBody({ type: NextFormRequestDto })
+  @ApiBody({ type: () => NextFormRequestDto })
   async nextForm(@Body() body: NextFormRequestDto) {
     const { formCode, items } = await this.rotation.selectForm(
       body.levelId,

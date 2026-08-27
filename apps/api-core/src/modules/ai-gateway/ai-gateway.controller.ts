@@ -1,6 +1,12 @@
 import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
-import { API_PREFIX, type AiCompletionResponse, type AiHealthDto } from '@smart/contracts';
+import {
+  API_PREFIX,
+  AiCompletionRequestSchema,
+  type AiCompletionResponse,
+  type AiHealthDto,
+} from '@smart/contracts';
 import { Public } from '../../common/guards/public.decorator.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
 import { AiGatewayService } from './ai-gateway.service.js';
 
 @Controller()
@@ -20,6 +26,7 @@ export class AiGatewayController {
   }
 
   @Get(`${API_PREFIX}/admin/ai-health`)
+  @Roles('SUPER_ADMIN')
   adminAiHealth(): Promise<AiHealthDto> {
     return this.service.getHealth();
   }
@@ -35,9 +42,8 @@ export class AiGatewayController {
   }
 
   @Post(`${API_PREFIX}/ai-gateway/complete`)
-  complete(
-    @Body() body: Parameters<AiGatewayService['complete']>[0],
-  ): Promise<AiCompletionResponse> {
-    return this.service.complete(body);
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  complete(@Body() body: unknown): Promise<AiCompletionResponse> {
+    return this.service.complete(AiCompletionRequestSchema.parse(body));
   }
 }

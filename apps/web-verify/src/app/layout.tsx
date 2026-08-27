@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { SMART_HTML_CLASS } from '@smart/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={SMART_HTML_CLASS}>
       <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased animate-fade-in">
         <header className="border-b border-[var(--surface-border)] bg-[var(--surface)]">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">

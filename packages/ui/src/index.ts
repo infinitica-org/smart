@@ -8,6 +8,8 @@
  */
 
 export { cn } from './lib/cn';
+/** Apply on `<html>` in every portal so class-based `dark:` utilities match the product theme. */
+export const SMART_HTML_CLASS = 'dark';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './components/button';
 export {
   TierBadge,

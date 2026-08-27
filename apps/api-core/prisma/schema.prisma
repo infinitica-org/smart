@@ -599,3 +599,19 @@ model RateLimitLog {
   @@index([identifier, createdAt])
   @@map("rate_limit_logs")
 }
+
+model KafkaOutbox {
+  id            String    @id @default(uuid()) @db.Uuid
+  topic         String
+  partitionKey  String    @map("partition_key")
+  payload       Json
+  source        String
+  correlationId String?   @map("correlation_id")
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([publishedAt, createdAt])
+  @@map("kafka_outbox")
+}

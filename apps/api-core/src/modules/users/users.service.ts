@@ -1,14 +1,32 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AuthenticatedUser, EnrollTrackRequest } from '@smart/contracts';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type {
+  AuthenticatedUser,
+  ChangePasswordRequest,
+  EnrollTrackRequest,
+} from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { toAuthenticatedUser } from '../auth/auth.service.js';
+import {
+  AuthService,
+  hashPassword,
+  toAuthenticatedUser,
+  verifyPassword,
+} from '../auth/auth.service.js';
 
 @Injectable()
 export class UsersService {
   readonly owner = 'Vishal V';
   readonly purpose = 'Current user profile and track enrolment.';
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuthService) private readonly auth: AuthService,
+  ) {}
 
   async getMe(userId: string): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
@@ -52,5 +70,29 @@ export class UsersService {
     });
 
     return toAuthenticatedUser(updated);
+  }
+
+  async changePassword(userId: string, body: ChangePasswordRequest): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'User not found.',
+        statusCode: 404,
+      });
+    }
+    if (!(await verifyPassword(body.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException({
+        error: 'unauthorized',
+        message: 'Email or password is incorrect.',
+        statusCode: 401,
+      });
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(body.newPassword) },
+    });
+    await this.auth.revokeAllForUser(userId);
   }
 }

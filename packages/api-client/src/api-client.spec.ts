@@ -136,6 +136,13 @@ describe('token refresh', () => {
     expect(calls).toHaveLength(2);
   });
 
+  it('stores a rotated access token from createRefreshAccessToken', async () => {
+    const { createRefreshAccessToken } = await import('./session.js');
+    const refresh = createRefreshAccessToken(async () => ({ accessToken: 'rotated-access' }));
+    const token = await refresh();
+    expect(token).toBe('rotated-access');
+  });
+
   it('shares one refresh across concurrent 401s', async () => {
     // Refresh tokens rotate. Parallel refreshes invalidate each other and log the
     // user out for the crime of loading a page with three panels on it.
