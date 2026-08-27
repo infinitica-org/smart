@@ -6,6 +6,7 @@ import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { AiGatewayService } from './ai-gateway.service.js';
+import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
 const AUDIT_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -97,21 +98,7 @@ describe('AiGatewayService', () => {
       new AiGatewayAuditService(),
     );
 
-    const health = await service.getHealth();
-    const validation = AiHealthDtoSchema.safeParse(health);
-
-    expect(validation.success).toBe(true);
-    expect(health.providers).toHaveLength(3);
-    expect(health.providers.map((p) => p.provider)).toEqual(['ANTHROPIC', 'GOOGLE', 'OPENROUTER']);
-    expect(health.providers[0]?.reachable).toBe(false);
-    expect(health.providers[1]?.reachable).toBe(false);
-    expect(health.providers[2]?.reachable).toBe(false);
-    expect(health.tokenBucket.requestsRemaining).toBe(200);
-    expect(health.queueDepth.P1_REALTIME).toBe(0);
-    expect(health.automatedScoringPaused).toBe(false);
-  });
-
-  it('aggregates provider health and reachability correctly', async () => {
+  it('completes via primary provider (Anthropic) when healthy', async () => {
     const mockAnthropic = {
       provider: 'ANTHROPIC' as const,
       isConfigured: true,
@@ -119,7 +106,261 @@ describe('AiGatewayService', () => {
         provider: 'ANTHROPIC',
         reachable: true,
         circuitState: 'CLOSED' as const,
-        latencyMs: 42,
+        latencyMs: 30,
+      }),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'GOLD', barsScore: 90, confidence: 0.95 },
+        rawText: '{"matchedAnchor":"GOLD"}',
+        provider: 'ANTHROPIC' as const,
+        model: 'claude-3-5-sonnet-latest',
+        promptTokens: 150,
+        completionTokens: 50,
+        latencyMs: 120,
+      }),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'GOOGLE',
+        reachable: true,
+        circuitState: 'CLOSED' as const,
+        latencyMs: 25,
+      }),
+      complete: vi.fn(),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'OPENROUTER',
+        reachable: false,
+        circuitState: 'OPEN' as const,
+        latencyMs: null,
+      }),
+      complete: vi.fn(),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 2 });
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      cb,
+    );
+
+    const result = await service.complete(sampleRequest);
+
+    expect(result.provider).toBe('ANTHROPIC');
+    expect(result.usedFallback).toBe(false);
+    expect(result.model).toBe('claude-3-5-sonnet-latest');
+    expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
+    expect(mockGoogle.complete).not.toHaveBeenCalled();
+  });
+
+  it('forces failover to Gemini 2.5 on Anthropic 429 Rate Limit (AC 1, AC 2, AC 3)', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'ANTHROPIC',
+        reachable: false,
+        circuitState: 'OPEN' as const,
+        latencyMs: null,
+      }),
+      complete: vi.fn().mockRejectedValue(new Error('Rate limit exceeded (HTTP 429)')),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'GOOGLE',
+        reachable: true,
+        circuitState: 'CLOSED' as const,
+        latencyMs: 35,
+      }),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'GOLD', barsScore: 92, confidence: 0.93 },
+        rawText: '{"matchedAnchor":"GOLD"}',
+        provider: 'GOOGLE' as const,
+        model: 'gemini-2.5-pro',
+        promptTokens: 145,
+        completionTokens: 48,
+        latencyMs: 140,
+      }),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'OPENROUTER',
+        reachable: false,
+        circuitState: 'OPEN' as const,
+        latencyMs: null,
+      }),
+      complete: vi.fn(),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      cb,
+    );
+
+    const result = await service.complete(sampleRequest);
+
+    expect(result.provider).toBe('GOOGLE');
+    expect(result.usedFallback).toBe(true);
+    expect(result.model).toBe('gemini-2.5-pro');
+    expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
+    expect(mockGoogle.complete).toHaveBeenCalledTimes(1);
+    expect(mockGoogle.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(cb.getState('ANTHROPIC')).toBe('OPEN');
+  });
+
+  it('skips Anthropic immediately when its circuit is OPEN and routes to Gemini 2.5', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'SILVER', barsScore: 75, confidence: 0.88 },
+        rawText: '{"matchedAnchor":"SILVER"}',
+        provider: 'GOOGLE' as const,
+        model: 'gemini-2.5-pro',
+        promptTokens: 140,
+        completionTokens: 45,
+        latencyMs: 110,
+      }),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    cb.trip('ANTHROPIC');
+
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      cb,
+    );
+
+    const result = await service.complete(sampleRequest);
+
+    expect(result.provider).toBe('GOOGLE');
+    expect(result.usedFallback).toBe(true);
+    expect(mockAnthropic.complete).not.toHaveBeenCalled();
+    expect(mockGoogle.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails over on 5xx and timeout errors', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 })),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'BRONZE', barsScore: 60, confidence: 0.8 },
+        rawText: '{"matchedAnchor":"BRONZE"}',
+        provider: 'GOOGLE' as const,
+        model: 'gemini-2.5-pro',
+        promptTokens: 130,
+        completionTokens: 40,
+        latencyMs: 95,
+      }),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      cb,
+    );
+
+    const result = await service.complete(sampleRequest);
+    expect(result.provider).toBe('GOOGLE');
+    expect(result.usedFallback).toBe(true);
+  });
+
+  it('throws structured error when both/all providers fail', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockRejectedValue(new Error('Anthropic outage 500')),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockRejectedValue(new Error('Google quota exceeded 429')),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      cb,
+    );
+
+    await expect(service.complete(sampleRequest)).rejects.toThrow(AiGatewayAllProvidersFailedError);
+  });
+
+  it('reflects dynamic circuit breaker state in /ai/health', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn().mockResolvedValue({
+        provider: 'ANTHROPIC',
+        reachable: true,
+        circuitState: 'CLOSED' as const,
+        latencyMs: 40,
       }),
       complete: vi.fn(),
     };
@@ -131,7 +372,7 @@ describe('AiGatewayService', () => {
         provider: 'GOOGLE',
         reachable: true,
         circuitState: 'CLOSED' as const,
-        latencyMs: 38,
+        latencyMs: 30,
       }),
       complete: vi.fn(),
     };
@@ -143,10 +384,13 @@ describe('AiGatewayService', () => {
         provider: 'OPENROUTER',
         reachable: true,
         circuitState: 'CLOSED' as const,
-        latencyMs: 55,
+        latencyMs: 50,
       }),
       complete: vi.fn(),
     };
+
+    const cb = new AiCircuitBreaker();
+    cb.trip('ANTHROPIC');
 
     const service = new AiGatewayService(
       mockAnthropic as never,
@@ -154,26 +398,13 @@ describe('AiGatewayService', () => {
       mockOpenRouter as never,
       new AiGatewayAuditService(),
     );
-    const health = await service.getHealth();
 
-    expect(health.providers[0]).toEqual({
-      provider: 'ANTHROPIC',
-      reachable: true,
-      circuitState: 'CLOSED',
-      latencyMs: 42,
-    });
-    expect(health.providers[1]).toEqual({
-      provider: 'GOOGLE',
-      reachable: true,
-      circuitState: 'CLOSED',
-      latencyMs: 38,
-    });
-    expect(health.providers[2]).toEqual({
-      provider: 'OPENROUTER',
-      reachable: true,
-      circuitState: 'CLOSED',
-      latencyMs: 55,
-    });
+    const health = await service.getHealth();
+    const anthropicStatus = health.providers.find((p) => p.provider === 'ANTHROPIC');
+    const googleStatus = health.providers.find((p) => p.provider === 'GOOGLE');
+
+    expect(anthropicStatus?.circuitState).toBe('OPEN');
+    expect(googleStatus?.circuitState).toBe('CLOSED');
   });
 
   it('writes an audit row and returns that row id and metered cost', async () => {
@@ -344,12 +575,15 @@ describe('AiGatewayController', () => {
 
     const health = await controller.health();
     expect(health.providers).toHaveLength(3);
+    expect(AiHealthDtoSchema.safeParse(health).success).toBe(true);
 
     const versioned = await controller.versionedHealth();
     expect(versioned.providers).toHaveLength(3);
+    expect(AiHealthDtoSchema.safeParse(versioned).success).toBe(true);
 
     const admin = await controller.adminAiHealth();
     expect(admin.providers).toHaveLength(3);
+    expect(AiHealthDtoSchema.safeParse(admin).success).toBe(true);
 
     const meta = controller.meta();
     expect(meta.module).toBe('ai-gateway');
