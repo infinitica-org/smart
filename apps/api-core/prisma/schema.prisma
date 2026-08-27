@@ -152,6 +152,7 @@ enum PlacementOutcome {
 enum AiProvider {
   ANTHROPIC
   GOOGLE
+  OPENROUTER
 }
 
 model Institution {
@@ -515,6 +516,7 @@ model AiEvaluationAudit {
   model            String
   promptTokens     Int        @map("prompt_tokens")
   completionTokens Int        @map("completion_tokens")
+  latencyMs        Int        @map("latency_ms")
   usedFallback     Boolean    @default(false) @map("used_fallback")
   estimatedCostUsd Decimal    @map("estimated_cost_usd") @db.Decimal(10, 6)
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
