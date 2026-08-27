@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Inject } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import { AssessmentService } from './assessment.service.js';
-import { NextFormRequestDto } from './dto/next-form-request.dto.js';
-import { ItemRotationService } from './item-rotation.service.js';
 
 @ApiTags('assessment')
 @Controller(`${API_PREFIX}/assessment`)
@@ -12,6 +10,7 @@ export class AssessmentController {
     @Inject(AssessmentService) private readonly service: AssessmentService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
   ) {}
+  constructor(@Inject(AssessmentService) private readonly service: AssessmentService) {}
 
   @Get('_meta')
   meta() {
