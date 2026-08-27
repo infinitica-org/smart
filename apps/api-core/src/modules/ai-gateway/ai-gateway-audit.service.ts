@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { AiProvider } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';

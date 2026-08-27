@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -12,6 +13,7 @@ import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import type { AiProviderAdapter, ModelCompletionResult } from './ai-gateway.interface.js';
+import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
 @Injectable()
 export class AiGatewayService {
@@ -24,6 +26,7 @@ export class AiGatewayService {
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
     @Inject(AiGatewayAuditService) private readonly audit: AiGatewayAuditService,
+    @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
