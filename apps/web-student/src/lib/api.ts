@@ -167,6 +167,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   return fetch(input, init);
 };
 
+// eslint-disable-next-line no-restricted-globals
 export const smartFetch = IS_MOCK_ENV ? (mockFetch as typeof fetch) : fetch;
 
 export const apiClient = new SmartApiClient({

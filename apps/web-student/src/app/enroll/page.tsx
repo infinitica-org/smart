@@ -128,8 +128,7 @@ export default function EnrollPage() {
                     <div className="p-6 pt-3 mt-auto flex flex-col gap-4">
                       {/* Optional description if available on track type, else fallback */}
                       <p className="text-sm text-[var(--text-primary)] leading-relaxed">
-                        {(track as any).description ||
-                          'Master the essential skills and competencies required for this role.'}
+                        {'Master the essential skills and competencies required for this role.'}
                       </p>
 
                       <div className="text-xs text-[var(--text-muted)] flex justify-between items-center bg-[var(--bg-surface)] p-3 rounded border">
