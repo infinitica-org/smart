@@ -21,7 +21,7 @@ Personal scratch + prefs: **`.cursor/local/`** (gitignored) — `preferences.md`
 
 ## Agent workflow (non-negotiable)
 
-Feature branch → lint/typecheck/test → commit (when asked) → **open PR to `develop`**. See `.cursor/rules/02-dev-workflow.mdc`.
+Feature branch → lint/typecheck/test → commit (when asked) → **open PR to `dev`**. See `.cursor/rules/02-dev-workflow.mdc`.
 
 ## Quick commands
 

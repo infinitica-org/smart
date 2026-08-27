@@ -101,3 +101,5 @@ allowBuilds:
   prisma: true
   sharp: true
   "@tailwindcss/oxide": true
+  "@google/genai": false
+  protobufjs: false

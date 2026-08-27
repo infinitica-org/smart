@@ -13,6 +13,6 @@ Full checklist: `docs/delivery/DEFINITION_OF_DONE.md`. Agents must not treat a t
 - `pnpm lint` / `typecheck` / `build` / `format:check` clean.
 - RBAC + rate-limit tier declared; Redis keys have TTL; no secrets in code/logs.
 - Structured logs + at least one metric; Swagger on new endpoints.
-- Feature branch + PR into `develop` (no direct commits to protected branches).
+- Feature branch + PR into `dev` (no direct commits to protected branches). See `docs/delivery/BRANCHING.md`.
 - Tino review required; squash-merge; ticket ID in Conventional Commit title.
 - Agents: do not call work "done" until the PR exists (unless the user asked for local-only exploration).

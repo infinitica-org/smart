@@ -17,10 +17,10 @@ Project rules in `.cursor/rules/*.mdc` always apply. **`02-dev-workflow.mdc` is 
 
 | Rule      | Requirement                                                                                                                              |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch    | Never commit to `main`/`develop`. Use `feat/S#-XX-##-slug` (etc.)                                                                        |
+| Branch    | Never commit to `main`/`qa`/`dev`. Feature branch from `dev`. See `docs/delivery/BRANCHING.md`                                           |
 | Quality   | `pnpm lint` · `typecheck` · `test` · `format:check` before PR                                                                            |
 | Hooks     | Never `--no-verify`                                                                                                                      |
-| Delivery  | Shippable work ends in a **PR to `develop`** with required **labels**                                                                    |
+| Delivery  | Shippable work ends in a **PR to `dev`** with required **labels** (`dev`→`qa`→`main`)                                                    |
 | Commits   | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`                                                     |
 | Size      | ≤ 400 hand-written LOC per PR; one ticket per PR                                                                                         |
 | Contracts | Change `@smart/contracts` first; Tino merges                                                                                             |

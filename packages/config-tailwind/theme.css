@@ -65,14 +65,6 @@
 
 @layer base {
   :root {
-    --surface: oklch(1 0 0);
-    --surface-muted: oklch(0.98 0.003 250);
-    --surface-border: oklch(0.92 0.005 250);
-    --text-primary: oklch(0.22 0.01 250);
-    --text-muted: oklch(0.52 0.01 250);
-  }
-
-  .dark {
     --surface: oklch(0.18 0.01 250);
     --surface-muted: oklch(0.23 0.012 250);
     --surface-border: oklch(0.31 0.012 250);
@@ -80,8 +72,16 @@
     --text-muted: oklch(0.7 0.01 250);
   }
 
+  .light {
+    --surface: oklch(1 0 0);
+    --surface-muted: oklch(0.98 0.003 250);
+    --surface-border: oklch(0.92 0.005 250);
+    --text-primary: oklch(0.22 0.01 250);
+    --text-muted: oklch(0.52 0.01 250);
+  }
+
   html {
-    color-scheme: light dark;
+    color-scheme: dark light;
   }
 
   body {

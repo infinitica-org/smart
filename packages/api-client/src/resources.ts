@@ -11,6 +11,7 @@ import {
   SandboxResultDtoSchema,
   SsoStartResponseSchema,
   TrackDtoSchema,
+  HealthStatusSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -176,6 +177,16 @@ export function placementApi(client: SmartApiClient) {
   };
 }
 
+export function systemApi(client: SmartApiClient) {
+  return {
+    health: () =>
+      client.get('/health', {
+        schema: HealthStatusSchema,
+        anonymous: true,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -183,6 +194,7 @@ export function createSmartApi(client: SmartApiClient) {
     assessment: assessmentApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),
+    system: systemApi(client),
   };
 }
 

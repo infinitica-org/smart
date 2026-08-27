@@ -18,7 +18,7 @@ cp .cursor/local/preferences.example.md .cursor/local/preferences.md
 cp .cursor/local/working-memory.example.md .cursor/local/working-memory.md
 ```
 
-Then: feature branches only; PR every shippable change to `develop`.
+Then: feature branches only; PR every shippable change to `dev`.
 
 ## Role detail (no duplicated playbooks)
 
