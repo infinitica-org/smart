@@ -15,7 +15,7 @@ if (!existsSync(lockPath)) {
   process.exit(1);
 }
 
-const lock = readFileSync(lockPath, 'utf8');
+const lock = readFileSync(lockPath, 'utf8').replaceAll('\r\n', '\n');
 const importerStart = lock.indexOf('\nimporters:\n');
 if (importerStart === -1) {
   console.error('FAIL lockfile: pnpm-lock.yaml has no importers section');
