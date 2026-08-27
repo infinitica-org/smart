@@ -34,10 +34,12 @@ function createMockPrisma() {
 
   const attemptsStore: any[] = [];
   const levelResultsStore: any[] = [];
+  const responsesStore: any[] = [];
 
   return {
     _attemptsStore: attemptsStore,
     _levelResultsStore: levelResultsStore,
+    _responsesStore: responsesStore,
     level: {
       findFirst: vi.fn(async ({ where }: any) => {
         if (where.levelNumber !== undefined && where.track?.code) {
@@ -100,18 +102,63 @@ function createMockPrisma() {
     item: {
       findMany: vi.fn(async () => []),
     },
+    response: {
+      findUnique: vi.fn(async ({ where }: any) => {
+        const { attemptId, itemId } = where.attemptId_itemId;
+        return responsesStore.find((r) => r.attemptId === attemptId && r.itemId === itemId) ?? null;
+      }),
+      upsert: vi.fn(async ({ where, update, create }: any) => {
+        const { attemptId, itemId } = where.attemptId_itemId;
+        const idx = responsesStore.findIndex(
+          (r) => r.attemptId === attemptId && r.itemId === itemId,
+        );
+        if (idx >= 0) {
+          responsesStore[idx] = { ...responsesStore[idx], ...update };
+          return responsesStore[idx];
+        }
+        const created = { id: `resp-${Date.now()}`, attemptId, itemId, ...create };
+        responsesStore.push(created);
+        return created;
+      }),
+      count: vi.fn(async ({ where }: any) => {
+        return responsesStore.filter((r) => r.attemptId === where.attemptId).length;
+      }),
+    },
   } as any;
 }
 
 function createMockRedis() {
   const store = new Map<string, string>();
+  const sets = new Map<string, Set<string>>();
   return {
     _store: store,
+    _sets: sets,
     get: vi.fn(async (key: string) => store.get(key) ?? null),
-    setex: vi.fn(async (key: string, ttl: number, val: string) => {
+    setex: vi.fn(async (key: string, _ttl: number, val: string) => {
       store.set(key, val);
       return 'OK';
     }),
+    sadd: vi.fn(async (key: string, val: string) => {
+      let set = sets.get(key);
+      if (!set) {
+        set = new Set();
+        sets.set(key, set);
+      }
+      set.add(val);
+      return 1;
+    }),
+    srem: vi.fn(async (key: string, val: string) => {
+      const set = sets.get(key);
+      if (set) set.delete(val);
+      return 1;
+    }),
+    smembers: vi.fn(async (key: string) => {
+      return Array.from(sets.get(key) ?? []);
+    }),
+    scard: vi.fn(async (key: string) => {
+      return sets.get(key)?.size ?? 0;
+    }),
+    expire: vi.fn(async () => 1),
   } as any;
 }
 
@@ -482,6 +529,255 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
       prisma.item.findMany = vi.fn(async () => []);
 
       await expect(service.getNextItem(STUDENT_ID, ATTEMPT_ID)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('saveDraft & submitL1 (S1-VB-03)', () => {
+    const ITEM_ID = '99999999-9999-9999-9999-999999999999';
+
+    it('22. Valid L1 draft submission: writes draft to Redis with TTL and returns accepted: true', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      const result = await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-1'] },
+        clientSequence: 1,
+      });
+
+      expect(result.accepted).toBe(true);
+      expect(result.superseded).toBe(false);
+      expect(result.answeredItems).toBe(1);
+      expect(redis.setex).toHaveBeenCalledWith(
+        `draft:assessment:${ATTEMPT_ID}:${ITEM_ID}`,
+        7200,
+        expect.any(String),
+      );
+      expect(redis.sadd).toHaveBeenCalledWith(`drafts:set:${ATTEMPT_ID}`, ITEM_ID);
+      expect(redis.sadd).toHaveBeenCalledWith('drafts:dirty', `${ATTEMPT_ID}:${ITEM_ID}`);
+    });
+
+    it('23. Client sequence guard: older or equal sequence returns superseded: true and accepted: false', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-1'] },
+        clientSequence: 5,
+      });
+
+      const supersededResult = await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-old'] },
+        clientSequence: 4,
+      });
+
+      expect(supersededResult.accepted).toBe(false);
+      expect(supersededResult.superseded).toBe(true);
+
+      const equalSeqResult = await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-equal'] },
+        clientSequence: 5,
+      });
+
+      expect(equalSeqResult.accepted).toBe(false);
+      expect(equalSeqResult.superseded).toBe(true);
+    });
+
+    it('24. Student attempt ownership: throws ForbiddenException when saving into another student attempt', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await expect(
+        service.saveDraft(OTHER_STUDENT_ID, {
+          attemptId: ATTEMPT_ID,
+          itemId: ITEM_ID,
+          answer: { kind: 'MCQ', selectedOptionIds: ['opt-1'] },
+          clientSequence: 1,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('25. Locked / expired attempt: throws ForbiddenException when session is locked', async () => {
+      const session = await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      const attempt = prisma._attemptsStore.find((a: any) => a.id === session.attemptId);
+      attempt.status = 'COMPLETED';
+      redis._store.clear(); // force reload from prisma
+
+      await expect(
+        service.saveDraft(STUDENT_ID, {
+          attemptId: ATTEMPT_ID,
+          itemId: ITEM_ID,
+          answer: { kind: 'MCQ', selectedOptionIds: ['opt-1'] },
+          clientSequence: 1,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('26. Redis-down degradation: falls back to direct Postgres upsert when Redis throws', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      redis.get = vi.fn(async () => {
+        throw new Error('Redis Connection Error');
+      });
+      redis.setex = vi.fn(async () => {
+        throw new Error('Redis Connection Error');
+      });
+
+      const result = await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-degraded'] },
+        clientSequence: 10,
+      });
+
+      expect(result.accepted).toBe(true);
+      expect(result.superseded).toBe(false);
+      expect(prisma.response.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('27. 5-second PostgreSQL batch flush: syncs dirty drafts to Postgres and clears dirty set', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-flush'] },
+        clientSequence: 1,
+      });
+
+      await service.flushDraftsToPostgres();
+
+      expect(prisma.response.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { attemptId_itemId: { attemptId: ATTEMPT_ID, itemId: ITEM_ID } },
+        }),
+      );
+      const dirtyMembers = await redis.smembers('drafts:dirty');
+      expect(dirtyMembers).not.toContain(`${ATTEMPT_ID}:${ITEM_ID}`);
+    });
+
+    it('28. Batch flush error retry: retains dirty key if Postgres upsert fails', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-retry'] },
+        clientSequence: 1,
+      });
+
+      prisma.response.upsert = vi.fn(async () => {
+        throw new Error('Postgres DB Error');
+      });
+
+      await service.flushDraftsToPostgres();
+
+      const dirtyMembers = await redis.smembers('drafts:dirty');
+      expect(dirtyMembers).toContain(`${ATTEMPT_ID}:${ITEM_ID}`);
+    });
+
+    it('29. Refresh → savedDraft resume: getNextItem returns saved draft for current item', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      const itemBankKey = `items:form:TECH_FULLSTACK:1:A`;
+      redis._store.delete(itemBankKey);
+      prisma.item.findMany = vi.fn(async () => [
+        {
+          id: ITEM_ID,
+          levelId: LEVEL1_ID,
+          competencyId: 'comp-1',
+          itemType: 'MCQ_SINGLE',
+          stem: 'Question with draft?',
+          difficultyTag: 'EASY',
+          active: true,
+          formCode: 'A',
+          competency: { domainCode: 'A' },
+          options: [{ id: 'opt-1', label: 'A', text: 'Option A' }],
+        },
+      ]);
+
+      await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-1'] },
+        clientSequence: 1,
+      });
+
+      const nextItemResult = await service.getNextItem(STUDENT_ID, ATTEMPT_ID);
+
+      expect(nextItemResult.savedDraft).toEqual({ kind: 'MCQ', selectedOptionIds: ['opt-1'] });
+    });
+
+    it('30. Redis-flushed draft retains sequence in Postgres and rejects older sequence on Redis failure', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+
+      await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-new'] },
+        clientSequence: 10,
+      });
+
+      await service.flushDraftsToPostgres();
+
+      const flushedResponse = prisma._responsesStore.find(
+        (r: any) => r.attemptId === ATTEMPT_ID && r.itemId === ITEM_ID,
+      );
+      expect(flushedResponse).toBeDefined();
+      expect(flushedResponse.answer).toEqual({
+        kind: 'MCQ',
+        selectedOptionIds: ['opt-new'],
+        _clientSequence: 10,
+      });
+
+      redis.get = vi.fn(async () => {
+        throw new Error('Redis Down');
+      });
+      redis.setex = vi.fn(async () => {
+        throw new Error('Redis Down');
+      });
+
+      const olderResult = await service.saveDraft(STUDENT_ID, {
+        attemptId: ATTEMPT_ID,
+        itemId: ITEM_ID,
+        answer: { kind: 'MCQ', selectedOptionIds: ['opt-old'] },
+        clientSequence: 5,
+      });
+
+      expect(olderResult.accepted).toBe(false);
+      expect(olderResult.superseded).toBe(true);
     });
   });
 });
