@@ -152,7 +152,21 @@ export class AiGatewayService {
       this.logger.warn(`Circuit breaker is ${state} for ANTHROPIC. Failing over to GOOGLE.`);
     }
 
-        return this.toCompletionResponse(request, result, isFallback);
+    // Attempt GOOGLE (Fallback)
+    if (this.google.isConfigured && this.circuitBreaker.isCallAllowed('GOOGLE')) {
+      try {
+        const result = await this.circuitBreaker.execute('GOOGLE', (signal) =>
+          this.google.complete({
+            system: rendered.system,
+            prompt: rendered.user,
+            modelRole: request.modelRole,
+            temperature: request.temperature,
+            maxTokens: request.maxOutputTokens,
+            outputSchema: rendered.outputSchema,
+            signal,
+          }),
+        );
+        return this.toCompletionResponse(request, result, true);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const circuitState = this.circuitBreaker.getState('GOOGLE');

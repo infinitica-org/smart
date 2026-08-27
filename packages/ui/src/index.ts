@@ -20,7 +20,6 @@ export { Card, CardDescription, CardHeader, CardTitle } from './components/card'
 export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
 export { LevelStepper, type LevelState, type LevelStepperProps } from './components/level-stepper';
-export { TierTrail, type TierProgress, type TierTrailProps } from './components/tier-trail';
 export { AppShell, type AppShellProps } from './components/app-shell';
 export { ConfidenceNote, type ConfidenceNoteProps } from './components/confidence-note';
 export { Timer, type TimerProps } from './components/timer';
