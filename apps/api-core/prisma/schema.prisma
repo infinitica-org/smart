@@ -152,6 +152,14 @@ enum PlacementOutcome {
 enum AiProvider {
   ANTHROPIC
   GOOGLE
+  OPENROUTER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 enum InvitationStatus {
@@ -356,6 +364,7 @@ model Item {
   difficultyTag  DifficultyTag @map("difficulty_tag")
   active         Boolean       @default(true)
   formCode       String        @default("A") @map("form_code")
+  exposureCount  Int           @default(0) @map("exposure_count")
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   options   ItemOption[]
@@ -576,6 +585,7 @@ model AiEvaluationAudit {
   model            String
   promptTokens     Int        @map("prompt_tokens")
   completionTokens Int        @map("completion_tokens")
+  latencyMs        Int        @map("latency_ms")
   usedFallback     Boolean    @default(false) @map("used_fallback")
   estimatedCostUsd Decimal    @map("estimated_cost_usd") @db.Decimal(10, 6)
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)

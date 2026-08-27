@@ -71,13 +71,16 @@ export class AnthropicAdapter implements AiProviderAdapter {
     const model = ROLE_TO_MODEL[options.modelRole] ?? 'claude-3-5-sonnet-latest';
     const start = Date.now();
 
-    const response = await this.client.messages.create({
-      model,
-      max_tokens: options.maxTokens ?? 2048,
-      temperature: options.temperature ?? 0,
-      system: options.system,
-      messages: [{ role: 'user', content: options.prompt }],
-    });
+    const response = await this.client.messages.create(
+      {
+        model,
+        max_tokens: options.maxTokens ?? 2048,
+        temperature: options.temperature ?? 0,
+        system: options.system,
+        messages: [{ role: 'user', content: options.prompt }],
+      },
+      { signal: options.signal },
+    );
 
     const latencyMs = Date.now() - start;
     const firstBlock = response.content[0];

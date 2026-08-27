@@ -16,6 +16,7 @@ export interface ModelCompletionOptions {
   readonly temperature?: number;
   readonly maxTokens?: number;
   readonly outputSchema?: z.ZodType;
+  readonly signal?: AbortSignal;
 }
 
 export interface ModelCompletionResult {
