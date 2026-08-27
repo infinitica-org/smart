@@ -65,6 +65,7 @@ export default {
         'web-tpo',
         'web-admin',
         'web-verify',
+        'web-auth',
         'api-core',
         // tooling
         'content-pipeline',

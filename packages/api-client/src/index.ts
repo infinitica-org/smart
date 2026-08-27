@@ -17,5 +17,6 @@ export * from './errors.js';
 export * from './client.js';
 export * from './resources.js';
 export * from './query-keys.js';
+export * from './session.js';
 
 export const API_CLIENT_VERSION = '0.1.0';

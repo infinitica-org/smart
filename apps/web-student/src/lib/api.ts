@@ -1,4 +1,4 @@
-import { SmartApiClient, createSmartApi } from '@smart/api-client';
+import { SmartApiClient, createSmartApi, getAccessToken } from '@smart/api-client';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
@@ -173,10 +173,7 @@ export const smartFetch = IS_MOCK_ENV ? (mockFetch as typeof fetch) : fetch;
 export const apiClient = new SmartApiClient({
   baseUrl,
   fetchImpl: IS_MOCK_ENV ? (mockFetch as typeof fetch) : undefined,
-  getAccessToken: () => {
-    if (typeof window === 'undefined') return null;
-    return window.sessionStorage.getItem('smart.accessToken');
-  },
+  getAccessToken,
 });
 
 export const api = createSmartApi(apiClient);

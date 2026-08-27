@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { SessionBootstrap } from '@smart/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,10 +14,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased flex animate-fade-in">
-        <AdminSidebar />
-        <main className="flex-1 p-8 overflow-y-auto w-full">
-          <div className="max-w-5xl mx-auto">{children}</div>
-        </main>
+        <SessionBootstrap>
+          <AdminSidebar />
+          <main className="flex-1 p-8 overflow-y-auto w-full">
+            <div className="max-w-5xl mx-auto">{children}</div>
+          </main>
+        </SessionBootstrap>
       </body>
     </html>
   );
