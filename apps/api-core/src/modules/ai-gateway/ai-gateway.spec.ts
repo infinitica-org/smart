@@ -3,9 +3,37 @@ import { AiHealthDtoSchema, type AiCompletionRequest } from '@smart/contracts';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { AiGatewayService } from './ai-gateway.service.js';
 import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
+
+const AUDIT_ID = '11111111-1111-4111-8111-111111111111';
+
+const sampleRequest: AiCompletionRequest = {
+  promptRef: 'bars-l3@1',
+  modelRole: 'PRIMARY_REASONING',
+  priority: 'P1_REALTIME',
+  variables: {
+    trackName: 'Full Stack Engineering',
+    competencyName: 'Explains technical decisions',
+    anchors: {
+      GOLD: 'Explains the trade-off they chose and names what it cost them.',
+      SILVER: 'Explains what they built accurately but not why that approach.',
+      BRONZE: 'Describes the outcome only; cannot account for any decision.',
+    },
+    anchorVersion: 3,
+    prompt: 'Walk us through how you chose your database for this project.',
+    candidateResponse: 'I used Postgres because I needed transactions across two tables.',
+    isTranscript: false,
+    referenceNotes: [],
+  },
+  correlation: {},
+};
+
+function mockPrismaCreate(create: ReturnType<typeof vi.fn>) {
+  return { aiEvaluationAudit: { create } };
+}
 
 describe('ai-gateway adapters', () => {
   it('reports unconfigured status when API keys are missing', async () => {
@@ -58,29 +86,17 @@ describe('ai-gateway adapters', () => {
   });
 });
 
-describe('AiGatewayService Failover & Circuit Breaker', () => {
-  const sampleRequest: AiCompletionRequest = {
-    promptRef: 'bars-l3@1',
-    modelRole: 'PRIMARY_REASONING',
-    priority: 'P1_REALTIME',
-    variables: {
-      trackName: 'Full Stack Engineering',
-      competencyName: 'Explains technical decisions',
-      anchors: {
-        GOLD: 'Explains the trade-off they chose and names what it cost them.',
-        SILVER: 'Explains what they built accurately but not why that approach.',
-        BRONZE: 'Describes the outcome only; cannot account for any decision.',
-      },
-      anchorVersion: 3,
-      prompt: 'Walk us through how you chose your database for this project.',
-      candidateResponse: 'I used Postgres because I needed transactions across two tables.',
-      isTranscript: false,
-      referenceNotes: [],
-    },
-    correlation: {},
-    maxOutputTokens: 1024,
-    temperature: 0,
-  };
+describe('AiGatewayService', () => {
+  it('returns valid AiHealthDto schema across all providers even when keys are missing', async () => {
+    const anthropic = new AnthropicAdapter();
+    const google = new GoogleAdapter();
+    const openrouter = new OpenRouterAdapter();
+    const service = new AiGatewayService(
+      anthropic,
+      google,
+      openrouter,
+      new AiGatewayAuditService(),
+    );
 
   it('completes via primary provider (Anthropic) when healthy', async () => {
     const mockAnthropic = {
@@ -380,7 +396,7 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
       mockAnthropic as never,
       mockGoogle as never,
       mockOpenRouter as never,
-      cb,
+      new AiGatewayAuditService(),
     );
 
     const health = await service.getHealth();
@@ -390,6 +406,158 @@ describe('AiGatewayService Failover & Circuit Breaker', () => {
     expect(anthropicStatus?.circuitState).toBe('OPEN');
     expect(googleStatus?.circuitState).toBe('CLOSED');
   });
+
+  it('writes an audit row and returns that row id and metered cost', async () => {
+    const create = vi.fn().mockResolvedValue({ id: AUDIT_ID });
+    const audit = new AiGatewayAuditService(mockPrismaCreate(create) as never);
+
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'GOLD' },
+        rawText: '{}',
+        provider: 'ANTHROPIC' as const,
+        model: 'claude-3-5-sonnet-latest',
+        promptTokens: 1_000_000,
+        completionTokens: 1_000_000,
+        latencyMs: 120,
+      }),
+    };
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      audit,
+    );
+    const result = await service.complete(sampleRequest);
+
+    expect(result.auditId).toBe(AUDIT_ID);
+    expect(result.estimatedCostUsd).toBe(18);
+    expect(result.usedFallback).toBe(false);
+    expect(create).toHaveBeenCalledTimes(1);
+    const payload = create.mock.calls[0]?.[0]?.data as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      promptRef: 'bars-l3@1',
+      provider: 'ANTHROPIC',
+      model: 'claude-3-5-sonnet-latest',
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      latencyMs: 120,
+      usedFallback: false,
+      estimatedCostUsd: 18,
+    });
+    expect(payload).not.toHaveProperty('prompt');
+    expect(payload).not.toHaveProperty('candidateResponse');
+    expect(payload).not.toHaveProperty('rawText');
+    expect(payload).not.toHaveProperty('output');
+  });
+
+  it('persists OPENROUTER as OPENROUTER on failover, with latency on the row', async () => {
+    const create = vi.fn().mockResolvedValue({ id: AUDIT_ID });
+    const audit = new AiGatewayAuditService(mockPrismaCreate(create) as never);
+
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockRejectedValue(new Error('429')),
+    };
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'SILVER' },
+        rawText: '{}',
+        provider: 'OPENROUTER' as const,
+        model: 'anthropic/claude-3.5-sonnet',
+        promptTokens: 10,
+        completionTokens: 5,
+        latencyMs: 88,
+      }),
+    };
+
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      audit,
+    );
+    const result = await service.complete(sampleRequest);
+
+    expect(result.usedFallback).toBe(true);
+    expect(result.provider).toBe('OPENROUTER');
+    expect(result.auditId).toBe(AUDIT_ID);
+    const payload = create.mock.calls[0]?.[0]?.data as Record<string, unknown>;
+    expect(payload.provider).toBe('OPENROUTER');
+    expect(payload.latencyMs).toBe(88);
+    expect(payload.usedFallback).toBe(true);
+  });
+
+  it('returns null auditId when the row is not written', async () => {
+    const create = vi.fn().mockRejectedValue(new Error('db down'));
+    const audit = new AiGatewayAuditService(mockPrismaCreate(create) as never);
+
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: {},
+        rawText: '{}',
+        provider: 'ANTHROPIC' as const,
+        model: 'claude-3-5-sonnet-latest',
+        promptTokens: 10,
+        completionTokens: 5,
+        latencyMs: 40,
+      }),
+    };
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: false,
+      checkHealth: vi.fn(),
+      complete: vi.fn(),
+    };
+
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      audit,
+    );
+    const result = await service.complete(sampleRequest);
+
+    expect(result.auditId).toBeNull();
+    expect(result.estimatedCostUsd).toBeGreaterThan(0);
+    expect(result.output).toEqual({});
+  });
 });
 
 describe('AiGatewayController', () => {
@@ -397,8 +565,12 @@ describe('AiGatewayController', () => {
     const anthropic = new AnthropicAdapter();
     const google = new GoogleAdapter();
     const openrouter = new OpenRouterAdapter();
-    const cb = new AiCircuitBreaker();
-    const service = new AiGatewayService(anthropic, google, openrouter, cb);
+    const service = new AiGatewayService(
+      anthropic,
+      google,
+      openrouter,
+      new AiGatewayAuditService(),
+    );
     const controller = new AiGatewayController(service);
 
     const health = await controller.health();

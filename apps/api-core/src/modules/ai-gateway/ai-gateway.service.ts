@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -11,8 +10,8 @@ import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
-import type { AiProviderAdapter } from './ai-gateway.interface.js';
-import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
+import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
+import type { AiProviderAdapter, ModelCompletionResult } from './ai-gateway.interface.js';
 
 @Injectable()
 export class AiGatewayService {
@@ -24,7 +23,7 @@ export class AiGatewayService {
     @Inject(AnthropicAdapter) private readonly anthropic: AnthropicAdapter,
     @Inject(GoogleAdapter) private readonly google: GoogleAdapter,
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
-    @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
+    @Inject(AiGatewayAuditService) private readonly audit: AiGatewayAuditService,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -153,31 +152,7 @@ export class AiGatewayService {
       this.logger.warn(`Circuit breaker is ${state} for ANTHROPIC. Failing over to GOOGLE.`);
     }
 
-    // Attempt GOOGLE (Fallback)
-    if (this.google.isConfigured && this.circuitBreaker.isCallAllowed('GOOGLE')) {
-      try {
-        const result = await this.circuitBreaker.execute('GOOGLE', (signal) =>
-          this.google.complete({
-            system: rendered.system,
-            prompt: rendered.user,
-            modelRole: request.modelRole,
-            temperature: request.temperature,
-            maxTokens: request.maxOutputTokens,
-            outputSchema: rendered.outputSchema,
-            signal,
-          }),
-        );
-        return {
-          output: result.output,
-          provider: result.provider,
-          model: result.model,
-          usedFallback: true,
-          promptTokens: result.promptTokens,
-          completionTokens: result.completionTokens,
-          latencyMs: result.latencyMs,
-          estimatedCostUsd: 0,
-          auditId: randomUUID(),
-        };
+        return this.toCompletionResponse(request, result, isFallback);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const circuitState = this.circuitBreaker.getState('GOOGLE');
@@ -201,5 +176,34 @@ export class AiGatewayService {
     }
 
     throw new AiGatewayAllProvidersFailedError(attemptedErrors);
+  }
+
+  private async toCompletionResponse(
+    request: AiCompletionRequest,
+    result: ModelCompletionResult,
+    usedFallback: boolean,
+  ): Promise<AiCompletionResponse> {
+    const recorded = await this.audit.record({
+      promptRef: request.promptRef,
+      provider: result.provider,
+      model: result.model,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      usedFallback,
+      responseId: request.correlation.responseId,
+    });
+
+    return {
+      output: result.output,
+      provider: result.provider,
+      model: result.model,
+      usedFallback,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      estimatedCostUsd: recorded.estimatedCostUsd,
+      auditId: recorded.auditId,
+    };
   }
 }
