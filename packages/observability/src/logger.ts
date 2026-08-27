@@ -48,8 +48,14 @@ export interface CreateLoggerOptions {
   readonly pretty?: boolean;
 }
 
-export function createLogger(options: CreateLoggerOptions): Logger {
-  const base: LoggerOptions = {
+/**
+ * Core pino options shared by `createLogger` and nestjs-pino `pinoHttp`.
+ * Pretty transport is applied by callers — never change field shape for pretty.
+ */
+export function buildPinoBaseOptions(
+  options: Pick<CreateLoggerOptions, 'serviceName' | 'level' | 'version' | 'environment'>,
+): LoggerOptions {
+  return {
     level: options.level ?? 'info',
     base: {
       service: options.serviceName,
@@ -74,6 +80,10 @@ export function createLogger(options: CreateLoggerOptions): Logger {
       return context ? { ...context } : {};
     },
   };
+}
+
+export function createLogger(options: CreateLoggerOptions): Logger {
+  const base = buildPinoBaseOptions(options);
 
   if (options.pretty === true) {
     return pino({
