@@ -6,7 +6,13 @@ import {
   getRateLimitPolicy,
   type RateLimitPolicy,
 } from '@smart/contracts';
-import { getContext, rateLimitRejections, rateLimitUtilisation } from '@smart/observability';
+import {
+  getContext,
+  LOG_EVENTS,
+  logEvent,
+  rateLimitRejections,
+  rateLimitUtilisation,
+} from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { KafkaService } from '../../platform/kafka/kafka.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
@@ -94,9 +100,11 @@ export class RateLimitService {
       };
     } catch (error) {
       if (!failOpenOnRedisError(env.NODE_ENV)) throw error;
-      this.logger.warn(
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.REDIS_DEGRADED,
         {
-          event: 'redis.degraded',
           policyKey,
           err: error instanceof Error ? error.message : 'unknown',
         },

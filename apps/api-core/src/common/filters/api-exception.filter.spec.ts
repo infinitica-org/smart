@@ -1,6 +1,6 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { z, type ZodError } from 'zod';
+import { z } from 'zod';
 import { newCorrelationId, runWithContext } from '@smart/observability';
 import { ApiExceptionFilter } from './api-exception.filter.js';
 
@@ -72,17 +72,10 @@ describe('ApiExceptionFilter', () => {
       'warn',
     );
     const { host } = mockHost();
-    let err: ZodError | undefined;
-    try {
-      z.object({ answer: z.string() }).parse({ answer: 123 });
-    } catch (caught) {
-      err = caught as ZodError;
-    }
-    if (err === undefined) {
-      throw new Error('expected zod failure');
-    }
+    const result = z.object({ answer: z.string() }).safeParse({ answer: 123 });
+    if (result.success) throw new Error('expected zod failure');
 
-    filter.catch(err, host as never);
+    filter.catch(result.error, host as never);
 
     expect(warn).toHaveBeenCalled();
     const payload = warn.mock.calls[0]?.[0] as Record<string, unknown>;

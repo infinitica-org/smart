@@ -2,7 +2,7 @@ import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { ZodError } from 'zod';
-import { getContext } from '@smart/observability';
+import { getContext, LOG_EVENTS, logEvent } from '@smart/observability';
 import type { RequestWithLogContext } from '../interceptors/observability.interceptor.js';
 
 @Catch()
@@ -19,8 +19,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
       getContext()?.correlationId ?? request.smartLogContext?.correlationId ?? String(request.id);
 
     if (exception instanceof ZodError) {
-      this.logger.warn(
-        { event: 'http.client_error', statusCode: 422, error: 'validation_failed', route },
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.HTTP_CLIENT_ERROR,
+        { statusCode: 422, error: 'validation_failed', route },
         'Request failed validation',
       );
       void reply.status(422).send({
@@ -58,9 +61,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    this.logger.error(
+    logEvent(
+      this.logger,
+      'error',
+      LOG_EVENTS.HTTP_UNHANDLED_ERROR,
       {
-        event: 'http.unhandled_error',
         statusCode: 500,
         route,
         err:
@@ -88,9 +93,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
       typeof body.error === 'string' ? body.error : (exception.name ?? 'HttpException');
 
     if (status >= 500) {
-      this.logger.error(
+      logEvent(
+        this.logger,
+        'error',
+        LOG_EVENTS.HTTP_UNHANDLED_ERROR,
         {
-          event: 'http.unhandled_error',
           statusCode: status,
           error: errorCode,
           route,
@@ -103,8 +110,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     if (status === 401 || status === 404) return;
 
-    this.logger.warn(
-      { event: 'http.client_error', statusCode: status, error: errorCode, route },
+    logEvent(
+      this.logger,
+      'warn',
+      LOG_EVENTS.HTTP_CLIENT_ERROR,
+      { statusCode: status, error: errorCode, route },
       'Client error',
     );
   }

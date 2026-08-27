@@ -6,6 +6,8 @@ import {
   getContext,
   kafkaCorrelationHeaders,
   kafkaEventsProduced,
+  LOG_EVENTS,
+  logEvent,
 } from '@smart/observability';
 import { env } from '../config/env.js';
 
@@ -26,9 +28,12 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       await this.producer.connect();
       this.available = true;
     } catch (error) {
-      this.logger.warn(
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.KAFKA_EMIT_SKIPPED,
         {
-          event: 'kafka.emit_skipped',
+          topic: 'connect',
           brokers: env.KAFKA_BROKERS,
           err: error instanceof Error ? error.message : 'unknown',
         },
@@ -43,7 +48,13 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   async emit(topic: string, key: string, value: unknown, module: string): Promise<void> {
     if (!this.available) {
-      this.logger.debug({ event: 'kafka.emit_skipped', topic }, 'Skipping event (Kafka down)');
+      logEvent(
+        this.logger,
+        'debug',
+        LOG_EVENTS.KAFKA_EMIT_SKIPPED,
+        { topic },
+        'Skipping event (Kafka down)',
+      );
       return;
     }
 
@@ -63,9 +74,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       });
       kafkaEventsProduced.inc({ topic, producer_module: module });
     } catch (error) {
-      this.logger.error(
+      logEvent(
+        this.logger,
+        'error',
+        LOG_EVENTS.KAFKA_EMIT_FAILED,
         {
-          event: 'kafka.emit_failed',
           topic,
           [CORRELATION_KAFKA_HEADER]: correlationId,
           err: error instanceof Error ? error.message : 'unknown',
