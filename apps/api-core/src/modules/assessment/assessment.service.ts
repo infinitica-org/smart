@@ -33,7 +33,6 @@ interface StoredDraft {
   clientSequence: number;
   updatedAt: string;
 }
-
 interface AttemptWithLevelAndResponses {
   id: string;
   userId: string;
