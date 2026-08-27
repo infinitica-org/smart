@@ -4,11 +4,19 @@ import {
   AttemptSessionDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
+  BatchDtoSchema,
+  BatchMemberDtoSchema,
   CertificateDtoSchema,
+  CreateInstitutionRequestSchema,
+  InstitutionAdminDtoSchema,
+  InstitutionDtoSchema,
+  InvitationDtoSchema,
+  InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   NextItemDtoSchema,
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
+  SendBatchInvitesResultDtoSchema,
   SsoStartResponseSchema,
   TrackDtoSchema,
   HealthStatusSchema,
@@ -52,12 +60,88 @@ export function authApi(client: SmartApiClient) {
 
     me: () => client.get(prefixed('/users/me'), { schema: AuthenticatedUserSchema }),
 
-    enrollTrack: (body: { trackCode: string }) =>
+    enrollTrack: (body: { trackCode: string; slot?: 'PRIMARY' | 'SECONDARY' }) =>
       client.request({
         method: 'PUT',
         path: prefixed('/users/me/track'),
         body,
         schema: AuthenticatedUserSchema,
+      }),
+
+    previewInvitation: (token: string) =>
+      client.get(prefixed(`/auth/invitations/${token}`), {
+        schema: InvitationPreviewDtoSchema,
+        anonymous: true,
+      }),
+
+    acceptInvitation: (token: string, body: { password: string }) =>
+      client.post(prefixed(`/auth/invitations/${token}/accept`), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function onboardingApi(client: SmartApiClient) {
+  return {
+    createInstitution: (body: z.infer<typeof CreateInstitutionRequestSchema>) =>
+      client.post(prefixed('/admin/institutions'), body, { schema: InstitutionDtoSchema }),
+
+    listInstitutions: () =>
+      client.get(prefixed('/admin/institutions'), { schema: z.array(InstitutionDtoSchema) }),
+
+    getInstitution: (institutionId: string) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}`), {
+        schema: InstitutionDtoSchema,
+      }),
+
+    inviteInstitutionAdmin: (institutionId: string, body: { fullName: string; email: string }) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/admins`), body, {
+        schema: InstitutionAdminDtoSchema,
+      }),
+
+    listInstitutionAdmins: (institutionId: string) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}/admins`), {
+        schema: z.array(InstitutionAdminDtoSchema),
+      }),
+
+    resendAdminInvitation: (invitationId: string) =>
+      client.post(prefixed(`/admin/invitations/${invitationId}/resend`), undefined, {
+        schema: InvitationDtoSchema,
+      }),
+
+    createBatch: (body: { name: string; code?: string }) =>
+      client.post(prefixed('/tpo/batches'), body, { schema: BatchDtoSchema }),
+
+    listBatches: () => client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema) }),
+
+    getBatch: (batchId: string) =>
+      client.get(prefixed(`/tpo/batches/${batchId}`), { schema: BatchDtoSchema }),
+
+    updateBatch: (batchId: string, body: { name?: string; code?: string | null }) =>
+      client.patch(prefixed(`/tpo/batches/${batchId}`), body, { schema: BatchDtoSchema }),
+
+    addBatchMember: (
+      batchId: string,
+      body: { fullName: string; email: string; groupLabel?: string },
+    ) =>
+      client.post(prefixed(`/tpo/batches/${batchId}/members`), body, {
+        schema: BatchMemberDtoSchema,
+      }),
+
+    listBatchMembers: (batchId: string) =>
+      client.get(prefixed(`/tpo/batches/${batchId}/members`), {
+        schema: z.array(BatchMemberDtoSchema),
+      }),
+
+    sendBatchInvites: (batchId: string) =>
+      client.post(prefixed(`/tpo/batches/${batchId}/invites/send`), undefined, {
+        schema: SendBatchInvitesResultDtoSchema,
+      }),
+
+    resendStudentInvitation: (invitationId: string) =>
+      client.post(prefixed(`/tpo/invitations/${invitationId}/resend`), undefined, {
+        schema: InvitationDtoSchema,
       }),
   };
 }
@@ -194,6 +278,7 @@ export function createSmartApi(client: SmartApiClient) {
     assessment: assessmentApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),
+    onboarding: onboardingApi(client),
     system: systemApi(client),
   };
 }
