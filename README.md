@@ -2,7 +2,7 @@
 
 Role-specific readiness certification. Candidates are assessed on a 5-level × 3-tier grid (Gold / Silver / Bronze) against real job-track competencies, then issued a student-controlled, publicly verifiable certificate.
 
-**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md).
+**GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md). Architecture decisions: [`docs/adr/`](./docs/adr/). Branching: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 
 ## Who owns what
 
@@ -34,7 +34,8 @@ pnpm bootstrap          # install, start data plane, Prisma generate/migrate, se
 pnpm doctor             # toolchain check (scripts/doctor.sh — needs bash)
 pnpm infra:up           # data plane only (see ports below)
 pnpm dev:api            # http://localhost:3000 — /health, /ready, /api/docs
-pnpm dev:web            # portals on :3001–:3004
+pnpm dev                # API + all web apps
+pnpm dev:web            # student / TPO / admin / verify / auth (`@smart/web-*`)
 ```
 
 ### Data plane (`pnpm infra:up`)
@@ -63,20 +64,36 @@ Optional Compose profiles:
 | `/ready`    | Readiness (Postgres + Redis must be up) |
 | `/api/docs` | Swagger UI                              |
 
-Seeded accounts (local only), password `ChangeMe!Dev`:
+Seeded accounts (local only). Password for all: `ChangeMe!Dev`.
 
-- `student@smart.local`
-- `tpo@smart.local`
-- `admin@smart.local`
+Sign in at **http://localhost:3005/login** — you are redirected to the portal for that role.
+
+| Role                    | Email                 | After login                                         |
+| ----------------------- | --------------------- | --------------------------------------------------- |
+| Super admin             | `admin@smart.local`   | Platform admin — http://localhost:3003              |
+| Institution admin (TPO) | `tpo@smart.local`     | TPO console — http://localhost:3002                 |
+| Student                 | `student@smart.local` | Student dashboard — http://localhost:3001/dashboard |
+
+| App     | Port | Notes                                |
+| ------- | ---- | ------------------------------------ |
+| API     | 3000 | `/health`, `/ready`, `/api/docs`     |
+| Student | 3001 | Candidate portal                     |
+| TPO     | 3002 | Batches and student invites          |
+| Admin   | 3003 | Institutions and platform ops        |
+| Verify  | 3004 | Public certificate lookup (no login) |
+| Auth    | 3005 | Login, invite accept, set password   |
+
+Invitation emails land in Mailpit (`http://localhost:8025`). Invite links open on the auth app (`/invite/:token`).
 
 ## VPS hosting
 
-One machine, Docker Compose, Caddy TLS. Full steps: [`infra/vps/README.md`](./infra/vps/README.md).
+**kvm2** = `dev` + `qa`. **kvm4** = production (`main`). Full steps: [`infra/vps/README.md`](./infra/vps/README.md). Database policy: [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md).
 
 ```bash
-cp .env.example .env    # set JWT_SECRET, passwords, DNS hostnames
-bash scripts/deploy-vps.sh
-# or: pnpm infra:vps
+# on kvm2
+cp .env.qa.example .env.qa && bash scripts/deploy-vps.sh qa
+# on kvm4 (brittytino)
+cp .env.prod.example .env.prod && bash scripts/deploy-vps.sh prod
 ```
 
 ## Quality

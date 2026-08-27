@@ -7,7 +7,6 @@ import {
   type TrackDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-
 /** Scalar fields only — never select Unsupported("vector") embedding. */
 const competencySelect = {
   id: true,

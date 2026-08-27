@@ -8,6 +8,7 @@ import {
   computeDefenseScore,
   computeWeightedLevelScore,
   cronbachAlpha,
+  deriveAngoffCutScore,
   deriveCutScore,
   deriveCutScoreSet,
   estimateAbility,
@@ -67,7 +68,15 @@ describe('Angoff cut scores', () => {
   it('refuses to derive a cut score from fewer than three practitioners', () => {
     // A threshold that decides employability must never come from two opinions.
     expect(expectFailureTag(deriveCutScore('GOLD', [75, 80]))).toBe('InsufficientPanelError');
+    expect(expectFailureTag(deriveCutScore('GOLD', []))).toBe('InsufficientPanelError');
+    expect(expectFailureTag(deriveAngoffCutScore('GOLD', []))).toBe('InsufficientPanelError');
     expect(MIN_PANELISTS).toBe(3);
+  });
+
+  it('works identically when called via deriveAngoffCutScore alias', () => {
+    const cut = expectOk(deriveAngoffCutScore('GOLD', [70, 75, 80, 75, 80]));
+    expect(cut.mean).toBe(76);
+    expect(cut.sd).toBe(4.18);
   });
 
   it('uses the sample (n-1) standard deviation so the published band is not narrowed', () => {

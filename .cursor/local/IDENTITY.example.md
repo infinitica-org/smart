@@ -5,7 +5,7 @@ engineer: Your Name
 initials: XX # TN | VV | SV | VB | RM | VG
 role: Your role title
 guide: TEAM.md + docs/delivery/ENGINEER_GUIDES.md (your sections)
-default_base_branch: develop
+default_base_branch: dev
 ```
 
 Agents: read this file first when deciding ownership and branch prefixes.

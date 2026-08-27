@@ -1,18 +1,23 @@
-import { Controller, Get } from '@nestjs/common';
-import { API_PREFIX } from '@smart/contracts';
-import type { UsersService } from './users.service.js';
+import { Body, Controller, Get, Inject, Put } from '@nestjs/common';
+import { API_PREFIX, EnrollTrackRequestSchema } from '@smart/contracts';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { UsersService } from './users.service.js';
 
 @Controller(`${API_PREFIX}/users`)
 export class UsersController {
-  constructor(private readonly service: UsersService) {}
+  constructor(@Inject(UsersService) private readonly service: UsersService) {}
 
-  @Get('_meta')
-  meta() {
-    return {
-      module: 'users',
-      owner: this.service.owner,
-      purpose: this.service.purpose,
-      status: 'scaffold',
-    };
+  @Get('me')
+  @Roles('STUDENT', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN')
+  me(@CurrentUser() user: RequestUser) {
+    return this.service.getMe(user.sub);
+  }
+
+  @Put('me/track')
+  @Roles('STUDENT')
+  enrollTrack(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.service.enrollTrack(user.sub, EnrollTrackRequestSchema.parse(body));
   }
 }

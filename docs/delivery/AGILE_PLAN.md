@@ -60,7 +60,7 @@ AUG 2026                                          SEP 2026
 | **Architecture Review Board**         | Every day 17:00            | 30 min           | Tino + PR authors                     | Every open PR triaged: `merge` / `changes-requested` / `escalate`. Contract PRs merged here.        |
 | **Sprint Planning**                   | First day of sprint, 10:00 | 45 min           | All 6                                 | Committed sprint backlog; every ticket has owner, points, priority, acceptance criteria.            |
 | **Mid-Sprint Integration Checkpoint** | Sprint midpoint, 15:00     | 30 min           | All 6                                 | Cross-module seams demoed against real contracts. Catches integration drift while it's still cheap. |
-| **Sprint Review (Demo)**              | Last day of sprint, 16:00  | 45 min           | All 6                                 | Working software demoed on `develop`. No slides. Not demoable = not done.                           |
+| **Sprint Review (Demo)**              | Last day of sprint, 16:00  | 45 min           | All 6                                 | Working software demoed on `dev`. No slides. Not demoable = not done.                               |
 | **Retrospective**                     | Last day of sprint, 17:00  | 20 min           | All 6                                 | Max 2 actions, each with an owner and a due sprint.                                                 |
 | **Content Sync**                      | Mon / Thu 14:00            | 20 min           | Vedika, Ramansh, Vishal Bharath, Tino | Item bank / cut score / BARS anchor readiness vs. evaluation needs.                                 |
 
@@ -81,7 +81,7 @@ AUG 2026                                          SEP 2026
 | `Sprint Ready` → `In Progress` | Branch created. **Max 2 tickets in progress per engineer** — WIP limit is enforced.           |
 | `In Progress` → `In Review`    | PR open, CI green, template filled, self-reviewed.                                            |
 | `In Review` → `Verified`       | Tino approved + module owner approved (if cross-module) + demoed or screenshot/curl attached. |
-| `Verified` → `Done`            | Squash-merged to `develop`, Definition of Done (§6) satisfied.                                |
+| `Verified` → `Done`            | Squash-merged to `dev`, Definition of Done (§6) satisfied.                                    |
 
 **Ticket ID scheme:** `S<sprint>-<initials>-<nn>` — e.g. `S2-RM-19`.
 `TN` Tino · `VV` Vishal V · `SV` Satheswaran V · `VB` Vishal Bharath R · `RM` Ramansh · `VG` Vedika G
@@ -103,7 +103,7 @@ AUG 2026                                          SEP 2026
 
 Full checklist in [`DEFINITION_OF_DONE.md`](./DEFINITION_OF_DONE.md). Summary — all must be true:
 
-- [ ] Acceptance criteria met and demoed on `develop`.
+- [ ] Acceptance criteria met and demoed on `dev`.
 - [ ] Types exported through `@smart/contracts`; no `any` at a module boundary.
 - [ ] Unit tests on logic + integration tests on I/O; `pnpm test` green.
 - [ ] `pnpm lint && pnpm typecheck && pnpm build` green in CI.

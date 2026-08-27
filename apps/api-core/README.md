@@ -23,6 +23,14 @@ pnpm dev:api
 
 Only Vishal V runs `prisma migrate`. Open an issue with table/column/type/reason; do not run `prisma migrate dev` on feature branches.
 
-## Seed login
+## Seed logins
 
-`student@smart.local` / `ChangeMe!Dev` (see seed script for TPO/admin variants).
+Local only. Password for all: `ChangeMe!Dev`.
+
+| Role                    | Email                 |
+| ----------------------- | --------------------- |
+| Super admin             | `admin@smart.local`   |
+| Institution admin (TPO) | `tpo@smart.local`     |
+| Student                 | `student@smart.local` |
+
+Sign in at `http://localhost:3005/login`.

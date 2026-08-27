@@ -82,6 +82,9 @@ export function deriveCutScore(
   });
 }
 
+/** Canonical alias for deriveCutScore matching ticket specification. */
+export const deriveAngoffCutScore = deriveCutScore;
+
 /**
  * Derive and validate a full Gold/Silver/Bronze set.
  *

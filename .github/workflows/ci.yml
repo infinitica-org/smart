@@ -2,32 +2,51 @@ name: CI
 
 on:
   pull_request:
+    branches: [main, qa, dev]
   push:
-    branches: [main, develop]
+    branches: [main, qa, dev]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  lockfile:
+    name: lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Workspace packages must be in pnpm-lock.yaml
+        run: node scripts/check-lockfile.mjs
+
+  merge-base:
+    name: merge-main
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Must merge origin/main without conflicts
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-tree --write-tree origin/main HEAD >/dev/null; then
+            echo "::error::This branch conflicts with origin/main. Merge main into this branch before landing."
+            git merge-tree --write-tree --messages origin/main HEAD || true
+            exit 1
+          fi
+
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [lockfile]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @smart/contracts build
-      - run: pnpm --filter @smart/api-core db:generate
-        env:
-          DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
       - name: Lint
         run: pnpm lint
       - name: Format check
@@ -37,20 +56,10 @@ jobs:
     name: typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [lockfile]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @smart/contracts build
-      - run: pnpm --filter @smart/api-core db:generate
-        env:
-          DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
       - name: Typecheck
         run: pnpm typecheck
 
@@ -58,20 +67,10 @@ jobs:
     name: unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [lockfile]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @smart/contracts build
-      - run: pnpm --filter @smart/api-core db:generate
-        env:
-          DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
       - name: Unit tests (Vitest)
         run: pnpm test:unit
 
@@ -79,20 +78,10 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    needs: [lockfile]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @smart/contracts build
-      - run: pnpm --filter @smart/api-core db:generate
-        env:
-          DATABASE_URL: postgresql://smart:smart@127.0.0.1:5432/smart?schema=public
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
       - name: Build
         run: pnpm build
 
@@ -101,5 +90,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - run: docker compose -f infra/docker/docker-compose.yml --profile apps config
+      - uses: actions/checkout@v5
+      - run: docker compose -f infra/docker/docker-compose.yml --profile apps --env-file .env.example config

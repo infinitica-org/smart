@@ -3,6 +3,7 @@ import 'dotenv/config';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -21,6 +22,7 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(PinoLogger));
   await app.register(helmet as never, { contentSecurityPolicy: false });
   await app.register(cookie as never);
+  await app.register(multipart as never, { limits: { fileSize: 5 * 1024 * 1024 } });
   await app.register(cors as never, {
     origin: env.CORS_ORIGINS.split(',').map((origin) => origin.trim()),
     credentials: true,
@@ -33,6 +35,9 @@ async function bootstrap(): Promise<void> {
     )
     .setVersion(env.APP_VERSION)
     .addBearerAuth()
+    .addTag('assessment', 'Attempt lifecycles, item delivery, integrity tracking')
+    .addTag('certificate', 'Issuance, visibility control, public verification')
+    .addTag('webhooks', 'Outbound HMAC-SHA256 signed event delivery')
     .build();
   const document = SwaggerModule.createDocument(app, openApi);
   SwaggerModule.setup('api/docs', app, document, {

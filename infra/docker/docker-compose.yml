@@ -6,7 +6,7 @@ x-app-env: &app-env
   REDIS_URL: redis://redis:6379
   KAFKA_BROKERS: redpanda:9092
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
-  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005,http://localhost}
   S3_ENDPOINT: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
@@ -15,6 +15,11 @@ x-app-env: &app-env
   LOG_LEVEL: ${LOG_LEVEL:-info}
   SMTP_HOST: mailpit
   SMTP_PORT: "1025"
+  SMTP_FROM: SMART Platform <noreply@smart.local>
+  AUTH_APP_URL: ${AUTH_APP_URL:-http://localhost:3005}
+  STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+  TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
+  ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
 
 services:
   postgres:
@@ -25,7 +30,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
       POSTGRES_DB: smart
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -51,7 +56,7 @@ services:
       ]
     ports:
       # Host 6380 — Windows often already binds 6379 (svchost/WSL), which ECONNRESETs ioredis.
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -73,7 +78,7 @@ services:
       - --mode
       - dev-container
     ports:
-      - "19092:19092"
+      - "${REDPANDA_PORT:-19092}:19092"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
@@ -91,8 +96,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -106,8 +111,8 @@ services:
     image: axllent/mailpit:v1.27
     restart: unless-stopped
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
     healthcheck:
       test:
         [
@@ -136,7 +141,7 @@ services:
     environment:
       DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
     ports:
-      - "5555:5555"
+      - "${PRISMA_STUDIO_PORT:-5555}:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,7 +161,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${API_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -184,7 +189,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3001:3000"
+      - "${STUDENT_PORT:-3001}:3000"
     profiles: ["apps"]
 
   web-tpo:
@@ -200,7 +205,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3002:3000"
+      - "${TPO_PORT:-3002}:3000"
     profiles: ["apps"]
 
   web-admin:
@@ -216,7 +221,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3003:3000"
+      - "${ADMIN_PORT:-3003}:3000"
     profiles: ["apps"]
 
   web-verify:
@@ -232,7 +237,26 @@ services:
     depends_on:
       - api
     ports:
-      - "3004:3000"
+      - "${VERIFY_PORT:-3004}:3000"
+    profiles: ["apps"]
+
+  web-auth:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        APP: web-auth
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+    depends_on:
+      - api
+    ports:
+      - "${AUTH_PORT:-3005}:3000"
     profiles: ["apps"]
 
   caddy:
@@ -246,6 +270,7 @@ services:
       TPO_HOST: ${TPO_HOST:-tpo.localhost}
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
+      AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -257,7 +282,9 @@ services:
       - web-tpo
       - web-admin
       - web-verify
-    profiles: ["apps", "vps"]
+      - web-auth
+    # Only one stack per host should enable profile `vps` (binds :80/:443).
+    profiles: ["vps"]
 
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -266,7 +293,7 @@ services:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
       interval: 15s
@@ -283,7 +310,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
     ports:
       # Host 3100 (not 3030) — keep Loki on 3101 to avoid collision.
-      - "3100:3000"
+      - "${GRAFANA_PORT:-3100}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -302,7 +329,7 @@ services:
     restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3101:3100"
+      - "${LOKI_PORT:-3101}:3100"
     volumes:
       - loki_data:/loki
     healthcheck:

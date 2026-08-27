@@ -27,8 +27,8 @@
     "infra:up": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:obs": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile obs up -d",
     "infra:apps": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile apps up -d --build",
-    "infra:vps": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs up -d --build",
-    "infra:down": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile apps --profile obs down",
+    "infra:vps": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile apps --profile vps --profile obs up -d --build",
+    "infra:down": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile apps --profile vps --profile obs down",
     "infra:reset": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml down -v",
     "infra:logs": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml logs -f",
     "infra:ps": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml ps",
@@ -53,7 +53,6 @@
     "@smart/eslint-config": "workspace:*",
     "@smart/tsconfig": "workspace:*",
     "@types/node": "26.2.0",
-    "@vitejs/plugin-react": "^6.1.0",
     "eslint": "catalog:",
     "husky": "9.1.7",
     "jsdom": "^30.0.1",
@@ -73,6 +72,15 @@
     ],
     "tools/content-pipeline/data/**/*.json": [
       "pnpm --filter @smart/content-pipeline validate:staged"
+    ],
+    "package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "**/package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "pnpm-lock.yaml": [
+      "node scripts/check-lockfile.mjs"
     ]
   }
 }
