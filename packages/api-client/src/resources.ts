@@ -7,7 +7,7 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CertificateDtoSchema,
-  CreateInstitutionRequestSchema,
+  type CreateInstitutionRequestSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
   InvitationDtoSchema,
