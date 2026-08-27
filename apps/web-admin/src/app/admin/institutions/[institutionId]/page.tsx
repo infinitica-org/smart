@@ -100,7 +100,10 @@ export default function InstitutionDetailPage() {
                   <button
                     type="button"
                     className="underline"
-                    onClick={() => onResend(admin.invitation!.invitationId)}
+                    onClick={() => {
+                      const invitationId = admin.invitation?.invitationId;
+                      if (invitationId) void onResend(invitationId);
+                    }}
                   >
                     Resend
                   </button>

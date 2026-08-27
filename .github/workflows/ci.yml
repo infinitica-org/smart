@@ -11,10 +11,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lockfile:
+    name: lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Workspace packages must be in pnpm-lock.yaml
+        run: node scripts/check-lockfile.mjs
+
+  merge-base:
+    name: merge-main
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Feature branches targeting dest must merge origin/main cleanly
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-tree --write-tree origin/main HEAD >/dev/null; then
+            echo "::error::This branch conflicts with origin/main. Merge main into dest (or this branch) before landing."
+            git merge-tree --write-tree --messages origin/main HEAD || true
+            exit 1
+          fi
+
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [lockfile]
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-node-pnpm
@@ -27,6 +56,7 @@ jobs:
     name: typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [lockfile]
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-node-pnpm
@@ -37,6 +67,7 @@ jobs:
     name: unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [lockfile]
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-node-pnpm
@@ -47,6 +78,7 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    needs: [lockfile]
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-node-pnpm
