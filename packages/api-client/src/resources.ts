@@ -9,6 +9,7 @@ import {
   NextItemDtoSchema,
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
+  SsoStartResponseSchema,
   TrackDtoSchema,
   HealthStatusSchema,
 } from '@smart/contracts';
@@ -33,6 +34,12 @@ export function authApi(client: SmartApiClient) {
   return {
     login: (body: { email: string; password: string }) =>
       client.post(prefixed('/auth/login'), body, { schema: AuthTokenResponseSchema }),
+
+    ssoStart: (body: { provider: string; institutionDomain?: string; redirectUri: string }) =>
+      client.post(prefixed('/auth/sso/start'), body, { schema: SsoStartResponseSchema }),
+
+    ssoCallback: (body: { code: string; state: string }) =>
+      client.post(prefixed('/auth/sso/callback'), body, { schema: AuthTokenResponseSchema }),
 
     /**
      * Refresh sends no body: the refresh token is an HttpOnly cookie, so it is

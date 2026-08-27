@@ -51,6 +51,8 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
+  ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_PRETTY: z
     .enum(['true', 'false'])
