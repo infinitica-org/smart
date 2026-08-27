@@ -51,6 +51,8 @@ export default function BatchDetailPage() {
     const form = new FormData();
     form.append('file', file);
     const token = getAccessToken();
+    // Multipart roster import is not on the typed JSON client (body is JSON.stringify).
+    // eslint-disable-next-line no-restricted-globals -- FormData upload until api-client supports multipart
     const response = await fetch(`${baseUrl}${API_PREFIX}/tpo/batches/${batchId}/members/import`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -148,7 +150,10 @@ export default function BatchDetailPage() {
                   <button
                     type="button"
                     className="underline"
-                    onClick={() => onResend(member.invitation!.invitationId)}
+                    onClick={() => {
+                      const invitationId = member.invitation?.invitationId;
+                      if (invitationId) void onResend(invitationId);
+                    }}
                   >
                     Resend
                   </button>

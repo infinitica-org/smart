@@ -125,6 +125,7 @@ export class AssessmentController {
     const dto = SaveDraftRequestSchema.parse(body);
     return this.service.saveDraft(user.sub, dto);
   }
+
   /**
    * S1-VG-03 — parallel-form selection with exposure tracking.
    * Returns the item form with the lowest average exposure for the requested level.

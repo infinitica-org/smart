@@ -71,6 +71,15 @@
     ],
     "tools/content-pipeline/data/**/*.json": [
       "pnpm --filter @smart/content-pipeline validate:staged"
+    ],
+    "package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "**/package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "pnpm-lock.yaml": [
+      "node scripts/check-lockfile.mjs"
     ]
   }
 }

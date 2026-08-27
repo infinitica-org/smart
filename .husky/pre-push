@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+# Cheap integrity first: a missing workspace importer fails CI install on every job.
+node scripts/check-lockfile.mjs
 # Typecheck before push so nobody burns a CI slot (and 6 minutes of review
 # latency) on a compile error. Turbo only re-checks what changed.
 pnpm typecheck

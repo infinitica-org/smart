@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { env } from '../config/env.js';

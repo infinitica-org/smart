@@ -30,8 +30,6 @@ import {
   invitationExpiresAt,
 } from './invite-token.util.js';
 
-type InvitationRecord = Awaited<ReturnType<InvitationsService['findByTokenHash']>>;
-
 @Injectable()
 export class InvitationsService {
   constructor(
