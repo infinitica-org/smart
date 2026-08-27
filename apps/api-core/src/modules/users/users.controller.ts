@@ -1,10 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { API_PREFIX } from '@smart/contracts';
-import type { UsersService } from './users.service.js';
+import { UsersService } from './users.service.js';
 
 @Controller(`${API_PREFIX}/users`)
 export class UsersController {
-  constructor(private readonly service: UsersService) {}
+  constructor(@Inject(UsersService) private readonly service: UsersService) {}
 
   @Get('_meta')
   meta() {

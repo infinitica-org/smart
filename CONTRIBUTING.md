@@ -10,11 +10,13 @@ Read these in order before writing code:
 4. [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md) — sprint calendar to 10 Sep 2026
 5. [`AGENTS.md`](./AGENTS.md) + [`.cursor/`](./.cursor/) — shared agent/human KB and workflow rules
 6. [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md) — **exact local commands**
+7. [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md) — **main / qa / dev** enterprise flow
 
 ## Rules that do not get waived
 
-- **Feature branches only.** Never commit to `main` or `develop`. Branch: `<type>/S<sprint>-<initials>-<nn>-<slug>`.
-- **PR required.** Every shippable change opens a PR into `develop` (squash-merge after review). Local commits alone are not done.
+- **Feature branches only.** Never commit to `main`, `qa`, or `dev`. Branch: `<type>/S<sprint>-<initials>-<nn>-<slug>` from up-to-date `dev`.
+- **PR required.** Every shippable change opens a PR into **`dev`** (squash-merge after review). Promote `dev` → `qa` → `main` separately. Local commits alone are not done.
+- **Branching policy:** [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md). `develop` is deprecated.
 - **Quality gates.** `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm format:check` must pass. Do not skip hooks (`--no-verify`).
 - **Tino does not write feature code.** Architect review is mandatory (`CODEOWNERS`).
 - **Contract-first.** Cross-module types live in `@smart/contracts`. Implement against a merged type, do not invent a parallel DTO.

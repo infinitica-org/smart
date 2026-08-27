@@ -70,7 +70,7 @@ Every PR must have **at least one priority**, **one area**, and **the sprint** l
 **Example**
 
 ```bash
-gh pr create --base develop \
+gh pr create --base dev \
   --title "feat(rate-limit): sliding window lua guard (S1-VV-04)" \
   --body "$(cat <<'EOF'
 ## Ticket
@@ -86,4 +86,4 @@ EOF
   --label "P0-blocker" --label "area:backend" --label "sprint-1"
 ```
 
-Base branch: **`develop`**. Do not open untagged PRs.
+Base branch: **`dev`** (feature work). Promote `dev`→`qa`→`main` separately. Do not open untagged PRs.

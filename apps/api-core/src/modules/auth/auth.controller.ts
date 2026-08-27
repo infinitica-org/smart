@@ -1,11 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Inject, Post } from '@nestjs/common';
 import { API_PREFIX, PasswordLoginRequestSchema } from '@smart/contracts';
 import { Public } from '../../common/guards/public.decorator.js';
-import type { AuthService } from './auth.service.js';
+import { AuthService } from './auth.service.js';
 
 @Controller(`${API_PREFIX}/auth`)
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Public()
   @Post('login')

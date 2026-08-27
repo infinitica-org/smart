@@ -1,18 +1,18 @@
 import { scrypt as scryptCallback, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 const scrypt = promisify(scryptCallback);
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(JwtService) private readonly jwt: JwtService,
   ) {}
 
   async login(email: string, password: string): Promise<AuthTokenResponse> {

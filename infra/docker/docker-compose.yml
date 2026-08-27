@@ -25,7 +25,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
       POSTGRES_DB: smart
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -51,7 +51,7 @@ services:
       ]
     ports:
       # Host 6380 — Windows often already binds 6379 (svchost/WSL), which ECONNRESETs ioredis.
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -73,7 +73,7 @@ services:
       - --mode
       - dev-container
     ports:
-      - "19092:19092"
+      - "${REDPANDA_PORT:-19092}:19092"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
@@ -91,8 +91,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -106,8 +106,8 @@ services:
     image: axllent/mailpit:v1.27
     restart: unless-stopped
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
     healthcheck:
       test:
         [
@@ -136,7 +136,7 @@ services:
     environment:
       DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
     ports:
-      - "5555:5555"
+      - "${PRISMA_STUDIO_PORT:-5555}:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,7 +156,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${API_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -184,7 +184,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3001:3000"
+      - "${STUDENT_PORT:-3001}:3000"
     profiles: ["apps"]
 
   web-tpo:
@@ -200,7 +200,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3002:3000"
+      - "${TPO_PORT:-3002}:3000"
     profiles: ["apps"]
 
   web-admin:
@@ -216,7 +216,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3003:3000"
+      - "${ADMIN_PORT:-3003}:3000"
     profiles: ["apps"]
 
   web-verify:
@@ -232,7 +232,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3004:3000"
+      - "${VERIFY_PORT:-3004}:3000"
     profiles: ["apps"]
 
   caddy:
@@ -257,7 +257,8 @@ services:
       - web-tpo
       - web-admin
       - web-verify
-    profiles: ["apps", "vps"]
+    # Only one stack per host should enable profile `vps` (binds :80/:443).
+    profiles: ["vps"]
 
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -266,7 +267,7 @@ services:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
       interval: 15s
@@ -283,7 +284,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
     ports:
       # Host 3100 (not 3030) — keep Loki on 3101 to avoid collision.
-      - "3100:3000"
+      - "${GRAFANA_PORT:-3100}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -302,7 +303,7 @@ services:
     restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3101:3100"
+      - "${LOKI_PORT:-3101}:3100"
     volumes:
       - loki_data:/loki
     healthcheck:

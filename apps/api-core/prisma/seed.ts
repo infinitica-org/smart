@@ -91,27 +91,35 @@ async function main(): Promise<void> {
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
   const passwordHash = await hashPassword('ChangeMe!Dev');
 
-  for (const account of [
+  const accounts: Array<{
+    email: string;
+    fullName: string;
+    role: 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'STUDENT';
+    primaryTrackId: string | null;
+  }> = [
     {
       email: 'admin@smart.local',
       fullName: 'SMART Super Admin',
-      role: 'SUPER_ADMIN' as const,
+      role: 'SUPER_ADMIN',
       primaryTrackId: null,
     },
     {
       email: 'tpo@smart.local',
       fullName: 'Pilot TPO',
-      role: 'INSTITUTION_ADMIN' as const,
+      role: 'INSTITUTION_ADMIN',
       primaryTrackId: null,
     },
     {
       email: 'student@smart.local',
       fullName: 'Pilot Student',
-      role: 'STUDENT' as const,
+      role: 'STUDENT',
       primaryTrackId: fullstack.id,
     },
-  ]) {
-    await prisma.user.upsert({
+  ];
+
+  const usersByEmail = new Map<string, { id: string }>();
+  for (const account of accounts) {
+    const user = await prisma.user.upsert({
       where: { email: account.email },
       update: { passwordHash },
       create: {
@@ -120,13 +128,43 @@ async function main(): Promise<void> {
         passwordHash,
         role: account.role,
         emailVerified: true,
-        institutionId: institution.id,
+        institutionId: account.role === 'SUPER_ADMIN' ? null : institution.id,
         primaryTrackId: account.primaryTrackId,
       },
     });
+    usersByEmail.set(account.email, user);
   }
 
-  console.log('Seed complete. Login as student@smart.local / ChangeMe!Dev');
+  const tpo = usersByEmail.get('tpo@smart.local');
+  if (!tpo) throw new Error('Seed failed: tpo user missing');
+
+  const pilotBatch = await prisma.batch.upsert({
+    where: {
+      institutionId_name: {
+        institutionId: institution.id,
+        name: 'Pilot Batch 2026',
+      },
+    },
+    update: {},
+    create: {
+      institutionId: institution.id,
+      name: 'Pilot Batch 2026',
+      code: 'PILOT-2026',
+      createdById: tpo.id,
+    },
+  });
+
+  await prisma.user.update({
+    where: { email: 'student@smart.local' },
+    data: {
+      batchId: pilotBatch.id,
+      groupLabel: 'Section A',
+    },
+  });
+
+  console.log(
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
+  );
   await prisma.$disconnect();
 }
 
