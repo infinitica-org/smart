@@ -96,6 +96,8 @@
 /tools/content-pipeline/                @11vedikaa @brittytino
 /docs/product/                          @11vedikaa @brittytino
 /docs/blueprints/                       @11vedikaa @brittytino
+# Frozen MMP PRD — architect steward (later rule wins over /docs/product/)
+/docs/product/prd-v1/                   @brittytino
 
 # Golden evaluation sets are co-owned: prompt changes must not silently
 # regress grading quality.

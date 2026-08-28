@@ -2,7 +2,8 @@
 
 > One section per engineer. Read **your** section fully on day 1, then skim the section of
 > whoever you share a seam with (`TEAM.md` §4.4). Everything here is derived from `TEAM.md` and
-> `AGILE_PLAN.md` — those two documents win if anything here drifts.
+> `AGILE_PLAN.md` — those two documents win if anything here drifts. Sprint 3 Jobs & Placements
+> MMP: [`PRD_V1_ARCHITECT_REVIEW.md`](./PRD_V1_ARCHITECT_REVIEW.md).
 
 **Common to everyone — do this first (30 minutes):**
 
@@ -107,6 +108,8 @@ apps/api-core/src/modules/sandbox/**   Docker code runner · SQL executor
 apps/api-core/prisma/**                SCHEMA STEWARD — every migration goes through you
 infra/** · scripts/** · packages/observability/** · tools/load-tests/**
 ```
+
+**Sprint 3 overlay (Jobs & Placements):** you own the **rules ranker and the closed loop** (structured JD → ranked list → notify → ATS stage sync), not LLM parse. See ADR 0012 and `PRD_V1_ARCHITECT_REVIEW.md` §5. Helm/Kong slip first. `JobOpening` / `Application` migrations go through you.
 
 ### The four things you will be judged on
 
@@ -227,6 +230,8 @@ apps/api-core/src/modules/webhooks/**     HMAC-SHA256 outbound dispatcher · ret
 apps/web-verify/**                        public verify.smart.com/cert/[id]
 apps/web-admin/**                         super admin console · integrity review queue
 ```
+
+**Sprint 3 overlay (skill verification):** you own PRD 7.3 state machine on the attempt (Declared → Verified / Locked) and opportunity/ATS APIs. You do not own the matcher. Pair with Ramansh on scoring. See `PRD_V1_ARCHITECT_REVIEW.md` §4. Certificate issuance stays P0 if you must cut ATS chrome.
 
 ### The three things you will be judged on
 

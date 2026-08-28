@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> Declared
+    Declared --> InVerification: Verification triggered
+    InVerification --> Verified: Pass at claimed level
+    InVerification --> DemotedToBeginner: Fail at claimed level
+    DemotedToBeginner --> BeginnerReattempt: One reattempt window
+    BeginnerReattempt --> VerifiedBeginner: Pass
+    BeginnerReattempt --> Locked: Fail
+    Locked --> Cooldown: Cooldown period starts
+    Cooldown --> Declared: Cooldown expires, candidate may re-declare
+    Verified --> ExpiringSoon: Validity window nears expiry
+    VerifiedBeginner --> ExpiringSoon: Validity window nears expiry
+    ExpiringSoon --> Declared: Revalidation triggered
+    Verified --> [*]
+    VerifiedBeginner --> [*]

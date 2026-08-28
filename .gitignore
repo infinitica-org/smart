@@ -71,3 +71,7 @@ skills-lock.json
 .cache/
 tmp/
 *.local
+
+# Allen drop copies — canonical pack is docs/product/prd-v1/
+Smart_PRD_v1_Internal/**
+!Smart_PRD_v1_Internal/README.md

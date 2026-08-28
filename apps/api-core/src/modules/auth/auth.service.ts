@@ -184,7 +184,8 @@ export function hashRefreshToken(raw: string): string {
 }
 
 export function readRefreshCookie(request: FastifyRequest): string | undefined {
-  const cookies = request.cookies as Record<string, string | undefined> | undefined;
+  const cookies = (request as FastifyRequest & { cookies?: Record<string, string | undefined> })
+    .cookies;
   const value = cookies?.[env.REFRESH_COOKIE_NAME];
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
