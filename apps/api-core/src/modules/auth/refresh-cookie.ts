@@ -1,6 +1,11 @@
 import type { FastifyReply } from 'fastify';
 import { env } from '../../platform/config/env.js';
 
+type CookieReply = FastifyReply & {
+  setCookie(name: string, value: string, options?: Record<string, unknown>): unknown;
+  clearCookie(name: string, options?: Record<string, unknown>): unknown;
+};
+
 export function refreshCookieOptions() {
   return {
     httpOnly: true,
@@ -12,9 +17,9 @@ export function refreshCookieOptions() {
 }
 
 export function setRefreshCookie(reply: FastifyReply, rawToken: string): void {
-  void reply.setCookie(env.REFRESH_COOKIE_NAME, rawToken, refreshCookieOptions());
+  void (reply as CookieReply).setCookie(env.REFRESH_COOKIE_NAME, rawToken, refreshCookieOptions());
 }
 
 export function clearRefreshCookie(reply: FastifyReply): void {
-  void reply.clearCookie(env.REFRESH_COOKIE_NAME, { path: '/' });
+  void (reply as CookieReply).clearCookie(env.REFRESH_COOKIE_NAME, { path: '/' });
 }
