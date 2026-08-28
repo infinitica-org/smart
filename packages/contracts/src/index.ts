@@ -40,4 +40,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.1.0' as const;
+export const CONTRACTS_VERSION = '0.2.0' as const;

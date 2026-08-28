@@ -1,9 +1,14 @@
 import { z } from 'zod';
 import {
+  AtsStageSchema,
   CertifiableTierSchema,
+  JobOpeningStatusSchema,
   JdParseStatusSchema,
   LevelNumberSchema,
+  MatchMethodSchema,
   PlacementOutcomeSchema,
+  SkillClaimStatusSchema,
+  SkillProficiencySchema,
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
@@ -11,9 +16,9 @@ import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 /**
  * Placement overlay contracts.
- * Implementation owners: Ramansh (`matching` — JD parse, embeddings, cosine),
- * Vedika G (`placement` — JD records, shortlists, outcome ingestion).
- * Consumer: Satheswaran V (`apps/web-tpo`).
+ * Implementation owners: Vishal V (rules ranker + loop), Ramansh (`matching`
+ * path / optional cosine), Vedika G (JD records, shortlists, outcomes),
+ * Vishal Bharath R (skill claims + ATS APIs). Consumer: Satheswaran V.
  */
 
 /* --------------------------------- JD ingest ------------------------------- */
@@ -87,10 +92,11 @@ export const CandidateMatchDtoSchema = z.object({
   certificateId: UuidSchema.nullable(),
   highestLevelCleared: LevelNumberSchema,
   headlineTier: CertifiableTierSchema,
-  /** Cosine similarity between candidate profile and JD requirement vectors. */
+  /** Cosine similarity — optional V1; omit or 0 when method is RULES. */
   similarityScore: z.number().min(0).max(1),
-  /** Similarity after rule filters and threshold weighting. */
+  /** Rank shown to the TPO. Rules are P0 (ADR 0012). */
   matchScore: z.number().min(0).max(1),
+  method: MatchMethodSchema.default('RULES'),
   explanation: z.object({
     thresholdsMet: z.array(
       z.object({ level: LevelNumberSchema, required: TierSchema, actual: TierSchema }),
@@ -100,6 +106,17 @@ export const CandidateMatchDtoSchema = z.object({
     ),
     strongCompetencies: z.array(z.string()),
     gapCompetencies: z.array(z.string()),
+    /** One-line why for the TPO. Required when method is RULES. */
+    why: z.string().max(280).optional(),
+    rules: z
+      .object({
+        skill: z.number().min(0).max(1),
+        proficiency: z.number().min(0).max(1),
+        domain: z.number().min(0).max(1),
+        experience: z.number().min(0).max(1),
+        location: z.number().min(0).max(1),
+      })
+      .optional(),
   }),
 });
 export type CandidateMatchDto = z.infer<typeof CandidateMatchDtoSchema>;
@@ -143,6 +160,60 @@ export const RecordOutcomeRequestSchema = PlacementRecordDtoSchema.omit({
   tierAtPlacement: true,
 });
 export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
+
+/* ----------------------- structured openings (PRD MMP) ---------------------- */
+
+export const SkillRequirementSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  minProficiency: SkillProficiencySchema,
+});
+export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
+
+export const CreateJobOpeningRequestSchema = z.object({
+  institutionId: UuidSchema,
+  companyName: z.string().min(2).max(150),
+  roleTitle: z.string().min(2).max(150),
+  requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
+  domainCode: z.string().max(8).optional(),
+  minYearsExperience: z.number().int().min(0).max(40).optional(),
+  location: z.string().max(120).optional(),
+});
+export type CreateJobOpeningRequest = z.infer<typeof CreateJobOpeningRequestSchema>;
+
+export const JobOpeningDtoSchema = CreateJobOpeningRequestSchema.extend({
+  openingId: UuidSchema,
+  status: JobOpeningStatusSchema,
+  createdAt: IsoDateTimeSchema,
+});
+export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
+
+export const ApplicationDtoSchema = z.object({
+  applicationId: UuidSchema,
+  openingId: UuidSchema,
+  studentId: UuidSchema,
+  stage: AtsStageSchema,
+  matchScore: z.number().min(0).max(1).nullable(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type ApplicationDto = z.infer<typeof ApplicationDtoSchema>;
+
+export const PatchApplicationStageRequestSchema = z.object({
+  stage: AtsStageSchema,
+});
+export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
+
+export const SkillClaimDtoSchema = z.object({
+  claimId: UuidSchema,
+  studentId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillProficiencySchema,
+  status: SkillClaimStatusSchema,
+  strikes: z.number().int().min(0).max(2),
+  lockedUntil: IsoDateTimeSchema.nullable(),
+  lastAttemptId: UuidSchema.nullable(),
+});
+export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 
 /* ---------------------------- outbound webhooks ---------------------------- */
 

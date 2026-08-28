@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_RATE_LIMIT_POLICIES,
+  CreateJobOpeningRequestSchema,
   LATENCY_BUDGET_MS,
   LEVEL_DEFINITIONS,
   L5_SPLIT_WEIGHTS,
   ROUTES,
+  SKILL_CLAIM_STATUSES,
   SMART_TOPICS,
   TOPIC_SPECS,
   TRACK_DEFINITIONS,
@@ -199,5 +201,26 @@ describe('kafka topics', () => {
     const completed = getTopicSpec(SMART_TOPICS.evalCompleted);
     expect(completed.producerModule).toBe('evaluation');
     expect(completed.consumerModules).toContain('certificate');
+  });
+});
+
+describe('sprint 3 MMP placement contracts', () => {
+  it('keeps skill-claim statuses on the PRD state machine', () => {
+    expect(SKILL_CLAIM_STATUSES).toEqual(['DECLARED', 'VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED']);
+  });
+
+  it('rejects a job opening with no required skills', () => {
+    const parsed = CreateJobOpeningRequestSchema.safeParse({
+      institutionId: '00000000-0000-4000-8000-000000000001',
+      companyName: 'Acme',
+      roleTitle: 'Analyst',
+      requiredSkills: [],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('registers ATS stage-change for My Applications sync', () => {
+    expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
+    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
   });
 });
