@@ -18,6 +18,7 @@ export const SMART_TOPICS = {
   trackUpdated: 'smart.track.updated',
   certificateIssued: 'smart.certificate.issued',
   placementMatched: 'smart.placement.matched',
+  applicationStageChanged: 'smart.application.stage_changed',
   rateLimitExceeded: 'smart.rate_limit.exceeded',
 } as const;
 
@@ -133,6 +134,16 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     retentionHours: 336,
     partitionKey: 'jdId',
     purpose: 'Shortlist generated; fans out to employer webhooks.',
+  },
+  {
+    topic: SMART_TOPICS.applicationStageChanged,
+    producerOwner: 'Vishal Bharath R',
+    producerModule: 'assessment',
+    consumerModules: ['placement', 'platform', 'users'],
+    partitions: 6,
+    retentionHours: 168,
+    partitionKey: 'applicationId',
+    purpose: 'ATS column change; candidate My Applications stays in sync (idempotent).',
   },
   {
     topic: SMART_TOPICS.rateLimitExceeded,

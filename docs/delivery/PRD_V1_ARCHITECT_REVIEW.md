@@ -112,7 +112,7 @@ Ramansh still does S3-RM-01 (JD parse) if there is a PDF. If the company form is
 
 ### Day 1 (Thu 3 Sep) — contracts then vertical slices
 
-Tino merges **one** contracts PR before noon: `JobOpening`, `Application`, `AtsStage`, `SkillClaim` status enum, match explanation shape that allows **rules** (not only cosine). Notify VV, RM, VG, VB, SV in the PR body.
+Contracts **v0.2.0 are merged** (`JobOpening`, `Application`, `AtsStage`, `SkillClaim`, rules match explanation, `smart.application.stage_changed`). Implement against `@smart/contracts`. Do not wait for another contracts drop. Further contract PRs only if a field is wrong — I merge those at 17:00.
 
 Then in parallel (WIP 2):
 
