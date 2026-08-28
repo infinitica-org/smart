@@ -11,9 +11,11 @@ Condensed shared knowledge. Canonical detail stays in repo docs.
 | [rate-limits.md](./rate-limits.md)               | Throttle matrix                                                       |
 | [redis-keys.md](./redis-keys.md)                 | Key patterns + TTLs                                                   |
 | [kafka-topics.md](./kafka-topics.md)             | Topics + producers                                                    |
-| [doc-authority.md](./doc-authority.md)           | Which doc wins on conflict                                            |
+| [doc-authority.md](./doc-authority.md)           | Which doc wins (includes frozen PRD v1 pack)                          |
 | [commits-and-prs.md](./commits-and-prs.md)       | Commit subject + PR label tags                                        |
 | [backlog-issues.md](./backlog-issues.md)         | Sprint backlog → GitHub Issues only (not Zoho)                        |
+
+**MMP product pack (frozen):** [`docs/product/prd-v1/`](../../docs/product/prd-v1/README.md) · Sprint 3 map: [`docs/delivery/PRD_V1_ARCHITECT_REVIEW.md`](../../docs/delivery/PRD_V1_ARCHITECT_REVIEW.md)
 
 **Full local setup:** [`docs/delivery/LOCAL_DEV.md`](../../docs/delivery/LOCAL_DEV.md)
 

@@ -1,0 +1,14 @@
+flowchart TD
+    A["Pre-check:<br/>ID + liveness match, environment scan,<br/>mic calibration, network check"] --> B["Session starts"]
+    B --> C["Continuous monitoring:<br/>face presence, multi-person detection,<br/>tab-switch detection, screen recording"]
+    C --> D["Session ends"]
+    D --> E["Composite Integrity Score computed"]
+    E --> F{"Flag level?"}
+    F -- Clean --> G["Result finalized automatically"]
+    F -- Minor --> G
+    F -- Major --> H["Routed to human review queue"]
+    H --> I{"Technical failure or genuine violation?"}
+    I -- Technical failure --> J["No strike consumed - grace reattempt offered"]
+    I -- Genuine violation --> K["Result stands - strike consumed"]
+    K --> L["Candidate may appeal"]
+    L --> H
