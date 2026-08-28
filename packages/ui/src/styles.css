@@ -1,6 +1,7 @@
 /**
- * SMART UI stylesheet entry. Apps import this once from their layout.
- * Tokens live in `@smart/tailwind-config` so every portal renders the same Gold.
+ * SMART UI stylesheet entry. Each microfrontend imports this once from layout
+ * (`./globals.css` → here) so Cabinet Grotesk, Axiforma, and the dark-primary
+ * tokens render identically on student, TPO, admin, auth, and verify.
  */
 @import '@smart/tailwind-config/theme.css';
 

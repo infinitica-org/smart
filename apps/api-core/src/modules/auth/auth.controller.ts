@@ -1,12 +1,13 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
 import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
   PasswordLoginRequestSchema,
 } from '@smart/contracts';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
-import { AuthService } from './auth.service.js';
 import { InvitationsService } from '../invitations/invitations.service.js';
+import { AuthService } from './auth.service.js';
 
 @Controller(`${API_PREFIX}/auth`)
 export class AuthController {
@@ -17,15 +18,22 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  login(@Body() body: unknown) {
+  login(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
     const parsed = PasswordLoginRequestSchema.parse(body);
-    return this.auth.login(parsed.email, parsed.password);
+    return this.auth.login(parsed.email, parsed.password, reply);
   }
 
+  @Public()
+  @Post('refresh')
+  refresh(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    return this.auth.refresh(request, reply);
+  }
+
+  @Public()
   @Post('logout')
   @HttpCode(204)
-  logout() {
-    this.auth.logout();
+  logout(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    return this.auth.logout(request, reply);
   }
 
   @Public()
@@ -36,8 +44,13 @@ export class AuthController {
 
   @Public()
   @Post('invitations/:token/accept')
-  acceptInvitation(@Param('token') token: string, @Body() body: unknown) {
+  async acceptInvitation(
+    @Param('token') token: string,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
     const parsed = AcceptInvitationRequestSchema.parse(body);
-    return this.invitations.accept(token, parsed.password);
+    const user = await this.invitations.accept(token, parsed.password);
+    return this.auth.issueSession(user, reply);
   }
 }

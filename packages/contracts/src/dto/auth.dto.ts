@@ -79,6 +79,12 @@ export const AccessTokenClaimsSchema = z.object({
 });
 export type AccessTokenClaims = z.infer<typeof AccessTokenClaimsSchema>;
 
+export const ChangePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(8).max(200),
+  newPassword: z.string().min(8).max(200),
+});
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
+
 /* ------------------------------ track enrolment --------------------------- */
 
 export const EnrollTrackRequestSchema = z.object({

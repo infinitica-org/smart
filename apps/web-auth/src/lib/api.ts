@@ -1,6 +1,7 @@
 import {
   SmartApiClient,
   buildPortalRedirectUrl,
+  createRefreshAccessToken,
   createSmartApi,
   getAccessToken,
   storeAccessToken,
@@ -16,6 +17,7 @@ const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003';
 export const apiClient = new SmartApiClient({
   baseUrl,
   getAccessToken,
+  refreshAccessToken: createRefreshAccessToken(() => api.auth.refresh()),
 });
 export const api = createSmartApi(apiClient);
 

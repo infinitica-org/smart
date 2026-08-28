@@ -1,4 +1,9 @@
-import { SmartApiClient, createSmartApi, getAccessToken } from '@smart/api-client';
+import {
+  SmartApiClient,
+  createSmartApi,
+  createRefreshAccessToken,
+  getAccessToken,
+} from '@smart/api-client';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
@@ -10,6 +15,30 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     return new Response(
       JSON.stringify({
         accessToken: 'mock_access_token',
+        tokenType: 'Bearer',
+        expiresInSeconds: 900,
+        user: {
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          email: 'student@example.com',
+          fullName: 'Test Student',
+          role: 'STUDENT',
+          institutionId: null,
+          institutionName: null,
+          primaryTrack: null,
+          secondaryTrack: null,
+          provider: 'EMAIL',
+          emailVerified: true,
+          createdAt: new Date().toISOString(),
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/auth/refresh') && init?.method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        accessToken: 'mock_access_token_refreshed',
         tokenType: 'Bearer',
         expiresInSeconds: 900,
         user: {
@@ -174,6 +203,7 @@ export const apiClient = new SmartApiClient({
   baseUrl,
   fetchImpl: IS_MOCK_ENV ? (mockFetch as typeof fetch) : undefined,
   getAccessToken,
+  refreshAccessToken: createRefreshAccessToken(() => api.auth.refresh()),
 });
 
 export const api = createSmartApi(apiClient);
