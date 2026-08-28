@@ -34,6 +34,9 @@ const EnvSchema = z.object({
     .positive()
     .default(60 * 60 * 24 * 14),
 
+  /** Prometheus scrape token. Required in production for /api/v1/admin/metrics. */
+  METRICS_SCRAPE_TOKEN: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default(
@@ -83,7 +86,18 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       .join('; ');
     throw new Error(`Invalid environment: ${issues}`);
   }
-  return parsed.data;
+
+  const data = parsed.data;
+  const defaultJwt = 'local-dev-jwt-secret-change-me-now!!';
+  if (data.NODE_ENV === 'production' && data.JWT_SECRET === defaultJwt) {
+    throw new Error(
+      'Invalid environment: JWT_SECRET must be set to a non-default value in production',
+    );
+  }
+  if (data.NODE_ENV === 'production' && !data.METRICS_SCRAPE_TOKEN) {
+    throw new Error('Invalid environment: METRICS_SCRAPE_TOKEN is required in production');
+  }
+  return data;
 }
 
 export const env = loadEnv();

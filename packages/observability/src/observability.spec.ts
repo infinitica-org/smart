@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   CORRELATION_HEADER,
   HTTP_AUTO_LOG_IGNORE_PATHS,
+  LOG_EVENTS,
   REDACTED_PATHS,
   REDACTION_PLACEHOLDER,
+  assertLogEventFields,
   buildPinoBaseOptions,
   buildPinoHttpOptions,
   collectMetrics,
   getContext,
   isValidCorrelationId,
+  logEvent,
   maskEmail,
   newCorrelationId,
   redactObject,
@@ -217,5 +220,54 @@ describe('metric registry', () => {
     const scraped = await collectMetrics();
     expect(scraped).toContain('smart_inter_rater_kappa');
     expect(scraped).toContain('smart_automated_scoring_paused');
+  });
+});
+
+describe('log event catalog', () => {
+  it('requires documented fields and rejects missing ones', () => {
+    expect(() =>
+      assertLogEventFields(LOG_EVENTS.HTTP_CLIENT_ERROR, {
+        route: '/x',
+        statusCode: 400,
+        error: 'bad_request',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertLogEventFields(LOG_EVENTS.HTTP_CLIENT_ERROR, { route: '/x', statusCode: 400 }),
+    ).toThrow(/error/);
+  });
+
+  it('logEvent forwards a payload with the catalogued event name', () => {
+    const calls: unknown[] = [];
+    const logger = {
+      warn: (payload: unknown, message: string) => {
+        calls.push([payload, message]);
+      },
+    };
+    logEvent(
+      logger as never,
+      'warn',
+      LOG_EVENTS.REDIS_DEGRADED,
+      { policyKey: 'auth.login' },
+      'Redis down',
+    );
+    expect(calls[0]).toEqual([
+      { event: LOG_EVENTS.REDIS_DEGRADED, policyKey: 'auth.login' },
+      'Redis down',
+    ]);
+  });
+
+  it('keeps nestjs-pino options on the redaction contract', () => {
+    const http = buildPinoHttpOptions({ serviceName: 'smart-api-core' });
+    const paths = (http.redact as { paths: string[] }).paths;
+    for (const path of [
+      'req.headers.authorization',
+      'password',
+      'answer',
+      'email',
+      'req.headers.cookie',
+    ]) {
+      expect(paths, path).toContain(path);
+    }
   });
 });

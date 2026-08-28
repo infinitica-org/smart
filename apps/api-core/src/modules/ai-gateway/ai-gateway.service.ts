@@ -7,6 +7,7 @@ import type {
   AiProvider,
 } from '@smart/contracts';
 import { renderPromptRef } from '@smart/prompts';
+import { LOG_EVENTS, logEvent } from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
@@ -141,8 +142,16 @@ export class AiGatewayService {
           message: errMsg,
           circuitState,
         });
-        this.logger.warn(
-          `Primary provider ANTHROPIC failed: ${errMsg} (circuitState: ${circuitState}). Failing over to GOOGLE.`,
+        logEvent(
+          this.logger,
+          'warn',
+          LOG_EVENTS.AI_PROVIDER_FAILED,
+          {
+            provider: 'ANTHROPIC',
+            err: errMsg,
+            circuitState,
+          },
+          'AI provider failed; trying next fallback if available',
         );
       }
     } else if (this.anthropic.isConfigured) {

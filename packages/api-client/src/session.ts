@@ -62,3 +62,18 @@ export async function signOutAndRedirect(options: {
   const base = options.authAppUrl.replace(/\/$/u, '');
   window.location.href = `${base}/login`;
 }
+
+/**
+ * Hook for SmartApiClient: rotate the access token using the HttpOnly refresh cookie.
+ */
+export function createRefreshAccessToken(refresh: () => Promise<{ accessToken: string }>) {
+  return async (): Promise<string | null> => {
+    try {
+      const result = await refresh();
+      storeAccessToken(result.accessToken);
+      return result.accessToken;
+    } catch {
+      return null;
+    }
+  };
+}

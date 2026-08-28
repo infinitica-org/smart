@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CO as Company
+    participant ME as Matching Engine
+    participant TPO as Academia (TPO)
+    participant CN as Candidate
+    participant AI as AI Confidence Interview
+
+    CO->>ME: Post JD with required skills & proficiency
+    ME->>TPO: Ranked candidate suggestions
+    TPO->>TPO: Manual review & shortlist
+    TPO->>CN: Opportunity notification
+    CN->>AI: Opts in, completes confidence interview
+    AI->>TPO: Confidence score attached
+    TPO->>CO: Send scored shortlist
+    CO->>CO: Update ATS stage
+    CO-->>CN: Status sync (My Applications updated)

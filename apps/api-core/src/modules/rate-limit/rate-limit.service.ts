@@ -6,7 +6,13 @@ import {
   getRateLimitPolicy,
   type RateLimitPolicy,
 } from '@smart/contracts';
-import { getContext, rateLimitRejections, rateLimitUtilisation } from '@smart/observability';
+import {
+  getContext,
+  LOG_EVENTS,
+  logEvent,
+  rateLimitRejections,
+  rateLimitUtilisation,
+} from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { KafkaService } from '../../platform/kafka/kafka.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
@@ -94,8 +100,15 @@ export class RateLimitService {
       };
     } catch (error) {
       if (!failOpenOnRedisError(env.NODE_ENV)) throw error;
-      this.logger.warn(
-        `Rate limiter skipped (Redis down) for ${policyKey}. Local-only fail-open. ${error instanceof Error ? error.message : ''}`,
+      logEvent(
+        this.logger,
+        'warn',
+        LOG_EVENTS.REDIS_DEGRADED,
+        {
+          policyKey,
+          err: error instanceof Error ? error.message : 'unknown',
+        },
+        'Rate limiter skipped (Redis down); local-only fail-open',
       );
       return {
         allowed: true,

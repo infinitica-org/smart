@@ -39,11 +39,19 @@ async function bootstrap(): Promise<void> {
     .addTag('certificate', 'Issuance, visibility control, public verification')
     .addTag('webhooks', 'Outbound HMAC-SHA256 signed event delivery')
     .build();
-  const document = SwaggerModule.createDocument(app, openApi);
-  SwaggerModule.setup('api/docs', app, document, {
-    jsonDocumentUrl: 'api/docs-json',
-    swaggerOptions: { persistAuthorization: true },
-  });
+  try {
+    const document = SwaggerModule.createDocument(app, openApi);
+    SwaggerModule.setup('api/docs', app, document, {
+      jsonDocumentUrl: 'api/docs-json',
+      swaggerOptions: { persistAuthorization: true },
+    });
+  } catch (error: unknown) {
+    Logger.error(
+      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.stack : undefined,
+      'Swagger',
+    );
+  }
 
   app.enableShutdownHooks();
   await app.listen(env.PORT, env.HOST);

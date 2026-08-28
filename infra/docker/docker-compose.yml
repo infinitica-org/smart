@@ -308,11 +308,15 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-smart}
       GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
     ports:
       # Host 3100 (not 3030) — keep Loki on 3101 to avoid collision.
       - "${GRAFANA_PORT:-3100}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
       - loki
@@ -340,6 +344,21 @@ services:
       start_period: 15s
     profiles: ["obs"]
 
+  alloy:
+    image: grafana/alloy:v1.8.3
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    profiles: ["obs"]
+
 volumes:
   postgres_data:
   redis_data:
@@ -350,3 +369,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  alloy_data:

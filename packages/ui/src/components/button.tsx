@@ -28,8 +28,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800',
-  secondary: 'bg-brand-50 text-brand-800 hover:bg-brand-100 active:bg-brand-200',
+  primary: 'bg-brand-500 text-ink hover:bg-brand-400 active:bg-brand-300',
+  secondary: 'bg-brand-700 text-paper hover:bg-brand-800 active:bg-brand-900',
   outline: 'border border-[var(--surface-border)] bg-transparent hover:bg-[var(--surface-muted)]',
   ghost: 'bg-transparent hover:bg-[var(--surface-muted)]',
   danger: 'bg-danger text-white hover:opacity-90 active:opacity-80',

@@ -54,7 +54,10 @@ export function authApi(client: SmartApiClient) {
      * never readable by JavaScript and never at risk from an XSS payload.
      */
     refresh: () =>
-      client.post(prefixed('/auth/refresh'), undefined, { schema: AuthTokenResponseSchema }),
+      client.post(prefixed('/auth/refresh'), undefined, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
 
     logout: () => client.post<void>(prefixed('/auth/logout')),
 
@@ -67,6 +70,9 @@ export function authApi(client: SmartApiClient) {
         body,
         schema: AuthenticatedUserSchema,
       }),
+
+    changePassword: (body: { currentPassword: string; newPassword: string }) =>
+      client.post<void>(prefixed('/users/me/password'), body),
 
     previewInvitation: (token: string) =>
       client.get(prefixed(`/auth/invitations/${token}`), {

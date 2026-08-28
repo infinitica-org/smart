@@ -225,6 +225,8 @@ regression suite runs in CI.
 **Goal:** a TPO uploads a JD, gets a matched shortlist, and sees cohort readiness; a completed
 track issues a certificate.
 
+**Product freeze + Jobs/Placements MMP:** Allen’s PRD v1 lives at [`docs/product/prd-v1/`](../product/prd-v1/README.md). Architect mapping (rules matching, VB skill SM, who does what): [`PRD_V1_ARCHITECT_REVIEW.md`](./PRD_V1_ARCHITECT_REVIEW.md). VEGA/L4 reuse: [`SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md`](./SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md). If capacity slips, cut cosine matching before the rules ranker (ADR 0012).
+
 | ID       | Ticket                                                                                              | Owner            | Pts | Pri |
 | -------- | --------------------------------------------------------------------------------------------------- | ---------------- | :-: | :-: |
 | S3-VV-01 | Kong/edge gateway config, TLS termination, Cloudflare rules, waiting-room mode                      | Vishal V         |  5  | P0  |

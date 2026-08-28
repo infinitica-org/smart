@@ -26,6 +26,8 @@ export const nest = tseslint.config(
       '@typescript-eslint/no-unsafe-declaration-merging': 'off',
       // Nest DI relies on parameter properties in constructors.
       'no-useless-constructor': 'off',
+      // Structured logging via Nest Logger / @smart/observability only.
+      'no-console': 'error',
       'no-restricted-properties': [
         'error',
         {
@@ -51,6 +53,20 @@ export const nest = tseslint.config(
     ],
     rules: {
       'no-restricted-properties': 'off',
+    },
+  },
+  {
+    // Seeds, scripts, and tests may use console.
+    files: ['**/prisma/**', '**/scripts/**', '**/*.spec.ts', '**/*.test.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    // Bootstrap catch before Nest logger exists — console.error only.
+    files: ['**/main.ts'],
+    rules: {
+      'no-console': ['error', { allow: ['error'] }],
     },
   },
 );

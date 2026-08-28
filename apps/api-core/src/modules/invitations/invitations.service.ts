@@ -8,21 +8,18 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type {
-  AuthTokenResponse,
   InvitationDto,
   InvitationPreviewDto,
   InvitationStatus,
   UserRole,
 } from '@smart/contracts';
-import { JwtService } from '@nestjs/jwt';
-import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import {
   EMAIL_QUEUE,
   type EmailJobPayload,
   type EmailTemplateName,
 } from '../../platform/mailer/mailer.types.js';
-import { hashPassword, toAuthenticatedUser } from '../auth/auth.service.js';
+import { hashPassword, type UserWithAuthIncludes } from '../auth/auth.service.js';
 import {
   buildInviteUrl,
   generateInviteToken,
@@ -35,7 +32,6 @@ export class InvitationsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailJobPayload>,
-    @Inject(JwtService) private readonly jwt: JwtService,
   ) {}
 
   async preview(rawToken: string): Promise<InvitationPreviewDto> {
@@ -51,7 +47,7 @@ export class InvitationsService {
     };
   }
 
-  async accept(rawToken: string, password: string): Promise<AuthTokenResponse> {
+  async accept(rawToken: string, password: string): Promise<UserWithAuthIncludes> {
     const invitation = await this.requireValidInvitation(rawToken);
     if (invitation.status !== 'PENDING') {
       throw new GoneException({
@@ -77,19 +73,7 @@ export class InvitationsService {
       data: { status: 'ACCEPTED', acceptedAt: new Date() },
     });
 
-    const dto = toAuthenticatedUser(user);
-    const accessToken = await this.jwt.signAsync({
-      sub: user.id,
-      role: user.role,
-      inst: user.institutionId,
-    });
-
-    return {
-      accessToken,
-      tokenType: 'Bearer',
-      expiresInSeconds: env.JWT_ACCESS_TTL_SECONDS,
-      user: dto,
-    };
+    return user;
   }
 
   async createAndEnqueue(params: {

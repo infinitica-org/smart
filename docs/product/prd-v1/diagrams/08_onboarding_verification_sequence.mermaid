@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant U as Academia/Company (Self-signup)
+    participant SYS as SMART Platform
+    participant SA as Super Admin
+    participant BILL as Billing/Feature Flag Service
+
+    U->>SYS: Self-registers + uploads verification documents
+    SYS->>SA: New verification request queued
+    SA->>SA: Reviews documents (accreditation / business registration)
+    alt Approved
+        SA->>SYS: Mark verified, approve reason logged
+        SYS->>BILL: Unlock Pro plan entitlements
+        SYS-->>U: Verification approved notification
+    else Rejected
+        SA->>SYS: Mark rejected, reason logged
+        SYS-->>U: Rejection notification with reason
+        U->>SYS: Resubmit corrected documents
+    end
