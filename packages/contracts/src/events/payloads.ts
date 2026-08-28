@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   AiProviderSchema,
+  AtsStageSchema,
   AttemptStatusSchema,
   CertifiableTierSchema,
   IntegrityFlagSchema,
@@ -245,6 +246,20 @@ export const PlacementMatchedEventSchema = envelopeSchema(
 );
 export type PlacementMatchedEvent = z.infer<typeof PlacementMatchedEventSchema>;
 
+export const ApplicationStageChangedDataSchema = z.object({
+  applicationId: UuidSchema,
+  openingId: UuidSchema,
+  studentId: UuidSchema,
+  fromStage: AtsStageSchema.nullable(),
+  toStage: AtsStageSchema,
+  changedAt: IsoDateTimeSchema,
+});
+export const ApplicationStageChangedEventSchema = envelopeSchema(
+  SMART_TOPICS.applicationStageChanged,
+  ApplicationStageChangedDataSchema,
+);
+export type ApplicationStageChangedEvent = z.infer<typeof ApplicationStageChangedEventSchema>;
+
 /* -------------------------------------------------------------------------- */
 /*                      rate limiting  (owner: Vishal V)                      */
 /* -------------------------------------------------------------------------- */
@@ -285,6 +300,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.trackUpdated]: TrackUpdatedEventSchema,
   [SMART_TOPICS.certificateIssued]: CertificateIssuedEventSchema,
   [SMART_TOPICS.placementMatched]: PlacementMatchedEventSchema,
+  [SMART_TOPICS.applicationStageChanged]: ApplicationStageChangedEventSchema,
   [SMART_TOPICS.rateLimitExceeded]: RateLimitExceededEventSchema,
 } as const;
 
@@ -298,4 +314,5 @@ export type SmartEvent =
   | TrackUpdatedEvent
   | CertificateIssuedEvent
   | PlacementMatchedEvent
+  | ApplicationStageChangedEvent
   | RateLimitExceededEvent;

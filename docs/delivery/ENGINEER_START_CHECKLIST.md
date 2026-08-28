@@ -5,7 +5,7 @@
 
 Complete every phase in order. Check boxes in your head or in a personal note — the only team-visible gate is [`BOOTSTRAP_SIGNOFF.md`](./BOOTSTRAP_SIGNOFF.md).
 
-**One-line summary:** clone → `pnpm bootstrap` → sign off → pick a GitHub issue → branch from `dev` → PR to `dev`. Zoho Sprints is an optional read-only mirror for sprint planning; **GitHub Issues are the backlog.**
+**One-line summary:** clone → `git pull origin main` → `pnpm bootstrap` → sign off → pick a GitHub issue → branch from `dev` → PR to `dev`. Sprint 3 map: [`SPRINT03_HANDOVER.md`](./SPRINT03_HANDOVER.md). Zoho Sprints is an optional read-only mirror; **GitHub Issues are the backlog.**
 
 ---
 

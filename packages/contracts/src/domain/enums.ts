@@ -275,6 +275,48 @@ export const JD_PARSE_STATUSES = ['PENDING', 'PARSED', 'FAILED', 'MANUALLY_CORRE
 export const JdParseStatusSchema = z.enum(JD_PARSE_STATUSES);
 export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
 
+/**
+ * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
+ * Silver / Bronze) still come from cut scores — do not invent a parallel score.
+ */
+export const SKILL_PROFICIENCIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
+export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
+
+/**
+ * Skill-claim state machine. Technical failures must not consume a strike.
+ * `LOCKED` is cooldown after two failed verification attempts.
+ */
+export const SKILL_CLAIM_STATUSES = [
+  'DECLARED',
+  'VERIFIED',
+  'BEGINNER_REATTEMPT',
+  'LOCKED',
+] as const;
+export const SkillClaimStatusSchema = z.enum(SKILL_CLAIM_STATUSES);
+export type SkillClaimStatus = z.infer<typeof SkillClaimStatusSchema>;
+
+export const JOB_OPENING_STATUSES = ['DRAFT', 'OPEN', 'CLOSED'] as const;
+export const JobOpeningStatusSchema = z.enum(JOB_OPENING_STATUSES);
+export type JobOpeningStatus = z.infer<typeof JobOpeningStatusSchema>;
+
+/** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
+export const ATS_STAGES = [
+  'APPLIED',
+  'SHORTLISTED',
+  'INTERVIEW',
+  'OFFER',
+  'REJECTED',
+  'WITHDRAWN',
+] as const;
+export const AtsStageSchema = z.enum(ATS_STAGES);
+export type AtsStage = z.infer<typeof AtsStageSchema>;
+
+/** How a match score was produced. V1 ships RULES; HYBRID is optional cosine. */
+export const MATCH_METHODS = ['RULES', 'HYBRID'] as const;
+export const MatchMethodSchema = z.enum(MATCH_METHODS);
+export type MatchMethod = z.infer<typeof MatchMethodSchema>;
+
 /* -------------------------------------------------------------------------- */
 /*                          Certificates & webhooks                           */
 /* -------------------------------------------------------------------------- */

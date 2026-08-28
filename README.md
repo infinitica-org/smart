@@ -4,6 +4,8 @@ Role-specific readiness certification. Candidates are assessed on a 5-level × 3
 
 **GA target: 10 September 2026, 18:00 IST.** Methodology, owners and sprint calendar: [`TEAM.md`](./TEAM.md), [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md). Architecture decisions: [`docs/adr/`](./docs/adr/). Branching: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 
+**Sprint 3 (3–6 Sep) — start here:** pull `main`, then [`docs/delivery/SPRINT03_HANDOVER.md`](./docs/delivery/SPRINT03_HANDOVER.md). Product pack: [`docs/product/prd-v1/`](./docs/product/prd-v1/README.md). Tino reviews and merges; you own your module.
+
 ## Who owns what
 
 | Engineer             | Role                      | Writes                                                                      |
