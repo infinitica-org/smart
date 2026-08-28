@@ -1,0 +1,62 @@
+flowchart TB
+    subgraph CLIENTS["Client Portals"]
+        SA["Super Admin Console"]
+        ACD["Academia / TPO Portal"]
+        CND["Candidate Portal"]
+        COD["Company Portal"]
+    end
+
+    subgraph GATEWAY["API Gateway & Auth Layer"]
+        AUTH["Identity & SSO Service (Entra ID / Google OIDC)"]
+        RBAC["RBAC & Multi-Tenant Isolation"]
+    end
+
+    subgraph CORE["Core Application Services"]
+        PROFILE["Profile Service"]
+        TAXONOMY["Skill & Domain Taxonomy Service"]
+        VERIFY["Skill Verification Engine"]
+        PROJVER["Project Verification Service"]
+        COGCOM["Cognitive & Communication Profiling Service"]
+        MATCH["Matching Engine"]
+        PLACEMENT["Placement / ATS Service"]
+        BILLING["Subscription & Feature Flag Service"]
+        NOTIFY["Notification Service"]
+        AUDIT["Audit Log Service"]
+    end
+
+    subgraph ASYNC["Async Job Layer"]
+        QUEUE[["Job Queue"]]
+        W1["Plagiarism / Code-Quality Agent"]
+        W2["Proctoring Analysis Agent"]
+        W3["Cognitive & Comm Scoring Agent"]
+    end
+
+    subgraph DATA["Data Stores"]
+        DB[("Primary DB - Multi-Tenant")]
+        BLOB[("Video / Document Storage")]
+        SEARCH[("Matching Index")]
+    end
+
+    subgraph EXTERNAL["External Managed Services"]
+        LOOM["Loom Video API"]
+        GITHUB["GitHub API"]
+        IDV["ID Verification / Liveness Vendor"]
+    end
+
+    CLIENTS --> GATEWAY --> CORE
+    CORE --> DATA
+    VERIFY --> QUEUE
+    PROJVER --> QUEUE
+    COGCOM --> QUEUE
+    QUEUE --> W1
+    QUEUE --> W2
+    QUEUE --> W3
+    W1 --> GITHUB
+    W1 --> BLOB
+    W2 --> IDV
+    PROJVER --> LOOM
+    MATCH --> SEARCH
+    CORE --> AUDIT
+    AUDIT --> DB
+    BILLING --> CORE
+    NOTIFY --> CLIENTS

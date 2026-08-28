@@ -1,0 +1,15 @@
+flowchart TD
+    A["Candidate account provisioned by Academia"] --> B["First login: forced password reset"]
+    B --> C["Upload resume - AI parses & pre-fills profile"]
+    C --> D["Mandatory setup:<br/>Location, Phone, LinkedIn,<br/>Education, Skills + Proficiency,<br/>Languages, Job Interests"]
+    D --> E["Consent screens<br/>(assessment & proctoring data use)"]
+    E --> F{"Mandatory fields complete?"}
+    F -- No --> D
+    F -- Yes --> G["Profile unlocked for opportunities"]
+    G --> H["Second-stage: Internship/Work Experience + Projects"]
+    H --> I["Autonomous Skill Verification triggers per declared skill"]
+    H --> J["Autonomous Cognitive Assessment triggers"]
+    H --> K["Autonomous Communication Interview triggers"]
+    I --> L["Verified Profile builds over time"]
+    J --> L
+    K --> L
