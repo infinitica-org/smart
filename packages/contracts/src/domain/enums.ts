@@ -124,6 +124,47 @@ export const AUTH_PROVIDERS = ['PASSWORD', 'GOOGLE', 'GITHUB', 'SAML', 'OIDC'] a
 export const AuthProviderSchema = z.enum(AUTH_PROVIDERS);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
+export const PLAN_CODES = ['FREE', 'BASIC', 'PRO'] as const;
+export const PlanCodeSchema = z.enum(PLAN_CODES);
+export type PlanCode = z.infer<typeof PlanCodeSchema>;
+
+export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
+export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
+
+export const INSTITUTION_LIST_STATUSES = ['ACTIVE', 'HELD', 'DEACTIVATED'] as const;
+export const InstitutionListStatusSchema = z.enum(INSTITUTION_LIST_STATUSES);
+export type InstitutionListStatus = z.infer<typeof InstitutionListStatusSchema>;
+
+export const STUDENT_INVITE_FILTERS = [
+  'PENDING',
+  'ACCEPTED',
+  'EXPIRED',
+  'REVOKED',
+  'NONE',
+] as const;
+export const StudentInviteFilterSchema = z.enum(STUDENT_INVITE_FILTERS);
+export type StudentInviteFilter = z.infer<typeof StudentInviteFilterSchema>;
+
+export const SESSION_HOLD_CODES = [
+  'institution_held',
+  'institution_deactivated',
+  'account_held',
+] as const;
+export const SessionHoldCodeSchema = z.enum(SESSION_HOLD_CODES);
+export type SessionHoldCode = z.infer<typeof SessionHoldCodeSchema>;
+
+export const SESSION_HOLD_MESSAGE: Readonly<Record<SessionHoldCode, string>> = {
+  institution_held: 'This institution is on hold. You cannot use SMART until it is released.',
+  institution_deactivated:
+    'This institution is deactivated. You cannot use SMART until it is restored.',
+  account_held: 'Your account is on hold. Contact your TPO or platform administrator.',
+};
+
+export function isSessionHoldCode(code: string): code is SessionHoldCode {
+  return (SESSION_HOLD_CODES as readonly string[]).includes(code);
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              Items & responses                             */
 /* -------------------------------------------------------------------------- */

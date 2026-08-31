@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
+import { SessionHoldGuard } from './common/guards/session-hold.guard.js';
 import { ObservabilityInterceptor } from './common/interceptors/observability.interceptor.js';
 import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor.js';
 import { AiGatewayModule } from './modules/ai-gateway/ai-gateway.module.js';
@@ -67,6 +68,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: SessionHoldGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: ObservabilityInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },

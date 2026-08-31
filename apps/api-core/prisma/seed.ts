@@ -39,10 +39,62 @@ async function main(): Promise<void> {
     adapter: new PrismaPg({ connectionString: DATABASE_URL }),
   });
 
+  const plans = await Promise.all(
+    (
+      [
+        ['FREE', 'Free'],
+        ['BASIC', 'Basic'],
+        ['PRO', 'Pro'],
+      ] as const
+    ).map(([code, name]) =>
+      prisma.subscriptionPlan.upsert({
+        where: { code },
+        update: { name },
+        create: { code, name },
+      }),
+    ),
+  );
+  const proPlan = plans.find((plan) => plan.code === 'PRO')!;
+
+  const flagKeys = [
+    ['ats_kanban', 'ATS Kanban'],
+    ['public_profile', 'Public verified profile'],
+    ['project_verification', 'Project verification'],
+  ] as const;
+  for (const [key, name] of flagKeys) {
+    const flag = await prisma.featureFlag.upsert({
+      where: { key },
+      update: { name },
+      create: { key, name },
+    });
+    for (const plan of plans) {
+      await prisma.planEntitlement.upsert({
+        where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
+        update: { enabled: plan.code !== 'FREE' },
+        create: { planId: plan.id, featureFlagId: flag.id, enabled: plan.code !== 'FREE' },
+      });
+    }
+  }
+
+  await prisma.skill.upsert({
+    where: { code: 'javascript' },
+    update: { name: 'JavaScript', domain: 'SOFTWARE_IT' },
+    create: { code: 'javascript', name: 'JavaScript', domain: 'SOFTWARE_IT' },
+  });
+  await prisma.skill.upsert({
+    where: { code: 'sql' },
+    update: { name: 'SQL', domain: 'SOFTWARE_IT' },
+    create: { code: 'sql', name: 'SQL', domain: 'SOFTWARE_IT' },
+  });
+
   const institution = await prisma.institution.upsert({
     where: { domain: 'smart.local' },
     update: {},
-    create: { name: 'SMART Pilot Institute', domain: 'smart.local' },
+    create: {
+      name: 'SMART Pilot Institute',
+      domain: 'smart.local',
+      planId: proPlan.id,
+    },
   });
 
   for (const definition of TRACK_DEFINITIONS) {

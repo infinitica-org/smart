@@ -8,6 +8,7 @@ x-app-env: &app-env
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005,http://localhost}
   S3_ENDPOINT: http://minio:9000
+  S3_REGION: ${S3_REGION:-us-east-1}
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
   S3_BUCKET: smart
@@ -20,6 +21,11 @@ x-app-env: &app-env
   STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
   TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
   ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+  METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  AI_MONTHLY_CEILING_USD: ${AI_MONTHLY_CEILING_USD:-500}
 
 services:
   postgres:
@@ -30,7 +36,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
       POSTGRES_DB: smart
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -56,7 +62,7 @@ services:
       ]
     ports:
       # Host 6380 — Windows often already binds 6379 (svchost/WSL), which ECONNRESETs ioredis.
-      - "${REDIS_PORT:-6380}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -78,7 +84,7 @@ services:
       - --mode
       - dev-container
     ports:
-      - "${REDPANDA_PORT:-19092}:19092"
+      - "127.0.0.1:${REDPANDA_PORT:-19092}:19092"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
@@ -96,8 +102,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
     ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -111,8 +117,8 @@ services:
     image: axllent/mailpit:v1.27
     restart: unless-stopped
     ports:
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
     healthcheck:
       test:
         [
@@ -141,7 +147,7 @@ services:
     environment:
       DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
     ports:
-      - "${PRISMA_STUDIO_PORT:-5555}:5555"
+      - "127.0.0.1:${PRISMA_STUDIO_PORT:-5555}:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,7 +167,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${API_PORT:-3000}:3000"
+      - "127.0.0.1:${API_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -189,7 +195,7 @@ services:
     depends_on:
       - api
     ports:
-      - "${STUDENT_PORT:-3001}:3000"
+      - "127.0.0.1:${STUDENT_PORT:-3001}:3000"
     profiles: ["apps"]
 
   web-tpo:
@@ -205,7 +211,7 @@ services:
     depends_on:
       - api
     ports:
-      - "${TPO_PORT:-3002}:3000"
+      - "127.0.0.1:${TPO_PORT:-3002}:3000"
     profiles: ["apps"]
 
   web-admin:
@@ -221,7 +227,7 @@ services:
     depends_on:
       - api
     ports:
-      - "${ADMIN_PORT:-3003}:3000"
+      - "127.0.0.1:${ADMIN_PORT:-3003}:3000"
     profiles: ["apps"]
 
   web-verify:
@@ -237,7 +243,7 @@ services:
     depends_on:
       - api
     ports:
-      - "${VERIFY_PORT:-3004}:3000"
+      - "127.0.0.1:${VERIFY_PORT:-3004}:3000"
     profiles: ["apps"]
 
   web-auth:
@@ -256,8 +262,21 @@ services:
     depends_on:
       - api
     ports:
-      - "${AUTH_PORT:-3005}:3000"
+      - "127.0.0.1:${AUTH_PORT:-3005}:3000"
     profiles: ["apps"]
+
+  # Adminer — browser DB admin UI, reachable only via Caddy (basicauth + TLS),
+  # never published directly to the host.
+  adminer:
+    image: adminer:4-standalone
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["vps"]
 
   caddy:
     image: caddy:2.10-alpine
@@ -272,6 +291,9 @@ services:
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
+      DB_HOST: ${DB_HOST:-db.localhost}
+      DB_BASIC_AUTH_USER: ${DB_BASIC_AUTH_USER:-admin}
+      DB_BASIC_AUTH_HASH: ${DB_BASIC_AUTH_HASH:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -283,6 +305,7 @@ services:
       - web-admin
       - web-verify
       - web-auth
+      - adminer
     # Only one stack per host should enable profile `vps` (binds :80/:443).
     profiles: ["vps"]
 
@@ -293,7 +316,7 @@ services:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
       interval: 15s
@@ -312,7 +335,7 @@ services:
       GF_USERS_DEFAULT_THEME: dark
     ports:
       # Host 3100 (not 3030) — keep Loki on 3101 to avoid collision.
-      - "${GRAFANA_PORT:-3100}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3100}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -333,7 +356,7 @@ services:
     restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "${LOKI_PORT:-3101}:3100"
+      - "127.0.0.1:${LOKI_PORT:-3101}:3100"
     volumes:
       - loki_data:/loki
     healthcheck:

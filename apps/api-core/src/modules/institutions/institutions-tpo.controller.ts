@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
@@ -14,6 +15,8 @@ import {
   API_PREFIX,
   AddBatchMemberRequestSchema,
   CreateBatchRequestSchema,
+  ListInstitutionStudentsQuerySchema,
+  TenantActionReasonSchema,
   UpdateBatchRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -38,6 +41,47 @@ function requireInstitutionId(user: RequestUser): string {
 @Roles('INSTITUTION_ADMIN')
 export class InstitutionsTpoController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
+
+  @Get('students')
+  listStudents(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    return this.institutions.listInstitutionStudents(
+      requireInstitutionId(user),
+      ListInstitutionStudentsQuerySchema.parse(
+        Object.fromEntries(Object.entries(query).filter(([, value]) => value)),
+      ),
+    );
+  }
+
+  @Post('students/:userId/hold')
+  holdStudent(
+    @Param('userId') userId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.holdStudent(
+      userId,
+      TenantActionReasonSchema.parse(body),
+      user.sub,
+      requireInstitutionId(user),
+    );
+  }
+
+  @Post('students/:userId/release-hold')
+  releaseStudent(
+    @Param('userId') userId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.releaseStudent(
+      userId,
+      TenantActionReasonSchema.parse(body),
+      user.sub,
+      requireInstitutionId(user),
+    );
+  }
 
   @Post('batches')
   createBatch(@Body() body: unknown, @CurrentUser() user: RequestUser) {

@@ -25,6 +25,9 @@ export { LevelStepper, type LevelState, type LevelStepperProps } from './compone
 export { AppShell, type AppShellProps } from './components/app-shell';
 export { SignOutButton, type SignOutButtonProps } from './components/sign-out-button';
 export { SessionBootstrap } from './session-bootstrap';
+export { SessionHoldWall } from './components/session-hold-wall';
+export { RolesGuard, type RolesGuardProps } from './roles-guard';
+export { ForbiddenWall, NotFoundWall } from './components/status-walls';
 export { ConfidenceNote, type ConfidenceNoteProps } from './components/confidence-note';
 export { Timer, type TimerProps } from './components/timer';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';
@@ -39,5 +42,26 @@ export {
   type AssessmentNavigationProps,
 } from './components/assessment-navigation';
 export * from './api-provider';
+
+export {
+  VerificationBadge,
+  type VerificationBadgeProps,
+  type VerificationState,
+} from './components/verification-badge';
+export {
+  AiExplanationPanel,
+  type AiExplanationPanelProps,
+} from './components/ai-explanation-panel';
+export {
+  PipelineStageBar,
+  type PipelineStage,
+  type PipelineStageBarProps,
+} from './components/pipeline-stage-bar';
+export {
+  CandidateProfileCard,
+  type CandidateSkill,
+  type CandidateProject,
+  type CandidateProfileCardProps,
+} from './components/candidate-profile-card';
 
 export const UI_VERSION = '0.1.0';

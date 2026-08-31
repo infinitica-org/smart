@@ -7,6 +7,7 @@ import {
   type TrackDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { passThresholdsFor } from './skill-pass-thresholds.js';
 /** Scalar fields only — never select Unsupported("vector") embedding. */
 const competencySelect = {
   id: true,
@@ -83,6 +84,7 @@ function fromContract(definition: (typeof TRACK_DEFINITIONS)[number]): TrackDto 
         subDomain: domain.name,
         realWorldWeight: Number((domain.weight / domain.topics.length).toFixed(4)),
         assessedAtLevels: [...domain.assessedAtLevels],
+        passThresholds: passThresholdsFor(definition.code, topic),
       })),
     ),
     levels: LEVEL_DEFINITIONS.map((level) => ({
@@ -141,6 +143,7 @@ function toTrackDto(row: {
       subDomain: competency.subDomain,
       realWorldWeight: decimal(competency.realWorldWeight),
       assessedAtLevels: competency.assessedAtLevels,
+      passThresholds: passThresholdsFor(row.code, competency.name),
     })),
     levels: row.levels.map((level) => ({
       levelId: level.id,

@@ -49,6 +49,9 @@ export default function Page() {
         <a href="/batches" className="text-sm underline block mt-4">
           Manage batches and student invites
         </a>
+        <a href="/students" className="text-sm underline block mt-2">
+          Hold or release student accounts
+        </a>
       </div>
     </AppShell>
   );

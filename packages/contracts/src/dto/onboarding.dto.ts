@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { UserRoleSchema } from '../domain/enums.js';
+import {
+  InstitutionListStatusSchema,
+  PlanCodeSchema,
+  StudentInviteFilterSchema,
+  TenantVerificationStatusSchema,
+  UserRoleSchema,
+} from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
 
 /**
@@ -47,9 +53,89 @@ export const InstitutionDtoSchema = z.object({
   institutionId: UuidSchema,
   name: z.string(),
   domain: z.string(),
+  planCode: PlanCodeSchema,
+  verificationStatus: TenantVerificationStatusSchema,
+  heldAt: IsoDateTimeSchema.nullable(),
+  deactivatedAt: IsoDateTimeSchema.nullable(),
+  studentCount: z.number().int().nonnegative(),
+  adminCount: z.number().int().nonnegative(),
+  batchCount: z.number().int().nonnegative(),
+  invitePendingCount: z.number().int().nonnegative(),
+  inviteAcceptedCount: z.number().int().nonnegative(),
   createdAt: IsoDateTimeSchema,
 });
 export type InstitutionDto = z.infer<typeof InstitutionDtoSchema>;
+
+export const UpdateInstitutionRequestSchema = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  domain: InstitutionDomainSchema.optional(),
+  planCode: PlanCodeSchema.optional(),
+});
+export type UpdateInstitutionRequest = z.infer<typeof UpdateInstitutionRequestSchema>;
+
+export const TenantActionReasonSchema = z.object({
+  reason: z.string().trim().min(8).max(500),
+});
+export type TenantActionReason = z.infer<typeof TenantActionReasonSchema>;
+
+export const ListInstitutionsQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  planCode: PlanCodeSchema.optional(),
+  status: InstitutionListStatusSchema.optional(),
+});
+export type ListInstitutionsQuery = z.infer<typeof ListInstitutionsQuerySchema>;
+
+export const ListInstitutionStudentsQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  inviteStatus: StudentInviteFilterSchema.optional(),
+  batchId: UuidSchema.optional(),
+});
+export type ListInstitutionStudentsQuery = z.infer<typeof ListInstitutionStudentsQuerySchema>;
+
+export const InstitutionStudentDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  batchId: UuidSchema.nullable(),
+  batchName: z.string().nullable(),
+  inviteStatus: InvitationStatusSchema.nullable(),
+  lastSentAt: IsoDateTimeSchema.nullable(),
+  acceptedAt: IsoDateTimeSchema.nullable(),
+  heldAt: IsoDateTimeSchema.nullable(),
+});
+export type InstitutionStudentDto = z.infer<typeof InstitutionStudentDtoSchema>;
+
+export const GlobalStudentSearchQuerySchema = z.object({
+  q: z.string().trim().min(3).max(200),
+});
+export type GlobalStudentSearchQuery = z.infer<typeof GlobalStudentSearchQuerySchema>;
+
+export const GlobalStudentHitDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  institutionId: UuidSchema,
+  institutionName: z.string(),
+  inviteStatus: InvitationStatusSchema.nullable(),
+  heldAt: IsoDateTimeSchema.nullable(),
+});
+export type GlobalStudentHitDto = z.infer<typeof GlobalStudentHitDtoSchema>;
+
+export const PlanEntitlementDtoSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  enabled: z.boolean(),
+});
+export type PlanEntitlementDto = z.infer<typeof PlanEntitlementDtoSchema>;
+
+export const SubscriptionPlanDtoSchema = z.object({
+  planId: UuidSchema,
+  code: PlanCodeSchema,
+  name: z.string(),
+  entitlements: z.array(PlanEntitlementDtoSchema),
+  institutionCount: z.number().int().nonnegative(),
+});
+export type SubscriptionPlanDto = z.infer<typeof SubscriptionPlanDtoSchema>;
 
 /* ------------------------------- invitations ------------------------------ */
 
@@ -140,6 +226,7 @@ export const BatchMemberDtoSchema = z.object({
   groupLabel: z.string().nullable(),
   emailVerified: z.boolean(),
   invitation: InvitationDtoSchema.nullable(),
+  heldAt: IsoDateTimeSchema.nullable(),
 });
 export type BatchMemberDto = z.infer<typeof BatchMemberDtoSchema>;
 

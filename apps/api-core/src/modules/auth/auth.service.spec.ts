@@ -14,6 +14,7 @@ function userRow(overrides: Record<string, unknown> = {}) {
     institutionId: null,
     createdAt: new Date(),
     passwordHash: null as string | null,
+    heldAt: null,
     institution: null,
     primaryTrack: null,
     secondaryTrack: null,
@@ -119,14 +120,29 @@ describe('AuthService refresh rotation', () => {
     expect(reply.clearCookie).toHaveBeenCalled();
   });
 
-  it('rejects login with a generic error', async () => {
+  it('blocks tenant login when the institution is on hold', async () => {
+    const passwordHash = await hashPassword('password1');
     const prisma = {
-      user: { findUnique: vi.fn(async () => null) },
+      user: {
+        findUnique: vi.fn(async () =>
+          userRow({
+            role: 'STUDENT',
+            passwordHash,
+            institutionId: randomUUID(),
+            institution: { name: 'Held College', heldAt: new Date(), deactivatedAt: null },
+          }),
+        ),
+      },
     };
     const auth = new AuthService(prisma as never, { signAsync: vi.fn() } as never);
-    await expect(auth.login('a@b.com', 'password1', {} as never)).rejects.toMatchObject({
-      response: { message: 'Email or password is incorrect.' },
-    });
+    await expect(auth.login('student@example.com', 'password1', {} as never)).rejects.toMatchObject(
+      {
+        response: {
+          error: 'institution_held',
+          message: 'This institution is on hold. You cannot use SMART until it is released.',
+        },
+      },
+    );
   });
 });
 
