@@ -25,6 +25,8 @@ export { LevelStepper, type LevelState, type LevelStepperProps } from './compone
 export { AppShell, type AppShellProps } from './components/app-shell';
 export { SignOutButton, type SignOutButtonProps } from './components/sign-out-button';
 export { SessionBootstrap } from './session-bootstrap';
+export { RolesGuard, type RolesGuardProps } from './roles-guard';
+export { ForbiddenWall, NotFoundWall } from './components/status-walls';
 export { ConfidenceNote, type ConfidenceNoteProps } from './components/confidence-note';
 export { Timer, type TimerProps } from './components/timer';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';

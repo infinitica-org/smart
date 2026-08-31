@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export default function LoginPage() {
     try {
       const result = await api.auth.login({ email, password });
       storeSession(result.accessToken);
-      redirectForRole(result.user.role, result.accessToken);
+      redirectForRole(result.user.role, result.accessToken, searchParams.get('returnTo'));
     } catch {
       setError('Login failed. Check email and password.');
     } finally {
@@ -30,7 +32,9 @@ export default function LoginPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sign in to SMART</CardTitle>
-          <CardDescription>Use your institution email and password.</CardDescription>
+          <CardDescription>
+            Use your institution email and password. Your role opens the matching portal.
+          </CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit} className="px-6 pb-6 space-y-4">
           {error ? <Alert tone="danger" title={error} /> : null}
@@ -54,5 +58,19 @@ export default function LoginPage() {
         </form>
       </Card>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="p-8 text-sm text-[var(--text-muted)]" role="status">
+          Loading sign-in…
+        </p>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

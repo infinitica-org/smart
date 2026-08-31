@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell, Alert } from '@smart/ui';
+import { storeAccessToken } from '@smart/api-client';
 import { api } from '../../../lib/api';
 
 function AuthCallbackComponent() {
@@ -36,7 +37,7 @@ function AuthCallbackComponent() {
         const response = await api.auth.ssoCallback({ code, state });
 
         // Store token in sessionStorage per architecture
-        window.sessionStorage.setItem('smart.accessToken', response.accessToken);
+        storeAccessToken(response.accessToken);
 
         // Redirect logic based on user state
         const user = response.user;

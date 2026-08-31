@@ -7,6 +7,27 @@ import {
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
+const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
+
+function mockStudentAccessToken(): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify({
+    sub: MOCK_USER_ID,
+    role: 'STUDENT',
+    inst: null,
+    trk: [],
+    fam: 'mock-family',
+    iat: now,
+    exp: now + 900,
+    iss: 'smart',
+    aud: 'smart-api',
+  });
+  const bytes = new TextEncoder().encode(payload);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  const b64 = btoa(binary).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/u, '');
+  return `eyJhbGciOiJub25lIn0.${b64}.mock`;
+}
 
 const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = input.toString();
@@ -14,7 +35,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   if (url.includes('/auth/login') && init?.method === 'POST') {
     return new Response(
       JSON.stringify({
-        accessToken: 'mock_access_token',
+        accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
         user: {
@@ -38,7 +59,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   if (url.includes('/auth/refresh') && init?.method === 'POST') {
     return new Response(
       JSON.stringify({
-        accessToken: 'mock_access_token_refreshed',
+        accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
         user: {
@@ -72,7 +93,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   if (url.includes('/auth/sso/callback') && init?.method === 'POST') {
     return new Response(
       JSON.stringify({
-        accessToken: 'mock_access_token',
+        accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
         user: {

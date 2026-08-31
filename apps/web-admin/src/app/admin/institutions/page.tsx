@@ -6,7 +6,6 @@ import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } fr
 import type { InstitutionDto } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../../lib/api';
-import { useRequireAuth } from '../../../lib/auth';
 
 function formatApiError(error: unknown, fallback: string): string {
   if (isSmartApiError(error) && error.details.length > 0) {
@@ -17,7 +16,6 @@ function formatApiError(error: unknown, fallback: string): string {
 }
 
 export default function InstitutionsPage() {
-  useRequireAuth();
   const [institutions, setInstitutions] = useState<InstitutionDto[]>([]);
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
