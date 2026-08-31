@@ -11,6 +11,7 @@ Payload schemas live in `@smart/contracts` (`events/topics.ts`, `events/payloads
 | `smart.track.updated`                    | Vedika         | **Vishal V** (cache), Vishal Bharath              |
 | `smart.certificate.issued`               | Vishal Bharath | webhooks, analytics                               |
 | `smart.placement.matched`                | Vedika         | webhooks, analytics                               |
+| `smart.application.stage_changed`        | Vishal Bharath | placement, platform, users (My Applications)      |
 | `smart.rate_limit.exceeded`              | **Vishal V**   | observability, integrity review                   |
 
 ## Platform notes

@@ -22,6 +22,16 @@ describe('env', () => {
     expect(env.PORT).toBe(3000);
     expect(env.REDIS_URL).toContain(':6380');
   });
+
+  it('rejects the default JWT secret in production', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        JWT_SECRET: 'local-dev-jwt-secret-change-me-now!!',
+        METRICS_SCRAPE_TOKEN: 'metrics-token-must-be-set-in-prod-ok',
+      }),
+    ).toThrow(/JWT_SECRET/);
+  });
 });
 
 describe('health probes', () => {

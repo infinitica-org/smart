@@ -124,6 +124,47 @@ export const AUTH_PROVIDERS = ['PASSWORD', 'GOOGLE', 'GITHUB', 'SAML', 'OIDC'] a
 export const AuthProviderSchema = z.enum(AUTH_PROVIDERS);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
+export const PLAN_CODES = ['FREE', 'BASIC', 'PRO'] as const;
+export const PlanCodeSchema = z.enum(PLAN_CODES);
+export type PlanCode = z.infer<typeof PlanCodeSchema>;
+
+export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
+export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
+
+export const INSTITUTION_LIST_STATUSES = ['ACTIVE', 'HELD', 'DEACTIVATED'] as const;
+export const InstitutionListStatusSchema = z.enum(INSTITUTION_LIST_STATUSES);
+export type InstitutionListStatus = z.infer<typeof InstitutionListStatusSchema>;
+
+export const STUDENT_INVITE_FILTERS = [
+  'PENDING',
+  'ACCEPTED',
+  'EXPIRED',
+  'REVOKED',
+  'NONE',
+] as const;
+export const StudentInviteFilterSchema = z.enum(STUDENT_INVITE_FILTERS);
+export type StudentInviteFilter = z.infer<typeof StudentInviteFilterSchema>;
+
+export const SESSION_HOLD_CODES = [
+  'institution_held',
+  'institution_deactivated',
+  'account_held',
+] as const;
+export const SessionHoldCodeSchema = z.enum(SESSION_HOLD_CODES);
+export type SessionHoldCode = z.infer<typeof SessionHoldCodeSchema>;
+
+export const SESSION_HOLD_MESSAGE: Readonly<Record<SessionHoldCode, string>> = {
+  institution_held: 'This institution is on hold. You cannot use SMART until it is released.',
+  institution_deactivated:
+    'This institution is deactivated. You cannot use SMART until it is restored.',
+  account_held: 'Your account is on hold. Contact your TPO or platform administrator.',
+};
+
+export function isSessionHoldCode(code: string): code is SessionHoldCode {
+  return (SESSION_HOLD_CODES as readonly string[]).includes(code);
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              Items & responses                             */
 /* -------------------------------------------------------------------------- */
@@ -274,6 +315,48 @@ export type PlacementOutcome = z.infer<typeof PlacementOutcomeSchema>;
 export const JD_PARSE_STATUSES = ['PENDING', 'PARSED', 'FAILED', 'MANUALLY_CORRECTED'] as const;
 export const JdParseStatusSchema = z.enum(JD_PARSE_STATUSES);
 export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
+
+/**
+ * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
+ * Silver / Bronze) still come from cut scores — do not invent a parallel score.
+ */
+export const SKILL_PROFICIENCIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
+export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
+
+/**
+ * Skill-claim state machine. Technical failures must not consume a strike.
+ * `LOCKED` is cooldown after two failed verification attempts.
+ */
+export const SKILL_CLAIM_STATUSES = [
+  'DECLARED',
+  'VERIFIED',
+  'BEGINNER_REATTEMPT',
+  'LOCKED',
+] as const;
+export const SkillClaimStatusSchema = z.enum(SKILL_CLAIM_STATUSES);
+export type SkillClaimStatus = z.infer<typeof SkillClaimStatusSchema>;
+
+export const JOB_OPENING_STATUSES = ['DRAFT', 'OPEN', 'CLOSED'] as const;
+export const JobOpeningStatusSchema = z.enum(JOB_OPENING_STATUSES);
+export type JobOpeningStatus = z.infer<typeof JobOpeningStatusSchema>;
+
+/** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
+export const ATS_STAGES = [
+  'APPLIED',
+  'SHORTLISTED',
+  'INTERVIEW',
+  'OFFER',
+  'REJECTED',
+  'WITHDRAWN',
+] as const;
+export const AtsStageSchema = z.enum(ATS_STAGES);
+export type AtsStage = z.infer<typeof AtsStageSchema>;
+
+/** How a match score was produced. V1 ships RULES; HYBRID is optional cosine. */
+export const MATCH_METHODS = ['RULES', 'HYBRID'] as const;
+export const MatchMethodSchema = z.enum(MATCH_METHODS);
+export type MatchMethod = z.infer<typeof MatchMethodSchema>;
 
 /* -------------------------------------------------------------------------- */
 /*                          Certificates & webhooks                           */

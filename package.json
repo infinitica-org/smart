@@ -55,6 +55,7 @@
     "@types/node": "26.2.0",
     "eslint": "catalog:",
     "husky": "9.1.7",
+    "jsdom": "^30.0.1",
     "lint-staged": "17.3.0",
     "prettier": "3.9.6",
     "rimraf": "6.0.1",
@@ -71,6 +72,15 @@
     ],
     "tools/content-pipeline/data/**/*.json": [
       "pnpm --filter @smart/content-pipeline validate:staged"
+    ],
+    "package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "**/package.json": [
+      "node scripts/check-lockfile.mjs"
+    ],
+    "pnpm-lock.yaml": [
+      "node scripts/check-lockfile.mjs"
     ]
   }
 }

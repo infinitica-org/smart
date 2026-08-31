@@ -1,71 +1,69 @@
-# SMART on VPS — kvm2 (dev/qa) and kvm4 (prod)
+# SMART on VPS — kvm2 (dev) and kvm4 (prod)
 
 Policy: [`docs/delivery/BRANCHING.md`](../../docs/delivery/BRANCHING.md) ·
 database: [`docs/delivery/DATABASE.md`](../../docs/delivery/DATABASE.md) ·
 ADR-0009.
 
-| Host     | Git branch | Compose project | Public TLS (Caddy)                     |
-| -------- | ---------- | --------------- | -------------------------------------- |
-| **kvm2** | `dev`      | `smart-dev`     | No — use published ports (`3000–3004`) |
-| **kvm2** | `qa`       | `smart-qa`      | Yes — `*-qa` hostnames on :80/:443     |
-| **kvm4** | `main`     | `smart-prod`    | Yes — production hostnames             |
+| Host     | Git branch | Compose project | Public TLS (Caddy)          | Domain                   |
+| -------- | ---------- | --------------- | --------------------------- | ------------------------ |
+| **kvm2** | `dev`      | `smart-dev`     | Yes — owns :80/:443 on kvm2 | `dev.becomesmart.online` |
+| **kvm2** | `qa`       | `smart-qa`      | Not currently deployed      | —                        |
+| **kvm4** | `main`     | `smart-prod`    | Yes                         | `becomesmart.online`     |
 
-Only **one** stack per machine may enable profile `vps` (Caddy). On kvm2 that is **qa**.
+Deploys are automatic: a push to `dev` or `main` runs CI, and on green CI the
+`deploy-dev.yml` / `deploy-prod.yml` GitHub Actions workflow rsyncs the repo to
+the matching host over SSH (as the `deploy` user, key-only) and runs
+`scripts/deploy-vps.sh`. Manual runs of that script still work the same way for
+break-glass / first-time setup.
 
-## 1. DNS
+## 1. DNS (A records)
 
-**kvm2 (QA public):** `api-qa` / `app-qa` / `tpo-qa` / `admin-qa` / `verify-qa` → kvm2 IP.
+| Host                                                                                                 | → IP    |
+| ---------------------------------------------------------------------------------------------------- | ------- |
+| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `db.`                             | kvm4 IP |
+| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.db.` | kvm2 IP |
 
-**kvm4 (prod):** `api` / `app` / `tpo` / `admin` / `verify` → kvm4 IP.
+## 2. Server setup (each VPS) — one-time
 
-## 2. Server setup (each VPS)
-
-```bash
-sudo apt-get update
-sudo apt-get install -y git docker.io docker-compose-v2
-sudo usermod -aG docker "$USER"
-git clone https://github.com/infinitica-org/smart.git
-cd smart
-```
-
-On **kvm2**:
-
-```bash
-git checkout qa   # or deploy a specific tag
-cp .env.qa.example .env.qa
-# fill secrets + real hostnames
-bash scripts/deploy-vps.sh qa
-
-# optional second stack for integration:
-git checkout dev
-cp .env.dev.example .env.dev
-bash scripts/deploy-vps.sh dev
-```
-
-On **kvm4** (brittytino only):
+Both hosts run Ubuntu 24.04, hardened the same way: Docker CE, `deploy` (docker
+group, key-only SSH, no sudo needed for deploys), `ufw` (22/80/443 only),
+`fail2ban` on sshd, `PasswordAuthentication no` / `PermitRootLogin
+prohibit-password`. Postgres/Redis/Redpanda/MinIO/Prisma Studio/Grafana/
+Prometheus/Loki are all bound to `127.0.0.1` in `docker-compose.yml` — reach
+them only via an SSH tunnel (`ssh -L 5432:127.0.0.1:5432 deploy@<ip>`), never
+directly from the internet.
 
 ```bash
-git checkout main
-cp .env.prod.example .env.prod
-bash scripts/deploy-vps.sh prod
+git clone https://github.com/infinitica-org/smart.git ~/smart
+cd ~/smart
 ```
 
-Open **80** and **443** on the host that runs Caddy (kvm2 qa, kvm4 prod).
+On **kvm2**: `git checkout dev`, `cp .env.dev.example .env.dev`, fill secrets,
+`bash scripts/deploy-vps.sh dev`.
+
+On **kvm4** (brittytino only): `git checkout main`, `cp .env.prod.example
+.env.prod`, fill secrets, `bash scripts/deploy-vps.sh prod`.
 
 ## 3. Database
 
-Default: Compose Postgres + pgvector (volume per `COMPOSE_PROJECT_NAME`).
+Docker Postgres + pgvector, one volume per host (`smart-dev` / `smart-prod`
+compose projects) — physically separate databases, distinct generated
+passwords, never shared. Optional: point `DATABASE_URL` at a per-environment
+Supabase Postgres URI instead — see `docs/delivery/DATABASE.md`. Postgres is
+**not** published to the internet; browse it via the DB admin UI below or an
+SSH tunnel.
 
-Optional: set `DATABASE_URL` to a **per-environment** Supabase Postgres URI. Enable `vector`. Do not share one Supabase project across env. Prisma remains the client — see `docs/delivery/DATABASE.md`.
+Migrations (`prisma migrate deploy`, already-committed migrations only) run
+automatically at the end of `scripts/deploy-vps.sh` / every CI deploy.
 
-Migrations (VV only):
+## 4. DB admin UI
 
-```bash
-docker compose --env-file .env.qa -f infra/docker/docker-compose.yml --profile apps exec api \
-  npx prisma migrate deploy
-```
+`https://db.becomesmart.online` (prod) / `https://dev.db.becomesmart.online`
+(dev) — Adminer behind Caddy, gated by HTTP Basic Auth (`DB_BASIC_AUTH_USER`
+/ `DB_BASIC_AUTH_HASH` in the env file) **and** the Postgres login itself.
+Raw port 5432 is never exposed publicly.
 
-## 4. Laptop (not a VPS)
+## 5. Laptop (not a VPS)
 
 ```bash
 cp .env.example .env
@@ -73,7 +71,13 @@ pnpm infra:up
 pnpm dev:api
 ```
 
-## 5. Health
+## 6. CI/CD secrets (GitHub repo secrets, set once)
+
+`DEV_SSH_HOST`, `DEV_SSH_USER=deploy`, `DEV_SSH_KEY` (private key) and the
+`PROD_` equivalents. No database/JWT/API secrets ever leave the servers —
+GitHub Actions only holds enough to SSH in and run the deploy script.
+
+## 7. Health
 
 - `GET /health` · `GET /ready` · `GET /api/v1/admin/metrics`
 

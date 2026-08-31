@@ -1,14 +1,32 @@
+import type {
+  CreateInstitutionRequestSchema,
+  ListInstitutionStudentsQuery,
+  ListInstitutionsQuery,
+  TenantActionReason,
+  UpdateInstitutionRequest,
+} from '@smart/contracts';
 import {
   API_PREFIX,
   AssignedFormDtoSchema,
   AttemptSessionDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
+  BatchDtoSchema,
+  BatchMemberDtoSchema,
   CertificateDtoSchema,
+  GlobalStudentHitDtoSchema,
+  InstitutionAdminDtoSchema,
+  InstitutionDtoSchema,
+  InstitutionStudentDtoSchema,
+  InvitationDtoSchema,
+  InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   NextItemDtoSchema,
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
+  SendBatchInvitesResultDtoSchema,
+  SsoStartResponseSchema,
+  SubscriptionPlanDtoSchema,
   TrackDtoSchema,
   HealthStatusSchema,
 } from '@smart/contracts';
@@ -34,23 +52,180 @@ export function authApi(client: SmartApiClient) {
     login: (body: { email: string; password: string }) =>
       client.post(prefixed('/auth/login'), body, { schema: AuthTokenResponseSchema }),
 
+    ssoStart: (body: { provider: string; institutionDomain?: string; redirectUri: string }) =>
+      client.post(prefixed('/auth/sso/start'), body, { schema: SsoStartResponseSchema }),
+
+    ssoCallback: (body: { code: string; state: string }) =>
+      client.post(prefixed('/auth/sso/callback'), body, { schema: AuthTokenResponseSchema }),
+
     /**
      * Refresh sends no body: the refresh token is an HttpOnly cookie, so it is
      * never readable by JavaScript and never at risk from an XSS payload.
      */
     refresh: () =>
-      client.post(prefixed('/auth/refresh'), undefined, { schema: AuthTokenResponseSchema }),
+      client.post(prefixed('/auth/refresh'), undefined, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
 
-    logout: () => client.post<void>(prefixed('/auth/logout')),
+    logout: () => client.post<void>(prefixed('/auth/logout'), undefined, { anonymous: true }),
 
     me: () => client.get(prefixed('/users/me'), { schema: AuthenticatedUserSchema }),
 
-    enrollTrack: (body: { trackCode: string }) =>
+    enrollTrack: (body: { trackCode: string; slot?: 'PRIMARY' | 'SECONDARY' }) =>
       client.request({
         method: 'PUT',
         path: prefixed('/users/me/track'),
         body,
         schema: AuthenticatedUserSchema,
+      }),
+
+    changePassword: (body: { currentPassword: string; newPassword: string }) =>
+      client.post<void>(prefixed('/users/me/password'), body),
+
+    previewInvitation: (token: string) =>
+      client.get(prefixed(`/auth/invitations/${token}`), {
+        schema: InvitationPreviewDtoSchema,
+        anonymous: true,
+      }),
+
+    acceptInvitation: (token: string, body: { password: string }) =>
+      client.post(prefixed(`/auth/invitations/${token}/accept`), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function onboardingApi(client: SmartApiClient) {
+  return {
+    createInstitution: (body: z.infer<typeof CreateInstitutionRequestSchema>) =>
+      client.post(prefixed('/admin/institutions'), body, { schema: InstitutionDtoSchema }),
+
+    listInstitutions: (query?: ListInstitutionsQuery) =>
+      client.get(prefixed('/admin/institutions'), {
+        schema: z.array(InstitutionDtoSchema),
+        query,
+      }),
+
+    getInstitution: (institutionId: string) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}`), {
+        schema: InstitutionDtoSchema,
+      }),
+
+    updateInstitution: (institutionId: string, body: UpdateInstitutionRequest) =>
+      client.patch(prefixed(`/admin/institutions/${institutionId}`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    holdInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/hold`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    releaseHold: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/release-hold`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    deactivateInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/deactivate`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    restoreInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/restore`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    listInstitutionStudents: (institutionId: string, query?: ListInstitutionStudentsQuery) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}/students`), {
+        schema: z.array(InstitutionStudentDtoSchema),
+        query,
+      }),
+
+    searchStudents: (q: string) =>
+      client.get(prefixed('/admin/students/search'), {
+        schema: z.array(GlobalStudentHitDtoSchema),
+        query: { q },
+      }),
+
+    listPlans: () =>
+      client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
+    holdStudent: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/students/${userId}/hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    releaseStudentHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/students/${userId}/release-hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    listTpoStudents: (query?: ListInstitutionStudentsQuery) =>
+      client.get(prefixed('/tpo/students'), {
+        schema: z.array(InstitutionStudentDtoSchema),
+        query,
+      }),
+
+    holdTpoStudent: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/tpo/students/${userId}/hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    releaseTpoStudentHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/tpo/students/${userId}/release-hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    inviteInstitutionAdmin: (institutionId: string, body: { fullName: string; email: string }) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/admins`), body, {
+        schema: InstitutionAdminDtoSchema,
+      }),
+
+    listInstitutionAdmins: (institutionId: string) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}/admins`), {
+        schema: z.array(InstitutionAdminDtoSchema),
+      }),
+
+    resendAdminInvitation: (invitationId: string) =>
+      client.post(prefixed(`/admin/invitations/${invitationId}/resend`), undefined, {
+        schema: InvitationDtoSchema,
+      }),
+
+    createBatch: (body: { name: string; code?: string }) =>
+      client.post(prefixed('/tpo/batches'), body, { schema: BatchDtoSchema }),
+
+    listBatches: () => client.get(prefixed('/tpo/batches'), { schema: z.array(BatchDtoSchema) }),
+
+    getBatch: (batchId: string) =>
+      client.get(prefixed(`/tpo/batches/${batchId}`), { schema: BatchDtoSchema }),
+
+    updateBatch: (batchId: string, body: { name?: string; code?: string | null }) =>
+      client.patch(prefixed(`/tpo/batches/${batchId}`), body, { schema: BatchDtoSchema }),
+
+    addBatchMember: (
+      batchId: string,
+      body: { fullName: string; email: string; groupLabel?: string },
+    ) =>
+      client.post(prefixed(`/tpo/batches/${batchId}/members`), body, {
+        schema: BatchMemberDtoSchema,
+      }),
+
+    listBatchMembers: (batchId: string) =>
+      client.get(prefixed(`/tpo/batches/${batchId}/members`), {
+        schema: z.array(BatchMemberDtoSchema),
+      }),
+
+    sendBatchInvites: (batchId: string) =>
+      client.post(prefixed(`/tpo/batches/${batchId}/invites/send`), undefined, {
+        schema: SendBatchInvitesResultDtoSchema,
+      }),
+
+    resendStudentInvitation: (invitationId: string) =>
+      client.post(prefixed(`/tpo/invitations/${invitationId}/resend`), undefined, {
+        schema: InvitationDtoSchema,
       }),
   };
 }
@@ -187,6 +362,7 @@ export function createSmartApi(client: SmartApiClient) {
     assessment: assessmentApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),
+    onboarding: onboardingApi(client),
     system: systemApi(client),
   };
 }

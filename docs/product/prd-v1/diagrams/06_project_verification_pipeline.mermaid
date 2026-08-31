@@ -1,0 +1,18 @@
+flowchart TD
+    A["Candidate submits project:<br/>Loom video + template description + optional GitHub link"] --> B["Async AI Verification Agent"]
+    B --> C["Plagiarism check"]
+    B --> D["Tech-stack recency check"]
+    B --> E["Domain relevance scoring"]
+    B --> F["GitHub code-quality read (if linked)"]
+    C --> G["Verification Report generated"]
+    D --> G
+    E --> G
+    F --> G
+    G --> H{"Risk level?"}
+    H -- Clean --> I["Auto-attached as Verified Project"]
+    H -- Borderline/High-risk --> J["Routed to human review queue"]
+    J --> K{"Reviewer decision"}
+    K -- Approve --> I
+    K -- Reject --> L["Candidate notified with reason"]
+    L --> M["Candidate may appeal"]
+    M --> J

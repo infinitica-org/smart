@@ -34,11 +34,27 @@ const EnvSchema = z.object({
     .positive()
     .default(60 * 60 * 24 * 14),
 
+  /** Prometheus scrape token. Required in production for /api/v1/admin/metrics. */
+  METRICS_SCRAPE_TOKEN: z.string().optional(),
+
   CORS_ORIGINS: z
     .string()
     .default(
-      'http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004',
+      'http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005',
     ),
+
+  SMTP_HOST: z.string().default('127.0.0.1'),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('SMART Platform <noreply@smart.local>'),
+
+  AUTH_APP_URL: z.string().default('http://localhost:3005'),
+  STUDENT_APP_URL: z.string().default('http://localhost:3001'),
+  TPO_APP_URL: z.string().default('http://localhost:3002'),
+  ADMIN_APP_URL: z.string().default('http://localhost:3003'),
+
+  INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
   S3_REGION: z.string().default('us-east-1'),
@@ -50,6 +66,8 @@ const EnvSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
+
+  ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_PRETTY: z
@@ -68,7 +86,18 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       .join('; ');
     throw new Error(`Invalid environment: ${issues}`);
   }
-  return parsed.data;
+
+  const data = parsed.data;
+  const defaultJwt = 'local-dev-jwt-secret-change-me-now!!';
+  if (data.NODE_ENV === 'production' && data.JWT_SECRET === defaultJwt) {
+    throw new Error(
+      'Invalid environment: JWT_SECRET must be set to a non-default value in production',
+    );
+  }
+  if (data.NODE_ENV === 'production' && !data.METRICS_SCRAPE_TOKEN) {
+    throw new Error('Invalid environment: METRICS_SCRAPE_TOKEN is required in production');
+  }
+  return data;
 }
 
 export const env = loadEnv();

@@ -46,7 +46,7 @@ AUG 2026                                          SEP 2026
 | **Sprint 0** | Fri 21 Aug – Sun 23 Aug |  3   | Every one of the 6 engineers can run the full stack locally, and `@smart/contracts` v0.1 is merged and frozen.                                                        |
 | **Sprint 1** | Mon 24 Aug – Fri 28 Aug |  5   | A student can log in via SSO, be enrolled on a track, and see a real item bank served through a rate-limited API; the AI gateway answers with Gemini failover proven. |
 | **Sprint 2** | Sat 29 Aug – Wed 2 Sep  |  5   | A student can complete L1→L5 end to end and receive a calibrated tier for each level, graded by BARS with κ tracked.                                                  |
-| **Sprint 3** | Thu 3 Sep – Sun 6 Sep   |  4   | A TPO can upload a JD, get a vector-matched shortlist, and see cohort readiness; a completed track issues a certificate.                                              |
+| **Sprint 3** | Thu 3 Sep – Sun 6 Sep   |  4   | A TPO can post a structured JD, get a **rules-ranked** shortlist, and see cohort readiness; a completed track issues a certificate.                                   |
 | **Sprint 4** | Mon 7 Sep – Tue 8 Sep   |  2   | An employer can verify a certificate publicly in < 80 ms behind the edge gateway; all services integrated as one release candidate.                                   |
 | **Sprint 5** | Wed 9 Sep – Thu 10 Sep  |  2   | The release candidate survives 50 k concurrent load, an OWASP pass, and pilot UAT — then it ships.                                                                    |
 
@@ -222,8 +222,10 @@ regression suite runs in CI.
 
 ## 10. Sprint 3 — Placement Overlay, Certificates & Dashboards (3–6 Sep · 4 days)
 
-**Goal:** a TPO uploads a JD, gets a matched shortlist, and sees cohort readiness; a completed
+**Goal:** a TPO posts a structured JD, gets a **rules-ranked** shortlist, and sees cohort readiness; a completed
 track issues a certificate.
+
+**Handover (pull `main`):** [`SPRINT03_HANDOVER.md`](./SPRINT03_HANDOVER.md). Product freeze: [`docs/product/prd-v1/`](../product/prd-v1/README.md). Architect map: [`PRD_V1_ARCHITECT_REVIEW.md`](./PRD_V1_ARCHITECT_REVIEW.md). VEGA/L4: [`SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md`](./SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md). Contracts v0.2.0 already include openings / applications / skill claims. If capacity slips, cut cosine before the rules ranker (ADR 0012).
 
 | ID       | Ticket                                                                                              | Owner            | Pts | Pri |
 | -------- | --------------------------------------------------------------------------------------------------- | ---------------- | :-: | :-: |

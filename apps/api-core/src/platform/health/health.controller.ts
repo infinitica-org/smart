@@ -1,4 +1,12 @@
-import { Controller, Get, Header, Inject, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Headers,
+  Inject,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX, type HealthStatus } from '@smart/contracts';
 import { collectMetrics, METRICS_CONTENT_TYPE } from '@smart/observability';
@@ -74,7 +82,17 @@ export class HealthController {
   @Public()
   @Get(`${API_PREFIX}/admin/metrics`)
   @Header('content-type', METRICS_CONTENT_TYPE)
-  metrics(): Promise<string> {
+  async metrics(@Headers('x-metrics-token') scrapeToken?: string): Promise<string> {
+    const expected = env.METRICS_SCRAPE_TOKEN;
+    if (env.NODE_ENV === 'production' || expected) {
+      if (!expected || scrapeToken !== expected) {
+        throw new UnauthorizedException({
+          error: 'unauthorized',
+          message: 'Metrics scrape token is missing or invalid.',
+          statusCode: 401,
+        });
+      }
+    }
     return collectMetrics();
   }
 }

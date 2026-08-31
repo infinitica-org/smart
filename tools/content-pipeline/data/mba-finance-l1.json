@@ -1,0 +1,785 @@
+[
+  {
+    "itemId": "cfa37df0-8863-4d59-89a5-960d71e20f23",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which financial statement shows a company's assets, liabilities, and shareholders' equity at a specific point in time?",
+    "options": [
+      { "optionId": "a", "label": "Income Statement" },
+      { "optionId": "b", "label": "Balance Sheet" },
+      { "optionId": "c", "label": "Cash Flow Statement" },
+      { "optionId": "d", "label": "Statement of Retained Earnings" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "44aa59c1-8ae1-4cbb-909a-8cf3cddbd9f9",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Gross profit is calculated as:",
+    "options": [
+      { "optionId": "a", "label": "Revenue minus operating expenses" },
+      { "optionId": "b", "label": "Revenue minus cost of goods sold" },
+      { "optionId": "c", "label": "Net income minus taxes" },
+      { "optionId": "d", "label": "EBITDA minus depreciation" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "a57e22bd-73d2-493c-bc94-24d22fd7d757",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which ratio measures a company's ability to pay short-term obligations using only its most liquid assets (excluding inventory)?",
+    "options": [
+      { "optionId": "a", "label": "Current ratio" },
+      { "optionId": "b", "label": "Debt-to-equity ratio" },
+      { "optionId": "c", "label": "Quick ratio" },
+      { "optionId": "d", "label": "Return on assets" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "a4ca5675-65b4-4e70-8fb7-3470975bf1ab",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A company reports total assets of ₹500 Cr and total liabilities of ₹200 Cr. What is shareholders' equity?",
+    "options": [
+      { "optionId": "a", "label": "₹700 Cr" },
+      { "optionId": "b", "label": "₹200 Cr" },
+      { "optionId": "c", "label": "₹300 Cr" },
+      { "optionId": "d", "label": "₹500 Cr" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "e676ea33-c7b2-4e1e-80ef-fdae40349038",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Which of the following is classified as a non-current asset on the balance sheet?",
+    "options": [
+      { "optionId": "a", "label": "Accounts receivable" },
+      { "optionId": "b", "label": "Cash and cash equivalents" },
+      { "optionId": "c", "label": "Property, plant and equipment" },
+      { "optionId": "d", "label": "Inventory" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "93d0f953-683f-436e-a863-ccc69defcc21",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "EBITDA stands for:",
+    "options": [
+      {
+        "optionId": "a",
+        "label": "Earnings Before Interest, Taxes, Depreciation and Amortisation"
+      },
+      { "optionId": "b", "label": "Earnings Before Income Tax, Dividends and Adjustments" },
+      { "optionId": "c", "label": "Equity-Based Income Tax Discount Amount" },
+      { "optionId": "d", "label": "Earnings Before Inventory, Trade Debt and Assets" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "896c085b-02fb-4cd8-8bd7-4c736478c5c1",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A company's operating profit margin is 15% and its net profit margin is 8%. Which of the following best explains the gap?",
+    "options": [
+      { "optionId": "a", "label": "High cost of goods sold" },
+      { "optionId": "b", "label": "Significant interest expense and tax burden" },
+      { "optionId": "c", "label": "High accounts receivable turnover" },
+      { "optionId": "d", "label": "Large non-cash depreciation charges only" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "c652b42a-7a26-4d93-8d2d-1f5485d76a95",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Depreciation is charged on which type of assets?",
+    "options": [
+      { "optionId": "a", "label": "Current assets" },
+      { "optionId": "b", "label": "Intangible assets only" },
+      { "optionId": "c", "label": "Tangible fixed assets" },
+      { "optionId": "d", "label": "Financial investments" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7690265d-c4c4-44d8-808c-08bd4544283c",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "A",
+    "levelNumber": 1,
+    "competencyId": "22c3d475-4bba-48dc-9e8a-757bd3e62a02",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "If inventory days increase significantly year-over-year, this most likely indicates:",
+    "options": [
+      { "optionId": "a", "label": "Faster inventory turnover" },
+      { "optionId": "b", "label": "Potential build-up of unsold goods or slowing demand" },
+      { "optionId": "c", "label": "Improved supplier payment terms" },
+      { "optionId": "d", "label": "Reduced cost of goods sold" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "ae03015f-7221-4f29-b589-0d2580122629",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The Net Present Value (NPV) rule states that a project should be accepted when:",
+    "options": [
+      { "optionId": "a", "label": "NPV is exactly zero" },
+      { "optionId": "b", "label": "NPV is negative" },
+      { "optionId": "c", "label": "NPV is positive" },
+      { "optionId": "d", "label": "IRR is less than the discount rate" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "c58d6e1b-d0d2-4fb2-9a85-43a36fd01d14",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The Weighted Average Cost of Capital (WACC) represents:",
+    "options": [
+      { "optionId": "a", "label": "The average interest rate on all bank loans" },
+      { "optionId": "b", "label": "The blended required return on a firm's debt and equity" },
+      { "optionId": "c", "label": "The cost of issuing new shares only" },
+      { "optionId": "d", "label": "The tax shield on debt payments" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "fef95dd4-1034-4442-b779-6c7e467b290c",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Which valuation method estimates value based on a company's ability to generate free cash flows in the future?",
+    "options": [
+      { "optionId": "a", "label": "Comparable company analysis" },
+      { "optionId": "b", "label": "Precedent transaction analysis" },
+      { "optionId": "c", "label": "Discounted Cash Flow (DCF) analysis" },
+      { "optionId": "d", "label": "Book value method" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "3f25fec1-ae3c-48cd-b02e-08280cf7973c",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A project costs ₹10 Cr today and generates ₹12 Cr in exactly one year. At a discount rate of 10%, the NPV is approximately:",
+    "options": [
+      { "optionId": "a", "label": "₹2 Cr" },
+      { "optionId": "b", "label": "₹0.91 Cr" },
+      { "optionId": "c", "label": "₹1.09 Cr" },
+      { "optionId": "d", "label": "−₹0.91 Cr" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "2d8918fa-0236-4b1a-aa0c-00b65a2aea60",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "In capital budgeting, the payback period method's main weakness is:",
+    "options": [
+      { "optionId": "a", "label": "It is too complex to calculate" },
+      { "optionId": "b", "label": "It ignores cash flows beyond the payback period" },
+      { "optionId": "c", "label": "It requires a discount rate" },
+      { "optionId": "d", "label": "It overestimates long-term risk" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "e999bfe6-ab7e-407c-a413-4c1af2d11f8b",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The terminal value in a DCF model captures:",
+    "options": [
+      { "optionId": "a", "label": "The cost to liquidate the company" },
+      {
+        "optionId": "b",
+        "label": "The value of all cash flows beyond the explicit forecast period"
+      },
+      { "optionId": "c", "label": "The book value of fixed assets at year end" },
+      { "optionId": "d", "label": "The tax savings from depreciation" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7887ce5f-c37f-4266-89c7-d34588f401ba",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "Two mutually exclusive projects have the same NPV but different IRRs. Which should be preferred?",
+    "options": [
+      { "optionId": "a", "label": "The one with the higher IRR" },
+      { "optionId": "b", "label": "The one with the lower initial investment" },
+      {
+        "optionId": "c",
+        "label": "The NPV criterion should be used since both NPVs are equal, examine scale and timing"
+      },
+      {
+        "optionId": "d",
+        "label": "They are equivalent; either may be chosen without further analysis"
+      }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "72d68484-b8e1-496a-8b5a-597e71b1cd09",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "An EV/EBITDA multiple of 12x means:",
+    "options": [
+      { "optionId": "a", "label": "The company earns ₹12 for every ₹1 of enterprise value" },
+      {
+        "optionId": "b",
+        "label": "Investors are paying ₹12 of enterprise value for each ₹1 of EBITDA"
+      },
+      { "optionId": "c", "label": "The company has 12 years of debt outstanding" },
+      { "optionId": "d", "label": "Annual revenue is 12 times EBITDA" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "251969dd-95dc-4515-a2e1-eee2ec010444",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "The risk-free rate used in WACC is typically proxied by:",
+    "options": [
+      { "optionId": "a", "label": "Corporate bond yields" },
+      { "optionId": "b", "label": "10-year government treasury bond yield" },
+      { "optionId": "c", "label": "The central bank's repo rate" },
+      { "optionId": "d", "label": "The prime lending rate of banks" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "b1882888-da56-47e6-9260-fd10a397b0b9",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "B",
+    "levelNumber": 1,
+    "competencyId": "1dfa9cf7-f605-4cb8-9b29-f1c83434a1d0",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A company has a beta of 1.4, the equity risk premium is 6%, and the risk-free rate is 7%. Using CAPM, what is the cost of equity?",
+    "options": [
+      { "optionId": "a", "label": "15.4%" },
+      { "optionId": "b", "label": "8.4%" },
+      { "optionId": "c", "label": "13.0%" },
+      { "optionId": "d", "label": "9.8%" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "132cccf2-09d0-4919-92a9-a0705675250f",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "In a three-statement financial model, which statement is built first?",
+    "options": [
+      { "optionId": "a", "label": "Cash flow statement" },
+      { "optionId": "b", "label": "Balance sheet" },
+      { "optionId": "c", "label": "Income statement" },
+      { "optionId": "d", "label": "Statement of retained earnings" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "f35c085c-a432-47a4-8d6e-92d3a8acb78d",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "In a sensitivity analysis of a DCF model, which two inputs typically have the most impact on valuation?",
+    "options": [
+      { "optionId": "a", "label": "Revenue growth rate and WACC" },
+      { "optionId": "b", "label": "Depreciation rate and working capital days" },
+      { "optionId": "c", "label": "Tax rate and capital expenditure only" },
+      { "optionId": "d", "label": "Dividend payout and share count" }
+    ],
+    "correctOptionIds": ["a"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "90e913a7-1ee5-4a94-bb94-9269d73737e5",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which Excel function is most commonly used to calculate the present value of a series of equal cash flows?",
+    "options": [
+      { "optionId": "a", "label": "NPV()" },
+      { "optionId": "b", "label": "PV()" },
+      { "optionId": "c", "label": "IRR()" },
+      { "optionId": "d", "label": "XNPV()" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "fe019b49-74e2-49d4-afc5-725b7c9a9835",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "The indirect method of preparing the cash flow statement starts with:",
+    "options": [
+      { "optionId": "a", "label": "Total revenue" },
+      { "optionId": "b", "label": "Net income and adjusts for non-cash items" },
+      { "optionId": "c", "label": "Cash collections from customers" },
+      { "optionId": "d", "label": "EBITDA" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "c6c4400f-1282-4757-8823-e5d1f13931b7",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "In scenario analysis, a 'base case' model typically represents:",
+    "options": [
+      { "optionId": "a", "label": "The most pessimistic outcome" },
+      { "optionId": "b", "label": "The management's most likely expected outcome" },
+      { "optionId": "c", "label": "A regulatory stress scenario" },
+      { "optionId": "d", "label": "A zero-growth assumption" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "d494621e-ca4f-46dc-b4a2-bc57d69706c1",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "When building a leveraged buyout (LBO) model, the primary return metric used to evaluate the deal is:",
+    "options": [
+      { "optionId": "a", "label": "Net profit margin" },
+      { "optionId": "b", "label": "Internal Rate of Return (IRR) to equity investors" },
+      { "optionId": "c", "label": "Debt service coverage ratio" },
+      { "optionId": "d", "label": "P/E multiple of exit year" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7f04470d-d8b9-4b46-a7b2-eb8cf87b9735",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "A circular reference in a financial model most commonly arises from:",
+    "options": [
+      { "optionId": "a", "label": "Linking revenue to COGS" },
+      {
+        "optionId": "b",
+        "label": "Interest expense that depends on debt, which depends on cash, which depends on interest"
+      },
+      { "optionId": "c", "label": "Using VLOOKUP across sheets" },
+      { "optionId": "d", "label": "Negative EBITDA values" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "1382eecf-e2e6-4c33-bae7-d2b60c7ef0ad",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Free Cash Flow to Firm (FCFF) is calculated as:",
+    "options": [
+      { "optionId": "a", "label": "Net income + depreciation − capex − change in working capital" },
+      {
+        "optionId": "b",
+        "label": "EBIT × (1 − tax rate) + depreciation − capex − change in working capital"
+      },
+      { "optionId": "c", "label": "EBITDA − interest − taxes" },
+      { "optionId": "d", "label": "Operating cash flow − dividends paid" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7ba9df2c-7382-4c75-984a-4582012e700b",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "C",
+    "levelNumber": 1,
+    "competencyId": "c256e07c-b77d-4e2c-880f-b1d52f8fffd9",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "Which of the following will NOT appear in a well-structured three-statement model as an input assumption?",
+    "options": [
+      { "optionId": "a", "label": "Revenue growth rate" },
+      { "optionId": "b", "label": "Days sales outstanding" },
+      { "optionId": "c", "label": "Net income (bottom line)" },
+      { "optionId": "d", "label": "Effective tax rate" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "6dd45875-c675-4201-996c-e42bf589fb59",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which of the following best describes working capital?",
+    "options": [
+      { "optionId": "a", "label": "Long-term assets minus long-term liabilities" },
+      { "optionId": "b", "label": "Current assets minus current liabilities" },
+      { "optionId": "c", "label": "Total equity minus total debt" },
+      { "optionId": "d", "label": "Operating cash flow minus capital expenditure" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "ee5dc8a9-dcbd-4aa2-bf68-2a4f701f5cf9",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A high Debt-to-Equity ratio primarily signals:",
+    "options": [
+      { "optionId": "a", "label": "High profitability" },
+      {
+        "optionId": "b",
+        "label": "Higher financial leverage and potentially higher financial risk"
+      },
+      { "optionId": "c", "label": "Strong cash generation" },
+      { "optionId": "d", "label": "Low operational risk" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "50489808-599a-47d8-89f0-549469de1fa0",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Interest Coverage Ratio = EBIT / Interest Expense. A ratio of 1.5 indicates:",
+    "options": [
+      { "optionId": "a", "label": "The company comfortably covers its interest" },
+      {
+        "optionId": "b",
+        "label": "The company barely covers its interest, indicating financial stress"
+      },
+      { "optionId": "c", "label": "The company has no debt" },
+      { "optionId": "d", "label": "The company's EBIT is negative" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "555703b2-1e90-4210-a399-08ca3bc45d49",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A company's Cash Conversion Cycle (CCC) = 45 days. The best interpretation is:",
+    "options": [
+      {
+        "optionId": "a",
+        "label": "The company takes 45 days to convert raw materials into finished goods"
+      },
+      {
+        "optionId": "b",
+        "label": "The company needs 45 days to convert inventory into cash after receiving it"
+      },
+      {
+        "optionId": "c",
+        "label": "The company collects cash 45 days before it pays suppliers, net of inventory holding"
+      },
+      { "optionId": "d", "label": "The company pays suppliers in 45 days" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "5aa24856-021c-42a3-817f-99cfbc9b3206",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Systematic risk is best described as:",
+    "options": [
+      {
+        "optionId": "a",
+        "label": "Risk specific to a single company that can be diversified away"
+      },
+      { "optionId": "b", "label": "Market-wide risk that cannot be diversified away" },
+      { "optionId": "c", "label": "Operational risk from supply chain disruptions" },
+      { "optionId": "d", "label": "Credit risk of a single bond issuer" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "596180e6-f598-4f5c-8d8e-15491315cd10",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "D",
+    "levelNumber": 1,
+    "competencyId": "ebd74ff1-60cb-4aa4-b733-8afa75078fe8",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "Accounts Payable Days increasing is generally seen as:",
+    "options": [
+      { "optionId": "a", "label": "Negative — the company is paying suppliers faster" },
+      {
+        "optionId": "b",
+        "label": "Positive — the company is preserving cash by extending supplier credit"
+      },
+      { "optionId": "c", "label": "Neutral — payable days don't affect cash flow" },
+      { "optionId": "d", "label": "Negative — it signals a cash surplus" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "6324fccc-141f-4f44-8df3-f626e05a7a5e",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "When presenting a financial analysis to a non-finance audience, which is most important?",
+    "options": [
+      { "optionId": "a", "label": "Including all formulas and calculations in the slide" },
+      {
+        "optionId": "b",
+        "label": "Translating numbers into business implications and recommendations"
+      },
+      { "optionId": "c", "label": "Showing granular raw data tables" },
+      { "optionId": "d", "label": "Avoiding charts and graphs" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "7d753ef5-0915-4996-8044-4a08f627b8e5",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "A CFO asks: 'Should we raise debt or equity to fund expansion?' The MOST financially sound starting point for your answer is:",
+    "options": [
+      { "optionId": "a", "label": "Always recommend equity to avoid interest payments" },
+      {
+        "optionId": "b",
+        "label": "Compare the after-tax cost of debt with the cost of equity using WACC"
+      },
+      { "optionId": "c", "label": "Check the current share price" },
+      { "optionId": "d", "label": "Issue bonds because they are cheaper than equity" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "9db01026-1cd2-4d57-ba2e-233f2b818409",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "An analyst's DCF model shows NPV of ₹50 Cr but management expects ₹100 Cr value. The best analytical response is:",
+    "options": [
+      { "optionId": "a", "label": "Adjust assumptions to match management's expectation" },
+      {
+        "optionId": "b",
+        "label": "Present both, identify assumption differences, and let data drive the discussion"
+      },
+      {
+        "optionId": "c",
+        "label": "Reject the management's view and present only the model output"
+      },
+      { "optionId": "d", "label": "Average the two values and report ₹75 Cr" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "5e7ec823-16c5-4def-a53e-d910dfbbd619",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "EASY",
+    "promptText": "Which chart type is most appropriate for showing a company's revenue composition across five product lines?",
+    "options": [
+      { "optionId": "a", "label": "Line chart" },
+      { "optionId": "b", "label": "Scatter plot" },
+      { "optionId": "c", "label": "Stacked bar or pie chart" },
+      { "optionId": "d", "label": "Histogram" }
+    ],
+    "correctOptionIds": ["c"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "5b7cac49-8852-4939-ab31-36000dff3887",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "HARD",
+    "promptText": "A board presentation on an acquisition must explain why the deal destroys value despite a positive NPV. The most likely cause is:",
+    "options": [
+      {
+        "optionId": "a",
+        "label": "The discount rate used is too low, underestimating synergy risk"
+      },
+      {
+        "optionId": "b",
+        "label": "Overpayment — the acquisition premium exceeds the value of synergies"
+      },
+      { "optionId": "c", "label": "The target's revenue is growing too fast" },
+      { "optionId": "d", "label": "NPV is always positive so the premise is false" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  },
+  {
+    "itemId": "4d947429-678d-4416-9576-7e5efe105ae6",
+    "trackCode": "MBA_FINANCE",
+    "domainCode": "E",
+    "levelNumber": 1,
+    "competencyId": "ef351f33-7372-4d3e-b614-74ce8edf101b",
+    "itemType": "MCQ_SINGLE",
+    "difficulty": "MEDIUM",
+    "promptText": "The 'so what?' principle in financial storytelling means:",
+    "options": [
+      { "optionId": "a", "label": "Always lead with the raw data before the conclusion" },
+      {
+        "optionId": "b",
+        "label": "Every data point must connect to a decision or business implication"
+      },
+      { "optionId": "c", "label": "Include every possible metric to be comprehensive" },
+      { "optionId": "d", "label": "Use jargon to demonstrate technical expertise" }
+    ],
+    "correctOptionIds": ["b"],
+    "itemWeight": 0.025
+  }
+]

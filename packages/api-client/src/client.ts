@@ -1,6 +1,11 @@
 import type { z } from 'zod';
-import { ApiErrorSchema } from '@smart/contracts';
-import { SmartApiError, SmartContractViolationError, SmartNetworkError } from './errors.js';
+import { ApiErrorSchema, isSessionHoldCode } from '@smart/contracts';
+import {
+  SmartApiError,
+  SmartContractViolationError,
+  SmartNetworkError,
+  isSmartApiError,
+} from './errors.js';
 
 /**
  * The SMART HTTP client.
@@ -26,6 +31,8 @@ export interface SmartClientOptions {
    */
   readonly refreshAccessToken?: () => Promise<string | null>;
   readonly onUnauthorized?: () => void;
+  /** Fired when a 403 session-hold response arrives so portals can show a wall. */
+  readonly onSessionHold?: (hold: { code: string; message: string }) => void;
   readonly getCorrelationId?: () => string | undefined;
   readonly defaultTimeoutMs?: number;
   /** Injectable for tests and for server components. */
@@ -155,7 +162,18 @@ export class SmartApiClient {
     }
 
     if (!response.ok) {
-      throw await toApiError(response);
+      const error = await toApiError(response);
+      if (isSmartApiError(error) && isSessionHoldCode(error.code)) {
+        this.options.onSessionHold?.({ code: error.code, message: error.message });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('smart:session-hold', {
+              detail: { code: error.code, message: error.message },
+            }),
+          );
+        }
+      }
+      throw error;
     }
 
     if (response.status === 204) return undefined as T;

@@ -14,6 +14,7 @@ onlyBuiltDependencies:
   - esbuild
   - prisma
   - sharp
+  - msgpackr-extract
 
 # Single source of truth for versions shared across every workspace. Individual
 # package.json files reference these with "catalog:" instead of a literal range,
@@ -47,6 +48,7 @@ catalog:
   prisma: 7.9.1
   "@prisma/client": 7.9.1
   "@prisma/adapter-pg": 7.9.1
+  "@prisma/client-runtime-utils": 7.9.1
   pg: 8.16.3
   "@types/pg": 8.23.1
   dotenv: 17.2.1
@@ -56,6 +58,10 @@ catalog:
   ioredis: 6.0.0
   bullmq: 6.2.0
   kafkajs: 2.2.4
+  nodemailer: 7.0.6
+  "@types/nodemailer": 7.0.1
+  "@fastify/multipart": 9.4.0
+  exceljs: 4.4.0
   pino: 10.3.1
   "pino-http": 11.0.0
   "pino-pretty": 13.1.3
@@ -103,3 +109,4 @@ allowBuilds:
   "@tailwindcss/oxide": true
   "@google/genai": false
   protobufjs: false
+  msgpackr-extract: true

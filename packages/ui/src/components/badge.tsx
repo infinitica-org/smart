@@ -20,8 +20,8 @@ const TIER_CLASS: Record<Tier, string> = {
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 const BADGE_VARIANTS: Record<BadgeVariant, string> = {
-  default: 'border-transparent bg-brand-600 text-white hover:bg-brand-700',
-  secondary: 'border-transparent bg-brand-50 text-brand-800 hover:bg-brand-100',
+  default: 'border-transparent bg-brand-500 text-ink hover:bg-brand-400',
+  secondary: 'border-transparent bg-brand-700 text-paper hover:bg-brand-800',
   destructive: 'border-transparent bg-danger text-white hover:opacity-90',
   outline: 'text-[var(--text-primary)] border-[var(--surface-border)] bg-transparent',
 };

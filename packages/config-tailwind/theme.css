@@ -1,15 +1,44 @@
 /**
  * SMART design tokens — Tailwind CSS 4 (CSS-first configuration).
  *
- * Every SMART surface imports this file. The tier colours in particular are
- * product identity, not styling preference: Gold / Silver / Bronze must render
- * identically on the student portal, the TPO dashboard, the admin console and
- * the public verification page, because an employer compares them side by side.
+ * Marketing schema (dark is the product default):
+ *   Headings  — Cabinet Grotesk (tight tracking, heavy weight)
+ *   Body      — Axiforma Light / Regular
+ *   Canvas    — #070707
+ *   Ink       — #f4f4f4
+ *   Accent    — #00fad0
+ *   Deep teal — #004c63
+ *
+ * Every SMART surface imports this file via `@smart/ui/styles.css`.
+ * Certification tier colours stay product identity (Gold / Silver / Bronze)
+ * and must render identically across portals.
  *
  * Owner: Satheswaran V (design system). Token additions need architect review.
  */
 
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap');
 @import 'tailwindcss';
+
+/*
+ * Axiforma is licensed. Add Axiforma-Light.woff2 / Axiforma-Regular.woff2 under
+ * packages/config-tailwind/fonts/ and point @font-face src at those files.
+ * Until then, local() installs are used; Cabinet Grotesk is the webfont fallback.
+ */
+@font-face {
+  font-family: 'Axiforma';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: local('Axiforma Light'), local('Axiforma-Light');
+}
+
+@font-face {
+  font-family: 'Axiforma';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Axiforma'), local('Axiforma Regular'), local('Axiforma-Regular');
+}
 
 /* Monorepo sources — relative to this file (packages/config-tailwind). */
 @source '../ui/src/**/*.{ts,tsx}';
@@ -17,19 +46,29 @@
 @source '../../apps/web-tpo/src/**/*.{ts,tsx}';
 @source '../../apps/web-admin/src/**/*.{ts,tsx}';
 @source '../../apps/web-verify/src/**/*.{ts,tsx}';
+@source '../../apps/web-auth/src/**/*.{ts,tsx}';
+
+/* Class-based dark mode so the product stays dark regardless of OS theme. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* ---------------------------------------------------------------- brand */
-  --color-brand-50: oklch(0.97 0.02 250);
-  --color-brand-100: oklch(0.94 0.04 250);
-  --color-brand-200: oklch(0.88 0.07 250);
-  --color-brand-300: oklch(0.8 0.11 250);
-  --color-brand-400: oklch(0.71 0.15 250);
-  --color-brand-500: oklch(0.62 0.18 250);
-  --color-brand-600: oklch(0.53 0.19 250);
-  --color-brand-700: oklch(0.45 0.17 250);
-  --color-brand-800: oklch(0.37 0.14 250);
-  --color-brand-900: oklch(0.29 0.1 250);
+  --color-ink: #070707;
+  --color-paper: #f4f4f4;
+  --color-accent: #00fad0;
+  --color-accent-deep: #004c63;
+
+  --color-brand-50: #e6fff9;
+  --color-brand-100: #b8fff0;
+  --color-brand-200: #7affe4;
+  --color-brand-300: #3dfad8;
+  --color-brand-400: #14fad2;
+  --color-brand-500: #00fad0;
+  --color-brand-600: #00c4b0;
+  --color-brand-700: #004c63;
+  --color-brand-800: #003848;
+  --color-brand-900: #002430;
+  --color-brand-950: #00141c;
 
   /* --------------------------------------------------- certification tiers */
   --color-tier-gold: oklch(0.79 0.15 85);
@@ -48,47 +87,92 @@
   --color-info: oklch(0.68 0.14 235);
 
   /* ------------------------------------------------------ assessment state */
-  /* Used by the L1–L5 level stepper: locked / active / cleared. */
-  --color-level-locked: oklch(0.55 0.01 250);
-  --color-level-active: oklch(0.62 0.18 250);
+  --color-level-locked: #3a3a3a;
+  --color-level-active: #00fad0;
   --color-level-cleared: oklch(0.68 0.16 150);
 
   /* ------------------------------------------------------------ typography */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Axiforma', 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
   /* ----------------------------------------------------------------- misc */
   --radius-card: 0.75rem;
   --radius-badge: 9999px;
-  --shadow-card: 0 1px 3px oklch(0 0 0 / 0.1), 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow-card: 0 1px 3px rgb(7 7 7 / 0.45), 0 0 0 1px rgb(244 244 244 / 0.04);
+  --background-image-brand-gradient: linear-gradient(
+    135deg,
+    #00fad0 0%,
+    #004c63 52%,
+    #070707 100%
+  );
 }
 
 @layer base {
-  :root {
-    --surface: oklch(0.18 0.01 250);
-    --surface-muted: oklch(0.23 0.012 250);
-    --surface-border: oklch(0.31 0.012 250);
-    --text-primary: oklch(0.97 0.003 250);
-    --text-muted: oklch(0.7 0.01 250);
+  :root,
+  .dark {
+    --surface: #070707;
+    --surface-muted: #101010;
+    --surface-border: rgb(244 244 244 / 0.14);
+    --text-primary: #f4f4f4;
+    --text-muted: rgb(244 244 244 / 0.62);
+    --accent: #00fad0;
+    --accent-deep: #004c63;
+    color-scheme: dark;
   }
 
   .light {
-    --surface: oklch(1 0 0);
-    --surface-muted: oklch(0.98 0.003 250);
-    --surface-border: oklch(0.92 0.005 250);
-    --text-primary: oklch(0.22 0.01 250);
-    --text-muted: oklch(0.52 0.01 250);
+    --surface: #f4f4f4;
+    --surface-muted: #ececec;
+    --surface-border: rgb(7 7 7 / 0.12);
+    --text-primary: #070707;
+    --text-muted: rgb(7 7 7 / 0.58);
+    --accent: #00fad0;
+    --accent-deep: #004c63;
+    --shadow-card: 0 1px 3px rgb(7 7 7 / 0.08), 0 1px 2px rgb(7 7 7 / 0.06);
+    color-scheme: light;
   }
 
   html {
-    color-scheme: dark light;
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
   }
 
   body {
     background-color: var(--surface);
     color: var(--text-primary);
     font-family: var(--font-sans);
+    font-weight: 300;
+    letter-spacing: 0;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 1.15;
+    color: var(--text-primary);
+  }
+
+  p {
+    font-family: var(--font-sans);
+    font-weight: 300;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--surface-border);
   }
 
   /* The assessment player is used under exam conditions — respect reduced

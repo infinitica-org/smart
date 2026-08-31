@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
   CORRELATION_HEADER,
+  HTTP_AUTO_LOG_IGNORE_PATHS,
+  LOG_EVENTS,
   REDACTED_PATHS,
   REDACTION_PLACEHOLDER,
+  assertLogEventFields,
+  buildPinoBaseOptions,
+  buildPinoHttpOptions,
   collectMetrics,
   getContext,
   isValidCorrelationId,
+  logEvent,
   maskEmail,
   newCorrelationId,
   redactObject,
   resetMetrics,
   resolveCorrelationId,
   runWithContext,
+  shouldIgnoreHttpAccessLog,
   tierDistribution,
   rateLimitRejections,
 } from './index.js';
@@ -122,6 +129,75 @@ describe('ambient log context', () => {
     expect(result).toBe('abc');
     expect(getContext()).toBeUndefined();
   });
+
+  it('mixes correlation into shared pino base options', () => {
+    const options = buildPinoBaseOptions({ serviceName: 'smart-api-core', environment: 'test' });
+    expect(options.base).toMatchObject({ service: 'smart-api-core', env: 'test' });
+    expect(options.redact).toMatchObject({ paths: expect.arrayContaining(['password']) });
+    expect(options.formatters?.level?.('info')).toEqual({ level: 'info' });
+
+    const mixed = runWithContext({ correlationId: 'corr-1', userId: 'u-1' }, () =>
+      options.mixin?.({}, 30),
+    );
+    expect(mixed).toMatchObject({ correlationId: 'corr-1', userId: 'u-1' });
+  });
+});
+
+describe('pino-http options', () => {
+  it('ignores health, ready, and metrics scrape paths', () => {
+    expect(HTTP_AUTO_LOG_IGNORE_PATHS).toEqual(
+      expect.arrayContaining(['/health', '/ready', '/api/v1/admin/metrics']),
+    );
+    expect(shouldIgnoreHttpAccessLog('/health')).toBe(true);
+    expect(shouldIgnoreHttpAccessLog('/ready?warm=1')).toBe(true);
+    expect(shouldIgnoreHttpAccessLog('/api/v1/admin/metrics')).toBe(true);
+    expect(shouldIgnoreHttpAccessLog('/api/v1/auth/login')).toBe(false);
+  });
+
+  it('attaches ALS context via customProps and keeps serializers tight', () => {
+    const http = buildPinoHttpOptions({
+      serviceName: 'smart-api-core',
+      level: 'info',
+      version: '0.1.0',
+      environment: 'test',
+    });
+
+    expect(http.redact).toMatchObject({
+      paths: expect.arrayContaining(['req.headers.authorization', 'password', 'answer', 'email']),
+    });
+
+    const customProps = http.customProps as () => Record<string, unknown>;
+    const props = runWithContext({ correlationId: 'c-http', requestId: 'r-1' }, () =>
+      customProps(),
+    );
+    expect(props).toMatchObject({ correlationId: 'c-http', requestId: 'r-1' });
+
+    const serializers = http.serializers as {
+      req: (req: { id?: string; method?: string; url?: string; headers?: unknown }) => unknown;
+      res: (res: { statusCode?: number }) => unknown;
+    };
+    expect(
+      serializers.req({ id: '1', method: 'POST', url: '/x', headers: { authorization: 't' } }),
+    ).toEqual({
+      id: '1',
+      method: 'POST',
+      url: '/x',
+    });
+    expect(serializers.res({ statusCode: 429 })).toEqual({ statusCode: 429 });
+
+    const ignore = (http.autoLogging as { ignore: (req: { url?: string }) => boolean }).ignore;
+    expect(ignore({ url: '/health' })).toBe(true);
+    expect(ignore({ url: '/api/v1/catalog/tracks' })).toBe(false);
+  });
+
+  it('adds pretty transport without changing redact paths', () => {
+    const http = buildPinoHttpOptions({
+      serviceName: 'smart-api-core',
+      pretty: true,
+    });
+    expect(http.transport).toMatchObject({ target: 'pino-pretty' });
+    expect(http.redact).toBeDefined();
+  });
 });
 
 describe('metric registry', () => {
@@ -144,5 +220,54 @@ describe('metric registry', () => {
     const scraped = await collectMetrics();
     expect(scraped).toContain('smart_inter_rater_kappa');
     expect(scraped).toContain('smart_automated_scoring_paused');
+  });
+});
+
+describe('log event catalog', () => {
+  it('requires documented fields and rejects missing ones', () => {
+    expect(() =>
+      assertLogEventFields(LOG_EVENTS.HTTP_CLIENT_ERROR, {
+        route: '/x',
+        statusCode: 400,
+        error: 'bad_request',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertLogEventFields(LOG_EVENTS.HTTP_CLIENT_ERROR, { route: '/x', statusCode: 400 }),
+    ).toThrow(/error/);
+  });
+
+  it('logEvent forwards a payload with the catalogued event name', () => {
+    const calls: unknown[] = [];
+    const logger = {
+      warn: (payload: unknown, message: string) => {
+        calls.push([payload, message]);
+      },
+    };
+    logEvent(
+      logger as never,
+      'warn',
+      LOG_EVENTS.REDIS_DEGRADED,
+      { policyKey: 'auth.login' },
+      'Redis down',
+    );
+    expect(calls[0]).toEqual([
+      { event: LOG_EVENTS.REDIS_DEGRADED, policyKey: 'auth.login' },
+      'Redis down',
+    ]);
+  });
+
+  it('keeps nestjs-pino options on the redaction contract', () => {
+    const http = buildPinoHttpOptions({ serviceName: 'smart-api-core' });
+    const paths = (http.redact as { paths: string[] }).paths;
+    for (const path of [
+      'req.headers.authorization',
+      'password',
+      'answer',
+      'email',
+      'req.headers.cookie',
+    ]) {
+      expect(paths, path).toContain(path);
+    }
   });
 });
