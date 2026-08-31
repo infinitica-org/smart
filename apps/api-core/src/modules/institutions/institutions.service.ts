@@ -41,8 +41,16 @@ export class InstitutionsService {
         statusCode: 409,
       });
     }
+    const freePlan = await this.prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } });
+    if (!freePlan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Subscription plans have not been seeded.',
+        statusCode: 404,
+      });
+    }
     const institution = await this.prisma.institution.create({
-      data: { name: body.name, domain },
+      data: { name: body.name, domain, planId: freePlan.id },
     });
     return toInstitutionDto(institution);
   }

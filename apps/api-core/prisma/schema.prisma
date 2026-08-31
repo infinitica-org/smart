@@ -162,17 +162,77 @@ enum InvitationStatus {
   REVOKED
 }
 
-model Institution {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  domain    String   @unique
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+enum TenantVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
 
-  users           User[]
-  batches         Batch[]
-  invitations     Invitation[]
-  jobDescriptions JobDescription[]
-  webhooks        WebhookEndpoint[]
+enum CompanyMode {
+  SERVICE
+  PRODUCT
+}
+
+enum SkillProficiency {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum SkillClaimStatus {
+  DECLARED
+  VERIFIED
+  BEGINNER_REATTEMPT
+  LOCKED
+}
+
+enum JobOpeningStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum AtsStage {
+  APPLIED
+  SHORTLISTED
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum ProjectStatus {
+  SUBMITTED
+  VERIFIED
+  UNDER_REVIEW
+  REJECTED
+}
+
+enum PlanCode {
+  FREE
+  BASIC
+  PRO
+}
+
+model Institution {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  name                 String
+  domain               String                   @unique
+  taxonomyDomain       String?                  @map("taxonomy_domain")
+  verificationStatus   TenantVerificationStatus @default(APPROVED) @map("verification_status")
+  verificationReason   String?                  @map("verification_reason")
+  deactivatedAt        DateTime?                @map("deactivated_at") @db.Timestamptz(6)
+  planId               String                   @map("plan_id") @db.Uuid
+  plan                 SubscriptionPlan         @relation(fields: [planId], references: [id])
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users                User[]
+  batches              Batch[]
+  invitations          Invitation[]
+  jobDescriptions      JobDescription[]
+  jobOpenings          JobOpening[]
+  webhooks             WebhookEndpoint[]
+  featureFlagOverrides FeatureFlagOverride[]
 
   @@map("institutions")
 }
@@ -248,9 +308,19 @@ model User {
   batchesCreated      Batch[]      @relation("BatchCreatedBy")
   invitationsReceived Invitation[]
   invitationsSent     Invitation[] @relation("InvitationInvitedBy")
+  companyId           String?      @map("company_id") @db.Uuid
+  company             Company?     @relation(fields: [companyId], references: [id])
+  skillClaims         SkillClaim[]
+  projects            Project[]
+  applications        Application[]
+  cognitiveProfile    CognitiveProfile?
+  communicationProfile CommunicationProfile?
+  auditLogs           AuditLog[]
+  jobOpeningsCreated  JobOpening[] @relation("JobOpeningCreatedBy")
 
   @@index([institutionId])
   @@index([batchId])
+  @@index([companyId])
   @@map("users")
 }
 
@@ -448,6 +518,7 @@ model Attempt {
   responses Response[]
   result    LevelResult?
   events    IntegrityEvent[]
+  skillVerificationAttempts SkillVerificationAttempt[]
 
   @@index([userId, status])
   @@map("attempts")
@@ -614,4 +685,289 @@ model KafkaOutbox {
 
   @@index([publishedAt, createdAt])
   @@map("kafka_outbox")
+}
+
+model Company {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  name                 String
+  domain               String                   @unique
+  gstin                String?
+  website              String?
+  linkedinUrl          String?                  @map("linkedin_url")
+  sector               String?
+  mode                 CompanyMode?
+  taxonomyDomain       String?                  @map("taxonomy_domain")
+  sizeBand             String?                  @map("size_band")
+  location             String?
+  verificationStatus   TenantVerificationStatus @default(PENDING) @map("verification_status")
+  verificationReason   String?                  @map("verification_reason")
+  deactivatedAt        DateTime?                @map("deactivated_at") @db.Timestamptz(6)
+  planId               String                   @map("plan_id") @db.Uuid
+  plan                 SubscriptionPlan         @relation(fields: [planId], references: [id])
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users                User[]
+  jobOpenings          JobOpening[]
+  featureFlagOverrides FeatureFlagOverride[]
+
+  @@map("companies")
+}
+
+model Skill {
+  id                      String   @id @default(uuid()) @db.Uuid
+  code                    String   @unique
+  name                    String
+  domain                  String
+  cooldownDays            Int      @default(60) @map("cooldown_days")
+  validityDays            Int      @default(180) @map("validity_days")
+  beginnerPassThreshold   Decimal  @default(60) @map("beginner_pass_threshold") @db.Decimal(5, 2)
+  active                  Boolean  @default(true)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  claims                  SkillClaim[]
+  openingRequirements     JobOpeningSkill[]
+
+  @@index([domain, active])
+  @@map("skills")
+}
+
+model SkillClaim {
+  id             String           @id @default(uuid()) @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  student        User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId        String           @map("skill_id") @db.Uuid
+  skill          Skill            @relation(fields: [skillId], references: [id])
+  proficiency    SkillProficiency
+  status         SkillClaimStatus @default(DECLARED)
+  strikes        Int              @default(0)
+  lockedUntil    DateTime?        @map("locked_until") @db.Timestamptz(6)
+  verifiedUntil  DateTime?        @map("verified_until") @db.Timestamptz(6)
+  lastAttemptId  String?          @map("last_attempt_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  verificationAttempts SkillVerificationAttempt[]
+
+  @@unique([studentId, skillId])
+  @@index([status])
+  @@map("skill_claims")
+}
+
+model SkillVerificationAttempt {
+  id                 String     @id @default(uuid()) @db.Uuid
+  claimId            String     @map("claim_id") @db.Uuid
+  claim              SkillClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  assessmentAttemptId String?   @map("assessment_attempt_id") @db.Uuid
+  assessmentAttempt  Attempt?   @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
+  claimedProficiency SkillProficiency @map("claimed_proficiency")
+  technicalFailure   Boolean    @default(false) @map("technical_failure")
+  passed             Boolean?
+  explanation        String?
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([claimId, createdAt])
+  @@map("skill_verification_attempts")
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  studentId   String        @map("student_id") @db.Uuid
+  student     User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title       String
+  problem     String
+  approach    String
+  stack       String
+  outcome     String
+  loomUrl     String?       @map("loom_url")
+  githubUrl   String?       @map("github_url")
+  status      ProjectStatus @default(SUBMITTED)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report ProjectVerificationReport?
+
+  @@index([studentId, status])
+  @@map("projects")
+}
+
+model ProjectVerificationReport {
+  id              String   @id @default(uuid()) @db.Uuid
+  projectId       String   @unique @map("project_id") @db.Uuid
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  score           Decimal  @db.Decimal(5, 2)
+  plagiarismFlag  Boolean  @default(false) @map("plagiarism_flag")
+  techAgeFlag     Boolean  @default(false) @map("tech_age_flag")
+  relevanceScore  Decimal  @map("relevance_score") @db.Decimal(5, 2)
+  explanation     String
+  routedToReview  Boolean  @default(false) @map("routed_to_review")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("project_verification_reports")
+}
+
+model JobOpening {
+  id                 String           @id @default(uuid()) @db.Uuid
+  institutionId      String           @map("institution_id") @db.Uuid
+  institution        Institution      @relation(fields: [institutionId], references: [id])
+  companyId          String?          @map("company_id") @db.Uuid
+  company            Company?         @relation(fields: [companyId], references: [id])
+  companyName        String           @map("company_name")
+  roleTitle          String           @map("role_title")
+  domainCode         String?          @map("domain_code")
+  minYearsExperience Int?             @map("min_years_experience")
+  location           String?
+  employmentType     String?          @map("employment_type")
+  headcount          Int?
+  status             JobOpeningStatus @default(DRAFT)
+  createdById        String           @map("created_by_id") @db.Uuid
+  createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  requiredSkills JobOpeningSkill[]
+  applications   Application[]
+
+  @@index([institutionId, status])
+  @@index([companyId])
+  @@map("job_openings")
+}
+
+model JobOpeningSkill {
+  id              String           @id @default(uuid()) @db.Uuid
+  openingId       String           @map("opening_id") @db.Uuid
+  opening         JobOpening       @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  skillId         String           @map("skill_id") @db.Uuid
+  skill           Skill            @relation(fields: [skillId], references: [id])
+  minProficiency  SkillProficiency @map("min_proficiency")
+
+  @@unique([openingId, skillId])
+  @@map("job_opening_skills")
+}
+
+model Application {
+  id          String    @id @default(uuid()) @db.Uuid
+  openingId   String    @map("opening_id") @db.Uuid
+  opening     JobOpening @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  studentId   String    @map("student_id") @db.Uuid
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  stage       AtsStage  @default(APPLIED)
+  matchScore  Decimal?  @map("match_score") @db.Decimal(4, 3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  stageEvents ApplicationStageEvent[]
+
+  @@unique([openingId, studentId])
+  @@index([openingId, stage])
+  @@index([studentId, stage])
+  @@map("applications")
+}
+
+model ApplicationStageEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  applicationId String      @map("application_id") @db.Uuid
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStage     AtsStage?   @map("from_stage")
+  toStage       AtsStage    @map("to_stage")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([applicationId, createdAt])
+  @@map("application_stage_events")
+}
+
+model CognitiveProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @unique @map("student_id") @db.Uuid
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  narrative   String
+  strengths   Json
+  weaknesses  Json
+  score       Decimal? @db.Decimal(5, 2)
+  refreshedAt DateTime @map("refreshed_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("cognitive_profiles")
+}
+
+model CommunicationProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @unique @map("student_id") @db.Uuid
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  narrative   String
+  strengths   Json
+  weaknesses  Json
+  score       Decimal? @db.Decimal(5, 2)
+  refreshedAt DateTime @map("refreshed_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("communication_profiles")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  reasonCode   String?  @map("reason_code")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([resourceType, resourceId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
+
+model SubscriptionPlan {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      PlanCode @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  institutions Institution[]
+  companies    Company[]
+  entitlements PlanEntitlement[]
+
+  @@map("subscription_plans")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entitlements PlanEntitlement[]
+  overrides    FeatureFlagOverride[]
+
+  @@map("feature_flags")
+}
+
+model PlanEntitlement {
+  id            String           @id @default(uuid()) @db.Uuid
+  planId        String           @map("plan_id") @db.Uuid
+  plan          SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  featureFlagId String           @map("feature_flag_id") @db.Uuid
+  featureFlag   FeatureFlag      @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  enabled       Boolean          @default(false)
+
+  @@unique([planId, featureFlagId])
+  @@map("plan_entitlements")
+}
+
+model FeatureFlagOverride {
+  id            String       @id @default(uuid()) @db.Uuid
+  featureFlagId String       @map("feature_flag_id") @db.Uuid
+  featureFlag   FeatureFlag  @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  institutionId String?      @map("institution_id") @db.Uuid
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  companyId     String?      @map("company_id") @db.Uuid
+  company       Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  enabled       Boolean
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([institutionId])
+  @@index([companyId])
+  @@map("feature_flag_overrides")
 }
