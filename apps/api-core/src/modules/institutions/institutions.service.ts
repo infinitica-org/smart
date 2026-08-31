@@ -201,6 +201,54 @@ export class InstitutionsService {
     invitedById: string,
   ): Promise<BatchMemberDto> {
     await this.requireBatch(batchId, institutionId);
+
+    const email = body.email.toLowerCase().trim();
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      if (existingUser.institutionId !== institutionId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'User belongs to another institution.',
+          statusCode: 403,
+        });
+      }
+      if (existingUser.role !== 'STUDENT') {
+        throw new ConflictException({
+          error: 'conflict',
+          message: 'Only student accounts can be members of a batch.',
+          statusCode: 409,
+        });
+      }
+
+      const updatedUser = await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          batchId,
+          groupLabel: body.groupLabel !== undefined ? body.groupLabel : existingUser.groupLabel,
+        },
+      });
+
+      const invitation = await this.prisma.invitation.findFirst({
+        where: { userId: existingUser.id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (invitation && invitation.batchId !== batchId) {
+        await this.prisma.invitation.update({
+          where: { id: invitation.id },
+          data: { batchId },
+        });
+      }
+
+      return toBatchMember(
+        updatedUser,
+        invitation ? toInvitationDto({ ...invitation, batchId }) : null,
+      );
+    }
+
     const { invitation } = await this.invitations.createAndEnqueue({
       email: body.email,
       fullName: body.fullName,
