@@ -5,10 +5,8 @@ import { useParams } from 'next/navigation';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import type { InstitutionAdminDto, InstitutionDto } from '@smart/contracts';
 import { api } from '../../../../lib/api';
-import { useRequireAuth } from '../../../../lib/auth';
 
 export default function InstitutionDetailPage() {
-  useRequireAuth();
   const params = useParams<{ institutionId: string }>();
   const institutionId = params.institutionId;
   const [institution, setInstitution] = useState<InstitutionDto | null>(null);

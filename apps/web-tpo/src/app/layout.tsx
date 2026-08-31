@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { SessionBootstrap, SMART_HTML_CLASS } from '@smart/ui';
+import { SMART_HTML_CLASS } from '@smart/ui';
+import { PortalAuthGate } from '../components/portal-auth-gate';
 import { PortalHeader } from '../components/portal-header';
 import './globals.css';
 
@@ -13,10 +14,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={SMART_HTML_CLASS}>
       <body>
-        <SessionBootstrap>
+        <PortalAuthGate>
           <PortalHeader />
           {children}
-        </SessionBootstrap>
+        </PortalAuthGate>
       </body>
     </html>
   );

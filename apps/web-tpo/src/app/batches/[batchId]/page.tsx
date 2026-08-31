@@ -7,12 +7,10 @@ import type { BatchMemberDto, BatchDto } from '@smart/contracts';
 import { API_PREFIX, BatchImportResultDtoSchema } from '@smart/contracts';
 import { getAccessToken } from '@smart/api-client';
 import { api } from '../../../lib/api';
-import { useRequireAuth } from '../../../lib/auth';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export default function BatchDetailPage() {
-  useRequireAuth();
   const params = useParams<{ batchId: string }>();
   const batchId = params.batchId;
   const [batch, setBatch] = useState<BatchDto | null>(null);

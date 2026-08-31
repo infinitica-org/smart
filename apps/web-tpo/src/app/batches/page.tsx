@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import type { BatchDto } from '@smart/contracts';
 import { api } from '../../lib/api';
-import { useRequireAuth } from '../../lib/auth';
 
 export default function BatchesPage() {
-  useRequireAuth();
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
