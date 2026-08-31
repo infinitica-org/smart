@@ -1,3 +1,5 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from './card';
 import { Button } from './button';

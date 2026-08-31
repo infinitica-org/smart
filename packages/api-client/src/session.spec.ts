@@ -3,6 +3,7 @@ import {
   buildLoginUrl,
   decodeAccessTokenRole,
   evaluatePortalAccess,
+  isClearSessionPath,
   isPublicPortalPath,
   isSafeReturnTo,
   PORTAL_ROLES,
@@ -81,6 +82,11 @@ describe('login redirect per role', () => {
 });
 
 describe('public paths and returnTo', () => {
+  it('identifies the cross-origin session wipe path', () => {
+    expect(isClearSessionPath('/auth/clear-session')).toBe(true);
+    expect(isClearSessionPath('/auth/callback')).toBe(false);
+  });
+
   it('treats login, invite, and forbidden as public prefixes', () => {
     expect(isPublicPortalPath('/login', ['/login', '/forbidden'])).toBe(true);
     expect(isPublicPortalPath('/forbidden', ['/forbidden'])).toBe(true);
@@ -223,7 +229,7 @@ describe('INF-03 session auth end-to-end (SSO excluded)', () => {
     ).toBe('login');
   });
 
-  it('leaves the 403 wall itself public so a mismatch can render', () => {
+  it('never opens a portal shell for a role mismatch, including /forbidden', () => {
     expect(
       evaluatePortalAccess({
         pathname: '/forbidden',
@@ -232,6 +238,29 @@ describe('INF-03 session auth end-to-end (SSO excluded)', () => {
         allowedRoles: PORTAL_ROLES.student,
         authAppUrl,
         currentHref: 'http://localhost:3001/forbidden',
+      }),
+    ).toStrictEqual({ action: 'forbidden' });
+    expect(
+      evaluatePortalAccess({
+        pathname: '/batches',
+        publicPathPrefixes: publicPaths,
+        accessToken: studentToken,
+        allowedRoles: PORTAL_ROLES.tpo,
+        authAppUrl,
+        currentHref: 'http://localhost:3002/batches',
+      }),
+    ).toStrictEqual({ action: 'forbidden' });
+  });
+
+  it('still opens login/auth without a session so callbacks can run', () => {
+    expect(
+      evaluatePortalAccess({
+        pathname: '/auth/callback',
+        publicPathPrefixes: publicPaths,
+        accessToken: null,
+        allowedRoles: PORTAL_ROLES.student,
+        authAppUrl,
+        currentHref: 'http://localhost:3001/auth/callback',
       }).action,
     ).toBe('open');
   });
