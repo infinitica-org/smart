@@ -32,6 +32,10 @@ COPY --from=build --chown=smart:smart /app/apps/api-core/package.json ./apps/api
 COPY --from=build --chown=smart:smart /app/apps/api-core/prisma ./apps/api-core/prisma
 COPY --from=build --chown=smart:smart /app/apps/api-core/prisma.config.ts ./apps/api-core/prisma.config.ts
 COPY --from=build --chown=smart:smart /app/apps/api-core/src/generated ./apps/api-core/src/generated
+# tsc (rootDir=src, outDir=dist) never compiles the pre-built Prisma client, so the
+# compiled dist/**/*.js still `require('../../generated/prisma/...')` relative to
+# dist/ — mirror the generated client there too or the container crash-loops on boot.
+COPY --from=build --chown=smart:smart /app/apps/api-core/src/generated ./apps/api-core/dist/generated
 COPY --from=build --chown=smart:smart /app/apps/api-core/node_modules ./apps/api-core/node_modules
 COPY --from=build --chown=smart:smart /app/node_modules ./node_modules
 COPY --from=build --chown=smart:smart /app/packages ./packages
