@@ -68,7 +68,7 @@ export function authApi(client: SmartApiClient) {
         anonymous: true,
       }),
 
-    logout: () => client.post<void>(prefixed('/auth/logout')),
+    logout: () => client.post<void>(prefixed('/auth/logout'), undefined, { anonymous: true }),
 
     me: () => client.get(prefixed('/users/me'), { schema: AuthenticatedUserSchema }),
 

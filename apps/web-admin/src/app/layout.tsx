@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { SMART_HTML_CLASS } from '@smart/ui';
 import './globals.css';
 import { AdminShell } from '../components/admin-shell';
+import { PortalAuthGate } from '../components/portal-auth-gate';
 
 export const metadata: Metadata = {
   title: 'Platform admin · SMART',
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={SMART_HTML_CLASS}>
       <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased flex animate-fade-in">
-        <AdminShell>{children}</AdminShell>
+        <PortalAuthGate>
+          <AdminShell>{children}</AdminShell>
+        </PortalAuthGate>
       </body>
     </html>
   );
