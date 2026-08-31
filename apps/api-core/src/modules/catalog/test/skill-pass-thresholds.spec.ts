@@ -3,7 +3,7 @@ import { TRACK_DEFINITIONS } from '@smart/contracts';
 import {
   passThresholdsFor,
   TECH_FULLSTACK_SKILL_PASS_THRESHOLDS,
-} from './skill-pass-thresholds.js';
+} from '../skill-pass-thresholds.js';
 
 describe('skill pass thresholds (INF-05)', () => {
   it('defines a pass bar map for every TECH_FULLSTACK topic', () => {

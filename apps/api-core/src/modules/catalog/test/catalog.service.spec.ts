@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { TRACK_DEFINITIONS } from '@smart/contracts';
-import { CatalogService } from './catalog.service.js';
+import { CatalogService } from '../catalog.service.js';
 
 /**
  * Stub that simulates DB unavailable — triggers the contract-fallback path in
