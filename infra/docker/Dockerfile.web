@@ -11,6 +11,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY scripts ./scripts
 COPY packages ./packages
 COPY apps ./apps
 RUN pnpm install --frozen-lockfile

@@ -9,6 +9,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY scripts ./scripts
 COPY packages ./packages
 COPY apps/api-core/package.json ./apps/api-core/package.json
 COPY apps/api-core/prisma ./apps/api-core/prisma
