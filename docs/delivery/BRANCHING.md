@@ -20,11 +20,11 @@ main  ──── always production-ready. Only @brittytino may push / merge.
            └── chore/S0-TN-03-enterprise-branches
 ```
 
-| Branch     | Purpose                                                                        | Who merges                                            | Deploy target                          |
-| ---------- | ------------------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------- |
-| **`dev`**  | Daily integration. CI must be green.                                           | Tino (+ module owner if cross-module) after PR review | **kvm2** `smart-dev` (ports, no Caddy) |
-| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — only promotion + hotfixes. | Tino                                                  | **kvm2** `smart-qa` (Caddy TLS)        |
-| **`main`** | Production / GA truth. Always deployable.                                      | **Only `@brittytino`**                                | **kvm4** `smart-prod`                  |
+| Branch     | Purpose                                                                        | Who merges                                            | Deploy target                                              |
+| ---------- | ------------------------------------------------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------- |
+| **`dev`**  | Daily integration. CI must be green.                                           | Tino (+ module owner if cross-module) after PR review | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI)  |
+| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — only promotion + hotfixes. | Tino                                                  | **kvm2** `smart-qa` (not currently deployed)               |
+| **`main`** | Production / GA truth. Always deployable.                                      | **Only `@brittytino`**                                | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI) |
 
 Engineers **never** commit directly to `main`, `qa`, or `dev`.  
 Every change lands via a **pull request**.

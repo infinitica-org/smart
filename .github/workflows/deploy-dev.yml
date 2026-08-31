@@ -1,0 +1,52 @@
+name: Deploy dev (kvm2)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev]
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEV_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEV_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync repository to kvm2
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='**/node_modules' \
+            --exclude='.turbo' \
+            --exclude='**/.next' \
+            --exclude='**/dist' \
+            --exclude='.env*' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "${{ secrets.DEV_SSH_USER }}@${{ secrets.DEV_SSH_HOST }}:~/smart/"
+
+      - name: Deploy + migrate + health check
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.DEV_SSH_USER }}@${{ secrets.DEV_SSH_HOST }}" \
+            'cd ~/smart && bash scripts/deploy-vps.sh dev'
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
