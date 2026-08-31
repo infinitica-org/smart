@@ -1,25 +1,30 @@
-{
-	{$API_HOST} {
-		reverse_proxy api:3000
-	}
+{$API_HOST} {
+	reverse_proxy api:3000
+}
 
-	{$STUDENT_HOST} {
-		reverse_proxy web-student:3000
-	}
+{$STUDENT_HOST} {
+	reverse_proxy web-student:3000
+}
 
-	{$TPO_HOST} {
-		reverse_proxy web-tpo:3000
-	}
+{$TPO_HOST} {
+	reverse_proxy web-tpo:3000
+}
 
-	{$ADMIN_HOST} {
-		reverse_proxy web-admin:3000
-	}
+{$ADMIN_HOST} {
+	reverse_proxy web-admin:3000
+}
 
-	{$VERIFY_HOST} {
-		reverse_proxy web-verify:3000
-	}
+{$VERIFY_HOST} {
+	reverse_proxy web-verify:3000
+}
 
-	{$AUTH_HOST} {
-		reverse_proxy web-auth:3000
+{$AUTH_HOST} {
+	reverse_proxy web-auth:3000
+}
+
+{$DB_HOST} {
+	basic_auth {
+		{$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_HASH}
 	}
+	reverse_proxy adminer:8080
 }

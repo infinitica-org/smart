@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Deploy SMART on a VPS from a named environment file.
 #
-#   bash scripts/deploy-vps.sh dev    # kvm2 — no Caddy (qa owns :80/:443)
-#   bash scripts/deploy-vps.sh qa     # kvm2 — apps + Caddy + obs
+#   bash scripts/deploy-vps.sh dev    # kvm2 — apps + Caddy (owns :80/:443 on kvm2)
+#   bash scripts/deploy-vps.sh qa     # kvm2 — apps + Caddy + obs (not currently deployed)
 #   bash scripts/deploy-vps.sh prod   # kvm4 — apps + Caddy + obs
 #
 # On the server: copy .env.<name>.example → .env.<name>, fill secrets, then run.
+# Applies already-committed Prisma migrations automatically (migrate deploy only —
+# migrations are still authored exclusively via `pnpm db:migrate` locally).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ENV_NAME="${1:-}"
 if [[ -z "$ENV_NAME" || ! "$ENV_NAME" =~ ^(dev|qa|prod)$ ]]; then
   echo "Usage: bash scripts/deploy-vps.sh <dev|qa|prod>"
-  echo "  kvm2 → dev and qa   |   kvm4 → prod"
+  echo "  kvm2 → dev (Caddy owner) and qa (inactive)   |   kvm4 → prod"
   exit 1
 fi
 
@@ -25,7 +27,7 @@ test -f "$ENV_FILE" || {
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
 
 case "$ENV_NAME" in
-  dev) PROFILES=(--profile apps) ;;
+  dev) PROFILES=(--profile apps --profile vps) ;;
   qa | prod) PROFILES=(--profile apps --profile vps --profile obs) ;;
 esac
 
@@ -35,12 +37,19 @@ echo "==> ${ENV_NAME}: validate compose (${ENV_FILE})"
 echo "==> ${ENV_NAME}: build and start"
 "${COMPOSE[@]}" "${PROFILES[@]}" up -d --build
 
-echo "==> ${ENV_NAME}: api probe"
+echo "==> ${ENV_NAME}: wait for api container to be healthy"
+for _ in $(seq 1 30); do
+  status="$("${COMPOSE[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
+  [[ "$status" == "healthy" ]] && break
+  sleep 2
+done
+
+echo "==> ${ENV_NAME}: apply Prisma migrations (migrate deploy — no new migrations authored here)"
+"${COMPOSE[@]}" --profile apps exec -T api npx prisma migrate deploy
+
+echo "==> ${ENV_NAME}: health check"
 "${COMPOSE[@]}" --profile apps exec -T api \
-  node -e "console.log('api container up')" || true
+  node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 echo
-echo "Environment: ${ENV_NAME}"
-echo "Next: apply migrations (Vishal V):"
-echo "  ${COMPOSE[*]} --profile apps exec -T api npx prisma migrate deploy"
-echo "Health: curl -f http://127.0.0.1:\${API_PORT:-3000}/health"
+echo "Environment: ${ENV_NAME} — deployed, migrated, healthy."
