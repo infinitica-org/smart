@@ -22,6 +22,26 @@ import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './comm
  * and they live behind this contract.
  */
 
+/**
+ * PRD v1 §7.3 pass bars for a claimed proficiency (Beginner / Intermediate / Advanced).
+ * Beginner is assessment-only (`interviewPass` is null, `assessmentWeight` is 1).
+ * Intermediate/Advanced require assessment + interview; both floors must clear.
+ * These are claim pass bars — not Gold/Silver/Bronze cut scores.
+ */
+export const ProficiencyPassBarsDtoSchema = z.object({
+  assessmentPass: WeightSchema,
+  interviewPass: WeightSchema.nullable(),
+  assessmentWeight: WeightSchema,
+});
+export type ProficiencyPassBarsDto = z.infer<typeof ProficiencyPassBarsDtoSchema>;
+
+export const SkillPassThresholdsDtoSchema = z.object({
+  BEGINNER: ProficiencyPassBarsDtoSchema,
+  INTERMEDIATE: ProficiencyPassBarsDtoSchema,
+  ADVANCED: ProficiencyPassBarsDtoSchema,
+});
+export type SkillPassThresholdsDto = z.infer<typeof SkillPassThresholdsDtoSchema>;
+
 export const CompetencyDtoSchema = z.object({
   competencyId: UuidSchema,
   trackCode: TrackCodeSchema,
@@ -31,6 +51,11 @@ export const CompetencyDtoSchema = z.object({
   /** `real_world_weight` — contribution to the track score. Sums to 1.0 per track. */
   realWorldWeight: WeightSchema,
   assessedAtLevels: z.array(LevelNumberSchema),
+  /**
+   * Claim-level pass bars (PRD v1 §7.3). Optional until the INF-05 catalog seed
+   * PR populates them. Independent of L1–L5 Angoff cut scores.
+   */
+  passThresholds: SkillPassThresholdsDtoSchema.optional(),
 });
 export type CompetencyDto = z.infer<typeof CompetencyDtoSchema>;
 
