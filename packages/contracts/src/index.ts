@@ -19,6 +19,7 @@ export * from './domain/enums.js';
 export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
+export * from './domain/skills.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
