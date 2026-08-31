@@ -62,7 +62,6 @@ export default function InstitutionDetailPage() {
 
   useEffect(() => {
     load().catch((err) => setError(formatApiError(err, 'Failed to load institution.')));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [institutionId]);
 
   async function onInvite(event: React.FormEvent) {

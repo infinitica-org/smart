@@ -63,7 +63,8 @@ export class InstitutionsService {
       include: { plan: true },
     });
     const [created] = await this.toInstitutionDtos([institution]);
-    return created!;
+    if (!created) throw new Error('toInstitutionDtos returned no rows for a single institution');
+    return created;
   }
 
   async listInstitutions(query: ListInstitutionsQuery = {}): Promise<InstitutionDto[]> {
@@ -100,7 +101,8 @@ export class InstitutionsService {
   async getInstitution(institutionId: string): Promise<InstitutionDto> {
     const institution = await this.requireInstitution(institutionId);
     const [dto] = await this.toInstitutionDtos([institution]);
-    return dto!;
+    if (!dto) throw new Error('toInstitutionDtos returned no rows for a single institution');
+    return dto;
   }
 
   async updateInstitution(
@@ -323,7 +325,9 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'student.held', user.id, body.reason, {
       institutionId: user.institutionId,
     });
-    const [row] = await this.listInstitutionStudents(user.institutionId!, { q: user.email });
+    if (!user.institutionId)
+      throw new Error('requireStudent returned a student with no institutionId');
+    const [row] = await this.listInstitutionStudents(user.institutionId, { q: user.email });
     return row ?? this.emptyStudent(user);
   }
 
@@ -341,7 +345,9 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'student.hold_released', user.id, body.reason, {
       institutionId: user.institutionId,
     });
-    const [row] = await this.listInstitutionStudents(user.institutionId!, { q: user.email });
+    if (!user.institutionId)
+      throw new Error('requireStudent returned a student with no institutionId');
+    const [row] = await this.listInstitutionStudents(user.institutionId, { q: user.email });
     return row ?? this.emptyStudent({ ...user, heldAt: null });
   }
 

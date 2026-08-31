@@ -28,7 +28,6 @@ export default function TpoStudentsPage() {
     load().catch((err) =>
       setError(isSmartApiError(err) ? err.message : 'Failed to load students.'),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
