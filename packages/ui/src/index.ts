@@ -40,4 +40,25 @@ export {
 } from './components/assessment-navigation';
 export * from './api-provider';
 
+export {
+  VerificationBadge,
+  type VerificationBadgeProps,
+  type VerificationState,
+} from './components/verification-badge';
+export {
+  AiExplanationPanel,
+  type AiExplanationPanelProps,
+} from './components/ai-explanation-panel';
+export {
+  PipelineStageBar,
+  type PipelineStage,
+  type PipelineStageBarProps,
+} from './components/pipeline-stage-bar';
+export {
+  CandidateProfileCard,
+  type CandidateSkill,
+  type CandidateProject,
+  type CandidateProfileCardProps,
+} from './components/candidate-profile-card';
+
 export const UI_VERSION = '0.1.0';
