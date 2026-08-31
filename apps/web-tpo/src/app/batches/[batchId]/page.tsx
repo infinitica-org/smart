@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
-import type { BatchMemberDto } from '@smart/contracts';
+import type { BatchMemberDto, BatchDto } from '@smart/contracts';
 import { API_PREFIX, BatchImportResultDtoSchema } from '@smart/contracts';
 import { getAccessToken } from '@smart/api-client';
 import { api } from '../../../lib/api';
@@ -15,6 +15,7 @@ export default function BatchDetailPage() {
   useRequireAuth();
   const params = useParams<{ batchId: string }>();
   const batchId = params.batchId;
+  const [batch, setBatch] = useState<BatchDto | null>(null);
   const [members, setMembers] = useState<BatchMemberDto[]>([]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,13 +23,39 @@ export default function BatchDetailPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
+
   async function load() {
-    setMembers(await api.onboarding.listBatchMembers(batchId));
+    const [batchData, membersData] = await Promise.all([
+      api.onboarding.getBatch(batchId),
+      api.onboarding.listBatchMembers(batchId),
+    ]);
+    setBatch(batchData);
+    setMembers(membersData);
+    setEditName(batchData.name);
+    setEditCode(batchData.code ?? '');
   }
 
   useEffect(() => {
-    load().catch(() => setError('Failed to load members.'));
+    load().catch(() => setError('Failed to load batch or members.'));
   }, [batchId]);
+
+  async function onSaveEdit(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await api.onboarding.updateBatch(batchId, {
+        name: editName,
+        code: editCode || null,
+      });
+      setIsEditing(false);
+      await load();
+      setMessage('Batch updated successfully.');
+    } catch {
+      setError('Could not update batch.');
+    }
+  }
 
   async function onAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -78,6 +105,26 @@ export default function BatchDetailPage() {
 
   return (
     <main className="max-w-4xl mx-auto p-8 space-y-6">
+      {batch ? (
+        <div className="flex justify-between items-center bg-[var(--surface-muted)] p-6 rounded-xl border border-[var(--surface-border)] shadow-sm">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">{batch.name}</h1>
+            <p className="text-sm text-ink-muted mt-1">
+              Code:{' '}
+              <span className="font-mono text-xs bg-[var(--surface-muted)] px-1.5 py-0.5 rounded border border-[var(--surface-border)]">
+                {batch.code ?? '—'}
+              </span>{' '}
+              • {batch.memberCount} members • {batch.pendingInviteCount} pending invites
+            </p>
+          </div>
+          <div>
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              Edit Details
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Batch members</CardTitle>
@@ -163,6 +210,36 @@ export default function BatchDetailPage() {
           ))}
         </tbody>
       </table>
+
+      {isEditing && batch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <Card className="w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <CardHeader>
+              <CardTitle>Edit Batch Details</CardTitle>
+              <CardDescription>Update the name and code for this batch.</CardDescription>
+            </CardHeader>
+            <form onSubmit={onSaveEdit} className="px-6 pb-6 space-y-4">
+              <Input
+                label="Batch name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+              <Input
+                label="Batch code (optional)"
+                value={editCode}
+                onChange={(e) => setEditCode(e.target.value)}
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="ghost" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }
