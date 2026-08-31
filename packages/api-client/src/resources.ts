@@ -1,3 +1,10 @@
+import type {
+  CreateInstitutionRequestSchema,
+  ListInstitutionStudentsQuery,
+  ListInstitutionsQuery,
+  TenantActionReason,
+  UpdateInstitutionRequest,
+} from '@smart/contracts';
 import {
   API_PREFIX,
   AssignedFormDtoSchema,
@@ -7,9 +14,10 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CertificateDtoSchema,
-  type CreateInstitutionRequestSchema,
+  GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
+  InstitutionStudentDtoSchema,
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
@@ -18,6 +26,7 @@ import {
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SsoStartResponseSchema,
+  SubscriptionPlanDtoSchema,
   TrackDtoSchema,
   HealthStatusSchema,
 } from '@smart/contracts';
@@ -93,12 +102,81 @@ export function onboardingApi(client: SmartApiClient) {
     createInstitution: (body: z.infer<typeof CreateInstitutionRequestSchema>) =>
       client.post(prefixed('/admin/institutions'), body, { schema: InstitutionDtoSchema }),
 
-    listInstitutions: () =>
-      client.get(prefixed('/admin/institutions'), { schema: z.array(InstitutionDtoSchema) }),
+    listInstitutions: (query?: ListInstitutionsQuery) =>
+      client.get(prefixed('/admin/institutions'), {
+        schema: z.array(InstitutionDtoSchema),
+        query,
+      }),
 
     getInstitution: (institutionId: string) =>
       client.get(prefixed(`/admin/institutions/${institutionId}`), {
         schema: InstitutionDtoSchema,
+      }),
+
+    updateInstitution: (institutionId: string, body: UpdateInstitutionRequest) =>
+      client.patch(prefixed(`/admin/institutions/${institutionId}`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    holdInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/hold`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    releaseHold: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/release-hold`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    deactivateInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/deactivate`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    restoreInstitution: (institutionId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/institutions/${institutionId}/restore`), body, {
+        schema: InstitutionDtoSchema,
+      }),
+
+    listInstitutionStudents: (institutionId: string, query?: ListInstitutionStudentsQuery) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}/students`), {
+        schema: z.array(InstitutionStudentDtoSchema),
+        query,
+      }),
+
+    searchStudents: (q: string) =>
+      client.get(prefixed('/admin/students/search'), {
+        schema: z.array(GlobalStudentHitDtoSchema),
+        query: { q },
+      }),
+
+    listPlans: () =>
+      client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
+    holdStudent: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/students/${userId}/hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    releaseStudentHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/students/${userId}/release-hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    listTpoStudents: (query?: ListInstitutionStudentsQuery) =>
+      client.get(prefixed('/tpo/students'), {
+        schema: z.array(InstitutionStudentDtoSchema),
+        query,
+      }),
+
+    holdTpoStudent: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/tpo/students/${userId}/hold`), body, {
+        schema: InstitutionStudentDtoSchema,
+      }),
+
+    releaseTpoStudentHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/tpo/students/${userId}/release-hold`), body, {
+        schema: InstitutionStudentDtoSchema,
       }),
 
     inviteInstitutionAdmin: (institutionId: string, body: { fullName: string; email: string }) =>

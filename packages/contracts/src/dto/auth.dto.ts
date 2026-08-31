@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { AuthProviderSchema, TrackCodeSchema, UserRoleSchema } from '../domain/enums.js';
+import {
+  AuthProviderSchema,
+  SessionHoldCodeSchema,
+  TrackCodeSchema,
+  UserRoleSchema,
+} from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
 
 /**
@@ -55,6 +60,12 @@ export const AuthenticatedUserSchema = z.object({
   provider: AuthProviderSchema,
   emailVerified: z.boolean(),
   createdAt: IsoDateTimeSchema,
+  sessionHold: z
+    .object({
+      code: SessionHoldCodeSchema,
+      message: z.string(),
+    })
+    .nullable(),
 });
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 

@@ -222,6 +222,7 @@ model Institution {
   verificationStatus   TenantVerificationStatus @default(APPROVED) @map("verification_status")
   verificationReason   String?                  @map("verification_reason")
   deactivatedAt        DateTime?                @map("deactivated_at") @db.Timestamptz(6)
+  heldAt               DateTime?                @map("held_at") @db.Timestamptz(6)
   planId               String                   @map("plan_id") @db.Uuid
   plan                 SubscriptionPlan         @relation(fields: [planId], references: [id])
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -299,6 +300,8 @@ model User {
   primaryTrack   Track?       @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
   secondaryTrackId String?    @map("secondary_track_id") @db.Uuid
   secondaryTrack Track?       @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
+  heldAt         DateTime?    @map("held_at") @db.Timestamptz(6)
+  heldReason     String?      @map("held_reason")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens       RefreshToken[]

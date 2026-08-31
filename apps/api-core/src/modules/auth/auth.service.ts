@@ -12,6 +12,7 @@ import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { resolveSessionHold } from '../../common/session-hold.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
 const scrypt = promisify(scryptCallback);
@@ -26,7 +27,12 @@ export type UserWithAuthIncludes = {
   institutionId: string | null;
   createdAt: Date;
   passwordHash: string | null;
-  institution: { name: string } | null;
+  heldAt: Date | null;
+  institution: {
+    name: string;
+    heldAt: Date | null;
+    deactivatedAt: Date | null;
+  } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
 };
@@ -50,6 +56,7 @@ export class AuthService {
         statusCode: 401,
       });
     }
+    assertTenantLoginAllowed(user);
 
     return this.issueSession(user, reply);
   }
@@ -198,6 +205,20 @@ function unauthorized(message: string): UnauthorizedException {
   });
 }
 
+function assertTenantLoginAllowed(user: {
+  role: AuthenticatedUser['role'];
+  heldAt: Date | null;
+  institution: { heldAt: Date | null; deactivatedAt: Date | null } | null;
+}): void {
+  const hold = resolveSessionHold(user);
+  if (!hold) return;
+  throw new UnauthorizedException({
+    error: hold.code,
+    message: hold.message,
+    statusCode: 401,
+  });
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const derived = (await scrypt(password, salt, 64)) as Buffer;
@@ -222,10 +243,21 @@ export function toAuthenticatedUser(user: {
   emailVerified: boolean;
   institutionId: string | null;
   createdAt: Date;
-  institution: { name: string } | null;
+  heldAt?: Date | null;
+  institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
 }): AuthenticatedUser {
+  const hold = resolveSessionHold({
+    role: user.role,
+    heldAt: user.heldAt ?? null,
+    institution: user.institution
+      ? {
+          heldAt: user.institution.heldAt ?? null,
+          deactivatedAt: user.institution.deactivatedAt ?? null,
+        }
+      : null,
+  });
   return {
     userId: user.id,
     email: user.email,
@@ -238,5 +270,6 @@ export function toAuthenticatedUser(user: {
     provider: user.provider,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt.toISOString(),
+    sessionHold: hold,
   };
 }

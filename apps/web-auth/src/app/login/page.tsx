@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isSmartApiError } from '@smart/api-client';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
@@ -18,8 +19,17 @@ export default function LoginPage() {
       const result = await api.auth.login({ email, password });
       storeSession(result.accessToken);
       redirectForRole(result.user.role, result.accessToken);
-    } catch {
-      setError('Login failed. Check email and password.');
+    } catch (err) {
+      if (
+        isSmartApiError(err) &&
+        (err.code === 'institution_held' ||
+          err.code === 'institution_deactivated' ||
+          err.code === 'account_held')
+      ) {
+        setError(err.message);
+      } else {
+        setError('Login failed. Check email and password.');
+      }
     } finally {
       setLoading(false);
     }
