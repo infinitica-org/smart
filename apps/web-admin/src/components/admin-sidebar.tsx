@@ -8,8 +8,9 @@ import { signOut } from '../lib/auth';
 const NAV_ITEMS = [
   { label: 'Platform Health', href: '/admin/health' },
   { label: 'Institutions', href: '/admin/institutions' },
+  { label: 'Pricing & Plans', href: '/admin/plans' },
   { label: 'Integrity Queue', href: '/admin/integrity' },
-  { label: 'User Directory', href: '/admin/users' },
+  { label: 'Student search', href: '/admin/users' },
   { label: 'Rate Limits', href: '/admin/rate-limits' },
   { label: 'Webhook Outbox', href: '/admin/webhooks' },
 ] as const;
@@ -29,7 +30,9 @@ export function AdminSidebar() {
       </div>
       <nav className="flex-1 px-4 py-6 space-y-1" aria-label="Sidebar Admin Navigation">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/admin/health' && pathname.startsWith(`${item.href}/`));
           return (
             <Link
               key={item.href}

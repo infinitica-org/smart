@@ -12,12 +12,21 @@ import type {
   BatchMemberDto,
   CreateBatchRequest,
   CreateInstitutionRequest,
+  GlobalStudentHitDto,
   InstitutionAdminDto,
   InstitutionDto,
+  InstitutionStudentDto,
   InviteUserRequest,
+  ListInstitutionStudentsQuery,
+  ListInstitutionsQuery,
   SendBatchInvitesResultDto,
+  SubscriptionPlanDto,
+  TenantActionReason,
   UpdateBatchRequest,
+  UpdateInstitutionRequest,
+  PlanCode,
 } from '@smart/contracts';
+import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
@@ -51,18 +60,328 @@ export class InstitutionsService {
     }
     const institution = await this.prisma.institution.create({
       data: { name: body.name, domain, planId: freePlan.id },
+      include: { plan: true },
     });
-    return toInstitutionDto(institution);
+    const [created] = await this.toInstitutionDtos([institution]);
+    return created!;
   }
 
-  async listInstitutions(): Promise<InstitutionDto[]> {
-    const rows = await this.prisma.institution.findMany({ orderBy: { createdAt: 'desc' } });
-    return rows.map(toInstitutionDto);
+  async listInstitutions(query: ListInstitutionsQuery = {}): Promise<InstitutionDto[]> {
+    const where: Prisma.InstitutionWhereInput = {};
+    if (query.q) {
+      where.OR = [
+        { name: { contains: query.q, mode: 'insensitive' } },
+        { domain: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    if (query.planCode) {
+      where.plan = { code: query.planCode };
+    }
+    if (query.status === 'HELD') {
+      where.heldAt = { not: null };
+      where.deactivatedAt = null;
+    } else if (query.status === 'DEACTIVATED') {
+      where.deactivatedAt = { not: null };
+    } else if (query.status === 'ACTIVE') {
+      where.heldAt = null;
+      where.deactivatedAt = null;
+    } else {
+      where.deactivatedAt = null;
+    }
+
+    const rows = await this.prisma.institution.findMany({
+      where,
+      include: { plan: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return this.toInstitutionDtos(rows);
   }
 
   async getInstitution(institutionId: string): Promise<InstitutionDto> {
     const institution = await this.requireInstitution(institutionId);
-    return toInstitutionDto(institution);
+    const [dto] = await this.toInstitutionDtos([institution]);
+    return dto!;
+  }
+
+  async updateInstitution(
+    institutionId: string,
+    body: UpdateInstitutionRequest,
+    actorId: string,
+  ): Promise<InstitutionDto> {
+    await this.requireInstitution(institutionId);
+    const data: Prisma.InstitutionUpdateInput = {};
+    if (body.name) data.name = body.name;
+    if (body.domain) {
+      const domain = body.domain.toLowerCase();
+      const clash = await this.prisma.institution.findFirst({
+        where: { domain, id: { not: institutionId } },
+      });
+      if (clash) {
+        throw new ConflictException({
+          error: 'conflict',
+          message: 'An institution with this domain already exists.',
+          statusCode: 409,
+        });
+      }
+      data.domain = domain;
+    }
+    if (body.planCode) {
+      const plan = await this.prisma.subscriptionPlan.findUnique({
+        where: { code: body.planCode },
+      });
+      if (!plan) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Plan not found.',
+          statusCode: 404,
+        });
+      }
+      data.plan = { connect: { id: plan.id } };
+    }
+    await this.prisma.institution.update({ where: { id: institutionId }, data });
+    if (body.planCode) {
+      await this.writeAudit(actorId, 'institution.plan_changed', institutionId, body.planCode, {
+        planCode: body.planCode,
+      });
+    }
+    return this.getInstitution(institutionId);
+  }
+
+  async holdInstitution(
+    institutionId: string,
+    body: TenantActionReason,
+    actorId: string,
+  ): Promise<InstitutionDto> {
+    await this.requireInstitution(institutionId);
+    await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: { heldAt: new Date() },
+    });
+    await this.writeAudit(actorId, 'institution.held', institutionId, body.reason, {});
+    return this.getInstitution(institutionId);
+  }
+
+  async releaseHold(
+    institutionId: string,
+    body: TenantActionReason,
+    actorId: string,
+  ): Promise<InstitutionDto> {
+    await this.requireInstitution(institutionId);
+    await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: { heldAt: null },
+    });
+    await this.writeAudit(actorId, 'institution.hold_released', institutionId, body.reason, {});
+    return this.getInstitution(institutionId);
+  }
+
+  async deactivateInstitution(
+    institutionId: string,
+    body: TenantActionReason,
+    actorId: string,
+  ): Promise<InstitutionDto> {
+    await this.requireInstitution(institutionId);
+    await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: { deactivatedAt: new Date() },
+    });
+    await this.writeAudit(actorId, 'institution.deactivated', institutionId, body.reason, {});
+    return this.getInstitution(institutionId);
+  }
+
+  async restoreInstitution(
+    institutionId: string,
+    body: TenantActionReason,
+    actorId: string,
+  ): Promise<InstitutionDto> {
+    await this.requireInstitution(institutionId);
+    await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: { deactivatedAt: null, heldAt: null },
+    });
+    await this.writeAudit(actorId, 'institution.restored', institutionId, body.reason, {});
+    return this.getInstitution(institutionId);
+  }
+
+  async listInstitutionStudents(
+    institutionId: string,
+    query: ListInstitutionStudentsQuery,
+  ): Promise<InstitutionStudentDto[]> {
+    await this.requireInstitution(institutionId);
+    const where: Prisma.UserWhereInput = { institutionId, role: 'STUDENT' };
+    if (query.batchId) where.batchId = query.batchId;
+    if (query.q) {
+      where.OR = [
+        { fullName: { contains: query.q, mode: 'insensitive' } },
+        { email: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    const users = await this.prisma.user.findMany({
+      where,
+      include: { batch: true },
+      orderBy: { fullName: 'asc' },
+    });
+    const invitations = await this.prisma.invitation.findMany({
+      where: { userId: { in: users.map((user) => user.id) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const latestByUser = new Map<string, (typeof invitations)[number]>();
+    for (const invitation of invitations) {
+      if (!latestByUser.has(invitation.userId)) latestByUser.set(invitation.userId, invitation);
+    }
+
+    const rows: InstitutionStudentDto[] = users.map((user) => {
+      const invitation = latestByUser.get(user.id);
+      return {
+        userId: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        batchId: user.batchId,
+        batchName: user.batch?.name ?? null,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: user.heldAt?.toISOString() ?? null,
+      };
+    });
+
+    if (!query.inviteStatus) return rows;
+    if (query.inviteStatus === 'NONE') return rows.filter((row) => row.inviteStatus === null);
+    return rows.filter((row) => row.inviteStatus === query.inviteStatus);
+  }
+
+  async searchStudents(q: string): Promise<GlobalStudentHitDto[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: 'STUDENT',
+        institutionId: { not: null },
+        OR: [
+          { fullName: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      include: { institution: true },
+      take: 50,
+      orderBy: { fullName: 'asc' },
+    });
+    const invitations = await this.prisma.invitation.findMany({
+      where: { userId: { in: users.map((user) => user.id) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const latestByUser = new Map<string, (typeof invitations)[number]>();
+    for (const invitation of invitations) {
+      if (!latestByUser.has(invitation.userId)) latestByUser.set(invitation.userId, invitation);
+    }
+    return users.flatMap((user) => {
+      if (!user.institutionId || !user.institution) return [];
+      return [
+        {
+          userId: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          institutionId: user.institutionId,
+          institutionName: user.institution.name,
+          inviteStatus: latestByUser.get(user.id)?.status ?? null,
+          heldAt: user.heldAt?.toISOString() ?? null,
+        },
+      ];
+    });
+  }
+
+  async listPlans(): Promise<SubscriptionPlanDto[]> {
+    const plans = await this.prisma.subscriptionPlan.findMany({
+      include: {
+        entitlements: { include: { featureFlag: true } },
+        _count: { select: { institutions: true } },
+      },
+      orderBy: { code: 'asc' },
+    });
+    return plans.map((plan) => ({
+      planId: plan.id,
+      code: plan.code,
+      name: plan.name,
+      institutionCount: plan._count.institutions,
+      entitlements: plan.entitlements.map((row) => ({
+        key: row.featureFlag.key,
+        name: row.featureFlag.name,
+        enabled: row.enabled,
+      })),
+    }));
+  }
+
+  async holdStudent(
+    userId: string,
+    body: TenantActionReason,
+    actorId: string,
+    institutionId: string | null,
+  ): Promise<InstitutionStudentDto> {
+    const user = await this.requireStudent(userId, institutionId);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { heldAt: new Date(), heldReason: body.reason },
+    });
+    await this.writeAudit(actorId, 'student.held', user.id, body.reason, {
+      institutionId: user.institutionId,
+    });
+    const [row] = await this.listInstitutionStudents(user.institutionId!, { q: user.email });
+    return row ?? this.emptyStudent(user);
+  }
+
+  async releaseStudent(
+    userId: string,
+    body: TenantActionReason,
+    actorId: string,
+    institutionId: string | null,
+  ): Promise<InstitutionStudentDto> {
+    const user = await this.requireStudent(userId, institutionId);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { heldAt: null, heldReason: null },
+    });
+    await this.writeAudit(actorId, 'student.hold_released', user.id, body.reason, {
+      institutionId: user.institutionId,
+    });
+    const [row] = await this.listInstitutionStudents(user.institutionId!, { q: user.email });
+    return row ?? this.emptyStudent({ ...user, heldAt: null });
+  }
+
+  private emptyStudent(user: {
+    id: string;
+    email: string;
+    fullName: string;
+    batchId: string | null;
+    heldAt: Date | null;
+  }): InstitutionStudentDto {
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      batchId: user.batchId,
+      batchName: null,
+      inviteStatus: null,
+      lastSentAt: null,
+      acceptedAt: null,
+      heldAt: user.heldAt?.toISOString() ?? null,
+    };
+  }
+
+  private async requireStudent(userId: string, institutionId: string | null) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'STUDENT' || !user.institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
+    if (institutionId && user.institutionId !== institutionId) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student is not in your institution.',
+        statusCode: 403,
+      });
+    }
+    return user;
   }
 
   async inviteInstitutionAdmin(
@@ -374,7 +693,10 @@ export class InstitutionsService {
   }
 
   private async requireInstitution(institutionId: string) {
-    const institution = await this.prisma.institution.findUnique({ where: { id: institutionId } });
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      include: { plan: true },
+    });
     if (!institution) {
       throw new NotFoundException({
         error: 'not_found',
@@ -383,6 +705,89 @@ export class InstitutionsService {
       });
     }
     return institution;
+  }
+
+  private async writeAudit(
+    actorId: string,
+    action: string,
+    resourceId: string,
+    reason: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action,
+        resourceType: 'institution',
+        resourceId,
+        reasonCode: reason,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  private async toInstitutionDtos(
+    rows: Array<{
+      id: string;
+      name: string;
+      domain: string;
+      verificationStatus: InstitutionDto['verificationStatus'];
+      heldAt: Date | null;
+      deactivatedAt: Date | null;
+      createdAt: Date;
+      plan: { code: PlanCode };
+    }>,
+  ): Promise<InstitutionDto[]> {
+    if (rows.length === 0) return [];
+    const ids = rows.map((row) => row.id);
+    const [users, invitations, batches] = await Promise.all([
+      this.prisma.user.groupBy({
+        by: ['institutionId', 'role'],
+        where: { institutionId: { in: ids }, role: { in: ['STUDENT', 'INSTITUTION_ADMIN'] } },
+        _count: { _all: true },
+      }),
+      this.prisma.invitation.groupBy({
+        by: ['institutionId', 'status'],
+        where: { institutionId: { in: ids }, role: 'STUDENT' },
+        _count: { _all: true },
+      }),
+      this.prisma.batch.groupBy({
+        by: ['institutionId'],
+        where: { institutionId: { in: ids } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    return rows.map((row) => {
+      const studentCount =
+        users.find((item) => item.institutionId === row.id && item.role === 'STUDENT')?._count
+          ._all ?? 0;
+      const adminCount =
+        users.find((item) => item.institutionId === row.id && item.role === 'INSTITUTION_ADMIN')
+          ?._count._all ?? 0;
+      const invitePendingCount =
+        invitations.find((item) => item.institutionId === row.id && item.status === 'PENDING')
+          ?._count._all ?? 0;
+      const inviteAcceptedCount =
+        invitations.find((item) => item.institutionId === row.id && item.status === 'ACCEPTED')
+          ?._count._all ?? 0;
+      const batchCount = batches.find((item) => item.institutionId === row.id)?._count._all ?? 0;
+      return {
+        institutionId: row.id,
+        name: row.name,
+        domain: row.domain,
+        planCode: row.plan.code,
+        verificationStatus: row.verificationStatus,
+        heldAt: row.heldAt?.toISOString() ?? null,
+        deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
+        studentCount,
+        adminCount,
+        batchCount,
+        invitePendingCount,
+        inviteAcceptedCount,
+        createdAt: row.createdAt.toISOString(),
+      };
+    });
   }
 
   private async requireBatch(batchId: string, institutionId: string) {
@@ -396,20 +801,6 @@ export class InstitutionsService {
     }
     return batch;
   }
-}
-
-function toInstitutionDto(institution: {
-  id: string;
-  name: string;
-  domain: string;
-  createdAt: Date;
-}): InstitutionDto {
-  return {
-    institutionId: institution.id,
-    name: institution.name,
-    domain: institution.domain,
-    createdAt: institution.createdAt.toISOString(),
-  };
 }
 
 function toBatchDto(
@@ -435,6 +826,7 @@ function toBatchMember(
     fullName: string;
     groupLabel: string | null;
     emailVerified: boolean;
+    heldAt: Date | null;
   },
   invitation: ReturnType<typeof toInvitationDto> | null,
 ): BatchMemberDto {
@@ -445,5 +837,6 @@ function toBatchMember(
     groupLabel: user.groupLabel,
     emailVerified: user.emailVerified,
     invitation,
+    heldAt: user.heldAt?.toISOString() ?? null,
   };
 }

@@ -2,7 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 import { clearAccessToken, getAccessToken, PORTAL_ROLES } from '@smart/api-client';
-import { RolesGuard, SessionBootstrap, SmartApiProvider } from '@smart/ui';
+import { RolesGuard, SessionBootstrap, SessionHoldWall, SmartApiProvider } from '@smart/ui';
+import { api } from '../lib/api';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
@@ -26,16 +27,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
         portalOrigins={PORTAL_ORIGINS}
         publicPathPrefixes={PUBLIC_PATHS}
       >
-        <SmartApiProvider
-          baseUrl={baseUrl}
+        <SessionHoldWall
           getAccessToken={getAccessToken}
-          onUnauthorized={() => {
+          pollMe={() => api.auth.me()}
+          onSignOut={async () => {
+            try {
+              await api.auth.logout();
+            } catch {
+              /* ignore */
+            }
             clearAccessToken();
             window.location.href = `${authUrl}/login`;
           }}
         >
-          {children}
-        </SmartApiProvider>
+          <SmartApiProvider
+            baseUrl={baseUrl}
+            getAccessToken={getAccessToken}
+            onUnauthorized={() => {
+              clearAccessToken();
+              window.location.href = `${authUrl}/login`;
+            }}
+          >
+            {children}
+          </SmartApiProvider>
+        </SessionHoldWall>
       </RolesGuard>
     </SessionBootstrap>
   );

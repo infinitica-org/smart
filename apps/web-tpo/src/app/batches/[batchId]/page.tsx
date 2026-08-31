@@ -178,6 +178,7 @@ export default function BatchDetailPage() {
             <th className="py-2">Email</th>
             <th className="py-2">Group</th>
             <th className="py-2">Invite</th>
+            <th className="py-2">Access</th>
             <th className="py-2"></th>
           </tr>
         </thead>
@@ -190,6 +191,7 @@ export default function BatchDetailPage() {
               <td className="py-2">
                 {member.emailVerified ? 'Accepted' : (member.invitation?.status ?? '—')}
               </td>
+              <td className="py-2">{member.heldAt ? 'On hold' : 'Active'}</td>
               <td className="py-2">
                 {member.invitation?.status === 'PENDING' ? (
                   <button
