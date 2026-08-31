@@ -8,6 +8,7 @@ x-app-env: &app-env
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005,http://localhost}
   S3_ENDPOINT: http://minio:9000
+  S3_REGION: ${S3_REGION:-us-east-1}
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
   S3_BUCKET: smart
@@ -20,6 +21,11 @@ x-app-env: &app-env
   STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
   TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
   ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+  METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  AI_MONTHLY_CEILING_USD: ${AI_MONTHLY_CEILING_USD:-500}
 
 services:
   postgres:
