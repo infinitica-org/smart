@@ -6,10 +6,8 @@ import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } fr
 import type { GlobalStudentHitDto } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../../lib/api';
-import { useRequireAuth } from '../../../lib/auth';
 
 export default function Page() {
-  useRequireAuth();
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<GlobalStudentHitDto[] | null>(null);
   const [reason, setReason] = useState('');

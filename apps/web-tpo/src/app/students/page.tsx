@@ -6,10 +6,8 @@ import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } fr
 import type { InstitutionStudentDto, StudentInviteFilter } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../lib/api';
-import { useRequireAuth } from '../../lib/auth';
 
 export default function TpoStudentsPage() {
-  useRequireAuth();
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
   const [q, setQ] = useState('');
   const [inviteStatus, setInviteStatus] = useState<StudentInviteFilter | ''>('');

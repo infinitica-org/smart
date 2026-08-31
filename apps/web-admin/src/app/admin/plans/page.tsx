@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { Alert, Card, CardDescription, CardHeader, CardTitle } from '@smart/ui';
 import type { SubscriptionPlanDto } from '@smart/contracts';
 import { api } from '../../../lib/api';
-import { useRequireAuth } from '../../../lib/auth';
 
 export default function PlansPage() {
-  useRequireAuth();
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
