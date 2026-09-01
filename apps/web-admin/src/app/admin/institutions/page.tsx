@@ -42,7 +42,6 @@ export default function InstitutionsPage() {
 
   useEffect(() => {
     load().catch((err) => setError(formatApiError(err, 'Failed to load institutions.')));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load
   }, []);
 
   async function onCreate(event: React.FormEvent) {
