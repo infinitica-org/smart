@@ -2,6 +2,7 @@ import type {
   CreateInstitutionRequestSchema,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
+  ParseResumeRequest,
   TenantActionReason,
   UpdateInstitutionRequest,
 } from '@smart/contracts';
@@ -29,6 +30,7 @@ import {
   SubscriptionPlanDtoSchema,
   TrackDtoSchema,
   HealthStatusSchema,
+  ParseResumeResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -93,6 +95,15 @@ export function authApi(client: SmartApiClient) {
       client.post(prefixed(`/auth/invitations/${token}/accept`), body, {
         schema: AuthTokenResponseSchema,
         anonymous: true,
+      }),
+  };
+}
+
+export function usersApi(client: SmartApiClient) {
+  return {
+    parseResume: (body: ParseResumeRequest) =>
+      client.post(prefixed('/users/me/resume/parse'), body, {
+        schema: ParseResumeResponseSchema,
       }),
   };
 }
@@ -358,6 +369,7 @@ export function systemApi(client: SmartApiClient) {
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
+    users: usersApi(client),
     catalog: catalogApi(client),
     assessment: assessmentApi(client),
     certificates: certificateApi(client),
