@@ -292,6 +292,7 @@ services:
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
       DB_HOST: ${DB_HOST:-db.localhost}
+      STUDIO_HOST: ${STUDIO_HOST:-studio.localhost}
       DB_BASIC_AUTH_USER: ${DB_BASIC_AUTH_USER:-admin}
       DB_BASIC_AUTH_HASH: ${DB_BASIC_AUTH_HASH:-}
     volumes:
@@ -306,6 +307,7 @@ services:
       - web-verify
       - web-auth
       - adminer
+      - prisma-studio
     # Only one stack per host should enable profile `vps` (binds :80/:443).
     profiles: ["vps"]
 

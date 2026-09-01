@@ -24,6 +24,12 @@ test -f "$ENV_FILE" || {
   exit 1
 }
 
+# `docker compose build` hands the whole service graph to a single BuildKit
+# "bake" call, which parallelizes across services on its own — `--parallel`
+# only throttles non-build lifecycle ops, it does NOT limit bake concurrency.
+# Building 5 Next.js apps + the API at once pinned a small VPS (kvm2) hard
+# enough that even sshd stopped completing handshakes for 20+ minutes. Build
+# every service strictly one at a time instead.
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
 
 case "$ENV_NAME" in
@@ -34,12 +40,20 @@ esac
 echo "==> ${ENV_NAME}: validate compose (${ENV_FILE})"
 "${COMPOSE[@]}" "${PROFILES[@]}" config >/dev/null
 
-echo "==> ${ENV_NAME}: build and start"
-"${COMPOSE[@]}" "${PROFILES[@]}" up -d --build
+BUILD_SERVICES=$("${COMPOSE[@]}" "${PROFILES[@]}" config --services)
+echo "==> ${ENV_NAME}: build (sequential — one service at a time)"
+while IFS= read -r svc; do
+  [[ -z "$svc" ]] && continue
+  echo "    building ${svc}..."
+  "${COMPOSE[@]}" "${PROFILES[@]}" build "$svc"
+done <<<"$BUILD_SERVICES"
+
+echo "==> ${ENV_NAME}: start"
+"${COMPOSE[@]}" "${PROFILES[@]}" up -d --no-build
 
 echo "==> ${ENV_NAME}: wait for api container to be healthy"
 for _ in $(seq 1 30); do
-  status="$("${COMPOSE[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
+  status="$("${COMPOSE[@]}" "${PROFILES[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
   [[ "$status" == "healthy" ]] && break
   sleep 2
 done
