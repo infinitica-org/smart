@@ -88,6 +88,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /tpo/students/:userId/hold": "role.institutionAdmin",
   "POST /tpo/students/:userId/release-hold": "role.institutionAdmin",
   "POST /users/me/password": "role.student",
+  "POST /users/me/resume/parse": "users.resumeParse",
   "PUT /admin/rate-limits/:policyKey": "role.superAdmin",
   "PUT /users/me/track": "role.student",
 }

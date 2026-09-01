@@ -200,6 +200,15 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'pgvector cosine matrix computation is expensive; batched per institution.',
   },
   {
+    key: 'users.resumeParse',
+    scope: 'USER',
+    limit: 10,
+    windowSeconds: 60,
+    burst: 3,
+    redisKey: 'rl:resume_parse:user:{id}',
+    rationale: 'Each parse spends LLM tokens; onboarding retries must not flood the P3 bucket.',
+  },
+  {
     key: 'placement.ingestJd',
     scope: 'INSTITUTION',
     limit: 20,
