@@ -5,6 +5,7 @@ import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { AiGatewayService } from './ai-gateway.service.js';
+import { ResumeParseService } from './resume-parse.service.js';
 import { AiCircuitBreaker } from './circuit-breaker.js';
 
 @Module({
@@ -16,7 +17,14 @@ import { AiCircuitBreaker } from './circuit-breaker.js';
     AiGatewayAuditService,
     AiCircuitBreaker,
     AiGatewayService,
+    ResumeParseService,
   ],
-  exports: [AiGatewayService, AnthropicAdapter, GoogleAdapter, OpenRouterAdapter],
+  exports: [
+    AiGatewayService,
+    ResumeParseService,
+    AnthropicAdapter,
+    GoogleAdapter,
+    OpenRouterAdapter,
+  ],
 })
 export class AiGatewayModule {}

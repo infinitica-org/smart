@@ -22,6 +22,7 @@ export * from './templates/bars-grading.js';
 export * from './templates/l4-defense.js';
 export * from './templates/capstone-review.js';
 export * from './templates/jd-parsing.js';
+export * from './templates/resume-parsing.js';
 export * from './templates/item-authoring.js';
 export * from './templates/gap-report.js';
 
