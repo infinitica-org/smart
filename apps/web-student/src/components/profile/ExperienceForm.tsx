@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ExperienceSchema, type Experience } from '@/lib/schemas/profile.schema';
@@ -14,8 +15,8 @@ export function ExperienceForm({ initialData, onSubmit, onCancel }: ExperienceFo
     handleSubmit,
     control,
     formState: { errors },
-  } = useForm<Experience>({
-    resolver: zodResolver(ExperienceSchema),
+  } = useForm<z.infer<typeof ExperienceSchema>>({
+    resolver: zodResolver(ExperienceSchema) as any,
     defaultValues: initialData || {
       id: crypto.randomUUID(),
       role: '',
@@ -29,18 +30,18 @@ export function ExperienceForm({ initialData, onSubmit, onCancel }: ExperienceFo
     },
   });
 
-  const onSubmitHandler = (data: Experience) => {
+  const onSubmitHandler = (data: z.infer<typeof ExperienceSchema>) => {
     const rawTags = (document.getElementById('tags-input') as HTMLInputElement)?.value || '';
     const newTags = rawTags
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     // If it's an edit, we might want to preserve existing tags if input is empty, but for now just overwrite
-    onSubmit({ ...data, tags: newTags.length > 0 ? newTags : data.tags });
+    onSubmit({ ...data, tags: newTags.length > 0 ? newTags : data.tags || [] } as Experience);
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmitHandler)} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit(onSubmitHandler as any)} className="flex flex-col gap-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-gray-300">

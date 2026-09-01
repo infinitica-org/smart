@@ -1,4 +1,4 @@
-﻿import type { StudentProfileData } from '@smart/contracts';
+import type { StudentProfileData } from '@smart/contracts';
 
 const MONTHS = [
   'January',
@@ -91,6 +91,8 @@ export function onboardingToProfile(form: OnboardingProfileForm): StudentProfile
       linkedinUrl: withHttps(form.linkedinUrl),
     },
     education: [],
+    experiences: [],
+    subjects: [],
     skills: [
       ...form.languages
         .filter((row) => row.language.trim())
