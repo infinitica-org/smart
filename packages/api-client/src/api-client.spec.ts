@@ -1,3 +1,4 @@
+import { BatchImportResultDtoSchema } from '@smart/contracts';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -47,6 +48,7 @@ function stubFetch(responses: readonly StubResponse[]): {
       status,
       headers: new Headers(spec.headers ?? {}),
       text: () => Promise.resolve(text),
+      blob: () => Promise.resolve(new Blob([text])),
       json: () => Promise.resolve(JSON.parse(text) as unknown),
     } as Response);
   }) as unknown as typeof fetch;
@@ -85,6 +87,95 @@ describe('request construction', () => {
     await client.get('/api/v1/verify/abc', { schema, anonymous: true });
 
     expect((calls[0]?.init.headers as Record<string, string>).authorization).toBeUndefined();
+  });
+
+  it('sends multipart data without overriding the browser boundary header', async () => {
+    const { fetchImpl, calls } = stubFetch([{ body: { ok: true } }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+    const formData = new FormData();
+    formData.append('file', new Blob(['synthetic']), 'candidates.csv');
+
+    await client.postForm('/api/v1/tpo/import', formData, { schema });
+
+    expect(calls[0]?.init.body).toBe(formData);
+    expect((calls[0]?.init.headers as Record<string, string>)['content-type']).toBeUndefined();
+    expect((calls[0]?.init.headers as Record<string, string>).authorization).toBe(
+      'Bearer token-123',
+    );
+  });
+
+  it('sends a mapped dry-run import through the existing error and schema path', async () => {
+    const preview = {
+      imported: 0,
+      skipped: 0,
+      errors: [],
+      headers: ['Student Name', 'Email Address'],
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: preview }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+    const formData = new FormData();
+    formData.append('file', new Blob(['synthetic']), 'candidates.csv');
+    formData.append(
+      'mapping',
+      JSON.stringify({ fullName: 'Student Name', email: 'Email Address' }),
+    );
+
+    await expect(
+      client.postForm('/api/v1/tpo/batches/batch-1/members/import', formData, {
+        query: { dryRun: true },
+        schema: BatchImportResultDtoSchema,
+      }),
+    ).resolves.toMatchObject({ headers: ['Student Name', 'Email Address'] });
+    expect(calls[0]?.url).toContain('dryRun=true');
+    expect((calls[0]?.init.body as FormData).get('mapping')).toBe(
+      JSON.stringify({ fullName: 'Student Name', email: 'Email Address' }),
+    );
+  });
+
+  it('normalizes failed import responses instead of returning raw fetch bodies', async () => {
+    const { fetchImpl } = stubFetch([
+      {
+        status: 400,
+        body: {
+          error: 'bad_request',
+          message: 'Column mapping is invalid.',
+          statusCode: 400,
+        },
+      },
+    ]);
+    const client = new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl });
+    const error = await client
+      .postForm('/api/v1/tpo/batches/batch-1/members/import', new FormData(), {
+        schema: BatchImportResultDtoSchema,
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(isSmartApiError(error) && error.statusCode).toBe(400);
+    expect(isSmartApiError(error) && error.message).toBe('Column mapping is invalid.');
+  });
+
+  it('downloads authenticated binary responses without JSON parsing', async () => {
+    const { fetchImpl, calls } = stubFetch([{ text: 'synthetic-template' }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+
+    const blob = await client.getBlob('/api/v1/tpo/template');
+
+    expect(await blob.text()).toBe('synthetic-template');
+    expect((calls[0]?.init.headers as Record<string, string>).authorization).toBe(
+      'Bearer token-123',
+    );
   });
 
   it('reads the access token per request so a rotated token is picked up', async () => {
