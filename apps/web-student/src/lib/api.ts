@@ -1,7 +1,7 @@
 import { SmartApiClient, createSmartApi } from '@smart/api-client';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
+const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API === 'true';
 
 const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = input.toString();
@@ -61,6 +61,48 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/profile')) {
+    let mockProfile: any = {
+      education: [],
+      skills: [],
+      projects: [],
+      certifications: [],
+      preferences: [],
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('mockProfileData');
+        if (stored) {
+          mockProfile = JSON.parse(stored);
+        }
+      } catch (e) {}
+    }
+
+    if (init?.method === 'PATCH' || init?.method === 'PUT') {
+      if (init.body) {
+        try {
+          const body = JSON.parse(init.body as string);
+          mockProfile = { ...mockProfile, ...body };
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('mockProfileData', JSON.stringify(mockProfile));
+          }
+        } catch (e) {}
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        profile: mockProfile,
+        profileCompletion: mockProfile.dpdpConsent ? 100 : 0,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      },
     );
   }
 
@@ -175,6 +217,16 @@ export const apiClient = new SmartApiClient({
   getAccessToken: () => {
     if (typeof window === 'undefined') return null;
     return window.sessionStorage.getItem('smart.accessToken');
+  },
+  onUnauthorized: () => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem('smart.accessToken');
+    if (
+      !window.location.pathname.startsWith('/login') &&
+      !window.location.pathname.startsWith('/activate')
+    ) {
+      window.location.assign('/login');
+    }
   },
 });
 
