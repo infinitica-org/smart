@@ -16,6 +16,7 @@ type ExistingUser = {
 
 function setup(existingUsers: ExistingUser[] = []) {
   const prisma = {
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
     user: {
       findMany: vi.fn().mockResolvedValue(existingUsers),
@@ -37,7 +38,7 @@ function setup(existingUsers: ExistingUser[] = []) {
         batchId,
       }),
     },
-    invitation: { findFirst: vi.fn().mockResolvedValue(null) },
+    invitation: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(1) },
   };
   const invitations = { createAndEnqueue: vi.fn().mockResolvedValue({ invitation: {} }) };
   return {

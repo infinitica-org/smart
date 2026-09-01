@@ -9,6 +9,7 @@ const actorId = randomUUID();
 
 function setup() {
   const prisma = {
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
     user: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -21,7 +22,7 @@ function setup() {
         batchId,
       }),
     },
-    invitation: { findFirst: vi.fn().mockResolvedValue(null) },
+    invitation: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
   };
   return {
     service: new InstitutionsService(

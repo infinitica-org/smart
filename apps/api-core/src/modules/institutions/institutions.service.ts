@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AddBatchMemberRequestSchema } from '@smart/contracts';
@@ -33,6 +34,7 @@ import type {
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
+import { batchImportRows } from '@smart/observability';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 
@@ -45,6 +47,8 @@ interface ParsedBatchImport {
 
 @Injectable()
 export class InstitutionsService {
+  private readonly logger = new Logger(InstitutionsService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
@@ -667,6 +671,8 @@ export class InstitutionsService {
       : this.invalidImport('Map the Full Name and Email columns before importing.');
 
     let imported = 0;
+    let existingStudents = 0;
+    let newAccounts = 0;
     const errors = [...parsed.errors];
     for (const row of parsed.rows) {
       if (!row.valid) continue;
@@ -682,6 +688,8 @@ export class InstitutionsService {
           invitedById,
         );
         imported += 1;
+        if (row.existingStudent) existingStudents += 1;
+        else newAccounts += 1;
       } catch {
         errors.push({
           row: row.row,
@@ -690,11 +698,51 @@ export class InstitutionsService {
         });
       }
     }
+    // enqueueForBatch sends every pending invitation in the tenant-scoped batch,
+    // so the confirmation count must use the same batch-wide semantics.
+    const pendingInvitations = await this.prisma.invitation.count({
+      where: { batchId, status: 'PENDING' },
+    });
+    batchImportRows.inc({ outcome: 'imported' }, imported);
+    batchImportRows.inc({ outcome: 'skipped' }, errors.length);
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: invitedById,
+        action: 'batch.members_imported',
+        resourceType: 'batch',
+        resourceId: batchId,
+        reasonCode: 'bulk_provisioning',
+        metadata: {
+          institutionId,
+          imported,
+          skipped: errors.length,
+          existingStudents,
+          newAccounts,
+          pendingInvitations,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    this.logger.log(
+      {
+        event: 'tpo.batch_import.completed',
+        batchId,
+        institutionId,
+        imported,
+        skipped: errors.length,
+        existingStudents,
+        newAccounts,
+        pendingInvitations,
+      },
+      'TPO batch import completed',
+    );
     return {
       ...this.toImportResult(parsed, headers),
       imported,
       skipped: errors.length,
       errors,
+      existingStudents,
+      newAccounts,
+      pendingInvitations,
     };
   }
 
