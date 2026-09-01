@@ -18,7 +18,11 @@ export function AdminInput({ className, ...props }: ComponentProps<typeof Input>
   return <Input className={cn('h-10', className)} {...props} />;
 }
 
-export function NativeSelect({ className, children, ...props }: ComponentProps<'select'>) {
+export function NativeSelect({
+  className,
+  children,
+  ...props
+}: Omit<ComponentProps<'select'>, 'ref'>) {
   return (
     <select className={cn(controlClassName, 'cursor-pointer border-0', className)} {...props}>
       {children}
@@ -49,7 +53,7 @@ export function PageStack({ children, className }: { children: ReactNode; classN
   return <div className={cn('flex flex-col gap-8', className)}>{children}</div>;
 }
 
-export function FilterBar({ className, ...props }: ComponentProps<'div'>) {
+export function FilterBar({ className, ...props }: Omit<ComponentProps<'div'>, 'ref'>) {
   return (
     <div
       className={cn(
@@ -63,11 +67,11 @@ export function FilterBar({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-export function FormGrid({ className, ...props }: ComponentProps<'div'>) {
+export function FormGrid({ className, ...props }: Omit<ComponentProps<'div'>, 'ref'>) {
   return <div className={cn('grid gap-4 md:grid-cols-2', className)} {...props} />;
 }
 
-export function FormActions({ className, ...props }: ComponentProps<'div'>) {
+export function FormActions({ className, ...props }: Omit<ComponentProps<'div'>, 'ref'>) {
   return <div className={cn('flex items-end md:col-span-2', className)} {...props} />;
 }
 
