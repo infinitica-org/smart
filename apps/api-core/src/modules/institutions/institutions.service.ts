@@ -1,4 +1,6 @@
+import { Readable } from 'node:stream';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -8,6 +10,7 @@ import {
 import type {
   AddBatchMemberRequest,
   BatchDto,
+  BatchImportMapping,
   BatchImportResultDto,
   BatchMemberDto,
   CreateBatchRequest,
@@ -30,6 +33,8 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
+
+const MAX_BATCH_IMPORT_ROWS = 10_000;
 
 @Injectable()
 export class InstitutionsService {
@@ -621,19 +626,34 @@ export class InstitutionsService {
     return result;
   }
 
+  async previewBatchImport(
+    batchId: string,
+    institutionId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
+    mapping?: BatchImportMapping,
+  ): Promise<BatchImportResultDto> {
+    await this.requireBatch(batchId, institutionId);
+    const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
+    const headers = this.readImportHeaders(sheet);
+    void mapping;
+    return { imported: 0, skipped: 0, errors: [], headers };
+  }
+
   async importBatchMembers(
     batchId: string,
     institutionId: string,
     fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
     invitedById: string,
+    mapping?: BatchImportMapping,
   ): Promise<BatchImportResultDto> {
     await this.requireBatch(batchId, institutionId);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer as unknown as ExcelJS.Buffer);
-    const sheet = workbook.worksheets[0];
-    if (!sheet) {
-      return { imported: 0, skipped: 0, errors: [{ row: 1, message: 'Workbook has no sheets.' }] };
-    }
+    const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
+    this.readImportHeaders(sheet);
+    void mapping;
 
     let imported = 0;
     let skipped = 0;
@@ -675,6 +695,85 @@ export class InstitutionsService {
     }
 
     return { imported, skipped, errors };
+  }
+
+  private async readImportSheet(
+    buffer: Buffer,
+    fileName: string,
+    mimeType: string,
+  ): Promise<ExcelJS.Worksheet> {
+    const extension = fileName.toLowerCase().match(/\.([^.]+)$/)?.[1];
+    if (!extension || !['csv', 'xlsx'].includes(extension)) {
+      throw new BadRequestException('Unsupported file type. Upload a .csv or .xlsx file.');
+    }
+    if (buffer.length === 0) throw new BadRequestException('The uploaded file is empty.');
+    if (buffer.length > 5 * 1024 * 1024) {
+      throw new BadRequestException('The uploaded file exceeds the 5 MB limit.');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const hasZipSignature =
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      ((buffer[2] === 0x03 && buffer[3] === 0x04) ||
+        (buffer[2] === 0x05 && buffer[3] === 0x06) ||
+        (buffer[2] === 0x07 && buffer[3] === 0x08));
+    try {
+      if (extension === 'xlsx') {
+        if (!hasZipSignature) throw new Error('signature');
+        await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+      } else {
+        const text = buffer.toString('utf8');
+        const unsupportedSignature =
+          buffer.subarray(0, 4).equals(Buffer.from('%PDF')) ||
+          buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) ||
+          buffer.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])) ||
+          buffer.subarray(0, 4).equals(Buffer.from('GIF8')) ||
+          buffer.subarray(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0]));
+        const unsupportedMime = /pdf|image|msword|wordprocessingml/i.test(mimeType);
+        const controlBytes = [...buffer.subarray(0, 4096)].filter(
+          (byte) => byte < 0x20 && ![0x09, 0x0a, 0x0d].includes(byte),
+        ).length;
+        if (
+          hasZipSignature ||
+          unsupportedSignature ||
+          unsupportedMime ||
+          controlBytes > 0 ||
+          text.includes('\ufffd')
+        ) {
+          throw new Error('content');
+        }
+        await workbook.csv.read(Readable.from(text.replace(/^\uFEFF/, '')));
+      }
+    } catch {
+      throw new BadRequestException(
+        `Could not read ${extension.toUpperCase()} file. Check that it is not corrupted or mislabeled.`,
+      );
+    }
+    const sheet = workbook.worksheets[0];
+    if (!sheet)
+      throw new BadRequestException('The uploaded spreadsheet has no readable worksheet.');
+    if (sheet.rowCount - 1 > MAX_BATCH_IMPORT_ROWS) {
+      throw new BadRequestException(
+        `The spreadsheet exceeds the ${String(MAX_BATCH_IMPORT_ROWS)} candidate row limit.`,
+      );
+    }
+    return sheet;
+  }
+
+  private readImportHeaders(sheet: ExcelJS.Worksheet): string[] {
+    const headers: string[] = [];
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+      const header = String(cell.text ?? '').trim();
+      if (header) headers.push(header);
+    });
+    if (headers.length === 0) throw new BadRequestException('Row 1 must contain column headers.');
+    const normalized = headers.map((header) => header.toLowerCase());
+    if (new Set(normalized).size !== normalized.length) {
+      throw new BadRequestException('Column headers must be unique.');
+    }
+    return headers;
   }
 
   async buildImportTemplate(): Promise<Buffer> {
