@@ -37,15 +37,20 @@ esac
 echo "==> ${ENV_NAME}: validate compose (${ENV_FILE})"
 "${COMPOSE[@]}" "${PROFILES[@]}" config >/dev/null
 
-echo "==> ${ENV_NAME}: build (parallel limit ${DEPLOY_PARALLEL_LIMIT:-2})"
-"${COMPOSE[@]}" "${PROFILES[@]}" build
+BUILD_SERVICES=$("${COMPOSE[@]}" "${PROFILES[@]}" config --services)
+echo "==> ${ENV_NAME}: build (sequential — one service at a time)"
+while IFS= read -r svc; do
+  [[ -z "$svc" ]] && continue
+  echo "    building ${svc}..."
+  "${COMPOSE[@]}" "${PROFILES[@]}" build "$svc"
+done <<<"$BUILD_SERVICES"
 
 echo "==> ${ENV_NAME}: start"
 "${COMPOSE[@]}" "${PROFILES[@]}" up -d --no-build
 
 echo "==> ${ENV_NAME}: wait for api container to be healthy"
 for _ in $(seq 1 30); do
-  status="$("${COMPOSE[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
+  status="$("${COMPOSE[@]}" "${PROFILES[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
   [[ "$status" == "healthy" ]] && break
   sleep 2
 done
