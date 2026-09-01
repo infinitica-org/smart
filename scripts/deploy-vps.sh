@@ -24,10 +24,13 @@ test -f "$ENV_FILE" || {
   exit 1
 }
 
-# --parallel caps concurrent build/start operations. Building 5 Next.js apps +
-# the API at once has been enough to OOM/swap-thrash a small VPS (kvm2) badly
-# enough that even sshd stopped responding — keep this low on purpose.
-COMPOSE=(docker compose --parallel "${DEPLOY_PARALLEL_LIMIT:-2}" --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
+# `docker compose build` hands the whole service graph to a single BuildKit
+# "bake" call, which parallelizes across services on its own — `--parallel`
+# only throttles non-build lifecycle ops, it does NOT limit bake concurrency.
+# Building 5 Next.js apps + the API at once pinned a small VPS (kvm2) hard
+# enough that even sshd stopped completing handshakes for 20+ minutes. Build
+# every service strictly one at a time instead.
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
 
 case "$ENV_NAME" in
   dev) PROFILES=(--profile apps --profile vps) ;;
