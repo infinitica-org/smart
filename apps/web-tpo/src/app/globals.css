@@ -1,1 +1,4 @@
 @import '@smart/ui/styles.css';
+
+/* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';

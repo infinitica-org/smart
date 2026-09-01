@@ -1,20 +1,30 @@
 # SMART Administration Console (`web-admin`)
 
-This is the system operator and institutional management interface for SMART. Access is restricted to `SUPER_ADMIN` and `INSTITUTION_ADMIN` roles.
+System operator console for SMART. Access is restricted to `SUPER_ADMIN` (and the portal role gate in `PortalAuthGate`).
 
-## Routing Schema
+The UI follows the Studio Admin shell: collapsible Lucide sidebar, sticky header with command search (`⌘J`) and light/dark/system theme, shadcn cards/tables.
 
-| Route Path           | Type   | Navigables      | Purpose / Functional Target                                                                                                |
-| -------------------- | ------ | --------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `/`                  | Static | None            | Auto-redirects to `/admin/health`.                                                                                         |
-| `/admin/health`      | Static | Platform Health | Metrics dashboard displaying api-core Fastify, Prisma databases, and LLM primary/fallback (Claude/Gemini) circuits states. |
-| `/admin/integrity`   | Static | Integrity Queue | Proctoring reviews backlog queue allowing admins to release or void anomaly flags.                                         |
-| `/admin/users`       | Static | User Directory  | Institutional domains matching catalog settings and roles distributions panel.                                             |
-| `/admin/rate-limits` | Static | Rate Limits     | Realtime Redis API limits adjustments console for critical pathways.                                                       |
-| `/admin/webhooks`    | Static | Webhook Outbox  | Outbound HMAC-SHA256 partner ERP integrations registering.                                                                 |
+## Routing
 
-## Layout Structure
+| Route                      | Purpose                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| `/`                        | Redirects to `/admin` (preserves `?accessToken=`)                                     |
+| `/admin`                   | Platform overview: tenant counts, holds, verification backlog, plan mix, recent audit |
+| `/admin/institutions`      | Create and search institutions                                                        |
+| `/admin/institutions/[id]` | Tenant profile, admins, students, holds, flags, activity                              |
+| `/admin/companies`         | Create and search companies                                                           |
+| `/admin/companies/[id]`    | Company profile, plan, hold/deactivate                                                |
+| `/admin/verification`      | Approve or reject self-onboarded tenants                                              |
+| `/admin/plans`             | Plan entitlement flags                                                                |
+| `/admin/users`             | Global student search (audit-logged profile view)                                     |
+| `/admin/audit`             | Platform audit log                                                                    |
+| `/admin/integrity`         | Flagged attempts: clear or void                                                       |
+| `/admin/health`            | AI gateway circuits and spend                                                         |
+| `/admin/rate-limits`       | Placeholder until override APIs exist                                                 |
+| `/admin/webhooks`          | Placeholder until webhook APIs exist                                                  |
 
-- **Root Layout (`src/app/layout.tsx`)**: Integrates the **Sidebar Navigation Layout**. Left segment embeds the static `<AdminSidebar>` containing active tracking, and the right segment yields the actual dynamic routes content.
-- **Theme Styling**: Standard Dark theme wrapper (`dark` class on root html), styled cleanly using tailwind theme tokens.
-- **UI Controls**: Direct imports of `@smart/ui` visual elements (`Alert`, `Card`, `Button`, `Input`) aligned with shared TSConfig.
+## Layout
+
+- Root layout: theme provider, tooltip provider, auth gate. No sidebar on `/auth/*`.
+- `/admin/layout.tsx`: `SessionHoldWall` + collapsible sidebar + header.
+- Local shadcn kit lives in `src/components/ui`. `@smart/ui` is used only for auth walls.

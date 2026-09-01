@@ -705,6 +705,7 @@ model Company {
   verificationStatus   TenantVerificationStatus @default(PENDING) @map("verification_status")
   verificationReason   String?                  @map("verification_reason")
   deactivatedAt        DateTime?                @map("deactivated_at") @db.Timestamptz(6)
+  heldAt               DateTime?                @map("held_at") @db.Timestamptz(6)
   planId               String                   @map("plan_id") @db.Uuid
   plan                 SubscriptionPlan         @relation(fields: [planId], references: [id])
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)

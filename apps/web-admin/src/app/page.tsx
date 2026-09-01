@@ -8,5 +8,5 @@ export default async function Page({ searchParams }: PageProps) {
   const params = await searchParams;
   const token = params.accessToken;
   const query = token ? `?accessToken=${encodeURIComponent(token)}` : '';
-  redirect(`/admin/health${query}`);
+  redirect(`/admin${query}`);
 }

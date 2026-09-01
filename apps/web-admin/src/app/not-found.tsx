@@ -1,5 +1,5 @@
 import { NotFoundWall } from '@smart/ui';
 
 export default function NotFound() {
-  return <NotFoundWall homeHref="/admin/health" />;
+  return <NotFoundWall homeHref="/admin" />;
 }

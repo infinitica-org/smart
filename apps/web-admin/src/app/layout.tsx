@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { SMART_HTML_CLASS } from '@smart/ui';
 import './globals.css';
-import { AdminShell } from '../components/admin-shell';
 import { PortalAuthGate } from '../components/portal-auth-gate';
+import { ThemeProvider } from '@smart/ui/theme-provider';
+import { Toaster } from '@smart/ui/sonner';
+import { TooltipProvider } from '@smart/ui/tooltip';
 
 export const metadata: Metadata = {
   title: 'Platform admin · SMART',
@@ -12,11 +13,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={SMART_HTML_CLASS}>
-      <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased flex animate-fade-in">
-        <PortalAuthGate>
-          <AdminShell>{children}</AdminShell>
-        </PortalAuthGate>
+    <html lang="en" suppressHydrationWarning>
+      <body className="relative min-h-dvh bg-background font-sans text-foreground antialiased">
+        <ThemeProvider>
+          <TooltipProvider>
+            <PortalAuthGate>{children}</PortalAuthGate>
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

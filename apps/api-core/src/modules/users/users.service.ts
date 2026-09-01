@@ -31,7 +31,7 @@ export class UsersService {
   async getMe(userId: string): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { institution: true, primaryTrack: true, secondaryTrack: true },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
     if (!user) {
       throw new NotFoundException({
@@ -66,7 +66,7 @@ export class UsersService {
       where: { id: userId },
       data:
         body.slot === 'SECONDARY' ? { secondaryTrackId: track.id } : { primaryTrackId: track.id },
-      include: { institution: true, primaryTrack: true, secondaryTrack: true },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
 
     return toAuthenticatedUser(updated);

@@ -44,6 +44,11 @@ function requireInstitutionId(user: RequestUser): string {
 export class InstitutionsTpoController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
 
+  @Get('entitlements')
+  entitlements(@CurrentUser() user: RequestUser) {
+    return this.institutions.resolveInstitutionEntitlements(requireInstitutionId(user));
+  }
+
   @Get('students')
   listStudents(
     @CurrentUser() user: RequestUser,

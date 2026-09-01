@@ -1,9 +1,11 @@
 /**
  * SMART UI stylesheet entry. Each microfrontend imports this once from layout
- * (`./globals.css` → here) so Cabinet Grotesk, Axiforma, and the dark-primary
- * tokens render identically on student, TPO, admin, auth, and verify.
+ * (`./globals.css` → here) so Cabinet Grotesk, Axiforma, semantic tokens, and
+ * shadcn primitives render identically on student, TPO, admin, auth, and verify.
  */
 @import '@smart/tailwind-config/theme.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 /*
  * Tailwind v4 only emits classes it can see. UI components live in this package

@@ -33,6 +33,10 @@ export type UserWithAuthIncludes = {
     heldAt: Date | null;
     deactivatedAt: Date | null;
   } | null;
+  company?: {
+    heldAt: Date | null;
+    deactivatedAt: Date | null;
+  } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
 };
@@ -47,7 +51,7 @@ export class AuthService {
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: { institution: true, primaryTrack: true, secondaryTrack: true },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
     if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedException({
@@ -89,7 +93,9 @@ export class AuthService {
     const existing = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
       include: {
-        user: { include: { institution: true, primaryTrack: true, secondaryTrack: true } },
+        user: {
+          include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+        },
       },
     });
 
@@ -209,6 +215,7 @@ function assertTenantLoginAllowed(user: {
   role: AuthenticatedUser['role'];
   heldAt: Date | null;
   institution: { heldAt: Date | null; deactivatedAt: Date | null } | null;
+  company?: { heldAt: Date | null; deactivatedAt: Date | null } | null;
 }): void {
   const hold = resolveSessionHold(user);
   if (!hold) return;
@@ -245,6 +252,7 @@ export function toAuthenticatedUser(user: {
   createdAt: Date;
   heldAt?: Date | null;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
+  company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
 }): AuthenticatedUser {
@@ -255,6 +263,12 @@ export function toAuthenticatedUser(user: {
       ? {
           heldAt: user.institution.heldAt ?? null,
           deactivatedAt: user.institution.deactivatedAt ?? null,
+        }
+      : null,
+    company: user.company
+      ? {
+          heldAt: user.company.heldAt ?? null,
+          deactivatedAt: user.company.deactivatedAt ?? null,
         }
       : null,
   });

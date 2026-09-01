@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { SMART_HTML_CLASS } from '@smart/ui';
+import { SMART_HTML_CLASS, SmartLogo } from '@smart/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,10 +15,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="border-b border-[var(--surface-border)] bg-[var(--surface)]">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-                SMART
-              </p>
-              <h1 className="text-xl font-semibold tracking-tight">Trust & Verification</h1>
+              <SmartLogo kind="wordmark" className="h-7" />
+              <h1 className="mt-2 text-xl font-semibold tracking-tight">Trust & Verification</h1>
             </div>
             <div className="text-xs text-[var(--text-muted)] font-medium">Public Lookup Portal</div>
           </div>

@@ -655,4 +655,76 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       // Fail open
     }
   }
+
+  async listIntegrityQueue() {
+    const rows = await this.prisma.attempt.findMany({
+      where: {
+        status: { not: 'VOIDED' },
+        integrityFlag: {
+          in: [
+            'FLAGGED_TIMING',
+            'FLAGGED_PROCTOR',
+            'FLAGGED_SIMILARITY',
+            'FLAGGED_AUDIO',
+            'UNDER_REVIEW',
+          ],
+        },
+      },
+      include: { user: true },
+      orderBy: { startedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => ({
+      attemptId: row.id,
+      userId: row.userId,
+      studentName: row.user.fullName,
+      studentEmail: row.user.email,
+      integrityFlag: row.integrityFlag,
+      status: row.status,
+      startedAt: row.startedAt.toISOString(),
+      completedAt: row.completedAt?.toISOString() ?? null,
+    }));
+  }
+
+  async resolveIntegrity(
+    attemptId: string,
+    body: { resolution: 'CLEAR' | 'VOID'; reason: string },
+    actorId: string,
+  ) {
+    const attempt = await this.prisma.attempt.findUnique({
+      where: { id: attemptId },
+      include: { user: true },
+    });
+    if (!attempt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Attempt not found.',
+        statusCode: 404,
+      });
+    }
+    const updated = await this.prisma.attempt.update({
+      where: { id: attemptId },
+      data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
+      include: { user: true },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+        resourceType: 'attempt',
+        resourceId: attemptId,
+        reasonCode: body.reason,
+      },
+    });
+    return {
+      attemptId: updated.id,
+      userId: updated.userId,
+      studentName: updated.user.fullName,
+      studentEmail: updated.user.email,
+      integrityFlag: updated.integrityFlag,
+      status: updated.status,
+      startedAt: updated.startedAt.toISOString(),
+      completedAt: updated.completedAt?.toISOString() ?? null,
+    };
+  }
 }

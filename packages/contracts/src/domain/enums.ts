@@ -146,10 +146,25 @@ export const STUDENT_INVITE_FILTERS = [
 export const StudentInviteFilterSchema = z.enum(STUDENT_INVITE_FILTERS);
 export type StudentInviteFilter = z.infer<typeof StudentInviteFilterSchema>;
 
+export const COMPANY_MODES = ['SERVICE', 'PRODUCT'] as const;
+export const CompanyModeSchema = z.enum(COMPANY_MODES);
+export type CompanyMode = z.infer<typeof CompanyModeSchema>;
+
+export const CANDIDATE_VIEW_REASON_CODES = [
+  'support_ticket',
+  'integrity_review',
+  'billing_dispute',
+  'other',
+] as const;
+export const CandidateViewReasonCodeSchema = z.enum(CANDIDATE_VIEW_REASON_CODES);
+export type CandidateViewReasonCode = z.infer<typeof CandidateViewReasonCodeSchema>;
+
 export const SESSION_HOLD_CODES = [
   'institution_held',
   'institution_deactivated',
   'account_held',
+  'company_held',
+  'company_deactivated',
 ] as const;
 export const SessionHoldCodeSchema = z.enum(SESSION_HOLD_CODES);
 export type SessionHoldCode = z.infer<typeof SessionHoldCodeSchema>;
@@ -159,6 +174,8 @@ export const SESSION_HOLD_MESSAGE: Readonly<Record<SessionHoldCode, string>> = {
   institution_deactivated:
     'This institution is deactivated. You cannot use SMART until it is restored.',
   account_held: 'Your account is on hold. Contact your TPO or platform administrator.',
+  company_held: 'This company is on hold. You cannot use SMART until it is released.',
+  company_deactivated: 'This company is deactivated. You cannot use SMART until it is restored.',
 };
 
 export function isSessionHoldCode(code: string): code is SessionHoldCode {

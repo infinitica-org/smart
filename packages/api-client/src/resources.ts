@@ -1,24 +1,38 @@
 import type {
+  CreateCompanyRequest,
   CreateInstitutionRequestSchema,
+  ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
   ParseResumeRequest,
+  SetFeatureFlagOverrideRequest,
   TenantActionReason,
+  UpdateCompanyRequest,
   UpdateInstitutionRequest,
+  UpdatePlanEntitlementsRequest,
+  ViewCandidateRequest,
+  ResolveVerificationRequest,
+  ResolveIntegrityRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
+  AdminDashboardDtoSchema,
+  AiHealthDtoSchema,
   AssignedFormDtoSchema,
   AttemptSessionDtoSchema,
+  AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
   BatchDtoSchema,
   BatchMemberDtoSchema,
+  CandidateBriefDtoSchema,
   CertificateDtoSchema,
+  CompanyDtoSchema,
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
   InstitutionStudentDtoSchema,
+  IntegrityQueueItemDtoSchema,
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
@@ -28,7 +42,9 @@ import {
   SendBatchInvitesResultDtoSchema,
   SsoStartResponseSchema,
   SubscriptionPlanDtoSchema,
+  TenantEntitlementsDtoSchema,
   TrackDtoSchema,
+  VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
 } from '@smart/contracts';
@@ -163,6 +179,102 @@ export function onboardingApi(client: SmartApiClient) {
 
     listPlans: () =>
       client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
+    updatePlanEntitlements: (planId: string, body: UpdatePlanEntitlementsRequest) =>
+      client.patch(prefixed(`/admin/plans/${planId}/entitlements`), body, {
+        schema: SubscriptionPlanDtoSchema,
+      }),
+
+    institutionEntitlements: (institutionId: string) =>
+      client.get(prefixed(`/admin/institutions/${institutionId}/entitlements`), {
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
+    setInstitutionFlag: (institutionId: string, body: SetFeatureFlagOverrideRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/admin/institutions/${institutionId}/feature-flags`),
+        body,
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
+    tpoEntitlements: () =>
+      client.get(prefixed('/tpo/entitlements'), { schema: TenantEntitlementsDtoSchema }),
+
+    dashboard: () => client.get(prefixed('/admin/dashboard'), { schema: AdminDashboardDtoSchema }),
+
+    listAuditLogs: (query?: {
+      q?: string;
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+    }) =>
+      client.get(prefixed('/admin/audit-logs'), {
+        schema: z.array(AuditLogDtoSchema),
+        query,
+      }),
+
+    viewCandidateProfile: (userId: string, body: ViewCandidateRequest) =>
+      client.post(prefixed(`/admin/students/${userId}/profile`), body, {
+        schema: CandidateBriefDtoSchema,
+      }),
+
+    createCompany: (body: CreateCompanyRequest) =>
+      client.post(prefixed('/admin/companies'), body, { schema: CompanyDtoSchema }),
+
+    listCompanies: (query?: ListCompaniesQuery) =>
+      client.get(prefixed('/admin/companies'), {
+        schema: z.array(CompanyDtoSchema),
+        query,
+      }),
+
+    getCompany: (companyId: string) =>
+      client.get(prefixed(`/admin/companies/${companyId}`), { schema: CompanyDtoSchema }),
+
+    updateCompany: (companyId: string, body: UpdateCompanyRequest) =>
+      client.patch(prefixed(`/admin/companies/${companyId}`), body, { schema: CompanyDtoSchema }),
+
+    holdCompany: (companyId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/companies/${companyId}/hold`), body, {
+        schema: CompanyDtoSchema,
+      }),
+
+    releaseCompanyHold: (companyId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/companies/${companyId}/release-hold`), body, {
+        schema: CompanyDtoSchema,
+      }),
+
+    deactivateCompany: (companyId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/companies/${companyId}/deactivate`), body, {
+        schema: CompanyDtoSchema,
+      }),
+
+    restoreCompany: (companyId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/companies/${companyId}/restore`), body, {
+        schema: CompanyDtoSchema,
+      }),
+
+    verificationQueue: () =>
+      client.get(prefixed('/admin/verification-queue'), {
+        schema: z.array(VerificationQueueItemDtoSchema),
+      }),
+
+    resolveVerification: (tenantId: string, body: ResolveVerificationRequest) =>
+      client.post(prefixed(`/admin/verification-queue/${tenantId}/resolve`), body, {
+        schema: VerificationQueueItemDtoSchema,
+      }),
+
+    integrityQueue: () =>
+      client.get(prefixed('/admin/integrity-queue'), {
+        schema: z.array(IntegrityQueueItemDtoSchema),
+      }),
+
+    resolveIntegrity: (attemptId: string, body: ResolveIntegrityRequest) =>
+      client.post(prefixed(`/admin/integrity-queue/${attemptId}/resolve`), body, {
+        schema: IntegrityQueueItemDtoSchema,
+      }),
+
+    aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),
 
     holdStudent: (userId: string, body: TenantActionReason) =>
       client.post(prefixed(`/admin/students/${userId}/hold`), body, {
