@@ -10,6 +10,9 @@ import {
   ParseResumeRequestSchema,
   ROUTES,
   SKILL_CLAIM_STATUSES,
+  SKILL_MAX_ATTEMPTS,
+  SKILL_REATTEMPTS,
+  SKILL_REFRESH_DAYS,
   SKILL_DEFINITIONS,
   SMART_TOPICS,
   TOPIC_SPECS,
@@ -283,6 +286,12 @@ describe('kafka topics', () => {
 describe('sprint 3 MMP placement contracts', () => {
   it('keeps skill-claim statuses on the PRD state machine', () => {
     expect(SKILL_CLAIM_STATUSES).toEqual(['DECLARED', 'VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED']);
+  });
+
+  it('locks Allen retry policy: one reattempt, 35-day refresh', () => {
+    expect(SKILL_REATTEMPTS).toBe(1);
+    expect(SKILL_MAX_ATTEMPTS).toBe(2);
+    expect(SKILL_REFRESH_DAYS).toBe(35);
   });
 
   it('rejects a job opening with no required skills', () => {

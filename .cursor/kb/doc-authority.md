@@ -7,6 +7,7 @@ When sources disagree, use this order:
 3. **`ARCHITECTURE.md`** — system design, SLAs, schema narrative, rate-limit rationale
 4. **`docs/delivery/*`** — calendar, DoD, engineer guides (process)
 5. **`docs/product/prd-v1/`** — frozen MMP product pack (Allen, 28 Aug 2026). Story and `[M]` scope. Does **not** override TEAM.md or contracts. Improvements via ADR, not in-place PRD edits. Architect map: `docs/delivery/PRD_V1_ARCHITECT_REVIEW.md`
+   - **V1 ship lock (1 Sep 2026):** [`docs/SMART_Platform_Playbook.md`](../../docs/SMART_Platform_Playbook.md) + [`docs/SMART_V1_Launch_Roadmap.md`](../../docs/SMART_V1_Launch_Roadmap.md) + [ADR 0013](../../docs/adr/0013-v1-retry-and-credentials.md). Retry = 1 reattempt / 35-day refresh. Licenses on the profile. These win over older playbook 3-strike text and PRD §7.3 cooldown examples.
 6. **`tools/zoho-sprint*/backlog.mjs`** — sprint ticket AC/DoD/subtasks (synced to GitHub Issues)
 7. **`README.md`** — local ports and bootstrap (prefer over guide tables if they conflict)
 8. Older narrative docs (`SERVICES_VIEW.md` ownership tables, blueprint marketing copy) — **historical**; do not override TEAM.md
