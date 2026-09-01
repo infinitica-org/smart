@@ -240,6 +240,15 @@ export const verificationLookups = new Counter({
   registers: [registry],
 });
 
+/* --------------------------- TPO provisioning ---------------------------- */
+
+export const batchImportRows = new Counter({
+  name: 'smart_tpo_batch_import_rows_total',
+  help: 'Candidate rows processed by bulk provisioning outcome.',
+  labelNames: ['outcome'] as const,
+  registers: [registry],
+});
+
 /** Scrape endpoint payload. */
 export async function collectMetrics(): Promise<string> {
   return registry.metrics();

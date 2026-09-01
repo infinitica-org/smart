@@ -508,7 +508,7 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 500,
-    summary: 'Bulk import students from an Excel file.',
+    summary: 'Preview or bulk import students from a mapped CSV or XLSX file.',
   },
   {
     method: 'GET',
