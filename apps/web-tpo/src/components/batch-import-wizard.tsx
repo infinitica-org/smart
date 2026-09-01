@@ -59,7 +59,13 @@ function safeMessage(caught: unknown, fallback: string) {
   return fallback;
 }
 
-export function BatchImportWizard({ batchId }: { batchId: string }) {
+export function BatchImportWizard({
+  batchId,
+  onComplete,
+}: {
+  batchId: string;
+  onComplete?: () => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -147,6 +153,7 @@ export function BatchImportWizard({ batchId }: { batchId: string }) {
       setResult(await apiClient.postForm(importPath, body, { schema: BatchImportResultDtoSchema }));
       setInviteOk(false);
       setEnqueued(null);
+      onComplete?.();
     } catch (caught) {
       setError(safeMessage(caught, 'Import could not be completed. Please try again.'));
     } finally {
@@ -161,6 +168,7 @@ export function BatchImportWizard({ batchId }: { batchId: string }) {
     setError(null);
     try {
       setEnqueued((await api.onboarding.sendBatchInvites(batchId)).enqueued);
+      onComplete?.();
     } catch {
       setError('Invitations could not be queued. Please try again.');
     } finally {
