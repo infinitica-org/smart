@@ -1,4 +1,4 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger, Optional } from '@nestjs/common';
 import type { AiProvider } from '@smart/contracts';
 
 export interface CircuitBreakerOptions {
@@ -90,7 +90,7 @@ export class AiCircuitBreaker {
 
   private readonly circuits = new Map<AiProvider, ProviderCircuitInfo>();
 
-  constructor(options?: CircuitBreakerOptions) {
+  constructor(@Optional() options?: CircuitBreakerOptions) {
     this.failureThreshold = options?.failureThreshold ?? 3;
     this.resetTimeoutMs = options?.resetTimeoutMs ?? 30_000;
     this.requestTimeoutMs = options?.requestTimeoutMs ?? 15_000;
