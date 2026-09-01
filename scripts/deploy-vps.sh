@@ -45,7 +45,7 @@ echo "==> ${ENV_NAME}: build (sequential — one service at a time)"
 while IFS= read -r svc; do
   [[ -z "$svc" ]] && continue
   echo "    building ${svc}..."
-  "${COMPOSE[@]}" build "$svc"
+  "${COMPOSE[@]}" "${PROFILES[@]}" build "$svc"
 done <<<"$BUILD_SERVICES"
 
 echo "==> ${ENV_NAME}: start"
@@ -53,7 +53,7 @@ echo "==> ${ENV_NAME}: start"
 
 echo "==> ${ENV_NAME}: wait for api container to be healthy"
 for _ in $(seq 1 30); do
-  status="$("${COMPOSE[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
+  status="$("${COMPOSE[@]}" "${PROFILES[@]}" ps api --format '{{.Health}}' 2>/dev/null || true)"
   [[ "$status" == "healthy" ]] && break
   sleep 2
 done
