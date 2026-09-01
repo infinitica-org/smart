@@ -163,6 +163,19 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/users/me/resume/parse',
+    module: 'ai-gateway',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'users.resumeParse',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 6_000,
+    summary:
+      'Parse an uploaded resume into a pre-fill draft (education, experience, skills). Manual edit always allowed.',
+  },
+  {
+    method: 'POST',
     path: '/admin/api-keys',
     module: 'auth',
     owner: 'Vishal V',

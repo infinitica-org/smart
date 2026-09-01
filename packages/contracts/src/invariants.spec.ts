@@ -4,14 +4,19 @@ import {
   CreateJobOpeningRequestSchema,
   LATENCY_BUDGET_MS,
   LEVEL_DEFINITIONS,
+  LEVEL_QUESTION_TOTALS,
+  LEVEL_VERIFICATION_METHOD,
   L5_SPLIT_WEIGHTS,
+  ParseResumeRequestSchema,
   ROUTES,
   SKILL_CLAIM_STATUSES,
+  SKILL_DEFINITIONS,
   SMART_TOPICS,
   TOPIC_SPECS,
   TRACK_DEFINITIONS,
   TRACK_CODES,
   assertDomainWeightsSumToOne,
+  assertSkillQuestionCounts,
   candidateCriticalRoutes,
   getCommunicationDomain,
   getRateLimitPolicy,
@@ -178,6 +183,77 @@ describe('route registry', () => {
   });
 });
 
+describe('skill taxonomy (INF-05)', () => {
+  it('defines the Universal Core plus three Role Depth streams', () => {
+    const streams = new Set(SKILL_DEFINITIONS.map((s) => s.stream));
+    expect(streams).toEqual(
+      new Set(['UNIVERSAL', 'SOFTWARE_DEVELOPMENT', 'DATA_SCIENCE_ANALYTICS', 'AI_ML_ENGINEERING']),
+    );
+  });
+
+  it('has no duplicate skill codes', () => {
+    const codes = SKILL_DEFINITIONS.map((s) => s.code);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it('gives every skill all four proficiency levels', () => {
+    for (const skill of SKILL_DEFINITIONS) {
+      expect(Object.keys(skill.levels).sort()).toEqual([
+        'ADVANCED',
+        'BEGINNER',
+        'INTERMEDIATE',
+        'PROFESSIONAL',
+      ]);
+    }
+  });
+
+  // A question-count sum other than the level total does not throw at
+  // runtime — it silently under- or over-fills an assessment. CI guard.
+  it('sums question-type counts to the level total (20/20/30/30) for every skill', () => {
+    for (const skill of SKILL_DEFINITIONS) {
+      expect(() => assertSkillQuestionCounts(skill)).not.toThrow();
+    }
+  });
+
+  it('never assigns coding questions at Beginner', () => {
+    for (const skill of SKILL_DEFINITIONS) {
+      expect(skill.levels.BEGINNER.questionCounts.CODING, skill.code).toBe(0);
+    }
+  });
+
+  it('gates the autonomous interview to Advanced and Professional only', () => {
+    expect(LEVEL_VERIFICATION_METHOD.BEGINNER.interviewRequired).toBe(false);
+    expect(LEVEL_VERIFICATION_METHOD.INTERMEDIATE.interviewRequired).toBe(false);
+    expect(LEVEL_VERIFICATION_METHOD.ADVANCED.interviewRequired).toBe(true);
+    expect(LEVEL_VERIFICATION_METHOD.PROFESSIONAL.interviewRequired).toBe(true);
+  });
+
+  it('requires a defended project only at Professional', () => {
+    for (const level of ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const) {
+      expect(LEVEL_VERIFICATION_METHOD[level].projectRequired, level).toBe(false);
+    }
+    expect(LEVEL_VERIFICATION_METHOD.PROFESSIONAL.projectRequired).toBe(true);
+  });
+
+  it('sets ascending pass marks across levels for every skill', () => {
+    for (const skill of SKILL_DEFINITIONS) {
+      const { BEGINNER, INTERMEDIATE, ADVANCED, PROFESSIONAL } = skill.levels;
+      expect(BEGINNER.passMark, skill.code).toBeLessThan(INTERMEDIATE.passMark);
+      expect(INTERMEDIATE.passMark, skill.code).toBeLessThan(ADVANCED.passMark);
+      expect(ADVANCED.passMark, skill.code).toBeLessThan(PROFESSIONAL.passMark);
+    }
+  });
+
+  it('matches LEVEL_QUESTION_TOTALS to the declared 20/20/30/30 pattern', () => {
+    expect(LEVEL_QUESTION_TOTALS).toEqual({
+      BEGINNER: 20,
+      INTERMEDIATE: 20,
+      ADVANCED: 30,
+      PROFESSIONAL: 30,
+    });
+  });
+});
+
 describe('kafka topics', () => {
   it('registers a spec for every declared topic', () => {
     for (const topic of Object.values(SMART_TOPICS)) {
@@ -222,5 +298,22 @@ describe('sprint 3 MMP placement contracts', () => {
   it('registers ATS stage-change for My Applications sync', () => {
     expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
     expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
+  });
+});
+
+describe('CN-T02 resume parse contracts', () => {
+  it('exposes a student-only parse route with an LLM rate limit', () => {
+    const route = ROUTES.find((entry) => entry.path === '/users/me/resume/parse');
+    expect(route).toMatchObject({
+      method: 'POST',
+      module: 'ai-gateway',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'users.resumeParse',
+    });
+  });
+
+  it('refuses a parse request with neither text nor object key', () => {
+    expect(ParseResumeRequestSchema.safeParse({}).success).toBe(false);
   });
 });

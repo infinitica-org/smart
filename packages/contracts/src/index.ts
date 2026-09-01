@@ -19,6 +19,7 @@ export * from './domain/enums.js';
 export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
+export * from './domain/skills.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
@@ -31,6 +32,7 @@ export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
+export * from './dto/resume-parse.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
