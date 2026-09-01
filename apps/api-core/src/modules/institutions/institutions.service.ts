@@ -63,7 +63,9 @@ export class InstitutionsService {
       include: { plan: true },
     });
     const [created] = await this.toInstitutionDtos([institution]);
-    if (!created) throw new Error('toInstitutionDtos returned no rows for a single institution');
+    if (!created) {
+      throw new Error('Institution DTO mapping returned no rows for a freshly created institution');
+    }
     return created;
   }
 
@@ -101,7 +103,9 @@ export class InstitutionsService {
   async getInstitution(institutionId: string): Promise<InstitutionDto> {
     const institution = await this.requireInstitution(institutionId);
     const [dto] = await this.toInstitutionDtos([institution]);
-    if (!dto) throw new Error('toInstitutionDtos returned no rows for a single institution');
+    if (!dto) {
+      throw new Error('Institution DTO mapping returned no rows for an existing institution');
+    }
     return dto;
   }
 
@@ -325,8 +329,13 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'student.held', user.id, body.reason, {
       institutionId: user.institutionId,
     });
-    if (!user.institutionId)
-      throw new Error('requireStudent returned a student with no institutionId');
+    if (!user.institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
     const [row] = await this.listInstitutionStudents(user.institutionId, { q: user.email });
     return row ?? this.emptyStudent(user);
   }
@@ -345,8 +354,13 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'student.hold_released', user.id, body.reason, {
       institutionId: user.institutionId,
     });
-    if (!user.institutionId)
-      throw new Error('requireStudent returned a student with no institutionId');
+    if (!user.institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
     const [row] = await this.listInstitutionStudents(user.institutionId, { q: user.email });
     return row ?? this.emptyStudent({ ...user, heldAt: null });
   }

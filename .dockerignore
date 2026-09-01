@@ -5,6 +5,7 @@ node_modules
 .pnpm-store
 .next
 **/dist
+**/*.tsbuildinfo
 **/.turbo
 infra/docker/volumes
 coverage
