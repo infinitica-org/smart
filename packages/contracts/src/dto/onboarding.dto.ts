@@ -230,6 +230,36 @@ export const BatchMemberDtoSchema = z.object({
 });
 export type BatchMemberDto = z.infer<typeof BatchMemberDtoSchema>;
 
+export const BatchImportMappingSchema = z
+  .object({
+    fullName: z.string().trim().min(1).max(200),
+    email: z.string().trim().min(1).max(200),
+    groupLabel: z.string().trim().min(1).max(200).optional(),
+  })
+  .superRefine((mapping, context) => {
+    const selected = [mapping.fullName, mapping.email, mapping.groupLabel].filter(
+      (value): value is string => value !== undefined,
+    );
+    if (new Set(selected).size !== selected.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Each SMART field must map to a different uploaded column.',
+      });
+    }
+  });
+export type BatchImportMapping = z.infer<typeof BatchImportMappingSchema>;
+
+export const BatchImportPreviewRowDtoSchema = z.object({
+  row: z.number().int().positive(),
+  fullName: z.string(),
+  email: z.string(),
+  groupLabel: z.string().optional(),
+  valid: z.boolean(),
+  existingStudent: z.boolean(),
+  message: z.string().optional(),
+});
+export type BatchImportPreviewRowDto = z.infer<typeof BatchImportPreviewRowDtoSchema>;
+
 export const BatchImportResultDtoSchema = z.object({
   imported: z.number().int().nonnegative(),
   skipped: z.number().int().nonnegative(),
@@ -240,6 +270,15 @@ export const BatchImportResultDtoSchema = z.object({
       message: z.string(),
     }),
   ),
+  headers: z.array(z.string()).optional(),
+  preview: z.array(BatchImportPreviewRowDtoSchema).optional(),
+  totalRows: z.number().int().nonnegative().optional(),
+  validRows: z.number().int().nonnegative().optional(),
+  invalidRows: z.number().int().nonnegative().optional(),
+  existingStudents: z.number().int().nonnegative().optional(),
+  newAccounts: z.number().int().nonnegative().optional(),
+  pendingInvitations: z.number().int().nonnegative().optional(),
+  previewTruncated: z.boolean().optional(),
 });
 export type BatchImportResultDto = z.infer<typeof BatchImportResultDtoSchema>;
 

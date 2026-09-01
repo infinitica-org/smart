@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_RATE_LIMIT_POLICIES,
+  BatchImportMappingSchema,
+  BatchImportResultDtoSchema,
   CreateJobOpeningRequestSchema,
   LATENCY_BUDGET_MS,
   LEVEL_DEFINITIONS,
@@ -315,5 +317,42 @@ describe('CN-T02 resume parse contracts', () => {
 
   it('refuses a parse request with neither text nor object key', () => {
     expect(ParseResumeRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('batch import contracts', () => {
+  it('rejects duplicate uploaded-column mappings', () => {
+    expect(
+      BatchImportMappingSchema.safeParse({
+        fullName: 'Student',
+        email: 'Student',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts preview metadata without breaking the import result shape', () => {
+    expect(
+      BatchImportResultDtoSchema.safeParse({
+        imported: 0,
+        skipped: 0,
+        errors: [],
+        headers: ['Student Name', 'Email Address'],
+        totalRows: 1,
+        validRows: 1,
+        invalidRows: 0,
+        existingStudents: 0,
+        newAccounts: 1,
+        previewTruncated: false,
+        preview: [
+          {
+            row: 2,
+            fullName: 'John Student',
+            email: 'john.student@example.test',
+            valid: true,
+            existingStudent: false,
+          },
+        ],
+      }).success,
+    ).toBe(true);
   });
 });
