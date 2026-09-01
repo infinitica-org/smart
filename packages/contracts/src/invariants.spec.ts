@@ -7,6 +7,7 @@ import {
   LEVEL_QUESTION_TOTALS,
   LEVEL_VERIFICATION_METHOD,
   L5_SPLIT_WEIGHTS,
+  ParseResumeRequestSchema,
   ROUTES,
   SKILL_CLAIM_STATUSES,
   SKILL_DEFINITIONS,
@@ -297,5 +298,22 @@ describe('sprint 3 MMP placement contracts', () => {
   it('registers ATS stage-change for My Applications sync', () => {
     expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
     expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
+  });
+});
+
+describe('CN-T02 resume parse contracts', () => {
+  it('exposes a student-only parse route with an LLM rate limit', () => {
+    const route = ROUTES.find((entry) => entry.path === '/users/me/resume/parse');
+    expect(route).toMatchObject({
+      method: 'POST',
+      module: 'ai-gateway',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'users.resumeParse',
+    });
+  });
+
+  it('refuses a parse request with neither text nor object key', () => {
+    expect(ParseResumeRequestSchema.safeParse({}).success).toBe(false);
   });
 });
