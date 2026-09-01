@@ -297,3 +297,15 @@ export const WEBHOOK_DELIVERY_STATUSES = [
 ] as const;
 export const WebhookDeliveryStatusSchema = z.enum(WEBHOOK_DELIVERY_STATUSES);
 export type WebhookDeliveryStatus = z.infer<typeof WebhookDeliveryStatusSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                           Entity & user status                            */
+/* -------------------------------------------------------------------------- */
+
+export const ENTITY_STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED'] as const;
+export const EntityStatusSchema = z.enum(ENTITY_STATUSES);
+export type EntityStatus = z.infer<typeof EntityStatusSchema>;
+
+export const USER_STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'] as const;
+export const UserStatusSchema = z.enum(USER_STATUSES);
+export type UserStatus = z.infer<typeof UserStatusSchema>;

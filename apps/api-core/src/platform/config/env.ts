@@ -40,6 +40,8 @@ const EnvSchema = z.object({
       'http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004',
     ),
 
+  FRONTEND_URL: z.string().default('http://localhost:3001'),
+
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('smart'),

@@ -40,6 +40,7 @@
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
     "@smart/contracts": "workspace:*",
+    "@smart/mail": "workspace:*",
     "@smart/observability": "workspace:*",
     "@smart/prompts": "workspace:*",
     "@smart/scoring-engine": "workspace:*",
@@ -56,7 +57,8 @@
     "pino-pretty": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@smart/eslint-config": "workspace:*",
