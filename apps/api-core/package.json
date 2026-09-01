@@ -45,6 +45,7 @@
     "@nestjs/terminus": "catalog:",
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
+    "@prisma/client-runtime-utils": "catalog:",
     "@smart/contracts": "workspace:*",
     "@smart/observability": "workspace:*",
     "@smart/prompts": "workspace:*",
