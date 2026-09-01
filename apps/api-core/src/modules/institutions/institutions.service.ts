@@ -402,8 +402,15 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'plan.entitlements_updated', 'plan', planId, 'plan matrix', {
       entitlements: body.entitlements,
     });
-    const [updated] = (await this.listPlans()).filter((row) => row.planId === planId);
-    return updated!;
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
   }
 
   async setInstitutionFlagOverride(
