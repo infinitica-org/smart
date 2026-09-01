@@ -24,7 +24,10 @@ test -f "$ENV_FILE" || {
   exit 1
 }
 
-COMPOSE=(docker compose --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
+# --parallel caps concurrent build/start operations. Building 5 Next.js apps +
+# the API at once has been enough to OOM/swap-thrash a small VPS (kvm2) badly
+# enough that even sshd stopped responding — keep this low on purpose.
+COMPOSE=(docker compose --parallel "${DEPLOY_PARALLEL_LIMIT:-2}" --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
 
 case "$ENV_NAME" in
   dev) PROFILES=(--profile apps --profile vps) ;;
@@ -34,8 +37,11 @@ esac
 echo "==> ${ENV_NAME}: validate compose (${ENV_FILE})"
 "${COMPOSE[@]}" "${PROFILES[@]}" config >/dev/null
 
-echo "==> ${ENV_NAME}: build and start"
-"${COMPOSE[@]}" "${PROFILES[@]}" up -d --build
+echo "==> ${ENV_NAME}: build (parallel limit ${DEPLOY_PARALLEL_LIMIT:-2})"
+"${COMPOSE[@]}" "${PROFILES[@]}" build
+
+echo "==> ${ENV_NAME}: start"
+"${COMPOSE[@]}" "${PROFILES[@]}" up -d --no-build
 
 echo "==> ${ENV_NAME}: wait for api container to be healthy"
 for _ in $(seq 1 30); do
