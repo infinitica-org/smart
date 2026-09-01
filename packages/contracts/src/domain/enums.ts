@@ -326,7 +326,10 @@ export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 
 /**
  * Skill-claim state machine. Technical failures must not consume a strike.
- * `LOCKED` is cooldown after two failed verification attempts.
+ *
+ * Allen / playbook lock (1 Sep 2026): one reattempt, then 35-day refresh.
+ * `BEGINNER_REATTEMPT` is that single retry. `LOCKED` lasts
+ * {@link SKILL_REFRESH_DAYS} — not a second retry window.
  */
 export const SKILL_CLAIM_STATUSES = [
   'DECLARED',
@@ -334,6 +337,18 @@ export const SKILL_CLAIM_STATUSES = [
   'BEGINNER_REATTEMPT',
   'LOCKED',
 ] as const;
+
+/** Initial attempt + one reattempt. SE-T01 must not implement a third try. */
+export const SKILL_MAX_ATTEMPTS = 2;
+
+/** Reattempts after the first fail. Not 2 (old PRD) and not 3 (old playbook). */
+export const SKILL_REATTEMPTS = 1;
+
+/** Days after lock (or verified expiry) before the skill can be declared again. */
+export const SKILL_REFRESH_DAYS = 35;
+
+/** Hours between the first fail and the single reattempt. */
+export const SKILL_INTER_ATTEMPT_COOLDOWN_HOURS = 48;
 export const SkillClaimStatusSchema = z.enum(SKILL_CLAIM_STATUSES);
 export type SkillClaimStatus = z.infer<typeof SkillClaimStatusSchema>;
 
