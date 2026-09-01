@@ -24,10 +24,13 @@ test -f "$ENV_FILE" || {
   exit 1
 }
 
-# --parallel caps concurrent build/start operations. Building 5 Next.js apps +
-# the API at once has been enough to OOM/swap-thrash a small VPS (kvm2) badly
-# enough that even sshd stopped responding — keep this low on purpose.
-COMPOSE=(docker compose --parallel "${DEPLOY_PARALLEL_LIMIT:-2}" --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
+# `docker compose build` hands the whole service graph to a single BuildKit
+# "bake" call, which parallelizes across services on its own — `--parallel`
+# only throttles non-build lifecycle ops, it does NOT limit bake concurrency.
+# Building 5 Next.js apps + the API at once pinned a small VPS (kvm2) hard
+# enough that even sshd stopped completing handshakes for 20+ minutes. Build
+# every service strictly one at a time instead.
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f infra/docker/docker-compose.yml)
 
 case "$ENV_NAME" in
   dev) PROFILES=(--profile apps --profile vps) ;;
@@ -37,8 +40,13 @@ esac
 echo "==> ${ENV_NAME}: validate compose (${ENV_FILE})"
 "${COMPOSE[@]}" "${PROFILES[@]}" config >/dev/null
 
-echo "==> ${ENV_NAME}: build (parallel limit ${DEPLOY_PARALLEL_LIMIT:-2})"
-"${COMPOSE[@]}" "${PROFILES[@]}" build
+BUILD_SERVICES=$("${COMPOSE[@]}" "${PROFILES[@]}" config --services)
+echo "==> ${ENV_NAME}: build (sequential — one service at a time)"
+while IFS= read -r svc; do
+  [[ -z "$svc" ]] && continue
+  echo "    building ${svc}..."
+  "${COMPOSE[@]}" build "$svc"
+done <<<"$BUILD_SERVICES"
 
 echo "==> ${ENV_NAME}: start"
 "${COMPOSE[@]}" "${PROFILES[@]}" up -d --no-build
