@@ -7,10 +7,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AddBatchMemberRequestSchema } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
   BatchDto,
   BatchImportMapping,
+  BatchImportPreviewRowDto,
   BatchImportResultDto,
   BatchMemberDto,
   CreateBatchRequest,
@@ -35,6 +37,11 @@ import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
+
+interface ParsedBatchImport {
+  rows: BatchImportPreviewRowDto[];
+  errors: BatchImportResultDto['errors'];
+}
 
 @Injectable()
 export class InstitutionsService {
@@ -637,8 +644,8 @@ export class InstitutionsService {
     await this.requireBatch(batchId, institutionId);
     const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
     const headers = this.readImportHeaders(sheet);
-    void mapping;
-    return { imported: 0, skipped: 0, errors: [], headers };
+    if (!mapping) return { imported: 0, skipped: 0, errors: [], headers };
+    return this.toImportResult(await this.parseImportRows(sheet, mapping, institutionId), headers);
   }
 
   async importBatchMembers(
@@ -652,49 +659,43 @@ export class InstitutionsService {
   ): Promise<BatchImportResultDto> {
     await this.requireBatch(batchId, institutionId);
     const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
-    this.readImportHeaders(sheet);
-    void mapping;
+    const headers = this.readImportHeaders(sheet);
+    const resolved =
+      mapping ?? this.suggestImportMapping(headers) ?? this.positionalMapping(headers);
+    const parsed = resolved
+      ? await this.parseImportRows(sheet, resolved, institutionId)
+      : this.invalidImport('Map the Full Name and Email columns before importing.');
 
     let imported = 0;
-    let skipped = 0;
-    const errors: BatchImportResultDto['errors'] = [];
-
-    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
-      const row = sheet.getRow(rowNumber);
-      const fullName = String(row.getCell(1).text ?? '').trim();
-      const email = String(row.getCell(2).text ?? '')
-        .trim()
-        .toLowerCase();
-      const groupLabel = String(row.getCell(3).text ?? '').trim() || undefined;
-
-      if (!fullName && !email) continue;
-      if (!fullName || !email) {
-        errors.push({ row: rowNumber, email, message: 'fullName and email are required.' });
-        skipped += 1;
-        continue;
-      }
-
+    const errors = [...parsed.errors];
+    for (const row of parsed.rows) {
+      if (!row.valid) continue;
       try {
         await this.addBatchMember(
           batchId,
           institutionId,
-          { fullName, email, groupLabel },
+          {
+            fullName: row.fullName,
+            email: row.email,
+            ...(row.groupLabel ? { groupLabel: row.groupLabel } : {}),
+          },
           invitedById,
         );
         imported += 1;
-      } catch (error) {
-        const message =
-          error instanceof ConflictException
-            ? 'User already exists.'
-            : error instanceof Error
-              ? error.message
-              : 'Import failed.';
-        errors.push({ row: rowNumber, email, message });
-        skipped += 1;
+      } catch {
+        errors.push({
+          row: row.row,
+          email: row.email,
+          message: 'Candidate could not be imported.',
+        });
       }
     }
-
-    return { imported, skipped, errors };
+    return {
+      ...this.toImportResult(parsed, headers),
+      imported,
+      skipped: errors.length,
+      errors,
+    };
   }
 
   private async readImportSheet(
@@ -774,6 +775,135 @@ export class InstitutionsService {
       throw new BadRequestException('Column headers must be unique.');
     }
     return headers;
+  }
+
+  private suggestImportMapping(headers: string[]): BatchImportMapping | undefined {
+    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const find = (aliases: string[]) =>
+      headers.find((header) => aliases.includes(normalize(header)));
+    const fullName = find(['name', 'fullname', 'studentname', 'candidatename']);
+    const email = find(['email', 'emailaddress', 'mail']);
+    const groupLabel = find(['group', 'department', 'section', 'class', 'division']);
+    if (!fullName || !email) return undefined;
+    return { fullName, email, ...(groupLabel ? { groupLabel } : {}) };
+  }
+
+  private positionalMapping(headers: string[]): BatchImportMapping | undefined {
+    if (headers.length < 2) return undefined;
+    return {
+      fullName: headers[0] ?? '',
+      email: headers[1] ?? '',
+      ...(headers[2] ? { groupLabel: headers[2] } : {}),
+    };
+  }
+
+  private async parseImportRows(
+    sheet: ExcelJS.Worksheet,
+    mapping: BatchImportMapping,
+    institutionId: string,
+  ): Promise<ParsedBatchImport> {
+    const headerColumns = new Map<string, number>();
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
+      const header = String(cell.text ?? '').trim();
+      if (header) headerColumns.set(header, column);
+    });
+    const nameColumn = headerColumns.get(mapping.fullName);
+    const emailColumn = headerColumns.get(mapping.email);
+    const groupColumn = mapping.groupLabel ? headerColumns.get(mapping.groupLabel) : undefined;
+    if (!nameColumn || !emailColumn || (mapping.groupLabel && !groupColumn)) {
+      return this.invalidImport('One or more mapped columns are not present in row 1.');
+    }
+    if (sheet.rowCount < 2) return this.invalidImport('The spreadsheet has no candidate rows.');
+
+    const rows: BatchImportPreviewRowDto[] = [];
+    const errors: BatchImportResultDto['errors'] = [];
+    const seenEmails = new Set<string>();
+    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const source = sheet.getRow(rowNumber);
+      const fullName = String(source.getCell(nameColumn).text ?? '').trim();
+      const email = String(source.getCell(emailColumn).text ?? '')
+        .trim()
+        .toLowerCase();
+      const groupLabel = groupColumn
+        ? String(source.getCell(groupColumn).text ?? '').trim() || undefined
+        : undefined;
+      let message: string | undefined;
+      const candidate = AddBatchMemberRequestSchema.safeParse({ fullName, email, groupLabel });
+      if (!fullName && !email && !groupLabel) message = 'Row is empty.';
+      else if (!fullName) message = 'Full Name is required.';
+      else if (!email) message = 'Email is required.';
+      else if (!candidate.success) {
+        if (candidate.error.issues.some((issue) => issue.path[0] === 'email')) {
+          message = 'Invalid email address.';
+        } else if (candidate.error.issues.some((issue) => issue.path[0] === 'fullName')) {
+          message = 'Full Name must be between 2 and 200 characters.';
+        } else if (candidate.error.issues.some((issue) => issue.path[0] === 'groupLabel')) {
+          message = 'Group must be 80 characters or fewer.';
+        } else {
+          message = 'Row contains invalid data.';
+        }
+      } else if (seenEmails.has(email)) message = 'Duplicate email in this upload.';
+      if (!message) seenEmails.add(email);
+      rows.push({
+        row: rowNumber,
+        fullName,
+        email,
+        ...(groupLabel ? { groupLabel } : {}),
+        valid: !message,
+        existingStudent: false,
+        ...(message ? { message } : {}),
+      });
+    }
+
+    const existingUsers = await this.prisma.user.findMany({
+      where: { email: { in: rows.filter((row) => row.valid).map((row) => row.email) } },
+    });
+    const usersByEmail = new Map(existingUsers.map((user) => [user.email.toLowerCase(), user]));
+    for (const row of rows) {
+      if (!row.valid) continue;
+      const existing = usersByEmail.get(row.email);
+      if (!existing) continue;
+      if (existing.institutionId !== institutionId) {
+        row.valid = false;
+        row.message = 'Candidate belongs to another institution.';
+      } else if (existing.role !== 'STUDENT') {
+        row.valid = false;
+        row.message = 'Email belongs to a non-student account.';
+      } else {
+        row.existingStudent = true;
+      }
+    }
+    for (const row of rows) {
+      if (!row.valid) {
+        errors.push({
+          row: row.row,
+          ...(row.email ? { email: row.email } : {}),
+          message: row.message ?? 'Invalid row.',
+        });
+      }
+    }
+    return { rows, errors };
+  }
+
+  private invalidImport(message: string): ParsedBatchImport {
+    return { rows: [], errors: [{ row: 1, message }] };
+  }
+
+  private toImportResult(parsed: ParsedBatchImport, headers: string[]): BatchImportResultDto {
+    const validRows = parsed.rows.filter((row) => row.valid).length;
+    return {
+      imported: 0,
+      skipped: parsed.errors.length,
+      errors: parsed.errors,
+      headers,
+      preview: parsed.rows.slice(0, 50),
+      totalRows: parsed.rows.length,
+      validRows,
+      invalidRows: parsed.errors.length,
+      existingStudents: parsed.rows.filter((row) => row.valid && row.existingStudent).length,
+      newAccounts: parsed.rows.filter((row) => row.valid && !row.existingStudent).length,
+      previewTruncated: parsed.rows.length > 50,
+    };
   }
 
   async buildImportTemplate(): Promise<Buffer> {

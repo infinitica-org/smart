@@ -11,6 +11,7 @@ function setup() {
   const prisma = {
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
     user: {
+      findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn().mockResolvedValue(null),
       findFirstOrThrow: vi.fn().mockResolvedValue({
         id: randomUUID(),
