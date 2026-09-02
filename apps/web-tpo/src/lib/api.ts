@@ -4,6 +4,13 @@ import {
   createSmartApi,
   getAccessToken,
 } from '@smart/api-client';
+import {
+  API_PREFIX,
+  JobOpeningDtoSchema,
+  ListJobOpeningsResponseSchema,
+  type CreateJobOpeningRequest,
+  type ListJobOpeningsQuery,
+} from '@smart/contracts';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -14,3 +21,17 @@ export const apiClient = new SmartApiClient({
 });
 
 export const api = createSmartApi(apiClient);
+
+export const openingsApi = {
+  create: (body: CreateJobOpeningRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/openings`, body, { schema: JobOpeningDtoSchema }),
+  list: (query?: ListJobOpeningsQuery) =>
+    apiClient.get(`${API_PREFIX}/placement/openings`, {
+      schema: ListJobOpeningsResponseSchema,
+      query,
+    }),
+  get: (openingId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
+      schema: JobOpeningDtoSchema,
+    }),
+};
