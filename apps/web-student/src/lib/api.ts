@@ -9,6 +9,29 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
 const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 
+/** In-memory mock of server-side onboardingCompleted (survives localStorage clears). */
+let mockOnboardingCompleted = false;
+let mockOnboardingProfile: unknown = null;
+
+function mockStudentUser(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: MOCK_USER_ID,
+    email: 'student@example.com',
+    fullName: 'Test Student',
+    role: 'STUDENT',
+    institutionId: '223e4567-e89b-12d3-a456-426614174000',
+    institutionName: 'Mock Institution',
+    primaryTrack: 'MBA_FINANCE',
+    secondaryTrack: null,
+    provider: 'GOOGLE',
+    emailVerified: true,
+    createdAt: new Date().toISOString(),
+    sessionHold: null,
+    onboardingCompleted: mockOnboardingCompleted,
+    ...overrides,
+  };
+}
+
 function mockStudentAccessToken(): string {
   const now = Math.floor(Date.now() / 1000);
   const payload = JSON.stringify({
@@ -31,58 +54,44 @@ function mockStudentAccessToken(): string {
 
 const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = input.toString();
+  const method = init?.method ?? 'GET';
 
-  if (url.includes('/auth/login') && init?.method === 'POST') {
+  if (url.includes('/auth/login') && method === 'POST') {
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
-        user: {
-          userId: '123e4567-e89b-12d3-a456-426614174000',
-          email: 'student@example.com',
-          fullName: 'Test Student',
-          role: 'STUDENT',
+        user: mockStudentUser({
           institutionId: null,
           institutionName: null,
           primaryTrack: null,
-          secondaryTrack: null,
-          provider: 'EMAIL',
-          emailVerified: true,
-          createdAt: new Date().toISOString(),
-          sessionHold: null,
-        },
+          provider: 'PASSWORD',
+          onboardingCompleted: false,
+        }),
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
-  if (url.includes('/auth/refresh') && init?.method === 'POST') {
+  if (url.includes('/auth/refresh') && method === 'POST') {
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
-        user: {
-          userId: '123e4567-e89b-12d3-a456-426614174000',
-          email: 'student@example.com',
-          fullName: 'Test Student',
-          role: 'STUDENT',
+        user: mockStudentUser({
           institutionId: null,
           institutionName: null,
           primaryTrack: null,
-          secondaryTrack: null,
-          provider: 'EMAIL',
-          emailVerified: true,
-          createdAt: new Date().toISOString(),
-          sessionHold: null,
-        },
+          provider: 'PASSWORD',
+        }),
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
-  if (url.includes('/auth/sso/start') && init?.method === 'POST') {
+  if (url.includes('/auth/sso/start') && method === 'POST') {
     return new Response(
       JSON.stringify({
         authorizationUrl: 'http://localhost:3001/auth/callback?code=mock_code&state=mock_state',
@@ -92,72 +101,120 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     );
   }
 
-  if (url.includes('/auth/sso/callback') && init?.method === 'POST') {
+  if (url.includes('/auth/sso/callback') && method === 'POST') {
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
         tokenType: 'Bearer',
         expiresInSeconds: 900,
-        user: {
-          userId: '123e4567-e89b-12d3-a456-426614174000',
-          email: 'student@example.com',
-          fullName: 'Test Student',
-          role: 'STUDENT',
-          institutionId: null, // Null to force institution picker
+        user: mockStudentUser({
+          institutionId: null,
           institutionName: null,
-          primaryTrack: null, // Null to trigger track enrollment
-          secondaryTrack: null,
-          provider: 'GOOGLE',
-          emailVerified: true,
-          createdAt: new Date().toISOString(),
-          sessionHold: null,
+          primaryTrack: null,
+          onboardingCompleted: false,
+        }),
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/resume/parse') && method === 'POST') {
+    const body = init?.body ? (JSON.parse(String(init.body)) as { rawText?: string }) : {};
+    const rawText = body.rawText?.trim() ?? '';
+    if (rawText.length < 40) {
+      return new Response(JSON.stringify({ status: 'FAILED', draft: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(
+      JSON.stringify({
+        status: 'PARSED',
+        draft: {
+          basicInfo: {
+            firstName: 'Ada',
+            lastName: 'Lovelace',
+            phoneNumber: '9876543210',
+            phoneCountryCode: '+91',
+            linkedinUrl: 'https://www.linkedin.com/in/ada',
+          },
+          education: [
+            {
+              institutionName: 'Mock University',
+              degree: 'B.Tech',
+              fieldOfStudy: 'Computer Science',
+            },
+          ],
+          experiences: [
+            {
+              role: 'Intern',
+              company: 'Example Corp',
+              tags: ['TypeScript'],
+            },
+          ],
+          skills: [
+            { type: 'technical', name: 'TypeScript', proficiency: 'INTERMEDIATE' },
+            { type: 'language', name: 'English', proficiency: 'FLUENT' },
+          ],
+          licenses: [],
+          parseConfidence: 0.82,
+          missingFields: [],
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
-  if (url.includes('/users/me') && (!init || init.method === 'GET')) {
+  if (url.includes('/users/me/onboarding/complete') && method === 'POST') {
+    const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+    if (body.dpdpConsent !== true) {
+      return new Response(JSON.stringify({ error: 'validation_error' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    mockOnboardingCompleted = true;
+    mockOnboardingProfile = {
+      ...body,
+      dpdpConsentAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
+    return new Response(
+      JSON.stringify(
+        mockStudentUser({
+          fullName: `${String(body.firstName)} ${String(body.lastName)}`.trim(),
+          onboardingCompleted: true,
+        }),
+      ),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/onboarding') && method === 'GET') {
     return new Response(
       JSON.stringify({
-        userId: '123e4567-e89b-12d3-a456-426614174000',
-        email: 'student@example.com',
-        fullName: 'Test Student',
-        role: 'STUDENT',
-        institutionId: '223e4567-e89b-12d3-a456-426614174000',
-        institutionName: 'Mock Institution',
-        primaryTrack: 'MBA_FINANCE',
-        secondaryTrack: null,
-        provider: 'GOOGLE',
-        emailVerified: true,
-        createdAt: new Date().toISOString(),
-        sessionHold: null,
+        profile: mockOnboardingProfile,
+        onboardingCompleted: mockOnboardingCompleted,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
-  if (url.includes('/users/me/track') && init?.method === 'PUT') {
-    return new Response(
-      JSON.stringify({
-        userId: '123e4567-e89b-12d3-a456-426614174000',
-        email: 'student@example.com',
-        fullName: 'Test Student',
-        role: 'STUDENT',
-        institutionId: '223e4567-e89b-12d3-a456-426614174000',
-        institutionName: 'Mock Institution',
-        primaryTrack: 'MBA_FINANCE',
-        secondaryTrack: null,
-        provider: 'GOOGLE',
-        emailVerified: true,
-        createdAt: new Date().toISOString(),
-        sessionHold: null,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+  if (url.includes('/users/me/track') && method === 'PUT') {
+    return new Response(JSON.stringify(mockStudentUser({ onboardingCompleted: false })), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
-  if (url.includes('/institutions') && (!init || init.method === 'GET')) {
+  if (url.includes('/users/me') && method === 'GET') {
+    return new Response(JSON.stringify(mockStudentUser()), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/institutions') && method === 'GET') {
     return new Response(
       JSON.stringify([
         {

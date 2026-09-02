@@ -1,6 +1,7 @@
 import type {
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
+  CompleteCandidateOnboardingRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -26,6 +27,7 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
+  CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
   GlobalStudentHitDtoSchema,
@@ -120,6 +122,16 @@ export function usersApi(client: SmartApiClient) {
     parseResume: (body: ParseResumeRequest) =>
       client.post(prefixed('/users/me/resume/parse'), body, {
         schema: ParseResumeResponseSchema,
+      }),
+
+    getOnboarding: () =>
+      client.get(prefixed('/users/me/onboarding'), {
+        schema: CandidateOnboardingProfileResponseSchema,
+      }),
+
+    completeOnboarding: (body: CompleteCandidateOnboardingRequest) =>
+      client.post(prefixed('/users/me/onboarding/complete'), body, {
+        schema: AuthenticatedUserSchema,
       }),
   };
 }

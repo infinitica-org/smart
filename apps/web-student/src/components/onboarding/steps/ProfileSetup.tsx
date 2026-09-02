@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Trash2, CheckCircle2, Plus } from 'lucide-react';
 import { CustomSelect } from '../../ui/CustomSelect';
+import { api } from '@/lib/api';
 import {
-  emptyOnboardingForm,
-  loadOnboardingForm,
-  saveOnboardingForm,
+  MONTHS,
+  buildCompleteOnboardingRequest,
+  clearOnboardingDraft,
+  saveOnboardingDraft,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
 
 interface ProfileSetupProps {
+  initialForm: OnboardingProfileForm;
   onBack: () => void;
-  onContinue: () => void;
+  onComplete: () => void;
 }
 
 type TabID = 'profile' | 'phone' | 'linkedin' | 'languages' | 'preferences' | 'consent';
@@ -28,20 +31,6 @@ function tabAt(index: number): TabID | undefined {
   return TABS[index]?.id;
 }
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const YEARS = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i);
 const PROJECT_TYPES = [
@@ -58,16 +47,20 @@ const PROJECT_TYPES = [
   'Language',
 ];
 
-export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) {
+export default function ProfileSetup({ initialForm, onBack, onComplete }: ProfileSetupProps) {
   const [activeTab, setActiveTab] = useState<TabID>('profile');
 
-  const [formData, setFormData] = useState(emptyOnboardingForm);
+  const [formData, setFormData] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    setFormData(loadOnboardingForm());
-  }, []);
+    setFormData(initialForm);
+  }, [initialForm]);
+
+  useEffect(() => {
+    saveOnboardingDraft(formData);
+  }, [formData]);
 
   const updateField = <K extends keyof OnboardingProfileForm>(
     field: K,
@@ -111,44 +104,28 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
       return;
     }
 
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      setSaveError('First and last name are required.');
-      setActiveTab('profile');
-      return;
-    }
-    if (!formData.phoneNumber.trim()) {
-      setSaveError('Phone number is required.');
-      setActiveTab('phone');
-      return;
-    }
-    if (!formData.linkedinUrl.trim()) {
-      setSaveError('LinkedIn profile is required.');
-      setActiveTab('linkedin');
-      return;
-    }
-    if (!formData.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
-      setSaveError('At least one language is required.');
-      setActiveTab('languages');
-      return;
-    }
-    if (formData.preferences.length === 0) {
-      setSaveError('Please select at least one project preference.');
-      setActiveTab('preferences');
-      return;
-    }
-    if (!formData.dpdpConsent) {
-      setSaveError('You must agree to the DPDP consent terms to complete your profile.');
-      setActiveTab('consent');
+    const payload = buildCompleteOnboardingRequest(formData);
+    if ('error' in payload) {
+      setSaveError(payload.error);
+      if (payload.error.includes('DPDP')) setActiveTab('consent');
+      else if (payload.error.includes('language')) setActiveTab('languages');
+      else if (payload.error.includes('preference')) setActiveTab('preferences');
+      else if (payload.error.includes('LinkedIn')) setActiveTab('linkedin');
+      else if (payload.error.includes('Phone')) setActiveTab('phone');
+      else setActiveTab('profile');
       return;
     }
 
     setSaving(true);
     setSaveError(null);
     try {
-      saveOnboardingForm(formData);
-      onContinue();
+      await api.users.completeOnboarding(payload);
+      clearOnboardingDraft();
+      onComplete();
     } catch {
-      setSaveError('Could not save your profile. Check your connection and try again.');
+      setSaveError(
+        'Could not save your profile to the server. Check your connection and try again.',
+      );
     } finally {
       setSaving(false);
     }

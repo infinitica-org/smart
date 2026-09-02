@@ -4,9 +4,16 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { ResumeParseDraft } from '@smart/contracts';
 
 import ResumeUpload from './steps/ResumeUpload';
 import ProfileSetup from './steps/ProfileSetup';
+import {
+  applyResumeDraft,
+  emptyOnboardingForm,
+  saveOnboardingDraft,
+  type OnboardingProfileForm,
+} from '@/lib/onboarding-form';
 
 const STEPS = [
   { id: 'resume' as const, label: 'Resume', minutes: 1 },
@@ -26,14 +33,14 @@ const TRACKS = [
 
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<'resume' | 'profile'>('resume');
+  const [formSeed, setFormSeed] = useState<OnboardingProfileForm>(emptyOnboardingForm);
   const router = useRouter();
 
-  const handleNext = () => {
-    if (currentStep === 'resume') {
-      setCurrentStep('profile');
-      return;
-    }
-    router.push('/dashboard');
+  const handleResumeContinue = (draft: ResumeParseDraft | null) => {
+    const next = draft ? applyResumeDraft(emptyOnboardingForm(), draft) : emptyOnboardingForm();
+    setFormSeed(next);
+    saveOnboardingDraft(next);
+    setCurrentStep('profile');
   };
 
   return (
@@ -99,9 +106,13 @@ export default function OnboardingWizard() {
 
         <div className="flex-1 overflow-y-auto px-8 pb-10">
           {currentStep === 'resume' ? (
-            <ResumeUpload onContinue={handleNext} />
+            <ResumeUpload onContinue={handleResumeContinue} />
           ) : (
-            <ProfileSetup onBack={() => setCurrentStep('resume')} onContinue={handleNext} />
+            <ProfileSetup
+              initialForm={formSeed}
+              onBack={() => setCurrentStep('resume')}
+              onComplete={() => router.push('/dashboard')}
+            />
           )}
         </div>
       </section>
