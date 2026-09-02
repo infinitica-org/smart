@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '../../generated/prisma/index.js';
 import type {
   CompanyDto,
   CreateCompanyRequest,
@@ -6,12 +7,15 @@ import type {
   TenantActionReason,
   UpdateCompanyRequest,
 } from '@smart/contracts';
-import type { Prisma } from '../../generated/prisma/index.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 @Injectable()
 export class CompaniesService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+  ) {}
 
   async createCompany(body: CreateCompanyRequest, actorId: string): Promise<CompanyDto> {
     const freePlan = await this.prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } });
@@ -240,15 +244,13 @@ export class CompaniesService {
     reason: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action,
-        resourceType: 'company',
-        resourceId,
-        reasonCode: reason,
-        metadata: metadata as Prisma.InputJsonValue,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action,
+      resourceType: 'company',
+      resourceId,
+      reasonCode: reason,
+      metadata,
     });
   }
 }

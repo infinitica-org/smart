@@ -1,5 +1,6 @@
 import {
   SkillClaimDtoSchema,
+  SMART_TOPICS,
   type AiCompletionRequest,
   type AttemptSessionDto,
   type AttemptStatus,
@@ -35,6 +36,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
@@ -43,6 +45,8 @@ import {
   MARK_WEIGHTS,
   type MarkWeightedItemType,
 } from '@smart/scoring-engine';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
@@ -102,6 +106,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
   ) {}
 
@@ -418,10 +424,46 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const completedAt = new Date();
     await this.prisma.attempt.update({
       where: { id: body.attemptId },
-      data: { status: 'EVALUATED', completedAt: new Date() },
+      data: { status: 'EVALUATED', completedAt },
     });
+
+    await this.outbox.enqueueAssessmentSubmitted({
+      meta: {
+        eventId: randomUUID(),
+        eventType: SMART_TOPICS.assessmentSubmitted,
+        version: 1,
+        occurredAt: completedAt.toISOString(),
+        traceId: randomUUID(),
+        source: 'assessment',
+      },
+      data: {
+        attemptId: attempt.id,
+        studentId: attempt.userId,
+        trackCode: attempt.level.track.code as TrackCode,
+        levelNumber: attempt.level.levelNumber as LevelNumber,
+        status: 'EVALUATED',
+        autoSubmitted: body.autoSubmitted,
+        integrityFlag: attempt.integrityFlag as IntegrityFlag,
+        submittedAt: completedAt.toISOString(),
+        responses: attempt.responses.map((response) => ({
+          responseId: response.id,
+          itemId: response.item.id,
+          competencyId: response.item.competencyId,
+          itemWeight: 1,
+          answer: response.answer,
+          objectKey: null,
+        })),
+      },
+    });
+
+    try {
+      await this.redis.del(`session:assessment:${attempt.id}`);
+    } catch {
+      // Non-fatal: session cache entry will simply expire on its TTL.
+    }
 
     return {
       attemptId: body.attemptId,
@@ -1219,14 +1261,12 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
       include: { user: true },
     });
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
-        resourceType: 'attempt',
-        resourceId: attemptId,
-        reasonCode: body.reason,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+      resourceType: 'attempt',
+      resourceId: attemptId,
+      reasonCode: body.reason,
     });
     return {
       attemptId: updated.id,

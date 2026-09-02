@@ -97,7 +97,15 @@ describe('completeAttempt', () => {
       $transaction: transaction,
     };
     const aiGateway = { complete: aiComplete };
-    service = new AssessmentService(prisma as never, {} as never, {} as never, aiGateway as never);
+    const outbox = { enqueueAssessmentSubmitted: vi.fn().mockResolvedValue(undefined) };
+    service = new AssessmentService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      outbox as never,
+      {} as never,
+      aiGateway as never,
+    );
   });
 
   it('rejects completing another candidate’s attempt', async () => {

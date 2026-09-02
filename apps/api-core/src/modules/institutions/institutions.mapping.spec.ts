@@ -15,6 +15,9 @@ type ExistingUser = {
 };
 
 function setup(existingUsers: ExistingUser[] = []) {
+  const auditPublisher = {
+    record: vi.fn().mockResolvedValue(undefined),
+  };
   const prisma = {
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
@@ -44,7 +47,11 @@ function setup(existingUsers: ExistingUser[] = []) {
   return {
     prisma,
     invitations,
-    service: new InstitutionsService(prisma as never, invitations as never),
+    service: new InstitutionsService(
+      prisma as never,
+      invitations as never,
+      auditPublisher as never,
+    ),
   };
 }
 

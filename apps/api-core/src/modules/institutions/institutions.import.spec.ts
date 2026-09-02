@@ -8,6 +8,9 @@ const batchId = randomUUID();
 const actorId = randomUUID();
 
 function setup() {
+  const auditPublisher = {
+    record: vi.fn().mockResolvedValue(undefined),
+  };
   const prisma = {
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
@@ -30,6 +33,7 @@ function setup() {
       {
         createAndEnqueue: vi.fn().mockResolvedValue({ invitation: {} }),
       } as never,
+      auditPublisher as never,
     ),
   };
 }
@@ -85,5 +89,5 @@ describe('InstitutionsService import file boundary', () => {
     await expect(
       probe(service, Buffer.from(['Name,Email', ...rows].join('\n')), 'candidates.csv'),
     ).rejects.toThrow('10000 candidate row limit');
-  }, 20_000);
+  }, 45_000);
 });

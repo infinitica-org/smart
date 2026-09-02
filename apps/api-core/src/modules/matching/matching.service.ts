@@ -3,8 +3,10 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CandidateMatchDtoSchema,
   JdThresholdVectorSchema,
+  PlacementMatchedDataSchema,
   SKILL_CODE_SET,
   ShortlistDtoSchema,
+  SMART_TOPICS,
   TIER_RANK,
   TrackCodeSchema,
   type CertifiableTier,
@@ -13,6 +15,7 @@ import {
   type ShortlistDto,
   type TrackCode,
 } from '@smart/contracts';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import {
   PROFICIENCY_RANK,
@@ -29,7 +32,10 @@ export class MatchingService {
   readonly owner = 'Ramansh';
   readonly purpose = 'Rules ranker (SE-T05 / ADR 0012); cosine optional later.';
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+  ) {}
 
   async match(institutionId: string, request: MatchRequest): Promise<ShortlistDto> {
     const job = await this.resolveJob(institutionId, request.jdId);
@@ -74,6 +80,7 @@ export class MatchingService {
     const ranked = rankCandidates(job.ranker, pool, request.limit);
     const byId = new Map(filtered.map((student) => [student.id, student]));
     const generatedAt = new Date().toISOString();
+    const shortlistId = randomUUID();
 
     const candidates = ranked.map((score) => {
       const student = byId.get(score.studentId);
@@ -108,14 +115,52 @@ export class MatchingService {
       });
     });
 
+    await this.publishPlacementMatched({
+      shortlistId,
+      jdId: request.jdId,
+      institutionId,
+      companyName: job.companyName,
+      roleTitle: job.roleTitle,
+      studentIds: candidates.map((candidate) => candidate.studentId),
+      generatedAt,
+    });
+
     return ShortlistDtoSchema.parse({
-      shortlistId: randomUUID(),
+      shortlistId,
       jdId: request.jdId,
       companyName: job.companyName,
       roleTitle: job.roleTitle,
       generatedAt,
       candidates,
       totalCandidatesConsidered: pool.length,
+    });
+  }
+
+  private async publishPlacementMatched(params: {
+    shortlistId: string;
+    jdId: string;
+    institutionId: string;
+    companyName: string;
+    roleTitle: string;
+    studentIds: string[];
+    generatedAt: string;
+  }): Promise<void> {
+    const data = PlacementMatchedDataSchema.parse({
+      shortlistId: params.shortlistId,
+      jdId: params.jdId,
+      institutionId: params.institutionId,
+      companyName: params.companyName,
+      roleTitle: params.roleTitle,
+      matchedCount: params.studentIds.length,
+      studentIds: params.studentIds,
+      generatedAt: params.generatedAt,
+    });
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.placementMatched,
+      partitionKey: params.jdId,
+      eventType: SMART_TOPICS.placementMatched,
+      source: 'placement',
+      data,
     });
   }
 
