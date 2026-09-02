@@ -1,26 +1,29 @@
 import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type {
-  AttemptSessionDto,
-  AttemptStatus,
-  DeliverableItemDto,
-  DifficultyTag,
-  DomainCode,
-  IntegrityFlag,
-  ItemType,
-  LevelFormat,
-  LevelNumber,
-  NextItemDto,
-  SaveDraftRequest,
-  SaveDraftResponse,
-  StartAttemptRequest,
-  Tier,
-  TrackCode,
+import {
+  SkillClaimDtoSchema,
+  type AttemptSessionDto,
+  type AttemptStatus,
+  type SkillClaimDto,
+  type DeliverableItemDto,
+  type DifficultyTag,
+  type DomainCode,
+  type IntegrityFlag,
+  type ItemType,
+  type LevelFormat,
+  type LevelNumber,
+  type NextItemDto,
+  type SaveDraftRequest,
+  type SaveDraftResponse,
+  type StartAttemptRequest,
+  type Tier,
+  type TrackCode,
 } from '@smart/contracts';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import type { Prisma } from '../../generated/prisma/index.js';
 
 const SESSION_TTL_SECONDS = 7200; // 2 hours TTL per spec
@@ -148,6 +151,71 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.isFlushing = false;
     }
+  }
+
+  /**
+   * GET /assessment/skill-claims — existing SkillClaimDto only.
+   * Students see their rows; TPO roles see claims of students in JWT `inst`.
+   */
+  async listSkillClaims(user: RequestUser): Promise<SkillClaimDto[]> {
+    if (user.role === 'STUDENT') {
+      return this.mapSkillClaims(
+        await this.prisma.skillClaim.findMany({
+          where: { studentId: user.sub },
+          include: { skill: { select: { code: true } } },
+          orderBy: { updatedAt: 'desc' },
+        }),
+      );
+    }
+
+    if (user.role === 'INSTITUTION_ADMIN' || user.role === 'PLACEMENT_STAFF') {
+      if (!user.inst) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Placement staff must belong to an institution.',
+          statusCode: 403,
+        });
+      }
+      return this.mapSkillClaims(
+        await this.prisma.skillClaim.findMany({
+          where: { student: { institutionId: user.inst, role: 'STUDENT' } },
+          include: { skill: { select: { code: true } } },
+          orderBy: { updatedAt: 'desc' },
+        }),
+      );
+    }
+
+    throw new ForbiddenException({
+      error: 'forbidden',
+      message: 'You do not have permission to list skill claims.',
+      statusCode: 403,
+    });
+  }
+
+  private mapSkillClaims(
+    rows: Array<{
+      id: string;
+      studentId: string;
+      proficiency: SkillClaimDto['proficiency'];
+      status: SkillClaimDto['status'];
+      strikes: number;
+      lockedUntil: Date | null;
+      lastAttemptId: string | null;
+      skill: { code: string };
+    }>,
+  ): SkillClaimDto[] {
+    return rows.map((row) =>
+      SkillClaimDtoSchema.parse({
+        claimId: row.id,
+        studentId: row.studentId,
+        skillCode: row.skill.code,
+        proficiency: row.proficiency,
+        status: row.status,
+        strikes: row.strikes,
+        lockedUntil: row.lockedUntil?.toISOString() ?? null,
+        lastAttemptId: row.lastAttemptId,
+      }),
+    );
   }
 
   async saveDraft(studentId: string, dto: SaveDraftRequest): Promise<SaveDraftResponse> {

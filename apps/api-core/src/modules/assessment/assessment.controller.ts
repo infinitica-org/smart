@@ -16,8 +16,11 @@ import {
   type AttemptSessionDto,
   type NextItemDto,
   type SaveDraftResponse,
+  type SkillClaimDto,
 } from '@smart/contracts';
 import type { FastifyRequest } from 'fastify';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { NextFormRequestDto } from './dto/next-form-request.dto.js';
 import { AssessmentService } from './assessment.service.js';
@@ -39,6 +42,16 @@ export class AssessmentController {
       purpose: this.service.purpose,
       status: 'active',
     };
+  }
+
+  @Get('skill-claims')
+  @Roles('STUDENT', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List skill claims the matcher reads (same SkillClaimStatus enum).' })
+  @ApiResponse({ status: 200, description: 'Skill claims visible to the caller.' })
+  @ApiResponse({ status: 403, description: 'Forbidden role or missing institution' })
+  listSkillClaims(@CurrentUser() user: RequestUser): Promise<SkillClaimDto[]> {
+    return this.service.listSkillClaims(user);
   }
 
   @Post('start')
