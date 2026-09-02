@@ -11,6 +11,7 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  DeclareSkillClaimRequestSchema,
   SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
@@ -52,6 +53,34 @@ export class AssessmentController {
   @ApiResponse({ status: 403, description: 'Forbidden role or missing institution' })
   listSkillClaims(@CurrentUser() user: RequestUser): Promise<SkillClaimDto[]> {
     return this.service.listSkillClaims(user);
+  }
+
+  @Post('skill-claims')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Declare a skill claim at DECLARED (CN-T04). Re-declare after LOCKED cooldown.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['skillCode', 'proficiency'],
+      properties: {
+        skillCode: { type: 'string' },
+        proficiency: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Skill claim declared or updated.' })
+  @ApiResponse({ status: 400, description: 'Unknown skill code' })
+  @ApiResponse({ status: 403, description: 'Locked cooldown still active' })
+  @ApiResponse({ status: 409, description: 'Skill already claimed' })
+  async declareSkillClaim(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<SkillClaimDto> {
+    const dto = DeclareSkillClaimRequestSchema.parse(body);
+    return this.service.declareSkillClaim(user, dto);
   }
 
   @Post('start')

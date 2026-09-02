@@ -269,6 +269,17 @@ export const SkillClaimDtoSchema = z.object({
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 
+/**
+ * CN-T04 — candidate declares a track-scoped skill from INF-05.
+ * Creates/updates SkillClaim at DECLARED (re-declare after LOCKED cooldown).
+ * Owner: Vishal Bharath R (assessment). Consumer: Satheswaran V (web-student).
+ */
+export const DeclareSkillClaimRequestSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillProficiencySchema,
+});
+export type DeclareSkillClaimRequest = z.infer<typeof DeclareSkillClaimRequestSchema>;
+
 /* ---------------------------- outbound webhooks ---------------------------- */
 
 export const WebhookEndpointDtoSchema = z.object({

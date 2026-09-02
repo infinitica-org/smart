@@ -84,6 +84,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /assessment/integrity-event": "role.student",
   "POST /assessment/l3/upload-url": "role.student",
   "POST /assessment/next-form": "role.student",
+  "POST /assessment/skill-claims": "assessment.skillClaim",
   "POST /assessment/start": "role.student",
   "POST /assessment/submit-l1": "assessment.submitL1",
   "POST /auth/invitations/:token/accept": "auth.invite",

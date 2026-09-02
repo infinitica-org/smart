@@ -2,6 +2,7 @@ import type {
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
+  DeclareSkillClaimRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -42,6 +43,7 @@ import {
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
+  SkillClaimDtoSchema,
   SsoStartResponseSchema,
   SubscriptionPlanDtoSchema,
   TenantEntitlementsDtoSchema,
@@ -385,6 +387,16 @@ export function assessmentApi(client: SmartApiClient) {
   return {
     start: (body: { trackCode: string; levelNumber: number }) =>
       client.post(prefixed('/assessment/start'), body, { schema: AssignedFormDtoSchema }),
+
+    listSkillClaims: () =>
+      client.get(prefixed('/assessment/skill-claims'), {
+        schema: z.array(SkillClaimDtoSchema),
+      }),
+
+    declareSkillClaim: (body: DeclareSkillClaimRequest) =>
+      client.post(prefixed('/assessment/skill-claims'), body, {
+        schema: SkillClaimDtoSchema,
+      }),
 
     /** Resume after a refresh, a dropped connection, or a closed laptop. */
     session: (attemptId: string) =>

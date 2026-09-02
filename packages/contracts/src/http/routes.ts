@@ -1347,8 +1347,20 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'List skill claims the matcher reads (same SkillClaimStatus enum).',
   },
+  {
+    method: 'POST',
+    path: '/assessment/skill-claims',
+    module: 'assessment',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'assessment.skillClaim',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Declare a skill claim at DECLARED (CN-T04). Re-declare after LOCKED cooldown expires.',
+  },
 
-  /* -------------------------------- analytics ------------------------------ */
   {
     method: 'GET',
     path: '/analytics/cohort-readiness',

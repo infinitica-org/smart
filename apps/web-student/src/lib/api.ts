@@ -12,6 +12,16 @@ const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 /** In-memory mock of server-side onboardingCompleted (survives localStorage clears). */
 let mockOnboardingCompleted = false;
 let mockOnboardingProfile: unknown = null;
+let mockSkillClaims: Array<{
+  claimId: string;
+  studentId: string;
+  skillCode: string;
+  proficiency: string;
+  status: string;
+  strikes: number;
+  lockedUntil: string | null;
+  lastAttemptId: string | null;
+}> = [];
 
 function mockStudentUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -273,6 +283,35 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       ]),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
+  }
+
+  if (url.includes('/assessment/skill-claims') && method === 'GET') {
+    return new Response(JSON.stringify(mockSkillClaims), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/assessment/skill-claims') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      skillCode?: string;
+      proficiency?: string;
+    };
+    const row = {
+      claimId: crypto.randomUUID(),
+      studentId: MOCK_USER_ID,
+      skillCode: body.skillCode ?? 'UNKNOWN',
+      proficiency: body.proficiency ?? 'BEGINNER',
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: null,
+    };
+    mockSkillClaims = [row, ...mockSkillClaims.filter((c) => c.skillCode !== row.skillCode)];
+    return new Response(JSON.stringify(row), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // eslint-disable-next-line no-restricted-globals
