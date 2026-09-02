@@ -20,6 +20,8 @@ export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
 export * from './domain/skills.js';
+export * from './domain/question.js';
+export * from './domain/question-bank-uni-sde-beginner.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
