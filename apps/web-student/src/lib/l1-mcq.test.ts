@@ -6,6 +6,7 @@ import {
   isMcqSingle,
   isSessionLocked,
   L1_LEVEL_NUMBER,
+  initialClientSequence,
   nextClientSequence,
   playerErrorFromUnknown,
   resolveL1TrackCode,
@@ -69,6 +70,8 @@ describe('l1-mcq helpers', () => {
     const second = buildMcqDraftPayload('att', ITEM.itemId, ['opt-b'], nextClientSequence(1));
     expect(first.answer).toEqual({ kind: 'MCQ', selectedOptionIds: ['opt-a'] });
     expect(second.clientSequence).toBe(2);
+    expect(initialClientSequence(1_700_000_000_000)).toBe(1_700_000_000_000);
+    expect(nextClientSequence(initialClientSequence(1_700_000_000_000))).toBe(1_700_000_000_001);
     expect(JSON.stringify(first)).not.toContain('isCorrect');
     expect(JSON.stringify(first)).not.toContain('modelAnswer');
   });

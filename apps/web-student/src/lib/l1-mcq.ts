@@ -73,6 +73,11 @@ export function nextClientSequence(current: number): number {
   return current + 1;
 }
 
+/** High enough after refresh that a new draft cannot be superseded by a pre-refresh sequence. */
+export function initialClientSequence(now = Date.now()): number {
+  return now;
+}
+
 export function timerPropsFromSession(session: AttemptSessionDto): {
   duration: number;
   startedAt: string;

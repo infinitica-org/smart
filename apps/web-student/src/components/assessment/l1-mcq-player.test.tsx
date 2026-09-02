@@ -146,12 +146,13 @@ describe('L1McqPlayer', () => {
     await waitFor(() => expect(screen.getByText('Ready to submit')).toBeDefined());
   });
 
-  it('locks options when the server reports locked', async () => {
+  it('locks without fetching next-item when the server reports locked', async () => {
     sessionMock.mockResolvedValue(session({ locked: true, serverRemainingSeconds: 0 }));
-    nextItemMock.mockResolvedValue(nextPage());
+    nextItemMock.mockRejectedValue(new Error('next-item must not run on a locked session'));
     render(<L1McqPlayer attemptId="55555555-5555-4555-8555-555555555555" />);
     await waitFor(() => expect(screen.getByText('Attempt locked')).toBeDefined());
-    expect(screen.getByText('useEffect').closest('button')?.hasAttribute('disabled')).toBe(true);
+    expect(nextItemMock).not.toHaveBeenCalled();
+    expect(screen.queryByText('useEffect')).toBeNull();
   });
 
   it('surfaces 404 empty-bank and 429 errors', async () => {

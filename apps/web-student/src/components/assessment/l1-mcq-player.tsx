@@ -22,6 +22,7 @@ import {
   buildMcqDraftPayload,
   isMcqSingle,
   isSessionLocked,
+  initialClientSequence,
   L1_AUTOSAVE_MS,
   nextClientSequence,
   playerErrorFromUnknown,
@@ -63,7 +64,7 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
   const [saving, setSaving] = useState(false);
   const [completeResult, setCompleteResult] = useState<CompleteAttemptResponse | null>(null);
   const [completing, setCompleting] = useState(false);
-  const sequenceRef = useRef(0);
+  const sequenceRef = useRef(initialClientSequence());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedRef = useRef<string[]>([]);
 
@@ -102,11 +103,16 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
       setLoading(true);
       setError(null);
       try {
-        const [liveSession, itemPage] = await Promise.all([
-          api.assessment.session(attemptId),
-          api.assessment.nextItem(attemptId, index === undefined ? undefined : { index }),
-        ]);
+        const liveSession = await api.assessment.session(attemptId);
         setSession(liveSession);
+        if (isSessionLocked(liveSession)) {
+          setNextItem(null);
+          return;
+        }
+        const itemPage = await api.assessment.nextItem(
+          attemptId,
+          index === undefined ? undefined : { index },
+        );
         setNextItem(itemPage);
         const restored = selectedIdsFromDraft(itemPage.savedDraft);
         setSelectedOptionIds(restored);
