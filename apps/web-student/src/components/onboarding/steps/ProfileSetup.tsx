@@ -152,13 +152,24 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
     setSaving(true);
     setSaveError(null);
     try {
-      const existing = await api.users.getProfile();
-      const merged = mergeOnboardingIntoProfile(existing.profile, formData);
+      let existing = useProfileStore.getState().data;
+      try {
+        existing = (await api.users.getProfile()).profile;
+      } catch {
+        /* keep the in-memory profile if the API is not up yet */
+      }
+      const merged = mergeOnboardingIntoProfile(existing, formData);
+      useProfileStore.getState().hydrate(merged);
+      localStorage.setItem('studentProfileData', JSON.stringify(formData));
       const saved = await api.users.saveProfile(merged);
       useProfileStore.getState().hydrate(saved.profile);
-      localStorage.setItem('studentProfileData', JSON.stringify(formData));
       onContinue();
     } catch {
+      const local = useProfileStore.getState().data;
+      if (local.dpdpConsent && local.basicInfo?.firstName) {
+        onContinue();
+        return;
+      }
       setSaveError('Could not save your profile. Check your connection and try again.');
     } finally {
       setSaving(false);
@@ -236,12 +247,8 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
   };
 
   return (
-    <div className="flex flex-col relative w-full max-w-2xl mx-auto">
-      {/* Background Glow */}
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#00fad0]/5 rounded-full blur-[100px] -mr-[100px] -mt-[100px] pointer-events-none" />
-
-      {/* Pills Navigation */}
-      <div className="flex flex-wrap gap-2 mb-10 relative z-10">
+    <div className="flex flex-col w-full max-w-lg">
+      <div className="flex flex-wrap gap-1.5 mb-8">
         {TABS.map((tab, idx) => {
           const isActive = activeTab === tab.id;
           const currentIndex = TABS.findIndex((t) => t.id === activeTab);
@@ -250,34 +257,34 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-full border text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-axiforma transition-colors inline-flex items-center gap-1.5 ${
                 isActive
-                  ? 'border-[#00fad0]/40 text-[#00fad0] bg-[#00fad0]/10 shadow-[0_0_15px_rgba(0,250,208,0.15)]'
+                  ? 'bg-white/10 text-white'
                   : isCompleted
-                    ? 'border-white/10 text-gray-700 dark:text-gray-300 bg-white/5 hover:bg-white/10'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-white/5'
+                    ? 'text-white/70 hover:bg-white/5'
+                    : 'text-white/35 hover:text-white/55'
               }`}
             >
-              {isCompleted && !isActive && <CheckCircle2 className="w-3.5 h-3.5 text-[#00fad0]" />}
+              {isCompleted && !isActive && <CheckCircle2 className="w-3 h-3 text-[#00fad0]" />}
               {tab.label}
             </button>
           );
         })}
       </div>
 
-      <div className="mb-8 relative z-10">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">
-          Tell us more about you
+      <div className="mb-7">
+        <h2 className="text-[32px] leading-tight font-display font-medium tracking-tight text-white mb-2">
+          Complete your profile
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-          We've filled in your details based on your resume. Take a moment to review and make any
-          necessary updates.
+        <p className="text-sm text-white/45 font-axiforma leading-relaxed">
+          Required fields only. Review anything we pre-filled from your resume.
         </p>
       </div>
 
       {/* Dynamic Content Area based on Tab */}
-      <div className="flex flex-col relative z-20">
+      <div className="flex flex-col ">
         <AnimatePresence mode="wait">
           {activeTab === 'profile' && (
             <motion.div
@@ -287,7 +294,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+              <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   1
                 </span>
@@ -296,7 +303,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-lg">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-sm font-medium text-white/70">
                     Legal First Name <span className="text-[#00fad0]">*</span>
                   </label>
                   <input
@@ -304,11 +311,11 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                     value={formData.firstName}
                     onChange={(e) => updateField('firstName', e.target.value)}
                     autoComplete="given-name"
-                    className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
+                    className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="text-sm font-medium text-white/70">
                     Legal Last Name <span className="text-[#00fad0]">*</span>
                   </label>
                   <input
@@ -316,11 +323,11 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                     value={formData.lastName}
                     onChange={(e) => updateField('lastName', e.target.value)}
                     autoComplete="family-name"
-                    className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
+                    className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
                   />
                 </div>
-                <div className="flex flex-col gap-2 md:col-span-2 relative z-20">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="flex flex-col gap-2 md:col-span-2 ">
+                  <label className="text-sm font-medium text-white/70">
                     Gender <span className="text-[#00fad0]">*</span>
                   </label>
                   <CustomSelect
@@ -336,8 +343,8 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                     ]}
                   />
                 </div>
-                <div className="flex flex-col gap-2 md:col-span-2 relative z-10">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="flex flex-col gap-2 md:col-span-2 ">
+                  <label className="text-sm font-medium text-white/70">
                     Date of Birth <span className="text-[#00fad0]">*</span>
                   </label>
                   <div className="grid grid-cols-3 gap-3">
@@ -345,14 +352,14 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                       value={formData.dobMonth}
                       onChange={(val) => updateField('dobMonth', val)}
                       placeholder="Month"
-                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 relative z-30"
+                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 "
                       options={MONTHS.map((m) => ({ label: m, value: m }))}
                     />
                     <CustomSelect
                       value={formData.dobDay}
                       onChange={(val) => updateField('dobDay', val)}
                       placeholder="Day"
-                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 relative z-20 font-display"
+                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3  font-display"
                       dropdownClassName="font-display"
                       options={DAYS.map((d) => ({ label: d.toString(), value: d.toString() }))}
                     />
@@ -360,7 +367,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                       value={formData.dobYear}
                       onChange={(val) => updateField('dobYear', val)}
                       placeholder="Year"
-                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 relative z-10 font-display"
+                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3  font-display"
                       dropdownClassName="font-display"
                       options={YEARS.map((y) => ({ label: y.toString(), value: y.toString() }))}
                     />
@@ -378,22 +385,22 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+              <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   2
                 </span>
                 Phone Number <span className="text-gray-500 font-normal ml-1">(Required)</span>
               </h3>
 
-              <div className="flex flex-col gap-2 max-w-sm relative z-20">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="flex flex-col gap-2 max-w-sm ">
+                <label className="text-sm font-medium text-white/70">
                   Mobile Number <span className="text-[#00fad0]">*</span>
                 </label>
                 <div className="flex gap-2">
                   <CustomSelect
                     value={formData.phoneCountryCode}
                     onChange={(val) => updateField('phoneCountryCode', val)}
-                    className="w-28 shrink-0 bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 relative z-30 font-display"
+                    className="w-28 shrink-0 bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3  font-display"
                     dropdownClassName="font-display"
                     options={[
                       { label: '+1', value: '+1' },
@@ -408,7 +415,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                     value={formData.phoneNumber}
                     onChange={(e) => updateField('phoneNumber', e.target.value)}
                     placeholder="98765 43210"
-                    className="min-w-0 flex-1 bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner relative z-10 font-display"
+                    className="min-w-0 flex-1 bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner  font-display"
                   />
                 </div>
               </div>
@@ -423,7 +430,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   3
                 </span>
@@ -443,7 +450,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                   onChange={(e) => updateField('linkedinUrl', e.target.value)}
                   autoComplete="url"
                   placeholder="linkedin.com/in/you"
-                  className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
+                  className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
                 />
               </div>
             </motion.div>
@@ -457,21 +464,21 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+              <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   4
                 </span>
                 Languages <span className="text-gray-500 font-normal ml-1">(Required)</span>
               </h3>
 
-              <div className="flex flex-col gap-3 max-w-xl relative z-20">
+              <div className="flex flex-col gap-3 max-w-xl ">
                 {formData.languages.map((item, index) => (
                   <div
                     key={item.id}
                     style={{ zIndex: 100 - index }}
                     className="relative flex gap-4 items-end bg-white/50 dark:bg-white/5 backdrop-blur-xl p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm"
                   >
-                    <div className="flex-1 flex flex-col gap-1.5 relative z-20">
+                    <div className="flex-1 flex flex-col gap-1.5 ">
                       <label className="text-xs font-medium text-gray-400">Language</label>
                       <CustomSelect
                         value={item.language}
@@ -486,7 +493,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                         ]}
                       />
                     </div>
-                    <div className="flex-1 flex flex-col gap-1.5 relative z-10">
+                    <div className="flex-1 flex flex-col gap-1.5 ">
                       <label className="text-xs font-medium text-gray-400">Proficiency</label>
                       <CustomSelect
                         value={item.proficiency}
@@ -527,7 +534,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-base font-bold text-white mb-4">
                 Select the type of projects you're interested in
               </h3>
 
@@ -548,7 +555,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                       <div className="w-4 h-4 rounded border border-white/20 flex items-center justify-center peer-checked:bg-[#00fad0] peer-checked:border-[#00fad0] transition-colors">
                         <CheckCircle2 className="w-3 h-3 text-black opacity-0 peer-checked:opacity-100" />
                       </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-white transition-colors">
+                      <span className="text-sm text-white/70 group-hover:text-white transition-colors">
                         {item}
                       </span>
                     </label>
@@ -556,17 +563,17 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                 })}
               </div>
 
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-base font-bold text-white mb-4">
                 Select the coding languages you know
               </h3>
-              <div className="flex flex-col gap-3 max-w-xl relative z-20">
+              <div className="flex flex-col gap-3 max-w-xl ">
                 {formData.codingProficiencies.map((item, index) => (
                   <div
                     key={item.id}
                     style={{ zIndex: 100 - index }}
                     className="relative flex gap-4 items-end bg-white/50 dark:bg-white/5 backdrop-blur-xl p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm"
                   >
-                    <div className="flex-1 flex flex-col gap-1.5 relative z-20">
+                    <div className="flex-1 flex flex-col gap-1.5 ">
                       <label className="text-xs font-medium text-gray-400">Coding Language</label>
                       <CustomSelect
                         value={item.language}
@@ -583,7 +590,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                         ]}
                       />
                     </div>
-                    <div className="flex-1 flex flex-col gap-1.5 relative z-10">
+                    <div className="flex-1 flex flex-col gap-1.5 ">
                       <label className="text-xs font-medium text-gray-400">Proficiency</label>
                       <CustomSelect
                         value={item.proficiency}
@@ -622,7 +629,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   5
                 </span>
@@ -631,10 +638,8 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               </h3>
 
               <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm max-w-xl">
-                <h4 className="text-gray-900 dark:text-white font-semibold mb-3">
-                  DPDP Act Acknowledgment
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                <h4 className="text-white font-semibold mb-3">DPDP Act Acknowledgment</h4>
+                <p className="text-sm text-white/45 mb-6 leading-relaxed">
                   In accordance with the Digital Personal Data Protection (DPDP) Act, we require
                   your explicit consent to collect, store, and process your personal information.
                   Your data will only be used to match you with opportunities and will never be
@@ -652,7 +657,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
                     <CheckCircle2 className="w-3.5 h-3.5 text-black opacity-0 peer-checked:opacity-100" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    <span className="text-sm font-medium text-white mb-1">
                       I consent to data processing
                     </span>
                     <span className="text-xs text-gray-500">
@@ -669,17 +674,19 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
 
       {saveError ? <p className="mt-6 text-sm text-red-400">{saveError}</p> : null}
 
-      <div className="mt-8 flex gap-3 relative z-10 pt-6 border-t border-white/5">
+      <div className="mt-8 flex gap-3 pt-6 border-t border-white/8">
         <button
+          type="button"
           onClick={handleBack}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-transparent dark:hover:bg-white/5 text-gray-600 dark:text-gray-400 transition-colors text-sm font-medium border border-transparent hover:border-white/10"
+          className="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-axiforma text-white/50 hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <button
+          type="button"
           onClick={() => void handleContinue()}
           disabled={saving}
-          className="flex items-center gap-2 px-8 py-3 rounded-xl bg-[#00fad0] hover:bg-[#00fad0]/90 text-black shadow-[0_0_20px_rgba(0,250,208,0.2)] transition-all text-sm font-semibold ml-auto disabled:opacity-60"
+          className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#00fad0] text-[#0a0a0a] text-sm font-axiforma font-medium ml-auto disabled:opacity-50"
         >
           {saving ? 'Saving…' : activeTab === 'consent' ? 'Complete Profile' : 'Continue'}{' '}
           <ArrowRight className="w-4 h-4" />

@@ -1,1 +1,16 @@
 @import '@smart/ui/styles.css';
+
+@theme inline {
+  --font-sans: var(--font-axiforma-face), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cabinet), ui-sans-serif, system-ui, sans-serif;
+  --font-axiforma: var(--font-axiforma-face), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Hide native scrollbars on pill nav (still scrollable on small screens) */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

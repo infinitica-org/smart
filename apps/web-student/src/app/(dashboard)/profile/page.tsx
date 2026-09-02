@@ -2,16 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useProfileStore } from '@/lib/stores/profile-store';
-import {
-  Edit,
-  Trash2,
-  Upload,
-  Plus,
-  ChevronDown,
-  CheckCircle2,
-  FileText,
-  Download,
-} from 'lucide-react';
+import { Edit, Trash2, Upload, Plus, CheckCircle2, FileText, Download } from 'lucide-react';
 import { mockQueueSkillVerification } from '@/lib/api';
 
 // Import forms
@@ -83,40 +74,39 @@ export default function ProfilePage() {
     `${basicInfo?.firstName || 'STUDENT'} ${basicInfo?.lastName || 'NAME'}`.toUpperCase();
 
   return (
-    <div className="flex h-full w-full max-w-[1400px] mx-auto overflow-hidden bg-white/40 dark:bg-black/40 backdrop-blur-3xl border border-white/50 dark:border-white/10 rounded-[40px] shadow-2xl mb-8">
-      {/* LEFT SIDEBAR */}
-      <div className="w-[280px] shrink-0 border-r border-white/50 dark:border-white/10 flex flex-col h-full overflow-y-auto custom-scrollbar py-8 bg-white/20 dark:bg-white/5">
+    <div className="mx-auto mb-10 flex h-[min(820px,calc(100vh-8rem))] w-full max-w-[1320px] overflow-hidden rounded-[28px] border border-white/[0.07] bg-[#151515]">
+      {/* Section nav */}
+      <div className="flex h-full w-[240px] shrink-0 flex-col overflow-y-auto border-r border-white/[0.07] bg-[#101010] py-7 custom-scrollbar">
         {/* User Info */}
-        <div className="flex flex-col items-center px-6 mb-8 text-center">
-          <div className="relative group w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/10 dark:to-white/5 border border-white/50 dark:border-white/20 flex items-center justify-center shadow-lg mb-4 overflow-hidden cursor-pointer">
-            <span className="text-3xl font-display text-gray-700 dark:text-white group-hover:opacity-0 transition-opacity">
+        <div className="mb-8 flex flex-col items-center px-5 text-center">
+          <div className="group relative mb-4 flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-[#00fad0]/20 to-white/5">
+            <span className="font-display text-2xl text-white transition-opacity group-hover:opacity-0">
               {initials}
             </span>
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm">
-              <Upload className="w-5 h-5 text-[#00fad0] mb-1" />
-              <span className="text-[10px] text-[#00fad0] font-bold uppercase tracking-wider">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 backdrop-blur-sm transition-all group-hover:opacity-100">
+              <Upload className="mb-1 h-4 w-4 text-[#00fad0]" />
+              <span className="text-[10px] font-bold tracking-wider text-[#00fad0] uppercase">
                 Upload
               </span>
             </div>
           </div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white tracking-wide">
-            {fullName}
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">Superset ID: 6251252</p>
+          <h2 className="text-sm font-semibold tracking-wide text-white">{fullName}</h2>
+          <p className="mt-1 text-xs text-white/35">Profile</p>
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex flex-col px-4 gap-1">
+        <nav className="flex flex-col gap-1 px-3">
           {MENU_ITEMS.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`text-left px-5 py-3.5 rounded-2xl text-xs font-semibold transition-all ${
+                className={`rounded-2xl px-4 py-3 text-left text-xs font-semibold transition-colors ${
                   isActive
-                    ? 'bg-[#00fad0] text-black shadow-lg shadow-[#00fad0]/20 scale-[1.02]'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-200'
+                    ? 'bg-[#00fad0] text-black'
+                    : 'text-white/40 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 {item.label}

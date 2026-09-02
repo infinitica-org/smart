@@ -1,10 +1,13 @@
-﻿import { useRef, useState, useEffect } from 'react';
-import { UploadCloud, ArrowRight, FileText, CheckCircle2, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+'use client';
+
+import { useRef, useState } from 'react';
+import { ArrowRight, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface ResumeUploadProps {
   onContinue: () => void;
 }
+
+const MAX_BYTES = 5 * 1024 * 1024;
 
 export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -12,198 +15,155 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState('');
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (uploadStatus === 'idle') setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    if (uploadStatus !== 'idle') return;
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        startUpload(file);
-      }
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      if (file) {
-        startUpload(file);
-      }
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const startUpload = (file: File) => {
+    const allowed = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    const extOk = /\.(pdf|docx?)$/i.test(file.name);
+    if (!allowed.includes(file.type) && !extOk) {
+      setError('Use a PDF or DOCX file.');
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError('File must be 5 MB or smaller.');
+      return;
+    }
+
+    setError(null);
     setFileName(file.name);
-    setUploadedFile(file);
     setUploadStatus('uploading');
     setProgress(0);
 
-    // Simulate upload progress
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setUploadStatus('success');
-          console.log('File successfully uploaded:', file);
           return 100;
         }
-        return prev + Math.floor(Math.random() * 15) + 5;
+        return Math.min(100, prev + 18);
       });
-    }, 200);
+    }, 160);
   };
 
   return (
-    <div className="flex flex-col relative w-full max-w-2xl mx-auto">
-      {/* Background Glow */}
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#00fad0]/5 rounded-full blur-[100px] -mr-[100px] -mt-[100px] pointer-events-none" />
+    <div className="flex flex-col w-full max-w-lg">
+      <h2 className="text-[32px] leading-tight font-display font-medium tracking-tight text-white mb-2">
+        Share your resume
+      </h2>
+      <p className="text-sm text-white/45 font-axiforma leading-relaxed mb-8">
+        We pre-fill your profile from the file. You can skip this and enter details by hand.
+      </p>
 
-      <div className="mb-10 relative z-10">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-display">
-          Share your resume to get started
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-          We're excited to learn more about you. Upload your resume so we can match you with the
-          best opportunities to apply your skills. Let's build something amazing together!
-        </p>
-      </div>
-
-      {/* Drag & Drop Area */}
-      <div
+      <button
+        type="button"
         onClick={() => uploadStatus === 'idle' && fileInputRef.current?.click()}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`relative z-10 border-2 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center transition-all min-h-[320px] ${
-          uploadStatus === 'idle' ? 'cursor-pointer group' : ''
-        } ${
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (uploadStatus === 'idle') setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files[0];
+          if (file && uploadStatus === 'idle') startUpload(file);
+        }}
+        className={`w-full min-h-[280px] rounded-2xl border border-dashed px-8 py-10 flex flex-col items-center justify-center text-center transition-colors ${
           isDragging
-            ? 'border-[#00fad0] bg-[#00fad0]/5 shadow-[0_0_30px_rgba(0,250,208,0.1)]'
+            ? 'border-[#00fad0] bg-[#00fad0]/5'
             : uploadStatus === 'success'
-              ? 'border-[#00fad0]/30 bg-[#00fad0]/5'
-              : 'border-gray-300 dark:border-white/10 bg-white/50 dark:bg-white/5 backdrop-blur-xl hover:border-[#00fad0]/50 hover:bg-white/80 dark:hover:bg-white/10 shadow-lg'
-        }`}
+              ? 'border-[#00fad0]/25 bg-[#00fad0]/[0.04]'
+              : 'border-white/12 bg-white/[0.02] hover:border-white/25'
+        } ${uploadStatus === 'idle' ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <input
           type="file"
           ref={fileInputRef}
-          onChange={handleFileChange}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) startUpload(file);
+          }}
           className="hidden"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.doc,.docx,application/pdf"
         />
 
-        <AnimatePresence mode="wait">
-          {uploadStatus === 'idle' && (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center"
+        {uploadStatus === 'idle' && (
+          <>
+            <div className="w-12 h-12 rounded-xl border border-white/10 bg-[#141414] flex items-center justify-center mb-5">
+              <FileText className="w-5 h-5 text-white/50" />
+            </div>
+            <p className="text-base font-display font-medium text-white mb-1">Upload your resume</p>
+            <p className="text-sm text-white/40 font-axiforma mb-5">
+              <span className="text-[#00fad0]">Choose a file</span> or drop it here
+            </p>
+            <span className="text-[11px] font-axiforma text-white/35 border border-white/8 rounded-full px-2.5 py-1">
+              PDF or DOCX · max 5 MB
+            </span>
+          </>
+        )}
+
+        {uploadStatus === 'uploading' && (
+          <div className="w-full max-w-xs">
+            <Loader2 className="w-6 h-6 text-[#00fad0] animate-spin mx-auto mb-4" />
+            <p className="text-sm font-display text-white mb-1">Reading file</p>
+            <p className="text-xs text-white/40 truncate mb-4">{fileName}</p>
+            <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-[#00fad0] transition-[width] duration-150"
+                style={{ width: `${String(progress)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {uploadStatus === 'success' && (
+          <>
+            <CheckCircle2 className="w-8 h-8 text-[#00fad0] mb-4" />
+            <p className="text-base font-display font-medium text-white mb-1">Resume attached</p>
+            <p className="text-sm text-white/40 font-axiforma mb-4">{fileName}</p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setUploadStatus('idle');
+                setFileName('');
+                setProgress(0);
+              }}
+              className="text-xs text-[#00fad0] font-axiforma hover:underline"
             >
-              <div className="w-24 h-24 mb-8 relative flex items-center justify-center">
-                <div className="absolute inset-0 bg-[#00fad0]/20 rounded-2xl shadow-lg -rotate-6 transform origin-bottom-left group-hover:-rotate-12 transition-all duration-500 blur-sm" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#111111] to-[#1a1a1a] rounded-2xl shadow-2xl transform origin-bottom border border-white/10 flex items-center justify-center group-hover:scale-105 transition-all duration-500 z-10">
-                  <FileText
-                    className={`w-10 h-10 transition-colors duration-500 ${isDragging ? 'text-[#00fad0]' : 'text-gray-400 group-hover:text-[#00fad0]'}`}
-                  />
-                </div>
-              </div>
+              Use a different file
+            </button>
+          </>
+        )}
+      </button>
 
-              <h3 className="text-gray-900 dark:text-white text-lg font-bold mb-2 group-hover:text-[#00fad0] transition-colors">
-                Upload your resume
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                <span className="text-[#00fad0] font-medium">Choose your file</span> or drag and
-                drop it here
-              </p>
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full border border-gray-200 dark:border-white/5">
-                PDF or DOCX (max 5 MB)
-              </span>
-            </motion.div>
-          )}
+      {error ? <p className="mt-3 text-sm text-red-400 font-axiforma">{error}</p> : null}
 
-          {uploadStatus === 'uploading' && (
-            <motion.div
-              key="uploading"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center w-full max-w-sm"
-            >
-              <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center mb-6 shadow-inner relative">
-                <Loader2 className="w-6 h-6 text-[#00fad0] animate-spin" />
-              </div>
-              <h3 className="text-gray-900 dark:text-white font-bold mb-2">
-                Analyzing Document...
-              </h3>
-              <p className="text-sm text-gray-400 mb-6 truncate w-full px-4">{fileName}</p>
-
-              <div className="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-2">
-                <motion.div
-                  className="h-full bg-[#00fad0]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                />
-              </div>
-              <div className="flex justify-between w-full text-xs text-gray-500 font-medium">
-                <span>Uploading</span>
-                <span>{Math.min(progress, 100)}%</span>
-              </div>
-            </motion.div>
-          )}
-
-          {uploadStatus === 'success' && (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-20 h-20 rounded-full bg-[#00fad0]/10 border border-[#00fad0]/30 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(0,250,208,0.2)]">
-                <CheckCircle2 className="w-8 h-8 text-[#00fad0]" />
-              </div>
-              <h3 className="text-gray-900 dark:text-white text-lg font-bold mb-1">
-                Resume Uploaded Successfully
-              </h3>
-              <p className="text-sm text-gray-400 mb-6">{fileName}</p>
-
-              <button
-                onClick={() => setUploadStatus('idle')}
-                className="text-xs text-[#00fad0] hover:underline"
-              >
-                Upload a different file
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-12 flex relative z-10">
+      <div className="mt-8 flex items-center gap-4">
         <button
+          type="button"
           onClick={onContinue}
           disabled={uploadStatus === 'uploading'}
-          className={`flex items-center gap-2 px-8 py-3 rounded-xl transition-all text-sm font-semibold ${
-            uploadStatus === 'uploading'
-              ? 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-              : 'bg-[#00fad0] hover:bg-[#00fad0]/90 text-black shadow-[0_0_20px_rgba(0,250,208,0.2)]'
-          }`}
+          className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#00fad0] text-[#0a0a0a] text-sm font-axiforma font-medium disabled:opacity-40"
         >
-          Continue <ArrowRight className="w-4 h-4" />
+          Continue
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={uploadStatus === 'uploading'}
+          className="text-sm text-white/40 hover:text-white/70 font-axiforma"
+        >
+          Enter details manually
         </button>
       </div>
     </div>

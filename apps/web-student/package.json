@@ -13,14 +13,20 @@
     "clean": "rimraf .next .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@smart/api-client": "workspace:*",
     "@smart/contracts": "workspace:*",
     "@smart/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "framer-motion": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",
+    "next-themes": "^0.4.6",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-hook-form": "^7.87.0",
+    "zod": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@smart/eslint-config": "workspace:*",

@@ -1,7 +1,82 @@
 import { SmartApiClient, createSmartApi } from '@smart/api-client';
+import { StudentProfileDataSchema } from '@smart/contracts';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API === 'true';
+const PROFILE_STORAGE_KEY = 'smart.student.profile';
+
+function emptyLocalProfile() {
+  return {
+    education: [],
+    skills: [],
+    projects: [],
+    certifications: [],
+    experiences: [],
+    subjects: [],
+    preferences: [] as string[],
+    dpdpConsent: false,
+  };
+}
+
+function readLocalProfile(): Record<string, unknown> {
+  if (typeof window === 'undefined') {
+    return StudentProfileDataSchema.parse(emptyLocalProfile()) as Record<string, unknown>;
+  }
+  try {
+    const stored =
+      window.localStorage.getItem(PROFILE_STORAGE_KEY) ??
+      window.localStorage.getItem('mockProfileData');
+    const parsed = StudentProfileDataSchema.safeParse(
+      stored ? { ...emptyLocalProfile(), ...(JSON.parse(stored) as object) } : emptyLocalProfile(),
+    );
+    return (
+      parsed.success ? parsed.data : StudentProfileDataSchema.parse(emptyLocalProfile())
+    ) as Record<string, unknown>;
+  } catch {
+    return StudentProfileDataSchema.parse(emptyLocalProfile()) as Record<string, unknown>;
+  }
+}
+
+function writeLocalProfile(profile: Record<string, unknown>): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+}
+
+function profileCompletion(profile: Record<string, unknown>): number {
+  const basic = profile.basicInfo as Record<string, unknown> | undefined;
+  const skills = Array.isArray(profile.skills) ? profile.skills : [];
+  const preferences = Array.isArray(profile.preferences) ? profile.preferences : [];
+  const complete = Boolean(
+    profile.dpdpConsent &&
+    basic?.firstName &&
+    basic?.lastName &&
+    basic?.phoneNumber &&
+    basic?.linkedinUrl &&
+    skills.some((skill) => (skill as { type?: string }).type === 'language') &&
+    preferences.length > 0,
+  );
+  return complete ? 100 : 0;
+}
+
+function localProfileResponse(profile: Record<string, unknown>): Response {
+  return new Response(
+    JSON.stringify({
+      profile,
+      profileCompletion: profileCompletion(profile),
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+}
+
+function handleLocalProfile(init?: RequestInit): Response {
+  let profile = readLocalProfile();
+  if ((init?.method === 'PATCH' || init?.method === 'PUT') && init.body) {
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    profile = { ...profile, ...body };
+    writeLocalProfile(profile);
+  }
+  return localProfileResponse(profile);
+}
 
 const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = input.toString();
@@ -65,45 +140,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   }
 
   if (url.includes('/users/me/profile')) {
-    let mockProfile: any = {
-      education: [],
-      skills: [],
-      projects: [],
-      certifications: [],
-      preferences: [],
-    };
-
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('mockProfileData');
-        if (stored) {
-          mockProfile = JSON.parse(stored);
-        }
-      } catch (e) {}
-    }
-
-    if (init?.method === 'PATCH' || init?.method === 'PUT') {
-      if (init.body) {
-        try {
-          const body = JSON.parse(init.body as string);
-          mockProfile = { ...mockProfile, ...body };
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('mockProfileData', JSON.stringify(mockProfile));
-          }
-        } catch (e) {}
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        profile: mockProfile,
-        profileCompletion: mockProfile.dpdpConsent ? 100 : 0,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    return handleLocalProfile(init);
   }
 
   if (url.includes('/users/me') && (!init || init.method === 'GET')) {
@@ -209,11 +246,38 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   return fetch(input, init);
 };
 
-export const smartFetch = IS_MOCK_ENV ? (mockFetch as typeof fetch) : fetch;
+const smartFetchImpl: typeof fetch = async (input, init) => {
+  const url = input.toString();
+
+  if (url.includes('/users/me/profile') && !IS_MOCK_ENV) {
+    try {
+      const response = await fetch(input, init);
+      if (response.ok) {
+        const clone = response.clone();
+        try {
+          const json = (await clone.json()) as { profile?: Record<string, unknown> };
+          if (json.profile) writeLocalProfile(json.profile);
+        } catch {
+          /* response already returned below */
+        }
+        return response;
+      }
+      if (response.status === 401) return response;
+    } catch {
+      /* API unreachable — keep the candidate's profile locally */
+    }
+    return handleLocalProfile(init);
+  }
+
+  if (IS_MOCK_ENV) return mockFetch(input, init);
+  return fetch(input, init);
+};
+
+export const smartFetch = smartFetchImpl;
 
 export const apiClient = new SmartApiClient({
   baseUrl,
-  fetchImpl: IS_MOCK_ENV ? (mockFetch as typeof fetch) : undefined,
+  fetchImpl: smartFetchImpl,
   getAccessToken: () => {
     if (typeof window === 'undefined') return null;
     return window.sessionStorage.getItem('smart.accessToken');
@@ -231,3 +295,7 @@ export const apiClient = new SmartApiClient({
 });
 
 export const api = createSmartApi(apiClient);
+
+export const mockQueueSkillVerification = async (skillId: string) => {
+  return new Promise((resolve) => setTimeout(resolve, 500));
+};

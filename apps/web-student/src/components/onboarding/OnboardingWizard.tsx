@@ -1,11 +1,29 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+import { Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 import ResumeUpload from './steps/ResumeUpload';
 import ProfileSetup from './steps/ProfileSetup';
+
+const STEPS = [
+  { id: 'resume' as const, label: 'Resume', minutes: 1 },
+  { id: 'profile' as const, label: 'Profile', minutes: 3 },
+];
+
+const TRACKS = [
+  'Finance',
+  'Business Analytics',
+  'Software',
+  'Data',
+  'Product',
+  'Consulting',
+  'Marketing',
+  'Operations',
+];
 
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<'resume' | 'profile'>('resume');
@@ -14,175 +32,144 @@ export default function OnboardingWizard() {
   const handleNext = () => {
     if (currentStep === 'resume') {
       setCurrentStep('profile');
-    } else {
-      router.push('/dashboard');
+      return;
     }
-  };
-
-  const handleBack = () => {
-    if (currentStep === 'profile') {
-      setCurrentStep('resume');
-    }
+    router.push('/dashboard');
   };
 
   return (
-    <div className="flex h-[100dvh] w-full bg-white dark:bg-black font-sans overflow-hidden text-gray-900 dark:text-white relative">
-      {/* Global Background Glows */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#00fad0]/10 rounded-full blur-[150px] -mr-[200px] -mt-[200px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#00fad0]/5 rounded-full blur-[120px] -ml-[100px] -mb-[100px] pointer-events-none" />
-
-      <div className="flex w-full h-full relative z-10">
-        <div className="w-full lg:w-[45%] flex flex-col h-full bg-white/40 dark:bg-black/40 backdrop-blur-3xl border-r border-gray-200/50 dark:border-white/10 relative overflow-y-auto custom-scrollbar">
-          <div className="p-8 pb-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-black dark:bg-white flex items-center justify-center">
-                <span className="text-white dark:text-black font-bold text-sm font-display">S</span>
-              </div>
-              <span className="text-lg font-medium font-display tracking-tight">SMART</span>
-              <span className="text-xs text-gray-500 font-medium ml-2 border-l border-gray-300 dark:border-white/10 pl-3">
-                powered by Institution
-              </span>
-            </div>
-          </div>
-          <div className="px-8 pb-8 shrink-0">
-            <div className="flex items-center gap-4 text-sm font-medium font-display">
-              <button
-                onClick={() => setCurrentStep('resume')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  currentStep === 'resume'
-                    ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-transparent'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent'
-                }`}
-              >
-                Resume{' '}
-                <span className="text-gray-500 text-xs font-sans font-normal ml-1">� 1 min</span>
-              </button>
-              <button
-                onClick={() => setCurrentStep('profile')}
-                disabled={currentStep === 'resume'} // Prevent skipping ahead
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  currentStep === 'profile'
-                    ? 'bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-transparent'
-                    : 'text-gray-500'
-                } ${currentStep === 'resume' ? 'cursor-not-allowed opacity-50' : 'hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent'}`}
-              >
-                Profile{' '}
-                <span className="text-gray-500 text-xs font-sans font-normal ml-1">� 3 min</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 mt-4">
-              <div className="h-1 flex-1 rounded-full bg-white/5 overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#00fad0]"
-                  initial={{ width: '0%' }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-              <div className="h-1 flex-1 rounded-full bg-white/5 overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#00fad0]"
-                  initial={{ width: '0%' }}
-                  animate={{ width: currentStep === 'profile' ? '100%' : '0%' }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-              <div className="h-1 flex-1 rounded-full bg-white/5" />
-            </div>
+    <div className="flex h-[100dvh] w-full bg-[#0a0a0a] text-white font-sans overflow-hidden">
+      <section className="flex w-full lg:w-[46%] flex-col h-full border-r border-white/8 bg-[#0c0c0c]">
+        <header className="shrink-0 px-8 pt-8 pb-6">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/img/Logo/white-logo.png"
+              alt="SMART"
+              width={140}
+              height={36}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+            <span className="text-xs text-white/35 font-axiforma border-l border-white/10 pl-3">
+              Candidate onboarding
+            </span>
           </div>
 
-          {/* Dynamic Form Content */}
-          <div className="flex-1 px-8 pb-12">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {currentStep === 'resume' ? (
-                  <ResumeUpload onContinue={handleNext} />
-                ) : (
-                  <ProfileSetup onBack={handleBack} onContinue={handleNext} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Right Pane: Marketing / Info Area */}
-        <div className="hidden lg:flex flex-1 flex-col relative items-center justify-center p-12 overflow-hidden">
-          {/* Subtle grid background */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-
-          {/* Subtle grid background */}
-
-          {/* Floating Cards (Mimicking Alignerr) */}
-          <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-xl">
-            <div className="flex items-center gap-6 w-full justify-center">
-              {/* Card 1 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white/60 dark:bg-white/5 backdrop-blur-2xl border border-white/60 dark:border-white/10 p-6 rounded-[32px] w-64 shadow-xl shadow-[#00fad0]/5"
-              >
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">15,000+</h3>
-                <p className="text-sm text-gray-500">Signups every day</p>
-              </motion.div>
-
-              {/* Card 2 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white/60 dark:bg-white/5 backdrop-blur-2xl border border-white/60 dark:border-white/10 p-6 rounded-[32px] w-64 shadow-xl shadow-[#00fad0]/5"
-              >
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">2M+</h3>
-                <p className="text-sm text-gray-500">Students in 125 countries</p>
-              </motion.div>
-            </div>
-
-            {/* Card 3 (Domain Tags) */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white/60 dark:bg-white/5 backdrop-blur-2xl border border-white/60 dark:border-white/10 p-8 rounded-[40px] w-full max-w-[540px] shadow-xl shadow-[#00fad0]/5 mt-4"
-            >
-              <h4 className="text-gray-900 dark:text-white font-bold font-display mb-4">
-                Opportunities across 20+ domains
-              </h4>
-              <div className="flex flex-wrap gap-2.5">
-                {[
-                  'Coding',
-                  'Math',
-                  'Physics',
-                  'Robotics',
-                  'Finance',
-                  'Writing',
-                  'Voice Acting',
-                  'Language Translation',
-                  'ATC Translation',
-                  'Audio Engineering',
-                ].map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs text-gray-700 dark:text-gray-300 font-medium"
-                  >
-                    {tag}
+          <nav className="mt-8 flex items-center gap-1" aria-label="Onboarding steps">
+            {STEPS.map((step) => {
+              const active = currentStep === step.id;
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => {
+                    if (step.id === 'resume' || currentStep === 'profile') {
+                      setCurrentStep(step.id);
+                    }
+                  }}
+                  disabled={step.id === 'profile' && currentStep === 'resume'}
+                  className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-axiforma transition-colors ${
+                    active
+                      ? 'bg-white/8 text-white'
+                      : 'text-white/40 hover:text-white/70 disabled:hover:text-white/40 disabled:cursor-not-allowed'
+                  }`}
+                >
+                  {step.label}
+                  <span className="inline-flex items-center gap-1 text-[11px] text-white/35">
+                    <Clock className="w-3 h-3" />
+                    {step.minutes} min
                   </span>
-                ))}
-                <span className="px-3 py-1.5 rounded-full bg-[#00fad0]/10 border border-[#00fad0]/30 text-xs text-[#00967c] dark:text-[#00fad0] font-medium">
-                  + Many More!
-                </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-4 flex gap-2">
+            {STEPS.map((step) => (
+              <div key={step.id} className="h-0.5 flex-1 rounded-full bg-white/8 overflow-hidden">
+                <motion.div
+                  className="h-full bg-[#00fad0]"
+                  initial={false}
+                  animate={{
+                    width: step.id === 'resume' || currentStep === 'profile' ? '100%' : '0%',
+                  }}
+                  transition={{ duration: 0.35 }}
+                />
               </div>
+            ))}
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-8 pb-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+            >
+              {currentStep === 'resume' ? (
+                <ResumeUpload onContinue={handleNext} />
+              ) : (
+                <ProfileSetup onBack={() => setCurrentStep('resume')} onContinue={handleNext} />
+              )}
             </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
+
+      <aside className="hidden lg:flex flex-1 flex-col items-center justify-center relative px-16">
+        <div
+          className="absolute inset-0 opacity-[0.35] pointer-events-none"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(0,250,208,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,250,208,0.06) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="relative z-10 w-full max-w-md">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-white/35 font-axiforma mb-3">
+            Role-specific readiness
+          </p>
+          <h2 className="font-display text-4xl font-medium tracking-tight text-white leading-[1.15] mb-3">
+            Show who is ready — and show the work.
+          </h2>
+          <p className="text-sm text-white/45 font-axiforma leading-relaxed mb-10">
+            Ten specialisation tracks. Five levels, three tiers. Verification status is the same
+            everywhere an employer looks.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {[
+              { value: '5 × 3', label: 'Levels and tiers' },
+              { value: '10', label: 'Tracks in V1' },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-5"
+              >
+                <p className="font-display text-2xl font-medium text-white">{stat.value}</p>
+                <p className="mt-1 text-xs text-white/40 font-axiforma">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+            <p className="text-sm font-display text-white mb-4">Tracks you can certify on</p>
+            <div className="flex flex-wrap gap-2">
+              {TRACKS.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2.5 py-1 rounded-full border border-white/8 bg-white/[0.03] text-[11px] text-white/65 font-axiforma"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }
