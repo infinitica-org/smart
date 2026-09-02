@@ -11,6 +11,7 @@ import {
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
 } from './templates/skill-interview.js';
+import { projectVerifyTemplate } from './templates/project-verify.js';
 
 /**
  * The prompt registry.
@@ -41,6 +42,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   gapNarrativeTemplate,
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
+  projectVerifyTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
