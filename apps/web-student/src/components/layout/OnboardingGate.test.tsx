@@ -18,24 +18,24 @@ vi.mock('../../lib/api', () => ({
   },
 }));
 
-import DashboardLayout from './layout';
+import { OnboardingGate } from './OnboardingGate';
 
-describe('DashboardLayout onboarding gate', () => {
+describe('OnboardingGate', () => {
   beforeEach(() => {
     replace.mockReset();
     me.mockReset();
   });
 
-  it('redirects incomplete candidates away from /dashboard', async () => {
+  it('redirects incomplete candidates away from the console', async () => {
     me.mockResolvedValueOnce({
       role: 'STUDENT',
       onboardingCompleted: false,
       fullName: 'Incomplete',
     });
     render(
-      <DashboardLayout>
+      <OnboardingGate>
         <div>Secret dashboard</div>
-      </DashboardLayout>,
+      </OnboardingGate>,
     );
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/onboarding'));
@@ -43,16 +43,15 @@ describe('DashboardLayout onboarding gate', () => {
     expect(me).toHaveBeenCalled();
   });
 
-  it('allows completed candidates into /dashboard', async () => {
+  it('allows completed candidates into the console', async () => {
     me.mockResolvedValue({
       role: 'STUDENT',
       onboardingCompleted: true,
-      fullName: 'Complete',
     });
     render(
-      <DashboardLayout>
+      <OnboardingGate>
         <div>Secret dashboard</div>
-      </DashboardLayout>,
+      </OnboardingGate>,
     );
 
     await waitFor(() => expect(screen.getByText('Secret dashboard')).toBeTruthy());
@@ -70,9 +69,9 @@ describe('DashboardLayout onboarding gate', () => {
       fullName: 'Still Incomplete',
     });
     render(
-      <DashboardLayout>
+      <OnboardingGate>
         <div>Secret dashboard</div>
-      </DashboardLayout>,
+      </OnboardingGate>,
     );
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/onboarding'));
     expect(screen.queryByText('Secret dashboard')).toBeNull();

@@ -6,10 +6,10 @@ import { Alert, AppShell, Button } from '@smart/ui';
 import { api } from '../../lib/api';
 
 /**
- * CN-T01 server-side gate: /dashboard requires AuthenticatedUser.onboardingCompleted.
+ * CN-T01 server-side gate: candidate console requires AuthenticatedUser.onboardingCompleted.
  * Clearing localStorage cannot bypass this check.
  */
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export function OnboardingGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<'loading' | 'allowed' | 'denied'>('loading');
 
