@@ -15,6 +15,7 @@ import {
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   collectFlags,
@@ -24,6 +25,10 @@ import {
   stackLanguageMismatch,
   techAgeFlag,
 } from './project-verify.heuristics.js';
+import {
+  publicSimilarityDigest,
+  searchPublicProjectMatches,
+} from './project-verify.web-similarity.js';
 import {
   encodeReportExplanation,
   placeholderSnapshot,
@@ -41,6 +46,7 @@ export class ProjectVerifyService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AiGatewayService) private readonly gateway: AiGatewayService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   githubStatus() {
@@ -119,6 +125,15 @@ export class ProjectVerifyService {
     );
     const repos = snapshot.repos;
     const snapshotOk = repos.length > 0 && repos.every((repo) => repo.ok);
+    const web = await searchPublicProjectMatches({
+      title: project.title,
+      stack: project.stack,
+      currentText,
+      excludeFullNames: repos.map((repo) => `${repo.owner}/${repo.name}`),
+      cache: this.redis,
+    });
+    const combinedDup = Math.max(dup, web.score);
+    const digest = `${snapshotDigest(repos, snapshotOk)}\n${publicSimilarityDigest(web)}`;
 
     let llmFailed = false;
     let relevanceScore = 0;
@@ -139,7 +154,7 @@ export class ProjectVerifyService {
           approach: project.approach,
           stack: project.stack,
           outcome: project.outcome,
-          snapshotDigest: snapshotDigest(repos, snapshotOk),
+          snapshotDigest: digest,
         },
         correlation: {},
         maxOutputTokens: 1_200,
@@ -149,6 +164,7 @@ export class ProjectVerifyService {
       relevanceScore = parsed.relevanceScore;
       qualityScore = parsed.qualityScore;
       confidence = snapshotOk ? parsed.confidence : Math.min(parsed.confidence, 0.4);
+      if (!web.ok) confidence = Math.min(confidence, 0.4);
       explanation = parsed.explanation;
       auditId = result.auditId ?? null;
     } catch (err) {
@@ -159,17 +175,23 @@ export class ProjectVerifyService {
 
     const flags = collectFlags({
       duplicate: dup,
+      publicWeb: web.score,
       techAge: techAgeFlag(repos, new Date()),
       stackMismatch: stackLanguageMismatch(project.stack, repos),
       snapshotOk,
       llmFailed,
       confidence,
+      webSearchFailed: !web.ok,
     });
-    const score = compositeProjectScore({ relevanceScore, qualityScore, duplicateScore: dup });
+    const score = compositeProjectScore({
+      relevanceScore,
+      qualityScore,
+      duplicateScore: combinedDup,
+    });
     const routing = routeProjectVerification({ confidence, flags });
     const meta: StoredReportMeta = {
       qualityScore,
-      duplicateScore: dup,
+      duplicateScore: combinedDup,
       confidence,
       flags,
       promptRef: PROJECT_VERIFY_PROMPT_REF,
@@ -181,7 +203,7 @@ export class ProjectVerifyService {
       create: {
         projectId: project.id,
         score,
-        plagiarismFlag: flags.includes('DUPLICATE_TEXT'),
+        plagiarismFlag: flags.includes('DUPLICATE_TEXT') || flags.includes('PUBLIC_WEB_SIMILARITY'),
         techAgeFlag: flags.includes('TECH_AGE'),
         relevanceScore,
         explanation: encodeReportExplanation(explanation, meta),
@@ -189,7 +211,7 @@ export class ProjectVerifyService {
       },
       update: {
         score,
-        plagiarismFlag: flags.includes('DUPLICATE_TEXT'),
+        plagiarismFlag: flags.includes('DUPLICATE_TEXT') || flags.includes('PUBLIC_WEB_SIMILARITY'),
         techAgeFlag: flags.includes('TECH_AGE'),
         relevanceScore,
         explanation: encodeReportExplanation(explanation, meta),

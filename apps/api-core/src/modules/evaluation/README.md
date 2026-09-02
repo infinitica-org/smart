@@ -19,7 +19,9 @@ Does not write `SkillClaim` status (assessment / VB).
 Project verify never auto-rejects; low confidence → `UNDER_REVIEW`.
 Uses `@smart/contracts` `ProjectGithubSnapshot` / report DTOs from the contracts PR — do not add a parallel type.
 
-- Heuristic: duplicate-text Jaccard + tech-age + stack/language mismatch
+- Heuristic: prior-submission Jaccard, public GitHub + DuckDuckGo **snippets** (no clone), tech-age, stack/language mismatch
+- Public matches set `PUBLIC_WEB_SIMILARITY` and go to `UNDER_REVIEW`; the agent never sets `REJECTED`
+- Redis cache key `project:websim:{hash}` with TTL `REDIS_TTL_SECONDS.projectWebSimilarity`
 - LLM: `project-verify@1` via gateway (`P2_ASYNC_EVAL`)
 - Persist: existing `projects` / `project_verification_reports`
 
