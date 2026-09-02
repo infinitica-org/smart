@@ -5,6 +5,7 @@ import {
   Get,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -14,8 +15,10 @@ import {
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   ListJobOpeningsQuerySchema,
+  PatchApplicationStageRequestSchema,
   type ApplicationDto,
   type JobOpeningDto,
+  type ListApplicationsResponse,
   type ListJobOpeningsResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -102,6 +105,21 @@ export class PlacementController {
     return this.service.getOpening(requireInstitutionId(user), openingId);
   }
 
+  @Get('openings/:openingId/applications')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'List candidate applications for a job opening owned by caller institution.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Applications for the job opening.' })
+  @ApiResponse({ status: 404, description: 'Unknown opening, or owned by another institution.' })
+  async listApplications(
+    @CurrentUser() user: RequestUser,
+    @Param('openingId') openingId: string,
+  ): Promise<ListApplicationsResponse> {
+    return this.service.listApplications(requireInstitutionId(user), openingId);
+  }
+
   /**
    * AC-T05 shortlist. The candidate notification itself is SE-T07's job; this
    * route only persists the application and emits the stage-change event.
@@ -121,6 +139,29 @@ export class PlacementController {
     return this.service.createApplication(
       requireInstitutionId(user),
       CreateApplicationRequestSchema.parse(body),
+    );
+  }
+
+  @Patch('applications/:applicationId/stage')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Update candidate ATS application stage.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Application stage updated.' })
+  @ApiResponse({ status: 400, description: 'Invalid stage.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  async patchApplicationStage(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+    @Body() body: unknown,
+  ): Promise<ApplicationDto> {
+    const parsed = PatchApplicationStageRequestSchema.parse(body);
+    return this.service.patchApplicationStage(
+      requireInstitutionId(user),
+      applicationId,
+      parsed.stage,
     );
   }
 }
