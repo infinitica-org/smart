@@ -14,7 +14,14 @@
  * Owner: Vedika G (INF-06)
  */
 
-export type QuestionFormat = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER' | 'CODING';
+export type QuestionFormat =
+  | 'MCQ'
+  | 'TRUE_FALSE'
+  | 'SHORT_ANSWER'
+  | 'LONG_ANSWER'
+  | 'CODING'
+  /** Professional-only — the 25-min incident/debug scenario gate (see INF-05 DEBUG_SCENARIO). */
+  | 'DEBUG_SCENARIO';
 
 export type QuestionLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
 

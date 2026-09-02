@@ -1384,7 +1384,7 @@ class LockFreeQueue:
     skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
     skillName: 'Programming fundamentals & logic',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Programming fundamentals & logic - Professional Production Incident]: Incident Scenario — Financial Ledger Accumulator Precision Drift.
 
 Context: Real-time financial ledger processing 50M micro-transactions daily.
@@ -2783,7 +2783,7 @@ class LockFreeQueue:
     skillCode: 'DATA_STRUCTURES_ALGORITHMS',
     skillName: 'Data structures & algorithms',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Data structures & algorithms - Professional Production Incident]: Incident Scenario — Hash Table Bucket Collapse & HashDoS Attack.
 
 Context: In-memory high-throughput LRU session cache serving 100,000 requests/sec.
@@ -4183,7 +4183,7 @@ class LockFreeQueue:
     skillCode: 'OBJECT_ORIENTED_PROGRAMMING',
     skillName: 'Object-oriented programming',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Object-oriented programming - Professional Production Incident]: Incident Scenario — Partially Initialized Singleton Race Condition.
 
 Context: Enterprise payment gateway processing concurrent recurring subscription charges.
@@ -5589,7 +5589,7 @@ class LockFreeQueue:
     skillCode: 'DATABASE_FUNDAMENTALS',
     skillName: 'Database fundamentals (SQL/DBMS)',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Database fundamentals (SQL/DBMS) - Professional Production Incident]: Incident Scenario — Concert Ticket Double Booking (TOCTOU Race Condition).
 
 Context: Ticket booking & reservation platform for high-demand concert events.
@@ -6991,7 +6991,7 @@ class LockFreeQueue:
     skillCode: 'OPERATING_SYSTEMS_CONCEPTS',
     skillName: 'Operating systems concepts',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Operating systems concepts - Professional Production Incident]: Incident Scenario — Cache Line False Sharing Starvation.
 
 Context: Multi-threaded C++ telemetry processing engine running on a 64-core NUMA server.
@@ -8394,7 +8394,7 @@ class LockFreeQueue:
     skillCode: 'COMPUTER_NETWORKS_BASICS',
     skillName: 'Computer networks basics',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Computer networks basics - Professional Production Incident]: Incident Scenario — Ephemeral Port & TIME_WAIT Exhaustion.
 
 Context: Microservices API Gateway handling high-volume outbound REST calls to third-party endpoints.
@@ -9794,7 +9794,7 @@ class LockFreeQueue:
     skillCode: 'GIT_VERSION_CONTROL',
     skillName: 'Git & version control',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Git & version control - Professional Production Incident]: Incident Scenario — Uncoordinated Forced Push Commit Wipeout.
 
 Context: Multi-team continuous integration pipeline for a high-velocity enterprise repository.
@@ -11194,7 +11194,7 @@ class LockFreeQueue:
     skillCode: 'LANGUAGE_PROFICIENCY',
     skillName: 'Language proficiency (Java/Python/JS/C++)',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Language proficiency (Java/Python/JS/C++) - Professional Production Incident]: Incident Scenario — Event Loop CPU Blocking.
 
 Context: High-throughput Node.js / Python async web service serving 10,000 requests/sec.
@@ -12594,7 +12594,7 @@ class LockFreeQueue:
     skillCode: 'FRONTEND_BACKEND_FRAMEWORK',
     skillName: 'Frontend/backend framework (React/Node/Spring)',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Frontend/backend framework (React/Node/Spring) - Professional Production Incident]: Incident Scenario — Microservices Cascading Failure.
 
 Context: Enterprise e-commerce microservices (Order Service -> Payment Service -> Fraud Detection Service).
@@ -13995,7 +13995,7 @@ class LockFreeQueue:
     skillCode: 'SYSTEM_DESIGN_ARCHITECTURE',
     skillName: 'System design & architecture',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[System design & architecture - Professional Production Incident]: Incident Scenario — Uncontrolled Fan-out Memory Explosion.
 
 Context: Real-time push notification service for 20M mobile application users.
@@ -15395,7 +15395,7 @@ class LockFreeQueue:
     skillCode: 'TESTING_DEBUGGING',
     skillName: 'Testing & debugging',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Testing & debugging - Professional Production Incident]: Incident Scenario — Flaky Test Asynchronous Race Condition.
 
 Context: Automated CI/CD build pipeline running 3,000 unit and integration tests.
@@ -16798,7 +16798,7 @@ class LockFreeQueue:
     skillCode: 'DEPLOYMENT_CICD_BASICS',
     skillName: 'Deployment & CI/CD basics',
     level: 'PROFESSIONAL',
-    format: 'Incident / Debug',
+    format: 'DEBUG_SCENARIO',
     prompt: `[Deployment & CI/CD basics - Professional Production Incident]: Incident Scenario — Kubernetes Readiness Probe Gap (502 Bad Gateway).
 
 Context: Kubernetes cluster hosting core API microservices with RollingUpdate deployment strategy.
