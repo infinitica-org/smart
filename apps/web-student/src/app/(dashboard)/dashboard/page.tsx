@@ -2,15 +2,12 @@
 
 import Link from 'next/link';
 import { Briefcase, CheckCircle2, FileText, Share2, TrendingUp, Video } from 'lucide-react';
-import { useProfileStore } from '@/lib/stores/profile-store';
+import { DEFAULT_PROFILE } from '@/lib/candidate-dashboard-data';
 import { cn } from '@smart/ui';
 
 export default function DashboardPage() {
-  const { data } = useProfileStore();
-  const firstName = data.basicInfo?.firstName || 'Satheshwaran';
-  const fullName = data.basicInfo
-    ? `${data.basicInfo.firstName} ${data.basicInfo.lastName}`.trim()
-    : 'Satheshwaran';
+  const firstName = DEFAULT_PROFILE.firstName;
+  const fullName = `${DEFAULT_PROFILE.firstName} ${DEFAULT_PROFILE.lastName}`.trim();
 
   return (
     <div className="relative mx-auto w-full max-w-[1400px] pb-16 pt-2">
@@ -125,7 +122,7 @@ export default function DashboardPage() {
               <div className="mt-2 flex items-center gap-3 rounded-[20px] bg-white/5 p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
                   {firstName[0]}
-                  {data.basicInfo?.lastName?.[0] ?? 'V'}
+                  {DEFAULT_PROFILE.lastName[0] ?? 'V'}
                 </div>
                 <div>
                   <p className="text-[13px] font-medium text-white">{fullName}</p>

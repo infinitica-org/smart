@@ -4,7 +4,7 @@ import { Bell } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useProfileStore } from '@/lib/stores/profile-store';
+import { DEFAULT_PROFILE } from '@/lib/candidate-dashboard-data';
 import { cn } from '@smart/ui';
 import { useState } from 'react';
 
@@ -18,9 +18,9 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const basicInfo = useProfileStore((state) => state.data.basicInfo);
   const initials =
-    `${basicInfo?.firstName?.[0] ?? ''}${basicInfo?.lastName?.[0] ?? ''}`.toUpperCase() || 'SV';
+    `${DEFAULT_PROFILE.firstName[0] ?? ''}${DEFAULT_PROFILE.lastName[0] ?? ''}`.toUpperCase() ||
+    'SV';
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
