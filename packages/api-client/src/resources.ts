@@ -40,6 +40,7 @@ import {
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
+  ListMyApplicationsResponseSchema,
   NextItemDtoSchema,
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
@@ -491,6 +492,10 @@ export function placementApi(client: SmartApiClient) {
       client.get(prefixed('/tpo/shortlist'), { query, timeoutMs: 30_000 }),
 
     recordOutcome: (body: unknown) => client.post<void>(prefixed('/placement/outcomes'), body),
+
+    /** Candidate My Applications. Identity is the access token; no studentId query. */
+    listMyApplications: () =>
+      client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
   };
 }
 

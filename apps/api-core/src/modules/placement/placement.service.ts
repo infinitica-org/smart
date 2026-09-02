@@ -11,20 +11,25 @@ import {
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
   ApplicationStageChangedDataSchema,
+  CandidateApplicationDtoSchema,
+  EmploymentTypeSchema,
   JobOpeningDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
+  SkillTaxonomyDomainSchema,
 } from '@smart/contracts';
 import type {
   ApplicationConfidenceDto,
   ApplicationDto,
   AtsStage,
+  CandidateApplicationDto,
   CreateApplicationRequest,
   CreateJobOpeningRequest,
   JobOpeningDto,
   ListApplicationsResponse,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
+  ListMyApplicationsResponse,
   SkillProficiency,
 } from '@smart/contracts';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -61,6 +66,16 @@ interface ApplicationRow {
     email: string;
     primaryTrack?: { code: string } | null;
   } | null;
+}
+
+interface CandidateApplicationRow extends ApplicationRow {
+  opening: {
+    companyName: string;
+    roleTitle: string;
+    location: string | null;
+    employmentType: string | null;
+    domainCode: string | null;
+  };
 }
 
 /** AC-T05 shortlisting is TPO-mediated, so the created row is never `APPLIED`. */
@@ -278,6 +293,44 @@ export class PlacementService {
     return { applications: rows.map((row) => toApplicationDto(row)) };
   }
 
+  /**
+   * CN-T06: candidate My Applications. Identity is the access-token `sub` —
+   * never a client-supplied studentId. When `inst` is present, the opening's
+   * institution is constrained as well so a token cannot read across tenants.
+   */
+  async listMyApplications(
+    studentId: string,
+    institutionId: string | null,
+  ): Promise<ListMyApplicationsResponse> {
+    const rows = await this.prisma.application.findMany({
+      where: {
+        studentId,
+        ...(institutionId ? { opening: { institutionId } } : {}),
+      },
+      include: {
+        opening: {
+          select: {
+            companyName: true,
+            roleTitle: true,
+            location: true,
+            employmentType: true,
+            domainCode: true,
+          },
+        },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return { applications: rows.map((row) => toCandidateApplicationDto(row)) };
+  }
+
   async patchApplicationStage(
     institutionId: string,
     applicationId: string,
@@ -476,6 +529,21 @@ function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002'
   );
+}
+
+/** Maps a persisted application onto the frozen candidate My Applications row. */
+export function toCandidateApplicationDto(row: CandidateApplicationRow): CandidateApplicationDto {
+  const employmentType = EmploymentTypeSchema.safeParse(row.opening.employmentType);
+  const domain = SkillTaxonomyDomainSchema.safeParse(row.opening.domainCode);
+
+  return CandidateApplicationDtoSchema.parse({
+    ...toApplicationDto(row),
+    companyName: row.opening.companyName,
+    roleTitle: row.opening.roleTitle,
+    location: row.opening.location ?? '',
+    employmentType: employmentType.success ? employmentType.data : null,
+    domain: domain.success ? domain.data : null,
+  });
 }
 
 /** Maps a persisted application onto the frozen `ApplicationDto`. */
