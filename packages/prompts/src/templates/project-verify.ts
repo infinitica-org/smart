@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { ProjectVerifyLlmOutputSchema } from '@smart/contracts';
+import { PROJECT_VERIFY_PROMPT_REF, ProjectVerifyLlmOutputSchema } from '@smart/contracts';
 import type { PromptTemplate } from '../types.js';
 import { INJECTION_GUARD, jsonOnly, untrusted } from '../shared.js';
 
-export const PROJECT_VERIFY_PROMPT_REF = 'project-verify@1' as const;
+export { PROJECT_VERIFY_PROMPT_REF };
 
 export const ProjectVerifyVariables = z.object({
   title: z.string().min(3).max(200),
