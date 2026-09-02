@@ -376,3 +376,84 @@ describe('batch import contracts', () => {
     ).toBe(true);
   });
 });
+
+describe('SE-T02 skill interview contracts', () => {
+  it('registers generate and grade routes with an LLM spend cap', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/questions'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/grade'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
+  });
+});
+
+describe('CN-T06 my applications route', () => {
+  it('exposes a student-only poll route with no studentId parameter', () => {
+    const route = ROUTES.find((entry) => entry.path === '/me/applications');
+    expect(route).toMatchObject({
+      method: 'GET',
+      roles: ['STUDENT'],
+      rateLimit: 'placement.application',
+    });
+    expect(route?.path.includes('studentId')).toBe(false);
+  });
+});
+
+describe('AC-T06 send-to-company routes', () => {
+  it('registers TPO confidence read and send without inventing a new ATS stage', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/placement/applications/:applicationId/confidence'),
+    ).toMatchObject({
+      method: 'GET',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+      rateLimit: 'placement.application',
+    });
+    expect(
+      ROUTES.find(
+        (entry) => entry.path === '/placement/applications/:applicationId/send-to-company',
+      ),
+    ).toMatchObject({
+      method: 'POST',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    });
+  });
+});
+
+describe('SE-T03 project verification contracts', () => {
+  it('registers GitHub picker, submit, poll, and a separate project review queue', () => {
+    expect(ROUTES.find((entry) => entry.path === '/projects/github/status')).toMatchObject({
+      owner: 'Vishal V',
+      rateLimit: 'projects.github',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/projects')).toMatchObject({
+      method: 'POST',
+      owner: 'Vishal V',
+      rateLimit: 'projects.submit',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/admin/project-review-queue')).toMatchObject({
+      owner: 'Vishal Bharath R',
+      module: 'assessment',
+    });
+    expect(getRateLimitPolicy('evaluation.projectVerify').limit).toBe(8);
+  });
+
+  it('does not reuse smart.eval.completed for project scores', () => {
+    expect(SMART_TOPICS.projectVerifyCompleted).toBe('smart.project.verify.completed');
+    expect(getTopicSpec(SMART_TOPICS.projectVerifyCompleted).producerModule).toBe('evaluation');
+    expect(getTopicSpec(SMART_TOPICS.evalCompleted).purpose).toMatch(/certificate/i);
+  });
+});

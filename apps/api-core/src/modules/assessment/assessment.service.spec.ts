@@ -183,7 +183,7 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
     prisma = createMockPrisma();
     redis = createMockRedis();
     rotation = createMockRotation();
-    service = new AssessmentService(prisma, redis, rotation, {} as never, {} as never);
+    service = new AssessmentService(prisma, redis, rotation, {} as never, {} as never, {} as never);
     attemptsStartedSpy = vi.spyOn(attemptsStarted, 'inc');
     vi.clearAllMocks();
   });

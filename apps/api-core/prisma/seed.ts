@@ -244,8 +244,6 @@ async function main(): Promise<void> {
   console.log(
     `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
   );
-  console.log(`MBA_FINANCE items in DB: ${String(financeCount)}`);
-  console.log('Sample Finance item:', JSON.stringify(sampleFinanceItem, null, 2));
   await prisma.$disconnect();
 }
 

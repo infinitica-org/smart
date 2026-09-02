@@ -6,14 +6,25 @@ import { isSmartApiError } from '@smart/api-client';
 import {
   CreateJobOpeningRequestSchema,
   EMPLOYMENT_TYPES,
+  JOB_OPENING_STATUSES,
   SKILL_DEFINITIONS,
   SKILL_STREAMS,
   SKILL_TAXONOMY_DOMAINS,
   SKILL_PROFICIENCIES,
   type JobOpeningDto,
+  type JobOpeningStatus,
   type SkillProficiency,
 } from '@smart/contracts';
-import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+} from '@smart/ui';
 import { openingsApi } from '../lib/api';
 
 type FormState = {
@@ -56,8 +67,20 @@ function labelFor(value: string): string {
     .join(' ');
 }
 
+function skillNameFor(code: string): string {
+  return SKILL_DEFINITIONS.find((s) => s.code === code)?.name ?? code;
+}
+
 export function OpeningsWorkspace() {
   const [openings, setOpenings] = useState<JobOpeningDto[]>([]);
+  const [activeTab, setActiveTab] = useState<'inbox' | 'create'>('inbox');
+  const [statusFilter, setStatusFilter] = useState<JobOpeningStatus | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
+  const [inspectedOpening, setInspectedOpening] = useState<JobOpeningDto | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [skills, setSkills] = useState<Map<string, SkillProficiency>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -66,11 +89,14 @@ export function OpeningsWorkspace() {
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  async function loadOpenings() {
+  async function loadOpenings(statusToFetch?: JobOpeningStatus | 'ALL') {
     setLoading(true);
     setListError(null);
+    const filter = statusToFetch ?? statusFilter;
     try {
-      setOpenings((await openingsApi.list()).openings);
+      const query = filter !== 'ALL' ? { status: filter } : undefined;
+      const res = await openingsApi.list(query);
+      setOpenings(res.openings);
     } catch (caught) {
       setListError(errorMessage(caught, 'Could not load job openings.'));
     } finally {
@@ -81,6 +107,34 @@ export function OpeningsWorkspace() {
   useEffect(() => {
     void loadOpenings();
   }, []);
+
+  async function handleFilterChange(filter: JobOpeningStatus | 'ALL') {
+    setStatusFilter(filter);
+    await loadOpenings(filter);
+  }
+
+  async function handleInspectOpening(openingId: string) {
+    setSelectedOpeningId(openingId);
+    setInspectLoading(true);
+    setInspectError(null);
+    try {
+      const dto = await openingsApi.get(openingId);
+      setInspectedOpening(dto);
+    } catch (caught) {
+      setInspectError(errorMessage(caught, 'Could not load opening details.'));
+      // Fallback to locally loaded item if available
+      const local = openings.find((o) => o.openingId === openingId);
+      if (local) setInspectedOpening(local);
+    } finally {
+      setInspectLoading(false);
+    }
+  }
+
+  function handleCloseInspection() {
+    setSelectedOpeningId(null);
+    setInspectedOpening(null);
+    setInspectError(null);
+  }
 
   const visibleSkills = SKILL_DEFINITIONS.filter(
     (skill) => !form.stream || skill.stream === 'UNIVERSAL' || skill.stream === form.stream,
@@ -130,14 +184,41 @@ export function OpeningsWorkspace() {
     }
   }
 
+  const filteredOpenings = openings.filter((opening) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      opening.roleTitle.toLowerCase().includes(query) ||
+      opening.companyName.toLowerCase().includes(query) ||
+      (opening.location && opening.location.toLowerCase().includes(query)) ||
+      labelFor(opening.domain).toLowerCase().includes(query)
+    );
+  });
+
   return (
     <main className="mx-auto grid max-w-6xl gap-8 p-8">
-      <header>
-        <p className="text-sm font-medium text-brand-600">TPO concierge</p>
-        <h1 className="text-3xl font-semibold">Job openings</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Capture a structured role using the verified INF-05 skill taxonomy.
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-brand-600">TPO concierge</p>
+          <h1 className="text-3xl font-semibold">Job openings & JD Inbox</h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            Review incoming job descriptions and manage structured requirements.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 border-b border-[var(--surface-border)] sm:border-b-0">
+          <Button
+            variant={activeTab === 'inbox' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('inbox')}
+          >
+            JD Inbox ({openings.length})
+          </Button>
+          <Button
+            variant={activeTab === 'create' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('create')}
+          >
+            Post structured JD
+          </Button>
+        </div>
       </header>
 
       <Card>
@@ -283,15 +364,181 @@ export function OpeningsWorkspace() {
         </form>
       </Card>
 
+      {/* JD Inspection Modal / Detail Drawer */}
+      {selectedOpeningId && (
+        <Card className="border-brand-500 border-2 bg-[var(--surface)]">
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-2xl">
+                  {inspectedOpening?.roleTitle ?? 'Opening details'}
+                </CardTitle>
+                {inspectedOpening ? (
+                  <Badge
+                    variant={
+                      inspectedOpening.status === 'OPEN'
+                        ? 'default'
+                        : inspectedOpening.status === 'DRAFT'
+                          ? 'outline'
+                          : 'destructive'
+                    }
+                  >
+                    {labelFor(inspectedOpening.status)}
+                  </Badge>
+                ) : null}
+              </div>
+              <CardDescription className="mt-1 text-base">
+                {inspectedOpening?.companyName ?? 'Loading details…'}
+              </CardDescription>
+            </div>
+            <Button variant="outline" onClick={handleCloseInspection}>
+              Close inspection
+            </Button>
+          </CardHeader>
+          <div className="grid gap-6 p-6 pt-0">
+            {inspectLoading ? (
+              <p role="status" className="text-sm text-[var(--text-muted)]">
+                Fetching details for opening {selectedOpeningId}…
+              </p>
+            ) : inspectError ? (
+              <Alert tone="danger" title="Could not inspect opening">
+                {inspectError}
+              </Alert>
+            ) : inspectedOpening ? (
+              <>
+                <div className="grid gap-4 rounded-lg bg-[var(--surface-muted)] p-4 text-sm md:grid-cols-3">
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Domain
+                    </span>
+                    <p className="mt-1 font-medium">{labelFor(inspectedOpening.domain)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Experience Range
+                    </span>
+                    <p className="mt-1 font-medium">
+                      {inspectedOpening.minYearsExperience}–{inspectedOpening.maxYearsExperience}{' '}
+                      years
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Location
+                    </span>
+                    <p className="mt-1 font-medium">{inspectedOpening.location}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Employment Type
+                    </span>
+                    <p className="mt-1 font-medium">{labelFor(inspectedOpening.employmentType)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Headcount
+                    </span>
+                    <p className="mt-1 font-medium">{inspectedOpening.headcount} position(s)</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                      Created Date
+                    </span>
+                    <p className="mt-1 font-medium">
+                      {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(
+                        new Date(inspectedOpening.createdAt),
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold">Required Taxonomy Skills</h4>
+                  {inspectedOpening.requiredSkills.length === 0 ? (
+                    <p className="text-sm text-[var(--text-muted)]">No skill constraints.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-lg border border-[var(--surface-border)]">
+                      <table className="w-full text-left text-sm">
+                        <thead className="border-b bg-[var(--surface-muted)] text-xs uppercase text-[var(--text-muted)]">
+                          <tr>
+                            <th className="px-4 py-2">Skill Name</th>
+                            <th className="px-4 py-2">Skill Code</th>
+                            <th className="px-4 py-2">Minimum Proficiency</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {inspectedOpening.requiredSkills.map((req) => (
+                            <tr key={req.skillCode} className="border-b last:border-0">
+                              <td className="px-4 py-2.5 font-medium">
+                                {skillNameFor(req.skillCode)}
+                              </td>
+                              <td className="px-4 py-2.5 font-mono text-xs">{req.skillCode}</td>
+                              <td className="px-4 py-2.5">
+                                <Badge variant="outline">{labelFor(req.minProficiency)}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </Card>
+      )}
+
       <section aria-labelledby="opening-list-heading" className="grid gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 id="opening-list-heading" className="text-2xl font-semibold">
-            Current openings
-          </h2>
-          <Button variant="outline" onClick={() => void loadOpenings()} disabled={loading}>
-            Refresh
-          </Button>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <h2 id="opening-list-heading" className="text-2xl font-semibold">
+              Current openings
+            </h2>
+            <Badge variant="outline">{filteredOpenings.length} total</Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 text-sm">
+              <span className="text-xs font-medium text-[var(--text-muted)]">Status:</span>
+              <select
+                aria-label="Filter openings by status"
+                className={selectClass}
+                value={statusFilter}
+                onChange={(e) =>
+                  void handleFilterChange(e.target.value as JobOpeningStatus | 'ALL')
+                }
+              >
+                <option value="ALL">All Statuses</option>
+                {JOB_OPENING_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {labelFor(status)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Search Input */}
+            <input
+              type="search"
+              aria-label="Search openings"
+              placeholder="Search role, company, location…"
+              className={`${selectClass} w-48 sm:w-64`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button variant="outline" onClick={() => void loadOpenings()} disabled={loading}>
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        <p className="text-xs text-[var(--text-muted)]">
+          Workflow status displays available opening states (
+          <code className="font-semibold">DRAFT</code>, <code className="font-semibold">OPEN</code>,{' '}
+          <code className="font-semibold">CLOSED</code>). Candidate matching (AC-T04) and
+          shortlisting (AC-T05) advance ATS stages downstream.
+        </p>
+
         {listError ? (
           <Alert tone="danger" title="Openings unavailable">
             {listError}
@@ -300,7 +547,7 @@ export function OpeningsWorkspace() {
           <p role="status" className="text-sm text-[var(--text-muted)]">
             Loading openings…
           </p>
-        ) : openings.length === 0 ? (
+        ) : filteredOpenings.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[var(--surface-border)] p-6 text-sm text-[var(--text-muted)]">
             No job openings yet. Create the first structured JD above.
           </p>
@@ -321,7 +568,7 @@ export function OpeningsWorkspace() {
                 </tr>
               </thead>
               <tbody>
-                {openings.map((opening) => (
+                {filteredOpenings.map((opening) => (
                   <tr key={opening.openingId} className="border-b align-top">
                     <td className="py-3 pr-4">
                       <span className="font-medium">{opening.roleTitle}</span>
@@ -334,19 +581,40 @@ export function OpeningsWorkspace() {
                     <td className="py-3 pr-4">{opening.location}</td>
                     <td className="py-3 pr-4">{labelFor(opening.employmentType)}</td>
                     <td className="py-3 pr-4">{opening.headcount}</td>
-                    <td className="py-3 pr-4">{labelFor(opening.status)}</td>
+                    <td className="py-3 pr-4">
+                      <Badge
+                        variant={
+                          opening.status === 'OPEN'
+                            ? 'default'
+                            : opening.status === 'DRAFT'
+                              ? 'outline'
+                              : 'destructive'
+                        }
+                      >
+                        {labelFor(opening.status)}
+                      </Badge>
+                    </td>
                     <td className="py-3 pr-4">
                       {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(
                         new Date(opening.createdAt),
                       )}
                     </td>
                     <td className="py-3">
-                      <Link
-                        href={`/suggestions?openingId=${opening.openingId}`}
-                        className="text-xs font-semibold text-brand-600 hover:underline"
-                      >
-                        View suggestions
-                      </Link>
+                      <div className="flex flex-col items-start gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleInspectOpening(opening.openingId)}
+                        >
+                          Inspect JD
+                        </Button>
+                        <Link
+                          href={`/suggestions?openingId=${opening.openingId}`}
+                          className="text-xs font-semibold text-brand-600 hover:underline"
+                        >
+                          View suggestions
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

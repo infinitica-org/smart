@@ -209,6 +209,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'Each parse spends LLM tokens; onboarding retries must not flood the P3 bucket.',
   },
   {
+    key: 'evaluation.skillInterview',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:skill_interview:user:{id}',
+    rationale:
+      'SE-T02 generate + grade each spend LLM tokens; cap retries so one student cannot drain the FAST/PRIMARY lanes.',
+  },
+  {
     key: 'placement.ingestJd',
     scope: 'INSTITUTION',
     limit: 20,
@@ -253,6 +263,34 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     redisKey: 'rl:cert_issue:{id}',
     rationale: 'Issuance enqueues a Puppeteer PDF render; caps queue flooding.',
   },
+  {
+    key: 'projects.submit',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:projects:submit:{id}',
+    rationale: 'Each submit enqueues GitHub snapshot work plus an LLM verify.',
+  },
+  {
+    key: 'projects.github',
+    scope: 'USER',
+    limit: 20,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:projects:github:{id}',
+    rationale:
+      'Repo picker hits GitHub; cache in Redis with TTL to stay under GitHub secondary limits.',
+  },
+  {
+    key: 'evaluation.projectVerify',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:project_verify:user:{id}',
+    rationale: 'SE-T03 LLM quality/relevance scoring; fail closed to review, not reject.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
@@ -291,4 +329,7 @@ export const REDIS_TTL_SECONDS = {
   cutScores: 7 * 24 * 60 * 60,
   certificateVerification: 60 * 60,
   jdVector: 30 * 60,
+  githubRepoList: 5 * 60,
+  projectWebSimilarity: 5 * 60,
+  projectSnapshotLock: 10 * 60,
 } as const;

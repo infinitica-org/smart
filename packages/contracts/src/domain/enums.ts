@@ -417,3 +417,30 @@ export const WEBHOOK_DELIVERY_STATUSES = [
 ] as const;
 export const WebhookDeliveryStatusSchema = z.enum(WEBHOOK_DELIVERY_STATUSES);
 export type WebhookDeliveryStatus = z.infer<typeof WebhookDeliveryStatusSchema>;
+
+/** CN-T08 / SE-T03 project lifecycle. Agents never set REJECTED. */
+export const PROJECT_STATUSES = ['SUBMITTED', 'VERIFIED', 'UNDER_REVIEW', 'REJECTED'] as const;
+export const ProjectStatusSchema = z.enum(PROJECT_STATUSES);
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
+
+export const PROJECT_VERIFY_FLAGS = [
+  'DUPLICATE_TEXT',
+  'PUBLIC_WEB_SIMILARITY',
+  'TECH_AGE',
+  'SNAPSHOT_UNAVAILABLE',
+  'LOW_CONFIDENCE',
+  'LLM_UNAVAILABLE',
+  'STACK_LANGUAGE_MISMATCH',
+] as const;
+export const ProjectVerifyFlagSchema = z.enum(PROJECT_VERIFY_FLAGS);
+export type ProjectVerifyFlag = z.infer<typeof ProjectVerifyFlagSchema>;
+
+export const GITHUB_SNAPSHOT_UNAVAILABLE_REASONS = [
+  'oauth_missing',
+  'not_found',
+  'private',
+  'rate_limited',
+  'timeout',
+] as const;
+export const GithubSnapshotUnavailableReasonSchema = z.enum(GITHUB_SNAPSHOT_UNAVAILABLE_REASONS);
+export type GithubSnapshotUnavailableReason = z.infer<typeof GithubSnapshotUnavailableReasonSchema>;

@@ -1,6 +1,9 @@
 import type {
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
+  CompleteCandidateOnboardingRequest,
+  CreateProjectRequest,
+  DeclareSkillClaimRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -26,6 +29,7 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
+  CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
   GlobalStudentHitDtoSchema,
@@ -36,10 +40,12 @@ import {
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
+  ListMyApplicationsResponseSchema,
   NextItemDtoSchema,
   PublicVerificationDtoSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
+  SkillClaimDtoSchema,
   SsoStartResponseSchema,
   SubscriptionPlanDtoSchema,
   TenantEntitlementsDtoSchema,
@@ -47,6 +53,7 @@ import {
   VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
+  ProjectDtoSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -120,6 +127,16 @@ export function usersApi(client: SmartApiClient) {
     parseResume: (body: ParseResumeRequest) =>
       client.post(prefixed('/users/me/resume/parse'), body, {
         schema: ParseResumeResponseSchema,
+      }),
+
+    getOnboarding: () =>
+      client.get(prefixed('/users/me/onboarding'), {
+        schema: CandidateOnboardingProfileResponseSchema,
+      }),
+
+    completeOnboarding: (body: CompleteCandidateOnboardingRequest) =>
+      client.post(prefixed('/users/me/onboarding/complete'), body, {
+        schema: AuthenticatedUserSchema,
       }),
   };
 }
@@ -374,6 +391,16 @@ export function assessmentApi(client: SmartApiClient) {
     start: (body: { trackCode: string; levelNumber: number }) =>
       client.post(prefixed('/assessment/start'), body, { schema: AssignedFormDtoSchema }),
 
+    listSkillClaims: () =>
+      client.get(prefixed('/assessment/skill-claims'), {
+        schema: z.array(SkillClaimDtoSchema),
+      }),
+
+    declareSkillClaim: (body: DeclareSkillClaimRequest) =>
+      client.post(prefixed('/assessment/skill-claims'), body, {
+        schema: SkillClaimDtoSchema,
+      }),
+
     /** Resume after a refresh, a dropped connection, or a closed laptop. */
     session: (attemptId: string) =>
       client.get(prefixed(`/assessment/${attemptId}/session`), {
@@ -465,6 +492,20 @@ export function placementApi(client: SmartApiClient) {
       client.get(prefixed('/tpo/shortlist'), { query, timeoutMs: 30_000 }),
 
     recordOutcome: (body: unknown) => client.post<void>(prefixed('/placement/outcomes'), body),
+
+    /** Candidate My Applications. Identity is the access token; no studentId query. */
+    listMyApplications: () =>
+      client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
+  };
+}
+
+export function projectsApi(client: SmartApiClient) {
+  return {
+    create: (body: CreateProjectRequest) =>
+      client.post(prefixed('/projects'), body, { schema: ProjectDtoSchema }),
+
+    get: (projectId: string) =>
+      client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
   };
 }
 
@@ -487,6 +528,7 @@ export function createSmartApi(client: SmartApiClient) {
     certificates: certificateApi(client),
     placement: placementApi(client),
     onboarding: onboardingApi(client),
+    projects: projectsApi(client),
     system: systemApi(client),
   };
 }

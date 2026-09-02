@@ -6,9 +6,14 @@ import {
 } from '@smart/api-client';
 import {
   API_PREFIX,
+  ApplicationConfidenceDtoSchema,
+  ApplicationDtoSchema,
   JobOpeningDtoSchema,
+  ListApplicationsResponseSchema,
   ListJobOpeningsResponseSchema,
   ShortlistDtoSchema,
+  type AtsStage,
+  type CreateApplicationRequest,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
   type MatchRequest,
@@ -43,4 +48,33 @@ export const matchingApi = {
     apiClient.post(`${API_PREFIX}/placement/match`, body, {
       schema: ShortlistDtoSchema,
     }),
+};
+
+export const applicationsApi = {
+  create: (body: CreateApplicationRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/applications`, body, {
+      schema: ApplicationDtoSchema,
+    }),
+  listForOpening: (openingId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/openings/${openingId}/applications`, {
+      schema: ListApplicationsResponseSchema,
+    }),
+  patchStage: (applicationId: string, stage: AtsStage) =>
+    apiClient.patch(
+      `${API_PREFIX}/placement/applications/${applicationId}/stage`,
+      { stage },
+      {
+        schema: ApplicationDtoSchema,
+      },
+    ),
+  getConfidence: (applicationId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/applications/${applicationId}/confidence`, {
+      schema: ApplicationConfidenceDtoSchema,
+    }),
+  sendToCompany: (applicationId: string) =>
+    apiClient.post(
+      `${API_PREFIX}/placement/applications/${applicationId}/send-to-company`,
+      undefined,
+      { schema: ApplicationDtoSchema },
+    ),
 };

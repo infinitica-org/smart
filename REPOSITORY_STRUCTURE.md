@@ -50,21 +50,21 @@ We evaluated **NestJS** and **Effect.ts** to determine the optimal backend found
 
 All components in the SMART platform leverage open-source frameworks and technologies:
 
-| Layer / Subsystem                | Technology Choice                     | License / Hosting    | Function & Purpose in SMART                                                                            |
-| -------------------------------- | ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Frontend UI**                  | Next.js 14 (App Router)               | MIT                  | Server-side rendering, responsive UI dashboards, and static certificate pages.                         |
-| **Styling & Components**         | Tailwind CSS + shadcn/ui              | MIT                  | Design system, accessible components, and modern dark-mode aesthetic.                                  |
-| **State & API Queries**          | Zustand + TanStack Query              | MIT                  | Client-side assessment state and asynchronous server state caching.                                    |
-| **Primary Backend Core**         | NestJS 10 (Fastify Node.js)           | MIT                  | Enterprise REST API, microservices, auth, guard middleware, and WebSocket handlers.                    |
-| **Functional Math Sub-Module**   | Effect.ts (Effect 3.x)                | MIT                  | Pure functional IRT scoring engine and Angoff confidence band calculations.                            |
-| **Primary AI Engine**            | Anthropic Claude 5 Sonnet & 4.7       | Anthropic API        | **Claude 5 Sonnet** (BARS grading, L3/L4 defense, JD parsing); **Claude 4.7** (rapid item extraction). |
-| **Fallback AI Engine**           | Google Gemini 2.5 API (Pro / Flash)   | Google API           | High-availability automatic fallback engine for Anthropic API rate limits or outages.                  |
-| **Event Streaming / Bus**        | Apache Kafka (Redpanda / Strimzi)     | Apache 2.0           | Asynchronous event streaming (assessment submitted, evaluation completed, certificate issued).         |
-| **In-Memory Cache & Rate Limit** | Redis 7 / Valkey                      | BSD / BSD-3          | Session cache, sliding window rate limiting (Lua scripts), and BullMQ queue backend.                   |
-| **Relational DB & Vector**       | Supabase (PostgreSQL 16 + `pgvector`) | Apache 2.0 / Managed | Core relational storage (`students`, `attempts`, `responses`, `certificates`) + vector cosine search.  |
-| **Object Storage**               | Cloudflare R2 (S3-compatible)         | Cloudflare           | Zero-egress S3-compatible cloud object storage for candidate audio defenses and PDF certificates.      |
-| **Reverse Proxy & Gateway**      | Cloudflare Workers + Kong Gateway     | Apache 2.0 / Managed | Edge SSL termination, DDoS protection, and initial IP rate limiting.                                   |
-| **Observability & Metrics**      | Prometheus + Grafana + Loki           | Apache 2.0 / AGPLv3  | Open-source LGTM stack for container metrics, rate-limit violation tracking, and logs.                 |
+| Layer / Subsystem                | Technology Choice                                | License / Hosting    | Function & Purpose in SMART                                                                            |
+| -------------------------------- | ------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Frontend UI**                  | Next.js 14 (App Router)                          | MIT                  | Server-side rendering, responsive UI dashboards, and static certificate pages.                         |
+| **Styling & Components**         | Tailwind CSS + shadcn/ui                         | MIT                  | Design system, accessible components, and modern dark-mode aesthetic.                                  |
+| **State & API Queries**          | Zustand + TanStack Query                         | MIT                  | Client-side assessment state and asynchronous server state caching.                                    |
+| **Primary Backend Core**         | NestJS 10 (Fastify Node.js)                      | MIT                  | Enterprise REST API, microservices, auth, guard middleware, and WebSocket handlers.                    |
+| **Functional Math Sub-Module**   | Effect.ts (Effect 3.x)                           | MIT                  | Pure functional IRT scoring engine and Angoff confidence band calculations.                            |
+| **Primary AI Engine**            | Anthropic Claude 5 Sonnet & 4.7                  | Anthropic API        | **Claude 5 Sonnet** (BARS grading, L3/L4 defense, JD parsing); **Claude 4.7** (rapid item extraction). |
+| **Fallback AI Engine**           | Google Gemini 2.5 API (Pro / Flash)              | Google API           | High-availability automatic fallback engine for Anthropic API rate limits or outages.                  |
+| **Event Streaming / Bus**        | Apache Kafka (Redpanda / Strimzi)                | Apache 2.0           | Asynchronous event streaming (assessment submitted, evaluation completed, certificate issued).         |
+| **In-Memory Cache & Rate Limit** | Redis 7 / Valkey                                 | BSD / BSD-3          | Session cache, sliding window rate limiting (Lua scripts), and BullMQ queue backend.                   |
+| **Relational DB & Vector**       | PostgreSQL 16 + `pgvector` (self-hosted, Docker) | PostgreSQL License   | Core relational storage (`students`, `attempts`, `responses`, `certificates`) + vector cosine search.  |
+| **Object Storage**               | Cloudflare R2 (S3-compatible)                    | Cloudflare           | Zero-egress S3-compatible cloud object storage for candidate audio defenses and PDF certificates.      |
+| **Reverse Proxy & Gateway**      | Cloudflare Workers + Kong Gateway                | Apache 2.0 / Managed | Edge SSL termination, DDoS protection, and initial IP rate limiting.                                   |
+| **Observability & Metrics**      | Prometheus + Grafana + Loki                      | Apache 2.0 / AGPLv3  | Open-source LGTM stack for container metrics, rate-limit violation tracking, and logs.                 |
 
 ---
 

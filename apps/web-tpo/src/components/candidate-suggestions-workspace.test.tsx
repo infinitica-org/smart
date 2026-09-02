@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CandidateMatchDto, ShortlistDto } from '@smart/contracts';
-import { matchingApi, openingsApi } from '../lib/api';
+import { SmartApiError } from '@smart/api-client';
+import { applicationsApi, matchingApi, openingsApi } from '../lib/api';
 import { CandidateSuggestionsWorkspace } from './candidate-suggestions-workspace';
 
 vi.mock('../lib/api', () => ({
@@ -12,6 +13,9 @@ vi.mock('../lib/api', () => ({
   },
   matchingApi: {
     match: vi.fn(),
+  },
+  applicationsApi: {
+    create: vi.fn(),
   },
 }));
 
@@ -188,5 +192,104 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     await waitFor(() => {
       expect(matchingApi.match).toHaveBeenCalledWith({ jdId: secondOpening.openingId, limit: 50 });
     });
+  });
+});
+
+describe('AC-T05 send opportunity', () => {
+  function renderSuggestions() {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(matchingApi.match).mockResolvedValue(mockShortlist);
+    return render(<CandidateSuggestionsWorkspace initialOpeningId={mockOpening.openingId} />);
+  }
+
+  it('does not POST when no candidate is selected', async () => {
+    renderSuggestions();
+    await screen.findByText('Aarav Sharma');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
+
+    expect(await screen.findByText(/Select at least one candidate/)).toBeDefined();
+    expect(applicationsApi.create).not.toHaveBeenCalled();
+  });
+
+  it('posts openingId, studentId and the AC-T04 matchScore for each selected candidate', async () => {
+    vi.mocked(applicationsApi.create).mockResolvedValue({
+      applicationId: '33333333-3333-4333-8333-333333333333',
+      openingId: mockOpening.openingId,
+      studentId: candidateA.studentId,
+      stage: 'SHORTLISTED',
+      matchScore: candidateA.matchScore,
+      createdAt: '2026-09-02T09:00:00.000Z',
+      updatedAt: '2026-09-02T09:00:00.000Z',
+    });
+    renderSuggestions();
+    await screen.findByText('Aarav Sharma');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
+
+    await waitFor(() => {
+      expect(applicationsApi.create).toHaveBeenCalledWith({
+        openingId: mockOpening.openingId,
+        studentId: candidateA.studentId,
+        matchScore: 0.92,
+      });
+    });
+    expect(await screen.findByText(/1 shortlisted/)).toBeDefined();
+    expect(screen.getAllByText('Opportunity sent').length).toBeGreaterThan(0);
+    expect(applicationsApi.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends one request per selected candidate and reports a partial failure', async () => {
+    vi.mocked(applicationsApi.create)
+      .mockResolvedValueOnce({
+        applicationId: '33333333-3333-4333-8333-333333333333',
+        openingId: mockOpening.openingId,
+        studentId: candidateA.studentId,
+        stage: 'SHORTLISTED',
+        matchScore: candidateA.matchScore,
+        createdAt: '2026-09-02T09:00:00.000Z',
+        updatedAt: '2026-09-02T09:00:00.000Z',
+      })
+      .mockRejectedValueOnce(new Error('Placement API unavailable'));
+    renderSuggestions();
+    await screen.findByText('Aarav Sharma');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Bhavna Patel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
+
+    await waitFor(() => {
+      expect(applicationsApi.create).toHaveBeenCalledTimes(2);
+    });
+    expect(applicationsApi.create).toHaveBeenNthCalledWith(1, {
+      openingId: mockOpening.openingId,
+      studentId: candidateA.studentId,
+      matchScore: 0.92,
+    });
+    expect(applicationsApi.create).toHaveBeenNthCalledWith(2, {
+      openingId: mockOpening.openingId,
+      studentId: candidateB.studentId,
+      matchScore: 0.75,
+    });
+    expect(await screen.findByText(/1 shortlisted. 1 failed/)).toBeDefined();
+  });
+
+  it('treats a 409 as already shortlisted rather than a hard failure', async () => {
+    vi.mocked(applicationsApi.create).mockRejectedValue(
+      new SmartApiError({
+        error: 'conflict',
+        message: 'This candidate has already been shortlisted for this opening.',
+        statusCode: 409,
+      }),
+    );
+    renderSuggestions();
+    await screen.findByText('Aarav Sharma');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
+
+    expect(await screen.findByText(/1 already shortlisted/)).toBeDefined();
+    expect(screen.getAllByText('Opportunity sent').length).toBeGreaterThan(0);
   });
 });

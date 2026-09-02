@@ -28,6 +28,7 @@ export type UserWithAuthIncludes = {
   createdAt: Date;
   passwordHash: string | null;
   heldAt: Date | null;
+  onboardingCompleted?: boolean;
   institution: {
     name: string;
     heldAt: Date | null;
@@ -251,6 +252,7 @@ export function toAuthenticatedUser(user: {
   institutionId: string | null;
   createdAt: Date;
   heldAt?: Date | null;
+  onboardingCompleted?: boolean;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   primaryTrack: { code: string } | null;
@@ -284,6 +286,8 @@ export function toAuthenticatedUser(user: {
     provider: user.provider,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt.toISOString(),
+    // Non-students skip candidate onboarding; students require the server flag.
+    onboardingCompleted: user.role === 'STUDENT' ? Boolean(user.onboardingCompleted) : true,
     sessionHold: hold,
   };
 }

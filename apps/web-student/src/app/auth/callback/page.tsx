@@ -39,13 +39,15 @@ function AuthCallbackComponent() {
         // Store token in sessionStorage per architecture
         storeAccessToken(response.accessToken);
 
-        // Redirect logic based on user state
+        // Redirect logic based on user state (server flags only — not localStorage)
         const user = response.user;
 
         if (!user.institutionId) {
           router.push('/institution-picker');
         } else if (!user.primaryTrack) {
           router.push('/enroll');
+        } else if (!user.onboardingCompleted) {
+          router.push('/onboarding');
         } else {
           router.push('/dashboard');
         }

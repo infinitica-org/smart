@@ -20,6 +20,7 @@ import { InstitutionsModule } from './modules/institutions/institutions.module.j
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PlacementModule } from './modules/placement/placement.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -67,6 +68,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     MatchingModule,
     NotificationsModule,
     PlacementModule,
+    ProjectsModule,
     AnalyticsModule,
     WebhooksModule,
   ],

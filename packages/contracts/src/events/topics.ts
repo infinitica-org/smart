@@ -24,6 +24,9 @@ export const SMART_TOPICS = {
   auditRecorded: 'smart.audit.recorded',
   aiCompletionRecorded: 'smart.ai.completion.recorded',
   rateLimitExceeded: 'smart.rate_limit.exceeded',
+  projectSubmitted: 'smart.project.submitted',
+  projectSnapshotReady: 'smart.project.snapshot.ready',
+  projectVerifyCompleted: 'smart.project.verify.completed',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -198,6 +201,36 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     retentionHours: 72,
     partitionKey: 'identifier',
     purpose: 'Throttle violation; feeds abuse alerting and session integrity logging.',
+  },
+  {
+    topic: SMART_TOPICS.projectSubmitted,
+    producerOwner: 'Vishal V',
+    producerModule: 'platform',
+    consumerModules: ['platform', 'evaluation'],
+    partitions: 6,
+    retentionHours: 168,
+    partitionKey: 'projectId',
+    purpose: 'CN-T08 project row created; VV fetches a GitHub snapshot. Not smart.eval.*.',
+  },
+  {
+    topic: SMART_TOPICS.projectSnapshotReady,
+    producerOwner: 'Vishal V',
+    producerModule: 'platform',
+    consumerModules: ['evaluation'],
+    partitions: 6,
+    retentionHours: 168,
+    partitionKey: 'projectId',
+    purpose: 'Snapshot JSON is in Postgres; evaluation may score. Payload is not on the bus.',
+  },
+  {
+    topic: SMART_TOPICS.projectVerifyCompleted,
+    producerOwner: 'Ramansh',
+    producerModule: 'evaluation',
+    consumerModules: ['analytics', 'platform'],
+    partitions: 6,
+    retentionHours: 336,
+    partitionKey: 'projectId',
+    purpose: 'SE-T03 report written. Never auto-rejects. Do not treat as a cert tier.',
   },
 ] as const;
 

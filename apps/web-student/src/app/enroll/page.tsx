@@ -36,7 +36,7 @@ export default function EnrollPage() {
     setError(null);
     try {
       await api.auth.enrollTrack({ trackCode: selectedTrack });
-      router.push('/dashboard');
+      router.push('/onboarding');
     } catch (err: unknown) {
       console.error(err);
       setError('Failed to enroll in the track. Please try again.');

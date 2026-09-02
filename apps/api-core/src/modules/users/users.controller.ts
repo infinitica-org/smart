@@ -25,6 +25,26 @@ export class UsersController {
     return this.service.getMe(user.sub);
   }
 
+  @Get('me/onboarding')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Load persisted candidate onboarding profile.' })
+  @ApiResponse({ status: 200, description: 'Profile snapshot and onboardingCompleted flag.' })
+  getOnboarding(@CurrentUser() user: RequestUser) {
+    return this.service.getOnboarding(user.sub);
+  }
+
+  @Post('me/onboarding/complete')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Persist profile + DPDP consent and mark onboarding complete (CN-T01).',
+  })
+  @ApiResponse({ status: 200, description: 'AuthenticatedUser with onboardingCompleted=true.' })
+  completeOnboarding(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.service.completeOnboarding(user.sub, body);
+  }
+
   @Put('me/track')
   @Roles('STUDENT')
   enrollTrack(@CurrentUser() user: RequestUser, @Body() body: unknown) {

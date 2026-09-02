@@ -20,6 +20,7 @@ export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
 export * from './domain/skills.js';
+export * from './domain/question.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
@@ -32,8 +33,10 @@ export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
+export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
+export * from './dto/project-verify.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
@@ -43,4 +46,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.2.1' as const;
+export const CONTRACTS_VERSION = '0.2.2' as const;

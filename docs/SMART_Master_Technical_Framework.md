@@ -30,14 +30,14 @@ _For placement offices and students who are done trusting opaque, one-size-fits-
 
 ## 2. Decoupled AI Architecture — Claude Management Engine & Gemini Fallback
 
-> **Architectural Separation:** Orion is being built separately by a parallel team. SMART directly integrates with **Anthropic's Claude 5 Sonnet & Claude 4.7 API** as its primary intelligence layer, backed by automatic failover to **Google Gemini API (Gemini 2.5 Pro / Flash)** and native Supabase `pgvector`.
+> **Architectural Separation:** Orion is being built separately by a parallel team. SMART directly integrates with **Anthropic's Claude 5 Sonnet & Claude 4.7 API** as its primary intelligence layer, backed by automatic failover to **Google Gemini API (Gemini 2.5 Pro / Flash)** and native Postgres `pgvector`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │               SMART AI ENGINE (CLAUDE + GEMINI FALLBACK)                    │
 │                                                                             │
 │  ┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────┐  │
-│  │     Claude 4.7       │    │   Claude 5 Sonnet    │    │  Supabase /   │  │
+│  │     Claude 4.7       │    │   Claude 5 Sonnet    │    │   Postgres /  │  │
 │  │ (Fast Extraction &   │    │ (BARS Evaluation,    │    │   pgvector    │  │
 │  │ Item Pre-Processing) │    │  Defense & NLP JD)   │    │ (RAG Vector)  │  │
 │  └──────────┬───────────┘    └──────────┬───────────┘    └───────┬───────┘  │
@@ -56,7 +56,7 @@ _For placement offices and students who are done trusting opaque, one-size-fits-
 - **Claude 5 Sonnet (Primary)**: Operates L3 spoken BARS evaluation, L4 interactive defense simulation, L5 qualitative review, and unstructured JD parsing.
 - **Claude 4.7 (Primary)**: Handles rapid item generation, pre-tokenization, intent classification, and keyword matching.
 - **Google Gemini 2.5 Pro / Flash (Automatic Fallback Engine)**: High-availability failover target triggered automatically during Anthropic API rate limits or outages.
-- **Supabase pgvector**: Stores vector embeddings of competency rubrics and model answers for fast RAG context insertion.
+- **Postgres pgvector**: Stores vector embeddings of competency rubrics and model answers for fast RAG context insertion.
 
 ---
 
@@ -146,7 +146,7 @@ Refer to [ARCHITECTURE.md](file:///mnt/Data/Work%27s/Grad360%20/smart/ARCHITECTU
 
 ### 7.1 Enterprise Authentication & B2B Integration Model
 
-- **Authentication**: Dual-Token Strategy (Short-lived 15m Access JWT + HttpOnly 7-14d Secure Refresh Token) + Supabase Auth OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
+- **Authentication**: Dual-Token Strategy (Short-lived 15m Access JWT + HttpOnly 7-14d Secure Refresh Token) + OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
 - **B2B API Key Access**: Dedicated `X-SMART-API-KEY` authenticated endpoints for university ERPs and recruiting partner integrations with custom token bucket quotas.
 - **Outbound Webhook Engine**: Real-time HTTP event dispatchers issuing cryptographically signed HMAC-SHA256 event payloads (`smart.certificate.issued`, `smart.placement.matched`).
 - **Synchronous vs. Asynchronous SLAs**: HTTP REST SLA < 200ms for active test player & verification lookup; Asynchronous BullMQ + Apache Kafka queues for L2 Docker code runner, L3 audio BARS grading, LLM generation, and PDF exports.

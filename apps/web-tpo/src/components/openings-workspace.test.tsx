@@ -89,7 +89,7 @@ describe('CO-T01 TPO opening workspace', () => {
     expect(screen.getByText('2–5 years')).toBeDefined();
     expect(screen.getByText('Coimbatore')).toBeDefined();
     expect(screen.getAllByText('Full Time')).toHaveLength(2);
-    expect(screen.getByText('Draft')).toBeDefined();
+    expect(screen.getAllByText('Draft').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows a safe list error and allows refresh', async () => {
@@ -209,5 +209,61 @@ describe('CO-T01 TPO opening workspace', () => {
     expect((screen.getByLabelText('Company name') as HTMLInputElement).value).toBe(
       'Infinitica Labs',
     );
+  });
+
+  describe('AC-T03 JD Inbox functionality', () => {
+    it('applies status filter and requests filtered openings from API', async () => {
+      vi.mocked(openingsApi.list).mockResolvedValue({ openings: [opening] });
+      render(<OpeningsWorkspace />);
+
+      expect(await screen.findByText('Backend Engineer')).toBeDefined();
+
+      const statusSelect = screen.getByLabelText('Filter openings by status');
+      fireEvent.change(statusSelect, { target: { value: 'OPEN' } });
+
+      await waitFor(() => expect(openingsApi.list).toHaveBeenCalledWith({ status: 'OPEN' }));
+    });
+
+    it('inspects opening details via openingsApi.get when Inspect JD is clicked', async () => {
+      vi.mocked(openingsApi.list).mockResolvedValue({ openings: [opening] });
+      vi.mocked(openingsApi.get).mockResolvedValue(opening);
+
+      render(<OpeningsWorkspace />);
+      expect(await screen.findByText('Backend Engineer')).toBeDefined();
+
+      const inspectButton = screen.getByRole('button', { name: 'Inspect JD' });
+      fireEvent.click(inspectButton);
+
+      expect(openingsApi.get).toHaveBeenCalledWith(opening.openingId);
+
+      expect(await screen.findByText('Required Taxonomy Skills')).toBeDefined();
+      expect(screen.getAllByText('Programming fundamentals & logic').length).toBeGreaterThanOrEqual(
+        1,
+      );
+      expect(screen.getByText('PROGRAMMING_FUNDAMENTALS_LOGIC')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close inspection' }));
+      expect(screen.queryByText('Required Taxonomy Skills')).toBeNull();
+    });
+
+    it('filters visible openings by search query', async () => {
+      const otherOpening = {
+        ...opening,
+        openingId: '33333333-3333-4333-8333-333333333333',
+        roleTitle: 'Frontend Developer',
+        companyName: 'Acme Corp',
+      };
+      vi.mocked(openingsApi.list).mockResolvedValue({ openings: [opening, otherOpening] });
+
+      render(<OpeningsWorkspace />);
+      expect(await screen.findByText('Backend Engineer')).toBeDefined();
+      expect(screen.getByText('Frontend Developer')).toBeDefined();
+
+      const searchInput = screen.getByLabelText('Search openings');
+      fireEvent.change(searchInput, { target: { value: 'Acme' } });
+
+      expect(screen.queryByText('Backend Engineer')).toBeNull();
+      expect(screen.getByText('Frontend Developer')).toBeDefined();
+    });
   });
 });

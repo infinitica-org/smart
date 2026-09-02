@@ -46,6 +46,7 @@ export interface CandidateSkill {
   status:
     | 'DECLARED'
     | 'IN_PROGRESS'
+    | 'IN_VERIFICATION'
     | 'PENDING_REVIEW'
     | 'LOCKED'
     | 'VERIFIED'

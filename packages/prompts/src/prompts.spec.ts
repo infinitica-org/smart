@@ -25,6 +25,8 @@ import {
   renderPromptRef,
   stripCodeFence,
   untrusted,
+  skillInterviewExaminerTemplate,
+  skillInterviewGraderTemplate,
 } from './index.js';
 
 /**
@@ -94,6 +96,7 @@ describe('prompt registry', () => {
       'capstone-review@1',
       'jd-parse@1',
       'resume-parse@1',
+      'skill-interview-grader@1',
     ];
     for (const ref of graders) {
       expect(PROMPT_REGISTRY.get(ref as never)?.temperature, ref).toBe(0);
@@ -166,6 +169,24 @@ describe('rendered grading prompts', () => {
     });
     expect(narrative.system).toContain('already decided');
     expect(narrative.user).toContain('borderline');
+  });
+
+  it('keeps the skill interview examiner small and the grader explanation-bounded', () => {
+    const examiner = renderPrompt(skillInterviewExaminerTemplate, {
+      skillCode: 'SYSTEM_DESIGN_ARCHITECTURE',
+      proficiency: 'ADVANCED',
+    });
+    expect(examiner.modelRole).toBe('FAST_EXTRACTION');
+    expect(examiner.maxOutputTokens).toBeLessThanOrEqual(400);
+    expect(examiner.system).toContain('exactly 3 questions');
+    const grader = renderPrompt(skillInterviewGraderTemplate, {
+      skillCode: 'SYSTEM_DESIGN_ARCHITECTURE',
+      proficiency: 'ADVANCED',
+      transcript: 'Q1: cache?\nA1: Redis with TTL.',
+    });
+    expect(grader.temperature).toBe(0);
+    expect(grader.user).toContain('<candidate_response>');
+    expect(grader.system).toContain('one sentence');
   });
 });
 
