@@ -354,6 +354,30 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     });
   }
 
+  if (url.includes('/me/applications') && method === 'GET') {
+    return new Response(
+      JSON.stringify({
+        applications: [
+          {
+            applicationId: '123e4567-e89b-12d3-a456-426614174010',
+            openingId: '123e4567-e89b-12d3-a456-426614174011',
+            studentId: MOCK_USER_ID,
+            stage: 'SHORTLISTED',
+            matchScore: 0.88,
+            createdAt: '2026-09-01T08:00:00.000Z',
+            updatedAt: '2026-09-02T10:00:00.000Z',
+            companyName: 'Acme Labs',
+            roleTitle: 'Backend Engineer',
+            location: 'Bengaluru',
+            employmentType: 'FULL_TIME',
+            domain: 'SOFTWARE_IT',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   // eslint-disable-next-line no-restricted-globals
   return fetch(input, init);
 };

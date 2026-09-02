@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AiCompletionRequestSchema,
   BarsGradeSchema,
+  PROJECT_VERIFY_PROMPT_REF,
   ResumeParseDraftSchema,
   TRACK_CODES,
 } from '@smart/contracts';
@@ -27,6 +28,7 @@ import {
   untrusted,
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
+  projectVerifyTemplate,
 } from './index.js';
 
 /**
@@ -97,6 +99,7 @@ describe('prompt registry', () => {
       'jd-parse@1',
       'resume-parse@1',
       'skill-interview-grader@1',
+      'project-verify@1',
     ];
     for (const ref of graders) {
       expect(PROMPT_REGISTRY.get(ref as never)?.temperature, ref).toBe(0);
@@ -187,6 +190,20 @@ describe('rendered grading prompts', () => {
     expect(grader.temperature).toBe(0);
     expect(grader.user).toContain('<candidate_response>');
     expect(grader.system).toContain('one sentence');
+  });
+
+  it('keeps project-verify from awarding certification tiers', () => {
+    const rendered = renderPrompt(projectVerifyTemplate, {
+      title: 'Campus bus tracker',
+      problem: 'Students cannot see live bus location on campus routes.',
+      approach: 'I used websockets and a small GPS ingest service.',
+      stack: 'TypeScript',
+      outcome: 'Average wait time dropped in a 30-student pilot.',
+      snapshotDigest: 'GitHub snapshot unavailable',
+    });
+    expect(rendered.promptRef).toBe(PROJECT_VERIFY_PROMPT_REF);
+    expect(rendered.system).toContain('Do not say Gold');
+    expect(rendered.system).toContain('Never recommend rejecting');
   });
 });
 

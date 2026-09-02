@@ -5,22 +5,31 @@ import {
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
   ApplicationStageChangedDataSchema,
+  CandidateApplicationDtoSchema,
+  EmploymentTypeSchema,
   JobOpeningDtoSchema,
+  SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
+  SkillTaxonomyDomainSchema,
 } from '@smart/contracts';
 import type {
+  ApplicationConfidenceDto,
   ApplicationDto,
   AtsStage,
+  CandidateApplicationDto,
   CreateApplicationRequest,
   CreateJobOpeningRequest,
   JobOpeningDto,
   ListApplicationsResponse,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
+  ListMyApplicationsResponse,
   SkillProficiency,
 } from '@smart/contracts';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -57,6 +66,16 @@ interface ApplicationRow {
     email: string;
     primaryTrack?: { code: string } | null;
   } | null;
+}
+
+interface CandidateApplicationRow extends ApplicationRow {
+  opening: {
+    companyName: string;
+    roleTitle: string;
+    location: string | null;
+    employmentType: string | null;
+    domainCode: string | null;
+  };
 }
 
 /** AC-T05 shortlisting is TPO-mediated, so the created row is never `APPLIED`. */
@@ -274,6 +293,44 @@ export class PlacementService {
     return { applications: rows.map((row) => toApplicationDto(row)) };
   }
 
+  /**
+   * CN-T06: candidate My Applications. Identity is the access-token `sub` —
+   * never a client-supplied studentId. When `inst` is present, the opening's
+   * institution is constrained as well so a token cannot read across tenants.
+   */
+  async listMyApplications(
+    studentId: string,
+    institutionId: string | null,
+  ): Promise<ListMyApplicationsResponse> {
+    const rows = await this.prisma.application.findMany({
+      where: {
+        studentId,
+        ...(institutionId ? { opening: { institutionId } } : {}),
+      },
+      include: {
+        opening: {
+          select: {
+            companyName: true,
+            roleTitle: true,
+            location: true,
+            employmentType: true,
+            domainCode: true,
+          },
+        },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return { applications: rows.map((row) => toCandidateApplicationDto(row)) };
+  }
+
   async patchApplicationStage(
     institutionId: string,
     applicationId: string,
@@ -346,6 +403,109 @@ export class PlacementService {
     return dto;
   }
 
+  /**
+   * AC-T06: TPO reads the persisted SE-T02 shape (passed + explanation).
+   * Grade itself is student-only and is not re-run here.
+   */
+  async getApplicationConfidence(
+    institutionId: string,
+    applicationId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    const application = await this.requireApplication(institutionId, applicationId);
+    return this.toConfidenceDto(application.id, application.studentId);
+  }
+
+  async sendToCompany(institutionId: string, applicationId: string): Promise<ApplicationDto> {
+    const application = await this.requireApplication(institutionId, applicationId);
+    const confidence = await this.toConfidenceDto(application.id, application.studentId);
+    if (!confidence.complete) {
+      throw new UnprocessableEntityException({
+        error: 'validation_failed',
+        message:
+          confidence.sendBlockedReason ??
+          'A complete SE-T02 confidence result is required before sending to the company.',
+        statusCode: 422,
+      });
+    }
+
+    if (application.stage === SEND_TO_COMPANY_STAGE) {
+      return toApplicationDto(application);
+    }
+
+    if (application.stage !== 'SHORTLISTED') {
+      throw new ConflictException({
+        error: 'conflict',
+        message: `Only SHORTLISTED applications can be sent to the company (current stage: ${application.stage}).`,
+        statusCode: 409,
+      });
+    }
+
+    return this.patchApplicationStage(institutionId, applicationId, SEND_TO_COMPANY_STAGE);
+  }
+
+  private async requireApplication(
+    institutionId: string,
+    applicationId: string,
+  ): Promise<ApplicationRow & { opening: { institutionId: string } }> {
+    const application = await this.prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        opening: { select: { institutionId: true } },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+    });
+
+    if (!application || application.opening.institutionId !== institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Application not found.',
+        statusCode: 404,
+      });
+    }
+    return application;
+  }
+
+  private async toConfidenceDto(
+    applicationId: string,
+    studentId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    const latest = await this.prisma.skillVerificationAttempt.findFirst({
+      where: { claim: { studentId } },
+      orderBy: { createdAt: 'desc' },
+      select: { passed: true, explanation: true },
+    });
+
+    const explanation = latest?.explanation?.trim() || null;
+    const passed = latest?.passed ?? null;
+    const available = latest !== null;
+    const complete = passed !== null && explanation !== null && explanation.length >= 10;
+    let sendBlockedReason: string | null = null;
+    if (!available) {
+      sendBlockedReason = 'No SE-T02 confidence result is on file for this candidate.';
+    } else if (!complete) {
+      sendBlockedReason =
+        'Confidence result is incomplete — pass/fail or the one-line explanation is missing.';
+    }
+
+    return ApplicationConfidenceDtoSchema.parse({
+      applicationId,
+      studentId,
+      available,
+      complete,
+      passed,
+      explanation,
+      // SE-T02 grade does not persist promptRef; do not invent one.
+      promptRef: null,
+      sendBlockedReason,
+    });
+  }
+
   private async enqueueStageChanged(data: {
     applicationId: string;
     openingId: string;
@@ -369,6 +529,21 @@ function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002'
   );
+}
+
+/** Maps a persisted application onto the frozen candidate My Applications row. */
+export function toCandidateApplicationDto(row: CandidateApplicationRow): CandidateApplicationDto {
+  const employmentType = EmploymentTypeSchema.safeParse(row.opening.employmentType);
+  const domain = SkillTaxonomyDomainSchema.safeParse(row.opening.domainCode);
+
+  return CandidateApplicationDtoSchema.parse({
+    ...toApplicationDto(row),
+    companyName: row.opening.companyName,
+    roleTitle: row.opening.roleTitle,
+    location: row.opening.location ?? '',
+    employmentType: employmentType.success ? employmentType.data : null,
+    domain: domain.success ? domain.data : null,
+  });
 }
 
 /** Maps a persisted application onto the frozen `ApplicationDto`. */

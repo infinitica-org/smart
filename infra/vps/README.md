@@ -18,10 +18,10 @@ break-glass / first-time setup.
 
 ## 1. DNS (A records)
 
-| Host                                                                                                 | → IP    |
-| ---------------------------------------------------------------------------------------------------- | ------- |
-| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `db.`                             | kvm4 IP |
-| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.db.` | kvm2 IP |
+| Host                                                                                                     | → IP    |
+| -------------------------------------------------------------------------------------------------------- | ------- |
+| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`                             | kvm4 IP |
+| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.` | kvm2 IP |
 
 ## 2. Server setup (each VPS) — one-time
 
@@ -48,8 +48,7 @@ On **kvm4** (brittytino only): `git checkout main`, `cp .env.prod.example
 
 Docker Postgres + pgvector, one volume per host (`smart-dev` / `smart-prod`
 compose projects) — physically separate databases, distinct generated
-passwords, never shared. Optional: point `DATABASE_URL` at a per-environment
-Supabase Postgres URI instead — see `docs/delivery/DATABASE.md`. Postgres is
+passwords, never shared. See `docs/delivery/DATABASE.md`. Postgres is
 **not** published to the internet; browse it via the DB admin UI below or an
 SSH tunnel.
 
@@ -58,10 +57,10 @@ automatically at the end of `scripts/deploy-vps.sh` / every CI deploy.
 
 ## 4. DB admin UI
 
-`https://db.becomesmart.online` (prod) / `https://dev.db.becomesmart.online`
-(dev) — Adminer behind Caddy, gated by HTTP Basic Auth (`DB_BASIC_AUTH_USER`
-/ `DB_BASIC_AUTH_HASH` in the env file) **and** the Postgres login itself.
-Raw port 5432 is never exposed publicly.
+`https://studio.becomesmart.online` (prod) / `https://dev.studio.becomesmart.online`
+(dev) — Prisma Studio behind Caddy, gated by HTTP Basic Auth
+(`DB_BASIC_AUTH_USER` / `DB_BASIC_AUTH_HASH` in the env file) **and** the
+Postgres login itself. Raw port 5432 is never exposed publicly.
 
 ## 5. Laptop (not a VPS)
 

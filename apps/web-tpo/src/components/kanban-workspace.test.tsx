@@ -105,6 +105,21 @@ describe('CO-T02 ATS Kanban Workspace', () => {
     expect(await screen.findByText(/Could not move candidate to SHORTLISTED/)).toBeDefined();
   });
 
+  it('keeps a sent-to-company INTERVIEW candidate visible in the ATS', async () => {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(applicationsApi.listForOpening).mockResolvedValue({
+      applications: [{ ...mockApplication, stage: 'INTERVIEW' }],
+    });
+
+    render(<KanbanWorkspace />);
+
+    expect(await screen.findByText('Aarav Sharma')).toBeDefined();
+    expect(screen.getByLabelText('Change stage for Aarav Sharma')).toHaveProperty(
+      'value',
+      'INTERVIEW',
+    );
+  });
+
   it('allows manual refresh', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
     vi.mocked(applicationsApi.listForOpening).mockResolvedValue({

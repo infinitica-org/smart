@@ -45,6 +45,7 @@ import type {
 import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { batchImportRows } from '@smart/observability';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 
@@ -62,6 +63,7 @@ export class InstitutionsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   /* ----------------------------- platform admin ----------------------------- */
@@ -1102,23 +1104,21 @@ export class InstitutionsService {
     });
     batchImportRows.inc({ outcome: 'imported' }, imported);
     batchImportRows.inc({ outcome: 'skipped' }, errors.length);
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: invitedById,
-        action: 'batch.members_imported',
-        resourceType: 'batch',
-        resourceId: batchId,
-        reasonCode: 'bulk_provisioning',
-        metadata: {
-          institutionId,
-          imported,
-          skipped: errors.length,
-          existingStudents,
-          newAccounts,
-          pendingInvitations,
-        } as Prisma.InputJsonValue,
+    await this.writeAudit(
+      invitedById,
+      'batch.members_imported',
+      'batch',
+      batchId,
+      'bulk_provisioning',
+      {
+        institutionId,
+        imported,
+        skipped: errors.length,
+        existingStudents,
+        newAccounts,
+        pendingInvitations,
       },
-    });
+    );
     this.logger.log(
       {
         event: 'tpo.batch_import.completed',
@@ -1409,15 +1409,13 @@ export class InstitutionsService {
     reason: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action,
-        resourceType,
-        resourceId,
-        reasonCode: reason,
-        metadata: metadata as Prisma.InputJsonValue,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action,
+      resourceType,
+      resourceId,
+      reasonCode: reason,
+      metadata,
     });
   }
 

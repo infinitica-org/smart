@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ApplicationConfidenceDtoSchema,
+  CandidateApplicationDtoSchema,
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
+  ListMyApplicationsResponseSchema,
+  SEND_TO_COMPANY_STAGE,
   SKILL_CODES,
 } from '../index.js';
 
@@ -153,5 +157,62 @@ describe('AC-T05 create application contract', () => {
     expect(
       CreateApplicationRequestSchema.safeParse({ ...validShortlist, matchScore: 1.4 }).success,
     ).toBe(false);
+  });
+});
+
+describe('CN-T06 candidate application contracts', () => {
+  const validMine = {
+    applicationId: '00000000-0000-4000-8000-000000000010',
+    openingId: '00000000-0000-4000-8000-000000000011',
+    studentId: '00000000-0000-4000-8000-000000000012',
+    stage: 'SHORTLISTED',
+    matchScore: 0.88,
+    createdAt: '2026-09-02T00:00:00.000Z',
+    updatedAt: '2026-09-02T01:00:00.000Z',
+    companyName: 'Acme Labs',
+    roleTitle: 'Backend Engineer',
+    location: 'Bengaluru',
+    employmentType: 'FULL_TIME',
+    domain: 'SOFTWARE_IT',
+  };
+
+  it('reuses Application identity plus CO-T01 opening display fields', () => {
+    const parsed = CandidateApplicationDtoSchema.parse(validMine);
+    expect(parsed.stage).toBe('SHORTLISTED');
+    expect(parsed.companyName).toBe('Acme Labs');
+    expect(parsed.roleTitle).toBe('Backend Engineer');
+  });
+
+  it('rejects invented ATS stages such as AI_VERIFIED', () => {
+    expect(
+      CandidateApplicationDtoSchema.safeParse({ ...validMine, stage: 'AI_VERIFIED' }).success,
+    ).toBe(false);
+  });
+
+  it('accepts a list of the authenticated student applications', () => {
+    expect(ListMyApplicationsResponseSchema.safeParse({ applications: [validMine] }).success).toBe(
+      true,
+    );
+  });
+});
+
+describe('AC-T06 send-to-company contracts', () => {
+  it('maps send-to-company onto INTERVIEW, not a new ATS stage', () => {
+    expect(SEND_TO_COMPANY_STAGE).toBe('INTERVIEW');
+  });
+
+  it('allows a TPO-readable pass/fail + explanation without a numeric score', () => {
+    const parsed = ApplicationConfidenceDtoSchema.parse({
+      applicationId: '00000000-0000-4000-8000-000000000010',
+      studentId: '00000000-0000-4000-8000-000000000011',
+      available: true,
+      complete: true,
+      passed: true,
+      explanation: 'Named Redis and explained stampede and TTL trade-offs.',
+      promptRef: 'skill-interview-grader@1',
+      sendBlockedReason: null,
+    });
+    expect(parsed.passed).toBe(true);
+    expect('score' in parsed).toBe(false);
   });
 });

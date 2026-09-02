@@ -319,7 +319,7 @@ describe('sprint 3 MMP placement contracts', () => {
 
   it('registers ATS stage-change for My Applications sync', () => {
     expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
-    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
+    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('placement');
   });
 });
 
@@ -398,6 +398,38 @@ describe('SE-T02 skill interview contracts', () => {
       rateLimit: 'evaluation.skillInterview',
     });
     expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
+  });
+});
+
+describe('CN-T06 my applications route', () => {
+  it('exposes a student-only poll route with no studentId parameter', () => {
+    const route = ROUTES.find((entry) => entry.path === '/me/applications');
+    expect(route).toMatchObject({
+      method: 'GET',
+      roles: ['STUDENT'],
+      rateLimit: 'placement.application',
+    });
+    expect(route?.path.includes('studentId')).toBe(false);
+  });
+});
+
+describe('AC-T06 send-to-company routes', () => {
+  it('registers TPO confidence read and send without inventing a new ATS stage', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/placement/applications/:applicationId/confidence'),
+    ).toMatchObject({
+      method: 'GET',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+      rateLimit: 'placement.application',
+    });
+    expect(
+      ROUTES.find(
+        (entry) => entry.path === '/placement/applications/:applicationId/send-to-company',
+      ),
+    ).toMatchObject({
+      method: 'POST',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    });
   });
 });
 

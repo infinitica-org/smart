@@ -16,6 +16,9 @@ type ExistingUser = {
 };
 
 function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
+  const auditPublisher = {
+    record: vi.fn().mockResolvedValue(undefined),
+  };
   const prisma = {
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
@@ -51,7 +54,12 @@ function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
   return {
     prisma,
     invitations,
-    service: new InstitutionsService(prisma as never, invitations as never),
+    auditPublisher,
+    service: new InstitutionsService(
+      prisma as never,
+      invitations as never,
+      auditPublisher as never,
+    ),
   };
 }
 
@@ -111,7 +119,7 @@ describe('InstitutionsService import execution and observability', () => {
   });
 
   it('writes a PII-safe audit record after a partial import', async () => {
-    const { service, prisma } = setup();
+    const { service, auditPublisher } = setup();
     await service.importBatchMembers(
       batchId,
       institutionId,
@@ -121,13 +129,13 @@ describe('InstitutionsService import execution and observability', () => {
       actorId,
       mapping,
     );
-    expect(prisma.auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        action: 'batch.members_imported',
-        resourceType: 'batch',
-        resourceId: batchId,
-        metadata: expect.not.objectContaining({ email: expect.anything() }),
-      }),
+    expect(auditPublisher.record).toHaveBeenCalledWith({
+      actorId,
+      action: 'batch.members_imported',
+      resourceType: 'batch',
+      resourceId: batchId,
+      reasonCode: 'bulk_provisioning',
+      metadata: expect.not.objectContaining({ email: expect.anything() }),
     });
   });
 });

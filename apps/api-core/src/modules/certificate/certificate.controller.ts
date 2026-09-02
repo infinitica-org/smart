@@ -10,11 +10,6 @@ export class CertificateController {
 
   @Get('_meta')
   meta() {
-    return {
-      module: 'certificate',
-      owner: this.service.owner,
-      purpose: this.service.purpose,
-      status: 'scaffold',
-    };
+    return this.service.getMeta();
   }
 }

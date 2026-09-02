@@ -38,7 +38,7 @@ echo "==> Sprint 1 issues -> $REPO"
 
 create_issue "S1-VV-01" "15-min access JWT + HttpOnly SameSite=Strict refresh rotation with reuse detection" "Vishal V" 5 P0 area:backend
 create_issue "S1-VV-02" "RBAC guards + decorators: SUPER_ADMIN, INSTITUTION_ADMIN, PLACEMENT_STAFF, STUDENT, PUBLIC" "Vishal V" 3 P0 area:backend
-create_issue "S1-VV-03" "Supabase OAuth (Google, GitHub) + SAML 2.0/OIDC institutional SSO with domain→institution mapping" "Vishal V" 8 P0 area:backend
+create_issue "S1-VV-03" "OAuth (Google, GitHub) + SAML 2.0/OIDC institutional SSO with domain→institution mapping" "Vishal V" 8 P0 area:backend
 create_issue "S1-VV-04" "Redis sliding-window + token-bucket Lua guard; X-RateLimit-* + Retry-After; 429 body per §4.2" "Vishal V" 5 P0 area:backend
 create_issue "S1-VV-05" "Full endpoint throttle matrix from ARCHITECTURE.md §4.4 as declarative config" "Vishal V" 3 P0 area:backend
 create_issue "S1-VV-06" "B2B X-SMART-API-KEY auth + per-key quota (500/hour) + key issuance admin API" "Vishal V" 5 P1 area:backend

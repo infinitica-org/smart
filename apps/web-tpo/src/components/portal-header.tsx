@@ -16,11 +16,20 @@ export function PortalHeader() {
             SMART · Placement
           </Link>
           <nav aria-label="TPO portal" className="flex gap-4 text-sm">
+            <Link href="/" className="hover:underline">
+              Dashboard
+            </Link>
+            <Link href="/company" className="hover:underline">
+              Company
+            </Link>
             <Link href="/openings" className="hover:underline">
               Job openings
             </Link>
             <Link href="/suggestions" className="hover:underline">
               Ranked suggestions
+            </Link>
+            <Link href="/review" className="hover:underline">
+              Review & send
             </Link>
             <Link href="/ats" className="hover:underline">
               ATS Kanban
