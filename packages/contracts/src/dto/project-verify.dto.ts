@@ -146,6 +146,7 @@ export const CreateProjectRequestSchema = z.object({
   stack: z.string().min(2).max(1_000),
   outcome: z.string().min(20).max(8_000),
   loomUrl: z.url().optional(),
+  githubUrl: z.url().optional(),
   githubRepos: z.array(GithubRepoRefSchema).max(PROJECT_VERIFY_REPO_MAX).default([]),
 });
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;

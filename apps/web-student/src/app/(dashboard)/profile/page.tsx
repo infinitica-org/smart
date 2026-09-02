@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { ChevronRight, User } from 'lucide-react';
-import { VerificationBadge } from '@smart/ui';
 import { PageHeader, Surface } from '@/components/dashboard/ConsoleChrome';
-import { DEFAULT_PROFILE, SKILL_CHIPS, skillStatusToBadge } from '@/lib/candidate-dashboard-data';
+import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
+import { SkillsSection } from '@/components/profile/SkillsSection';
+import { DEFAULT_PROFILE } from '@/lib/candidate-dashboard-data';
 
-/** Lightweight profile shell for nav continuity; skills declare is CN-T04. */
+/** Candidate console profile: CN-T04 skills + CN-T08 project submission. */
 export default function ProfilePage() {
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
       <PageHeader
         title="My Profile"
-        subtitle="Profile strength and skill verification snapshot for the candidate console."
+        subtitle="Profile strength, skill verification, and project submission for the candidate console."
       />
 
       <Surface className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -44,28 +45,11 @@ export default function ProfilePage() {
       </Surface>
 
       <Surface>
-        <h2 className="mb-4 text-lg font-medium text-white">Skills</h2>
-        <div className="flex flex-wrap gap-2">
-          {SKILL_CHIPS.map((skill) => (
-            <span
-              key={skill.name}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white"
-            >
-              {skill.name}
-              <VerificationBadge
-                status={skillStatusToBadge(skill.status)}
-                variant="outline"
-                className="scale-90"
-              />
-              {skill.lockedUntil ? (
-                <span className="text-white/40">until {skill.lockedUntil}</span>
-              ) : null}
-            </span>
-          ))}
-        </div>
-        <p className="mt-6 text-xs text-white/40">
-          Full taxonomy picker and declare flow live on the CN-T04 skills section when merged.
-        </p>
+        <SkillsSection />
+      </Surface>
+
+      <Surface>
+        <ProjectSubmissionForm />
       </Surface>
     </div>
   );
