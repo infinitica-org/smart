@@ -29,7 +29,8 @@ const GraderOutputSchema = z.object({
 @Injectable()
 export class EvaluationService {
   readonly owner = 'Ramansh';
-  readonly purpose = 'BARS grading, L4 defense, and SE-T02 skill interview. Produces raw scores.';
+  readonly purpose =
+    'BARS grading, L4 defense, SE-T02 skill interview, and SE-T03 project verification. Produces raw scores.';
   private readonly logger = new Logger(EvaluationService.name);
 
   constructor(@Inject(AiGatewayService) private readonly gateway: AiGatewayService) {}

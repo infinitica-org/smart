@@ -15,7 +15,7 @@ export class EvaluationController {
       module: 'evaluation',
       owner: this.service.owner,
       purpose: this.service.purpose,
-      status: 'skill-interview',
+      status: 'skill-interview+project-verify',
     };
   }
 
