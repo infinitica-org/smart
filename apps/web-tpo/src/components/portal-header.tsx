@@ -19,6 +19,9 @@ export function PortalHeader() {
             <Link href="/" className="hover:underline">
               Dashboard
             </Link>
+            <Link href="/company" className="hover:underline">
+              Company
+            </Link>
             <Link href="/openings" className="hover:underline">
               Job openings
             </Link>
