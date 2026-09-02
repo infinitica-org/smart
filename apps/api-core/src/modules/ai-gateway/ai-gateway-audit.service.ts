@@ -12,12 +12,10 @@ const DEFAULT_PRICING: ModelPricing = { promptPerMillion: 1.0, completionPerMill
 export const MODEL_PRICING_TABLE: Record<string, ModelPricing> = {
   'claude-3-5-sonnet-latest': { promptPerMillion: 3.0, completionPerMillion: 15.0 },
   'claude-3-5-haiku-latest': { promptPerMillion: 0.8, completionPerMillion: 4.0 },
-  'gemini-2.5-pro': { promptPerMillion: 1.25, completionPerMillion: 10.0 },
-  'gemini-2.5-flash': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
+  'gemini-3.5-flash-lite': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
   'anthropic/claude-3.5-sonnet': { promptPerMillion: 3.0, completionPerMillion: 15.0 },
   'anthropic/claude-3.5-haiku': { promptPerMillion: 0.8, completionPerMillion: 4.0 },
-  'google/gemini-2.5-pro': { promptPerMillion: 1.25, completionPerMillion: 10.0 },
-  'google/gemini-2.5-flash': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
+  'google/gemini-3.5-flash-lite': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
 };
 
 export interface AuditRecordInput {

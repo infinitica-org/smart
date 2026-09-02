@@ -190,7 +190,7 @@ describe('AiGatewayService', () => {
         output: { matchedAnchor: 'GOLD', barsScore: 92, confidence: 0.93 },
         rawText: '{"matchedAnchor":"GOLD"}',
         provider: 'GOOGLE' as const,
-        model: 'gemini-2.5-pro',
+        model: 'gemini-3.5-flash-lite',
         promptTokens: 145,
         completionTokens: 48,
         latencyMs: 140,
@@ -222,7 +222,7 @@ describe('AiGatewayService', () => {
 
     expect(result.provider).toBe('GOOGLE');
     expect(result.usedFallback).toBe(true);
-    expect(result.model).toBe('gemini-2.5-pro');
+    expect(result.model).toBe('gemini-3.5-flash-lite');
     expect(mockAnthropic.complete).toHaveBeenCalledTimes(1);
     expect(mockGoogle.complete).toHaveBeenCalledTimes(1);
     expect(mockGoogle.complete).toHaveBeenCalledWith(
@@ -247,7 +247,7 @@ describe('AiGatewayService', () => {
         output: { matchedAnchor: 'SILVER', barsScore: 75, confidence: 0.88 },
         rawText: '{"matchedAnchor":"SILVER"}',
         provider: 'GOOGLE' as const,
-        model: 'gemini-2.5-pro',
+        model: 'gemini-3.5-flash-lite',
         promptTokens: 140,
         completionTokens: 45,
         latencyMs: 110,
@@ -298,7 +298,7 @@ describe('AiGatewayService', () => {
         output: { matchedAnchor: 'BRONZE', barsScore: 60, confidence: 0.8 },
         rawText: '{"matchedAnchor":"BRONZE"}',
         provider: 'GOOGLE' as const,
-        model: 'gemini-2.5-pro',
+        model: 'gemini-3.5-flash-lite',
         promptTokens: 130,
         completionTokens: 40,
         latencyMs: 95,
