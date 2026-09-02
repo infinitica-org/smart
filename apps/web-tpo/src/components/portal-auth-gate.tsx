@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { PORTAL_ROLES } from '@smart/api-client';
 import { RolesGuard, SessionBootstrap } from '@smart/ui';
+import { signOut } from '../lib/auth';
 
 const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -25,6 +26,7 @@ export function PortalAuthGate({ children }: { children: React.ReactNode }) {
         pathname={pathname}
         portalOrigins={PORTAL_ORIGINS}
         publicPathPrefixes={PUBLIC_PATHS}
+        onSignOut={signOut}
       >
         {children}
       </RolesGuard>

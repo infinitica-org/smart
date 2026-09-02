@@ -1,8 +1,39 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import {
+  clearAccessToken,
+  getSessionRole,
+  portalHomeForRole,
+  type PortalOrigins,
+} from '@smart/api-client';
 import { Card, CardDescription, CardHeader, CardTitle } from './card';
-import { Button } from './button';
+import { Button, type ButtonVariant } from './button';
+
+function NavButton({
+  href,
+  variant,
+  children,
+  onNavigate,
+}: {
+  href: string;
+  variant?: ButtonVariant;
+  children: ReactNode;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      onClick={() => {
+        onNavigate?.();
+        window.location.assign(href);
+      }}
+    >
+      {children}
+    </Button>
+  );
+}
 
 export function ForbiddenWall({
   homeHref,
@@ -30,17 +61,13 @@ export function ForbiddenWall({
           </CardHeader>
           <div className="flex flex-wrap gap-3 px-6 pb-6 pt-2">
             {homeHref ? (
-              <a href={homeHref}>
-                <Button variant="secondary" type="button">
-                  Go to your portal
-                </Button>
-              </a>
+              <NavButton href={homeHref} variant="secondary">
+                Go to your portal
+              </NavButton>
             ) : null}
-            <a href={loginHref}>
-              <Button variant="outline" type="button">
-                Sign in again
-              </Button>
-            </a>
+            <NavButton href={loginHref} variant="outline" onNavigate={clearAccessToken}>
+              Sign in again
+            </NavButton>
             {onSignOut ? (
               <Button
                 variant="ghost"
@@ -59,7 +86,17 @@ export function ForbiddenWall({
   );
 }
 
-export function NotFoundWall({ homeHref }: { homeHref: string }): ReactNode {
+export function NotFoundWall({
+  homeHref,
+  portalOrigins,
+}: {
+  homeHref: string;
+  portalOrigins?: PortalOrigins;
+}): ReactNode {
+  const role = getSessionRole();
+  const resolvedHome =
+    role && portalOrigins ? (portalHomeForRole(role, portalOrigins) ?? homeHref) : homeHref;
+
   return (
     <main className="flex min-h-screen items-center justify-center p-8">
       <div className="w-full max-w-lg">
@@ -75,9 +112,7 @@ export function NotFoundWall({ homeHref }: { homeHref: string }): ReactNode {
             </CardDescription>
           </CardHeader>
           <div className="px-6 pb-6 pt-2">
-            <a href={homeHref}>
-              <Button type="button">Back to home</Button>
-            </a>
+            <NavButton href={resolvedHome}>Back to home</NavButton>
           </div>
         </Card>
       </div>
