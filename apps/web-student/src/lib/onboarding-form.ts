@@ -97,6 +97,48 @@ export function applyResumeDraft(
   };
 }
 
+export function validateEducationItems(
+  education: CompleteCandidateOnboardingRequest['education'],
+): string | null {
+  for (let i = 0; i < education.length; i++) {
+    const item = education[i];
+    if (!item?.institutionName?.trim()) {
+      return `Institution name is required for education entry #${i + 1}.`;
+    }
+  }
+  return null;
+}
+
+export function validateExperienceItems(
+  experiences: CompleteCandidateOnboardingRequest['experiences'],
+): string | null {
+  for (let i = 0; i < experiences.length; i++) {
+    const item = experiences[i];
+    if (!item?.role?.trim()) {
+      return `Role / Job Title is required for experience entry #${i + 1}.`;
+    }
+    if (!item?.company?.trim()) {
+      return `Company name is required for experience entry #${i + 1}.`;
+    }
+  }
+  return null;
+}
+
+export const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export function buildCompleteOnboardingRequest(
   form: OnboardingProfileForm,
 ): CompleteCandidateOnboardingRequest | { error: string } {
@@ -112,6 +154,13 @@ export function buildCompleteOnboardingRequest(
   if (!form.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
     return { error: 'At least one language is required.' };
   }
+
+  const eduError = validateEducationItems(form.education);
+  if (eduError) return { error: eduError };
+
+  const expError = validateExperienceItems(form.experiences);
+  if (expError) return { error: expError };
+
   if (form.preferences.length === 0) {
     return { error: 'Please select at least one project preference.' };
   }
@@ -162,19 +211,22 @@ export function buildCompleteOnboardingRequest(
   };
 }
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+export const LANGUAGE_OPTIONS = [
+  'English',
+  'Spanish',
+  'French',
+  'German',
+  'Hindi',
+  'Mandarin',
+  'Japanese',
+  'Tamil',
+  'Telugu',
+  'Kannada',
+  'Marathi',
+  'Bengali',
+  'Arabic',
+  'Portuguese',
+  'Russian',
 ];
 
-export { MONTHS };
+export const FLUENCY_OPTIONS = ['Native or Bilingual', 'Fluent', 'Conversational', 'Elementary'];
