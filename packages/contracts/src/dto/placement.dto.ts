@@ -231,6 +231,9 @@ export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,
   openingId: UuidSchema,
   studentId: UuidSchema,
+  studentName: z.string().optional(),
+  studentEmail: z.string().optional(),
+  primaryTrackCode: z.string().optional(),
   stage: AtsStageSchema,
   matchScore: z.number().min(0).max(1).nullable(),
   createdAt: IsoDateTimeSchema,
@@ -251,6 +254,11 @@ export const CreateApplicationRequestSchema = z.object({
   matchScore: z.number().min(0).max(1).optional(),
 });
 export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;
+
+export const ListApplicationsResponseSchema = z.object({
+  applications: z.array(ApplicationDtoSchema),
+});
+export type ListApplicationsResponse = z.infer<typeof ListApplicationsResponseSchema>;
 
 export const PatchApplicationStageRequestSchema = z.object({
   stage: AtsStageSchema,

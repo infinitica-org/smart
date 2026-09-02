@@ -14,9 +14,11 @@ import {
 } from '@smart/contracts';
 import type {
   ApplicationDto,
+  AtsStage,
   CreateApplicationRequest,
   CreateJobOpeningRequest,
   JobOpeningDto,
+  ListApplicationsResponse,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
   SkillProficiency,
@@ -50,14 +52,19 @@ interface ApplicationRow {
   matchScore: unknown;
   createdAt: Date;
   updatedAt: Date;
+  student?: {
+    fullName: string;
+    email: string;
+    primaryTrack?: { code: string } | null;
+  } | null;
 }
 
 /** AC-T05 shortlisting is TPO-mediated, so the created row is never `APPLIED`. */
 const SHORTLIST_STAGE = 'SHORTLISTED' as const;
 
 /**
- * CO-T01 structured job openings (Th6-I116). TPO-authored: `institutionId` and
- * `createdById` always come from the access token, never from the request body.
+ * CO-T01 structured job openings (Th6-I116), AC-T05 shortlist, and CO-T02 ATS
+ * Kanban. `institutionId` always comes from the access token, never the body.
  */
 @Injectable()
 export class PlacementService {
@@ -222,22 +229,138 @@ export class PlacementService {
     }
 
     const dto = toApplicationDto(row);
-    await this.outbox.enqueueEnvelope({
-      topic: SMART_TOPICS.applicationStageChanged,
-      partitionKey: dto.applicationId,
-      eventType: SMART_TOPICS.applicationStageChanged,
-      source: 'placement',
-      data: ApplicationStageChangedDataSchema.parse({
-        applicationId: dto.applicationId,
-        openingId: dto.openingId,
-        studentId: dto.studentId,
-        fromStage: null,
-        toStage: SHORTLIST_STAGE,
-        changedAt: dto.createdAt,
-      }),
+    await this.enqueueStageChanged({
+      applicationId: dto.applicationId,
+      openingId: dto.openingId,
+      studentId: dto.studentId,
+      fromStage: null,
+      toStage: SHORTLIST_STAGE,
+      changedAt: dto.createdAt,
     });
 
     return dto;
+  }
+
+  async listApplications(
+    institutionId: string,
+    openingId: string,
+  ): Promise<ListApplicationsResponse> {
+    const opening = await this.prisma.jobOpening.findFirst({
+      where: { id: openingId, institutionId },
+      select: { id: true },
+    });
+    if (!opening) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+
+    const rows = await this.prisma.application.findMany({
+      where: { openingId },
+      include: {
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { applications: rows.map((row) => toApplicationDto(row)) };
+  }
+
+  async patchApplicationStage(
+    institutionId: string,
+    applicationId: string,
+    newStage: AtsStage,
+  ): Promise<ApplicationDto> {
+    const application = await this.prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        opening: { select: { institutionId: true } },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+    });
+
+    if (!application || application.opening.institutionId !== institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Application not found.',
+        statusCode: 404,
+      });
+    }
+
+    if (application.stage === newStage) {
+      return toApplicationDto(application);
+    }
+
+    const fromStage = application.stage as AtsStage;
+
+    const updatedRow = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.application.update({
+        where: { id: applicationId },
+        data: { stage: newStage },
+        include: {
+          student: {
+            select: {
+              fullName: true,
+              email: true,
+              primaryTrack: { select: { code: true } },
+            },
+          },
+        },
+      });
+
+      await tx.applicationStageEvent.create({
+        data: {
+          applicationId,
+          fromStage,
+          toStage: newStage,
+        },
+      });
+
+      return updated;
+    });
+
+    const dto = toApplicationDto(updatedRow);
+    await this.enqueueStageChanged({
+      applicationId: dto.applicationId,
+      openingId: dto.openingId,
+      studentId: dto.studentId,
+      fromStage,
+      toStage: newStage,
+      changedAt: dto.updatedAt,
+    });
+
+    return dto;
+  }
+
+  private async enqueueStageChanged(data: {
+    applicationId: string;
+    openingId: string;
+    studentId: string;
+    fromStage: AtsStage | null;
+    toStage: AtsStage;
+    changedAt: string;
+  }): Promise<void> {
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.applicationStageChanged,
+      partitionKey: data.applicationId,
+      eventType: SMART_TOPICS.applicationStageChanged,
+      source: 'placement',
+      data: ApplicationStageChangedDataSchema.parse(data),
+    });
   }
 }
 
@@ -254,6 +377,9 @@ export function toApplicationDto(row: ApplicationRow): ApplicationDto {
     applicationId: row.id,
     openingId: row.openingId,
     studentId: row.studentId,
+    studentName: row.student?.fullName,
+    studentEmail: row.student?.email,
+    primaryTrackCode: row.student?.primaryTrack?.code,
     stage: row.stage,
     matchScore:
       row.matchScore === null || row.matchScore === undefined ? null : Number(row.matchScore),
