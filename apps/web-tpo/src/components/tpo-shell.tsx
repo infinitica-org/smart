@@ -1,21 +1,35 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { getAccessToken } from '@smart/api-client';
 import { SessionHoldWall } from '@smart/ui';
-import { PortalHeader } from './portal-header';
+import { TpoSidebar } from './tpo-sidebar';
+import { TpoTopbar } from './tpo-topbar';
 import { api } from '../lib/api';
 import { signOut } from '../lib/auth';
 
 export function TpoShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isLogin = pathname === '/login' || pathname.startsWith('/login/');
+
+  if (isLogin) {
+    return children;
+  }
+
   return (
     <SessionHoldWall
       getAccessToken={getAccessToken}
       pollMe={() => api.auth.me()}
       onSignOut={signOut}
     >
-      <PortalHeader />
-      {children}
+      <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-[#00fad0]/30 font-sans overflow-hidden">
+        <TpoSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <TpoTopbar />
+          <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        </div>
+      </div>
     </SessionHoldWall>
   );
 }

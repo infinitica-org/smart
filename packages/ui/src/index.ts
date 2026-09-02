@@ -115,4 +115,13 @@ export {
   type ConsoleShellProps,
 } from './components/dashboard/console-shell';
 
+export {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarBadge,
+} from './components/ui/avatar';
+
 export const UI_VERSION = '0.1.0';

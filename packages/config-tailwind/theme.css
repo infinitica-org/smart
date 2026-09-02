@@ -31,10 +31,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-ink: #1c1c1e;
-  --color-paper: #faf9f7;
-  --color-accent: #2fbfae;
-  --color-accent-deep: #0f5c63;
+  --color-ink: #131313;
+  --color-paper: #f4f4f4;
+  --color-accent: #00fad0;
+  --color-accent-deep: #004c63;
   --color-brand-50: #eefaf7;
   --color-brand-100: #d7f3ed;
   --color-brand-200: #b2e8dd;
@@ -116,10 +116,11 @@
  */
 :root,
 .light {
-  --brand-ink: #1c1c1e;
-  --brand-paper: #faf9f7;
-  --brand-teal: #2fbfae;
-  --brand-teal-deep: #0f5c63;
+  --brand-ink: #131313;
+  --brand-paper: #f4f4f4;
+  --brand-teal: #00fad0;
+  --brand-teal-deep: #004c63;
+  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
   --brand-gray-100: #f1efec;
   --brand-gray-200: #e4e2dd;
   --brand-gray-300: #cfccc6;
@@ -170,10 +171,11 @@
 }
 
 .dark {
-  --brand-ink: #1c1c1e;
-  --brand-paper: #faf9f7;
-  --brand-teal: #2fbfae;
-  --brand-teal-deep: #0f5c63;
+  --brand-ink: #131313;
+  --brand-paper: #f4f4f4;
+  --brand-teal: #00fad0;
+  --brand-teal-deep: #004c63;
+  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
   --brand-gray-100: #f1efec;
   --brand-gray-200: #e4e2dd;
   --brand-gray-300: #cfccc6;
