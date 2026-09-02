@@ -8,6 +8,7 @@ import { api, buildPortalRedirectUrl, studentDashboardUrl } from '../../../../li
 export default function InviteNextPage() {
   const [tracks, setTracks] = useState<Array<{ code: string; name: string }>>([]);
   const [trackCode, setTrackCode] = useState('');
+  const [tracksLoading, setTracksLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -15,6 +16,7 @@ export default function InviteNextPage() {
     api.catalog.tracks().then((list) => {
       setTracks(list.map((t) => ({ code: t.code, name: t.name })));
       if (list[0]) setTrackCode(list[0].code);
+      setTracksLoading(false);
     });
   }, []);
 
@@ -37,33 +39,64 @@ export default function InviteNextPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto p-8 mt-16">
-      <Card>
-        <CardHeader>
-          <CardTitle>Choose your track</CardTitle>
-          <CardDescription>Select a primary specialization to continue.</CardDescription>
-        </CardHeader>
-        <div className="px-6 pb-6 space-y-4">
-          {error ? <Alert tone="danger" title={error} /> : null}
-          <label className="block text-sm">
-            Track
-            <select
-              className="mt-1 w-full border rounded px-3 py-2 bg-[var(--surface)]"
-              value={trackCode}
-              onChange={(e) => setTrackCode(e.target.value)}
-            >
-              {tracks.map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button onClick={onContinue} disabled={loading || !trackCode}>
-            {loading ? 'Saving…' : 'Go to student portal'}
-          </Button>
+    <main className="flex min-h-screen items-center justify-center bg-[var(--surface,#fafafa)] px-6 py-16">
+      <div className="w-full max-w-md">
+        <div className="mb-8">
+          <div className="mb-2 flex gap-1.5">
+            <div className="h-1 flex-1 rounded-full bg-brand-600" />
+            <div className="h-1 flex-1 rounded-full bg-brand-600" />
+          </div>
+          <p className="text-xs text-[var(--text-muted,#666)]">Step 2 of 2</p>
         </div>
-      </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Choose your track</CardTitle>
+            <CardDescription>Select a primary specialization to continue.</CardDescription>
+          </CardHeader>
+
+          <div className="space-y-4 px-6 pb-6">
+            {error ? <Alert tone="danger" title={error} /> : null}
+
+            <div role="radiogroup" aria-label="Track" className="space-y-2">
+              {tracksLoading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-[52px] animate-pulse rounded-lg bg-black/5" />
+                  ))
+                : tracks.map((t) => {
+                    const selected = t.code === trackCode;
+                    return (
+                      <button
+                        key={t.code}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setTrackCode(t.code)}
+                        className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+                          selected
+                            ? 'border-brand-600 bg-brand-50 font-medium text-brand-900'
+                            : 'border-black/10 text-[var(--text,#111)] hover:border-black/20'
+                        }`}
+                      >
+                        {t.name}
+                        <span
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                            selected ? 'border-brand-600 bg-brand-600' : 'border-black/20'
+                          }`}
+                        >
+                          {selected ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+            </div>
+
+            <Button onClick={onContinue} disabled={loading || !trackCode} className="w-full">
+              {loading ? 'Saving…' : 'Go to student portal'}
+            </Button>
+          </div>
+        </Card>
+      </div>
     </main>
   );
 }
