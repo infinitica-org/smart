@@ -54,7 +54,9 @@ export function CompanyDashboard() {
       setOpenings(listed.openings);
       try {
         const lists = await Promise.all(
-          listed.openings.map((opening) => applicationsApi.listForOpening(opening.openingId)),
+          listed.openings.map((opening: JobOpeningDto) =>
+            applicationsApi.listForOpening(opening.openingId),
+          ),
         );
         setApplications(lists.flatMap((list) => list.applications));
       } catch (caught) {
