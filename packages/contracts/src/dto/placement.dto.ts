@@ -238,6 +238,19 @@ export const ApplicationDtoSchema = z.object({
 });
 export type ApplicationDto = z.infer<typeof ApplicationDtoSchema>;
 
+export const CreateApplicationRequestSchema = z.object({
+  openingId: UuidSchema,
+  studentId: UuidSchema,
+  stage: AtsStageSchema.default('SHORTLISTED'),
+  matchScore: z.number().min(0).max(1).optional(),
+});
+export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;
+
+export const ListApplicationsResponseSchema = z.object({
+  applications: z.array(ApplicationDtoSchema),
+});
+export type ListApplicationsResponse = z.infer<typeof ListApplicationsResponseSchema>;
+
 export const PatchApplicationStageRequestSchema = z.object({
   stage: AtsStageSchema,
 });

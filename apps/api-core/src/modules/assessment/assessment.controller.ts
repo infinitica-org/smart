@@ -11,9 +11,11 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  CompleteAttemptRequestSchema,
   SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
+  type CompleteAttemptResponse,
   type NextItemDto,
   type SaveDraftResponse,
 } from '@smart/contracts';
@@ -124,6 +126,25 @@ export class AssessmentController {
     }
     const dto = SaveDraftRequestSchema.parse(body);
     return this.service.saveDraft(user.sub, dto);
+  }
+
+  @Post('complete')
+  @ApiOperation({ summary: 'Finalise attempt; emits smart.assessment.submitted.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Attempt submitted; evaluation queued asynchronously.' })
+  async complete(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<CompleteAttemptResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to complete attempt',
+        statusCode: 403,
+      });
+    }
+    return this.service.completeAttempt(user.sub, CompleteAttemptRequestSchema.parse(body));
   }
 
   /**

@@ -45,6 +45,10 @@ const EnvSchema = z.object({
 
   SMTP_HOST: z.string().default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('SMART Platform <noreply@smart.local>'),
@@ -53,6 +57,7 @@ const EnvSchema = z.object({
   STUDENT_APP_URL: z.string().default('http://localhost:3001'),
   TPO_APP_URL: z.string().default('http://localhost:3002'),
   ADMIN_APP_URL: z.string().default('http://localhost:3003'),
+  VERIFY_APP_URL: z.string().default('http://localhost:3004'),
 
   INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 

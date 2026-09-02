@@ -201,6 +201,13 @@ enum AtsStage {
   WITHDRAWN
 }
 
+enum NotificationKind {
+  OPPORTUNITY
+  STAGE_CHANGE
+  VERIFICATION_RESULT
+  INVITATION
+}
+
 enum ProjectStatus {
   SUBMITTED
   VERIFIED
@@ -320,6 +327,7 @@ model User {
   communicationProfile CommunicationProfile?
   auditLogs           AuditLog[]
   jobOpeningsCreated  JobOpening[] @relation("JobOpeningCreatedBy")
+  notifications       Notification[]
 
   @@index([institutionId])
   @@index([batchId])
@@ -876,6 +884,23 @@ model ApplicationStageEvent {
 
   @@index([applicationId, createdAt])
   @@map("application_stage_events")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind
+  title     String
+  body      String
+  linkUrl   String?          @map("link_url")
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model CognitiveProfile {

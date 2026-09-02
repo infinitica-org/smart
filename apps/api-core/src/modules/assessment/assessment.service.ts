@@ -1,8 +1,11 @@
 import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type {
   AttemptSessionDto,
   AttemptStatus,
+  CompleteAttemptRequest,
+  CompleteAttemptResponse,
   DeliverableItemDto,
   DifficultyTag,
   DomainCode,
@@ -17,7 +20,10 @@ import type {
   Tier,
   TrackCode,
 } from '@smart/contracts';
+import { SMART_TOPICS } from '@smart/contracts';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
@@ -64,6 +70,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   onModuleInit() {
@@ -707,14 +715,12 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
       include: { user: true },
     });
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
-        resourceType: 'attempt',
-        resourceId: attemptId,
-        reasonCode: body.reason,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+      resourceType: 'attempt',
+      resourceId: attemptId,
+      reasonCode: body.reason,
     });
     return {
       attemptId: updated.id,
@@ -725,6 +731,85 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       status: updated.status,
       startedAt: updated.startedAt.toISOString(),
       completedAt: updated.completedAt?.toISOString() ?? null,
+    };
+  }
+
+  async completeAttempt(
+    studentId: string,
+    dto: CompleteAttemptRequest,
+  ): Promise<CompleteAttemptResponse> {
+    const attempt = await this.prisma.attempt.findFirst({
+      where: { id: dto.attemptId, userId: studentId },
+      include: {
+        level: { include: { track: true } },
+        responses: { include: { item: { select: { competencyId: true } } } },
+      },
+    });
+    if (!attempt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Attempt not found.',
+        statusCode: 404,
+      });
+    }
+    if (attempt.status !== 'IN_PROGRESS') {
+      return {
+        attemptId: attempt.id,
+        status: attempt.status as CompleteAttemptResponse['status'],
+        evaluationJobId: null,
+        estimatedResultSeconds: null,
+      };
+    }
+
+    const submittedAt = new Date();
+    await this.prisma.attempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: dto.autoSubmitted ? 'AUTO_SUBMITTED' : 'SUBMITTED',
+        completedAt: submittedAt,
+      },
+    });
+
+    await this.outbox.enqueueAssessmentSubmitted({
+      meta: {
+        eventId: randomUUID(),
+        eventType: SMART_TOPICS.assessmentSubmitted,
+        version: 1,
+        occurredAt: submittedAt.toISOString(),
+        traceId: randomUUID(),
+        source: 'assessment',
+      },
+      data: {
+        attemptId: attempt.id,
+        studentId: attempt.userId,
+        trackCode: attempt.level.track.code as TrackCode,
+        levelNumber: attempt.level.levelNumber as LevelNumber,
+        status: dto.autoSubmitted ? 'AUTO_SUBMITTED' : 'SUBMITTED',
+        autoSubmitted: dto.autoSubmitted,
+        integrityFlag: attempt.integrityFlag as IntegrityFlag,
+        submittedAt: submittedAt.toISOString(),
+        responses: attempt.responses.map((response) => ({
+          responseId: response.id,
+          itemId: response.itemId,
+          competencyId: response.item.competencyId,
+          itemWeight: 1,
+          answer: response.answer,
+          objectKey: null,
+        })),
+      },
+    });
+
+    try {
+      await this.redis.del(`session:assessment:${attempt.id}`);
+    } catch {
+      // Session invalidation also handled by assessment.submitted consumer.
+    }
+
+    return {
+      attemptId: attempt.id,
+      status: dto.autoSubmitted ? 'AUTO_SUBMITTED' : 'SUBMITTED',
+      evaluationJobId: attempt.id,
+      estimatedResultSeconds: 30,
     };
   }
 }

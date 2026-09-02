@@ -71,8 +71,9 @@ function setup(options: { opening?: unknown; jd?: unknown; students?: unknown[] 
       findMany: vi.fn().mockResolvedValue(options.students ?? [verifiedStudent()]),
     },
   };
-  const service = new MatchingService(prisma as never);
-  return { prisma, service, controller: new PlacementMatchController(service) };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const service = new MatchingService(prisma as never, outbox as never);
+  return { prisma, service, outbox, controller: new PlacementMatchController(service) };
 }
 
 describe('SE-T05 match authorization', () => {

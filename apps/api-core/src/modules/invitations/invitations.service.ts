@@ -5,20 +5,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import type { Queue } from 'bullmq';
 import type {
   InvitationDto,
   InvitationPreviewDto,
   InvitationStatus,
   UserRole,
 } from '@smart/contracts';
+import { SMART_TOPICS } from '@smart/contracts';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import type { EmailTemplateName } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import {
-  EMAIL_QUEUE,
-  type EmailJobPayload,
-  type EmailTemplateName,
-} from '../../platform/mailer/mailer.types.js';
 import { hashPassword, type UserWithAuthIncludes } from '../auth/auth.service.js';
 import {
   buildInviteUrl,
@@ -31,7 +27,7 @@ import {
 export class InvitationsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailJobPayload>,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   async preview(rawToken: string): Promise<InvitationPreviewDto> {
@@ -221,22 +217,32 @@ export class InvitationsService {
       id: string;
       email: string;
       fullName: string;
+      userId: string;
       batch: { name: string } | null;
     },
     institutionName: string,
     rawToken: string,
     template: EmailTemplateName,
   ): Promise<void> {
-    await this.emailQueue.add('send', {
-      to: invitation.email,
-      template,
+    const inviteUrl = buildInviteUrl(rawToken);
+
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.invitationSent,
+      partitionKey: invitation.id,
+      eventType: SMART_TOPICS.invitationSent,
+      source: 'invitations',
       data: {
+        invitationId: invitation.id,
+        userId: invitation.userId,
+        email: invitation.email,
         fullName: invitation.fullName,
         institutionName,
-        inviteUrl: buildInviteUrl(rawToken),
+        inviteUrl,
+        template,
         batchName: invitation.batch?.name ?? null,
       },
     });
+
     await this.prisma.invitation.update({
       where: { id: invitation.id },
       data: { lastSentAt: new Date() },

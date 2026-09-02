@@ -33,6 +33,7 @@ export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
 export * from './dto/resume-parse.dto.js';
+export * from './dto/notification.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

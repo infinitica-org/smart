@@ -260,6 +260,84 @@ export const ApplicationStageChangedEventSchema = envelopeSchema(
 );
 export type ApplicationStageChangedEvent = z.infer<typeof ApplicationStageChangedEventSchema>;
 
+export const INVITATION_EMAIL_TEMPLATES = [
+  'institution-admin-invite',
+  'student-invite',
+  'invite-reminder',
+] as const;
+
+export const InvitationSentDataSchema = z.object({
+  invitationId: UuidSchema,
+  userId: UuidSchema,
+  email: z.string().email(),
+  fullName: z.string(),
+  institutionName: z.string(),
+  inviteUrl: z.string().url(),
+  template: z.enum(INVITATION_EMAIL_TEMPLATES),
+  batchName: z.string().nullable(),
+});
+export const InvitationSentEventSchema = envelopeSchema(
+  SMART_TOPICS.invitationSent,
+  InvitationSentDataSchema,
+);
+export type InvitationSentEvent = z.infer<typeof InvitationSentEventSchema>;
+
+export const SKILL_VERIFICATION_STATUSES = ['VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED'] as const;
+
+export const SkillVerificationCompletedDataSchema = z.object({
+  claimId: UuidSchema,
+  userId: UuidSchema,
+  skillName: z.string(),
+  status: z.enum(SKILL_VERIFICATION_STATUSES),
+  detail: z.string(),
+});
+export const SkillVerificationCompletedEventSchema = envelopeSchema(
+  SMART_TOPICS.skillVerificationCompleted,
+  SkillVerificationCompletedDataSchema,
+);
+export type SkillVerificationCompletedEvent = z.infer<typeof SkillVerificationCompletedEventSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                         platform audit  (owner: Vishal V)                  */
+/* -------------------------------------------------------------------------- */
+
+export const AuditRecordedDataSchema = z.object({
+  actorId: UuidSchema.nullable(),
+  action: z.string(),
+  resourceType: z.string(),
+  resourceId: z.string().nullable(),
+  reasonCode: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+  recordedAt: IsoDateTimeSchema,
+});
+export const AuditRecordedEventSchema = envelopeSchema(
+  SMART_TOPICS.auditRecorded,
+  AuditRecordedDataSchema,
+);
+export type AuditRecordedEvent = z.infer<typeof AuditRecordedEventSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                       ai-gateway audit  (owner: Ramansh)                   */
+/* -------------------------------------------------------------------------- */
+
+export const AiCompletionRecordedDataSchema = z.object({
+  promptRef: z.string(),
+  provider: AiProviderSchema,
+  model: z.string(),
+  promptTokens: z.number().int().nonnegative(),
+  completionTokens: z.number().int().nonnegative(),
+  latencyMs: z.number().int().nonnegative(),
+  usedFallback: z.boolean(),
+  estimatedCostUsd: z.number().nonnegative(),
+  responseId: UuidSchema.nullable(),
+  recordedAt: IsoDateTimeSchema,
+});
+export const AiCompletionRecordedEventSchema = envelopeSchema(
+  SMART_TOPICS.aiCompletionRecorded,
+  AiCompletionRecordedDataSchema,
+);
+export type AiCompletionRecordedEvent = z.infer<typeof AiCompletionRecordedEventSchema>;
+
 /* -------------------------------------------------------------------------- */
 /*                      rate limiting  (owner: Vishal V)                      */
 /* -------------------------------------------------------------------------- */
@@ -301,6 +379,10 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.certificateIssued]: CertificateIssuedEventSchema,
   [SMART_TOPICS.placementMatched]: PlacementMatchedEventSchema,
   [SMART_TOPICS.applicationStageChanged]: ApplicationStageChangedEventSchema,
+  [SMART_TOPICS.invitationSent]: InvitationSentEventSchema,
+  [SMART_TOPICS.skillVerificationCompleted]: SkillVerificationCompletedEventSchema,
+  [SMART_TOPICS.auditRecorded]: AuditRecordedEventSchema,
+  [SMART_TOPICS.aiCompletionRecorded]: AiCompletionRecordedEventSchema,
   [SMART_TOPICS.rateLimitExceeded]: RateLimitExceededEventSchema,
 } as const;
 
@@ -315,4 +397,8 @@ export type SmartEvent =
   | CertificateIssuedEvent
   | PlacementMatchedEvent
   | ApplicationStageChangedEvent
+  | InvitationSentEvent
+  | SkillVerificationCompletedEvent
+  | AuditRecordedEvent
+  | AiCompletionRecordedEvent
   | RateLimitExceededEvent;

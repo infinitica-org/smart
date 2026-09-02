@@ -52,7 +52,7 @@ describe('identity resolution', () => {
 });
 
 describe('RateLimitService', () => {
-  it('allows the window budget, then denies and publishes an exceeded event', async () => {
+  it('allows the window budget, then denies and enqueues an exceeded event', async () => {
     let hits = 0;
     const redis = {
       eval: vi.fn(async (_script: string, _n: number, key: string) => {
@@ -61,8 +61,8 @@ describe('RateLimitService', () => {
         return hits <= 10 ? [1, hits, 0] : [0, 10, 45_000];
       }),
     };
-    const kafka = { emit: vi.fn(async () => undefined) };
-    const service = new RateLimitService(redis as never, kafka as never);
+    const outbox = { enqueueEnvelope: vi.fn(async () => undefined) };
+    const service = new RateLimitService(redis as never, outbox as never);
 
     for (let index = 0; index < 10; index += 1) {
       await expect(
@@ -71,11 +71,11 @@ describe('RateLimitService', () => {
     }
     const denied = await service.consume('auth.login', '1.2.3.4', 'PUBLIC', '/auth/login');
     expect(denied).toMatchObject({ allowed: false, count: 10, retryAfterSeconds: 60 });
-    expect(kafka.emit).toHaveBeenCalledWith(
-      'smart.rate_limit.exceeded',
-      '1.2.3.4',
-      expect.objectContaining({ data: expect.objectContaining({ attemptId: null }) }),
-      'rate-limit',
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'smart.rate_limit.exceeded',
+        partitionKey: '1.2.3.4',
+      }),
     );
   });
 
@@ -85,25 +85,27 @@ describe('RateLimitService', () => {
         key.endsWith(':burst') ? [1, 2, 0] : [0, 10, 30_000],
       ),
     };
-    const kafka = { emit: vi.fn() };
-    const decision = await new RateLimitService(redis as never, kafka as never).consume(
+    const outbox = { enqueueEnvelope: vi.fn() };
+    const decision = await new RateLimitService(redis as never, outbox as never).consume(
       'auth.login',
       '1.2.3.4',
       'PUBLIC',
       '/auth/login',
     );
     expect(decision).toMatchObject({ allowed: true, retryAfterSeconds: 0 });
-    expect(kafka.emit).not.toHaveBeenCalled();
+    expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
-  it('preserves 429 when Kafka fails and includes a valid attempt id', async () => {
+  it('preserves 429 when outbox fails and includes a valid attempt id', async () => {
     const redis = {
       eval: vi.fn(async (_script: string, _n: number, key: string) =>
         key.endsWith(':burst') ? [0, 0, 40_000] : [0, 10, 30_000],
       ),
     };
-    const kafka = { emit: vi.fn(async () => Promise.reject(new Error('broker down'))) };
-    const decision = await new RateLimitService(redis as never, kafka as never).consume(
+    const outbox = {
+      enqueueEnvelope: vi.fn(async () => Promise.reject(new Error('broker down'))),
+    };
+    const decision = await new RateLimitService(redis as never, outbox as never).consume(
       'assessment.submitL1',
       attemptId,
       'STUDENT',
@@ -111,17 +113,17 @@ describe('RateLimitService', () => {
       attemptId,
     );
     expect(decision.allowed).toBe(false);
-    expect(kafka.emit).toHaveBeenCalledWith(
-      'smart.rate_limit.exceeded',
-      attemptId,
-      expect.objectContaining({ data: expect.objectContaining({ attemptId }) }),
-      'rate-limit',
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'smart.rate_limit.exceeded',
+        partitionKey: attemptId,
+      }),
     );
   });
 
   it('fails open on Redis errors outside production and fails closed in production', async () => {
     const redis = { eval: vi.fn(async () => Promise.reject(new Error('redis down'))) };
-    const service = new RateLimitService(redis as never, { emit: vi.fn() } as never);
+    const service = new RateLimitService(redis as never, { enqueueEnvelope: vi.fn() } as never);
     await expect(
       service.consume('auth.login', '1.2.3.4', 'PUBLIC', '/auth/login'),
     ).resolves.toMatchObject({ allowed: true, count: 0, retryAfterSeconds: 0 });
