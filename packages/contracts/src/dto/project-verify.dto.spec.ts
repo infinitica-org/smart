@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { ProjectVerifyFlagSchema } from '../domain/enums.js';
 import {
   CreateProjectRequestSchema,
   GithubRepoListDtoSchema,
   PROJECT_VERIFY_CONFIDENCE_AUTO,
+  PROJECT_VERIFY_WEB_SEARCH_HITS,
   PROJECT_VERIFY_WEIGHTS,
   ProjectDtoSchema,
   ProjectGithubSnapshotSchema,
@@ -109,6 +111,12 @@ describe('routing constants', () => {
       PROJECT_VERIFY_WEIGHTS.originality;
     expect(sum).toBeCloseTo(1, 5);
     expect(PROJECT_VERIFY_CONFIDENCE_AUTO).toBeGreaterThan(0.5);
+  });
+
+  it('caps public web hits and names PUBLIC_WEB_SIMILARITY on the existing flag enum', () => {
+    expect(PROJECT_VERIFY_WEB_SEARCH_HITS).toBe(5);
+    expect(ProjectVerifyFlagSchema.parse('PUBLIC_WEB_SIMILARITY')).toBe('PUBLIC_WEB_SIMILARITY');
+    expect(ProjectVerifyFlagSchema.safeParse('COPIED_FROM_INTERNET').success).toBe(false);
   });
 });
 

@@ -330,5 +330,6 @@ export const REDIS_TTL_SECONDS = {
   certificateVerification: 60 * 60,
   jdVector: 30 * 60,
   githubRepoList: 5 * 60,
+  projectWebSimilarity: 5 * 60,
   projectSnapshotLock: 10 * 60,
 } as const;
