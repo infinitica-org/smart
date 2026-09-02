@@ -4,9 +4,13 @@ import { CustomSelect } from '../../ui/CustomSelect';
 import { api } from '@/lib/api';
 import {
   MONTHS,
+  LANGUAGE_OPTIONS,
+  FLUENCY_OPTIONS,
   buildCompleteOnboardingRequest,
   clearOnboardingDraft,
   saveOnboardingDraft,
+  validateEducationItems,
+  validateExperienceItems,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
 
@@ -16,10 +20,20 @@ interface ProfileSetupProps {
   onComplete: () => void;
 }
 
-type TabID = 'profile' | 'phone' | 'linkedin' | 'languages' | 'preferences' | 'consent';
+type TabID =
+  | 'profile'
+  | 'education'
+  | 'experience'
+  | 'phone'
+  | 'linkedin'
+  | 'languages'
+  | 'preferences'
+  | 'consent';
 
 const TABS: { id: TabID; label: string }[] = [
   { id: 'profile', label: 'Profile' },
+  { id: 'education', label: 'Education' },
+  { id: 'experience', label: 'Experience' },
   { id: 'phone', label: 'Phone number' },
   { id: 'linkedin', label: 'LinkedIn' },
   { id: 'languages', label: 'Languages' },
@@ -45,6 +59,18 @@ const PROJECT_TYPES = [
   'Finance',
   'Education',
   'Language',
+];
+
+const DEGREE_OPTIONS = [
+  { label: 'B.Tech / B.E.', value: 'B.Tech' },
+  { label: 'M.Tech / M.E.', value: 'M.Tech' },
+  { label: 'B.Sc', value: 'B.Sc' },
+  { label: 'M.Sc', value: 'M.Sc' },
+  { label: 'MBA', value: 'MBA' },
+  { label: 'BBA', value: 'BBA' },
+  { label: 'B.Com', value: 'B.Com' },
+  { label: 'High School', value: 'High School' },
+  { label: 'Other', value: 'Other' },
 ];
 
 export default function ProfileSetup({ initialForm, onBack, onComplete }: ProfileSetupProps) {
@@ -78,6 +104,20 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
       setSaveError('First and last name are required.');
       return;
     }
+    if (activeTab === 'education') {
+      const err = validateEducationItems(formData.education);
+      if (err) {
+        setSaveError(err);
+        return;
+      }
+    }
+    if (activeTab === 'experience') {
+      const err = validateExperienceItems(formData.experiences);
+      if (err) {
+        setSaveError(err);
+        return;
+      }
+    }
     if (activeTab === 'phone' && !formData.phoneNumber.trim()) {
       setSaveError('Phone number is required.');
       return;
@@ -108,6 +148,13 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
     if ('error' in payload) {
       setSaveError(payload.error);
       if (payload.error.includes('DPDP')) setActiveTab('consent');
+      else if (payload.error.includes('education')) setActiveTab('education');
+      else if (
+        payload.error.includes('experience') ||
+        payload.error.includes('Role') ||
+        payload.error.includes('Company')
+      )
+        setActiveTab('experience');
       else if (payload.error.includes('language')) setActiveTab('languages');
       else if (payload.error.includes('preference')) setActiveTab('preferences');
       else if (payload.error.includes('LinkedIn')) setActiveTab('linkedin');
@@ -153,6 +200,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
     });
   };
 
+  // Language handlers
   const addLanguage = () => {
     setFormData((prev) => ({
       ...prev,
@@ -176,6 +224,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
     }));
   };
 
+  // Coding proficiency handlers
   const addCodingProficiency = () => {
     setFormData((prev) => ({
       ...prev,
@@ -199,6 +248,76 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
     setFormData((prev) => ({
       ...prev,
       codingProficiencies: prev.codingProficiencies.filter((cp) => cp.id !== id),
+    }));
+  };
+
+  // Education handlers
+  const addEducation = () => {
+    setFormData((prev) => ({
+      ...prev,
+      education: [
+        ...prev.education,
+        {
+          institutionName: '',
+          degree: '',
+          fieldOfStudy: '',
+          startDate: '',
+          endDate: '',
+          current: false,
+          grade: '',
+        },
+      ],
+    }));
+  };
+
+  const updateEducation = (index: number, field: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      education: prev.education.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item,
+      ),
+    }));
+  };
+
+  const removeEducation = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Experience handlers
+  const addExperience = () => {
+    setFormData((prev) => ({
+      ...prev,
+      experiences: [
+        ...prev.experiences,
+        {
+          role: '',
+          company: '',
+          location: '',
+          startDate: '',
+          endDate: '',
+          description: '',
+          tags: [],
+        },
+      ],
+    }));
+  };
+
+  const updateExperience = (index: number, field: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item,
+      ),
+    }));
+  };
+
+  const removeExperience = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      experiences: prev.experiences.filter((_, i) => i !== index),
     }));
   };
 
@@ -235,7 +354,8 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
           Complete your profile
         </h2>
         <p className="text-sm text-white/45 font-axiforma leading-relaxed">
-          Required fields only. Review anything we pre-filled from your resume.
+          Fill in your education, experience, and skills. Review anything pre-filled from your
+          resume.
         </p>
       </div>
 
@@ -327,11 +447,250 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
             </div>
           )}
 
+          {activeTab === 'education' && (
+            <div key="education">
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
+                  2
+                </span>
+                Education
+              </h3>
+              <p className="text-sm text-gray-400 mb-5">
+                Add your degree, university or college details.
+              </p>
+
+              <div className="flex flex-col gap-4 max-w-lg">
+                {formData.education.map((item, index) => (
+                  <div
+                    key={index}
+                    className="relative flex flex-col gap-3 bg-white/50 dark:bg-white/5 backdrop-blur-xl p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-[#00fad0]">
+                        Education #{index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeEducation(index)}
+                        className="p-1.5 text-gray-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-white/70">
+                        Institution / University Name <span className="text-[#00fad0]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={item.institutionName}
+                        onChange={(e) => updateEducation(index, 'institutionName', e.target.value)}
+                        placeholder="e.g. Stanford University or IIT Madras"
+                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Degree</label>
+                        <CustomSelect
+                          value={item.degree ?? ''}
+                          onChange={(val) => updateEducation(index, 'degree', val)}
+                          placeholder="Select Degree"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                          options={DEGREE_OPTIONS}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Field of Study</label>
+                        <input
+                          type="text"
+                          value={item.fieldOfStudy ?? ''}
+                          onChange={(e) => updateEducation(index, 'fieldOfStudy', e.target.value)}
+                          placeholder="e.g. Computer Science"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Start Date</label>
+                        <input
+                          type="text"
+                          value={item.startDate ?? ''}
+                          onChange={(e) => updateEducation(index, 'startDate', e.target.value)}
+                          placeholder="YYYY or MM/YYYY"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">End Date</label>
+                        <input
+                          type="text"
+                          disabled={item.current}
+                          value={item.current ? 'Present' : (item.endDate ?? '')}
+                          onChange={(e) => updateEducation(index, 'endDate', e.target.value)}
+                          placeholder="YYYY or MM/YYYY"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Grade / CGPA</label>
+                        <input
+                          type="text"
+                          value={item.grade ?? ''}
+                          onChange={(e) => updateEducation(index, 'grade', e.target.value)}
+                          placeholder="e.g. 3.8 / 85%"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer mt-1">
+                      <input
+                        type="checkbox"
+                        checked={item.current ?? false}
+                        onChange={(e) => updateEducation(index, 'current', e.target.checked)}
+                        className="rounded border-white/20 text-[#00fad0] focus:ring-0"
+                      />
+                      <span className="text-xs text-white/70">Currently studying here</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={addEducation}
+                className="mt-4 text-sm font-medium text-[#00fad0] hover:underline flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" /> Add education entry
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'experience' && (
+            <div key="experience">
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
+                  3
+                </span>
+                Work Experience
+              </h3>
+              <p className="text-sm text-gray-400 mb-5">
+                Add internships, jobs, or research roles.
+              </p>
+
+              <div className="flex flex-col gap-4 max-w-lg">
+                {formData.experiences.map((item, index) => (
+                  <div
+                    key={index}
+                    className="relative flex flex-col gap-3 bg-white/50 dark:bg-white/5 backdrop-blur-xl p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-[#00fad0]">
+                        Experience #{index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeExperience(index)}
+                        className="p-1.5 text-gray-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">
+                          Role / Title <span className="text-[#00fad0]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={item.role}
+                          onChange={(e) => updateExperience(index, 'role', e.target.value)}
+                          placeholder="e.g. Software Engineer Intern"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">
+                          Company <span className="text-[#00fad0]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={item.company}
+                          onChange={(e) => updateExperience(index, 'company', e.target.value)}
+                          placeholder="e.g. Acme Corp"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Location</label>
+                        <input
+                          type="text"
+                          value={item.location ?? ''}
+                          onChange={(e) => updateExperience(index, 'location', e.target.value)}
+                          placeholder="e.g. Remote or Bangalore"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">Start Date</label>
+                        <input
+                          type="text"
+                          value={item.startDate ?? ''}
+                          onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
+                          placeholder="MM/YYYY"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-white/70">End Date</label>
+                        <input
+                          type="text"
+                          value={item.endDate ?? ''}
+                          onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
+                          placeholder="MM/YYYY or Present"
+                          className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-white/70">Description</label>
+                      <textarea
+                        rows={2}
+                        value={item.description ?? ''}
+                        onChange={(e) => updateExperience(index, 'description', e.target.value)}
+                        placeholder="Key responsibilities and accomplishments..."
+                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00fad0]/50 resize-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={addExperience}
+                className="mt-4 text-sm font-medium text-[#00fad0] hover:underline flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" /> Add experience entry
+              </button>
+            </div>
+          )}
+
           {activeTab === 'phone' && (
             <div key="phone">
               <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
-                  2
+                  4
                 </span>
                 Phone Number <span className="text-gray-500 font-normal ml-1">(Required)</span>
               </h3>
@@ -370,7 +729,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
             <div key="linkedin">
               <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
-                  3
+                  5
                 </span>
                 LinkedIn Profile <span className="text-gray-500 font-normal ml-1">(Required)</span>
               </h3>
@@ -398,7 +757,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
             <div key="languages">
               <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
-                  4
+                  6
                 </span>
                 Languages <span className="text-gray-500 font-normal ml-1">(Required)</span>
               </h3>
@@ -417,30 +776,23 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                         onChange={(val) => updateLanguage(item.id, 'language', val)}
                         placeholder="Select Language"
                         className="w-full bg-gray-100 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2"
-                        options={[
-                          { label: 'English', value: 'English' },
-                          { label: 'Spanish', value: 'Spanish' },
-                          { label: 'French', value: 'French' },
-                          { label: 'German', value: 'German' },
-                        ]}
+                        options={LANGUAGE_OPTIONS.map((lang) => ({ label: lang, value: lang }))}
                       />
                     </div>
                     <div className="flex-1 flex flex-col gap-1.5 ">
-                      <label className="text-xs font-medium text-gray-400">Proficiency</label>
+                      <label className="text-xs font-medium text-gray-400">
+                        Proficiency / Fluency
+                      </label>
                       <CustomSelect
                         value={item.proficiency}
                         onChange={(val) => updateLanguage(item.id, 'proficiency', val)}
                         placeholder="Select Proficiency"
                         className="w-full bg-gray-100 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2"
-                        options={[
-                          { label: 'Native or Bilingual', value: 'Native or Bilingual' },
-                          { label: 'Fluent', value: 'Fluent' },
-                          { label: 'Conversational', value: 'Conversational' },
-                          { label: 'Beginner', value: 'Beginner' },
-                        ]}
+                        options={FLUENCY_OPTIONS.map((f) => ({ label: f, value: f }))}
                       />
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeLanguage(item.id)}
                       className="p-2 mb-0.5 text-gray-500 hover:text-red-400 bg-gray-100 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-red-500/10 hover:border-red-500/30 transition-all z-0"
                     >
@@ -450,6 +802,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                 ))}
               </div>
               <button
+                type="button"
                 onClick={addLanguage}
                 className="mt-4 text-sm font-medium text-[#00fad0] hover:underline flex items-center gap-1"
               >
@@ -531,6 +884,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                       />
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeCodingProficiency(item.id)}
                       className="p-2 mb-0.5 text-gray-500 hover:text-red-400 bg-gray-100 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-red-500/10 hover:border-red-500/30 transition-all z-0"
                     >
@@ -540,6 +894,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                 ))}
               </div>
               <button
+                type="button"
                 onClick={addCodingProficiency}
                 className="mt-4 text-sm font-medium text-[#00fad0] hover:underline flex items-center gap-1"
               >
@@ -551,7 +906,7 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
             <div key="consent">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
-                  5
+                  7
                 </span>
                 Data Privacy & Consent{' '}
                 <span className="text-gray-500 font-normal ml-1">(Required)</span>
