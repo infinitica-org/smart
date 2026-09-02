@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AtsStageSchema,
   CertifiableTierSchema,
+  EmploymentTypeSchema,
   JobOpeningStatusSchema,
   JdParseStatusSchema,
   LevelNumberSchema,
@@ -12,6 +13,7 @@ import {
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
+import { SKILL_CODE_SET, SKILL_STREAMS, SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 /**
@@ -163,29 +165,67 @@ export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 
 /* ----------------------- structured openings (PRD MMP) ---------------------- */
 
+export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
+export const SkillStreamSchema = z.enum(SKILL_STREAMS);
+
+/** INF-05 skill code only — never free-text names. */
+export const TaxonomySkillCodeSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
+
 export const SkillRequirementSchema = z.object({
-  skillCode: z.string().min(2).max(64),
+  skillCode: TaxonomySkillCodeSchema,
   minProficiency: SkillProficiencySchema,
 });
 export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
 
-export const CreateJobOpeningRequestSchema = z.object({
-  institutionId: UuidSchema,
+/**
+ * TPO create body. `institutionId` is taken from the access-token `inst`
+ * claim in api-core — do not accept it from the client.
+ */
+export const JobOpeningFieldsSchema = z.object({
   companyName: z.string().min(2).max(150),
   roleTitle: z.string().min(2).max(150),
+  domain: SkillTaxonomyDomainSchema,
+  stream: SkillStreamSchema.optional(),
   requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
-  domainCode: z.string().max(8).optional(),
-  minYearsExperience: z.number().int().min(0).max(40).optional(),
-  location: z.string().max(120).optional(),
+  minYearsExperience: z.number().int().min(0).max(40),
+  maxYearsExperience: z.number().int().min(0).max(40),
+  location: z.string().min(1).max(120),
+  employmentType: EmploymentTypeSchema,
+  headcount: z.number().int().min(1).max(10_000),
+});
+
+export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.superRefine((value, ctx) => {
+  if (value.minYearsExperience > value.maxYearsExperience) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['maxYearsExperience'],
+      message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
+    });
+  }
 });
 export type CreateJobOpeningRequest = z.infer<typeof CreateJobOpeningRequestSchema>;
 
-export const JobOpeningDtoSchema = CreateJobOpeningRequestSchema.extend({
+export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   openingId: UuidSchema,
+  institutionId: UuidSchema,
   status: JobOpeningStatusSchema,
   createdAt: IsoDateTimeSchema,
 });
 export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
+
+export const ListJobOpeningsQuerySchema = z.object({
+  status: JobOpeningStatusSchema.optional(),
+});
+export type ListJobOpeningsQuery = z.infer<typeof ListJobOpeningsQuerySchema>;
+
+export const ListJobOpeningsResponseSchema = z.object({
+  openings: z.array(JobOpeningDtoSchema),
+});
+export type ListJobOpeningsResponse = z.infer<typeof ListJobOpeningsResponseSchema>;
 
 export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,

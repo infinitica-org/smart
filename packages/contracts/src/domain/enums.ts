@@ -356,6 +356,11 @@ export const JOB_OPENING_STATUSES = ['DRAFT', 'OPEN', 'CLOSED'] as const;
 export const JobOpeningStatusSchema = z.enum(JOB_OPENING_STATUSES);
 export type JobOpeningStatus = z.infer<typeof JobOpeningStatusSchema>;
 
+/** V1 TPO structured opening — closed set; not free text. */
+export const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP'] as const;
+export const EmploymentTypeSchema = z.enum(EMPLOYMENT_TYPES);
+export type EmploymentType = z.infer<typeof EmploymentTypeSchema>;
+
 /** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
 export const ATS_STAGES = [
   'APPLIED',
