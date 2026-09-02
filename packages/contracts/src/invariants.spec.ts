@@ -298,12 +298,23 @@ describe('sprint 3 MMP placement contracts', () => {
 
   it('rejects a job opening with no required skills', () => {
     const parsed = CreateJobOpeningRequestSchema.safeParse({
-      institutionId: '00000000-0000-4000-8000-000000000001',
       companyName: 'Acme',
       roleTitle: 'Analyst',
+      domain: 'SOFTWARE_IT',
       requiredSkills: [],
+      minYearsExperience: 0,
+      maxYearsExperience: 2,
+      location: 'Chennai',
+      employmentType: 'FULL_TIME',
+      headcount: 1,
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it('lists structured openings on GET /placement/openings', () => {
+    expect(
+      ROUTES.some((route) => route.method === 'GET' && route.path === '/placement/openings'),
+    ).toBe(true);
   });
 
   it('registers ATS stage-change for My Applications sync', () => {

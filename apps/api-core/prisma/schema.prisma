@@ -818,6 +818,7 @@ model JobOpening {
   roleTitle          String           @map("role_title")
   domainCode         String?          @map("domain_code")
   minYearsExperience Int?             @map("min_years_experience")
+  maxYearsExperience Int?             @map("max_years_experience")
   location           String?
   employmentType     String?          @map("employment_type")
   headcount          Int?

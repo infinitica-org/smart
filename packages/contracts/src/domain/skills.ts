@@ -487,6 +487,20 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
   ...AI_ML_ENGINEERING,
 ] as const;
 
+/** INF-05 domain for JD/skill pickers. Distinct from track DomainCode A–E. */
+export const SKILL_TAXONOMY_DOMAINS = ['SOFTWARE_IT'] as const;
+export type SkillTaxonomyDomain = (typeof SKILL_TAXONOMY_DOMAINS)[number];
+
+export const SKILL_STREAMS = [
+  'UNIVERSAL',
+  'SOFTWARE_DEVELOPMENT',
+  'DATA_SCIENCE_ANALYTICS',
+  'AI_ML_ENGINEERING',
+] as const satisfies readonly SkillStream[];
+
+export const SKILL_CODES = SKILL_DEFINITIONS.map((skill) => skill.code);
+export const SKILL_CODE_SET: ReadonlySet<string> = new Set(SKILL_CODES);
+
 /** Assert question-count pattern and verification-method gates are correct for a skill. */
 export function assertSkillQuestionCounts(skill: SkillDefinition): void {
   for (const [level, threshold] of Object.entries(skill.levels) as [

@@ -74,6 +74,8 @@ describe('InstitutionsService import file boundary', () => {
     await expect(probe(service, file, fileName)).rejects.toThrow(message);
   });
 
+  // ExcelJS parses the full 10,001-row CSV before the row-limit check, which
+  // regularly exceeds Vitest's default 5s on CI. The 10k cap itself is unchanged.
   it('rejects spreadsheets above the candidate row limit', async () => {
     const { service } = setup();
     const rows = Array.from(
@@ -83,5 +85,5 @@ describe('InstitutionsService import file boundary', () => {
     await expect(
       probe(service, Buffer.from(['Name,Email', ...rows].join('\n')), 'candidates.csv'),
     ).rejects.toThrow('10000 candidate row limit');
-  });
+  }, 20_000);
 });
