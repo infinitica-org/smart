@@ -238,6 +238,20 @@ export const ApplicationDtoSchema = z.object({
 });
 export type ApplicationDto = z.infer<typeof ApplicationDtoSchema>;
 
+/**
+ * TPO shortlist body (AC-T05). The opening's `institutionId` is taken from the
+ * access-token `inst` claim in api-core — do not accept it from the client, and
+ * do not accept a stage: shortlisting always lands on `SHORTLISTED`.
+ * `matchScore` is the SE-T05 score the TPO actually saw, carried through so a
+ * shortlist decision stays auditable against the ranking that produced it.
+ */
+export const CreateApplicationRequestSchema = z.object({
+  openingId: UuidSchema,
+  studentId: UuidSchema,
+  matchScore: z.number().min(0).max(1).optional(),
+});
+export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;
+
 export const PatchApplicationStageRequestSchema = z.object({
   stage: AtsStageSchema,
 });

@@ -1,18 +1,27 @@
 import {
+  ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { JobOpeningDtoSchema } from '@smart/contracts';
+import {
+  ApplicationDtoSchema,
+  ApplicationStageChangedDataSchema,
+  JobOpeningDtoSchema,
+  SMART_TOPICS,
+} from '@smart/contracts';
 import type {
+  ApplicationDto,
+  CreateApplicationRequest,
   CreateJobOpeningRequest,
   JobOpeningDto,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
   SkillProficiency,
 } from '@smart/contracts';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 /** Row shape the DTO mapper needs; `stream` has no column and is never persisted. */
@@ -32,6 +41,20 @@ interface OpeningRow {
   requiredSkills: { minProficiency: string; skill: { code: string } }[];
 }
 
+/** Persisted application row; `matchScore` arrives as a Prisma `Decimal`. */
+interface ApplicationRow {
+  id: string;
+  openingId: string;
+  studentId: string;
+  stage: string;
+  matchScore: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** AC-T05 shortlisting is TPO-mediated, so the created row is never `APPLIED`. */
+const SHORTLIST_STAGE = 'SHORTLISTED' as const;
+
 /**
  * CO-T01 structured job openings (Th6-I116). TPO-authored: `institutionId` and
  * `createdById` always come from the access token, never from the request body.
@@ -41,7 +64,10 @@ export class PlacementService {
   readonly owner = 'Vedika G';
   readonly purpose = 'JD records, shortlists, outcome ingestion.';
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+  ) {}
 
   async createOpening(
     institutionId: string,
@@ -127,6 +153,113 @@ export class PlacementService {
     }
     return toJobOpeningDto(row);
   }
+
+  /**
+   * AC-T05: shortlist one AC-T04 candidate against an opening. Both sides of
+   * the pair are re-checked against the token's institution, so a body that
+   * names another tenant's opening or student cannot create a cross-tenant row.
+   *
+   * The `smart.application.stage_changed` event is the SE-T07 integration
+   * point — the candidate notification is delivered by that service, not here.
+   */
+  async createApplication(
+    institutionId: string,
+    body: CreateApplicationRequest,
+  ): Promise<ApplicationDto> {
+    const opening = await this.prisma.jobOpening.findFirst({
+      where: { id: body.openingId, institutionId },
+      select: { id: true },
+    });
+    if (!opening) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+
+    // One query covers "no such user", "another tenant's user" and "not a
+    // student" — none of which should be distinguishable to the caller.
+    const student = await this.prisma.user.findFirst({
+      where: { id: body.studentId, institutionId, role: 'STUDENT' },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found in this institution.',
+        statusCode: 404,
+      });
+    }
+
+    let row: ApplicationRow;
+    try {
+      row = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.application.create({
+          data: {
+            openingId: body.openingId,
+            studentId: body.studentId,
+            stage: SHORTLIST_STAGE,
+            matchScore: body.matchScore ?? null,
+          },
+        });
+        await tx.applicationStageEvent.create({
+          data: {
+            applicationId: created.id,
+            fromStage: null,
+            toStage: SHORTLIST_STAGE,
+          },
+        });
+        return created;
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'This candidate has already been shortlisted for this opening.',
+        statusCode: 409,
+      });
+    }
+
+    const dto = toApplicationDto(row);
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.applicationStageChanged,
+      partitionKey: dto.applicationId,
+      eventType: SMART_TOPICS.applicationStageChanged,
+      source: 'placement',
+      data: ApplicationStageChangedDataSchema.parse({
+        applicationId: dto.applicationId,
+        openingId: dto.openingId,
+        studentId: dto.studentId,
+        fromStage: null,
+        toStage: SHORTLIST_STAGE,
+        changedAt: dto.createdAt,
+      }),
+    });
+
+    return dto;
+  }
+}
+
+/** Prisma unique-constraint failure, i.e. this pair is already shortlisted. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002'
+  );
+}
+
+/** Maps a persisted application onto the frozen `ApplicationDto`. */
+export function toApplicationDto(row: ApplicationRow): ApplicationDto {
+  return ApplicationDtoSchema.parse({
+    applicationId: row.id,
+    openingId: row.openingId,
+    studentId: row.studentId,
+    stage: row.stage,
+    matchScore:
+      row.matchScore === null || row.matchScore === undefined ? null : Number(row.matchScore),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  });
 }
 
 /**
