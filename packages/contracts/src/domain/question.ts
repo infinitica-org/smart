@@ -1,5 +1,7 @@
+import { z } from 'zod';
+
 /**
- * INF-06 — Question bank types.
+ * INF-06 — Question bank types and Zod schemas.
  *
  * A Question is the atomic unit of an assessment. Questions are linked to a
  * skill (via `skillCode`, which resolves against `SKILL_DEFINITIONS` from
@@ -14,41 +16,59 @@
  * Owner: Vedika G (INF-06)
  */
 
-export type QuestionFormat =
-  | 'MCQ'
-  | 'TRUE_FALSE'
-  | 'SHORT_ANSWER'
-  | 'LONG_ANSWER'
-  | 'CODING'
+export const QUESTION_FORMATS = [
+  'MCQ',
+  'TRUE_FALSE',
+  'SHORT_ANSWER',
+  'LONG_ANSWER',
+  'CODING',
   /** Professional-only — the 25-min incident/debug scenario gate (see INF-05 DEBUG_SCENARIO). */
-  | 'DEBUG_SCENARIO';
+  'DEBUG_SCENARIO',
+] as const;
+export const QuestionFormatSchema = z.enum(QUESTION_FORMATS);
+export type QuestionFormat = z.infer<typeof QuestionFormatSchema>;
 
-export type QuestionLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
+export const QUESTION_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'] as const;
+export const QuestionLevelSchema = z.enum(QUESTION_LEVELS);
+export type QuestionLevel = z.infer<typeof QuestionLevelSchema>;
 
-export type QuestionStream =
-  'UNIVERSAL' | 'SOFTWARE_DEVELOPMENT' | 'DATA_SCIENCE_ANALYTICS' | 'AI_ML_ENGINEERING';
+export const QUESTION_STREAMS = [
+  'UNIVERSAL',
+  'SOFTWARE_DEVELOPMENT',
+  'DATA_SCIENCE_ANALYTICS',
+  'AI_ML_ENGINEERING',
+] as const;
+export const QuestionStreamSchema = z.enum(QUESTION_STREAMS);
+export type QuestionStream = z.infer<typeof QuestionStreamSchema>;
 
-export type ReviewStatus = 'PENDING_HUMAN_REVIEW' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVISION';
+export const REVIEW_STATUSES = [
+  'PENDING_HUMAN_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'NEEDS_REVISION',
+] as const;
+export const ReviewStatusSchema = z.enum(REVIEW_STATUSES);
+export type ReviewStatus = z.infer<typeof ReviewStatusSchema>;
 
-export interface QuestionOption {
-  readonly [key: string]: string;
-}
+export const QuestionOptionSchema = z.record(z.string(), z.string());
+export type QuestionOption = z.infer<typeof QuestionOptionSchema>;
 
-export interface Question {
+export const QuestionSchema = z.object({
   /** Stable identifier — format: <STREAM_PREFIX>-<SKILL_NUM>-<SEQ> e.g. UNI-01-001 */
-  readonly id: string;
-  readonly stream: QuestionStream;
+  id: z.string(),
+  stream: QuestionStreamSchema,
   /** Matches `SkillDefinition.code` from INF-05 skills.ts */
-  readonly skillCode: string;
-  readonly skillName: string;
-  readonly level: QuestionLevel;
-  readonly format: QuestionFormat;
-  readonly prompt: string;
+  skillCode: z.string(),
+  skillName: z.string(),
+  level: QuestionLevelSchema,
+  format: QuestionFormatSchema,
+  prompt: z.string(),
   /** Present for MCQ only — key is option letter (A/B/C/D), value is display text */
-  readonly options: Readonly<Record<string, string>> | null;
+  options: QuestionOptionSchema.nullable(),
   /** Correct answer key for MCQ/T-F; model answer text for open-ended formats */
-  readonly answer: string | null;
+  answer: z.string().nullable(),
   /** Explanation shown post-submission (MCQ/T-F) or AI grading rubric (open-ended) */
-  readonly rubric: string | null;
-  readonly reviewStatus: ReviewStatus;
-}
+  rubric: z.string().nullable(),
+  reviewStatus: ReviewStatusSchema,
+});
+export type Question = z.infer<typeof QuestionSchema>;
