@@ -104,6 +104,40 @@ describe('CO-T01 TPO opening workspace', () => {
     expect(openingsApi.list).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps create disabled until a taxonomy skill is selected', async () => {
+    renderEmpty();
+    await screen.findByText(/No job openings yet/);
+    expect(screen.getByRole('button', { name: 'Create opening' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('checkbox', { name: /Programming fundamentals & logic/ }));
+    expect(screen.getByRole('button', { name: 'Create opening' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(
+      screen.getByLabelText('Minimum proficiency for Programming fundamentals & logic'),
+    ).toBeDefined();
+  });
+
+  it('disables submit while the create request is in flight', async () => {
+    let resolveCreate: (value: typeof opening) => void = () => undefined;
+    vi.mocked(openingsApi.create).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    renderEmpty();
+    await fillValidForm();
+    submitForm();
+
+    expect(await screen.findByRole('button', { name: 'Create opening' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    resolveCreate(opening);
+    expect(await screen.findByText('Job opening created in Draft status.')).toBeDefined();
+  });
+
   it('validates experience range and headcount with the shared contract', async () => {
     renderEmpty();
     await fillValidForm();

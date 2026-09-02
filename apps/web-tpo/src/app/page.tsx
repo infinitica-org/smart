@@ -46,10 +46,13 @@ export default function Page() {
           <LevelStepper unlockedThrough={1} current={1} />
         </Card>
         <Button>Continue</Button>
-        <a href="/batches" className="text-sm underline block mt-4">
+        <a href="/openings" className="mt-4 block text-sm underline">
+          Post and review structured job openings
+        </a>
+        <a href="/batches" className="mt-2 block text-sm underline">
           Manage batches and student invites
         </a>
-        <a href="/students" className="text-sm underline block mt-2">
+        <a href="/students" className="mt-2 block text-sm underline">
           Hold or release student accounts
         </a>
       </div>
