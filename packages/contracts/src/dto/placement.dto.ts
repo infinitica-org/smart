@@ -231,6 +231,9 @@ export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,
   openingId: UuidSchema,
   studentId: UuidSchema,
+  studentName: z.string().optional(),
+  studentEmail: z.string().optional(),
+  primaryTrackCode: z.string().optional(),
   stage: AtsStageSchema,
   matchScore: z.number().min(0).max(1).nullable(),
   createdAt: IsoDateTimeSchema,
@@ -252,10 +255,54 @@ export const CreateApplicationRequestSchema = z.object({
 });
 export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;
 
+export const ListApplicationsResponseSchema = z.object({
+  applications: z.array(ApplicationDtoSchema),
+});
+export type ListApplicationsResponse = z.infer<typeof ListApplicationsResponseSchema>;
+
+/**
+ * Candidate My Applications row (CN-T06 / GET /me/applications).
+ * Same Application identity and `AtsStage` as CO-T02. Company/role fields are
+ * copied from the joined CO-T01 JobOpening — not a second application state.
+ * The route accepts no `studentId`; api-core takes identity from the token.
+ */
+export const CandidateApplicationDtoSchema = ApplicationDtoSchema.extend({
+  companyName: JobOpeningFieldsSchema.shape.companyName,
+  roleTitle: JobOpeningFieldsSchema.shape.roleTitle,
+  location: z.string().max(120),
+  employmentType: EmploymentTypeSchema.nullable(),
+  domain: SkillTaxonomyDomainSchema.nullable(),
+});
+export type CandidateApplicationDto = z.infer<typeof CandidateApplicationDtoSchema>;
+
+export const ListMyApplicationsResponseSchema = z.object({
+  applications: z.array(CandidateApplicationDtoSchema),
+});
+export type ListMyApplicationsResponse = z.infer<typeof ListMyApplicationsResponseSchema>;
+
 export const PatchApplicationStageRequestSchema = z.object({
   stage: AtsStageSchema,
 });
 export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
+
+/**
+ * AC-T06 send-to-company lands on the next canonical ATS column after
+ * `SHORTLISTED`. The contract enum has no SENT_TO_COMPANY / AI_VERIFIED /
+ * HIRED — CO-T02 maps `INTERVIEW` to the Interviewing kanban column.
+ */
+export const SEND_TO_COMPANY_STAGE = 'INTERVIEW' as const;
+
+export const ApplicationConfidenceDtoSchema = z.object({
+  applicationId: UuidSchema,
+  studentId: UuidSchema,
+  available: z.boolean(),
+  complete: z.boolean(),
+  passed: z.boolean().nullable(),
+  explanation: z.string().nullable(),
+  promptRef: z.string().nullable(),
+  sendBlockedReason: z.string().nullable(),
+});
+export type ApplicationConfidenceDto = z.infer<typeof ApplicationConfidenceDtoSchema>;
 
 export const SkillClaimDtoSchema = z.object({
   claimId: UuidSchema,
@@ -268,6 +315,17 @@ export const SkillClaimDtoSchema = z.object({
   lastAttemptId: UuidSchema.nullable(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
+
+/**
+ * CN-T04 — candidate declares a track-scoped skill from INF-05.
+ * Creates/updates SkillClaim at DECLARED (re-declare after LOCKED cooldown).
+ * Owner: Vishal Bharath R (assessment). Consumer: Satheswaran V (web-student).
+ */
+export const DeclareSkillClaimRequestSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillProficiencySchema,
+});
+export type DeclareSkillClaimRequest = z.infer<typeof DeclareSkillClaimRequestSchema>;
 
 /* ---------------------------- outbound webhooks ---------------------------- */
 

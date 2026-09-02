@@ -265,19 +265,6 @@ services:
       - "127.0.0.1:${AUTH_PORT:-3005}:3000"
     profiles: ["apps"]
 
-  # Adminer — browser DB admin UI, reachable only via Caddy (basicauth + TLS),
-  # never published directly to the host.
-  adminer:
-    image: adminer:4-standalone
-    restart: unless-stopped
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-      ADMINER_DESIGN: pepa-linha
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles: ["vps"]
-
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
@@ -291,7 +278,6 @@ services:
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
-      DB_HOST: ${DB_HOST:-db.localhost}
       STUDIO_HOST: ${STUDIO_HOST:-studio.localhost}
       DB_BASIC_AUTH_USER: ${DB_BASIC_AUTH_USER:-admin}
       DB_BASIC_AUTH_HASH: ${DB_BASIC_AUTH_HASH:-}
@@ -306,7 +292,6 @@ services:
       - web-admin
       - web-verify
       - web-auth
-      - adminer
       - prisma-studio
     # Only one stack per host should enable profile `vps` (binds :80/:443).
     profiles: ["vps"]

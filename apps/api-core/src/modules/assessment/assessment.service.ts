@@ -1,10 +1,14 @@
-import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   SkillClaimDtoSchema,
+  type AiCompletionRequest,
   type AttemptSessionDto,
   type AttemptStatus,
+  type CompleteAttemptRequest,
+  type CompleteAttemptResponse,
+  type DeclareSkillClaimRequest,
   type SkillClaimDto,
+  type SkillClaimStatus,
+  type SkillProficiency,
   type DeliverableItemDto,
   type DifficultyTag,
   type DomainCode,
@@ -18,13 +22,44 @@ import {
   type StartAttemptRequest,
   type Tier,
   type TrackCode,
+  SKILL_DEFINITIONS,
+  SKILL_REFRESH_DAYS,
 } from '@smart/contracts';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
+import { Effect, Either } from 'effect';
+import { z } from 'zod';
+import {
+  computeMarkWeightedScore,
+  MARK_WEIGHTS,
+  type MarkWeightedItemType,
+} from '@smart/scoring-engine';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
+import { passThresholdsFor } from '../catalog/skill-pass-thresholds.js';
+import {
+  applySkillClaimTransition,
+  type SkillClaimEvent,
+  type SkillClaimSnapshot,
+} from './skill-claim-state-machine.js';
+
+const RubricGradeSchema = z.object({
+  marksAwarded: z.number().min(0),
+  justification: z.string().min(10).max(2_000),
+});
 
 const SESSION_TTL_SECONDS = 7200; // 2 hours TTL per spec
 const ITEM_BANK_TTL_SECONDS = 86400; // 24 hours TTL per spec
@@ -67,6 +102,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
+    @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
   ) {}
 
   onModuleInit() {
@@ -192,6 +228,104 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * POST /assessment/skill-claims — CN-T04 declare.
+   * Writes SkillClaim at DECLARED. Re-declare after LOCKED cooldown (SE-T01 / playbook).
+   */
+  async declareSkillClaim(
+    user: RequestUser,
+    body: DeclareSkillClaimRequest,
+  ): Promise<SkillClaimDto> {
+    if (user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students can declare skill claims.',
+        statusCode: 403,
+      });
+    }
+
+    const def = SKILL_DEFINITIONS.find((skill) => skill.code === body.skillCode);
+    if (!def || def.domain !== 'SOFTWARE_IT') {
+      throw new BadRequestException({
+        error: 'invalid_skill',
+        message: `Unknown Software & IT skill code: ${body.skillCode}`,
+        statusCode: 400,
+      });
+    }
+
+    const skill =
+      (await this.prisma.skill.findUnique({ where: { code: def.code } })) ??
+      (await this.prisma.skill.create({
+        data: {
+          code: def.code,
+          name: def.name,
+          domain: def.domain,
+        },
+      }));
+
+    const existing = await this.prisma.skillClaim.findUnique({
+      where: {
+        studentId_skillId: { studentId: user.sub, skillId: skill.id },
+      },
+      include: { skill: { select: { code: true } } },
+    });
+
+    const now = new Date();
+
+    if (existing && existing.status !== 'LOCKED') {
+      throw new ConflictException({
+        error: 'skill_already_claimed',
+        message: `Skill ${def.code} is already claimed (${existing.status}).`,
+        statusCode: 409,
+      });
+    }
+
+    if (existing?.status === 'LOCKED') {
+      if (existing.lockedUntil && existing.lockedUntil.getTime() > now.getTime()) {
+        throw new ForbiddenException({
+          error: 'skill_locked',
+          message: `Skill is locked until ${existing.lockedUntil.toISOString()}. Refresh window is ${String(SKILL_REFRESH_DAYS)} days.`,
+          statusCode: 403,
+          lockedUntil: existing.lockedUntil.toISOString(),
+        });
+      }
+    }
+
+    const row = existing
+      ? await this.prisma.skillClaim.update({
+          where: { id: existing.id },
+          data: {
+            proficiency: body.proficiency,
+            status: 'DECLARED',
+            strikes: 0,
+            lockedUntil: null,
+            lastAttemptId: null,
+            verifiedUntil: null,
+          },
+          include: { skill: { select: { code: true } } },
+        })
+      : await this.prisma.skillClaim.create({
+          data: {
+            studentId: user.sub,
+            skillId: skill.id,
+            proficiency: body.proficiency,
+            status: 'DECLARED',
+          },
+          include: { skill: { select: { code: true } } },
+        });
+
+    const mapped = this.mapSkillClaims([row]);
+    const dto = mapped[0];
+    if (!dto) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Declared skill claim could not be loaded.',
+        statusCode: 404,
+      });
+    }
+    return dto;
+  }
+
   private mapSkillClaims(
     rows: Array<{
       id: string;
@@ -216,6 +350,316 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         lastAttemptId: row.lastAttemptId,
       }),
     );
+  }
+
+  /**
+   * POST /assessment/complete — SE-T01/CN-T04 finalisation.
+   *
+   * Scores the attempt's responses with the INF-05 mark-weighted formula
+   * (`@smart/scoring-engine`), then — when `claimId` is supplied — drives
+   * `applySkillClaimTransition` against the SkillClaim's PRD v1 §7.3 pass
+   * bars (`skill-pass-thresholds.ts`) and persists the result. Without
+   * `claimId` this only finalises the attempt and returns its score.
+   *
+   * KNOWN GAP: CODE_TASK/SQL_TASK items cannot be auto-scored yet — the
+   * `sandbox` execution runner (owner: Vishal V) is unimplemented. Such
+   * items score 0 of their max and the response is marked `incomplete`, so a
+   * caller must not treat a passing score as final while `incomplete` is
+   * true.
+   */
+  async completeAttempt(
+    user: RequestUser,
+    body: CompleteAttemptRequest,
+  ): Promise<CompleteAttemptResponse> {
+    const attempt = await this.prisma.attempt.findUnique({
+      where: { id: body.attemptId },
+      include: {
+        level: { include: { track: true } },
+        responses: { include: { item: { include: { options: true } } } },
+      },
+    });
+    if (!attempt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Attempt ${body.attemptId} not found.`,
+        statusCode: 404,
+      });
+    }
+    if (attempt.userId !== user.sub) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'You cannot complete another candidate’s attempt.',
+        statusCode: 403,
+      });
+    }
+    if (attempt.status === 'EVALUATED' || attempt.status === 'VOIDED') {
+      throw new ConflictException({
+        error: 'attempt_already_submitted',
+        message: `Attempt is already ${attempt.status}.`,
+        statusCode: 409,
+      });
+    }
+
+    const { marksEarned, marksTotal, scorePercent, incomplete } = await this.scoreResponses(
+      attempt.responses,
+      body.attemptId,
+    );
+
+    let claimDto: SkillClaimDto | null = null;
+
+    if (body.claimId) {
+      claimDto = await this.settleSkillClaim(
+        user,
+        body,
+        attempt.level.track.code as TrackCode,
+        marksEarned,
+        marksTotal,
+        scorePercent,
+      );
+    }
+
+    await this.prisma.attempt.update({
+      where: { id: body.attemptId },
+      data: { status: 'EVALUATED', completedAt: new Date() },
+    });
+
+    return {
+      attemptId: body.attemptId,
+      status: 'EVALUATED',
+      evaluationJobId: null,
+      estimatedResultSeconds: null,
+      marksEarned,
+      marksTotal,
+      scorePercent,
+      incomplete,
+      claim: claimDto,
+    };
+  }
+
+  private async scoreResponses(
+    responses: readonly {
+      id: string;
+      answer: unknown;
+      item: {
+        id: string;
+        itemType: string;
+        stem: string;
+        modelAnswer: unknown;
+        options: readonly { id: string; isCorrect: boolean }[];
+      };
+    }[],
+    attemptId: string,
+  ): Promise<{
+    marksEarned: number;
+    marksTotal: number;
+    scorePercent: number;
+    incomplete: boolean;
+  }> {
+    const scored: { itemId: string; marksEarned: number; marksMax: number }[] = [];
+    let incomplete = false;
+
+    for (const response of responses) {
+      const itemType = response.item.itemType as MarkWeightedItemType;
+      const weight = (MARK_WEIGHTS as Record<string, number | undefined>)[itemType];
+      if (weight === undefined) continue; // outside the INF-05 mark-weighted set (e.g. L3/L4/L5 items)
+
+      const answer = response.answer as {
+        kind?: unknown;
+        selectedOptionIds?: unknown;
+        text?: unknown;
+      } | null;
+
+      if (itemType === 'MCQ_SINGLE' || itemType === 'MCQ_MULTI' || itemType === 'NUMERIC_ENTRY') {
+        const selected = new Set(
+          answer?.kind === 'MCQ' && Array.isArray(answer.selectedOptionIds)
+            ? answer.selectedOptionIds.filter((id): id is string => typeof id === 'string')
+            : [],
+        );
+        const correctIds = new Set(
+          response.item.options.filter((o) => o.isCorrect).map((o) => o.id),
+        );
+        const isCorrect =
+          selected.size > 0 &&
+          selected.size === correctIds.size &&
+          [...selected].every((id) => correctIds.has(id));
+        scored.push({
+          itemId: response.item.id,
+          marksEarned: isCorrect ? weight : 0,
+          marksMax: weight,
+        });
+        continue;
+      }
+
+      if (itemType === 'SHORT_ANSWER' || itemType === 'SCENARIO_RESPONSE') {
+        const candidateResponse =
+          answer?.kind === 'TEXT' && typeof answer.text === 'string' ? answer.text : '';
+        const modelAnswer =
+          typeof response.item.modelAnswer === 'string'
+            ? response.item.modelAnswer
+            : JSON.stringify(response.item.modelAnswer ?? '');
+        const promptRef =
+          itemType === 'SHORT_ANSWER' ? 'proficiency-short-answer@1' : 'proficiency-long-answer@1';
+
+        const completion = await this.aiGateway.complete(
+          this.buildProficiencyCompletionRequest(promptRef, response.id, attemptId, {
+            prompt: response.item.stem,
+            modelAnswer,
+            candidateResponse,
+          }),
+        );
+        const grade = RubricGradeSchema.parse(completion.output);
+        scored.push({
+          itemId: response.item.id,
+          marksEarned: Math.min(Math.max(grade.marksAwarded, 0), weight),
+          marksMax: weight,
+        });
+        continue;
+      }
+
+      // CODE_TASK / SQL_TASK: no automated test-runner yet (sandbox module is
+      // an unimplemented scaffold). Count the marks as available but unearned,
+      // and flag the attempt incomplete rather than silently under-scoring it.
+      incomplete = true;
+      scored.push({ itemId: response.item.id, marksEarned: 0, marksMax: weight });
+    }
+
+    if (scored.length === 0) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Attempt has no scoreable responses (MCQ/short/long-answer/coding).',
+        statusCode: 400,
+      });
+    }
+
+    const result = Effect.runSync(Effect.either(computeMarkWeightedScore(scored)));
+    if (Either.isLeft(result)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: result.left.message,
+        statusCode: 400,
+      });
+    }
+
+    return { ...result.right, incomplete };
+  }
+
+  private async settleSkillClaim(
+    user: RequestUser,
+    body: CompleteAttemptRequest,
+    trackCode: TrackCode,
+    marksEarned: number,
+    marksTotal: number,
+    scorePercent: number,
+  ): Promise<SkillClaimDto> {
+    const claim = await this.prisma.skillClaim.findUnique({
+      where: { id: body.claimId },
+      include: { skill: true },
+    });
+    if (!claim || claim.studentId !== user.sub) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Skill claim ${String(body.claimId)} not found.`,
+        statusCode: 404,
+      });
+    }
+
+    const thresholds = passThresholdsFor(trackCode, claim.skill.name)[claim.proficiency];
+    const assessmentPassed = scorePercent / 100 >= thresholds.assessmentPass;
+    const interviewRequired = thresholds.interviewPass !== null;
+    const genuinePass = assessmentPassed && (!interviewRequired || body.interviewPassed === true);
+
+    const lastFailure = await this.prisma.skillVerificationAttempt.findFirst({
+      where: { claimId: claim.id, passed: false, technicalFailure: false },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const snapshot: SkillClaimSnapshot = {
+      status: claim.status as SkillClaimStatus,
+      proficiency: claim.proficiency as SkillProficiency,
+      strikes: claim.strikes,
+      lockedUntil: claim.lockedUntil,
+      verifiedUntil: claim.verifiedUntil,
+    };
+    const event: SkillClaimEvent = body.technicalFailure
+      ? { type: 'TECHNICAL_FAILURE' }
+      : genuinePass
+        ? { type: 'GENUINE_PASS' }
+        : { type: 'GENUINE_FAIL' };
+
+    const transition = applySkillClaimTransition({
+      claim: snapshot,
+      event,
+      now: new Date(),
+      lastGenuineFailureAt: lastFailure?.createdAt ?? null,
+    });
+
+    if (!transition.accepted) {
+      throw new ForbiddenException({
+        error: 'skill_claim_blocked',
+        message: `Cannot settle skill claim: ${String(transition.blockReason)}.`,
+        statusCode: 403,
+        blockReason: transition.blockReason,
+      });
+    }
+
+    const [updatedClaim] = await this.prisma.$transaction([
+      this.prisma.skillClaim.update({
+        where: { id: claim.id },
+        data: {
+          status: transition.next.status,
+          proficiency: transition.next.proficiency,
+          strikes: transition.next.strikes,
+          lockedUntil: transition.next.lockedUntil,
+          verifiedUntil: transition.next.verifiedUntil,
+          lastAttemptId: body.attemptId,
+        },
+        include: { skill: { select: { code: true } } },
+      }),
+      this.prisma.skillVerificationAttempt.create({
+        data: {
+          claimId: claim.id,
+          assessmentAttemptId: body.attemptId,
+          claimedProficiency: claim.proficiency,
+          technicalFailure: body.technicalFailure,
+          passed: body.technicalFailure ? null : genuinePass,
+          explanation:
+            body.explanation ??
+            (assessmentPassed
+              ? 'Assessment score cleared the pass bar.'
+              : 'Assessment score did not clear the pass bar.'),
+          marksEarned,
+          marksTotal,
+          scorePercent,
+        },
+      }),
+    ]);
+
+    const [mapped] = this.mapSkillClaims([updatedClaim]);
+    if (!mapped) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Settled skill claim could not be loaded.',
+        statusCode: 404,
+      });
+    }
+    return mapped;
+  }
+
+  private buildProficiencyCompletionRequest(
+    promptRef: AiCompletionRequest['promptRef'],
+    responseId: string,
+    attemptId: string,
+    variables: Record<string, unknown>,
+  ): AiCompletionRequest {
+    return {
+      promptRef,
+      modelRole: 'PRIMARY_REASONING',
+      priority: 'P2_ASYNC_EVAL',
+      variables,
+      correlation: { responseId, attemptId },
+      maxOutputTokens: 1_024,
+      temperature: 0,
+    };
   }
 
   async saveDraft(studentId: string, dto: SaveDraftRequest): Promise<SaveDraftResponse> {

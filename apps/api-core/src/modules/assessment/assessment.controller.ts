@@ -11,9 +11,12 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  CompleteAttemptRequestSchema,
+  DeclareSkillClaimRequestSchema,
   SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
+  type CompleteAttemptResponse,
   type NextItemDto,
   type SaveDraftResponse,
   type SkillClaimDto,
@@ -52,6 +55,34 @@ export class AssessmentController {
   @ApiResponse({ status: 403, description: 'Forbidden role or missing institution' })
   listSkillClaims(@CurrentUser() user: RequestUser): Promise<SkillClaimDto[]> {
     return this.service.listSkillClaims(user);
+  }
+
+  @Post('skill-claims')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Declare a skill claim at DECLARED (CN-T04). Re-declare after LOCKED cooldown.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['skillCode', 'proficiency'],
+      properties: {
+        skillCode: { type: 'string' },
+        proficiency: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Skill claim declared or updated.' })
+  @ApiResponse({ status: 400, description: 'Unknown skill code' })
+  @ApiResponse({ status: 403, description: 'Locked cooldown still active' })
+  @ApiResponse({ status: 409, description: 'Skill already claimed' })
+  async declareSkillClaim(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<SkillClaimDto> {
+    const dto = DeclareSkillClaimRequestSchema.parse(body);
+    return this.service.declareSkillClaim(user, dto);
   }
 
   @Post('start')
@@ -137,6 +168,32 @@ export class AssessmentController {
     }
     const dto = SaveDraftRequestSchema.parse(body);
     return this.service.saveDraft(user.sub, dto);
+  }
+
+  @Post('complete')
+  @ApiOperation({
+    summary:
+      'Finalise an attempt: mark-weighted scoring, and (with claimId) SE-T01 skill-claim settlement.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Attempt scored; claim state, if any, updated' })
+  @ApiResponse({ status: 403, description: 'Not your attempt/claim, or the claim blocks it' })
+  @ApiResponse({ status: 404, description: 'Attempt or claim not found' })
+  @ApiResponse({ status: 409, description: 'Attempt already finalised' })
+  async completeAttempt(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<CompleteAttemptResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to complete an assessment attempt',
+        statusCode: 403,
+      });
+    }
+    const dto = CompleteAttemptRequestSchema.parse(body);
+    return this.service.completeAttempt(user, dto);
   }
 
   /**

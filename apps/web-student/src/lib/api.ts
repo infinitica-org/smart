@@ -12,6 +12,17 @@ const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 /** In-memory mock of server-side onboardingCompleted (survives localStorage clears). */
 let mockOnboardingCompleted = false;
 let mockOnboardingProfile: unknown = null;
+let mockSkillClaims: Array<{
+  claimId: string;
+  studentId: string;
+  skillCode: string;
+  proficiency: string;
+  status: string;
+  strikes: number;
+  lockedUntil: string | null;
+  lastAttemptId: string | null;
+}> = [];
+const mockProjects = new Map<string, Record<string, unknown>>();
 
 function mockStudentUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -271,6 +282,98 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           capstoneBrief: 'Data Analyst capstone.',
         },
       ]),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/assessment/skill-claims') && method === 'GET') {
+    return new Response(JSON.stringify(mockSkillClaims), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/assessment/skill-claims') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      skillCode?: string;
+      proficiency?: string;
+    };
+    const row = {
+      claimId: crypto.randomUUID(),
+      studentId: MOCK_USER_ID,
+      skillCode: body.skillCode ?? 'UNKNOWN',
+      proficiency: body.proficiency ?? 'BEGINNER',
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: null,
+    };
+    mockSkillClaims = [row, ...mockSkillClaims.filter((c) => c.skillCode !== row.skillCode)];
+    return new Response(JSON.stringify(row), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/projects') && method === 'POST' && !url.includes('github')) {
+    const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    const projectId = crypto.randomUUID();
+    const row = {
+      projectId,
+      studentId: MOCK_USER_ID,
+      title: body.title,
+      problem: body.problem,
+      approach: body.approach,
+      stack: body.stack,
+      outcome: body.outcome,
+      loomUrl: body.loomUrl ?? null,
+      githubUrl: body.githubUrl ?? null,
+      status: 'SUBMITTED',
+      createdAt: new Date().toISOString(),
+      report: null,
+    };
+    mockProjects.set(projectId, row);
+    return new Response(JSON.stringify(row), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const projectGet = url.match(/\/projects\/([0-9a-f-]{36})/i);
+  if (projectGet && method === 'GET') {
+    const row = mockProjects.get(projectGet[1] ?? '');
+    if (!row) {
+      return new Response(JSON.stringify({ error: 'not_found', message: 'Project not found.' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(row), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/me/applications') && method === 'GET') {
+    return new Response(
+      JSON.stringify({
+        applications: [
+          {
+            applicationId: '123e4567-e89b-12d3-a456-426614174010',
+            openingId: '123e4567-e89b-12d3-a456-426614174011',
+            studentId: MOCK_USER_ID,
+            stage: 'SHORTLISTED',
+            matchScore: 0.88,
+            createdAt: '2026-09-01T08:00:00.000Z',
+            updatedAt: '2026-09-02T10:00:00.000Z',
+            companyName: 'Acme Labs',
+            roleTitle: 'Backend Engineer',
+            location: 'Bengaluru',
+            employmentType: 'FULL_TIME',
+            domain: 'SOFTWARE_IT',
+          },
+        ],
+      }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }

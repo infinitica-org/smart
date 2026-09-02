@@ -772,6 +772,11 @@ model SkillVerificationAttempt {
   technicalFailure   Boolean    @default(false) @map("technical_failure")
   passed             Boolean?
   explanation        String?
+  /// Mark-weighted written-assessment score (INF-05 Scoring Schema Core
+  /// Formula). Null for a technical-failure row — no score was produced.
+  marksEarned        Decimal?   @map("marks_earned") @db.Decimal(6, 2)
+  marksTotal         Decimal?   @map("marks_total") @db.Decimal(6, 2)
+  scorePercent       Decimal?   @map("score_percent") @db.Decimal(5, 2)
   createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([claimId, createdAt])

@@ -5,20 +5,31 @@ import {
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
   ApplicationStageChangedDataSchema,
+  CandidateApplicationDtoSchema,
+  EmploymentTypeSchema,
   JobOpeningDtoSchema,
+  SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
+  SkillTaxonomyDomainSchema,
 } from '@smart/contracts';
 import type {
+  ApplicationConfidenceDto,
   ApplicationDto,
+  AtsStage,
+  CandidateApplicationDto,
   CreateApplicationRequest,
   CreateJobOpeningRequest,
   JobOpeningDto,
+  ListApplicationsResponse,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
+  ListMyApplicationsResponse,
   SkillProficiency,
 } from '@smart/contracts';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -50,14 +61,29 @@ interface ApplicationRow {
   matchScore: unknown;
   createdAt: Date;
   updatedAt: Date;
+  student?: {
+    fullName: string;
+    email: string;
+    primaryTrack?: { code: string } | null;
+  } | null;
+}
+
+interface CandidateApplicationRow extends ApplicationRow {
+  opening: {
+    companyName: string;
+    roleTitle: string;
+    location: string | null;
+    employmentType: string | null;
+    domainCode: string | null;
+  };
 }
 
 /** AC-T05 shortlisting is TPO-mediated, so the created row is never `APPLIED`. */
 const SHORTLIST_STAGE = 'SHORTLISTED' as const;
 
 /**
- * CO-T01 structured job openings (Th6-I116). TPO-authored: `institutionId` and
- * `createdById` always come from the access token, never from the request body.
+ * CO-T01 structured job openings (Th6-I116), AC-T05 shortlist, and CO-T02 ATS
+ * Kanban. `institutionId` always comes from the access token, never the body.
  */
 @Injectable()
 export class PlacementService {
@@ -222,22 +248,279 @@ export class PlacementService {
     }
 
     const dto = toApplicationDto(row);
-    await this.outbox.enqueueEnvelope({
-      topic: SMART_TOPICS.applicationStageChanged,
-      partitionKey: dto.applicationId,
-      eventType: SMART_TOPICS.applicationStageChanged,
-      source: 'placement',
-      data: ApplicationStageChangedDataSchema.parse({
-        applicationId: dto.applicationId,
-        openingId: dto.openingId,
-        studentId: dto.studentId,
-        fromStage: null,
-        toStage: SHORTLIST_STAGE,
-        changedAt: dto.createdAt,
-      }),
+    await this.enqueueStageChanged({
+      applicationId: dto.applicationId,
+      openingId: dto.openingId,
+      studentId: dto.studentId,
+      fromStage: null,
+      toStage: SHORTLIST_STAGE,
+      changedAt: dto.createdAt,
     });
 
     return dto;
+  }
+
+  async listApplications(
+    institutionId: string,
+    openingId: string,
+  ): Promise<ListApplicationsResponse> {
+    const opening = await this.prisma.jobOpening.findFirst({
+      where: { id: openingId, institutionId },
+      select: { id: true },
+    });
+    if (!opening) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+
+    const rows = await this.prisma.application.findMany({
+      where: { openingId },
+      include: {
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { applications: rows.map((row) => toApplicationDto(row)) };
+  }
+
+  /**
+   * CN-T06: candidate My Applications. Identity is the access-token `sub` —
+   * never a client-supplied studentId. When `inst` is present, the opening's
+   * institution is constrained as well so a token cannot read across tenants.
+   */
+  async listMyApplications(
+    studentId: string,
+    institutionId: string | null,
+  ): Promise<ListMyApplicationsResponse> {
+    const rows = await this.prisma.application.findMany({
+      where: {
+        studentId,
+        ...(institutionId ? { opening: { institutionId } } : {}),
+      },
+      include: {
+        opening: {
+          select: {
+            companyName: true,
+            roleTitle: true,
+            location: true,
+            employmentType: true,
+            domainCode: true,
+          },
+        },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return { applications: rows.map((row) => toCandidateApplicationDto(row)) };
+  }
+
+  async patchApplicationStage(
+    institutionId: string,
+    applicationId: string,
+    newStage: AtsStage,
+  ): Promise<ApplicationDto> {
+    const application = await this.prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        opening: { select: { institutionId: true } },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+    });
+
+    if (!application || application.opening.institutionId !== institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Application not found.',
+        statusCode: 404,
+      });
+    }
+
+    if (application.stage === newStage) {
+      return toApplicationDto(application);
+    }
+
+    const fromStage = application.stage as AtsStage;
+
+    const updatedRow = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.application.update({
+        where: { id: applicationId },
+        data: { stage: newStage },
+        include: {
+          student: {
+            select: {
+              fullName: true,
+              email: true,
+              primaryTrack: { select: { code: true } },
+            },
+          },
+        },
+      });
+
+      await tx.applicationStageEvent.create({
+        data: {
+          applicationId,
+          fromStage,
+          toStage: newStage,
+        },
+      });
+
+      return updated;
+    });
+
+    const dto = toApplicationDto(updatedRow);
+    await this.enqueueStageChanged({
+      applicationId: dto.applicationId,
+      openingId: dto.openingId,
+      studentId: dto.studentId,
+      fromStage,
+      toStage: newStage,
+      changedAt: dto.updatedAt,
+    });
+
+    return dto;
+  }
+
+  /**
+   * AC-T06: TPO reads the persisted SE-T02 shape (passed + explanation).
+   * Grade itself is student-only and is not re-run here.
+   */
+  async getApplicationConfidence(
+    institutionId: string,
+    applicationId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    const application = await this.requireApplication(institutionId, applicationId);
+    return this.toConfidenceDto(application.id, application.studentId);
+  }
+
+  async sendToCompany(institutionId: string, applicationId: string): Promise<ApplicationDto> {
+    const application = await this.requireApplication(institutionId, applicationId);
+    const confidence = await this.toConfidenceDto(application.id, application.studentId);
+    if (!confidence.complete) {
+      throw new UnprocessableEntityException({
+        error: 'validation_failed',
+        message:
+          confidence.sendBlockedReason ??
+          'A complete SE-T02 confidence result is required before sending to the company.',
+        statusCode: 422,
+      });
+    }
+
+    if (application.stage === SEND_TO_COMPANY_STAGE) {
+      return toApplicationDto(application);
+    }
+
+    if (application.stage !== 'SHORTLISTED') {
+      throw new ConflictException({
+        error: 'conflict',
+        message: `Only SHORTLISTED applications can be sent to the company (current stage: ${application.stage}).`,
+        statusCode: 409,
+      });
+    }
+
+    return this.patchApplicationStage(institutionId, applicationId, SEND_TO_COMPANY_STAGE);
+  }
+
+  private async requireApplication(
+    institutionId: string,
+    applicationId: string,
+  ): Promise<ApplicationRow & { opening: { institutionId: string } }> {
+    const application = await this.prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        opening: { select: { institutionId: true } },
+        student: {
+          select: {
+            fullName: true,
+            email: true,
+            primaryTrack: { select: { code: true } },
+          },
+        },
+      },
+    });
+
+    if (!application || application.opening.institutionId !== institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Application not found.',
+        statusCode: 404,
+      });
+    }
+    return application;
+  }
+
+  private async toConfidenceDto(
+    applicationId: string,
+    studentId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    const latest = await this.prisma.skillVerificationAttempt.findFirst({
+      where: { claim: { studentId } },
+      orderBy: { createdAt: 'desc' },
+      select: { passed: true, explanation: true },
+    });
+
+    const explanation = latest?.explanation?.trim() || null;
+    const passed = latest?.passed ?? null;
+    const available = latest !== null;
+    const complete = passed !== null && explanation !== null && explanation.length >= 10;
+    let sendBlockedReason: string | null = null;
+    if (!available) {
+      sendBlockedReason = 'No SE-T02 confidence result is on file for this candidate.';
+    } else if (!complete) {
+      sendBlockedReason =
+        'Confidence result is incomplete — pass/fail or the one-line explanation is missing.';
+    }
+
+    return ApplicationConfidenceDtoSchema.parse({
+      applicationId,
+      studentId,
+      available,
+      complete,
+      passed,
+      explanation,
+      // SE-T02 grade does not persist promptRef; do not invent one.
+      promptRef: null,
+      sendBlockedReason,
+    });
+  }
+
+  private async enqueueStageChanged(data: {
+    applicationId: string;
+    openingId: string;
+    studentId: string;
+    fromStage: AtsStage | null;
+    toStage: AtsStage;
+    changedAt: string;
+  }): Promise<void> {
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.applicationStageChanged,
+      partitionKey: data.applicationId,
+      eventType: SMART_TOPICS.applicationStageChanged,
+      source: 'placement',
+      data: ApplicationStageChangedDataSchema.parse(data),
+    });
   }
 }
 
@@ -248,12 +531,30 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+/** Maps a persisted application onto the frozen candidate My Applications row. */
+export function toCandidateApplicationDto(row: CandidateApplicationRow): CandidateApplicationDto {
+  const employmentType = EmploymentTypeSchema.safeParse(row.opening.employmentType);
+  const domain = SkillTaxonomyDomainSchema.safeParse(row.opening.domainCode);
+
+  return CandidateApplicationDtoSchema.parse({
+    ...toApplicationDto(row),
+    companyName: row.opening.companyName,
+    roleTitle: row.opening.roleTitle,
+    location: row.opening.location ?? '',
+    employmentType: employmentType.success ? employmentType.data : null,
+    domain: domain.success ? domain.data : null,
+  });
+}
+
 /** Maps a persisted application onto the frozen `ApplicationDto`. */
 export function toApplicationDto(row: ApplicationRow): ApplicationDto {
   return ApplicationDtoSchema.parse({
     applicationId: row.id,
     openingId: row.openingId,
     studentId: row.studentId,
+    studentName: row.student?.fullName,
+    studentEmail: row.student?.email,
+    primaryTrackCode: row.student?.primaryTrack?.code,
     stage: row.stage,
     matchScore:
       row.matchScore === null || row.matchScore === undefined ? null : Number(row.matchScore),

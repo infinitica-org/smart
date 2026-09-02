@@ -7,6 +7,7 @@ import {
   SmartApiError,
   SmartContractViolationError,
   SmartNetworkError,
+  createSmartApi,
   invalidationGroups,
   isSmartApiError,
   queryKeys,
@@ -426,6 +427,7 @@ describe('query keys', () => {
   it('nests keys so a prefix invalidation reaches everything under it', () => {
     expect(queryKeys.attemptSession('a-1')).toStrictEqual(['attempt', 'a-1', 'session']);
     expect(queryKeys.nextItem('a-1')[0]).toBe('attempt');
+    expect(queryKeys.myApplications()).toStrictEqual(['me', 'applications']);
   });
 
   it('invalidates every surface that a completed attempt changes', () => {
@@ -443,5 +445,41 @@ describe('query keys', () => {
     const flattened = JSON.stringify(invalidationGroups.onCutScoresPublished('TECH_FULLSTACK'));
     expect(flattened).toContain('results');
     expect(flattened).toContain('TECH_FULLSTACK');
+  });
+});
+
+describe('CN-T06 my applications client', () => {
+  it('GETs /me/applications without a client-supplied studentId', async () => {
+    const { fetchImpl, calls } = stubFetch([
+      {
+        body: {
+          applications: [
+            {
+              applicationId: '00000000-0000-4000-8000-000000000001',
+              openingId: '00000000-0000-4000-8000-000000000010',
+              studentId: '00000000-0000-4000-8000-000000000020',
+              stage: 'SHORTLISTED',
+              matchScore: 0.88,
+              createdAt: '2026-09-02T00:00:00.000Z',
+              updatedAt: '2026-09-02T01:00:00.000Z',
+              companyName: 'Acme Labs',
+              roleTitle: 'Backend Engineer',
+              location: 'Bengaluru',
+              employmentType: 'FULL_TIME',
+              domain: 'SOFTWARE_IT',
+            },
+          ],
+        },
+      },
+    ]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    await api.placement.listMyApplications();
+
+    expect(calls[0]?.url).toBe('https://api.smart.test/api/v1/me/applications');
+    expect(calls[0]?.url).not.toContain('studentId');
+    expect(calls[0]?.init.method ?? 'GET').toBe('GET');
   });
 });

@@ -5,6 +5,7 @@ import {
   Get,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -14,8 +15,11 @@ import {
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   ListJobOpeningsQuerySchema,
+  PatchApplicationStageRequestSchema,
+  type ApplicationConfidenceDto,
   type ApplicationDto,
   type JobOpeningDto,
+  type ListApplicationsResponse,
   type ListJobOpeningsResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -102,6 +106,21 @@ export class PlacementController {
     return this.service.getOpening(requireInstitutionId(user), openingId);
   }
 
+  @Get('openings/:openingId/applications')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'List candidate applications for a job opening owned by caller institution.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Applications for the job opening.' })
+  @ApiResponse({ status: 404, description: 'Unknown opening, or owned by another institution.' })
+  async listApplications(
+    @CurrentUser() user: RequestUser,
+    @Param('openingId') openingId: string,
+  ): Promise<ListApplicationsResponse> {
+    return this.service.listApplications(requireInstitutionId(user), openingId);
+  }
+
   /**
    * AC-T05 shortlist. The candidate notification itself is SE-T07's job; this
    * route only persists the application and emits the stage-change event.
@@ -122,5 +141,69 @@ export class PlacementController {
       requireInstitutionId(user),
       CreateApplicationRequestSchema.parse(body),
     );
+  }
+
+  @Patch('applications/:applicationId/stage')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Update candidate ATS application stage.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Application stage updated.' })
+  @ApiResponse({ status: 400, description: 'Invalid stage.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  async patchApplicationStage(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+    @Body() body: unknown,
+  ): Promise<ApplicationDto> {
+    const parsed = PatchApplicationStageRequestSchema.parse(body);
+    return this.service.patchApplicationStage(
+      requireInstitutionId(user),
+      applicationId,
+      parsed.stage,
+    );
+  }
+
+  @Get('applications/:applicationId/confidence')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'Read the persisted SE-T02 passed + explanation for a shortlisted application.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Authoritative passed + explanation, or missing.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  async getApplicationConfidence(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    return this.service.getApplicationConfidence(requireInstitutionId(user), applicationId);
+  }
+
+  @Post('applications/:applicationId/send-to-company')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'Send a reviewed SHORTLISTED application to INTERVIEW after a complete SE-T02 result.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Application is in INTERVIEW (idempotent).' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Application is not SHORTLISTED or already moved past.',
+  })
+  @ApiResponse({ status: 422, description: 'SE-T02 confidence result is missing or incomplete.' })
+  async sendToCompany(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+  ): Promise<ApplicationDto> {
+    return this.service.sendToCompany(requireInstitutionId(user), applicationId);
   }
 }

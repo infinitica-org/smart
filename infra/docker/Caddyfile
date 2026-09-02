@@ -22,13 +22,6 @@
 	reverse_proxy web-auth:3000
 }
 
-{$DB_HOST} {
-	basic_auth {
-		{$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_HASH}
-	}
-	reverse_proxy adminer:8080
-}
-
 {$STUDIO_HOST} {
 	basic_auth {
 		{$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_HASH}

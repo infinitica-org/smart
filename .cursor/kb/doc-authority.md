@@ -20,7 +20,7 @@ When sources disagree, use this order:
 | Local ports              | `ENGINEER_GUIDES` table (student:3000, api:4000)        | README + `env.ts`: **API 3000**, webs **3001–3004**                                             |
 | Nest/Next versions       | Some docs say Nest 10 / Next 14                         | README: Nest **11** / Next **16**                                                               |
 | Sprint count             | ARCHITECTURE says 5 sprints                             | AGILE_PLAN: **6** (S0–S5) in 21 days                                                            |
-| Auth vendor              | Occasional "Clerk" mentions                             | Dual JWT + SSO (Supabase Auth called out in architecture) — implement per contracts/TEAM        |
+| Auth vendor              | Occasional "Clerk" mentions                             | Dual JWT + SSO (OAuth/SAML, no Supabase) — implement per contracts/TEAM                         |
 | Matching owner           | Allen assigned VV; CODEOWNERS `matching/` = Ramansh     | **ADR 0012:** VV implements rules ranker via PR to `matching`; RM reviews. Git owner unchanged. |
 
 Update this file when you discover new conflicts.
