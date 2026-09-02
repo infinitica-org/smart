@@ -970,6 +970,32 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Submit a defense turn, receive the follow-up question.',
   },
 
+  /* ------------------------ skill interview (SE-T02) ----------------------- */
+  {
+    method: 'POST',
+    path: '/evaluation/skill-interview/questions',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'evaluation.skillInterview',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 4000,
+    summary: 'Generate three skill-relevant interview questions (cached per skill when possible).',
+  },
+  {
+    method: 'POST',
+    path: '/evaluation/skill-interview/grade',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'evaluation.skillInterview',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 5000,
+    summary: 'Score typed/transcribed answers; always returns pass/fail plus a one-line why.',
+  },
+
   /* ------------------------------- calibration ----------------------------- */
   {
     method: 'POST',
