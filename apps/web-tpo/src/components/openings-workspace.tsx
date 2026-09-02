@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { isSmartApiError } from '@smart/api-client';
 import {
   CreateJobOpeningRequestSchema,
@@ -315,7 +316,8 @@ export function OpeningsWorkspace() {
                   <th className="py-3 pr-4">Type</th>
                   <th className="py-3 pr-4">Headcount</th>
                   <th className="py-3 pr-4">Status</th>
-                  <th className="py-3">Created</th>
+                  <th className="py-3 pr-4">Created</th>
+                  <th className="py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -333,10 +335,18 @@ export function OpeningsWorkspace() {
                     <td className="py-3 pr-4">{labelFor(opening.employmentType)}</td>
                     <td className="py-3 pr-4">{opening.headcount}</td>
                     <td className="py-3 pr-4">{labelFor(opening.status)}</td>
-                    <td className="py-3">
+                    <td className="py-3 pr-4">
                       {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(
                         new Date(opening.createdAt),
                       )}
+                    </td>
+                    <td className="py-3">
+                      <Link
+                        href={`/suggestions?openingId=${opening.openingId}`}
+                        className="text-xs font-semibold text-brand-600 hover:underline"
+                      >
+                        View suggestions
+                      </Link>
                     </td>
                   </tr>
                 ))}
