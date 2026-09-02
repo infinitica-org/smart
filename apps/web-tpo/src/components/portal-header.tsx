@@ -16,6 +16,9 @@ export function PortalHeader() {
             SMART · Placement
           </Link>
           <nav aria-label="TPO portal" className="flex gap-4 text-sm">
+            <Link href="/" className="hover:underline">
+              Dashboard
+            </Link>
             <Link href="/openings" className="hover:underline">
               Job openings
             </Link>
