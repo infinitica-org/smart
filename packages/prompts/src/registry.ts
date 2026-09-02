@@ -7,6 +7,10 @@ import { jdParseTemplate } from './templates/jd-parsing.js';
 import { resumeParseTemplate } from './templates/resume-parsing.js';
 import { itemDraftTemplate } from './templates/item-authoring.js';
 import { gapNarrativeTemplate } from './templates/gap-report.js';
+import {
+  skillInterviewExaminerTemplate,
+  skillInterviewGraderTemplate,
+} from './templates/skill-interview.js';
 
 /**
  * The prompt registry.
@@ -35,6 +39,8 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   resumeParseTemplate,
   itemDraftTemplate,
   gapNarrativeTemplate,
+  skillInterviewExaminerTemplate,
+  skillInterviewGraderTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

@@ -25,5 +25,6 @@ export * from './templates/jd-parsing.js';
 export * from './templates/resume-parsing.js';
 export * from './templates/item-authoring.js';
 export * from './templates/gap-report.js';
+export * from './templates/skill-interview.js';
 
 export const PROMPTS_VERSION = '0.1.0';
