@@ -11,6 +11,12 @@ import {
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
 } from './templates/skill-interview.js';
+import {
+  proficiencyCodingDesignRubricTemplate,
+  proficiencyDebugScenarioTemplate,
+  proficiencyLongAnswerTemplate,
+  proficiencyShortAnswerTemplate,
+} from './templates/proficiency-grading.js';
 
 /**
  * The prompt registry.
@@ -41,6 +47,10 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   gapNarrativeTemplate,
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
+  proficiencyShortAnswerTemplate,
+  proficiencyLongAnswerTemplate,
+  proficiencyCodingDesignRubricTemplate,
+  proficiencyDebugScenarioTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
