@@ -67,4 +67,38 @@ describe('routing', () => {
       }),
     ).toContain('SNAPSHOT_UNAVAILABLE');
   });
+
+  it('flags a public-web match separately from a prior SMART submission', () => {
+    expect(
+      collectFlags({
+        duplicate: 0,
+        publicWeb: 80,
+        techAge: false,
+        stackMismatch: false,
+        snapshotOk: true,
+        llmFailed: false,
+        confidence: 0.9,
+      }),
+    ).toEqual(['PUBLIC_WEB_SIMILARITY']);
+  });
+
+  it('never returns REJECTED when PUBLIC_WEB_SIMILARITY is set', () => {
+    expect(
+      routeProjectVerification({ confidence: 0.95, flags: ['PUBLIC_WEB_SIMILARITY'] }).status,
+    ).toBe('UNDER_REVIEW');
+  });
+
+  it('routes a failed public web search to review without rejecting', () => {
+    expect(
+      collectFlags({
+        duplicate: 0,
+        techAge: false,
+        stackMismatch: false,
+        snapshotOk: true,
+        llmFailed: false,
+        confidence: 0.9,
+        webSearchFailed: true,
+      }),
+    ).toContain('LOW_CONFIDENCE');
+  });
 });
