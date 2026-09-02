@@ -1,9 +1,8 @@
-import type { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   SkillClaimDtoSchema,
   type AttemptSessionDto,
   type AttemptStatus,
+  type DeclareSkillClaimRequest,
   type SkillClaimDto,
   type DeliverableItemDto,
   type DifficultyTag,
@@ -18,7 +17,19 @@ import {
   type StartAttemptRequest,
   type Tier,
   type TrackCode,
+  SKILL_DEFINITIONS,
+  SKILL_REFRESH_DAYS,
 } from '@smart/contracts';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
@@ -190,6 +201,104 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       message: 'You do not have permission to list skill claims.',
       statusCode: 403,
     });
+  }
+
+  /**
+   * POST /assessment/skill-claims — CN-T04 declare.
+   * Writes SkillClaim at DECLARED. Re-declare after LOCKED cooldown (SE-T01 / playbook).
+   */
+  async declareSkillClaim(
+    user: RequestUser,
+    body: DeclareSkillClaimRequest,
+  ): Promise<SkillClaimDto> {
+    if (user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students can declare skill claims.',
+        statusCode: 403,
+      });
+    }
+
+    const def = SKILL_DEFINITIONS.find((skill) => skill.code === body.skillCode);
+    if (!def || def.domain !== 'SOFTWARE_IT') {
+      throw new BadRequestException({
+        error: 'invalid_skill',
+        message: `Unknown Software & IT skill code: ${body.skillCode}`,
+        statusCode: 400,
+      });
+    }
+
+    const skill =
+      (await this.prisma.skill.findUnique({ where: { code: def.code } })) ??
+      (await this.prisma.skill.create({
+        data: {
+          code: def.code,
+          name: def.name,
+          domain: def.domain,
+        },
+      }));
+
+    const existing = await this.prisma.skillClaim.findUnique({
+      where: {
+        studentId_skillId: { studentId: user.sub, skillId: skill.id },
+      },
+      include: { skill: { select: { code: true } } },
+    });
+
+    const now = new Date();
+
+    if (existing && existing.status !== 'LOCKED') {
+      throw new ConflictException({
+        error: 'skill_already_claimed',
+        message: `Skill ${def.code} is already claimed (${existing.status}).`,
+        statusCode: 409,
+      });
+    }
+
+    if (existing?.status === 'LOCKED') {
+      if (existing.lockedUntil && existing.lockedUntil.getTime() > now.getTime()) {
+        throw new ForbiddenException({
+          error: 'skill_locked',
+          message: `Skill is locked until ${existing.lockedUntil.toISOString()}. Refresh window is ${String(SKILL_REFRESH_DAYS)} days.`,
+          statusCode: 403,
+          lockedUntil: existing.lockedUntil.toISOString(),
+        });
+      }
+    }
+
+    const row = existing
+      ? await this.prisma.skillClaim.update({
+          where: { id: existing.id },
+          data: {
+            proficiency: body.proficiency,
+            status: 'DECLARED',
+            strikes: 0,
+            lockedUntil: null,
+            lastAttemptId: null,
+            verifiedUntil: null,
+          },
+          include: { skill: { select: { code: true } } },
+        })
+      : await this.prisma.skillClaim.create({
+          data: {
+            studentId: user.sub,
+            skillId: skill.id,
+            proficiency: body.proficiency,
+            status: 'DECLARED',
+          },
+          include: { skill: { select: { code: true } } },
+        });
+
+    const mapped = this.mapSkillClaims([row]);
+    const dto = mapped[0];
+    if (!dto) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Declared skill claim could not be loaded.',
+        statusCode: 404,
+      });
+    }
+    return dto;
   }
 
   private mapSkillClaims(
