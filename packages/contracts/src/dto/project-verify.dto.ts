@@ -33,6 +33,8 @@ export const PROJECT_VERIFY_README_MAX_CHARS = 20_000;
 export const PROJECT_VERIFY_TREE_MAX_ENTRIES = 200;
 export const PROJECT_VERIFY_COMMIT_MAX = 20;
 export const PROJECT_VERIFY_REPO_MAX = 3;
+/** Public GitHub search + DuckDuckGo snippet cap. Evaluation never clones those hits. */
+export const PROJECT_VERIFY_WEB_SEARCH_HITS = 5;
 
 export const GithubRepoRefSchema = z.object({
   owner: z.string().min(1).max(100),

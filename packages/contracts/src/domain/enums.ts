@@ -425,6 +425,7 @@ export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
 export const PROJECT_VERIFY_FLAGS = [
   'DUPLICATE_TEXT',
+  'PUBLIC_WEB_SIMILARITY',
   'TECH_AGE',
   'SNAPSHOT_UNAVAILABLE',
   'LOW_CONFIDENCE',
