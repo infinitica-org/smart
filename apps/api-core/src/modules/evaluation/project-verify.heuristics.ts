@@ -93,7 +93,8 @@ export function routeProjectVerification(input: {
     input.flags.includes('SNAPSHOT_UNAVAILABLE') ||
     input.flags.includes('LLM_UNAVAILABLE') ||
     input.flags.includes('LOW_CONFIDENCE') ||
-    input.flags.includes('STACK_LANGUAGE_MISMATCH');
+    input.flags.includes('STACK_LANGUAGE_MISMATCH') ||
+    input.flags.includes('PUBLIC_WEB_SIMILARITY');
   if (mustReview) {
     return { status: 'UNDER_REVIEW', routedToReview: true };
   }
@@ -102,19 +103,27 @@ export function routeProjectVerification(input: {
 
 export function collectFlags(input: {
   duplicate: number;
+  publicWeb?: number;
   techAge: boolean;
   stackMismatch: boolean;
   snapshotOk: boolean;
   llmFailed: boolean;
   confidence: number;
+  webSearchFailed?: boolean;
 }): ProjectVerifyFlag[] {
   const flags: ProjectVerifyFlag[] = [];
   if (input.duplicate >= PROJECT_VERIFY_DUPLICATE_FLAG * 100) flags.push('DUPLICATE_TEXT');
   else if (input.duplicate >= PROJECT_VERIFY_DUPLICATE_REVIEW * 100) flags.push('LOW_CONFIDENCE');
+  if ((input.publicWeb ?? 0) >= PROJECT_VERIFY_DUPLICATE_FLAG * 100) {
+    flags.push('PUBLIC_WEB_SIMILARITY');
+  } else if ((input.publicWeb ?? 0) >= PROJECT_VERIFY_DUPLICATE_REVIEW * 100) {
+    flags.push('LOW_CONFIDENCE');
+  }
   if (input.techAge) flags.push('TECH_AGE');
   if (input.stackMismatch) flags.push('STACK_LANGUAGE_MISMATCH');
   if (!input.snapshotOk) flags.push('SNAPSHOT_UNAVAILABLE');
   if (input.llmFailed) flags.push('LLM_UNAVAILABLE');
+  if (input.webSearchFailed) flags.push('LOW_CONFIDENCE');
   if (input.confidence < PROJECT_VERIFY_CONFIDENCE_AUTO && !flags.includes('LOW_CONFIDENCE')) {
     flags.push('LOW_CONFIDENCE');
   }
