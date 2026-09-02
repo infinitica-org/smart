@@ -1227,6 +1227,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'List structured job openings for the authenticated TPO institution.',
   },
   {
+    method: 'GET',
+    path: '/placement/openings/:openingId/applications',
+    module: 'placement',
+    owner: 'Vishal Bharath R',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    rateLimit: 'role.placementStaff',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'List candidate applications for a job opening owned by caller institution.',
+  },
+  {
     method: 'POST',
     path: '/placement/applications',
     module: 'assessment',
