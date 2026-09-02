@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
@@ -119,6 +120,38 @@ describe('CO-T01 job opening contracts', () => {
           },
         ],
       }).success,
+    ).toBe(false);
+  });
+});
+
+describe('AC-T05 create application contract', () => {
+  const validShortlist = {
+    openingId: '00000000-0000-4000-8000-000000000010',
+    studentId: '00000000-0000-4000-8000-000000000020',
+    matchScore: 0.92,
+  };
+
+  it('accepts openingId, studentId and an optional matchScore', () => {
+    expect(CreateApplicationRequestSchema.safeParse(validShortlist).success).toBe(true);
+    expect(
+      CreateApplicationRequestSchema.safeParse({
+        openingId: validShortlist.openingId,
+        studentId: validShortlist.studentId,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('strips a client-supplied institutionId and rejects an out-of-range score', () => {
+    const parsed = CreateApplicationRequestSchema.safeParse({
+      ...validShortlist,
+      institutionId: '00000000-0000-4000-8000-000000000001',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect('institutionId' in parsed.data).toBe(false);
+    }
+    expect(
+      CreateApplicationRequestSchema.safeParse({ ...validShortlist, matchScore: 1.4 }).success,
     ).toBe(false);
   });
 });

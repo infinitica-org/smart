@@ -6,9 +6,11 @@ import {
 } from '@smart/api-client';
 import {
   API_PREFIX,
+  ApplicationDtoSchema,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
   ShortlistDtoSchema,
+  type CreateApplicationRequest,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
   type MatchRequest,
@@ -42,5 +44,12 @@ export const matchingApi = {
   match: (body: MatchRequest) =>
     apiClient.post(`${API_PREFIX}/placement/match`, body, {
       schema: ShortlistDtoSchema,
+    }),
+};
+
+export const applicationsApi = {
+  create: (body: CreateApplicationRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/applications`, body, {
+      schema: ApplicationDtoSchema,
     }),
 };

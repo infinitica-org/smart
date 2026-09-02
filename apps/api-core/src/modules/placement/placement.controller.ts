@@ -11,8 +11,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   ListJobOpeningsQuerySchema,
+  type ApplicationDto,
   type JobOpeningDto,
   type ListJobOpeningsResponse,
 } from '@smart/contracts';
@@ -98,5 +100,27 @@ export class PlacementController {
     @Param('openingId') openingId: string,
   ): Promise<JobOpeningDto> {
     return this.service.getOpening(requireInstitutionId(user), openingId);
+  }
+
+  /**
+   * AC-T05 shortlist. The candidate notification itself is SE-T07's job; this
+   * route only persists the application and emits the stage-change event.
+   */
+  @Post('applications')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Shortlist an AC-T04 candidate against a job opening.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Application created in SHORTLISTED.' })
+  @ApiResponse({ status: 400, description: 'Invalid shortlist payload.' })
+  @ApiResponse({ status: 404, description: 'Unknown opening or student for this institution.' })
+  @ApiResponse({ status: 409, description: 'Candidate is already shortlisted for this opening.' })
+  async createApplication(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<ApplicationDto> {
+    return this.service.createApplication(
+      requireInstitutionId(user),
+      CreateApplicationRequestSchema.parse(body),
+    );
   }
 }
