@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Alert, Button, Card, Input } from '@smart/ui';
+import { Button, Card } from '@smart/ui';
 import type { BatchMemberDto, BatchDto } from '@smart/contracts';
 import { api } from '../../../../lib/api';
 import { BatchImportWizard } from '../../../../components/batch-import-wizard';

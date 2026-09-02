@@ -19,9 +19,9 @@ describe('InstitutionLogin', () => {
   it('renders institution login branding and form', () => {
     render(<InstitutionLogin />);
     expect(screen.getByRole('heading', { name: 'Institution Login' })).toBeTruthy();
-    expect(screen.getByText('Empower your students')).toBeTruthy();
-    expect(screen.getByPlaceholderText('admin@college.edu')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.getByText('Complete these easy steps to register your account.')).toBeTruthy();
+    expect(screen.getByPlaceholderText('eg. admin@college.edu')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
     expect(screen.getByText('Login to your account')).toBeTruthy();
     expect(screen.getByText('Upload Candidates')).toBeTruthy();
     expect(screen.getByText('Track Readiness')).toBeTruthy();

@@ -1,15 +1,7 @@
 'use client';
 
 import { Card, Button } from '@smart/ui';
-import {
-  ShieldCheck,
-  Users,
-  Bell,
-  Mail,
-  Smartphone,
-  AlertTriangle,
-  CheckCircle2,
-} from 'lucide-react';
+import { ShieldCheck, Users, Bell, Mail, Smartphone, CheckCircle2 } from 'lucide-react';
 
 export default function SettingsPage() {
   return (

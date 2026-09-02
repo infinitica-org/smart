@@ -10,12 +10,15 @@ import {
   ApplicationDtoSchema,
   JobOpeningDtoSchema,
   ListApplicationsResponseSchema,
-  ListJobOpeningsResponseSchema,
   ShortlistDtoSchema,
   type AtsStage,
+  type AuthTokenResponse,
+  type AuthenticatedUser,
+  type BatchDto,
   type CreateApplicationRequest,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
+  type ListJobOpeningsResponse,
   type MatchRequest,
 } from '@smart/contracts';
 
@@ -30,42 +33,43 @@ export const apiClient = new SmartApiClient({
 export const api = createSmartApi(apiClient);
 
 // --- MOCK BYPASS ---
-api.auth.login = async () =>
-  ({
-    accessToken: 'mock-token-123',
-    user: { role: 'INSTITUTION_ADMIN' },
-  }) as any;
+const mockUser: AuthenticatedUser = {
+  userId: 'mock-user-123',
+  email: 'admin@college.edu',
+  fullName: 'Mock Admin',
+  role: 'INSTITUTION_ADMIN',
+  institutionId: 'inst-123',
+  institutionName: 'Mock College',
+  primaryTrack: null,
+  secondaryTrack: null,
+  provider: 'PASSWORD',
+  emailVerified: true,
+  createdAt: new Date().toISOString(),
+  onboardingCompleted: true,
+  sessionHold: null,
+};
 
-api.auth.me = async () =>
-  ({
-    userId: 'mock-user-123',
-    email: 'admin@college.edu',
-    fullName: 'Mock Admin',
-    role: 'INSTITUTION_ADMIN',
-    institutionId: 'inst-123',
-    institutionName: 'Mock College',
-    primaryTrack: null,
-    secondaryTrack: null,
-    provider: 'EMAIL',
-    emailVerified: true,
-    createdAt: new Date().toISOString(),
-    onboardingCompleted: true,
-    sessionHold: null,
-  }) as any;
+const mockAuthToken: AuthTokenResponse = {
+  accessToken: 'mock-token-123',
+  tokenType: 'Bearer',
+  expiresInSeconds: 900,
+  user: mockUser,
+};
+
+api.auth.login = async (): Promise<AuthTokenResponse> => mockAuthToken;
+api.auth.me = async (): Promise<AuthenticatedUser> => mockUser;
 // -------------------
-api.auth.refresh = async () =>
-  ({
-    accessToken: 'mock-token-123',
-    user: { role: 'INSTITUTION_ADMIN' },
-  }) as any;
+api.auth.refresh = async (): Promise<AuthTokenResponse> => mockAuthToken;
 
-api.onboarding.listBatches = async () => [] as any;
+api.onboarding.listBatches = async (): Promise<BatchDto[]> => [];
 // -------------------
 
 export const openingsApi = {
   create: (body: CreateJobOpeningRequest) =>
     apiClient.post(`${API_PREFIX}/placement/openings`, body, { schema: JobOpeningDtoSchema }),
-  list: async (query?: ListJobOpeningsQuery) => ({ openings: [] }) as any,
+  list: async (_query?: ListJobOpeningsQuery): Promise<ListJobOpeningsResponse> => ({
+    openings: [],
+  }),
   get: (openingId: string) =>
     apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
       schema: JobOpeningDtoSchema,

@@ -2,16 +2,7 @@
 
 import Link from 'next/link';
 import { Card, Button } from '@smart/ui';
-import {
-  ArrowLeft,
-  Building2,
-  MapPin,
-  Clock,
-  Briefcase,
-  Zap,
-  CheckCircle2,
-  ChevronRight,
-} from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Clock, Briefcase, Zap, CheckCircle2 } from 'lucide-react';
 
 const mockCandidates = [
   {
@@ -37,7 +28,7 @@ const mockCandidates = [
   },
 ];
 
-export default function PlacementDetailPage({ params }: { params: { id: string } }) {
+export default function PlacementDetailPage() {
   return (
     <main className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-6 font-sans">
       <div className="flex items-center gap-4 text-gray-400 text-sm">

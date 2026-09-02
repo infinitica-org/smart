@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { X, UploadCloud, FileSpreadsheet, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@smart/ui';
 
 export function CandidateProvisioningModal({

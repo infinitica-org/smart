@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Input } from '@smart/ui';
+import { Button, Card } from '@smart/ui';
 import type { InstitutionStudentDto, StudentInviteFilter } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../../lib/api';
@@ -13,7 +13,6 @@ import {
   Clock,
   Ban,
   AlertTriangle,
-  Shield,
   CheckCircle,
   Users,
 } from 'lucide-react';
@@ -24,16 +23,12 @@ export default function TpoStudentsPage() {
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
   const [q, setQ] = useState('');
   const [inviteStatus, setInviteStatus] = useState<StudentInviteFilter | ''>('');
-  const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   // Modals
   const [isProvisioningOpen, setIsProvisioningOpen] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-
-  // Hold state
-  const [holdReason, setHoldReason] = useState('');
 
   async function load() {
     setStudents(

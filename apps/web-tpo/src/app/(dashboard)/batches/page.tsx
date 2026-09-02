@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button, Card, Input } from '@smart/ui';
+import { Button, Card } from '@smart/ui';
 import type { BatchDto } from '@smart/contracts';
 import { api } from '../../../lib/api';
-import { Users, Plus, ChevronRight, LayoutGrid, Loader2, AlertTriangle } from 'lucide-react';
+import { Users, Plus, LayoutGrid, Loader2, AlertTriangle } from 'lucide-react';
 
 export default function BatchesPage() {
   const [batches, setBatches] = useState<BatchDto[]>([]);

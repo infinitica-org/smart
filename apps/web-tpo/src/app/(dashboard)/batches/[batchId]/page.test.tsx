@@ -74,12 +74,12 @@ describe('BatchDetailPage', () => {
     vi.mocked(api.onboarding.listBatchMembers).mockResolvedValue([member]);
     render(<BatchDetailPage />);
 
-    expect(await screen.findByText('Fall 2026')).toBeDefined();
-    expect(screen.getByText(/1 members/)).toBeDefined();
-    expect(screen.getByText(/1 pending invites/)).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Fall 2026' })).toBeDefined();
+    expect(screen.getByText(/1 Members/)).toBeDefined();
+    expect(screen.getByText(/1 Pending Invites/)).toBeDefined();
     expect(screen.getByText('Ada Lovelace')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Resend' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Edit Details' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resend Invite' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Edit Batch' })).toBeDefined();
     expect(screen.getByText('Bulk candidate provisioning')).toBeDefined();
     expect(screen.getByText('wizard-batch:batch-1')).toBeDefined();
     expect(document.querySelector('input[accept=".xlsx"]')).toBeNull();
@@ -91,7 +91,7 @@ describe('BatchDetailPage', () => {
     vi.mocked(api.onboarding.getBatch).mockResolvedValue(batch);
     vi.mocked(api.onboarding.listBatchMembers).mockResolvedValue([member]);
     render(<BatchDetailPage />);
-    await screen.findByText('Fall 2026');
+    await screen.findByRole('heading', { name: 'Fall 2026' });
     expect(api.onboarding.getBatch).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete provisioning' }));
