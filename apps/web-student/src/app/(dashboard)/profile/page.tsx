@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronRight, User } from 'lucide-react';
 import { VerificationBadge } from '@smart/ui';
 import { PageHeader, Surface } from '@/components/dashboard/ConsoleChrome';
+import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
 import { DEFAULT_PROFILE, SKILL_CHIPS, skillStatusToBadge } from '@/lib/candidate-dashboard-data';
 
 /** Lightweight profile shell for nav continuity; skills declare is CN-T04. */
@@ -66,6 +67,10 @@ export default function ProfilePage() {
         <p className="mt-6 text-xs text-white/40">
           Full taxonomy picker and declare flow live on the CN-T04 skills section when merged.
         </p>
+      </Surface>
+
+      <Surface>
+        <ProjectSubmissionForm />
       </Surface>
     </div>
   );

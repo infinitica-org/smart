@@ -30,6 +30,21 @@ describe('CreateProjectRequestSchema', () => {
       outcome: 'Average wait time dropped in a 30-student pilot.',
     });
     expect(parsed.githubRepos).toEqual([]);
+    expect(parsed.githubUrl).toBeUndefined();
+  });
+
+  it('accepts an optional GitHub URL without picker repo ids', () => {
+    const parsed = CreateProjectRequestSchema.parse({
+      title: 'Campus bus tracker',
+      problem: 'Students cannot see live bus location on campus routes.',
+      approach: 'I used websockets and a small GPS ingest service.',
+      stack: 'TypeScript, Nest, Redis',
+      outcome: 'Average wait time dropped in a 30-student pilot.',
+      loomUrl: 'https://www.loom.com/share/abc',
+      githubUrl: 'https://github.com/alice/demo-api',
+    });
+    expect(parsed.githubUrl).toBe('https://github.com/alice/demo-api');
+    expect(parsed.githubRepos).toEqual([]);
   });
 
   it('rejects a one-line problem so the template is not a title dump', () => {

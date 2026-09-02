@@ -22,6 +22,7 @@ let mockSkillClaims: Array<{
   lockedUntil: string | null;
   lastAttemptId: string | null;
 }> = [];
+const mockProjects = new Map<string, Record<string, unknown>>();
 
 function mockStudentUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -310,6 +311,45 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     mockSkillClaims = [row, ...mockSkillClaims.filter((c) => c.skillCode !== row.skillCode)];
     return new Response(JSON.stringify(row), {
       status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/projects') && method === 'POST' && !url.includes('github')) {
+    const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    const projectId = crypto.randomUUID();
+    const row = {
+      projectId,
+      studentId: MOCK_USER_ID,
+      title: body.title,
+      problem: body.problem,
+      approach: body.approach,
+      stack: body.stack,
+      outcome: body.outcome,
+      loomUrl: body.loomUrl ?? null,
+      githubUrl: body.githubUrl ?? null,
+      status: 'SUBMITTED',
+      createdAt: new Date().toISOString(),
+      report: null,
+    };
+    mockProjects.set(projectId, row);
+    return new Response(JSON.stringify(row), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const projectGet = url.match(/\/projects\/([0-9a-f-]{36})/i);
+  if (projectGet && method === 'GET') {
+    const row = mockProjects.get(projectGet[1] ?? '');
+    if (!row) {
+      return new Response(JSON.stringify({ error: 'not_found', message: 'Project not found.' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(row), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   }

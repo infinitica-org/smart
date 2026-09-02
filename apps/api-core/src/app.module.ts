@@ -19,6 +19,7 @@ import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
 import { InstitutionsModule } from './modules/institutions/institutions.module.js';
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { PlacementModule } from './modules/placement/placement.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -63,6 +64,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     CertificateModule,
     MatchingModule,
     PlacementModule,
+    ProjectsModule,
     AnalyticsModule,
     WebhooksModule,
   ],

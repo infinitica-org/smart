@@ -62,6 +62,9 @@ export const queryKeys = {
     ['analytics', 'correlation', params] as const,
   growthReport: () => ['analytics', 'growth-report'] as const,
 
+  /* -------------------------------- projects ------------------------------ */
+  project: (projectId: string) => ['projects', projectId] as const,
+
   /* ------------------------------ platform ops ---------------------------- */
   platformHealth: () => ['admin', 'platform-health'] as const,
   aiHealth: () => ['admin', 'ai-health'] as const,

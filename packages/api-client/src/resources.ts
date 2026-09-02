@@ -2,6 +2,7 @@ import type {
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
+  CreateProjectRequest,
   DeclareSkillClaimRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
@@ -51,6 +52,7 @@ import {
   VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
+  ProjectDtoSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -492,6 +494,16 @@ export function placementApi(client: SmartApiClient) {
   };
 }
 
+export function projectsApi(client: SmartApiClient) {
+  return {
+    create: (body: CreateProjectRequest) =>
+      client.post(prefixed('/projects'), body, { schema: ProjectDtoSchema }),
+
+    get: (projectId: string) =>
+      client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+  };
+}
+
 export function systemApi(client: SmartApiClient) {
   return {
     health: () =>
@@ -511,6 +523,7 @@ export function createSmartApi(client: SmartApiClient) {
     certificates: certificateApi(client),
     placement: placementApi(client),
     onboarding: onboardingApi(client),
+    projects: projectsApi(client),
     system: systemApi(client),
   };
 }
