@@ -400,3 +400,28 @@ describe('SE-T02 skill interview contracts', () => {
     expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
   });
 });
+
+describe('SE-T03 project verification contracts', () => {
+  it('registers GitHub picker, submit, poll, and a separate project review queue', () => {
+    expect(ROUTES.find((entry) => entry.path === '/projects/github/status')).toMatchObject({
+      owner: 'Vishal V',
+      rateLimit: 'projects.github',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/projects')).toMatchObject({
+      method: 'POST',
+      owner: 'Vishal V',
+      rateLimit: 'projects.submit',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/admin/project-review-queue')).toMatchObject({
+      owner: 'Vishal Bharath R',
+      module: 'assessment',
+    });
+    expect(getRateLimitPolicy('evaluation.projectVerify').limit).toBe(8);
+  });
+
+  it('does not reuse smart.eval.completed for project scores', () => {
+    expect(SMART_TOPICS.projectVerifyCompleted).toBe('smart.project.verify.completed');
+    expect(getTopicSpec(SMART_TOPICS.projectVerifyCompleted).producerModule).toBe('evaluation');
+    expect(getTopicSpec(SMART_TOPICS.evalCompleted).purpose).toMatch(/certificate/i);
+  });
+});

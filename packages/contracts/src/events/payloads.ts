@@ -6,6 +6,7 @@ import {
   CertifiableTierSchema,
   IntegrityFlagSchema,
   LevelNumberSchema,
+  ProjectVerifyFlagSchema,
   TierSchema,
   TrackCodeSchema,
   UserRoleSchema,
@@ -282,6 +283,43 @@ export const RateLimitExceededEventSchema = envelopeSchema(
 export type RateLimitExceededEvent = z.infer<typeof RateLimitExceededEventSchema>;
 
 /* -------------------------------------------------------------------------- */
+/*                   project verify (VV snapshot / RM score)                   */
+/* -------------------------------------------------------------------------- */
+
+export const ProjectSubmittedDataSchema = z.object({
+  projectId: UuidSchema,
+  studentId: UuidSchema,
+});
+export const ProjectSubmittedEventSchema = envelopeSchema(
+  SMART_TOPICS.projectSubmitted,
+  ProjectSubmittedDataSchema,
+);
+export type ProjectSubmittedEvent = z.infer<typeof ProjectSubmittedEventSchema>;
+
+export const ProjectSnapshotReadyDataSchema = z.object({
+  projectId: UuidSchema,
+  snapshotVersion: z.number().int().positive(),
+});
+export const ProjectSnapshotReadyEventSchema = envelopeSchema(
+  SMART_TOPICS.projectSnapshotReady,
+  ProjectSnapshotReadyDataSchema,
+);
+export type ProjectSnapshotReadyEvent = z.infer<typeof ProjectSnapshotReadyEventSchema>;
+
+export const ProjectVerifyCompletedDataSchema = z.object({
+  projectId: UuidSchema,
+  score: ScoreSchema,
+  confidence: z.number().min(0).max(1),
+  routedToReview: z.boolean(),
+  flags: z.array(ProjectVerifyFlagSchema),
+});
+export const ProjectVerifyCompletedEventSchema = envelopeSchema(
+  SMART_TOPICS.projectVerifyCompleted,
+  ProjectVerifyCompletedDataSchema,
+);
+export type ProjectVerifyCompletedEvent = z.infer<typeof ProjectVerifyCompletedEventSchema>;
+
+/* -------------------------------------------------------------------------- */
 /*                              topic → schema map                            */
 /* -------------------------------------------------------------------------- */
 
@@ -302,6 +340,9 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.placementMatched]: PlacementMatchedEventSchema,
   [SMART_TOPICS.applicationStageChanged]: ApplicationStageChangedEventSchema,
   [SMART_TOPICS.rateLimitExceeded]: RateLimitExceededEventSchema,
+  [SMART_TOPICS.projectSubmitted]: ProjectSubmittedEventSchema,
+  [SMART_TOPICS.projectSnapshotReady]: ProjectSnapshotReadyEventSchema,
+  [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
 } as const;
 
 export type SmartEvent =
@@ -315,4 +356,7 @@ export type SmartEvent =
   | CertificateIssuedEvent
   | PlacementMatchedEvent
   | ApplicationStageChangedEvent
-  | RateLimitExceededEvent;
+  | RateLimitExceededEvent
+  | ProjectSubmittedEvent
+  | ProjectSnapshotReadyEvent
+  | ProjectVerifyCompletedEvent;
