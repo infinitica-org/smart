@@ -5,13 +5,16 @@ import {
   GithubRepoListDtoSchema,
   PROJECT_VERIFY_PROMPT_REF,
   ProjectGithubSnapshotSchema,
+  ProjectVerifyCompletedDataSchema,
   ProjectVerifyLlmOutputSchema,
   ResolveProjectReviewRequestSchema,
+  SMART_TOPICS,
   type ProjectDto,
   type ProjectGithubSnapshot,
   type ProjectReviewQueueItemDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   collectFlags,
@@ -37,6 +40,7 @@ export class ProjectVerifyService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AiGatewayService) private readonly gateway: AiGatewayService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   githubStatus() {
@@ -197,7 +201,21 @@ export class ProjectVerifyService {
       data: { status: routing.status },
       include: { report: true },
     });
-    return toProjectDto(updated);
+    const dto = toProjectDto(updated);
+    await this.outbox.enqueueEnvelope({
+      topic: SMART_TOPICS.projectVerifyCompleted,
+      partitionKey: dto.projectId,
+      eventType: SMART_TOPICS.projectVerifyCompleted,
+      source: 'evaluation',
+      data: ProjectVerifyCompletedDataSchema.parse({
+        projectId: dto.projectId,
+        score: dto.report?.score ?? score,
+        confidence,
+        routedToReview: routing.routedToReview,
+        flags,
+      }),
+    });
+    return dto;
   }
 
   async listReviewQueue(): Promise<ProjectReviewQueueItemDto[]> {

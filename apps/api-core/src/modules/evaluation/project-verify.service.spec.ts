@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PROJECT_VERIFY_PROMPT_REF } from '@smart/contracts';
+import { PROJECT_VERIFY_PROMPT_REF, SMART_TOPICS } from '@smart/contracts';
 import { ProjectVerifyService } from './project-verify.service.js';
 import type { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import type { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -92,11 +92,24 @@ describe('ProjectVerifyService', () => {
       findUnique: vi.fn().mockResolvedValue(projectRow()),
       update: vi.fn().mockResolvedValue(updated),
     });
-    const service = new ProjectVerifyService(prisma, { complete } as unknown as AiGatewayService);
+    const enqueueEnvelope = vi.fn().mockResolvedValue(undefined);
+    const service = new ProjectVerifyService(
+      prisma,
+      { complete } as unknown as AiGatewayService,
+      {
+        enqueueEnvelope,
+      } as never,
+    );
 
     const result = await service.verifyProject(projectId);
 
     expect(result.status).toBe('UNDER_REVIEW');
+    expect(enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: SMART_TOPICS.projectVerifyCompleted,
+        partitionKey: projectId,
+      }),
+    );
     expect(result.report?.routedToReview).toBe(true);
     expect(result.status).not.toBe('REJECTED');
     expect(complete.mock.calls[0]?.[0]).toMatchObject({
@@ -134,7 +147,13 @@ describe('ProjectVerifyService', () => {
       findUnique: vi.fn().mockResolvedValue(projectRow()),
       update: vi.fn().mockResolvedValue(updated),
     });
-    const service = new ProjectVerifyService(prisma, { complete } as unknown as AiGatewayService);
+    const service = new ProjectVerifyService(
+      prisma,
+      { complete } as unknown as AiGatewayService,
+      {
+        enqueueEnvelope: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
 
     const result = await service.verifyProject(projectId);
     expect(result.status).toBe('UNDER_REVIEW');
@@ -175,9 +194,11 @@ describe('ProjectVerifyService', () => {
         }),
       ),
     });
-    const service = new ProjectVerifyService(prisma, {
-      complete: vi.fn(),
-    } as unknown as AiGatewayService);
+    const service = new ProjectVerifyService(
+      prisma,
+      { complete: vi.fn() } as unknown as AiGatewayService,
+      { enqueueEnvelope: vi.fn() } as never,
+    );
     const resolved = await service.resolveReview(projectId, {
       resolution: 'REJECT',
       reason: 'Copied the README from a public tutorial.',
