@@ -11,10 +11,12 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  CompleteAttemptRequestSchema,
   DeclareSkillClaimRequestSchema,
   SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
+  type CompleteAttemptResponse,
   type NextItemDto,
   type SaveDraftResponse,
   type SkillClaimDto,
@@ -166,6 +168,32 @@ export class AssessmentController {
     }
     const dto = SaveDraftRequestSchema.parse(body);
     return this.service.saveDraft(user.sub, dto);
+  }
+
+  @Post('complete')
+  @ApiOperation({
+    summary:
+      'Finalise an attempt: mark-weighted scoring, and (with claimId) SE-T01 skill-claim settlement.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Attempt scored; claim state, if any, updated' })
+  @ApiResponse({ status: 403, description: 'Not your attempt/claim, or the claim blocks it' })
+  @ApiResponse({ status: 404, description: 'Attempt or claim not found' })
+  @ApiResponse({ status: 409, description: 'Attempt already finalised' })
+  async completeAttempt(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<CompleteAttemptResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to complete an assessment attempt',
+        statusCode: 403,
+      });
+    }
+    const dto = CompleteAttemptRequestSchema.parse(body);
+    return this.service.completeAttempt(user, dto);
   }
 
   /**

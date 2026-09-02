@@ -54,6 +54,7 @@
     "class-validator": "catalog:",
     "bullmq": "6.2.0",
     "dotenv": "catalog:",
+    "effect": "catalog:",
     "exceljs": "4.4.0",
     "fastify": "catalog:",
     "ioredis": "catalog:",
