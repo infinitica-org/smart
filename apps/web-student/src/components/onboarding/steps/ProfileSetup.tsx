@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Trash2, CheckCircle2, Plus } from 'lucide-react';
 import { CustomSelect } from '../../ui/CustomSelect';
-import { emptyOnboardingForm, loadOnboardingForm, saveOnboardingForm } from '@/lib/onboarding-form';
+import {
+  emptyOnboardingForm,
+  loadOnboardingForm,
+  saveOnboardingForm,
+  type OnboardingProfileForm,
+} from '@/lib/onboarding-form';
 
 interface ProfileSetupProps {
   onBack: () => void;
@@ -18,6 +23,10 @@ const TABS: { id: TabID; label: string }[] = [
   { id: 'preferences', label: 'Preferences' },
   { id: 'consent', label: 'Consent' },
 ];
+
+function tabAt(index: number): TabID | undefined {
+  return TABS[index]?.id;
+}
 
 const MONTHS = [
   'January',
@@ -60,7 +69,10 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
     setFormData(loadOnboardingForm());
   }, []);
 
-  const updateField = (field: string, value: any) => {
+  const updateField = <K extends keyof OnboardingProfileForm>(
+    field: K,
+    value: OnboardingProfileForm[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -94,7 +106,8 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
     }
 
     if (currentIndex < TABS.length - 1) {
-      setActiveTab(TABS[currentIndex + 1]!.id);
+      const nextTab = tabAt(currentIndex + 1);
+      if (nextTab) setActiveTab(nextTab);
       return;
     }
 
@@ -143,8 +156,9 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
 
   const handleBack = () => {
     const currentIndex = TABS.findIndex((t) => t.id === activeTab);
-    if (currentIndex > 0) {
-      setActiveTab(TABS[currentIndex - 1]!.id);
+    const previousTab = tabAt(currentIndex - 1);
+    if (previousTab) {
+      setActiveTab(previousTab);
     } else {
       onBack();
     }
@@ -252,13 +266,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
       <div className="flex flex-col ">
         <>
           {activeTab === 'profile' && (
-            <div
-              key="profile"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="profile">
               <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   1
@@ -343,13 +351,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
           )}
 
           {activeTab === 'phone' && (
-            <div
-              key="phone"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="phone">
               <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   2
@@ -388,13 +390,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
           )}
 
           {activeTab === 'linkedin' && (
-            <div
-              key="linkedin"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="linkedin">
               <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   3
@@ -422,13 +418,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
           )}
 
           {activeTab === 'languages' && (
-            <div
-              key="languages"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="languages">
               <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   4
@@ -492,13 +482,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
           )}
 
           {activeTab === 'preferences' && (
-            <div
-              key="preferences"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="preferences">
               <h3 className="text-base font-bold text-white mb-4">
                 Select the type of projects you're interested in
               </h3>
@@ -587,13 +571,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
             </div>
           )}
           {activeTab === 'consent' && (
-            <div
-              key="consent"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <div key="consent">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   5
@@ -603,9 +581,7 @@ export default function ProfileSetup({ onBack, onContinue }: ProfileSetupProps) 
               </h3>
 
               <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm max-w-xl">
-                <h4 className="text-white font-semibold mb-3">
-                  DPDP Act Acknowledgment
-                </h4>
+                <h4 className="text-white font-semibold mb-3">DPDP Act Acknowledgment</h4>
                 <p className="text-sm text-white/45 mb-6 leading-relaxed">
                   In accordance with the Digital Personal Data Protection (DPDP) Act, we require
                   your explicit consent to collect, store, and process your personal information.
