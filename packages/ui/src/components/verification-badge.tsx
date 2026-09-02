@@ -5,6 +5,7 @@ import { cn } from '../lib/cn';
 export type VerificationState =
   | 'DECLARED'
   | 'IN_PROGRESS'
+  | 'IN_VERIFICATION'
   | 'PENDING_REVIEW'
   | 'LOCKED'
   | 'VERIFIED'
@@ -35,6 +36,12 @@ const STATE_CONFIGS: Record<string, StateStyle> = {
     label: 'In Progress',
     classNameSolid: 'bg-info text-[#070707] border-transparent',
     classNameOutline: 'bg-info/10 text-info border-info/30',
+    icon: Clock,
+  },
+  IN_VERIFICATION: {
+    label: 'In verification',
+    classNameSolid: 'bg-warning text-[#070707] border-transparent',
+    classNameOutline: 'bg-warning/10 text-warning border-warning/30',
     icon: Clock,
   },
   // Alias for IN_PROGRESS

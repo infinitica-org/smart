@@ -27,6 +27,13 @@ describe('VerificationBadge', () => {
     expect(badge.className).toContain('bg-info');
   });
 
+  it('renders IN_VERIFICATION state correctly', () => {
+    render(<VerificationBadge status="IN_VERIFICATION" />);
+    const badge = screen.getByRole('status');
+    expect(badge.textContent).toBe('In verification');
+    expect(badge.className).toContain('bg-warning');
+  });
+
   it('renders PENDING_REVIEW state correctly', () => {
     render(<VerificationBadge status="PENDING_REVIEW" />);
     const badge = screen.getByRole('status');
