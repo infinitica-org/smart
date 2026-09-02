@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  CandidateViewReasonCodeSchema,
+  CompanyModeSchema,
   InstitutionListStatusSchema,
   PlanCodeSchema,
   StudentInviteFilterSchema,
@@ -286,3 +288,179 @@ export const SendBatchInvitesResultDtoSchema = z.object({
   enqueued: z.number().int().nonnegative(),
 });
 export type SendBatchInvitesResultDto = z.infer<typeof SendBatchInvitesResultDtoSchema>;
+
+export const AuditLogDtoSchema = z.object({
+  auditLogId: UuidSchema,
+  actorId: UuidSchema.nullable(),
+  actorEmail: EmailSchema.nullable(),
+  action: z.string(),
+  resourceType: z.string(),
+  resourceId: z.string().nullable(),
+  reasonCode: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type AuditLogDto = z.infer<typeof AuditLogDtoSchema>;
+
+export const ListAuditLogsQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  action: z.string().trim().max(80).optional(),
+  resourceType: z.string().trim().max(40).optional(),
+  resourceId: z.string().trim().max(80).optional(),
+  actorId: UuidSchema.optional(),
+});
+export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
+
+export const AdminDashboardDtoSchema = z.object({
+  institutions: z.object({
+    total: z.number().int().nonnegative(),
+    active: z.number().int().nonnegative(),
+    held: z.number().int().nonnegative(),
+    deactivated: z.number().int().nonnegative(),
+  }),
+  companies: z.object({
+    total: z.number().int().nonnegative(),
+    pendingVerification: z.number().int().nonnegative(),
+  }),
+  planMix: z.array(z.object({ code: PlanCodeSchema, count: z.number().int().nonnegative() })),
+  openHolds: z.object({
+    institutions: z.number().int().nonnegative(),
+    students: z.number().int().nonnegative(),
+  }),
+  pendingVerifications: z.number().int().nonnegative(),
+  flaggedAttempts: z.number().int().nonnegative(),
+  recentAudit: z.array(AuditLogDtoSchema),
+});
+export type AdminDashboardDto = z.infer<typeof AdminDashboardDtoSchema>;
+
+export const ViewCandidateRequestSchema = z.object({
+  reasonCode: CandidateViewReasonCodeSchema,
+  reason: z.string().trim().min(8).max(500),
+});
+export type ViewCandidateRequest = z.infer<typeof ViewCandidateRequestSchema>;
+
+export const CandidateBriefDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  institutionId: UuidSchema,
+  institutionName: z.string(),
+  inviteStatus: InvitationStatusSchema.nullable(),
+  heldAt: IsoDateTimeSchema.nullable(),
+  heldReason: z.string().nullable(),
+  skillClaimCount: z.number().int().nonnegative(),
+  verifiedSkillCount: z.number().int().nonnegative(),
+  projectCount: z.number().int().nonnegative(),
+  viewedAt: IsoDateTimeSchema,
+});
+export type CandidateBriefDto = z.infer<typeof CandidateBriefDtoSchema>;
+
+export const UpdatePlanEntitlementsRequestSchema = z.object({
+  entitlements: z.array(
+    z.object({
+      key: z.string().min(2).max(80),
+      enabled: z.boolean(),
+    }),
+  ),
+});
+export type UpdatePlanEntitlementsRequest = z.infer<typeof UpdatePlanEntitlementsRequestSchema>;
+
+export const SetFeatureFlagOverrideRequestSchema = z.object({
+  key: z.string().min(2).max(80),
+  enabled: z.boolean(),
+});
+export type SetFeatureFlagOverrideRequest = z.infer<typeof SetFeatureFlagOverrideRequestSchema>;
+
+export const TenantEntitlementsDtoSchema = z.object({
+  planCode: PlanCodeSchema.nullable(),
+  flags: z.array(PlanEntitlementDtoSchema),
+});
+export type TenantEntitlementsDto = z.infer<typeof TenantEntitlementsDtoSchema>;
+
+export const CreateCompanyRequestSchema = z.object({
+  name: z.string().trim().min(2).max(200),
+  /** Industry taxonomy domain (SA-09), e.g. Software/IT — not an email hostname. */
+  domain: z.string().trim().min(1).max(80).optional(),
+  website: z.string().trim().max(255).optional(),
+  sector: z.string().trim().max(80).optional(),
+  mode: CompanyModeSchema.optional(),
+  sizeBand: z.string().trim().max(40).optional(),
+  location: z.string().trim().max(120).optional(),
+});
+export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
+
+export const UpdateCompanyRequestSchema = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  domain: z.string().trim().min(1).max(80).nullable().optional(),
+  website: z.string().trim().max(255).nullable().optional(),
+  planCode: PlanCodeSchema.optional(),
+  sector: z.string().trim().max(80).nullable().optional(),
+  mode: CompanyModeSchema.nullable().optional(),
+  sizeBand: z.string().trim().max(40).nullable().optional(),
+  location: z.string().trim().max(120).nullable().optional(),
+});
+export type UpdateCompanyRequest = z.infer<typeof UpdateCompanyRequestSchema>;
+
+export const CompanyDtoSchema = z.object({
+  companyId: UuidSchema,
+  name: z.string(),
+  /** Industry taxonomy domain (SA-09), not an email hostname. */
+  domain: z.string().nullable(),
+  website: z.string().nullable(),
+  planCode: PlanCodeSchema,
+  sector: z.string().nullable(),
+  mode: CompanyModeSchema.nullable(),
+  sizeBand: z.string().nullable(),
+  location: z.string().nullable(),
+  verificationStatus: TenantVerificationStatusSchema,
+  verificationReason: z.string().nullable(),
+  heldAt: IsoDateTimeSchema.nullable(),
+  deactivatedAt: IsoDateTimeSchema.nullable(),
+  userCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+});
+export type CompanyDto = z.infer<typeof CompanyDtoSchema>;
+
+export const ListCompaniesQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  planCode: PlanCodeSchema.optional(),
+  status: InstitutionListStatusSchema.optional(),
+  verificationStatus: TenantVerificationStatusSchema.optional(),
+});
+export type ListCompaniesQuery = z.infer<typeof ListCompaniesQuerySchema>;
+
+export const VerificationQueueItemDtoSchema = z.object({
+  tenantType: z.enum(['institution', 'company']),
+  tenantId: UuidSchema,
+  name: z.string(),
+  domain: z.string().nullable(),
+  verificationStatus: TenantVerificationStatusSchema,
+  verificationReason: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type VerificationQueueItemDto = z.infer<typeof VerificationQueueItemDtoSchema>;
+
+export const ResolveVerificationRequestSchema = z.object({
+  tenantType: z.enum(['institution', 'company']),
+  decision: z.enum(['APPROVED', 'REJECTED']),
+  reason: z.string().trim().min(8).max(500),
+});
+export type ResolveVerificationRequest = z.infer<typeof ResolveVerificationRequestSchema>;
+
+export const IntegrityQueueItemDtoSchema = z.object({
+  attemptId: UuidSchema,
+  userId: UuidSchema,
+  studentName: z.string(),
+  studentEmail: EmailSchema,
+  integrityFlag: z.string(),
+  status: z.string(),
+  startedAt: IsoDateTimeSchema,
+  completedAt: IsoDateTimeSchema.nullable(),
+});
+export type IntegrityQueueItemDto = z.infer<typeof IntegrityQueueItemDtoSchema>;
+
+export const ResolveIntegrityRequestSchema = z.object({
+  resolution: z.enum(['CLEAR', 'VOID']),
+  reason: z.string().trim().min(8).max(500),
+});
+export type ResolveIntegrityRequest = z.infer<typeof ResolveIntegrityRequestSchema>;

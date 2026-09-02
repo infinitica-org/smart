@@ -36,6 +36,7 @@ export class SessionHoldGuard implements CanActivate {
         role: true,
         heldAt: true,
         institution: { select: { heldAt: true, deactivatedAt: true } },
+        company: { select: { heldAt: true, deactivatedAt: true } },
       },
     });
     if (!row) return true;

@@ -1,46 +1,26 @@
 /**
  * SMART design tokens — Tailwind CSS 4 (CSS-first configuration).
  *
- * Marketing schema (dark is the product default):
- *   Headings  — Cabinet Grotesk (tight tracking, heavy weight)
- *   Body      — Axiforma Light / Regular
- *   Canvas    — #070707
- *   Ink       — #f4f4f4
- *   Accent    — #00fad0
- *   Deep teal — #004c63
+ * Soft / minimal schema, Airbnb-influenced:
+ *   Headings  — Cabinet Grotesk
+ *   Body      — Axiforma
+ *   Canvas    — warm off-white (light) / soft charcoal (dark) — never pure black
+ *   Ink       — #1c1c1e
+ *   Accent    — single desaturated teal, used sparingly (no gradients, no neon)
  *
  * Every SMART surface imports this file via `@smart/ui/styles.css`.
  * Certification tier colours stay product identity (Gold / Silver / Bronze)
  * and must render identically across portals.
  *
- * Owner: Satheswaran V (design system). Token additions need architect review.
+ * Semantic shadcn tokens (`background`, `card`, `primary`, `sidebar`, …) live
+ * here so every app can use `@smart/ui/button` and friends without copying CSS.
+ * Portals that set `class="dark"` on `<html>` keep the charcoal canvas; portals
+ * that omit it (or set `class="light"`) get the warm paper canvas.
  */
 
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 @import 'tailwindcss';
 
-/*
- * Axiforma is licensed. Add Axiforma-Light.woff2 / Axiforma-Regular.woff2 under
- * packages/config-tailwind/fonts/ and point @font-face src at those files.
- * Until then, local() installs are used; Cabinet Grotesk is the webfont fallback.
- */
-@font-face {
-  font-family: 'Axiforma';
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: local('Axiforma Light'), local('Axiforma-Light');
-}
-
-@font-face {
-  font-family: 'Axiforma';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('Axiforma'), local('Axiforma Regular'), local('Axiforma-Regular');
-}
-
-/* Monorepo sources — relative to this file (packages/config-tailwind). */
 @source '../ui/src/**/*.{ts,tsx}';
 @source '../../apps/web-student/src/**/*.{ts,tsx}';
 @source '../../apps/web-tpo/src/**/*.{ts,tsx}';
@@ -48,104 +28,218 @@
 @source '../../apps/web-verify/src/**/*.{ts,tsx}';
 @source '../../apps/web-auth/src/**/*.{ts,tsx}';
 
-/* Class-based dark mode so the product stays dark regardless of OS theme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* ---------------------------------------------------------------- brand */
-  --color-ink: #070707;
-  --color-paper: #f4f4f4;
-  --color-accent: #00fad0;
-  --color-accent-deep: #004c63;
-
-  --color-brand-50: #e6fff9;
-  --color-brand-100: #b8fff0;
-  --color-brand-200: #7affe4;
-  --color-brand-300: #3dfad8;
-  --color-brand-400: #14fad2;
-  --color-brand-500: #00fad0;
-  --color-brand-600: #00c4b0;
-  --color-brand-700: #004c63;
-  --color-brand-800: #003848;
-  --color-brand-900: #002430;
-  --color-brand-950: #00141c;
-
-  /* --------------------------------------------------- certification tiers */
-  --color-tier-gold: oklch(0.79 0.15 85);
-  --color-tier-gold-fg: oklch(0.28 0.06 85);
-  --color-tier-silver: oklch(0.82 0.02 250);
-  --color-tier-silver-fg: oklch(0.32 0.01 250);
-  --color-tier-bronze: oklch(0.68 0.11 45);
-  --color-tier-bronze-fg: oklch(0.26 0.05 45);
-  --color-tier-below: oklch(0.6 0.02 250);
-  --color-tier-below-fg: oklch(0.98 0 0);
-
-  /* ------------------------------------------------------------- semantic */
-  --color-success: oklch(0.68 0.16 150);
-  --color-warning: oklch(0.78 0.15 75);
-  --color-danger: oklch(0.6 0.21 25);
-  --color-info: oklch(0.68 0.14 235);
-
-  /* ------------------------------------------------------ assessment state */
-  --color-level-locked: #3a3a3a;
-  --color-level-active: #00fad0;
-  --color-level-cleared: oklch(0.68 0.16 150);
-
-  /* ------------------------------------------------------------ typography */
+  --color-ink: #1c1c1e;
+  --color-paper: #faf9f7;
+  --color-accent: #2fbfae;
+  --color-accent-deep: #0f5c63;
+  --color-brand-50: #eefaf7;
+  --color-brand-100: #d7f3ed;
+  --color-brand-200: #b2e8dd;
+  --color-brand-300: #85d9c9;
+  --color-brand-400: #58c7b2;
+  --color-brand-500: #2fbfae;
+  --color-brand-600: #229c8d;
+  --color-brand-700: #1a7b72;
+  --color-brand-800: #145a55;
+  --color-brand-900: #0f3f3c;
+  --color-brand-950: #092726;
+  --color-tier-gold: oklch(0.83 0.1 85);
+  --color-tier-gold-fg: oklch(0.32 0.05 85);
+  --color-tier-silver: oklch(0.86 0.015 250);
+  --color-tier-silver-fg: oklch(0.34 0.01 250);
+  --color-tier-bronze: oklch(0.72 0.08 45);
+  --color-tier-bronze-fg: oklch(0.28 0.04 45);
+  --color-tier-below: oklch(0.75 0.01 250);
+  --color-tier-below-fg: oklch(0.25 0.01 250);
+  --color-success: oklch(0.75 0.11 150);
+  --color-warning: oklch(0.82 0.11 80);
+  --color-danger: oklch(0.68 0.15 25);
+  --color-info: oklch(0.75 0.1 235);
+  --color-level-locked: #e4e2dd;
+  --color-level-active: #2fbfae;
+  --color-level-cleared: oklch(0.75 0.11 150);
   --font-heading: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Axiforma', 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
-
-  /* ----------------------------------------------------------------- misc */
-  --radius-card: 0.75rem;
+  --radius-card: 1.25rem;
   --radius-badge: 9999px;
-  --shadow-card: 0 1px 3px rgb(7 7 7 / 0.45), 0 0 0 1px rgb(244 244 244 / 0.04);
-  --background-image-brand-gradient: linear-gradient(
-    135deg,
-    #00fad0 0%,
-    #004c63 52%,
-    #070707 100%
-  );
+  --shadow-card: 0 2px 8px rgb(28 28 30 / 0.06), 0 1px 2px rgb(28 28 30 / 0.04);
+}
+
+@theme inline {
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2rem;
+  --radius-4xl: 2.5rem;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+ * Light is the CSS default (shadcn `:root`). Dark portals keep `class="dark"`
+ * on `<html>` (see SMART_HTML_CLASS) so they still render the charcoal canvas.
+ */
+:root,
+.light {
+  --brand-ink: #1c1c1e;
+  --brand-paper: #faf9f7;
+  --brand-teal: #2fbfae;
+  --brand-teal-deep: #0f5c63;
+  --brand-gray-100: #f1efec;
+  --brand-gray-200: #e4e2dd;
+  --brand-gray-300: #cfccc6;
+  --brand-gray-600: #726f6a;
+
+  --radius: 1.25rem;
+  --background: var(--brand-paper);
+  --foreground: var(--brand-ink);
+  --card: #ffffff;
+  --card-foreground: var(--brand-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-teal);
+  --primary-foreground: #ffffff;
+  --secondary: var(--brand-gray-100);
+  --secondary-foreground: var(--brand-ink);
+  --muted: var(--brand-gray-100);
+  --muted-foreground: var(--brand-gray-600);
+  --accent: var(--brand-teal);
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.63 0.19 25);
+  --border: var(--brand-gray-200);
+  --input: var(--brand-gray-100);
+  --ring: var(--brand-teal);
+  --chart-1: var(--brand-teal);
+  --chart-2: var(--brand-teal-deep);
+  --chart-3: var(--brand-gray-600);
+  --chart-4: var(--brand-gray-200);
+  --chart-5: #0f5c63;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--brand-teal);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--brand-gray-100);
+  --sidebar-accent-foreground: var(--brand-teal-deep);
+  --sidebar-border: var(--brand-gray-200);
+  --sidebar-ring: var(--brand-teal);
+
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --surface-border: var(--border);
+  --text-primary: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --accent-deep: var(--brand-teal-deep);
+  --radius-card: 1.5rem;
+  --shadow-card: 0 2px 10px rgb(28 28 30 / 0.05), 0 1px 2px rgb(28 28 30 / 0.04);
+  color-scheme: light;
+}
+
+.dark {
+  --brand-ink: #1c1c1e;
+  --brand-paper: #faf9f7;
+  --brand-teal: #2fbfae;
+  --brand-teal-deep: #0f5c63;
+  --brand-gray-100: #f1efec;
+  --brand-gray-200: #e4e2dd;
+  --brand-gray-300: #cfccc6;
+  --brand-gray-600: #726f6a;
+
+  --radius: 1.25rem;
+  --background: #17181a;
+  --foreground: #faf9f7;
+  --card: #1f2022;
+  --card-foreground: #faf9f7;
+  --popover: #1f2022;
+  --popover-foreground: #faf9f7;
+  --primary: var(--brand-teal);
+  --primary-foreground: #0f1211;
+  --secondary: #232426;
+  --secondary-foreground: #faf9f7;
+  --muted: #232426;
+  --muted-foreground: rgb(250 249 247 / 0.55);
+  --accent: var(--brand-teal);
+  --accent-foreground: #0f1211;
+  --destructive: oklch(0.7 0.17 25);
+  --border: rgb(250 249 247 / 0.1);
+  --input: #232426;
+  --ring: var(--brand-teal);
+  --chart-1: var(--brand-teal);
+  --chart-2: #58c7b2;
+  --chart-3: rgb(250 249 247 / 0.55);
+  --chart-4: #2a2b2d;
+  --chart-5: var(--brand-teal-deep);
+  --sidebar: #1a1b1d;
+  --sidebar-foreground: #faf9f7;
+  --sidebar-primary: var(--brand-teal);
+  --sidebar-primary-foreground: #0f1211;
+  --sidebar-accent: #232426;
+  --sidebar-accent-foreground: var(--brand-teal);
+  --sidebar-border: rgb(250 249 247 / 0.08);
+  --sidebar-ring: var(--brand-teal);
+
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --surface-border: var(--border);
+  --text-primary: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --accent-deep: var(--brand-teal-deep);
+  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.25), 0 1px 2px rgb(0 0 0 / 0.2);
+  color-scheme: dark;
 }
 
 @layer base {
-  :root,
-  .dark {
-    --surface: #070707;
-    --surface-muted: #101010;
-    --surface-border: rgb(244 244 244 / 0.14);
-    --text-primary: #f4f4f4;
-    --text-muted: rgb(244 244 244 / 0.62);
-    --accent: #00fad0;
-    --accent-deep: #004c63;
-    color-scheme: dark;
-  }
-
-  .light {
-    --surface: #f4f4f4;
-    --surface-muted: #ececec;
-    --surface-border: rgb(7 7 7 / 0.12);
-    --text-primary: #070707;
-    --text-muted: rgb(7 7 7 / 0.58);
-    --accent: #00fad0;
-    --accent-deep: #004c63;
-    --shadow-card: 0 1px 3px rgb(7 7 7 / 0.08), 0 1px 2px rgb(7 7 7 / 0.06);
-    color-scheme: light;
-  }
-
   html {
+    color-scheme: light;
+  }
+
+  html.dark {
     color-scheme: dark;
   }
 
-  html.light {
-    color-scheme: light;
+  * {
+    @apply border-border;
   }
 
   body {
     background-color: var(--surface);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
     letter-spacing: 0;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -157,17 +251,18 @@
   h3,
   h4,
   h5,
-  h6 {
+  h6,
+  .font-heading {
     font-family: var(--font-heading);
-    font-weight: 800;
-    letter-spacing: -0.045em;
-    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
     color: var(--text-primary);
   }
 
   p {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
   }
 
   hr {
@@ -175,8 +270,10 @@
     border-top: 1px solid var(--surface-border);
   }
 
-  /* The assessment player is used under exam conditions — respect reduced
-     motion so animation never distracts a candidate under time pressure. */
+  select {
+    @apply h-10 rounded-xl border border-border bg-muted px-3 text-sm text-foreground outline-none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -186,9 +283,15 @@
     }
   }
 
-  /* WCAG 2.1 AA: a visible focus ring is mandatory on the player (TEAM.md §2.3). */
   :focus-visible {
     outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .surface-panel {
+    @apply rounded-3xl border border-border bg-card text-card-foreground;
+    box-shadow: var(--shadow-card);
   }
 }

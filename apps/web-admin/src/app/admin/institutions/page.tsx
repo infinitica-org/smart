@@ -1,11 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import type { InstitutionDto, InstitutionListStatus, PlanCode } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
-import { api } from '../../../lib/api';
+import { Filter, GraduationCap, Plus } from 'lucide-react';
+import { Button } from '@smart/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+import { PageHeader } from '@/components/page-header';
+import {
+  AdminInput,
+  DataTable,
+  EmptyState,
+  Field,
+  FilterBar,
+  FormActions,
+  FormGrid,
+  InlineAlert,
+  NativeSelect,
+  PageStack,
+  StatusBadge,
+  TableCell,
+  TableRow,
+  controlButtonClassName,
+} from '@/components/admin-ui';
+import { api } from '@/lib/api';
 
 function formatApiError(error: unknown, fallback: string): string {
   if (isSmartApiError(error) && error.details.length > 0) {
@@ -44,7 +63,7 @@ export default function InstitutionsPage() {
     load().catch((err) => setError(formatApiError(err, 'Failed to load institutions.')));
   }, []);
 
-  async function onCreate(event: React.FormEvent) {
+  async function onCreate(event: FormEvent) {
     event.preventDefault();
     setError(null);
     try {
@@ -61,109 +80,132 @@ export default function InstitutionsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <PageStack>
+      <PageHeader
+        icon={GraduationCap}
+        title="Institutions"
+        description="Create, search, and open a tenant to manage students and access."
+      />
+      {error ? <InlineAlert tone="danger" title={error} /> : null}
       <Card>
         <CardHeader>
-          <CardTitle>Institutions</CardTitle>
-          <CardDescription>
-            Create, search, and open a tenant to manage students and access.
-          </CardDescription>
+          <CardTitle>Create institution</CardTitle>
+          <CardDescription>Name and email domain for the new tenant.</CardDescription>
         </CardHeader>
-        <form onSubmit={onCreate} className="px-6 pb-6 grid gap-3 max-w-lg">
-          {error ? <Alert tone="danger" title={error} /> : null}
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Input
-            label="Domain"
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder="psgtech.ac.in or localhost"
-            required
-          />
-          <Button type="submit">Create institution</Button>
-        </form>
+        <CardContent>
+          <form onSubmit={onCreate}>
+            <FormGrid>
+              <Field label="Name">
+                <AdminInput value={name} onChange={(e) => setName(e.target.value)} required />
+              </Field>
+              <Field label="Domain">
+                <AdminInput
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder="psgtech.ac.in or localhost"
+                  required
+                />
+              </Field>
+              <FormActions>
+                <Button type="submit" className={controlButtonClassName}>
+                  <Plus data-icon="inline-start" />
+                  Create institution
+                </Button>
+              </FormActions>
+            </FormGrid>
+          </form>
+        </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="min-w-48 flex-1">
-          <Input
-            label="Search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Name or domain"
-          />
-        </div>
-        <label className="grid gap-1 text-sm">
-          <span className="text-[var(--text-muted)]">Plan</span>
-          <select
-            className="h-10 rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] px-3"
-            value={planCode}
-            onChange={(e) => setPlanCode(e.target.value as PlanCode | '')}
-          >
-            <option value="">All plans</option>
-            <option value="FREE">Free</option>
-            <option value="BASIC">Basic</option>
-            <option value="PRO">Pro</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-[var(--text-muted)]">Status</span>
-          <select
-            className="h-10 rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] px-3"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as InstitutionListStatus | '')}
-          >
-            <option value="">Active + on hold</option>
-            <option value="ACTIVE">Active</option>
-            <option value="HELD">On hold</option>
-            <option value="DEACTIVATED">Deactivated</option>
-          </select>
-        </label>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            setError(null);
-            load().catch((err) => setError(formatApiError(err, 'Failed to load institutions.')));
-          }}
-        >
-          Apply filters
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Directory</CardTitle>
+          <CardDescription>Filter by name, plan, or access status.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FilterBar>
+            <Field label="Search">
+              <AdminInput
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Name or domain"
+              />
+            </Field>
+            <Field label="Plan">
+              <NativeSelect
+                value={planCode}
+                onChange={(e) => setPlanCode(e.target.value as PlanCode | '')}
+              >
+                <option value="">All plans</option>
+                <option value="FREE">Free</option>
+                <option value="BASIC">Basic</option>
+                <option value="PRO">Pro</option>
+              </NativeSelect>
+            </Field>
+            <Field label="Status">
+              <NativeSelect
+                value={status}
+                onChange={(e) => setStatus(e.target.value as InstitutionListStatus | '')}
+              >
+                <option value="">Active + on hold</option>
+                <option value="ACTIVE">Active</option>
+                <option value="HELD">On hold</option>
+                <option value="DEACTIVATED">Deactivated</option>
+              </NativeSelect>
+            </Field>
+            <Button
+              type="button"
+              variant="outline"
+              className={controlButtonClassName}
+              onClick={() => {
+                setError(null);
+                load().catch((err) =>
+                  setError(formatApiError(err, 'Failed to load institutions.')),
+                );
+              }}
+            >
+              <Filter data-icon="inline-start" />
+              Apply filters
+            </Button>
+          </FilterBar>
+        </CardContent>
+      </Card>
 
       {institutions.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">No institutions match these filters.</p>
+        <EmptyState icon={GraduationCap}>No institutions match these filters.</EmptyState>
       ) : (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="py-2">Name</th>
-              <th className="py-2">Domain</th>
-              <th className="py-2">Plan</th>
-              <th className="py-2">Students</th>
-              <th className="py-2">Pending invites</th>
-              <th className="py-2">Status</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {institutions.map((inst) => (
-              <tr key={inst.institutionId} className="border-b">
-                <td className="py-2">{inst.name}</td>
-                <td className="py-2">{inst.domain}</td>
-                <td className="py-2">{inst.planCode}</td>
-                <td className="py-2">{inst.studentCount}</td>
-                <td className="py-2">{inst.invitePendingCount}</td>
-                <td className="py-2">{statusLabel(inst)}</td>
-                <td className="py-2">
-                  <Link href={`/admin/institutions/${inst.institutionId}`} className="underline">
-                    Manage
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          headers={['Name', 'Domain', 'Plan', 'Students', 'Pending invites', 'Status', '']}
+        >
+          {institutions.map((inst) => (
+            <TableRow key={inst.institutionId}>
+              <TableCell className="font-medium">{inst.name}</TableCell>
+              <TableCell>{inst.domain}</TableCell>
+              <TableCell>
+                <BadgeLike>{inst.planCode}</BadgeLike>
+              </TableCell>
+              <TableCell>{inst.studentCount}</TableCell>
+              <TableCell>{inst.invitePendingCount}</TableCell>
+              <TableCell>
+                <StatusBadge status={statusLabel(inst)} />
+              </TableCell>
+              <TableCell>
+                <Button variant="link" className="px-0" asChild>
+                  <Link href={`/admin/institutions/${inst.institutionId}`}>Manage</Link>
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </DataTable>
       )}
-    </div>
+    </PageStack>
+  );
+}
+
+function BadgeLike({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+      {children}
+    </span>
   );
 }

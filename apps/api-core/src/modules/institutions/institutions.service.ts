@@ -23,14 +23,24 @@ import type {
   InstitutionDto,
   InstitutionStudentDto,
   InviteUserRequest,
+  ListAuditLogsQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
   SendBatchInvitesResultDto,
   SubscriptionPlanDto,
   TenantActionReason,
+  TenantEntitlementsDto,
   UpdateBatchRequest,
   UpdateInstitutionRequest,
+  UpdatePlanEntitlementsRequest,
+  ViewCandidateRequest,
+  CandidateBriefDto,
+  AdminDashboardDto,
+  AuditLogDto,
   PlanCode,
+  SetFeatureFlagOverrideRequest,
+  ResolveVerificationRequest,
+  VerificationQueueItemDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
@@ -162,9 +172,14 @@ export class InstitutionsService {
     }
     await this.prisma.institution.update({ where: { id: institutionId }, data });
     if (body.planCode) {
-      await this.writeAudit(actorId, 'institution.plan_changed', institutionId, body.planCode, {
-        planCode: body.planCode,
-      });
+      await this.writeAudit(
+        actorId,
+        'institution.plan_changed',
+        'institution',
+        institutionId,
+        body.planCode,
+        { planCode: body.planCode },
+      );
     }
     return this.getInstitution(institutionId);
   }
@@ -179,7 +194,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { heldAt: new Date() },
     });
-    await this.writeAudit(actorId, 'institution.held', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.held',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -193,7 +215,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { heldAt: null },
     });
-    await this.writeAudit(actorId, 'institution.hold_released', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.hold_released',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -207,7 +236,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { deactivatedAt: new Date() },
     });
-    await this.writeAudit(actorId, 'institution.deactivated', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.deactivated',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -221,7 +257,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { deactivatedAt: null, heldAt: null },
     });
-    await this.writeAudit(actorId, 'institution.restored', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.restored',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -331,6 +374,360 @@ export class InstitutionsService {
     }));
   }
 
+  async updatePlanEntitlements(
+    planId: string,
+    body: UpdatePlanEntitlementsRequest,
+    actorId: string,
+  ): Promise<SubscriptionPlanDto> {
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+      include: { entitlements: { include: { featureFlag: true } } },
+    });
+    if (!plan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    for (const item of body.entitlements) {
+      const flag = await this.prisma.featureFlag.findUnique({ where: { key: item.key } });
+      if (!flag) continue;
+      await this.prisma.planEntitlement.upsert({
+        where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
+        create: { planId: plan.id, featureFlagId: flag.id, enabled: item.enabled },
+        update: { enabled: item.enabled },
+      });
+    }
+    await this.writeAudit(actorId, 'plan.entitlements_updated', 'plan', planId, 'plan matrix', {
+      entitlements: body.entitlements,
+    });
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
+  }
+
+  async setInstitutionFlagOverride(
+    institutionId: string,
+    body: SetFeatureFlagOverrideRequest,
+    actorId: string,
+  ): Promise<TenantEntitlementsDto> {
+    await this.requireInstitution(institutionId);
+    const flag = await this.prisma.featureFlag.findUnique({ where: { key: body.key } });
+    if (!flag) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Feature flag not found.',
+        statusCode: 404,
+      });
+    }
+    const existing = await this.prisma.featureFlagOverride.findFirst({
+      where: { institutionId, featureFlagId: flag.id },
+    });
+    if (existing) {
+      await this.prisma.featureFlagOverride.update({
+        where: { id: existing.id },
+        data: { enabled: body.enabled },
+      });
+    } else {
+      await this.prisma.featureFlagOverride.create({
+        data: { institutionId, featureFlagId: flag.id, enabled: body.enabled },
+      });
+    }
+    await this.writeAudit(
+      actorId,
+      'institution.flag_override',
+      'institution',
+      institutionId,
+      body.key,
+      {
+        key: body.key,
+        enabled: body.enabled,
+      },
+    );
+    return this.resolveInstitutionEntitlements(institutionId);
+  }
+
+  async resolveInstitutionEntitlements(institutionId: string): Promise<TenantEntitlementsDto> {
+    const institution = await this.requireInstitution(institutionId);
+    const flags = await this.prisma.featureFlag.findMany({
+      include: { entitlements: true, overrides: true },
+      orderBy: { key: 'asc' },
+    });
+    return {
+      planCode: institution.plan.code,
+      flags: flags.map((flag) => {
+        const override = flag.overrides.find((row) => row.institutionId === institutionId);
+        const entitlement = flag.entitlements.find((row) => row.planId === institution.planId);
+        return {
+          key: flag.key,
+          name: flag.name,
+          enabled: override ? override.enabled : (entitlement?.enabled ?? false),
+        };
+      }),
+    };
+  }
+
+  async assertInstitutionFlag(institutionId: string, key: string): Promise<void> {
+    const resolved = await this.resolveInstitutionEntitlements(institutionId);
+    const flag = resolved.flags.find((item) => item.key === key);
+    if (!flag?.enabled) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: `This institution's plan does not include ${key}.`,
+        statusCode: 403,
+      });
+    }
+  }
+
+  async getDashboard(): Promise<AdminDashboardDto> {
+    const [
+      total,
+      held,
+      deactivated,
+      studentsHeld,
+      companyTotal,
+      companyPending,
+      institutionPending,
+      flaggedAttempts,
+      plans,
+      recent,
+    ] = await Promise.all([
+      this.prisma.institution.count(),
+      this.prisma.institution.count({ where: { heldAt: { not: null }, deactivatedAt: null } }),
+      this.prisma.institution.count({ where: { deactivatedAt: { not: null } } }),
+      this.prisma.user.count({ where: { role: 'STUDENT', heldAt: { not: null } } }),
+      this.prisma.company.count(),
+      this.prisma.company.count({ where: { verificationStatus: 'PENDING' } }),
+      this.prisma.institution.count({ where: { verificationStatus: 'PENDING' } }),
+      this.prisma.attempt.count({
+        where: {
+          integrityFlag: {
+            in: [
+              'FLAGGED_TIMING',
+              'FLAGGED_PROCTOR',
+              'FLAGGED_SIMILARITY',
+              'FLAGGED_AUDIO',
+              'UNDER_REVIEW',
+            ],
+          },
+        },
+      }),
+      this.prisma.subscriptionPlan.findMany({
+        include: { _count: { select: { institutions: true } } },
+      }),
+      this.prisma.auditLog.findMany({
+        include: { actor: { select: { email: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+    ]);
+    return {
+      institutions: {
+        total,
+        active: total - held - deactivated,
+        held,
+        deactivated,
+      },
+      companies: { total: companyTotal, pendingVerification: companyPending },
+      planMix: plans.map((plan) => ({ code: plan.code, count: plan._count.institutions })),
+      openHolds: { institutions: held, students: studentsHeld },
+      pendingVerifications: companyPending + institutionPending,
+      flaggedAttempts,
+      recentAudit: recent.map((row) => this.toAuditDto(row)),
+    };
+  }
+
+  async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {
+    const where: Prisma.AuditLogWhereInput = {};
+    if (query.action) where.action = { contains: query.action, mode: 'insensitive' };
+    if (query.resourceType) where.resourceType = query.resourceType;
+    if (query.resourceId) where.resourceId = query.resourceId;
+    if (query.actorId) where.actorId = query.actorId;
+    if (query.q) {
+      where.OR = [
+        { action: { contains: query.q, mode: 'insensitive' } },
+        { reasonCode: { contains: query.q, mode: 'insensitive' } },
+        { resourceId: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      include: { actor: { select: { email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.toAuditDto(row));
+  }
+
+  async viewCandidateBrief(
+    userId: string,
+    body: ViewCandidateRequest,
+    actorId: string,
+  ): Promise<CandidateBriefDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { institution: true, skillClaims: true, projects: true, invitationsReceived: true },
+    });
+    if (!user || user.role !== 'STUDENT' || !user.institution) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
+    await this.writeAudit(actorId, 'candidate.profile_viewed', 'user', user.id, body.reason, {
+      reasonCode: body.reasonCode,
+    });
+    const latestInvite = user.invitationsReceived.sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    )[0];
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      institutionId: user.institution.id,
+      institutionName: user.institution.name,
+      inviteStatus: latestInvite?.status ?? null,
+      heldAt: user.heldAt?.toISOString() ?? null,
+      heldReason: user.heldReason,
+      skillClaimCount: user.skillClaims.length,
+      verifiedSkillCount: user.skillClaims.filter((claim) => claim.status === 'VERIFIED').length,
+      projectCount: user.projects.length,
+      viewedAt: new Date().toISOString(),
+    };
+  }
+
+  async listVerificationQueue(): Promise<VerificationQueueItemDto[]> {
+    const [institutions, companies] = await Promise.all([
+      this.prisma.institution.findMany({
+        where: { verificationStatus: { in: ['PENDING', 'REJECTED'] } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.company.findMany({
+        where: { verificationStatus: { in: ['PENDING', 'REJECTED'] } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return [
+      ...institutions.map((row) => ({
+        tenantType: 'institution' as const,
+        tenantId: row.id,
+        name: row.name,
+        domain: row.domain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      ...companies.map((row) => ({
+        tenantType: 'company' as const,
+        tenantId: row.id,
+        name: row.name,
+        domain: row.taxonomyDomain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async resolveVerification(
+    tenantId: string,
+    body: ResolveVerificationRequest,
+    actorId: string,
+  ): Promise<VerificationQueueItemDto> {
+    if (body.tenantType === 'institution') {
+      const plan =
+        body.decision === 'APPROVED'
+          ? await this.prisma.subscriptionPlan.findUnique({ where: { code: 'PRO' } })
+          : null;
+      const row = await this.prisma.institution.update({
+        where: { id: tenantId },
+        data: {
+          verificationStatus: body.decision,
+          verificationReason: body.reason,
+          ...(plan ? { planId: plan.id } : {}),
+        },
+      });
+      await this.writeAudit(
+        actorId,
+        'institution.verification',
+        'institution',
+        tenantId,
+        body.reason,
+        {
+          decision: body.decision,
+        },
+      );
+      return {
+        tenantType: 'institution',
+        tenantId: row.id,
+        name: row.name,
+        domain: row.domain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      };
+    }
+    const pro =
+      body.decision === 'APPROVED'
+        ? await this.prisma.subscriptionPlan.findUnique({ where: { code: 'PRO' } })
+        : null;
+    const row = await this.prisma.company.update({
+      where: { id: tenantId },
+      data: {
+        verificationStatus: body.decision,
+        verificationReason: body.reason,
+        ...(pro ? { planId: pro.id } : {}),
+      },
+    });
+    await this.writeAudit(actorId, 'company.verification', 'company', tenantId, body.reason, {
+      decision: body.decision,
+    });
+    return {
+      tenantType: 'company',
+      tenantId: row.id,
+      name: row.name,
+      domain: row.taxonomyDomain,
+      verificationStatus: row.verificationStatus,
+      verificationReason: row.verificationReason,
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
+  private toAuditDto(row: {
+    id: string;
+    actorId: string | null;
+    actor?: { email: string } | null;
+    action: string;
+    resourceType: string;
+    resourceId: string | null;
+    reasonCode: string | null;
+    metadata: Prisma.JsonValue;
+    createdAt: Date;
+  }): AuditLogDto {
+    return {
+      auditLogId: row.id,
+      actorId: row.actorId,
+      actorEmail: row.actor?.email ?? null,
+      action: row.action,
+      resourceType: row.resourceType,
+      resourceId: row.resourceId,
+      reasonCode: row.reasonCode,
+      metadata:
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
   async holdStudent(
     userId: string,
     body: TenantActionReason,
@@ -342,7 +739,7 @@ export class InstitutionsService {
       where: { id: user.id },
       data: { heldAt: new Date(), heldReason: body.reason },
     });
-    await this.writeAudit(actorId, 'student.held', user.id, body.reason, {
+    await this.writeAudit(actorId, 'student.held', 'user', user.id, body.reason, {
       institutionId: user.institutionId,
     });
     if (!user.institutionId) {
@@ -367,7 +764,7 @@ export class InstitutionsService {
       where: { id: user.id },
       data: { heldAt: null, heldReason: null },
     });
-    await this.writeAudit(actorId, 'student.hold_released', user.id, body.reason, {
+    await this.writeAudit(actorId, 'student.hold_released', 'user', user.id, body.reason, {
       institutionId: user.institutionId,
     });
     if (!user.institutionId) {
@@ -1007,6 +1404,7 @@ export class InstitutionsService {
   private async writeAudit(
     actorId: string,
     action: string,
+    resourceType: string,
     resourceId: string,
     reason: string,
     metadata: Record<string, unknown>,
@@ -1015,7 +1413,7 @@ export class InstitutionsService {
       data: {
         actorId,
         action,
-        resourceType: 'institution',
+        resourceType,
         resourceId,
         reasonCode: reason,
         metadata: metadata as Prisma.InputJsonValue,

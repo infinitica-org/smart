@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "radix-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "../config-tailwind/theme.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@smart/ui",
+    "utils": "@smart/ui",
+    "ui": "@smart/ui",
+    "lib": "@smart/ui",
+    "hooks": "@smart/ui/hooks"
+  }
+}

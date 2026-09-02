@@ -1,13 +1,18 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import {
   API_PREFIX,
   CreateInstitutionRequestSchema,
   GlobalStudentSearchQuerySchema,
   InviteUserRequestSchema,
+  ListAuditLogsQuerySchema,
   ListInstitutionStudentsQuerySchema,
   ListInstitutionsQuerySchema,
+  ResolveVerificationRequestSchema,
+  SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
   UpdateInstitutionRequestSchema,
+  UpdatePlanEntitlementsRequestSchema,
+  ViewCandidateRequestSchema,
 } from '@smart/contracts';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -27,6 +32,37 @@ function compactQuery(
 export class InstitutionsAdminController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
 
+  @Post('students/:userId/profile')
+  viewProfile(
+    @Param('userId') userId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.viewCandidateBrief(
+      userId,
+      ViewCandidateRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Get('institutions/:institutionId/entitlements')
+  entitlements(@Param('institutionId') institutionId: string) {
+    return this.institutions.resolveInstitutionEntitlements(institutionId);
+  }
+
+  @Put('institutions/:institutionId/feature-flags')
+  setFlag(
+    @Param('institutionId') institutionId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.setInstitutionFlagOverride(
+      institutionId,
+      SetFeatureFlagOverrideRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
   @Post('institutions')
   createInstitution(@Body() body: unknown) {
     return this.institutions.createInstitution(CreateInstitutionRequestSchema.parse(body));
@@ -42,6 +78,47 @@ export class InstitutionsAdminController {
   @Get('plans')
   listPlans() {
     return this.institutions.listPlans();
+  }
+
+  @Patch('plans/:planId/entitlements')
+  updatePlanEntitlements(
+    @Param('planId') planId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.updatePlanEntitlements(
+      planId,
+      UpdatePlanEntitlementsRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Get('dashboard')
+  dashboard() {
+    return this.institutions.getDashboard();
+  }
+
+  @Get('audit-logs')
+  auditLogs(@Query() query: Record<string, string | undefined>) {
+    return this.institutions.listAuditLogs(ListAuditLogsQuerySchema.parse(compactQuery(query)));
+  }
+
+  @Get('verification-queue')
+  verificationQueue() {
+    return this.institutions.listVerificationQueue();
+  }
+
+  @Post('verification-queue/:tenantId/resolve')
+  resolveVerification(
+    @Param('tenantId') tenantId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.resolveVerification(
+      tenantId,
+      ResolveVerificationRequestSchema.parse(body),
+      user.sub,
+    );
   }
 
   @Get('students/search')
