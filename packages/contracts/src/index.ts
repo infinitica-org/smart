@@ -32,6 +32,7 @@ export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
+export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/resume-parse.dto.js';
 
 /* -------------------------------- events ---------------------------------- */

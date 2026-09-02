@@ -302,6 +302,11 @@ model User {
   secondaryTrack Track?       @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
   heldAt         DateTime?    @map("held_at") @db.Timestamptz(6)
   heldReason     String?      @map("held_reason")
+  /// CN-T01 — mandatory candidate onboarding gate (server-side; not localStorage).
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  /// Structured onboarding profile + consent snapshot (JSON).
+  onboardingDetails   Json?    @map("onboarding_details")
+  dpdpConsentAt       DateTime? @map("dpdp_consent_at") @db.Timestamptz(6)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens       RefreshToken[]
