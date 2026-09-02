@@ -159,6 +159,72 @@ export const DefenseRubricWeightsSchema = z.object({
 });
 export type DefenseRubricWeights = z.infer<typeof DefenseRubricWeightsSchema>;
 
+/* -------------------- skill / confidence interview (SE-T02) --------------- */
+
+/**
+ * Short skill interview (VEGA): not L4 defense, not MCQ.
+ * Generate 3 questions in one call; grade once. Interview is required at
+ * Advanced / Professional (INF-05), not Beginner.
+ *
+ * Implementation: Ramansh (`evaluation` + prompts). Consumers: Satheswaran
+ * (visible why) and Vishal Bharath R (attempt / claim wiring later).
+ */
+export const SKILL_INTERVIEW_QUESTION_COUNT = 3;
+export const SKILL_INTERVIEW_EXPLANATION_MAX_CHARS = 160;
+export const SKILL_INTERVIEW_ANSWER_MAX_CHARS = 500;
+export const SKILL_INTERVIEW_PROFICIENCIES = ['ADVANCED', 'PROFESSIONAL'] as const;
+export const SkillInterviewProficiencySchema = z.enum(SKILL_INTERVIEW_PROFICIENCIES);
+export type SkillInterviewProficiency = z.infer<typeof SkillInterviewProficiencySchema>;
+
+export const SkillInterviewQuestionSchema = z.object({
+  index: z.number().int().min(1).max(SKILL_INTERVIEW_QUESTION_COUNT),
+  text: z.string().min(10).max(500),
+});
+export type SkillInterviewQuestion = z.infer<typeof SkillInterviewQuestionSchema>;
+
+export const GenerateSkillInterviewRequestSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillInterviewProficiencySchema,
+});
+export type GenerateSkillInterviewRequest = z.infer<typeof GenerateSkillInterviewRequestSchema>;
+
+export const GenerateSkillInterviewResponseSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillInterviewProficiencySchema,
+  questions: z.array(SkillInterviewQuestionSchema).length(SKILL_INTERVIEW_QUESTION_COUNT),
+  promptRef: z
+    .string()
+    .regex(/^[a-z0-9-]+@\d+$/, 'promptRef must look like `skill-interview-examiner@1`'),
+});
+export type GenerateSkillInterviewResponse = z.infer<typeof GenerateSkillInterviewResponseSchema>;
+
+export const SkillInterviewAnswerSchema = z.object({
+  index: z.number().int().min(1).max(SKILL_INTERVIEW_QUESTION_COUNT),
+  question: z.string().min(10).max(500),
+  answer: z.string().min(1).max(SKILL_INTERVIEW_ANSWER_MAX_CHARS),
+});
+export type SkillInterviewAnswer = z.infer<typeof SkillInterviewAnswerSchema>;
+
+export const GradeSkillInterviewRequestSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillInterviewProficiencySchema,
+  items: z.array(SkillInterviewAnswerSchema).length(SKILL_INTERVIEW_QUESTION_COUNT),
+});
+export type GradeSkillInterviewRequest = z.infer<typeof GradeSkillInterviewRequestSchema>;
+
+/** Ticket AC: pass/fail plus a visible one-line why — never a score alone. */
+export const GradeSkillInterviewResponseSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillInterviewProficiencySchema,
+  passed: z.boolean(),
+  explanation: z.string().min(10).max(SKILL_INTERVIEW_EXPLANATION_MAX_CHARS),
+  promptRef: z
+    .string()
+    .regex(/^[a-z0-9-]+@\d+$/, 'promptRef must look like `skill-interview-grader@1`'),
+  auditId: UuidSchema.nullable(),
+});
+export type GradeSkillInterviewResponse = z.infer<typeof GradeSkillInterviewResponseSchema>;
+
 /* ------------------------ inter-rater reliability ------------------------- */
 
 /**

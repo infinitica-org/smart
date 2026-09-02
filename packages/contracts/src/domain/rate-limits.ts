@@ -209,6 +209,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'Each parse spends LLM tokens; onboarding retries must not flood the P3 bucket.',
   },
   {
+    key: 'evaluation.skillInterview',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:skill_interview:user:{id}',
+    rationale:
+      'SE-T02 generate + grade each spend LLM tokens; cap retries so one student cannot drain the FAST/PRIMARY lanes.',
+  },
+  {
     key: 'placement.ingestJd',
     scope: 'INSTITUTION',
     limit: 20,

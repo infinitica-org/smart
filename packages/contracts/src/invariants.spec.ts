@@ -376,3 +376,27 @@ describe('batch import contracts', () => {
     ).toBe(true);
   });
 });
+
+describe('SE-T02 skill interview contracts', () => {
+  it('registers generate and grade routes with an LLM spend cap', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/questions'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/grade'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
+  });
+});
