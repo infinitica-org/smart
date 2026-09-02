@@ -1,21 +1,6 @@
 'use client';
 
-import { AnimatedGridPattern, AnimatedShinyText, BorderBeam, SmartLogo } from '@smart/ui';
-
-const PILLARS = [
-  {
-    title: 'Verified competency trail',
-    body: 'Gold, Silver, and Bronze tiers backed by real assessments—not self-reported skills.',
-  },
-  {
-    title: 'One front door',
-    body: 'Students, placement staff, and administrators sign in once; SMART routes you to the right portal.',
-  },
-  {
-    title: 'Institution-grade trust',
-    body: 'TPO-mediated placement with explainable matching and audit-ready decisions.',
-  },
-] as const;
+import { AnimatedGridPattern, AnimatedShinyText, SmartLogo } from '@smart/ui';
 
 export function LoginBrandPanel() {
   return (

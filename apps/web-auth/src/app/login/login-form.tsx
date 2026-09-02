@@ -3,22 +3,8 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
-import {
-  Alert,
-  AnimatedGridPattern,
-  Button,
-  Input,
-  MagicCard,
-  ShineBorder,
-  SmartLogo,
-} from '@smart/ui';
+import { Alert, AnimatedGridPattern, Button, Input, MagicCard, SmartLogo } from '@smart/ui';
 import { api, redirectForRole, storeSession } from '../../lib/api';
-
-const PORTAL_HINTS = [
-  { role: 'Student', destination: 'Readiness dashboard & applications' },
-  { role: 'TPO', destination: 'Cohorts, JD inbox & shortlists' },
-  { role: 'Admin', destination: 'Institutions, tenants & platform ops' },
-] as const;
 
 export function LoginForm() {
   const searchParams = useSearchParams();
