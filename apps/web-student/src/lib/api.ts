@@ -24,6 +24,63 @@ let mockSkillClaims: Array<{
 }> = [];
 const mockProjects = new Map<string, Record<string, unknown>>();
 
+const MOCK_L1_ITEMS = [
+  {
+    itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    competencyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+    domainCode: 'A',
+    itemType: 'MCQ_SINGLE',
+    difficulty: 'EASY',
+    promptText: 'Which hook runs a side effect after render?',
+    options: [
+      { optionId: 'opt-a', label: 'useEffect' },
+      { optionId: 'opt-b', label: 'useMemo' },
+    ],
+    itemWeight: 1,
+  },
+  {
+    itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',
+    competencyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+    domainCode: 'A',
+    itemType: 'MCQ_SINGLE',
+    difficulty: 'EASY',
+    promptText: 'Which hook memoizes a value?',
+    options: [
+      { optionId: 'opt-c', label: 'useMemo' },
+      { optionId: 'opt-d', label: 'useRef' },
+    ],
+    itemWeight: 1,
+  },
+];
+
+let mockAttempt: {
+  attemptId: string;
+  studentId: string;
+  trackCode: 'MBA_FINANCE';
+  levelNumber: 1;
+  levelFormat: 'MCQ';
+  status: 'IN_PROGRESS' | 'SUBMITTED';
+  formId: string;
+  startedAt: string;
+  expiresAt: string;
+  currentItemIndex: number;
+  integrityFlag: 'CLEAN';
+} | null = null;
+const mockDrafts = new Map<string, { kind: 'MCQ'; selectedOptionIds: string[] }>();
+
+function mockSessionDto() {
+  if (!mockAttempt) return null;
+  const expiresAtMs = new Date(mockAttempt.expiresAt).getTime();
+  const remaining = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+  return {
+    ...mockAttempt,
+    serverRemainingSeconds: remaining,
+    totalItems: MOCK_L1_ITEMS.length,
+    answeredItems: mockDrafts.size,
+    locked: mockAttempt.status !== 'IN_PROGRESS' || remaining <= 0,
+  };
+}
+
 function mockStudentUser(overrides: Record<string, unknown> = {}) {
   return {
     userId: MOCK_USER_ID,
@@ -282,6 +339,135 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           capstoneBrief: 'Data Analyst capstone.',
         },
       ]),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/assessment/start') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      trackCode?: string;
+      levelNumber?: number;
+    };
+    if (body.levelNumber !== 1 || body.trackCode !== 'MBA_FINANCE') {
+      return new Response(
+        JSON.stringify({
+          error: 'level_locked',
+          message: 'L1 mock start accepts the enrolled MBA_FINANCE track only.',
+          statusCode: 403,
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (!mockAttempt || mockAttempt.status !== 'IN_PROGRESS') {
+      const startedAt = new Date();
+      mockAttempt = {
+        attemptId: '55555555-5555-4555-8555-555555555555',
+        studentId: MOCK_USER_ID,
+        trackCode: 'MBA_FINANCE',
+        levelNumber: 1,
+        levelFormat: 'MCQ',
+        status: 'IN_PROGRESS',
+        formId: 'A',
+        startedAt: startedAt.toISOString(),
+        expiresAt: new Date(startedAt.getTime() + 60 * 60 * 1000).toISOString(),
+        currentItemIndex: 0,
+        integrityFlag: 'CLEAN',
+      };
+      mockDrafts.clear();
+    }
+    return new Response(JSON.stringify(mockSessionDto()), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (url.includes('/assessment/complete') && method === 'POST') {
+    if (!mockAttempt) {
+      return new Response(
+        JSON.stringify({ error: 'not_found', message: 'Attempt not found.', statusCode: 404 }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    mockAttempt.status = 'SUBMITTED';
+    return new Response(
+      JSON.stringify({
+        attemptId: mockAttempt.attemptId,
+        status: 'SUBMITTED',
+        evaluationJobId: null,
+        estimatedResultSeconds: null,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/assessment/submit-l1') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      attemptId?: string;
+      itemId?: string;
+      answer?: { kind?: string; selectedOptionIds?: string[] };
+    };
+    if (!mockAttempt || body.attemptId !== mockAttempt.attemptId) {
+      return new Response(
+        JSON.stringify({ error: 'forbidden', message: 'Unknown attempt.', statusCode: 403 }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (body.itemId && body.answer?.kind === 'MCQ') {
+      mockDrafts.set(body.itemId, {
+        kind: 'MCQ',
+        selectedOptionIds: body.answer.selectedOptionIds ?? [],
+      });
+    }
+    const session = mockSessionDto();
+    return new Response(
+      JSON.stringify({
+        accepted: true,
+        superseded: false,
+        answeredItems: mockDrafts.size,
+        serverRemainingSeconds: session?.serverRemainingSeconds ?? 0,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  const sessionMatch = url.match(/\/assessment\/([0-9a-f-]{36})\/session/i);
+  if (sessionMatch && method === 'GET') {
+    if (!mockAttempt || mockAttempt.attemptId !== sessionMatch[1]) {
+      return new Response(
+        JSON.stringify({ error: 'not_found', message: 'Session not found.', statusCode: 404 }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(JSON.stringify(mockSessionDto()), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const nextMatch = url.match(/\/assessment\/([0-9a-f-]{36})\/next-item/i);
+  if (nextMatch && method === 'GET') {
+    if (!mockAttempt || mockAttempt.attemptId !== nextMatch[1]) {
+      return new Response(
+        JSON.stringify({ error: 'not_found', message: 'Item bank not found.', statusCode: 404 }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    const parsedUrl = new URL(url, 'http://localhost');
+    const rawIndex = parsedUrl.searchParams.get('index');
+    if (rawIndex !== null) {
+      mockAttempt.currentItemIndex = Number.parseInt(rawIndex, 10);
+    }
+    const index = mockAttempt.currentItemIndex;
+    const item = MOCK_L1_ITEMS[index] ?? null;
+    return new Response(
+      JSON.stringify({
+        attemptId: mockAttempt.attemptId,
+        item,
+        index,
+        totalItems: MOCK_L1_ITEMS.length,
+        savedDraft: item ? mockDrafts.get(item.itemId) : undefined,
+        serverRemainingSeconds: mockSessionDto()?.serverRemainingSeconds ?? 0,
+      }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }

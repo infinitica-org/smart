@@ -1,16 +1,50 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, CheckCircle2, Clock, FileText } from 'lucide-react';
 import { COMPLETED_ASSESSMENTS, UPCOMING_ASSESSMENTS } from '@/lib/candidate-dashboard-data';
+import { api } from '@/lib/api';
+import { playerErrorFromUnknown, resolveL1TrackCode, startL1Request } from '@/lib/l1-mcq';
 import { cn } from '@smart/ui';
 
 export default function AssessmentsPage() {
+  const router = useRouter();
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const startL1 = async () => {
+    setStarting(true);
+    setStartError(null);
+    try {
+      const me = await api.auth.me();
+      let trackCode = resolveL1TrackCode(me);
+      if (!trackCode) {
+        const tracks = await api.catalog.tracks();
+        trackCode = resolveL1TrackCode(me, tracks);
+      }
+      if (!trackCode) {
+        setStartError('No enrolled L1 track is available to start.');
+        return;
+      }
+      const session = await api.assessment.start(startL1Request(trackCode));
+      router.push(`/assessments/${session.attemptId}`);
+    } catch (error) {
+      setStartError(playerErrorFromUnknown(error).message);
+    } finally {
+      setStarting(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[920px] space-y-8 pb-16">
       <div>
         <h1 className="font-display text-4xl font-medium tracking-tight text-white">Assessments</h1>
-        <p className="mt-2 text-sm text-white/40">Start enables near the scheduled window.</p>
+        <p className="mt-2 text-sm text-white/40">
+          Ready starts the L1 MCQ for your enrolled track. The server owns the clock.
+        </p>
+        {startError ? <p className="mt-3 text-sm text-amber-300">{startError}</p> : null}
       </div>
 
       <section className="space-y-3">
@@ -44,7 +78,10 @@ export default function AssessmentsPage() {
                 ) : null}
                 <button
                   type="button"
-                  disabled={!ready}
+                  disabled={!ready || starting}
+                  onClick={() => {
+                    if (ready) void startL1();
+                  }}
                   className={cn(
                     'inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold',
                     ready
@@ -52,7 +89,7 @@ export default function AssessmentsPage() {
                       : 'cursor-not-allowed bg-white/5 text-white/25',
                   )}
                 >
-                  Start <ArrowRight className="h-4 w-4" />
+                  {starting && ready ? 'Starting…' : 'Start'} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>

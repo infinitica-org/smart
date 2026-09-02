@@ -6,6 +6,7 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -136,6 +137,7 @@ export class AssessmentController {
   async nextItem(
     @Req() req: FastifyRequest & { user?: RequestUser },
     @Param('attemptId') attemptId: string,
+    @Query('index') index?: string,
   ): Promise<NextItemDto> {
     const user = req.user;
     if (!user || user.role !== 'STUDENT') {
@@ -145,7 +147,9 @@ export class AssessmentController {
         statusCode: 403,
       });
     }
-    return this.service.getNextItem(user.sub, attemptId);
+    const requestedIndex =
+      index === undefined || index === '' ? undefined : Number.parseInt(index, 10);
+    return this.service.getNextItem(user.sub, attemptId, requestedIndex);
   }
 
   @Post('submit-l1')

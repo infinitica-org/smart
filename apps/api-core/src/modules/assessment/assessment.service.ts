@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   SkillClaimDtoSchema,
+  SMART_TOPICS,
+  UuidSchema,
   type AiCompletionRequest,
   type AttemptSessionDto,
   type AttemptStatus,
@@ -34,6 +37,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { getContext } from '@smart/observability';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { attemptsStarted, draftsSaved } from '@smart/observability';
 import { Effect, Either } from 'effect';
@@ -103,6 +108,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   onModuleInit() {
@@ -371,6 +377,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     user: RequestUser,
     body: CompleteAttemptRequest,
   ): Promise<CompleteAttemptResponse> {
+    await this.flushDraftsToPostgres();
+
     const attempt = await this.prisma.attempt.findUnique({
       where: { id: body.attemptId },
       include: {
@@ -418,10 +426,74 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const submittedAt = new Date();
+    const remainingSeconds = attempt.expiresAt
+      ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
+      : 0;
+    const autoSubmitted = body.autoSubmitted || remainingSeconds <= 0;
+
+    const responses = (attempt.responses ?? []).map((row) => {
+      const raw = row.answer;
+      let answer: unknown = raw;
+      if (raw && typeof raw === 'object' && !Array.isArray(raw) && '_clientSequence' in raw) {
+        const { _clientSequence, ...rest } = raw as Record<string, unknown>;
+        answer = rest;
+      }
+      const itemId = row.item.id;
+      const responseId = UuidSchema.safeParse(row.id).success ? row.id : randomUUID();
+      return {
+        responseId,
+        itemId,
+        competencyId: itemId,
+        itemWeight: 1,
+        answer,
+        objectKey: null,
+      };
+    });
+
+    const event = {
+      meta: {
+        eventId: randomUUID(),
+        eventType: SMART_TOPICS.assessmentSubmitted,
+        version: 1 as const,
+        occurredAt: submittedAt.toISOString(),
+        traceId: getContext()?.correlationId ?? randomUUID(),
+        source: 'assessment',
+      },
+      data: {
+        attemptId: attempt.id,
+        studentId: attempt.userId,
+        trackCode: attempt.level.track.code as TrackCode,
+        levelNumber: (attempt.level.levelNumber ?? 1) as LevelNumber,
+        status: 'EVALUATED' as AttemptStatus,
+        autoSubmitted,
+        integrityFlag: (attempt.integrityFlag ?? 'CLEAN') as IntegrityFlag,
+        submittedAt: submittedAt.toISOString(),
+        responses,
+      },
+    };
+
+    await this.outbox.enqueueAssessmentSubmitted(event);
+
     await this.prisma.attempt.update({
       where: { id: body.attemptId },
-      data: { status: 'EVALUATED', completedAt: new Date() },
+      data: { status: 'EVALUATED', completedAt: submittedAt },
     });
+
+    try {
+      const cached = await this.redis.get(`session:assessment:${attempt.id}`);
+      if (cached) {
+        const session = JSON.parse(cached) as AttemptSessionDto;
+        if (session.studentId === user.sub) {
+          session.status = 'EVALUATED';
+          session.locked = true;
+          session.serverRemainingSeconds = remainingSeconds;
+          await this.saveRedisSession(session);
+        }
+      }
+    } catch {
+      // Session lock is best-effort; Postgres status is authoritative.
+    }
 
     return {
       attemptId: body.attemptId,
@@ -861,9 +933,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (existingAttempt) {
-      const activeSession = this.buildSessionDto(existingAttempt);
-      await this.saveRedisSession(activeSession);
-      return activeSession;
+      return this.getSession(studentId, existingAttempt.id);
     }
 
     // Level Unlock Rule: Level 2+ requires preceding level cleared with BRONZE or higher
@@ -994,7 +1064,11 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     return sessionDto;
   }
 
-  async getNextItem(studentId: string, attemptId: string): Promise<NextItemDto> {
+  async getNextItem(
+    studentId: string,
+    attemptId: string,
+    requestedIndex?: number,
+  ): Promise<NextItemDto> {
     const session = await this.getSession(studentId, attemptId);
 
     if (session.locked || session.serverRemainingSeconds <= 0) {
@@ -1005,9 +1079,21 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    if (requestedIndex !== undefined) {
+      if (!Number.isInteger(requestedIndex) || requestedIndex < 0) {
+        throw new BadRequestException({
+          error: 'invalid_index',
+          message: 'Item index must be a non-negative integer.',
+          statusCode: 400,
+        });
+      }
+      session.currentItemIndex = requestedIndex;
+    }
+
     const currentItemIndex = session.currentItemIndex ?? 0;
 
     if (session.totalItems > 0 && currentItemIndex >= session.totalItems) {
+      await this.persistSessionIndex(session, currentItemIndex);
       return {
         attemptId: session.attemptId,
         item: null,
@@ -1075,6 +1161,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (currentItemIndex >= items.length) {
+      await this.persistSessionIndex(session, currentItemIndex);
       return {
         attemptId: session.attemptId,
         item: null,
@@ -1125,6 +1212,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       'assessment.next-item-served',
     );
 
+    await this.persistSessionIndex(session, currentItemIndex);
+
     return {
       attemptId: session.attemptId,
       item: deliverableItem,
@@ -1157,6 +1246,14 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       integrityFlag: attempt.integrityFlag as IntegrityFlag,
       locked: isLocked,
     };
+  }
+
+  private async persistSessionIndex(
+    session: AttemptSessionDto,
+    currentItemIndex: number,
+  ): Promise<void> {
+    session.currentItemIndex = currentItemIndex;
+    await this.saveRedisSession(session);
   }
 
   private async saveRedisSession(session: AttemptSessionDto): Promise<void> {

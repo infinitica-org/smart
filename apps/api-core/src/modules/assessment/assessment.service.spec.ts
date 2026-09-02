@@ -1,6 +1,7 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { attemptsStarted } from '@smart/observability';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { AssessmentService } from './assessment.service.js';
 
 const STUDENT_ID = '11111111-1111-1111-1111-111111111111';
@@ -9,6 +10,37 @@ const TRACK_ID = '33333333-3333-3333-3333-333333333333';
 const LEVEL1_ID = '44444444-4444-4444-4444-444444444441';
 const LEVEL2_ID = '44444444-4444-4444-4444-444444444442';
 const ATTEMPT_ID = '55555555-5555-5555-5555-555555555555';
+const MCQ_ITEM_ID = '66666666-6666-4666-8666-666666666666';
+const MCQ_OPTION_CORRECT = '77777777-7777-4777-8777-777777777777';
+
+function studentUser(sub = STUDENT_ID): RequestUser {
+  return { sub, role: 'STUDENT', inst: null };
+}
+
+function scoredAttempt(overrides: Record<string, unknown> = {}) {
+  return {
+    id: ATTEMPT_ID,
+    userId: STUDENT_ID,
+    status: 'IN_PROGRESS',
+    integrityFlag: 'CLEAN',
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    level: { levelNumber: 1, track: { code: 'TECH_FULLSTACK' } },
+    responses: [
+      {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+        answer: { kind: 'MCQ', selectedOptionIds: [MCQ_OPTION_CORRECT] },
+        item: {
+          id: MCQ_ITEM_ID,
+          itemType: 'MCQ_SINGLE',
+          stem: 'Which is correct?',
+          modelAnswer: null,
+          options: [{ id: MCQ_OPTION_CORRECT, isCorrect: true }],
+        },
+      },
+    ],
+    ...overrides,
+  };
+}
 
 function createMockPrisma() {
   const levels = [
@@ -87,7 +119,23 @@ function createMockPrisma() {
         return newAttempt;
       }),
       findUnique: vi.fn(async ({ where }: any) => {
-        return attemptsStore.find((a) => a.id === where.id) ?? null;
+        const found = attemptsStore.find((a) => a.id === where.id);
+        if (!found) return null;
+        return {
+          ...found,
+          responses: responsesStore
+            .filter((r) => r.attemptId === found.id)
+            .map((r) => ({
+              ...r,
+              item: { id: r.itemId, competencyId: '66666666-6666-4666-8666-666666666666' },
+            })),
+        };
+      }),
+      update: vi.fn(async ({ where, data }: any) => {
+        const found = attemptsStore.find((a) => a.id === where.id);
+        if (!found) throw new Error('Attempt not found');
+        Object.assign(found, data);
+        return found;
       }),
     },
     levelResult: {
@@ -172,10 +220,17 @@ function createMockRotation() {
   } as any;
 }
 
+function createMockOutbox() {
+  return {
+    enqueueAssessmentSubmitted: vi.fn(async () => undefined),
+  } as any;
+}
+
 describe('AssessmentService (ST-04 / S1-VB-01)', () => {
   let prisma: ReturnType<typeof createMockPrisma>;
   let redis: ReturnType<typeof createMockRedis>;
   let rotation: ReturnType<typeof createMockRotation>;
+  let outbox: ReturnType<typeof createMockOutbox>;
   let service: AssessmentService;
   let attemptsStartedSpy: any;
 
@@ -183,7 +238,8 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
     prisma = createMockPrisma();
     redis = createMockRedis();
     rotation = createMockRotation();
-    service = new AssessmentService(prisma, redis, rotation, {} as never);
+    outbox = createMockOutbox();
+    service = new AssessmentService(prisma, redis, rotation, {} as never, outbox);
     attemptsStartedSpy = vi.spyOn(attemptsStarted, 'inc');
     vi.clearAllMocks();
   });
@@ -778,6 +834,132 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
 
       expect(olderResult.accepted).toBe(false);
       expect(olderResult.superseded).toBe(true);
+    });
+  });
+
+  describe('currentItemIndex persist / complete (S2-SV-01)', () => {
+    const itemBankKey = `items:form:TECH_FULLSTACK:1:A`;
+    const mockItems = [
+      {
+        itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+        competencyId: '66666666-6666-4666-8666-666666666666',
+        domainCode: 'A' as const,
+        itemType: 'MCQ_SINGLE' as const,
+        difficulty: 'MEDIUM' as const,
+        promptText: 'Q1',
+        options: [{ optionId: 'opt-1', label: 'A' }],
+        itemWeight: 1,
+      },
+      {
+        itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',
+        competencyId: '66666666-6666-4666-8666-666666666666',
+        domainCode: 'A' as const,
+        itemType: 'MCQ_SINGLE' as const,
+        difficulty: 'MEDIUM' as const,
+        promptText: 'Q2',
+        options: [{ optionId: 'opt-2', label: 'B' }],
+        itemWeight: 1,
+      },
+    ];
+
+    it('31. Persists requested index and serves that item on resume', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      redis._store.set(itemBankKey, JSON.stringify(mockItems));
+
+      const advanced = await service.getNextItem(STUDENT_ID, ATTEMPT_ID, 1);
+      expect(advanced.index).toBe(1);
+      expect(advanced.item?.itemId).toBe(mockItems[1]?.itemId);
+
+      const resumed = await service.getNextItem(STUDENT_ID, ATTEMPT_ID);
+      expect(resumed.index).toBe(1);
+      expect(resumed.item?.itemId).toBe(mockItems[1]?.itemId);
+    });
+
+    it('32. Idempotent start does not reset persisted currentItemIndex', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      redis._store.set(itemBankKey, JSON.stringify(mockItems));
+      await service.getNextItem(STUDENT_ID, ATTEMPT_ID, 1);
+
+      const restarted = await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      expect(restarted.currentItemIndex).toBe(1);
+    });
+
+    it('33. Other student cannot advance another student index', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      await expect(service.getNextItem(OTHER_STUDENT_ID, ATTEMPT_ID, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('34. Complete scores an owned attempt and emits smart.assessment.submitted', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      prisma.attempt.findUnique.mockResolvedValueOnce(scoredAttempt());
+
+      const result = await service.completeAttempt(studentUser(), {
+        attemptId: ATTEMPT_ID,
+        autoSubmitted: false,
+        technicalFailure: false,
+      });
+
+      expect(result.attemptId).toBe(ATTEMPT_ID);
+      expect(result.status).toBe('EVALUATED');
+      expect(result.evaluationJobId).toBeNull();
+      expect(result.estimatedResultSeconds).toBeNull();
+      expect(result.scorePercent).toBeDefined();
+      expect(outbox.enqueueAssessmentSubmitted).toHaveBeenCalledTimes(1);
+      expect(prisma.attempt.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'EVALUATED' }),
+        }),
+      );
+    });
+
+    it('35. Complete is forbidden for another student', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      prisma.attempt.findUnique.mockResolvedValueOnce(scoredAttempt());
+      await expect(
+        service.completeAttempt(studentUser(OTHER_STUDENT_ID), {
+          attemptId: ATTEMPT_ID,
+          autoSubmitted: false,
+          technicalFailure: false,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(outbox.enqueueAssessmentSubmitted).not.toHaveBeenCalled();
+    });
+
+    it('36. Complete returns 409 for an already EVALUATED attempt', async () => {
+      await service.startAttempt(STUDENT_ID, {
+        trackCode: 'TECH_FULLSTACK',
+        levelNumber: 1,
+      });
+      prisma.attempt.findUnique.mockResolvedValueOnce(scoredAttempt({ status: 'EVALUATED' }));
+
+      await expect(
+        service.completeAttempt(studentUser(), {
+          attemptId: ATTEMPT_ID,
+          autoSubmitted: false,
+          technicalFailure: false,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(outbox.enqueueAssessmentSubmitted).not.toHaveBeenCalled();
     });
   });
 });

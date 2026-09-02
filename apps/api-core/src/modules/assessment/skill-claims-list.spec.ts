@@ -19,7 +19,13 @@ describe('listSkillClaims', () => {
   beforeEach(() => {
     findMany.mockReset();
     const prisma = { skillClaim: { findMany } };
-    service = new AssessmentService(prisma as never, {} as never, {} as never, {} as never);
+    service = new AssessmentService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
   });
 
   it('scopes STUDENT reads to JWT sub only', async () => {
