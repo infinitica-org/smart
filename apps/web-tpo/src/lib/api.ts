@@ -8,8 +8,10 @@ import {
   API_PREFIX,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
+  ShortlistDtoSchema,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
+  type MatchRequest,
 } from '@smart/contracts';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -33,5 +35,12 @@ export const openingsApi = {
   get: (openingId: string) =>
     apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
       schema: JobOpeningDtoSchema,
+    }),
+};
+
+export const matchingApi = {
+  match: (body: MatchRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/match`, body, {
+      schema: ShortlistDtoSchema,
     }),
 };
