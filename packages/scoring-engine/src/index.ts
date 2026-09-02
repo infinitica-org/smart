@@ -24,6 +24,9 @@ export * from './angoff/tier-assignment.js';
 export * from './bars/weighted-scoring.js';
 export * from './bars/mode-consensus.js';
 
+/* ------------------------ INF-05 proficiency gate -------------------------- */
+export * from './proficiency/mark-weighted-scoring.js';
+
 /* ---------------------------- Reliability gates --------------------------- */
 export * from './reliability/agreement.js';
 
