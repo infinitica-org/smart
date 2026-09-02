@@ -107,43 +107,41 @@ export function CustomSelect({
       {typeof document !== 'undefined' &&
         isOpen &&
         createPortal(
-              <div
-                id={menuId}
-                style={{
-                  position: 'fixed',
-                  left: menuBox.left,
-                  width: menuBox.width,
-                  zIndex: 80,
-                  maxHeight: menuBox.maxHeight,
-                  ...(menuBox.openUp
-                    ? { bottom: menuBox.bottom }
-                    : { top: menuBox.top }),
-                }}
-                className={`bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-y-auto ${dropdownClassName}`}
-              >
-                <div className="p-1 flex flex-col gap-1">
-                  {options.map((option) => {
-                    const isSelected = option.value === value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          onChange(option.value);
-                          setIsOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm ${
-                          isSelected
-                            ? 'bg-[#00fad0]/10 text-[#00fad0]'
-                            : 'text-white/70 hover:bg-white/5 hover:text-white'
-                        } ${optionClassName}`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>,
+          <div
+            id={menuId}
+            style={{
+              position: 'fixed',
+              left: menuBox.left,
+              width: menuBox.width,
+              zIndex: 80,
+              maxHeight: menuBox.maxHeight,
+              ...(menuBox.openUp ? { bottom: menuBox.bottom } : { top: menuBox.top }),
+            }}
+            className={`bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-y-auto ${dropdownClassName}`}
+          >
+            <div className="p-1 flex flex-col gap-1">
+              {options.map((option) => {
+                const isSelected = option.value === value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm ${
+                      isSelected
+                        ? 'bg-[#00fad0]/10 text-[#00fad0]'
+                        : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    } ${optionClassName}`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
           document.body,
         )}
     </div>

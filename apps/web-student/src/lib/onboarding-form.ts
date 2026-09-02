@@ -54,15 +54,18 @@ export function isOnboardingComplete(): boolean {
   try {
     const raw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
     if (!raw) return false;
-    const form = { ...emptyOnboardingForm(), ...(JSON.parse(raw) as Partial<OnboardingProfileForm> & { complete?: boolean }) };
+    const form = {
+      ...emptyOnboardingForm(),
+      ...(JSON.parse(raw) as Partial<OnboardingProfileForm> & { complete?: boolean }),
+    };
     return Boolean(
       form.dpdpConsent &&
-        form.firstName.trim() &&
-        form.lastName.trim() &&
-        form.phoneNumber.trim() &&
-        form.linkedinUrl.trim() &&
-        form.languages.some((row) => row.language.trim() && row.proficiency.trim()) &&
-        form.preferences.length > 0,
+      form.firstName.trim() &&
+      form.lastName.trim() &&
+      form.phoneNumber.trim() &&
+      form.linkedinUrl.trim() &&
+      form.languages.some((row) => row.language.trim() && row.proficiency.trim()) &&
+      form.preferences.length > 0,
     );
   } catch {
     return false;
