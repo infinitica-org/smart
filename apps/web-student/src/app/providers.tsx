@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { clearAccessToken, getAccessToken, PORTAL_ROLES } from '@smart/api-client';
 import { RolesGuard, SessionBootstrap, SessionHoldWall, SmartApiProvider } from '@smart/ui';
 import { api } from '../lib/api';
+import { signOut } from '../lib/auth';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
@@ -26,6 +27,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         pathname={pathname}
         portalOrigins={PORTAL_ORIGINS}
         publicPathPrefixes={PUBLIC_PATHS}
+        onSignOut={signOut}
       >
         <SessionHoldWall
           getAccessToken={getAccessToken}

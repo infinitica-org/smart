@@ -24,6 +24,7 @@ export type RolesGuardProps = {
   pathname: string;
   portalOrigins: PortalOrigins;
   publicPathPrefixes?: readonly string[];
+  onSignOut?: () => void | Promise<void>;
   children: ReactNode;
 };
 
@@ -42,6 +43,7 @@ export function RolesGuard({
   pathname,
   portalOrigins,
   publicPathPrefixes = [],
+  onSignOut,
   children,
 }: RolesGuardProps) {
   const [gate, setGate] = useState<Gate>(() => {
@@ -118,7 +120,7 @@ export function RolesGuard({
     const role = getSessionRole();
     const homeHref = role ? (portalHomeForRole(role, portalOrigins) ?? undefined) : undefined;
     const loginHref = `${authAppUrl.replace(/\/$/u, '')}/login`;
-    return <ForbiddenWall loginHref={loginHref} homeHref={homeHref} />;
+    return <ForbiddenWall loginHref={loginHref} homeHref={homeHref} onSignOut={onSignOut} />;
   }
 
   return children;
