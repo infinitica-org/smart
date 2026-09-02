@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell, Alert } from '@smart/ui';
 import { storeAccessToken } from '@smart/api-client';
 import { api } from '../../../lib/api';
+import { isOnboardingComplete } from '../../../lib/onboarding-form';
 
 function AuthCallbackComponent() {
   const router = useRouter();
@@ -46,6 +47,8 @@ function AuthCallbackComponent() {
           router.push('/institution-picker');
         } else if (!user.primaryTrack) {
           router.push('/enroll');
+        } else if (!isOnboardingComplete()) {
+          router.push('/onboarding');
         } else {
           router.push('/dashboard');
         }
