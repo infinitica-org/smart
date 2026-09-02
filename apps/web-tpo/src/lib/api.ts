@@ -6,6 +6,7 @@ import {
 } from '@smart/api-client';
 import {
   API_PREFIX,
+  ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
   JobOpeningDtoSchema,
   ListApplicationsResponseSchema,
@@ -65,5 +66,15 @@ export const applicationsApi = {
       {
         schema: ApplicationDtoSchema,
       },
+    ),
+  getConfidence: (applicationId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/applications/${applicationId}/confidence`, {
+      schema: ApplicationConfidenceDtoSchema,
+    }),
+  sendToCompany: (applicationId: string) =>
+    apiClient.post(
+      `${API_PREFIX}/placement/applications/${applicationId}/send-to-company`,
+      undefined,
+      { schema: ApplicationDtoSchema },
     ),
 };

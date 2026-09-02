@@ -22,6 +22,9 @@ export function PortalHeader() {
             <Link href="/suggestions" className="hover:underline">
               Ranked suggestions
             </Link>
+            <Link href="/review" className="hover:underline">
+              Review & send
+            </Link>
             <Link href="/ats" className="hover:underline">
               ATS Kanban
             </Link>

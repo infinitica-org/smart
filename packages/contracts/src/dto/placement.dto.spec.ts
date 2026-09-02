@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ApplicationConfidenceDtoSchema,
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
+  SEND_TO_COMPANY_STAGE,
   SKILL_CODES,
 } from '../index.js';
 
@@ -153,5 +155,26 @@ describe('AC-T05 create application contract', () => {
     expect(
       CreateApplicationRequestSchema.safeParse({ ...validShortlist, matchScore: 1.4 }).success,
     ).toBe(false);
+  });
+});
+
+describe('AC-T06 send-to-company contracts', () => {
+  it('maps send-to-company onto INTERVIEW, not a new ATS stage', () => {
+    expect(SEND_TO_COMPANY_STAGE).toBe('INTERVIEW');
+  });
+
+  it('allows a TPO-readable pass/fail + explanation without a numeric score', () => {
+    const parsed = ApplicationConfidenceDtoSchema.parse({
+      applicationId: '00000000-0000-4000-8000-000000000010',
+      studentId: '00000000-0000-4000-8000-000000000011',
+      available: true,
+      complete: true,
+      passed: true,
+      explanation: 'Named Redis and explained stampede and TTL trade-offs.',
+      promptRef: 'skill-interview-grader@1',
+      sendBlockedReason: null,
+    });
+    expect(parsed.passed).toBe(true);
+    expect('score' in parsed).toBe(false);
   });
 });

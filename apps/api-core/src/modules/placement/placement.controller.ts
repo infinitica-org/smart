@@ -16,6 +16,7 @@ import {
   CreateJobOpeningRequestSchema,
   ListJobOpeningsQuerySchema,
   PatchApplicationStageRequestSchema,
+  type ApplicationConfidenceDto,
   type ApplicationDto,
   type JobOpeningDto,
   type ListApplicationsResponse,
@@ -163,5 +164,46 @@ export class PlacementController {
       applicationId,
       parsed.stage,
     );
+  }
+
+  @Get('applications/:applicationId/confidence')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'Read the persisted SE-T02 passed + explanation for a shortlisted application.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Authoritative passed + explanation, or missing.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  async getApplicationConfidence(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+  ): Promise<ApplicationConfidenceDto> {
+    return this.service.getApplicationConfidence(requireInstitutionId(user), applicationId);
+  }
+
+  @Post('applications/:applicationId/send-to-company')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary: 'Send a reviewed SHORTLISTED application to INTERVIEW after a complete SE-T02 result.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Application is in INTERVIEW (idempotent).' })
+  @ApiResponse({
+    status: 404,
+    description: 'Unknown application, or owned by another institution.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Application is not SHORTLISTED or already moved past.',
+  })
+  @ApiResponse({ status: 422, description: 'SE-T02 confidence result is missing or incomplete.' })
+  async sendToCompany(
+    @CurrentUser() user: RequestUser,
+    @Param('applicationId') applicationId: string,
+  ): Promise<ApplicationDto> {
+    return this.service.sendToCompany(requireInstitutionId(user), applicationId);
   }
 }

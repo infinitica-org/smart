@@ -265,6 +265,25 @@ export const PatchApplicationStageRequestSchema = z.object({
 });
 export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
 
+/**
+ * AC-T06 send-to-company lands on the next canonical ATS column after
+ * `SHORTLISTED`. The contract enum has no SENT_TO_COMPANY / AI_VERIFIED /
+ * HIRED — CO-T02 maps `INTERVIEW` to the Interviewing kanban column.
+ */
+export const SEND_TO_COMPANY_STAGE = 'INTERVIEW' as const;
+
+export const ApplicationConfidenceDtoSchema = z.object({
+  applicationId: UuidSchema,
+  studentId: UuidSchema,
+  available: z.boolean(),
+  complete: z.boolean(),
+  passed: z.boolean().nullable(),
+  explanation: z.string().nullable(),
+  promptRef: z.string().nullable(),
+  sendBlockedReason: z.string().nullable(),
+});
+export type ApplicationConfidenceDto = z.infer<typeof ApplicationConfidenceDtoSchema>;
+
 export const SkillClaimDtoSchema = z.object({
   claimId: UuidSchema,
   studentId: UuidSchema,
