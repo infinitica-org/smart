@@ -11,6 +11,11 @@ export const L1_LEVEL_NUMBER = 1 as const;
 /** Stay under the 10 req/min submit-l1 budget (one save per 6s). */
 export const L1_AUTOSAVE_MS = 8_000;
 
+/** Live api-core unless NEXT_PUBLIC_MOCK_API is exactly "true". */
+export function isMockApiEnabled(flag: string | undefined): boolean {
+  return flag === 'true';
+}
+
 export type PlayerErrorKind =
   'level_locked' | 'not_found' | 'rate_limit' | 'forbidden' | 'network' | 'unknown';
 
@@ -24,15 +29,50 @@ export function isTrackCode(value: string | null | undefined): value is TrackCod
   return typeof value === 'string' && (TRACK_CODES as readonly string[]).includes(value);
 }
 
-export function resolveL1TrackCode(
-  me: { primaryTrack: string | null },
-  tracks?: ReadonlyArray<{ code: string; levels: ReadonlyArray<{ levelNumber: number }> }>,
-): TrackCode | null {
-  if (isTrackCode(me.primaryTrack)) return me.primaryTrack;
-  const fromCatalog = tracks?.find((track) =>
-    track.levels.some((level) => level.levelNumber === L1_LEVEL_NUMBER),
+/** Only the enrolled primary track. Never invent one from the catalog. */
+export function resolveL1TrackCode(me: { primaryTrack: string | null }): TrackCode | null {
+  return isTrackCode(me.primaryTrack) ? me.primaryTrack : null;
+}
+
+export const L1_LAST_ATTEMPT_STORAGE_KEY = 'smart.l1.lastAttemptId';
+
+export function readLastL1AttemptId(): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const value = sessionStorage.getItem(L1_LAST_ATTEMPT_STORAGE_KEY);
+    return value && /^[0-9a-f-]{36}$/iu.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLastL1AttemptId(attemptId: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, attemptId);
+  } catch {
+    // Private mode / quota — resume falls back to idempotent start.
+  }
+}
+
+export function clearLastL1AttemptId(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.removeItem(L1_LAST_ATTEMPT_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function isInProgressSession(session: AttemptSessionDto): boolean {
+  return session.status === 'IN_PROGRESS';
+}
+
+/** Expired or server-locked, but the attempt is still closable via POST /complete. */
+export function canSubmitLockedAttempt(session: AttemptSessionDto): boolean {
+  return (
+    session.status === 'IN_PROGRESS' && (session.locked || session.serverRemainingSeconds <= 0)
   );
-  return fromCatalog && isTrackCode(fromCatalog.code) ? fromCatalog.code : null;
 }
 
 export function startL1Request(trackCode: TrackCode) {

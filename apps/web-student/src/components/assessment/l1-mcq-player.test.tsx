@@ -100,7 +100,7 @@ describe('L1McqPlayer', () => {
     });
     completeMock.mockResolvedValue({
       attemptId: '55555555-5555-4555-8555-555555555555',
-      status: 'SUBMITTED',
+      status: 'EVALUATED',
       evaluationJobId: null,
       estimatedResultSeconds: null,
     });
@@ -205,7 +205,28 @@ describe('L1McqPlayer', () => {
         attemptId: '55555555-5555-4555-8555-555555555555',
       }),
     );
-    await waitFor(() => expect(screen.getByText(/Status SUBMITTED/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/Status EVALUATED/)).toBeDefined());
     expect(screen.queryByText(/Score \d/)).toBeNull();
+    expect(completeMock.mock.calls[0]?.[0]).toEqual({
+      attemptId: '55555555-5555-4555-8555-555555555555',
+    });
+    expect(completeMock.mock.calls[0]?.[0]).not.toHaveProperty('autoSubmitted');
+  });
+
+  it('lets an expired in-progress session complete without fetching next-item', async () => {
+    sessionMock.mockResolvedValue(
+      session({ locked: true, serverRemainingSeconds: 0, status: 'IN_PROGRESS' }),
+    );
+    nextItemMock.mockRejectedValue(new Error('next-item must not run on a locked session'));
+    render(<L1McqPlayer attemptId="55555555-5555-4555-8555-555555555555" />);
+    await waitFor(() => expect(screen.getByText('Submit attempt')).toBeDefined());
+    expect(nextItemMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Submit attempt'));
+    await waitFor(() =>
+      expect(completeMock).toHaveBeenCalledWith({
+        attemptId: '55555555-5555-4555-8555-555555555555',
+      }),
+    );
+    expect(completeMock.mock.calls[0]?.[0]).not.toHaveProperty('autoSubmitted');
   });
 });

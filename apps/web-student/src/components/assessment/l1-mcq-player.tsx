@@ -20,6 +20,7 @@ import type {
 import { api } from '../../lib/api';
 import {
   buildMcqDraftPayload,
+  canSubmitLockedAttempt,
   isMcqSingle,
   isSessionLocked,
   initialClientSequence,
@@ -67,10 +68,17 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
   const sequenceRef = useRef(initialClientSequence());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedRef = useRef<string[]>([]);
+  const itemRef = useRef<DeliverableItemDto | null>(null);
+  const lastItemIdRef = useRef<string | null>(null);
+  const nextIndexRef = useRef<number | undefined>(undefined);
 
   const locked = session ? isSessionLocked(session) : false;
   const item = nextItem?.item ?? null;
   const atEnd = nextItem !== null && nextItem.item === null;
+  const canSubmitLocked = session ? canSubmitLockedAttempt(session) : false;
+  itemRef.current = item;
+  if (item) lastItemIdRef.current = item.itemId;
+  nextIndexRef.current = nextItem?.index;
 
   const clearSaveTimer = () => {
     if (saveTimerRef.current) {
@@ -80,7 +88,7 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
   };
 
   const persistDraft = useCallback(
-    async (itemId: string, optionIds: string[]) => {
+    async (itemId: string, optionIds: string[], options?: { ignoreLocked?: boolean }) => {
       if (optionIds.length === 0) return;
       sequenceRef.current = nextClientSequence(sequenceRef.current);
       setSaving(true);
@@ -90,6 +98,7 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
         );
         setError(null);
       } catch (err) {
+        if (options?.ignoreLocked) return;
         setError(playerErrorFromUnknown(err));
       } finally {
         setSaving(false);
@@ -131,6 +140,10 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
     return () => clearSaveTimer();
   }, [load]);
 
+  const onExpire = useCallback(() => {
+    void load(nextIndexRef.current);
+  }, [load]);
+
   const scheduleSave = (itemId: string, optionIds: string[]) => {
     clearSaveTimer();
     saveTimerRef.current = setTimeout(() => {
@@ -159,12 +172,14 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
   };
 
   const onComplete = async () => {
-    if (locked && session?.status === 'IN_PROGRESS' && session.serverRemainingSeconds > 0) return;
+    if (session && session.status !== 'IN_PROGRESS') return;
+    clearSaveTimer();
     setCompleting(true);
     setError(null);
     try {
-      if (item && selectedRef.current.length > 0) {
-        await persistDraft(item.itemId, selectedRef.current);
+      const flushItemId = itemRef.current?.itemId ?? lastItemIdRef.current;
+      if (flushItemId && selectedRef.current.length > 0) {
+        await persistDraft(flushItemId, selectedRef.current, { ignoreLocked: true });
       }
       const result = await api.assessment.complete({ attemptId });
       setCompleteResult(result);
@@ -187,14 +202,7 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
         <AssessmentHeader
           title={title}
           rightSlot={
-            session ? (
-              <Timer
-                {...timerPropsFromSession(session)}
-                onExpire={() => {
-                  void load(nextItem?.index);
-                }}
-              />
-            ) : null
+            session ? <Timer {...timerPropsFromSession(session)} onExpire={onExpire} /> : null
           }
         />
         <div className="space-y-4 p-6">
@@ -267,7 +275,7 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
             </>
           ) : null}
 
-          {atEnd && !loading ? (
+          {atEnd && !loading && !canSubmitLocked ? (
             <div className="space-y-4">
               <ProgressIndicator current={nextItem.totalItems} total={nextItem.totalItems} />
               <Alert tone="info" title="Ready to submit">
@@ -277,12 +285,28 @@ export function L1McqPlayer({ attemptId }: { attemptId: string }) {
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={completing || (locked && session?.status !== 'IN_PROGRESS')}
+                  disabled={completing}
                   onClick={() => void onComplete()}
                 >
                   {completing ? 'Submitting…' : 'Submit attempt'}
                 </Button>
               )}
+            </div>
+          ) : null}
+
+          {canSubmitLocked && !loading && !completeResult ? (
+            <div className="space-y-4">
+              <Alert tone="info" title="Time is up">
+                The server clock closed this attempt. Submit to finalize. No score is invented here.
+              </Alert>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={completing}
+                onClick={() => void onComplete()}
+              >
+                {completing ? 'Submitting…' : 'Submit attempt'}
+              </Button>
             </div>
           ) : null}
         </div>

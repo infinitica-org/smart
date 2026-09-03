@@ -4,13 +4,18 @@ import {
   createRefreshAccessToken,
   getAccessToken,
 } from '@smart/api-client';
+import { TRACK_CODES } from '@smart/contracts';
+import { isMockApiEnabled } from './l1-mcq';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
+/** Opt-in only. Live api-core is the default unless this is exactly "true". */
+const IS_MOCK_ENV = isMockApiEnabled(process.env.NEXT_PUBLIC_MOCK_API);
 const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
+const MOCK_TRACK_CODES = TRACK_CODES as readonly string[];
 
 /** In-memory mock of server-side onboardingCompleted (survives localStorage clears). */
 let mockOnboardingCompleted = false;
+let mockPrimaryTrack: string | null = null;
 let mockOnboardingProfile: unknown = null;
 let mockSkillClaims: Array<{
   claimId: string;
@@ -56,10 +61,10 @@ const MOCK_L1_ITEMS = [
 let mockAttempt: {
   attemptId: string;
   studentId: string;
-  trackCode: 'MBA_FINANCE';
+  trackCode: string;
   levelNumber: 1;
   levelFormat: 'MCQ';
-  status: 'IN_PROGRESS' | 'SUBMITTED';
+  status: 'IN_PROGRESS' | 'EVALUATED';
   formId: string;
   startedAt: string;
   expiresAt: string;
@@ -89,7 +94,7 @@ function mockStudentUser(overrides: Record<string, unknown> = {}) {
     role: 'STUDENT',
     institutionId: '223e4567-e89b-12d3-a456-426614174000',
     institutionName: 'Mock Institution',
-    primaryTrack: 'MBA_FINANCE',
+    primaryTrack: mockPrimaryTrack,
     secondaryTrack: null,
     provider: 'GOOGLE',
     emailVerified: true,
@@ -125,6 +130,8 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   const method = init?.method ?? 'GET';
 
   if (url.includes('/auth/login') && method === 'POST') {
+    mockPrimaryTrack = null;
+    mockOnboardingCompleted = false;
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
@@ -151,7 +158,6 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         user: mockStudentUser({
           institutionId: null,
           institutionName: null,
-          primaryTrack: null,
           provider: 'PASSWORD',
         }),
       }),
@@ -170,6 +176,8 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   }
 
   if (url.includes('/auth/sso/callback') && method === 'POST') {
+    mockPrimaryTrack = null;
+    mockOnboardingCompleted = false;
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
@@ -269,6 +277,18 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   }
 
   if (url.includes('/users/me/track') && method === 'PUT') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { trackCode?: string };
+    if (!body.trackCode || !MOCK_TRACK_CODES.includes(body.trackCode)) {
+      return new Response(
+        JSON.stringify({
+          error: 'validation_error',
+          message: 'Unknown track code.',
+          statusCode: 400,
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    mockPrimaryTrack = body.trackCode;
     return new Response(JSON.stringify(mockStudentUser({ onboardingCompleted: false })), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -348,11 +368,11 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       trackCode?: string;
       levelNumber?: number;
     };
-    if (body.levelNumber !== 1 || body.trackCode !== 'MBA_FINANCE') {
+    if (body.levelNumber !== 1 || !body.trackCode || body.trackCode !== mockPrimaryTrack) {
       return new Response(
         JSON.stringify({
           error: 'level_locked',
-          message: 'L1 mock start accepts the enrolled MBA_FINANCE track only.',
+          message: 'L1 mock start accepts the enrolled primary track only.',
           statusCode: 403,
         }),
         { status: 403, headers: { 'Content-Type': 'application/json' } },
@@ -363,7 +383,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       mockAttempt = {
         attemptId: '55555555-5555-4555-8555-555555555555',
         studentId: MOCK_USER_ID,
-        trackCode: 'MBA_FINANCE',
+        trackCode: body.trackCode,
         levelNumber: 1,
         levelFormat: 'MCQ',
         status: 'IN_PROGRESS',
@@ -388,11 +408,11 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         { status: 404, headers: { 'Content-Type': 'application/json' } },
       );
     }
-    mockAttempt.status = 'SUBMITTED';
+    mockAttempt.status = 'EVALUATED';
     return new Response(
       JSON.stringify({
         attemptId: mockAttempt.attemptId,
-        status: 'SUBMITTED',
+        status: 'EVALUATED',
         evaluationJobId: null,
         estimatedResultSeconds: null,
       }),

@@ -3,16 +3,23 @@ import { SmartApiError, SmartNetworkError } from '@smart/api-client';
 import type { AttemptSessionDto, DeliverableItemDto } from '@smart/contracts';
 import {
   buildMcqDraftPayload,
+  canSubmitLockedAttempt,
+  clearLastL1AttemptId,
+  isInProgressSession,
   isMcqSingle,
+  isMockApiEnabled,
   isSessionLocked,
+  L1_LAST_ATTEMPT_STORAGE_KEY,
   L1_LEVEL_NUMBER,
   initialClientSequence,
   nextClientSequence,
   playerErrorFromUnknown,
+  readLastL1AttemptId,
   resolveL1TrackCode,
   selectedIdsFromDraft,
   startL1Request,
   timerPropsFromSession,
+  writeLastL1AttemptId,
 } from './l1-mcq';
 
 const ITEM: DeliverableItemDto = {
@@ -51,18 +58,39 @@ function session(overrides: Partial<AttemptSessionDto> = {}): AttemptSessionDto 
 }
 
 describe('l1-mcq helpers', () => {
+  it('keeps the mock API opt-in rather than default', () => {
+    expect(isMockApiEnabled(undefined)).toBe(false);
+    expect(isMockApiEnabled('false')).toBe(false);
+    expect(isMockApiEnabled('true')).toBe(true);
+  });
+
   it('starts L1 with an existing track code, never a skillCode', () => {
     expect(startL1Request('MBA_FINANCE')).toEqual({
       trackCode: 'MBA_FINANCE',
       levelNumber: L1_LEVEL_NUMBER,
     });
     expect(resolveL1TrackCode({ primaryTrack: 'TECH_FULLSTACK' })).toBe('TECH_FULLSTACK');
-    expect(
-      resolveL1TrackCode({ primaryTrack: null }, [
-        { code: 'MBA_FINANCE', levels: [{ levelNumber: 1 }] },
-      ]),
-    ).toBe('MBA_FINANCE');
+    expect(resolveL1TrackCode({ primaryTrack: null })).toBeNull();
     expect(resolveL1TrackCode({ primaryTrack: 'not-a-track' })).toBeNull();
+  });
+
+  it('stores a last attempt id only in sessionStorage', () => {
+    sessionStorage.clear();
+    expect(readLastL1AttemptId()).toBeNull();
+    writeLastL1AttemptId('55555555-5555-4555-8555-555555555555');
+    expect(sessionStorage.getItem(L1_LAST_ATTEMPT_STORAGE_KEY)).toBe(
+      '55555555-5555-4555-8555-555555555555',
+    );
+    expect(readLastL1AttemptId()).toBe('55555555-5555-4555-8555-555555555555');
+    clearLastL1AttemptId();
+    expect(readLastL1AttemptId()).toBeNull();
+  });
+
+  it('allows complete on an in-progress locked or expired session', () => {
+    expect(isInProgressSession(session())).toBe(true);
+    expect(canSubmitLockedAttempt(session())).toBe(false);
+    expect(canSubmitLockedAttempt(session({ locked: true, serverRemainingSeconds: 0 }))).toBe(true);
+    expect(canSubmitLockedAttempt(session({ status: 'EVALUATED', locked: true }))).toBe(false);
   });
 
   it('builds a monotonic MCQ draft payload without answer keys', () => {

@@ -1,126 +1,166 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowRight, CheckCircle2, Clock, FileText } from 'lucide-react';
-import { COMPLETED_ASSESSMENTS, UPCOMING_ASSESSMENTS } from '@/lib/candidate-dashboard-data';
+import { ArrowRight, FileText } from 'lucide-react';
+import type { TrackCode } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { playerErrorFromUnknown, resolveL1TrackCode, startL1Request } from '@/lib/l1-mcq';
+import {
+  clearLastL1AttemptId,
+  isInProgressSession,
+  playerErrorFromUnknown,
+  readLastL1AttemptId,
+  resolveL1TrackCode,
+  startL1Request,
+  writeLastL1AttemptId,
+} from '@/lib/l1-mcq';
 import { cn } from '@smart/ui';
 
 export default function AssessmentsPage() {
   const router = useRouter();
+  const [trackCode, setTrackCode] = useState<TrackCode | null>(null);
+  const [resumeAttemptId, setResumeAttemptId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const startL1 = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const me = await api.auth.me();
+        const enrolled = resolveL1TrackCode(me);
+        if (cancelled) return;
+        setTrackCode(enrolled);
+        if (!enrolled) {
+          setResumeAttemptId(null);
+          return;
+        }
+        const stored = readLastL1AttemptId();
+        if (!stored) {
+          setResumeAttemptId(null);
+          return;
+        }
+        try {
+          const session = await api.assessment.session(stored);
+          if (cancelled) return;
+          if (isInProgressSession(session)) {
+            setResumeAttemptId(session.attemptId);
+          } else {
+            clearLastL1AttemptId();
+            setResumeAttemptId(null);
+          }
+        } catch {
+          if (cancelled) return;
+          clearLastL1AttemptId();
+          setResumeAttemptId(null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(playerErrorFromUnknown(err).message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const startOrResume = async () => {
+    if (resumeAttemptId) {
+      router.push(`/assessments/${resumeAttemptId}`);
+      return;
+    }
+    if (!trackCode) {
+      setError('Enroll in a track before starting Level 1.');
+      return;
+    }
     setStarting(true);
-    setStartError(null);
+    setError(null);
     try {
-      const me = await api.auth.me();
-      let trackCode = resolveL1TrackCode(me);
-      if (!trackCode) {
-        const tracks = await api.catalog.tracks();
-        trackCode = resolveL1TrackCode(me, tracks);
-      }
-      if (!trackCode) {
-        setStartError('No enrolled L1 track is available to start.');
-        return;
-      }
       const session = await api.assessment.start(startL1Request(trackCode));
+      writeLastL1AttemptId(session.attemptId);
       router.push(`/assessments/${session.attemptId}`);
-    } catch (error) {
-      setStartError(playerErrorFromUnknown(error).message);
+    } catch (err) {
+      setError(playerErrorFromUnknown(err).message);
     } finally {
       setStarting(false);
     }
   };
+
+  const title = trackCode ? `${trackCode.replaceAll('_', ' ')} · Level 1 MCQ` : 'Level 1 MCQ';
 
   return (
     <div className="mx-auto w-full max-w-[920px] space-y-8 pb-16">
       <div>
         <h1 className="font-display text-4xl font-medium tracking-tight text-white">Assessments</h1>
         <p className="mt-2 text-sm text-white/40">
-          Ready starts the L1 MCQ for your enrolled track. The server owns the clock.
+          Start or resume the L1 MCQ for your enrolled track. The server owns the clock. Scores are
+          not shown here.
         </p>
-        {startError ? <p className="mt-3 text-sm text-amber-300">{startError}</p> : null}
+        {error ? <p className="mt-3 text-sm text-amber-300">{error}</p> : null}
       </div>
 
-      <section className="space-y-3">
-        <p className="text-[11px] font-semibold tracking-wider text-white/35 uppercase">Upcoming</p>
-        {UPCOMING_ASSESSMENTS.map((item) => {
-          const ready = item.status === 'Ready';
-          return (
-            <div
-              key={item.id}
-              className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#141414] p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00fad0]/10 text-[#00fad0]">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-medium text-white">{item.title}</h3>
-                  <p className="mt-1 text-xs text-white/35">
-                    {item.company} · {item.type} · {item.duration}
-                  </p>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-white/30">
-                    <Clock className="h-3.5 w-3.5" /> Deadline {item.deadline}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {!ready ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-amber-300">
-                    <AlertCircle className="h-3.5 w-3.5" /> Opens near window
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={!ready || starting}
-                  onClick={() => {
-                    if (ready) void startL1();
-                  }}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold',
-                    ready
-                      ? 'bg-[#00fad0] text-black'
-                      : 'cursor-not-allowed bg-white/5 text-white/25',
-                  )}
-                >
-                  {starting && ready ? 'Starting…' : 'Start'} <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      <section className="space-y-3">
-        <p className="text-[11px] font-semibold tracking-wider text-white/35 uppercase">
-          Completed
+      {loading ? (
+        <p className="text-sm text-white/50" aria-live="polite">
+          Loading enrollment…
         </p>
-        {COMPLETED_ASSESSMENTS.map((item) => (
-          <div
-            key={item.id}
-            className="flex flex-col gap-3 rounded-[28px] border border-white/10 bg-[#141414] p-5 sm:flex-row sm:items-center sm:justify-between"
+      ) : null}
+
+      {!loading && !trackCode ? (
+        <section className="rounded-[28px] border border-white/10 bg-[#141414] p-5">
+          <h2 className="text-base font-medium text-white">No enrolled track</h2>
+          <p className="mt-2 text-sm text-white/40">
+            Level 1 cannot start until you enroll in a primary track. A catalog fallback is not
+            used.
+          </p>
+          <Link
+            href="/enroll"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black"
           >
+            Enroll in a track <ArrowRight className="h-4 w-4" />
+          </Link>
+        </section>
+      ) : null}
+
+      {!loading && trackCode ? (
+        <section className="space-y-3">
+          <p className="text-[11px] font-semibold tracking-wider text-white/35 uppercase">
+            Enrolled track
+          </p>
+          <div className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#141414] p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">
-                <CheckCircle2 className="h-5 w-5" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00fad0]/10 text-[#00fad0]">
+                <FileText className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-medium text-white">{item.title}</h3>
+                <h3 className="text-base font-medium text-white">{title}</h3>
                 <p className="mt-1 text-xs text-white/35">
-                  {item.company} · {item.completedOn}
+                  {resumeAttemptId
+                    ? 'An in-progress attempt is on the server. Resume to continue.'
+                    : 'Starts Level 1. If an attempt is already open, the server returns it.'}
                 </p>
               </div>
             </div>
-            <span className="text-sm font-semibold text-[#00fad0]">Score {item.score}</span>
+            <button
+              type="button"
+              disabled={starting}
+              onClick={() => void startOrResume()}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black',
+                starting && 'opacity-70',
+              )}
+            >
+              {starting ? 'Starting…' : resumeAttemptId ? 'Resume' : 'Start'}{' '}
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
-        ))}
-      </section>
+        </section>
+      ) : null}
 
       <p className="text-center text-xs text-white/25">
         <Link href="/dashboard" className="text-[#00fad0] hover:underline">

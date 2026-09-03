@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '../lib/cn';
 import { Clock } from 'lucide-react';
 
@@ -23,6 +23,8 @@ export function Timer({ duration, startedAt, serverNow, onExpire, className }: T
   });
 
   const [timeLeft, setTimeLeft] = useState(duration);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
     const endServerTime = new Date(startedAt).getTime() + duration * 1000;
@@ -34,7 +36,7 @@ export function Timer({ duration, startedAt, serverNow, onExpire, className }: T
       if (remainingMs <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        onExpire?.();
+        onExpireRef.current?.();
       } else {
         setTimeLeft(Math.ceil(remainingMs / 1000));
       }
@@ -44,13 +46,13 @@ export function Timer({ duration, startedAt, serverNow, onExpire, className }: T
     const initialRemainingMs = endServerTime - (Date.now() - clientOffset);
     if (initialRemainingMs <= 0) {
       setTimeLeft(0);
-      onExpire?.();
+      onExpireRef.current?.();
     } else {
       setTimeLeft(Math.ceil(initialRemainingMs / 1000));
     }
 
     return () => clearInterval(interval);
-  }, [duration, startedAt, clientOffset, onExpire]);
+  }, [duration, startedAt, clientOffset]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
