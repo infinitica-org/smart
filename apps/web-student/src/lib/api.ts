@@ -9,9 +9,50 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const IS_MOCK_ENV = process.env.NEXT_PUBLIC_MOCK_API !== 'false';
 const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 
-/** In-memory mock of server-side onboardingCompleted (survives localStorage clears). */
-let mockOnboardingCompleted = false;
-let mockOnboardingProfile: unknown = null;
+/**
+ * Mock of server-side onboarding state (survives localStorage clears). Backed by
+ * sessionStorage — not just an in-memory variable — so a page reload during local
+ * dev doesn't look like the server forgot a completed onboarding and bounce the
+ * candidate back to /onboarding.
+ */
+const MOCK_ONBOARDING_STATE_KEY = 'smart.mock.onboarding-state';
+
+interface MockOnboardingState {
+  completed: boolean;
+  profile: unknown;
+  draft: unknown;
+}
+
+function loadMockOnboardingState(): MockOnboardingState {
+  if (typeof window === 'undefined') return { completed: false, profile: null, draft: null };
+  try {
+    const raw = window.sessionStorage.getItem(MOCK_ONBOARDING_STATE_KEY);
+    if (!raw) return { completed: false, profile: null, draft: null };
+    const parsed = JSON.parse(raw) as Partial<MockOnboardingState>;
+    return {
+      completed: parsed.completed ?? false,
+      profile: parsed.profile ?? null,
+      draft: parsed.draft ?? null,
+    };
+  } catch {
+    return { completed: false, profile: null, draft: null };
+  }
+}
+
+function saveMockOnboardingState(): void {
+  if (typeof window === 'undefined') return;
+  const state: MockOnboardingState = {
+    completed: mockOnboardingCompleted,
+    profile: mockOnboardingProfile,
+    draft: mockOnboardingDraft,
+  };
+  window.sessionStorage.setItem(MOCK_ONBOARDING_STATE_KEY, JSON.stringify(state));
+}
+
+const initialMockOnboardingState = loadMockOnboardingState();
+let mockOnboardingCompleted = initialMockOnboardingState.completed;
+let mockOnboardingProfile: unknown = initialMockOnboardingState.profile;
+let mockOnboardingDraft: unknown = initialMockOnboardingState.draft;
 let mockSkillClaims: Array<{
   claimId: string;
   studentId: string;
@@ -190,6 +231,8 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       dpdpConsentAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
     };
+    mockOnboardingDraft = null;
+    saveMockOnboardingState();
     return new Response(
       JSON.stringify(
         mockStudentUser({
@@ -201,10 +244,29 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     );
   }
 
+  if (url.includes('/users/me/onboarding') && method === 'PUT') {
+    const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+    mockOnboardingDraft = {
+      ...(mockOnboardingDraft as Record<string, unknown> | null),
+      ...body,
+      savedAt: new Date().toISOString(),
+    };
+    saveMockOnboardingState();
+    return new Response(
+      JSON.stringify({
+        profile: null,
+        draft: mockOnboardingDraft,
+        onboardingCompleted: false,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   if (url.includes('/users/me/onboarding') && method === 'GET') {
     return new Response(
       JSON.stringify({
         profile: mockOnboardingProfile,
+        draft: mockOnboardingCompleted ? null : mockOnboardingDraft,
         onboardingCompleted: mockOnboardingCompleted,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },

@@ -45,6 +45,17 @@ export class UsersController {
     return this.service.completeOnboarding(user.sub, body);
   }
 
+  @Put('me/onboarding')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Save in-progress candidate onboarding data. Does not mark onboarding complete.',
+  })
+  @ApiResponse({ status: 200, description: 'Draft snapshot and onboardingCompleted=false.' })
+  saveOnboarding(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.service.saveOnboardingDraft(user.sub, body);
+  }
+
   @Put('me/track')
   @Roles('STUDENT')
   enrollTrack(@CurrentUser() user: RequestUser, @Body() body: unknown) {

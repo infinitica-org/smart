@@ -44,6 +44,8 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   phoneCountryCode: z.string().min(1).max(8),
   phoneNumber: z.string().min(1).max(32),
   linkedinUrl: z.union([z.url(), z.literal('')]),
+  /** Optional — not every candidate has a public GitHub profile. */
+  githubUrl: z.union([z.url(), z.literal('')]).optional(),
   education: z.array(CandidateOnboardingEducationSchema).max(20).default([]),
   experiences: z.array(CandidateOnboardingExperienceSchema).max(30).default([]),
   skills: z.array(CandidateOnboardingSkillSchema).max(40).default([]),
@@ -61,8 +63,41 @@ export const CandidateOnboardingProfileSchema = CompleteCandidateOnboardingReque
 });
 export type CandidateOnboardingProfile = z.infer<typeof CandidateOnboardingProfileSchema>;
 
+/**
+ * In-progress onboarding data. Every field is optional and unvalidated beyond
+ * size limits — the candidate is mid-entry, so nothing here needs to satisfy
+ * `CompleteCandidateOnboardingRequestSchema` yet. Saving a draft never sets
+ * `onboardingCompleted`.
+ */
+export const CandidateOnboardingDraftSchema = z.object({
+  firstName: z.string().max(50).optional(),
+  lastName: z.string().max(50).optional(),
+  gender: z.string().max(40).optional(),
+  dateOfBirth: z.string().max(32).optional(),
+  phoneCountryCode: z.string().max(8).optional(),
+  phoneNumber: z.string().max(32).optional(),
+  linkedinUrl: z.string().max(2048).optional(),
+  githubUrl: z.string().max(2048).optional(),
+  education: z.array(CandidateOnboardingEducationSchema.partial()).max(20).optional(),
+  experiences: z.array(CandidateOnboardingExperienceSchema.partial()).max(30).optional(),
+  skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
+  preferences: z.array(z.string().max(80)).max(50).optional(),
+  dpdpConsent: z.boolean().optional(),
+  savedAt: z.string().datetime().optional(),
+});
+export type CandidateOnboardingDraft = z.infer<typeof CandidateOnboardingDraftSchema>;
+
+export const SaveCandidateOnboardingDraftRequestSchema = CandidateOnboardingDraftSchema.omit({
+  savedAt: true,
+});
+export type SaveCandidateOnboardingDraftRequest = z.infer<
+  typeof SaveCandidateOnboardingDraftRequestSchema
+>;
+
 export const CandidateOnboardingProfileResponseSchema = z.object({
   profile: CandidateOnboardingProfileSchema.nullable(),
+  /** Persisted in-progress data, present only while onboarding is incomplete. */
+  draft: CandidateOnboardingDraftSchema.nullable(),
   onboardingCompleted: z.boolean(),
 });
 export type CandidateOnboardingProfileResponse = z.infer<

@@ -200,6 +200,19 @@ export const ROUTES: readonly RouteSpec[] = [
       'Persist profile + DPDP consent and set onboardingCompleted=true (CN-T01 server gate).',
   },
   {
+    method: 'PUT',
+    path: '/users/me/onboarding',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 120,
+    summary:
+      'Save in-progress candidate onboarding data as a draft. Does not set onboardingCompleted.',
+  },
+  {
     method: 'POST',
     path: '/admin/api-keys',
     module: 'auth',
