@@ -2,13 +2,13 @@
 
 **Status:** Frozen for V1 MMP (28 Aug 2026). Improvements go through an ADR + contract PR, not by editing this pack in place.
 
-**Owner:** Product (Allen) · **Architect steward:** Tino (`docs/delivery/PRD_V1_ARCHITECT_REVIEW.md`)
+**Owner:** Product Owner · **Architect steward:** Tino (`docs/delivery/PRD_V1_ARCHITECT_REVIEW.md`)
 
 | File                                                   | What it is                                                                                           |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | [SMART_PRD_v1.md](./SMART_PRD_v1.md)                   | Product requirements. `[M]` / `[S]` / `[V2]` / `[V3]` tags.                                          |
 | [SMART_UI_Design_Brief.md](./SMART_UI_Design_Brief.md) | Screen map and states for designers / Satheswaran.                                                   |
-| [ALLEN_SPRINT_BACKLOG.md](./ALLEN_SPRINT_BACKLOG.md)   | Lightweight 5-day demo backlog. Subject to change.                                                   |
+| [SPRINT_BACKLOG.md](./SPRINT_BACKLOG.md)               | Lightweight 5-day demo backlog. Subject to change.                                                   |
 | [diagrams/](./diagrams/)                               | Architecture, ERD, onboarding, skill SM, placement, project verify, proctoring, tenant verification. |
 
 ## How this pack relates to the rest of the repo
@@ -26,5 +26,5 @@ The certification engine and this PRD are **one product**, not two. Verified ski
 ## Do not
 
 - Rewrite this PRD to “fix” it. File an ADR.
-- Treat Allen’s xlsx as a greenfield sprint that rebuilds CI, auth, and the monorepo. Those exist.
+- Treat the Product Owner’s xlsx as a greenfield sprint that rebuilds CI, auth, and the monorepo. Those exist.
 - Open company bulk-export, self-serve job browse (`CN-02`), or full liveness IDV in V1.

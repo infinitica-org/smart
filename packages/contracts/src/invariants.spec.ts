@@ -290,7 +290,7 @@ describe('sprint 3 MMP placement contracts', () => {
     expect(SKILL_CLAIM_STATUSES).toEqual(['DECLARED', 'VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED']);
   });
 
-  it('locks Allen retry policy: one reattempt, 35-day refresh', () => {
+  it('locks Product Owner retry policy: one reattempt, 35-day refresh', () => {
     expect(SKILL_REATTEMPTS).toBe(1);
     expect(SKILL_MAX_ATTEMPTS).toBe(2);
     expect(SKILL_REFRESH_DAYS).toBe(35);

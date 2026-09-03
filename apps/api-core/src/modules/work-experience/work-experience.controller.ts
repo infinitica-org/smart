@@ -95,7 +95,6 @@ export class WorkExperienceController {
   ) {
     return this.service.validateProofDocument(user.sub, id, documentId, body?.rawText);
   }
-
   @Post(':id/send-verification')
   @Roles('STUDENT')
   @ApiBearerAuth()

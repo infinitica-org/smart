@@ -352,9 +352,7 @@ export function WorkExperienceSection() {
                               ? 'bg-[#00fad0]/15 text-[#00fad0]'
                               : exp.status === 'REJECTED'
                                 ? 'bg-red-500/15 text-red-400'
-                                : exp.status === 'EXPIRED'
-                                  ? 'bg-amber-500/15 text-amber-300'
-                                  : 'bg-white/10 text-white/50'
+                                : 'bg-white/10 text-white/50'
                       }`}
                     >
                       {exp.status === 'PENDING_EMPLOYER' ? 'PENDING EMPLOYER' : exp.status}

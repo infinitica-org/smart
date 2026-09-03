@@ -344,7 +344,7 @@ export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 /**
  * Skill-claim state machine. Technical failures must not consume a strike.
  *
- * Allen / playbook lock (1 Sep 2026): one reattempt, then 35-day refresh.
+ * Product Owner / playbook lock (1 Sep 2026): one reattempt, then 35-day refresh.
  * `BEGINNER_REATTEMPT` is that single retry. `LOCKED` lasts
  * {@link SKILL_REFRESH_DAYS} — not a second retry window.
  */
