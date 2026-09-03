@@ -191,6 +191,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'IP_CHALLENGE',
   },
   {
+    key: 'verify.workExperience',
+    scope: 'IP',
+    limit: 20,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:verify_we:ip:{id}',
+    rationale: 'Public work experience verification token endpoints; cap brute force.',
+    onViolation: 'IP_CHALLENGE',
+  },
+  {
     key: 'placement.match',
     scope: 'INSTITUTION',
     limit: 30,

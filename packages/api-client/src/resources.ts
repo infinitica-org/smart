@@ -61,9 +61,13 @@ import {
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   ValidateWorkExperienceProofResponseSchema,
+  SendWorkExperienceVerificationResponseSchema,
+  GetWorkExperienceVerificationResponseSchema,
+  SubmitWorkExperienceVerificationResponseSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
+  type SubmitWorkExperienceVerificationDto,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -199,6 +203,29 @@ export function usersApi(client: SmartApiClient) {
           schema: ValidateWorkExperienceProofResponseSchema,
         },
       ),
+    sendWorkExperienceVerification: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/send-verification`),
+        {},
+        {
+          schema: SendWorkExperienceVerificationResponseSchema,
+        },
+      ),
+
+    getWorkExperienceVerificationByToken: (token: string) =>
+      client.get(prefixed(`/users/work-experiences/verify-token/${token}`), {
+        schema: GetWorkExperienceVerificationResponseSchema,
+        anonymous: true,
+      }),
+
+    submitWorkExperienceVerificationByToken: (
+      token: string,
+      body: SubmitWorkExperienceVerificationDto,
+    ) =>
+      client.post(prefixed(`/users/work-experiences/verify-token/${token}`), body, {
+        schema: SubmitWorkExperienceVerificationResponseSchema,
+        anonymous: true,
+      }),
   };
 }
 

@@ -1,8 +1,16 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
 import type {
   WorkExperienceDto,
   WorkExperienceDocumentDto,
   ValidateWorkExperienceProofResponse,
+  SendWorkExperienceVerificationResponseDto,
+  GetWorkExperienceVerificationResponseDto,
+  SubmitWorkExperienceVerificationDto,
+  SubmitWorkExperienceVerificationResponseDto,
+  WorkExperienceVerificationStatus,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -12,10 +20,17 @@ import {
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
   ValidateWorkExperienceProofResponseSchema,
+  SubmitWorkExperienceVerificationSchema,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
+import {
+  EMAIL_QUEUE,
+  type EmailQueueJobData,
+  type WorkExperienceReminderJobPayload,
+  type WorkExperienceExpireJobPayload,
+} from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
 import type { Prisma } from '../../generated/prisma/index.js';
 
@@ -89,6 +104,7 @@ export class WorkExperienceService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
+    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
   ) {}
 
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
@@ -750,5 +766,257 @@ export class WorkExperienceService {
     }
 
     return extractedText;
+  }
+
+  /**
+   * Phase 3: Trigger employer verification flow for a work experience entry.
+   * Generates secure random 32-byte token, hashes it with SHA-256 before saving to DB,
+   * sets experience status to PENDING_EMPLOYER, sends email, and logs audit event.
+   */
+  async sendEmployerVerification(
+    studentId: string,
+    experienceId: string,
+  ): Promise<SendWorkExperienceVerificationResponseDto> {
+    const exp = await this.prisma.workExperience.findUnique({
+      where: { id: experienceId },
+      include: { student: true },
+    });
+
+    if (!exp) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+    if (exp.studentId !== studentId) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+    if (!exp.verifierEmail) {
+      throw new BadRequestException(
+        'Verifier email is required to send verification. Please update work experience entry with verifier details.',
+      );
+    }
+
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+    const attempt = await this.prisma.workExperienceVerificationAttempt.create({
+      data: {
+        experienceId,
+        tokenHash,
+        verifierEmail: exp.verifierEmail,
+        expiresAt,
+      },
+    });
+
+    const updated = await this.prisma.workExperience.update({
+      where: { id: experienceId },
+      data: {
+        status: 'PENDING_EMPLOYER',
+        rejectionReason: null,
+      },
+    });
+
+    const verificationUrl = `${env.VERIFY_APP_URL}/work-experience/${rawToken}`;
+
+    if (this.emailQueue) {
+      await this.emailQueue.add('send', {
+        to: exp.verifierEmail,
+        template: 'work-experience-verifier-invite',
+        data: {
+          verifierName: exp.verifierName || 'Hiring Manager / HR',
+          candidateName: exp.student?.fullName || 'Candidate',
+          companyName: exp.companyName,
+          roleTitle: exp.role,
+          startDate: exp.startDate.toISOString().substring(0, 10),
+          endDate: exp.isCurrent
+            ? 'Present'
+            : exp.endDate
+              ? exp.endDate.toISOString().substring(0, 10)
+              : 'N/A',
+          verificationUrl,
+          expiresAtFormatted: '48 hours',
+        },
+      });
+
+      await this.emailQueue.add(
+        'send-reminder',
+        {
+          to: exp.verifierEmail,
+          template: 'work-experience-verifier-reminder',
+          data: {
+            verifierName: exp.verifierName || 'Hiring Manager / HR',
+            candidateName: exp.student?.fullName || 'Candidate',
+            companyName: exp.companyName,
+            roleTitle: exp.role,
+            verificationUrl,
+            expiresAtFormatted: '42 hours',
+          },
+          attemptId: attempt.id,
+        } as WorkExperienceReminderJobPayload,
+        { delay: 6 * 60 * 60 * 1000 },
+      );
+
+      await this.emailQueue.add(
+        'expire-verification',
+        {
+          attemptId: attempt.id,
+          experienceId,
+        } as WorkExperienceExpireJobPayload,
+        { delay: 48 * 60 * 60 * 1000 },
+      );
+    }
+
+    await this.auditPublisher.record({
+      actorId: studentId,
+      action: 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_SENT',
+      resourceType: 'WorkExperience',
+      resourceId: experienceId,
+      reasonCode: 'employer_verification_sent',
+      metadata: {
+        attemptId: attempt.id,
+        verifierEmail: exp.verifierEmail,
+      },
+    });
+
+    return {
+      success: true,
+      experienceId,
+      status: updated.status as WorkExperienceVerificationStatus,
+      message: `Employer verification request dispatched to ${exp.verifierEmail}.`,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  /**
+   * Phase 3: Public endpoint to fetch verification details by raw token.
+   * Hashes incoming raw token with SHA-256 and retrieves attempt & experience info.
+   */
+  async getVerificationByToken(
+    rawToken: string,
+  ): Promise<GetWorkExperienceVerificationResponseDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid verification token.');
+    }
+
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const attempt = await this.prisma.workExperienceVerificationAttempt.findUnique({
+      where: { tokenHash },
+      include: {
+        experience: {
+          include: {
+            student: true,
+          },
+        },
+      },
+    });
+
+    if (!attempt || !attempt.experience) {
+      throw new NotFoundException('Invalid or expired verification token.');
+    }
+
+    const exp = attempt.experience;
+    const now = new Date();
+    const isExpired = attempt.expiresAt < now;
+    const isAlreadyResponded = attempt.respondedAt !== null;
+
+    return {
+      experienceId: exp.id,
+      candidateName: exp.student?.fullName || 'Candidate',
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType as WorkExperienceDto['employmentType'],
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.endDate ? exp.endDate.toISOString().substring(0, 10) : null,
+      isCurrent: exp.isCurrent,
+      responsibilities: exp.responsibilities ?? null,
+      verifierName: exp.verifierName ?? null,
+      verifierEmail: attempt.verifierEmail,
+      verifierDesignation: exp.verifierDesignation ?? null,
+      status: exp.status as WorkExperienceVerificationStatus,
+      expiresAt: attempt.expiresAt.toISOString(),
+      isExpired,
+      isAlreadyResponded,
+    };
+  }
+
+  /**
+   * Phase 3: Public endpoint for employer to submit verification decision (approve/reject).
+   */
+  async submitEmployerVerification(
+    rawToken: string,
+    payload: SubmitWorkExperienceVerificationDto,
+    meta?: { ip?: string; userAgent?: string },
+  ): Promise<SubmitWorkExperienceVerificationResponseDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid verification token.');
+    }
+
+    const parsed = SubmitWorkExperienceVerificationSchema.parse(payload);
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+    const attempt = await this.prisma.workExperienceVerificationAttempt.findUnique({
+      where: { tokenHash },
+      include: { experience: true },
+    });
+
+    if (!attempt || !attempt.experience) {
+      throw new NotFoundException('Invalid or expired verification token.');
+    }
+
+    if (attempt.respondedAt !== null) {
+      throw new BadRequestException('This verification link has already been used.');
+    }
+
+    if (attempt.expiresAt < new Date()) {
+      throw new BadRequestException('This verification link has expired.');
+    }
+
+    const exp = attempt.experience;
+    const now = new Date();
+    const newStatus = parsed.approved ? 'VERIFIED' : 'REJECTED';
+
+    await this.prisma.$transaction([
+      this.prisma.workExperienceVerificationAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          respondedAt: now,
+          approved: parsed.approved,
+          comments: parsed.comments || null,
+          ipAddress: meta?.ip || null,
+          userAgent: meta?.userAgent || null,
+        },
+      }),
+      this.prisma.workExperience.update({
+        where: { id: exp.id },
+        data: {
+          status: newStatus,
+          rejectionReason: parsed.approved
+            ? null
+            : parsed.comments || 'Rejected by employer verifier',
+        },
+      }),
+    ]);
+
+    await this.auditPublisher.record({
+      actorId: null,
+      action: parsed.approved
+        ? 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_APPROVED'
+        : 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_REJECTED',
+      resourceType: 'WorkExperience',
+      resourceId: exp.id,
+      reasonCode: parsed.approved ? 'employer_verified' : 'employer_rejected',
+      metadata: {
+        attemptId: attempt.id,
+        approved: parsed.approved,
+        comments: parsed.comments ?? null,
+      },
+    });
+
+    return {
+      success: true,
+      status: newStatus,
+      message: parsed.approved
+        ? 'Work experience successfully verified.'
+        : 'Work experience rejected.',
+    };
   }
 }
