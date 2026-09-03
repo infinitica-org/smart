@@ -44,7 +44,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Monorepo Path:** `apps/api-core/src/modules/auth`
 - **Core Responsibilities:**
   - Short-Lived JWT Access Tokens (15m) + HttpOnly Secure Refresh Tokens (7–14d).
-  - Supabase Auth OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
+  - OAuth 2.0 (Google, GitHub) + SAML 2.0 / OIDC Institutional SSO (`@psgtech.ac.in`, `@bits-pilani.ac.in`).
   - Role-Based Access Control (RBAC) Guards for Super Admin, TPO, Student, and Public.
   - Student onboarding and track pre-assignment (Primary & Secondary specializations).
 - **Primary REST Endpoints:**
@@ -55,7 +55,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Kafka Topics Published:** `smart.user.created`, `smart.user.updated`
 - **Work Items / Deliverables:**
   1. [ ] Implement JWT access guard (15m) and HttpOnly secure refresh token rotation handler.
-  2. [ ] Build SAML 2.0 / OpenID Connect (OIDC) institutional SSO integration via Supabase Auth.
+  2. [ ] Build SAML 2.0 / OpenID Connect (OIDC) institutional SSO integration.
   3. [ ] Build student profile REST endpoints and track assignment service.
 
 ---
@@ -106,7 +106,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Core Responsibilities:**
   - Anthropic Claude 5 Sonnet & Claude 4.7 API integration with Token Bucket rate limiting (200 RPM / 10,000 TPM).
   - Automatic failover to **Google Gemini API (Gemini 2.5 Pro / Flash)** during rate limits or outages.
-  - RAG vector context insertion using Supabase `pgvector` competency embeddings.
+  - RAG vector context insertion using Postgres `pgvector` competency embeddings.
 - **Primary REST Endpoints:**
   - `POST /api/v1/eval/claude` `[ASYNC SLA 2-5s]` — Internal proxy endpoint for structured JSON LLM completions.
 - **Kafka Topics Consumed:** `smart.eval.requested`
@@ -114,7 +114,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Work Items / Deliverables:**
   1. [ ] Implement `ClaudeProxyService` with Redis Token Bucket rate limiter.
   2. [ ] Build automatic failover circuit breaker switching to Google Gemini API on HTTP 429/5xx.
-  3. [ ] Integrate Supabase `pgvector` context retriever for domain rubrics.
+  3. [ ] Integrate Postgres `pgvector` context retriever for domain rubrics.
 
 ---
 
@@ -144,7 +144,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Monorepo Path:** `apps/api-core/src/modules/placement`
 - **Core Responsibilities:**
   - Job Description (JD) NLP parsing via Claude 5 Sonnet into structured threshold vectors.
-  - Vector cosine similarity candidate-company matching engine using Supabase `pgvector`.
+  - Vector cosine similarity candidate-company matching engine using Postgres `pgvector`.
   - TPO auto-shortlist generator, B2B API Key matching API (`X-SMART-API-KEY`), and Outbound Webhooks (`smart.placement.matched`).
 - **Primary REST Endpoints:**
   - `POST /api/v1/placement/ingest-jd` `[ASYNC SLA 2-4s]` — Upload & parse JD PDF/text into threshold vectors.
@@ -155,7 +155,7 @@ Splitting SMART into 8 autonomous, decoupled microservice packages enables:
 - **Outbound Webhooks:** Sends HMAC-SHA256 signed JSON payload to employer endpoints on `smart.placement.matched`.
 - **Work Items / Deliverables:**
   1. [ ] Build JD NLP parser utilizing Claude 5 Sonnet to extract competency vectors.
-  2. [ ] Implement vector cosine similarity search query against Supabase `pgvector`.
+  2. [ ] Implement vector cosine similarity search query against Postgres `pgvector`.
   3. [ ] Build B2B API Key handler and Webhook event dispatcher for employer integrations.
 
 ---

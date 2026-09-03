@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -14,13 +15,14 @@ import {
 import {
   API_PREFIX,
   AddBatchMemberRequestSchema,
+  BatchImportMappingSchema,
   CreateBatchRequestSchema,
   ListInstitutionStudentsQuerySchema,
   TenantActionReasonSchema,
   UpdateBatchRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { MultipartFile } from '@fastify/multipart';
+import type { Multipart, MultipartFile } from '@fastify/multipart';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -41,6 +43,11 @@ function requireInstitutionId(user: RequestUser): string {
 @Roles('INSTITUTION_ADMIN')
 export class InstitutionsTpoController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
+
+  @Get('entitlements')
+  entitlements(@CurrentUser() user: RequestUser) {
+    return this.institutions.resolveInstitutionEntitlements(requireInstitutionId(user));
+  }
 
   @Get('students')
   listStudents(
@@ -138,18 +145,76 @@ export class InstitutionsTpoController {
   @Post('batches/:batchId/members/import')
   async importMembers(
     @Param('batchId') batchId: string,
+    @Query('dryRun') dryRun: string | undefined,
     @Req() request: FastifyRequest,
     @CurrentUser() user: RequestUser,
   ) {
     const institutionId = requireInstitutionId(user);
-    const file = await (
-      request as FastifyRequest & { file: () => Promise<MultipartFile | undefined> }
-    ).file();
-    if (!file) {
-      return { imported: 0, skipped: 0, errors: [{ row: 0, message: 'No file uploaded.' }] };
+
+    const partsIter = (
+      request as FastifyRequest & {
+        parts: () => AsyncIterableIterator<Multipart>;
+      }
+    ).parts();
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+    let rawMapping: unknown;
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        } else if (part.type === 'field' && part.fieldname === 'mapping') {
+          try {
+            rawMapping = JSON.parse(String(part.value)) as unknown;
+          } catch {
+            throw new BadRequestException('Column mapping must be valid JSON.');
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException(
+        'The uploaded file exceeds the 5 MB limit or could not be read.',
+      );
     }
-    const buffer = await file.toBuffer();
-    return this.institutions.importBatchMembers(batchId, institutionId, buffer, user.sub);
+
+    if (!fileBuffer) {
+      throw new BadRequestException('Choose a CSV or XLSX file to upload.');
+    }
+
+    const parsedMapping = rawMapping ? BatchImportMappingSchema.safeParse(rawMapping) : undefined;
+    if (parsedMapping && !parsedMapping.success) {
+      throw new BadRequestException(
+        parsedMapping.error.issues[0]?.message ?? 'Column mapping is invalid.',
+      );
+    }
+
+    if (dryRun === 'true') {
+      return this.institutions.previewBatchImport(
+        batchId,
+        institutionId,
+        fileBuffer,
+        fileName,
+        mimeType,
+        parsedMapping?.data,
+      );
+    }
+
+    return this.institutions.importBatchMembers(
+      batchId,
+      institutionId,
+      fileBuffer,
+      fileName,
+      mimeType,
+      user.sub,
+      parsedMapping?.data,
+    );
   }
 
   @Get('batches/:batchId/import-template')

@@ -44,6 +44,9 @@ export interface RequestOptions<TResponse> {
   readonly path: string;
   readonly query?: Record<string, string | number | boolean | undefined>;
   readonly body?: unknown;
+  /** Multipart body. The browser owns its boundary Content-Type header. */
+  readonly formData?: FormData;
+  readonly responseType?: 'json' | 'blob';
   /** Contract schema. Omit only for endpoints that return no body. */
   readonly schema?: z.ZodType<TResponse>;
   readonly timeoutMs?: number;
@@ -75,30 +78,48 @@ export class SmartApiClient {
 
   get<T>(
     path: string,
-    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body'> = {},
+    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body' | 'formData'> = {},
   ): Promise<T> {
     return this.request<T>({ ...options, path, method: 'GET' });
+  }
+
+  getBlob(
+    path: string,
+    options: Omit<
+      RequestOptions<Blob>,
+      'path' | 'method' | 'body' | 'formData' | 'schema' | 'responseType'
+    > = {},
+  ): Promise<Blob> {
+    return this.request<Blob>({ ...options, path, method: 'GET', responseType: 'blob' });
   }
 
   post<T>(
     path: string,
     body?: unknown,
-    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body'> = {},
+    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body' | 'formData'> = {},
   ): Promise<T> {
     return this.request<T>({ ...options, path, method: 'POST', body });
+  }
+
+  postForm<T>(
+    path: string,
+    formData: FormData,
+    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body' | 'formData'> = {},
+  ): Promise<T> {
+    return this.request<T>({ ...options, path, method: 'POST', formData });
   }
 
   patch<T>(
     path: string,
     body?: unknown,
-    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body'> = {},
+    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body' | 'formData'> = {},
   ): Promise<T> {
     return this.request<T>({ ...options, path, method: 'PATCH', body });
   }
 
   delete<T>(
     path: string,
-    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body'> = {},
+    options: Omit<RequestOptions<T>, 'path' | 'method' | 'body' | 'formData'> = {},
   ): Promise<T> {
     return this.request<T>({ ...options, path, method: 'DELETE' });
   }
@@ -128,7 +149,9 @@ export class SmartApiClient {
       response = await this.fetchImpl(url, {
         method: options.method ?? 'GET',
         headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body:
+          options.formData ??
+          (options.body === undefined ? undefined : JSON.stringify(options.body)),
         // Required for the HttpOnly refresh cookie to travel.
         credentials: 'include',
         signal: timeoutController.signal,
@@ -177,6 +200,7 @@ export class SmartApiClient {
     }
 
     if (response.status === 204) return undefined as T;
+    if (options.responseType === 'blob') return (await response.blob()) as T;
 
     const text = await response.text();
     if (text.length === 0) return undefined as T;

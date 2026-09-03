@@ -1,13 +1,19 @@
+import { Readable } from 'node:stream';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { AddBatchMemberRequestSchema } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
   BatchDto,
+  BatchImportMapping,
+  BatchImportPreviewRowDto,
   BatchImportResultDto,
   BatchMemberDto,
   CreateBatchRequest,
@@ -17,25 +23,47 @@ import type {
   InstitutionDto,
   InstitutionStudentDto,
   InviteUserRequest,
+  ListAuditLogsQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
   SendBatchInvitesResultDto,
   SubscriptionPlanDto,
   TenantActionReason,
+  TenantEntitlementsDto,
   UpdateBatchRequest,
   UpdateInstitutionRequest,
+  UpdatePlanEntitlementsRequest,
+  ViewCandidateRequest,
+  CandidateBriefDto,
+  AdminDashboardDto,
+  AuditLogDto,
   PlanCode,
+  SetFeatureFlagOverrideRequest,
+  ResolveVerificationRequest,
+  VerificationQueueItemDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
+import { batchImportRows } from '@smart/observability';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 
+const MAX_BATCH_IMPORT_ROWS = 10_000;
+
+interface ParsedBatchImport {
+  rows: BatchImportPreviewRowDto[];
+  errors: BatchImportResultDto['errors'];
+}
+
 @Injectable()
 export class InstitutionsService {
+  private readonly logger = new Logger(InstitutionsService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   /* ----------------------------- platform admin ----------------------------- */
@@ -146,9 +174,14 @@ export class InstitutionsService {
     }
     await this.prisma.institution.update({ where: { id: institutionId }, data });
     if (body.planCode) {
-      await this.writeAudit(actorId, 'institution.plan_changed', institutionId, body.planCode, {
-        planCode: body.planCode,
-      });
+      await this.writeAudit(
+        actorId,
+        'institution.plan_changed',
+        'institution',
+        institutionId,
+        body.planCode,
+        { planCode: body.planCode },
+      );
     }
     return this.getInstitution(institutionId);
   }
@@ -163,7 +196,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { heldAt: new Date() },
     });
-    await this.writeAudit(actorId, 'institution.held', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.held',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -177,7 +217,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { heldAt: null },
     });
-    await this.writeAudit(actorId, 'institution.hold_released', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.hold_released',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -191,7 +238,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { deactivatedAt: new Date() },
     });
-    await this.writeAudit(actorId, 'institution.deactivated', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.deactivated',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -205,7 +259,14 @@ export class InstitutionsService {
       where: { id: institutionId },
       data: { deactivatedAt: null, heldAt: null },
     });
-    await this.writeAudit(actorId, 'institution.restored', institutionId, body.reason, {});
+    await this.writeAudit(
+      actorId,
+      'institution.restored',
+      'institution',
+      institutionId,
+      body.reason,
+      {},
+    );
     return this.getInstitution(institutionId);
   }
 
@@ -315,6 +376,360 @@ export class InstitutionsService {
     }));
   }
 
+  async updatePlanEntitlements(
+    planId: string,
+    body: UpdatePlanEntitlementsRequest,
+    actorId: string,
+  ): Promise<SubscriptionPlanDto> {
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+      include: { entitlements: { include: { featureFlag: true } } },
+    });
+    if (!plan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    for (const item of body.entitlements) {
+      const flag = await this.prisma.featureFlag.findUnique({ where: { key: item.key } });
+      if (!flag) continue;
+      await this.prisma.planEntitlement.upsert({
+        where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
+        create: { planId: plan.id, featureFlagId: flag.id, enabled: item.enabled },
+        update: { enabled: item.enabled },
+      });
+    }
+    await this.writeAudit(actorId, 'plan.entitlements_updated', 'plan', planId, 'plan matrix', {
+      entitlements: body.entitlements,
+    });
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
+  }
+
+  async setInstitutionFlagOverride(
+    institutionId: string,
+    body: SetFeatureFlagOverrideRequest,
+    actorId: string,
+  ): Promise<TenantEntitlementsDto> {
+    await this.requireInstitution(institutionId);
+    const flag = await this.prisma.featureFlag.findUnique({ where: { key: body.key } });
+    if (!flag) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Feature flag not found.',
+        statusCode: 404,
+      });
+    }
+    const existing = await this.prisma.featureFlagOverride.findFirst({
+      where: { institutionId, featureFlagId: flag.id },
+    });
+    if (existing) {
+      await this.prisma.featureFlagOverride.update({
+        where: { id: existing.id },
+        data: { enabled: body.enabled },
+      });
+    } else {
+      await this.prisma.featureFlagOverride.create({
+        data: { institutionId, featureFlagId: flag.id, enabled: body.enabled },
+      });
+    }
+    await this.writeAudit(
+      actorId,
+      'institution.flag_override',
+      'institution',
+      institutionId,
+      body.key,
+      {
+        key: body.key,
+        enabled: body.enabled,
+      },
+    );
+    return this.resolveInstitutionEntitlements(institutionId);
+  }
+
+  async resolveInstitutionEntitlements(institutionId: string): Promise<TenantEntitlementsDto> {
+    const institution = await this.requireInstitution(institutionId);
+    const flags = await this.prisma.featureFlag.findMany({
+      include: { entitlements: true, overrides: true },
+      orderBy: { key: 'asc' },
+    });
+    return {
+      planCode: institution.plan.code,
+      flags: flags.map((flag) => {
+        const override = flag.overrides.find((row) => row.institutionId === institutionId);
+        const entitlement = flag.entitlements.find((row) => row.planId === institution.planId);
+        return {
+          key: flag.key,
+          name: flag.name,
+          enabled: override ? override.enabled : (entitlement?.enabled ?? false),
+        };
+      }),
+    };
+  }
+
+  async assertInstitutionFlag(institutionId: string, key: string): Promise<void> {
+    const resolved = await this.resolveInstitutionEntitlements(institutionId);
+    const flag = resolved.flags.find((item) => item.key === key);
+    if (!flag?.enabled) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: `This institution's plan does not include ${key}.`,
+        statusCode: 403,
+      });
+    }
+  }
+
+  async getDashboard(): Promise<AdminDashboardDto> {
+    const [
+      total,
+      held,
+      deactivated,
+      studentsHeld,
+      companyTotal,
+      companyPending,
+      institutionPending,
+      flaggedAttempts,
+      plans,
+      recent,
+    ] = await Promise.all([
+      this.prisma.institution.count(),
+      this.prisma.institution.count({ where: { heldAt: { not: null }, deactivatedAt: null } }),
+      this.prisma.institution.count({ where: { deactivatedAt: { not: null } } }),
+      this.prisma.user.count({ where: { role: 'STUDENT', heldAt: { not: null } } }),
+      this.prisma.company.count(),
+      this.prisma.company.count({ where: { verificationStatus: 'PENDING' } }),
+      this.prisma.institution.count({ where: { verificationStatus: 'PENDING' } }),
+      this.prisma.attempt.count({
+        where: {
+          integrityFlag: {
+            in: [
+              'FLAGGED_TIMING',
+              'FLAGGED_PROCTOR',
+              'FLAGGED_SIMILARITY',
+              'FLAGGED_AUDIO',
+              'UNDER_REVIEW',
+            ],
+          },
+        },
+      }),
+      this.prisma.subscriptionPlan.findMany({
+        include: { _count: { select: { institutions: true } } },
+      }),
+      this.prisma.auditLog.findMany({
+        include: { actor: { select: { email: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+    ]);
+    return {
+      institutions: {
+        total,
+        active: total - held - deactivated,
+        held,
+        deactivated,
+      },
+      companies: { total: companyTotal, pendingVerification: companyPending },
+      planMix: plans.map((plan) => ({ code: plan.code, count: plan._count.institutions })),
+      openHolds: { institutions: held, students: studentsHeld },
+      pendingVerifications: companyPending + institutionPending,
+      flaggedAttempts,
+      recentAudit: recent.map((row) => this.toAuditDto(row)),
+    };
+  }
+
+  async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {
+    const where: Prisma.AuditLogWhereInput = {};
+    if (query.action) where.action = { contains: query.action, mode: 'insensitive' };
+    if (query.resourceType) where.resourceType = query.resourceType;
+    if (query.resourceId) where.resourceId = query.resourceId;
+    if (query.actorId) where.actorId = query.actorId;
+    if (query.q) {
+      where.OR = [
+        { action: { contains: query.q, mode: 'insensitive' } },
+        { reasonCode: { contains: query.q, mode: 'insensitive' } },
+        { resourceId: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      include: { actor: { select: { email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.toAuditDto(row));
+  }
+
+  async viewCandidateBrief(
+    userId: string,
+    body: ViewCandidateRequest,
+    actorId: string,
+  ): Promise<CandidateBriefDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { institution: true, skillClaims: true, projects: true, invitationsReceived: true },
+    });
+    if (!user || user.role !== 'STUDENT' || !user.institution) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
+    await this.writeAudit(actorId, 'candidate.profile_viewed', 'user', user.id, body.reason, {
+      reasonCode: body.reasonCode,
+    });
+    const latestInvite = user.invitationsReceived.sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    )[0];
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      institutionId: user.institution.id,
+      institutionName: user.institution.name,
+      inviteStatus: latestInvite?.status ?? null,
+      heldAt: user.heldAt?.toISOString() ?? null,
+      heldReason: user.heldReason,
+      skillClaimCount: user.skillClaims.length,
+      verifiedSkillCount: user.skillClaims.filter((claim) => claim.status === 'VERIFIED').length,
+      projectCount: user.projects.length,
+      viewedAt: new Date().toISOString(),
+    };
+  }
+
+  async listVerificationQueue(): Promise<VerificationQueueItemDto[]> {
+    const [institutions, companies] = await Promise.all([
+      this.prisma.institution.findMany({
+        where: { verificationStatus: { in: ['PENDING', 'REJECTED'] } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.company.findMany({
+        where: { verificationStatus: { in: ['PENDING', 'REJECTED'] } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return [
+      ...institutions.map((row) => ({
+        tenantType: 'institution' as const,
+        tenantId: row.id,
+        name: row.name,
+        domain: row.domain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      ...companies.map((row) => ({
+        tenantType: 'company' as const,
+        tenantId: row.id,
+        name: row.name,
+        domain: row.taxonomyDomain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async resolveVerification(
+    tenantId: string,
+    body: ResolveVerificationRequest,
+    actorId: string,
+  ): Promise<VerificationQueueItemDto> {
+    if (body.tenantType === 'institution') {
+      const plan =
+        body.decision === 'APPROVED'
+          ? await this.prisma.subscriptionPlan.findUnique({ where: { code: 'PRO' } })
+          : null;
+      const row = await this.prisma.institution.update({
+        where: { id: tenantId },
+        data: {
+          verificationStatus: body.decision,
+          verificationReason: body.reason,
+          ...(plan ? { planId: plan.id } : {}),
+        },
+      });
+      await this.writeAudit(
+        actorId,
+        'institution.verification',
+        'institution',
+        tenantId,
+        body.reason,
+        {
+          decision: body.decision,
+        },
+      );
+      return {
+        tenantType: 'institution',
+        tenantId: row.id,
+        name: row.name,
+        domain: row.domain,
+        verificationStatus: row.verificationStatus,
+        verificationReason: row.verificationReason,
+        createdAt: row.createdAt.toISOString(),
+      };
+    }
+    const pro =
+      body.decision === 'APPROVED'
+        ? await this.prisma.subscriptionPlan.findUnique({ where: { code: 'PRO' } })
+        : null;
+    const row = await this.prisma.company.update({
+      where: { id: tenantId },
+      data: {
+        verificationStatus: body.decision,
+        verificationReason: body.reason,
+        ...(pro ? { planId: pro.id } : {}),
+      },
+    });
+    await this.writeAudit(actorId, 'company.verification', 'company', tenantId, body.reason, {
+      decision: body.decision,
+    });
+    return {
+      tenantType: 'company',
+      tenantId: row.id,
+      name: row.name,
+      domain: row.taxonomyDomain,
+      verificationStatus: row.verificationStatus,
+      verificationReason: row.verificationReason,
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
+  private toAuditDto(row: {
+    id: string;
+    actorId: string | null;
+    actor?: { email: string } | null;
+    action: string;
+    resourceType: string;
+    resourceId: string | null;
+    reasonCode: string | null;
+    metadata: Prisma.JsonValue;
+    createdAt: Date;
+  }): AuditLogDto {
+    return {
+      auditLogId: row.id,
+      actorId: row.actorId,
+      actorEmail: row.actor?.email ?? null,
+      action: row.action,
+      resourceType: row.resourceType,
+      resourceId: row.resourceId,
+      reasonCode: row.reasonCode,
+      metadata:
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
   async holdStudent(
     userId: string,
     body: TenantActionReason,
@@ -326,7 +741,7 @@ export class InstitutionsService {
       where: { id: user.id },
       data: { heldAt: new Date(), heldReason: body.reason },
     });
-    await this.writeAudit(actorId, 'student.held', user.id, body.reason, {
+    await this.writeAudit(actorId, 'student.held', 'user', user.id, body.reason, {
       institutionId: user.institutionId,
     });
     if (!user.institutionId) {
@@ -351,7 +766,7 @@ export class InstitutionsService {
       where: { id: user.id },
       data: { heldAt: null, heldReason: null },
     });
-    await this.writeAudit(actorId, 'student.hold_released', user.id, body.reason, {
+    await this.writeAudit(actorId, 'student.hold_released', 'user', user.id, body.reason, {
       institutionId: user.institutionId,
     });
     if (!user.institutionId) {
@@ -621,60 +1036,319 @@ export class InstitutionsService {
     return result;
   }
 
+  async previewBatchImport(
+    batchId: string,
+    institutionId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
+    mapping?: BatchImportMapping,
+  ): Promise<BatchImportResultDto> {
+    await this.requireBatch(batchId, institutionId);
+    const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
+    const headers = this.readImportHeaders(sheet);
+    if (!mapping) return { imported: 0, skipped: 0, errors: [], headers };
+    return this.toImportResult(await this.parseImportRows(sheet, mapping, institutionId), headers);
+  }
+
   async importBatchMembers(
     batchId: string,
     institutionId: string,
     fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
     invitedById: string,
+    mapping?: BatchImportMapping,
   ): Promise<BatchImportResultDto> {
     await this.requireBatch(batchId, institutionId);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer as unknown as ExcelJS.Buffer);
-    const sheet = workbook.worksheets[0];
-    if (!sheet) {
-      return { imported: 0, skipped: 0, errors: [{ row: 1, message: 'Workbook has no sheets.' }] };
-    }
+    const sheet = await this.readImportSheet(fileBuffer, fileName, mimeType);
+    const headers = this.readImportHeaders(sheet);
+    const resolved =
+      mapping ?? this.suggestImportMapping(headers) ?? this.positionalMapping(headers);
+    const parsed = resolved
+      ? await this.parseImportRows(sheet, resolved, institutionId)
+      : this.invalidImport('Map the Full Name and Email columns before importing.');
 
     let imported = 0;
-    let skipped = 0;
-    const errors: BatchImportResultDto['errors'] = [];
-
-    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
-      const row = sheet.getRow(rowNumber);
-      const fullName = String(row.getCell(1).text ?? '').trim();
-      const email = String(row.getCell(2).text ?? '')
-        .trim()
-        .toLowerCase();
-      const groupLabel = String(row.getCell(3).text ?? '').trim() || undefined;
-
-      if (!fullName && !email) continue;
-      if (!fullName || !email) {
-        errors.push({ row: rowNumber, email, message: 'fullName and email are required.' });
-        skipped += 1;
-        continue;
-      }
-
+    let existingStudents = 0;
+    let newAccounts = 0;
+    const errors = [...parsed.errors];
+    for (const row of parsed.rows) {
+      if (!row.valid) continue;
       try {
         await this.addBatchMember(
           batchId,
           institutionId,
-          { fullName, email, groupLabel },
+          {
+            fullName: row.fullName,
+            email: row.email,
+            ...(row.groupLabel ? { groupLabel: row.groupLabel } : {}),
+          },
           invitedById,
         );
         imported += 1;
-      } catch (error) {
-        const message =
-          error instanceof ConflictException
-            ? 'User already exists.'
-            : error instanceof Error
-              ? error.message
-              : 'Import failed.';
-        errors.push({ row: rowNumber, email, message });
-        skipped += 1;
+        if (row.existingStudent) existingStudents += 1;
+        else newAccounts += 1;
+      } catch {
+        errors.push({
+          row: row.row,
+          email: row.email,
+          message: 'Candidate could not be imported.',
+        });
       }
     }
+    // enqueueForBatch sends every pending invitation in the tenant-scoped batch,
+    // so the confirmation count must use the same batch-wide semantics.
+    const pendingInvitations = await this.prisma.invitation.count({
+      where: { batchId, status: 'PENDING' },
+    });
+    batchImportRows.inc({ outcome: 'imported' }, imported);
+    batchImportRows.inc({ outcome: 'skipped' }, errors.length);
+    await this.writeAudit(
+      invitedById,
+      'batch.members_imported',
+      'batch',
+      batchId,
+      'bulk_provisioning',
+      {
+        institutionId,
+        imported,
+        skipped: errors.length,
+        existingStudents,
+        newAccounts,
+        pendingInvitations,
+      },
+    );
+    this.logger.log(
+      {
+        event: 'tpo.batch_import.completed',
+        batchId,
+        institutionId,
+        imported,
+        skipped: errors.length,
+        existingStudents,
+        newAccounts,
+        pendingInvitations,
+      },
+      'TPO batch import completed',
+    );
+    return {
+      ...this.toImportResult(parsed, headers),
+      imported,
+      skipped: errors.length,
+      errors,
+      existingStudents,
+      newAccounts,
+      pendingInvitations,
+    };
+  }
 
-    return { imported, skipped, errors };
+  private async readImportSheet(
+    buffer: Buffer,
+    fileName: string,
+    mimeType: string,
+  ): Promise<ExcelJS.Worksheet> {
+    const extension = fileName.toLowerCase().match(/\.([^.]+)$/)?.[1];
+    if (!extension || !['csv', 'xlsx'].includes(extension)) {
+      throw new BadRequestException('Unsupported file type. Upload a .csv or .xlsx file.');
+    }
+    if (buffer.length === 0) throw new BadRequestException('The uploaded file is empty.');
+    if (buffer.length > 5 * 1024 * 1024) {
+      throw new BadRequestException('The uploaded file exceeds the 5 MB limit.');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const hasZipSignature =
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      ((buffer[2] === 0x03 && buffer[3] === 0x04) ||
+        (buffer[2] === 0x05 && buffer[3] === 0x06) ||
+        (buffer[2] === 0x07 && buffer[3] === 0x08));
+    try {
+      if (extension === 'xlsx') {
+        if (!hasZipSignature) throw new Error('signature');
+        await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+      } else {
+        const text = buffer.toString('utf8');
+        const unsupportedSignature =
+          buffer.subarray(0, 4).equals(Buffer.from('%PDF')) ||
+          buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) ||
+          buffer.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])) ||
+          buffer.subarray(0, 4).equals(Buffer.from('GIF8')) ||
+          buffer.subarray(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0]));
+        const unsupportedMime = /pdf|image|msword|wordprocessingml/i.test(mimeType);
+        const controlBytes = [...buffer.subarray(0, 4096)].filter(
+          (byte) => byte < 0x20 && ![0x09, 0x0a, 0x0d].includes(byte),
+        ).length;
+        if (
+          hasZipSignature ||
+          unsupportedSignature ||
+          unsupportedMime ||
+          controlBytes > 0 ||
+          text.includes('\ufffd')
+        ) {
+          throw new Error('content');
+        }
+        await workbook.csv.read(Readable.from(text.replace(/^\uFEFF/, '')));
+      }
+    } catch {
+      throw new BadRequestException(
+        `Could not read ${extension.toUpperCase()} file. Check that it is not corrupted or mislabeled.`,
+      );
+    }
+    const sheet = workbook.worksheets[0];
+    if (!sheet)
+      throw new BadRequestException('The uploaded spreadsheet has no readable worksheet.');
+    if (sheet.rowCount - 1 > MAX_BATCH_IMPORT_ROWS) {
+      throw new BadRequestException(
+        `The spreadsheet exceeds the ${String(MAX_BATCH_IMPORT_ROWS)} candidate row limit.`,
+      );
+    }
+    return sheet;
+  }
+
+  private readImportHeaders(sheet: ExcelJS.Worksheet): string[] {
+    const headers: string[] = [];
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+      const header = String(cell.text ?? '').trim();
+      if (header) headers.push(header);
+    });
+    if (headers.length === 0) throw new BadRequestException('Row 1 must contain column headers.');
+    const normalized = headers.map((header) => header.toLowerCase());
+    if (new Set(normalized).size !== normalized.length) {
+      throw new BadRequestException('Column headers must be unique.');
+    }
+    return headers;
+  }
+
+  private suggestImportMapping(headers: string[]): BatchImportMapping | undefined {
+    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const find = (aliases: string[]) =>
+      headers.find((header) => aliases.includes(normalize(header)));
+    const fullName = find(['name', 'fullname', 'studentname', 'candidatename']);
+    const email = find(['email', 'emailaddress', 'mail']);
+    const groupLabel = find(['group', 'department', 'section', 'class', 'division']);
+    if (!fullName || !email) return undefined;
+    return { fullName, email, ...(groupLabel ? { groupLabel } : {}) };
+  }
+
+  private positionalMapping(headers: string[]): BatchImportMapping | undefined {
+    if (headers.length < 2) return undefined;
+    return {
+      fullName: headers[0] ?? '',
+      email: headers[1] ?? '',
+      ...(headers[2] ? { groupLabel: headers[2] } : {}),
+    };
+  }
+
+  private async parseImportRows(
+    sheet: ExcelJS.Worksheet,
+    mapping: BatchImportMapping,
+    institutionId: string,
+  ): Promise<ParsedBatchImport> {
+    const headerColumns = new Map<string, number>();
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
+      const header = String(cell.text ?? '').trim();
+      if (header) headerColumns.set(header, column);
+    });
+    const nameColumn = headerColumns.get(mapping.fullName);
+    const emailColumn = headerColumns.get(mapping.email);
+    const groupColumn = mapping.groupLabel ? headerColumns.get(mapping.groupLabel) : undefined;
+    if (!nameColumn || !emailColumn || (mapping.groupLabel && !groupColumn)) {
+      return this.invalidImport('One or more mapped columns are not present in row 1.');
+    }
+    if (sheet.rowCount < 2) return this.invalidImport('The spreadsheet has no candidate rows.');
+
+    const rows: BatchImportPreviewRowDto[] = [];
+    const errors: BatchImportResultDto['errors'] = [];
+    const seenEmails = new Set<string>();
+    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const source = sheet.getRow(rowNumber);
+      const fullName = String(source.getCell(nameColumn).text ?? '').trim();
+      const email = String(source.getCell(emailColumn).text ?? '')
+        .trim()
+        .toLowerCase();
+      const groupLabel = groupColumn
+        ? String(source.getCell(groupColumn).text ?? '').trim() || undefined
+        : undefined;
+      let message: string | undefined;
+      const candidate = AddBatchMemberRequestSchema.safeParse({ fullName, email, groupLabel });
+      if (!fullName && !email && !groupLabel) message = 'Row is empty.';
+      else if (!fullName) message = 'Full Name is required.';
+      else if (!email) message = 'Email is required.';
+      else if (!candidate.success) {
+        if (candidate.error.issues.some((issue) => issue.path[0] === 'email')) {
+          message = 'Invalid email address.';
+        } else if (candidate.error.issues.some((issue) => issue.path[0] === 'fullName')) {
+          message = 'Full Name must be between 2 and 200 characters.';
+        } else if (candidate.error.issues.some((issue) => issue.path[0] === 'groupLabel')) {
+          message = 'Group must be 80 characters or fewer.';
+        } else {
+          message = 'Row contains invalid data.';
+        }
+      } else if (seenEmails.has(email)) message = 'Duplicate email in this upload.';
+      if (!message) seenEmails.add(email);
+      rows.push({
+        row: rowNumber,
+        fullName,
+        email,
+        ...(groupLabel ? { groupLabel } : {}),
+        valid: !message,
+        existingStudent: false,
+        ...(message ? { message } : {}),
+      });
+    }
+
+    const existingUsers = await this.prisma.user.findMany({
+      where: { email: { in: rows.filter((row) => row.valid).map((row) => row.email) } },
+    });
+    const usersByEmail = new Map(existingUsers.map((user) => [user.email.toLowerCase(), user]));
+    for (const row of rows) {
+      if (!row.valid) continue;
+      const existing = usersByEmail.get(row.email);
+      if (!existing) continue;
+      if (existing.institutionId !== institutionId) {
+        row.valid = false;
+        row.message = 'Candidate belongs to another institution.';
+      } else if (existing.role !== 'STUDENT') {
+        row.valid = false;
+        row.message = 'Email belongs to a non-student account.';
+      } else {
+        row.existingStudent = true;
+      }
+    }
+    for (const row of rows) {
+      if (!row.valid) {
+        errors.push({
+          row: row.row,
+          ...(row.email ? { email: row.email } : {}),
+          message: row.message ?? 'Invalid row.',
+        });
+      }
+    }
+    return { rows, errors };
+  }
+
+  private invalidImport(message: string): ParsedBatchImport {
+    return { rows: [], errors: [{ row: 1, message }] };
+  }
+
+  private toImportResult(parsed: ParsedBatchImport, headers: string[]): BatchImportResultDto {
+    const validRows = parsed.rows.filter((row) => row.valid).length;
+    return {
+      imported: 0,
+      skipped: parsed.errors.length,
+      errors: parsed.errors,
+      headers,
+      preview: parsed.rows.slice(0, 50),
+      totalRows: parsed.rows.length,
+      validRows,
+      invalidRows: parsed.errors.length,
+      existingStudents: parsed.rows.filter((row) => row.valid && row.existingStudent).length,
+      newAccounts: parsed.rows.filter((row) => row.valid && !row.existingStudent).length,
+      previewTruncated: parsed.rows.length > 50,
+    };
   }
 
   async buildImportTemplate(): Promise<Buffer> {
@@ -730,19 +1404,18 @@ export class InstitutionsService {
   private async writeAudit(
     actorId: string,
     action: string,
+    resourceType: string,
     resourceId: string,
     reason: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action,
-        resourceType: 'institution',
-        resourceId,
-        reasonCode: reason,
-        metadata: metadata as Prisma.InputJsonValue,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action,
+      resourceType,
+      resourceId,
+      reasonCode: reason,
+      metadata,
     });
   }
 

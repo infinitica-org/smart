@@ -17,9 +17,12 @@
     "@smart/contracts": "workspace:*",
     "@smart/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "lucide-react": "catalog:",
+    "motion": "12.23.12",
     "next": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "recharts": "catalog:"
   },
   "devDependencies": {
     "@smart/eslint-config": "workspace:*",

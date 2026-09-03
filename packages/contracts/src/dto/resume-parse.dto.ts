@@ -72,6 +72,17 @@ export const ResumeParseSkillSchema = z.discriminatedUnion('type', [
 ]);
 export type ResumeParseSkill = z.infer<typeof ResumeParseSkillSchema>;
 
+/** Professional licenses and certifications (Product Owner, 1 Sep 2026 — was missing). */
+export const LicenseCredentialSchema = z.object({
+  name: z.string().min(1).max(200),
+  issuer: z.string().min(1).max(200),
+  credentialId: z.string().min(1).max(120).optional(),
+  issuedOn: z.string().min(1).max(32).optional(),
+  expiresOn: z.string().min(1).max(32).optional(),
+  url: z.union([z.url(), z.literal('')]).optional(),
+});
+export type LicenseCredential = z.infer<typeof LicenseCredentialSchema>;
+
 /**
  * Schema-validated LLM JSON. Empty arrays are a valid parse (nothing extractable).
  * `FAILED` is reserved for gateway/schema exhaustion — the UI then skips pre-fill.
@@ -81,6 +92,7 @@ export const ResumeParseDraftSchema = z.object({
   education: z.array(ResumeParseEducationSchema).max(20).default([]),
   experiences: z.array(ResumeParseExperienceSchema).max(30).default([]),
   skills: z.array(ResumeParseSkillSchema).max(40).default([]),
+  licenses: z.array(LicenseCredentialSchema).max(20).default([]),
   parseConfidence: z.number().min(0).max(1),
   /** Dotted paths the model could not fill (e.g. `education.0.endDate`). */
   missingFields: z.array(z.string().min(1).max(120)).max(80).default([]),

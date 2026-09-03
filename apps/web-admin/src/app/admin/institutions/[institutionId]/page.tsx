@@ -1,18 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, Flag, GraduationCap, ScrollText, Shield, Users } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import type {
+  AuditLogDto,
   InstitutionAdminDto,
   InstitutionDto,
   InstitutionStudentDto,
   PlanCode,
   StudentInviteFilter,
+  TenantEntitlementsDto,
 } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
-import { api } from '../../../../lib/api';
+import { Button } from '@smart/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+import { Switch } from '@smart/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@smart/ui/tabs';
+import { PageHeader } from '@/components/page-header';
+import {
+  AdminInput,
+  DataTable,
+  Field,
+  FilterBar,
+  FormActions,
+  FormGrid,
+  InlineAlert,
+  NativeSelect,
+  PageStack,
+  StatusBadge,
+  TableCell,
+  TableRow,
+  controlButtonClassName,
+} from '@/components/admin-ui';
+import { api } from '@/lib/api';
 
 function formatApiError(error: unknown, fallback: string): string {
   if (isSmartApiError(error) && error.details.length > 0) {
@@ -36,6 +58,8 @@ export default function InstitutionDetailPage() {
   const [studentQ, setStudentQ] = useState('');
   const [inviteStatus, setInviteStatus] = useState<StudentInviteFilter | ''>('');
   const [reason, setReason] = useState('');
+  const [activity, setActivity] = useState<AuditLogDto[]>([]);
+  const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +72,16 @@ export default function InstitutionDetailPage() {
   }
 
   async function load() {
-    const [inst, adminList] = await Promise.all([
+    const [inst, adminList, logs, flags] = await Promise.all([
       api.onboarding.getInstitution(institutionId),
       api.onboarding.listInstitutionAdmins(institutionId),
+      api.onboarding.listAuditLogs({ resourceId: institutionId }),
+      api.onboarding.institutionEntitlements(institutionId),
     ]);
     setInstitution(inst);
     setAdmins(adminList);
+    setActivity(logs);
+    setEntitlements(flags);
     setEditName(inst.name);
     setEditDomain(inst.domain);
     setEditPlan(inst.planCode);
@@ -64,7 +92,7 @@ export default function InstitutionDetailPage() {
     load().catch((err) => setError(formatApiError(err, 'Failed to load institution.')));
   }, [institutionId]);
 
-  async function onInvite(event: React.FormEvent) {
+  async function onInvite(event: FormEvent) {
     event.preventDefault();
     setError(null);
     setMessage(null);
@@ -79,7 +107,7 @@ export default function InstitutionDetailPage() {
     }
   }
 
-  async function onSave(event: React.FormEvent) {
+  async function onSave(event: FormEvent) {
     event.preventDefault();
     setError(null);
     try {
@@ -115,60 +143,43 @@ export default function InstitutionDetailPage() {
     }
   }
 
+  const status = institution?.deactivatedAt
+    ? 'Deactivated'
+    : institution?.heldAt
+      ? 'On hold'
+      : 'Active';
+
   return (
-    <div className="space-y-6 max-w-6xl">
-      <Link href="/admin/institutions" className="text-sm underline">
-        Back to institutions
-      </Link>
+    <PageStack>
+      <PageHeader
+        icon={GraduationCap}
+        title={institution?.name ?? 'Institution'}
+        description={`${institution?.domain ?? ''} · Plan ${institution?.planCode ?? ''}`}
+      >
+        <Button variant="outline" asChild>
+          <Link href="/admin/institutions">
+            <ArrowLeft data-icon="inline-start" />
+            Back to institutions
+          </Link>
+        </Button>
+      </PageHeader>
+      {institution ? <StatusBadge status={status} /> : null}
       {institution?.heldAt ? (
-        <Alert tone="danger" title="This institution is on hold. Associated users cannot log in." />
+        <InlineAlert
+          tone="danger"
+          title="This institution is on hold. Associated users cannot log in."
+        />
       ) : null}
       {institution?.deactivatedAt ? (
-        <Alert
+        <InlineAlert
           tone="danger"
           title="This institution is deactivated (soft-deleted). Associated users cannot log in."
         />
       ) : null}
+      {error ? <InlineAlert tone="danger" title={error} /> : null}
+      {message ? <InlineAlert title={message} /> : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{institution?.name ?? 'Institution'}</CardTitle>
-          <CardDescription>
-            {institution?.domain} · Plan {institution?.planCode}
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={onSave} className="px-6 pb-6 grid gap-3 max-w-lg">
-          {error ? <Alert tone="danger" title={error} /> : null}
-          {message ? <Alert tone="info" title={message} /> : null}
-          <Input
-            label="Name"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            required
-          />
-          <Input
-            label="Domain"
-            value={editDomain}
-            onChange={(e) => setEditDomain(e.target.value)}
-            required
-          />
-          <label className="grid gap-1 text-sm">
-            <span className="text-[var(--text-muted)]">Plan</span>
-            <select
-              className="h-10 rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] px-3"
-              value={editPlan}
-              onChange={(e) => setEditPlan(e.target.value as PlanCode)}
-            >
-              <option value="FREE">Free</option>
-              <option value="BASIC">Basic</option>
-              <option value="PRO">Pro</option>
-            </select>
-          </label>
-          <Button type="submit">Save changes</Button>
-        </form>
-      </Card>
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-6 text-sm md:grid-cols-5">
         {[
           ['Students', institution?.studentCount],
           ['TPO admins', institution?.adminCount],
@@ -179,142 +190,195 @@ export default function InstitutionDetailPage() {
           <Card key={String(label)}>
             <CardHeader>
               <CardDescription>{label}</CardDescription>
-              <CardTitle>{value ?? '—'}</CardTitle>
+              <CardTitle className="text-2xl tabular-nums">{value ?? '—'}</CardTitle>
             </CardHeader>
           </Card>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Invite institution admin</CardTitle>
-        </CardHeader>
-        <form onSubmit={onInvite} className="px-6 pb-6 grid gap-3 max-w-lg">
-          <Input
-            label="Admin name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-          />
-          <Input
-            label="Admin email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Button type="submit">Invite institution admin</Button>
-        </form>
-      </Card>
-
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Admin</th>
-            <th className="py-2">Email</th>
-            <th className="py-2">Status</th>
-            <th className="py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {admins.map((admin) => (
-            <tr key={admin.userId} className="border-b">
-              <td className="py-2">{admin.fullName}</td>
-              <td className="py-2">{admin.email}</td>
-              <td className="py-2">
-                {admin.emailVerified ? 'Active' : (admin.invitation?.status ?? '—')}
-              </td>
-              <td className="py-2">
-                {admin.invitation?.status === 'PENDING' ? (
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => {
-                      const invitationId = admin.invitation?.invitationId;
-                      if (invitationId) {
-                        void api.onboarding.resendAdminInvitation(invitationId).then(async () => {
-                          setMessage('Invitation resent.');
-                          await load();
-                        });
-                      }
-                    }}
-                  >
-                    Resend
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Students</CardTitle>
-          <CardDescription>Filter by invite sent or accepted.</CardDescription>
-        </CardHeader>
-        <div className="px-6 pb-4 flex flex-wrap gap-3 items-end">
-          <div className="min-w-48 flex-1">
-            <Input
-              label="Search students"
-              value={studentQ}
-              onChange={(e) => setStudentQ(e.target.value)}
-            />
-          </div>
-          <label className="grid gap-1 text-sm">
-            <span className="text-[var(--text-muted)]">Invite status</span>
-            <select
-              className="h-10 rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] px-3"
-              value={inviteStatus}
-              onChange={(e) => setInviteStatus(e.target.value as StudentInviteFilter | '')}
-            >
-              <option value="">All</option>
-              <option value="PENDING">Invite sent</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="REVOKED">Revoked</option>
-              <option value="NONE">No invite</option>
-            </select>
-          </label>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              loadStudents().catch((err) =>
-                setError(formatApiError(err, 'Failed to load students.')),
-              );
-            }}
-          >
-            Filter
-          </Button>
-        </div>
-        {students.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-[var(--text-muted)]">
-            No students match these filters.
-          </p>
-        ) : (
-          <table className="w-full text-sm border-collapse px-6">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2 px-6">Name</th>
-                <th className="py-2">Email</th>
-                <th className="py-2">Batch</th>
-                <th className="py-2">Invite</th>
-                <th className="py-2">Access</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.userId} className="border-b">
-                  <td className="py-2 px-6">{student.fullName}</td>
-                  <td className="py-2">{student.email}</td>
-                  <td className="py-2">{student.batchName ?? '—'}</td>
-                  <td className="py-2">{student.inviteStatus ?? 'NONE'}</td>
-                  <td className="py-2">
-                    {student.heldAt ? 'On hold' : 'Active'}{' '}
-                    <button
+      <Tabs defaultValue="profile">
+        <TabsList>
+          <TabsTrigger value="profile">
+            <GraduationCap />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="people">
+            <Users />
+            People
+          </TabsTrigger>
+          <TabsTrigger value="access">
+            <Shield />
+            Access
+          </TabsTrigger>
+          <TabsTrigger value="flags">
+            <Flag />
+            Flags
+          </TabsTrigger>
+          <TabsTrigger value="activity">
+            <ScrollText />
+            Activity
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tenant profile</CardTitle>
+              <CardDescription>Name, domain, and subscription plan.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onSave}>
+                <FormGrid>
+                  <Field label="Name">
+                    <AdminInput
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <Field label="Domain">
+                    <AdminInput
+                      value={editDomain}
+                      onChange={(e) => setEditDomain(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <Field label="Plan">
+                    <NativeSelect
+                      value={editPlan}
+                      onChange={(e) => setEditPlan(e.target.value as PlanCode)}
+                    >
+                      <option value="FREE">Free</option>
+                      <option value="BASIC">Basic</option>
+                      <option value="PRO">Pro</option>
+                    </NativeSelect>
+                  </Field>
+                  <FormActions>
+                    <Button type="submit" className={controlButtonClassName}>
+                      Save changes
+                    </Button>
+                  </FormActions>
+                </FormGrid>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="people" className="mt-6 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Invite institution admin</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onInvite}>
+                <FormGrid>
+                  <Field label="Admin name">
+                    <AdminInput
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <Field label="Admin email">
+                    <AdminInput
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </Field>
+                  <FormActions>
+                    <Button type="submit" className={controlButtonClassName}>
+                      Invite institution admin
+                    </Button>
+                  </FormActions>
+                </FormGrid>
+              </form>
+            </CardContent>
+          </Card>
+          <DataTable headers={['Admin', 'Email', 'Status', '']}>
+            {admins.map((admin) => (
+              <TableRow key={admin.userId}>
+                <TableCell className="font-medium">{admin.fullName}</TableCell>
+                <TableCell>{admin.email}</TableCell>
+                <TableCell>
+                  {admin.emailVerified ? 'Active' : (admin.invitation?.status ?? '—')}
+                </TableCell>
+                <TableCell>
+                  {admin.invitation?.status === 'PENDING' ? (
+                    <Button
                       type="button"
-                      className="underline"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const invitationId = admin.invitation?.invitationId;
+                        if (invitationId) {
+                          void api.onboarding.resendAdminInvitation(invitationId).then(async () => {
+                            setMessage('Invitation resent.');
+                            await load();
+                          });
+                        }
+                      }}
+                    >
+                      Resend
+                    </Button>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))}
+          </DataTable>
+          <Card>
+            <CardHeader>
+              <CardTitle>Students</CardTitle>
+              <CardDescription>Filter by invite sent or accepted.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FilterBar>
+                <Field label="Search students">
+                  <AdminInput value={studentQ} onChange={(e) => setStudentQ(e.target.value)} />
+                </Field>
+                <Field label="Invite status">
+                  <NativeSelect
+                    value={inviteStatus}
+                    onChange={(e) => setInviteStatus(e.target.value as StudentInviteFilter | '')}
+                  >
+                    <option value="">All</option>
+                    <option value="PENDING">Invite sent</option>
+                    <option value="ACCEPTED">Accepted</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="REVOKED">Revoked</option>
+                    <option value="NONE">No invite</option>
+                  </NativeSelect>
+                </Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={controlButtonClassName}
+                  onClick={() => {
+                    loadStudents().catch((err) =>
+                      setError(formatApiError(err, 'Failed to load students.')),
+                    );
+                  }}
+                >
+                  Filter
+                </Button>
+              </FilterBar>
+            </CardContent>
+          </Card>
+          {students.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No students match these filters.</p>
+          ) : (
+            <DataTable headers={['Name', 'Email', 'Batch', 'Invite', 'Access']}>
+              {students.map((student) => (
+                <TableRow key={student.userId}>
+                  <TableCell className="font-medium">{student.fullName}</TableCell>
+                  <TableCell>{student.email}</TableCell>
+                  <TableCell>{student.batchName ?? '—'}</TableCell>
+                  <TableCell>{student.inviteStatus ?? 'NONE'}</TableCell>
+                  <TableCell className="space-x-2">
+                    <StatusBadge status={student.heldAt ? 'On hold' : 'Active'} />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
                       onClick={() => {
                         void (async () => {
                           if (reason.trim().length < 8) {
@@ -343,74 +407,135 @@ export default function InstitutionDetailPage() {
                       }}
                     >
                       {student.heldAt ? 'Release' : 'Hold'}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Access controls</CardTitle>
-          <CardDescription>
-            Hold blocks logins without hiding the tenant. Soft-delete hides it from the default list
-            and also blocks logins. A reason is required.
-          </CardDescription>
-        </CardHeader>
-        <div className="px-6 pb-6 grid gap-3 max-w-lg">
-          <Input
-            label="Reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="At least 8 characters"
-          />
-          <div className="flex flex-wrap gap-2">
-            {institution?.heldAt ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void runAction(api.onboarding.releaseHold, 'Hold released.')}
-              >
-                Release hold
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  void runAction(api.onboarding.holdInstitution, 'Institution on hold.')
-                }
-              >
-                Put on hold
-              </Button>
-            )}
-            {institution?.deactivatedAt ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  void runAction(api.onboarding.restoreInstitution, 'Institution restored.')
-                }
-              >
-                Restore
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="danger"
-                onClick={() =>
-                  void runAction(api.onboarding.deactivateInstitution, 'Institution deactivated.')
-                }
-              >
-                Soft-delete
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
+            </DataTable>
+          )}
+        </TabsContent>
+        <TabsContent value="access" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access controls</CardTitle>
+              <CardDescription>
+                Hold blocks logins without hiding the tenant. Soft-delete hides it from the default
+                list and also blocks logins. A reason is required.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid max-w-lg gap-4">
+              <Field label="Reason">
+                <AdminInput
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                {institution?.heldAt ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void runAction(api.onboarding.releaseHold, 'Hold released.')}
+                  >
+                    Release hold
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      void runAction(api.onboarding.holdInstitution, 'Institution on hold.')
+                    }
+                  >
+                    Put on hold
+                  </Button>
+                )}
+                {institution?.deactivatedAt ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      void runAction(api.onboarding.restoreInstitution, 'Institution restored.')
+                    }
+                  >
+                    Restore
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() =>
+                      void runAction(
+                        api.onboarding.deactivateInstitution,
+                        'Institution deactivated.',
+                      )
+                    }
+                  >
+                    Soft-delete
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="flags" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Feature flags</CardTitle>
+              <CardDescription>
+                Plan defaults plus per-tenant overrides. Toggling here only affects this
+                institution.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm">
+                {entitlements?.flags.map((flag) => (
+                  <li key={flag.key} className="flex items-center justify-between gap-2">
+                    <span>
+                      {flag.name} ({entitlements.planCode})
+                    </span>
+                    <Switch
+                      checked={flag.enabled}
+                      onCheckedChange={(checked) => {
+                        void (async () => {
+                          try {
+                            setEntitlements(
+                              await api.onboarding.setInstitutionFlag(institutionId, {
+                                key: flag.key,
+                                enabled: checked,
+                              }),
+                            );
+                          } catch (err) {
+                            setError(formatApiError(err, 'Could not update flag.'));
+                          }
+                        })();
+                      }}
+                      aria-label={flag.name}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="activity" className="mt-6">
+          {activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No events yet.</p>
+          ) : (
+            <DataTable headers={['Action', 'Actor', 'When', 'Reason']}>
+              {activity.map((row) => (
+                <TableRow key={row.auditLogId}>
+                  <TableCell className="font-medium">{row.action}</TableCell>
+                  <TableCell>{row.actorEmail ?? '—'}</TableCell>
+                  <TableCell>{new Date(row.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{row.reasonCode ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </DataTable>
+          )}
+        </TabsContent>
+      </Tabs>
+    </PageStack>
   );
 }

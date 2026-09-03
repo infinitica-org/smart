@@ -171,7 +171,7 @@ export const STORIES = [
     epic: 'E1',
     github: 5,
     title:
-      'Supabase OAuth (Google, GitHub) + SAML 2.0/OIDC institutional SSO with domain→institution mapping',
+      'OAuth (Google, GitHub) + SAML 2.0/OIDC institutional SSO with domain→institution mapping',
     owner: 'Vishal V',
     handle: '@vis465',
     points: 8,
@@ -183,7 +183,7 @@ export const STORIES = [
     blockedBy: ['S1-VV-02'],
     blocks: ['S1-SV-01'],
     acceptanceCriteria: [
-      'Google + GitHub OAuth via Supabase works locally',
+      'Google + GitHub OAuth works locally',
       'SAML/OIDC path for institutional IdP',
       'Email domain → institution mapping persisted',
       'End-to-end: OAuth login creates/links user with STUDENT role',
@@ -191,7 +191,7 @@ export const STORIES = [
     failureModes: ['Unknown domain rejected with clear error', 'IdP metadata misconfig surfaced'],
     demoScript: 'OAuth login as student@smart.local → JWT + institution attached.',
     subtasks: [
-      'Supabase client + callback routes',
+      'OAuth client + callback routes',
       'SAML/OIDC strategy module',
       'Domain→institution resolver',
       'User provisioning on first login',

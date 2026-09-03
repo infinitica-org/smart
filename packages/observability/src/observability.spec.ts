@@ -8,6 +8,7 @@ import {
   assertLogEventFields,
   buildPinoBaseOptions,
   buildPinoHttpOptions,
+  batchImportRows,
   collectMetrics,
   getContext,
   isValidCorrelationId,
@@ -214,6 +215,18 @@ describe('metric registry', () => {
     for (const line of scraped.split('\n').filter((l) => l.startsWith('# TYPE'))) {
       expect(line, line).toMatch(/^# TYPE smart_/u);
     }
+  });
+
+  it('records bulk provisioning outcomes without candidate labels', async () => {
+    resetMetrics();
+    batchImportRows.inc({ outcome: 'imported' }, 3);
+    batchImportRows.inc({ outcome: 'skipped' }, 1);
+
+    const scraped = await collectMetrics();
+
+    expect(scraped).toContain('smart_tpo_batch_import_rows_total{outcome="imported"} 3');
+    expect(scraped).toContain('smart_tpo_batch_import_rows_total{outcome="skipped"} 1');
+    expect(scraped).not.toContain('email=');
   });
 
   it('keeps the kappa circuit-breaker gauges registered', async () => {

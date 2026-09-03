@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AtsStageSchema,
   CertifiableTierSchema,
+  EmploymentTypeSchema,
   JobOpeningStatusSchema,
   JdParseStatusSchema,
   LevelNumberSchema,
@@ -12,6 +13,7 @@ import {
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
+import { SKILL_CODE_SET, SKILL_STREAMS, SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 /**
@@ -163,34 +165,75 @@ export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 
 /* ----------------------- structured openings (PRD MMP) ---------------------- */
 
+export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
+export const SkillStreamSchema = z.enum(SKILL_STREAMS);
+
+/** INF-05 skill code only — never free-text names. */
+export const TaxonomySkillCodeSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
+
 export const SkillRequirementSchema = z.object({
-  skillCode: z.string().min(2).max(64),
+  skillCode: TaxonomySkillCodeSchema,
   minProficiency: SkillProficiencySchema,
 });
 export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
 
-export const CreateJobOpeningRequestSchema = z.object({
-  institutionId: UuidSchema,
+/**
+ * TPO create body. `institutionId` is taken from the access-token `inst`
+ * claim in api-core — do not accept it from the client.
+ */
+export const JobOpeningFieldsSchema = z.object({
   companyName: z.string().min(2).max(150),
   roleTitle: z.string().min(2).max(150),
+  domain: SkillTaxonomyDomainSchema,
+  stream: SkillStreamSchema.optional(),
   requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
-  domainCode: z.string().max(8).optional(),
-  minYearsExperience: z.number().int().min(0).max(40).optional(),
-  location: z.string().max(120).optional(),
+  minYearsExperience: z.number().int().min(0).max(40),
+  maxYearsExperience: z.number().int().min(0).max(40),
+  location: z.string().min(1).max(120),
+  employmentType: EmploymentTypeSchema,
+  headcount: z.number().int().min(1).max(10_000),
+});
+
+export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.superRefine((value, ctx) => {
+  if (value.minYearsExperience > value.maxYearsExperience) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['maxYearsExperience'],
+      message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
+    });
+  }
 });
 export type CreateJobOpeningRequest = z.infer<typeof CreateJobOpeningRequestSchema>;
 
-export const JobOpeningDtoSchema = CreateJobOpeningRequestSchema.extend({
+export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   openingId: UuidSchema,
+  institutionId: UuidSchema,
   status: JobOpeningStatusSchema,
   createdAt: IsoDateTimeSchema,
 });
 export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
 
+export const ListJobOpeningsQuerySchema = z.object({
+  status: JobOpeningStatusSchema.optional(),
+});
+export type ListJobOpeningsQuery = z.infer<typeof ListJobOpeningsQuerySchema>;
+
+export const ListJobOpeningsResponseSchema = z.object({
+  openings: z.array(JobOpeningDtoSchema),
+});
+export type ListJobOpeningsResponse = z.infer<typeof ListJobOpeningsResponseSchema>;
+
 export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,
   openingId: UuidSchema,
   studentId: UuidSchema,
+  studentName: z.string().optional(),
+  studentEmail: z.string().optional(),
+  primaryTrackCode: z.string().optional(),
   stage: AtsStageSchema,
   matchScore: z.number().min(0).max(1).nullable(),
   createdAt: IsoDateTimeSchema,
@@ -198,10 +241,68 @@ export const ApplicationDtoSchema = z.object({
 });
 export type ApplicationDto = z.infer<typeof ApplicationDtoSchema>;
 
+/**
+ * TPO shortlist body (AC-T05). The opening's `institutionId` is taken from the
+ * access-token `inst` claim in api-core — do not accept it from the client, and
+ * do not accept a stage: shortlisting always lands on `SHORTLISTED`.
+ * `matchScore` is the SE-T05 score the TPO actually saw, carried through so a
+ * shortlist decision stays auditable against the ranking that produced it.
+ */
+export const CreateApplicationRequestSchema = z.object({
+  openingId: UuidSchema,
+  studentId: UuidSchema,
+  matchScore: z.number().min(0).max(1).optional(),
+});
+export type CreateApplicationRequest = z.infer<typeof CreateApplicationRequestSchema>;
+
+export const ListApplicationsResponseSchema = z.object({
+  applications: z.array(ApplicationDtoSchema),
+});
+export type ListApplicationsResponse = z.infer<typeof ListApplicationsResponseSchema>;
+
+/**
+ * Candidate My Applications row (CN-T06 / GET /me/applications).
+ * Same Application identity and `AtsStage` as CO-T02. Company/role fields are
+ * copied from the joined CO-T01 JobOpening — not a second application state.
+ * The route accepts no `studentId`; api-core takes identity from the token.
+ */
+export const CandidateApplicationDtoSchema = ApplicationDtoSchema.extend({
+  companyName: JobOpeningFieldsSchema.shape.companyName,
+  roleTitle: JobOpeningFieldsSchema.shape.roleTitle,
+  location: z.string().max(120),
+  employmentType: EmploymentTypeSchema.nullable(),
+  domain: SkillTaxonomyDomainSchema.nullable(),
+});
+export type CandidateApplicationDto = z.infer<typeof CandidateApplicationDtoSchema>;
+
+export const ListMyApplicationsResponseSchema = z.object({
+  applications: z.array(CandidateApplicationDtoSchema),
+});
+export type ListMyApplicationsResponse = z.infer<typeof ListMyApplicationsResponseSchema>;
+
 export const PatchApplicationStageRequestSchema = z.object({
   stage: AtsStageSchema,
 });
 export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
+
+/**
+ * AC-T06 send-to-company lands on the next canonical ATS column after
+ * `SHORTLISTED`. The contract enum has no SENT_TO_COMPANY / AI_VERIFIED /
+ * HIRED — CO-T02 maps `INTERVIEW` to the Interviewing kanban column.
+ */
+export const SEND_TO_COMPANY_STAGE = 'INTERVIEW' as const;
+
+export const ApplicationConfidenceDtoSchema = z.object({
+  applicationId: UuidSchema,
+  studentId: UuidSchema,
+  available: z.boolean(),
+  complete: z.boolean(),
+  passed: z.boolean().nullable(),
+  explanation: z.string().nullable(),
+  promptRef: z.string().nullable(),
+  sendBlockedReason: z.string().nullable(),
+});
+export type ApplicationConfidenceDto = z.infer<typeof ApplicationConfidenceDtoSchema>;
 
 export const SkillClaimDtoSchema = z.object({
   claimId: UuidSchema,
@@ -214,6 +315,17 @@ export const SkillClaimDtoSchema = z.object({
   lastAttemptId: UuidSchema.nullable(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
+
+/**
+ * CN-T04 — candidate declares a track-scoped skill from INF-05.
+ * Creates/updates SkillClaim at DECLARED (re-declare after LOCKED cooldown).
+ * Owner: Vishal Bharath R (assessment). Consumer: Satheswaran V (web-student).
+ */
+export const DeclareSkillClaimRequestSchema = z.object({
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillProficiencySchema,
+});
+export type DeclareSkillClaimRequest = z.infer<typeof DeclareSkillClaimRequestSchema>;
 
 /* ---------------------------- outbound webhooks ---------------------------- */
 

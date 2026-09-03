@@ -46,6 +46,7 @@ export interface CandidateSkill {
   status:
     | 'DECLARED'
     | 'IN_PROGRESS'
+    | 'IN_VERIFICATION'
     | 'PENDING_REVIEW'
     | 'LOCKED'
     | 'VERIFIED'
@@ -74,6 +75,7 @@ export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement
     email?: string;
     phone?: string;
     linkedIn?: string;
+    github?: string;
   };
 
   academicDetails?: {
@@ -189,6 +191,19 @@ export function CandidateProfileCard({
                 className="flex items-center gap-1 hover:text-[var(--accent)] hover:underline"
               >
                 LinkedIn <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            </span>
+          )}
+          {contactInfo.github && (
+            <span className="flex items-center gap-1.5">
+              <GithubIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              <a
+                href={contactInfo.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-[var(--accent)] hover:underline"
+              >
+                GitHub <ExternalLink className="h-2.5 w-2.5" />
               </a>
             </span>
           )}

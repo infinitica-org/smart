@@ -65,7 +65,7 @@ To ensure high security while protecting backend databases from token validation
 
 - **Short-Lived JWT Access Tokens (15 Minutes)**: Sent via `Authorization: Bearer <JWT>` header for stateless, zero-DB-hit in-memory validation in NestJS Guards across all microservices.
 - **HttpOnly Secure Refresh Tokens (7–14 Days)**: Stored in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. When access tokens expire, Next.js / NestJS clients seamlessly issue silent refresh calls to `/api/v1/auth/refresh` without prompting the user.
-- **OAuth 2.0 / OIDC & Institutional SSO**: Integrated via Supabase Auth:
+- **OAuth 2.0 / OIDC & Institutional SSO**:
   - **Candidates / Students**: Google Workspace & GitHub OAuth (one-click onboarding).
   - **Institutions (Universities & Placement Offices)**: SAML 2.0 / OpenID Connect (OIDC) SSO for institutional university logins (e.g., `@psgtech.ac.in`, `@bits-pilani.ac.in`).
 
@@ -84,14 +84,14 @@ To ensure high security while protecting backend databases from token validation
 >
 > 1. **Orion Decoupling:** Orion RAG is being developed separately by a parallel team. SMART does **NOT** depend on or wait for Orion APIs.
 > 2. **Claude AI Engine & Gemini Fallback:** SMART directly integrates with **Anthropic's Claude 5 Sonnet & Claude 4.7 API** as its core intelligence layer, backed by automatic failover to the **Google Gemini API (Gemini 2.5 Pro / Flash)**.
-> 3. **Native Vector RAG:** SMART manages its own RAG vector store using Supabase **`pgvector`** (or ChromaDB in local development) to store domain competency blueprints, Angoff rubrics, and evaluation benchmarks.
+> 3. **Native Vector RAG:** SMART manages its own RAG vector store using Postgres **`pgvector`** (or ChromaDB in local development) to store domain competency blueprints, Angoff rubrics, and evaluation benchmarks.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │               SMART AI ENGINE (CLAUDE + GEMINI FALLBACK)                    │
 │                                                                             │
 │  ┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────┐  │
-│  │     Claude 4.7       │    │   Claude 5 Sonnet    │    │  Supabase /   │  │
+│  │     Claude 4.7       │    │   Claude 5 Sonnet    │    │   Postgres /  │  │
 │  │ (Fast Extraction &   │    │ (BARS Evaluation,    │    │   pgvector    │  │
 │  │ Item Pre-Processing) │    │  Defense & NLP JD)   │    │ (RAG Vector)  │  │
 │  └──────────┬───────────┘    └──────────┬───────────┘    └───────┬───────┘  │
@@ -112,7 +112,7 @@ To ensure high security while protecting backend databases from token validation
 - **Claude 5 Sonnet (Primary)**: Handlers for L3 spoken response grading, L4 interactive defense simulation, L5 capstone qualitative evaluation, and unstructured Job Description (JD) NLP parsing.
 - **Claude 4.7 (Primary)**: Handlers for rapid MCQ item generation, candidate response pre-tokenization, basic intent classification, and initial rubric keyword matching.
 - **Google Gemini 2.5 Pro / Flash (Automatic Fallback Engine)**: Seamless failover target triggered automatically when Anthropic API returns HTTP 429 (rate limit), 5xx (server error), or timeout exceptions.
-- **Supabase pgvector Integration**: Stores embedding vectors of competency blueprints and model rubric responses for fast RAG context insertion during evaluation.
+- **Postgres pgvector Integration**: Stores embedding vectors of competency blueprints and model rubric responses for fast RAG context insertion during evaluation.
 
 ---
 
@@ -168,7 +168,7 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             PERSISTENCE LAYER                               │
 │  ┌──────────────────┐   ┌──────────────────┐   ┌─────────────────────────┐  │
-│  │ Supabase Postgres│   │ Redis Cluster    │   │ Cloudflare R2           │  │
+│  │ Postgres         │   │ Redis Cluster    │   │ Cloudflare R2           │  │
 │  │ Primary DB +     │   │ Rate Limits &    │   │ Zero Egress Storage     │  │
 │  │ pgvector Search   │   │ Active Sessions  │   │ L3 Audio & PDF Certs    │  │
 │  └──────────────────┘   └──────────────────┘   └─────────────────────────┘  │
@@ -191,7 +191,7 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 | **L3 Audio Spoken Response Upload** | **Asynchronous (Direct Cloudflare R2)** | 500 ms (Upload) | Cloudflare R2 Presigned URL | Direct client-to-R2 upload bypasses backend API payload overhead. |
 | **Claude 5 Sonnet BARS Audio Grading**| **Asynchronous (BullMQ + Kafka)** | 2.0 – 6.0 sec | `bull:queue:audio_evaluation` & `smart.eval.requested` | LLM inference latency budget exceeds HTTP sync timeout. |
 | **PDF Certificate Generation** | **Asynchronous (BullMQ)** | 1.5 – 4.0 sec | `bull:queue:pdf_generation` | Puppeteer PDF render & Cloudflare R2 upload runs asynchronously post-scoring. |
-| **Candidate-JD Vector Matching** | **Asynchronous (Kafka Event)** | 1.0 – 3.0 sec | Kafka Topic `smart.placement.matched` | Supabase `pgvector` batch matrix computation runs in background. |
+| **Candidate-JD Vector Matching** | **Asynchronous (Kafka Event)** | 1.0 – 3.0 sec | Kafka Topic `smart.placement.matched` | Postgres `pgvector` batch matrix computation runs in background. |
 
 ---
 
@@ -316,9 +316,9 @@ When a client exceeds their rate limit, the API immediately returns HTTP status 
    - **On Student Retest Approval (`smart.student.retested`)**: Flushes student scorecard cache `DEL student:results:{student_id}`.
 3. **Cache-Aside (Lazy Loading) Read Pattern**:
    - API checks Redis first ──▶ If hit (95%+ target ratio), return RAM payload.
-   - If miss ──▶ Fetch from Supabase PostgreSQL ──▶ Populate Redis with standard TTL ──▶ Return payload.
+   - If miss ──▶ Fetch from PostgreSQL ──▶ Populate Redis with standard TTL ──▶ Return payload.
 4. **Write-Through Batch Persistence**:
-   - Active answer drafts in L1 are written to Redis `session:assessment:{attempt_id}` immediately, then flushed asynchronously to Supabase PostgreSQL in 5-second batch intervals via BullMQ.
+   - Active answer drafts in L1 are written to Redis `session:assessment:{attempt_id}` immediately, then flushed asynchronously to PostgreSQL in 5-second batch intervals via BullMQ.
 
 #### 4.5.3 Redis Memory Eviction & Safety Controls
 
@@ -756,17 +756,17 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 ### Sprint 1 — System Foundation, Database & Rate Limiting (Dev Sprint 1)
 
-**Sprint Goal:** Stand up core repository infrastructure, Supabase PostgreSQL schema, Clerk/NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
+**Sprint Goal:** Stand up core repository infrastructure, PostgreSQL schema, Clerk/NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
 
 | Ticket ID  | Story Title                                        | Description & Acceptance Criteria                                                                                                  | Owner        | Points | Priority |
 | ---------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, Supabase (PostgreSQL 16 + pgvector), Redis 7, and Apache Kafka.               | Tino         | 5 pts  | Critical |
+| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, PostgreSQL 16 + pgvector, Redis 7, and Apache Kafka.                          | Tino         | 5 pts  | Critical |
 | **US-1.2** | PostgreSQL Schema Provisioning                     | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`).  | Tino         | 8 pts  | Critical |
 | **US-1.3** | Auth & RBAC Middleware                             | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public.                              | Satheeswaran | 8 pts  | Critical |
 | **US-1.4** | Redis Sliding Window Rate Limiting Engine          | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits.                                | Tino         | 8 pts  | Critical |
 | **US-1.5** | Granular Endpoint Rate Throttling Matrix           | Implement specific throttles for auth, code execution, audio submit, and verification endpoints.                                   | Tino         | 5 pts  | High     |
 | **US-1.6** | Claude AI Proxy Service Setup                      | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | Ramansh      | 8 pts  | Critical |
-| **US-1.7** | pgvector Vector Store Provisioning                 | Initialize Supabase `pgvector` extension and schema for storing domain competency rubrics and embeddings.                          | Ramansh      | 5 pts  | High     |
+| **US-1.7** | pgvector Vector Store Provisioning                 | Initialize Postgres `pgvector` extension and schema for storing domain competency rubrics and embeddings.                          | Ramansh      | 5 pts  | High     |
 | **US-1.8** | Student Profile & Track Enrollment API             | Build REST endpoints for student onboarding and specialization track assignment.                                                   | Satheeswaran | 5 pts  | High     |
 | **US-1.9** | System Data Contracts & Zod Schemas                | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services.    | Tino         | 5 pts  | High     |
 

@@ -1,1 +1,10 @@
 @import '@smart/ui/styles.css';
+
+@source '../**/*.{ts,tsx}';
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+@layer components {
+  .admin-canvas {
+    background-color: var(--background);
+  }
+}

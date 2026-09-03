@@ -48,6 +48,7 @@ export const queryKeys = {
   cutScores: (trackCode: string) => ['calibration', 'cut-scores', trackCode] as const,
 
   /* ------------------------------- placement ------------------------------ */
+  myApplications: () => ['me', 'applications'] as const,
   jobDescriptions: (institutionId: string) => ['placement', 'jds', institutionId] as const,
   jobDescription: (jdId: string) => ['placement', 'jds', jdId] as const,
   shortlist: (filters: Readonly<Record<string, unknown>>) =>
@@ -61,6 +62,9 @@ export const queryKeys = {
   correlationReport: (params: Readonly<Record<string, unknown>>) =>
     ['analytics', 'correlation', params] as const,
   growthReport: () => ['analytics', 'growth-report'] as const,
+
+  /* -------------------------------- projects ------------------------------ */
+  project: (projectId: string) => ['projects', projectId] as const,
 
   /* ------------------------------ platform ops ---------------------------- */
   platformHealth: () => ['admin', 'platform-health'] as const,

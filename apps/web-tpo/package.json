@@ -17,6 +17,7 @@
     "@smart/contracts": "workspace:*",
     "@smart/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -26,10 +27,13 @@
     "@smart/next-config": "workspace:*",
     "@smart/tailwind-config": "workspace:*",
     "@smart/tsconfig": "workspace:*",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.1.0",
     "eslint": "catalog:",
+    "jsdom": "^30.0.1",
     "rimraf": "6.0.1",
     "typescript": "catalog:",
     "vitest": "catalog:"

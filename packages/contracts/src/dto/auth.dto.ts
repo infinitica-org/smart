@@ -60,6 +60,11 @@ export const AuthenticatedUserSchema = z.object({
   provider: AuthProviderSchema,
   emailVerified: z.boolean(),
   createdAt: IsoDateTimeSchema,
+  /**
+   * CN-T01 — server-side gate. Students must complete mandatory onboarding
+   * before /dashboard. Non-students are always true.
+   */
+  onboardingCompleted: z.boolean(),
   sessionHold: z
     .object({
       code: SessionHoldCodeSchema,

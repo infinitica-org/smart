@@ -18,12 +18,16 @@ import { CertificateModule } from './modules/certificate/certificate.module.js';
 import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
 import { InstitutionsModule } from './modules/institutions/institutions.module.js';
 import { MatchingModule } from './modules/matching/matching.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PlacementModule } from './modules/placement/placement.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
+import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
 import { ConfigModule } from './platform/config/config.module.js';
+import { AuditModule } from './platform/audit/audit.module.js';
 import { env } from './platform/config/env.js';
 import { HealthModule } from './platform/health/health.module.js';
 import { KafkaModule } from './platform/kafka/kafka.module.js';
@@ -44,6 +48,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
       }),
     }),
     ConfigModule,
+    AuditModule,
     PrismaModule,
     RedisModule,
     KafkaModule,
@@ -53,6 +58,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,
     AssessmentModule,
@@ -62,7 +68,9 @@ import { RedisModule } from './platform/redis/redis.module.js';
     CalibrationModule,
     CertificateModule,
     MatchingModule,
+    NotificationsModule,
     PlacementModule,
+    ProjectsModule,
     AnalyticsModule,
     WebhooksModule,
   ],

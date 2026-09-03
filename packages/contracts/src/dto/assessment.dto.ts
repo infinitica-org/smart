@@ -9,6 +9,7 @@ import {
   TrackCodeSchema,
 } from '../domain/enums.js';
 import { DeliverableItemDtoSchema } from './catalog.dto.js';
+import { SkillClaimDtoSchema } from './placement.dto.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 /**
@@ -169,6 +170,23 @@ export const CompleteAttemptRequestSchema = z.object({
   attemptId: UuidSchema,
   /** Set by the server-side auto-submit path, not by the client. */
   autoSubmitted: z.boolean().default(false),
+  /**
+   * SE-T01/CN-T04 skill-claim wiring: when set, this attempt settles the
+   * named claim (must belong to the caller). The written-assessment score
+   * plus `interviewPassed`/`technicalFailure` drive `applySkillClaimTransition`.
+   * Omit for a plain (non-skill-linked) attempt completion.
+   */
+  claimId: UuidSchema.optional(),
+  /**
+   * Result of a prior, separate `POST /evaluation/skill-interview/grade` call.
+   * Required to pass INTERMEDIATE/ADVANCED claims (PRD v1 §7.3: "both
+   * components >= 0.60"); ignored for BEGINNER, which is assessment-only.
+   */
+  interviewPassed: z.boolean().optional(),
+  /** A proctoring/infra fault, not a genuine attempt — never consumes a strike. */
+  technicalFailure: z.boolean().default(false),
+  /** Candidate-facing one-line reason, mirrors GradeSkillInterviewResponse.explanation. */
+  explanation: z.string().max(1_000).optional(),
 });
 export type CompleteAttemptRequest = z.infer<typeof CompleteAttemptRequestSchema>;
 
@@ -178,6 +196,14 @@ export const CompleteAttemptResponseSchema = z.object({
   /** Present when scoring is asynchronous — poll the results endpoint. */
   evaluationJobId: z.string().nullable(),
   estimatedResultSeconds: z.number().int().nullable(),
+  /** Mark-weighted written-assessment score (INF-05 Scoring Schema Core Formula). */
+  marksEarned: ScoreSchema.optional(),
+  marksTotal: z.number().positive().optional(),
+  scorePercent: ScoreSchema.optional(),
+  /** True while one or more items could not be auto/AI-graded (e.g. CODE_TASK — no sandbox yet). */
+  incomplete: z.boolean().optional(),
+  /** Present only when `claimId` was supplied — the claim's post-transition state. */
+  claim: SkillClaimDtoSchema.nullable().optional(),
 });
 export type CompleteAttemptResponse = z.infer<typeof CompleteAttemptResponseSchema>;
 

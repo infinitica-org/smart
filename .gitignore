@@ -71,7 +71,12 @@ skills-lock.json
 .cache/
 tmp/
 *.local
+*.xlsx
 
-# Allen drop copies — canonical pack is docs/product/prd-v1/
+# Product Owner drop copies — canonical pack is docs/product/prd-v1/
 Smart_PRD_v1_Internal/**
 !Smart_PRD_v1_Internal/README.md
+
+# --- VPS server env copies (local reference only, never commit) ---
+kvm2-dev.env.txt
+kvm4-prod.env.txt

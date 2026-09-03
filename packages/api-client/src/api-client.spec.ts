@@ -1,3 +1,4 @@
+import { BatchImportResultDtoSchema } from '@smart/contracts';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -6,6 +7,7 @@ import {
   SmartApiError,
   SmartContractViolationError,
   SmartNetworkError,
+  createSmartApi,
   invalidationGroups,
   isSmartApiError,
   queryKeys,
@@ -47,6 +49,7 @@ function stubFetch(responses: readonly StubResponse[]): {
       status,
       headers: new Headers(spec.headers ?? {}),
       text: () => Promise.resolve(text),
+      blob: () => Promise.resolve(new Blob([text])),
       json: () => Promise.resolve(JSON.parse(text) as unknown),
     } as Response);
   }) as unknown as typeof fetch;
@@ -85,6 +88,95 @@ describe('request construction', () => {
     await client.get('/api/v1/verify/abc', { schema, anonymous: true });
 
     expect((calls[0]?.init.headers as Record<string, string>).authorization).toBeUndefined();
+  });
+
+  it('sends multipart data without overriding the browser boundary header', async () => {
+    const { fetchImpl, calls } = stubFetch([{ body: { ok: true } }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+    const formData = new FormData();
+    formData.append('file', new Blob(['synthetic']), 'candidates.csv');
+
+    await client.postForm('/api/v1/tpo/import', formData, { schema });
+
+    expect(calls[0]?.init.body).toBe(formData);
+    expect((calls[0]?.init.headers as Record<string, string>)['content-type']).toBeUndefined();
+    expect((calls[0]?.init.headers as Record<string, string>).authorization).toBe(
+      'Bearer token-123',
+    );
+  });
+
+  it('sends a mapped dry-run import through the existing error and schema path', async () => {
+    const preview = {
+      imported: 0,
+      skipped: 0,
+      errors: [],
+      headers: ['Student Name', 'Email Address'],
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: preview }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+    const formData = new FormData();
+    formData.append('file', new Blob(['synthetic']), 'candidates.csv');
+    formData.append(
+      'mapping',
+      JSON.stringify({ fullName: 'Student Name', email: 'Email Address' }),
+    );
+
+    await expect(
+      client.postForm('/api/v1/tpo/batches/batch-1/members/import', formData, {
+        query: { dryRun: true },
+        schema: BatchImportResultDtoSchema,
+      }),
+    ).resolves.toMatchObject({ headers: ['Student Name', 'Email Address'] });
+    expect(calls[0]?.url).toContain('dryRun=true');
+    expect((calls[0]?.init.body as FormData).get('mapping')).toBe(
+      JSON.stringify({ fullName: 'Student Name', email: 'Email Address' }),
+    );
+  });
+
+  it('normalizes failed import responses instead of returning raw fetch bodies', async () => {
+    const { fetchImpl } = stubFetch([
+      {
+        status: 400,
+        body: {
+          error: 'bad_request',
+          message: 'Column mapping is invalid.',
+          statusCode: 400,
+        },
+      },
+    ]);
+    const client = new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl });
+    const error = await client
+      .postForm('/api/v1/tpo/batches/batch-1/members/import', new FormData(), {
+        schema: BatchImportResultDtoSchema,
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(isSmartApiError(error) && error.statusCode).toBe(400);
+    expect(isSmartApiError(error) && error.message).toBe('Column mapping is invalid.');
+  });
+
+  it('downloads authenticated binary responses without JSON parsing', async () => {
+    const { fetchImpl, calls } = stubFetch([{ text: 'synthetic-template' }]);
+    const client = new SmartApiClient({
+      baseUrl: 'https://api.smart.test',
+      getAccessToken: () => 'token-123',
+      fetchImpl,
+    });
+
+    const blob = await client.getBlob('/api/v1/tpo/template');
+
+    expect(await blob.text()).toBe('synthetic-template');
+    expect((calls[0]?.init.headers as Record<string, string>).authorization).toBe(
+      'Bearer token-123',
+    );
   });
 
   it('reads the access token per request so a rotated token is picked up', async () => {
@@ -335,6 +427,7 @@ describe('query keys', () => {
   it('nests keys so a prefix invalidation reaches everything under it', () => {
     expect(queryKeys.attemptSession('a-1')).toStrictEqual(['attempt', 'a-1', 'session']);
     expect(queryKeys.nextItem('a-1')[0]).toBe('attempt');
+    expect(queryKeys.myApplications()).toStrictEqual(['me', 'applications']);
   });
 
   it('invalidates every surface that a completed attempt changes', () => {
@@ -352,5 +445,103 @@ describe('query keys', () => {
     const flattened = JSON.stringify(invalidationGroups.onCutScoresPublished('TECH_FULLSTACK'));
     expect(flattened).toContain('results');
     expect(flattened).toContain('TECH_FULLSTACK');
+  });
+});
+
+describe('CN-T06 my applications client', () => {
+  it('GETs /me/applications without a client-supplied studentId', async () => {
+    const { fetchImpl, calls } = stubFetch([
+      {
+        body: {
+          applications: [
+            {
+              applicationId: '00000000-0000-4000-8000-000000000001',
+              openingId: '00000000-0000-4000-8000-000000000010',
+              studentId: '00000000-0000-4000-8000-000000000020',
+              stage: 'SHORTLISTED',
+              matchScore: 0.88,
+              createdAt: '2026-09-02T00:00:00.000Z',
+              updatedAt: '2026-09-02T01:00:00.000Z',
+              companyName: 'Acme Labs',
+              roleTitle: 'Backend Engineer',
+              location: 'Bengaluru',
+              employmentType: 'FULL_TIME',
+              domain: 'SOFTWARE_IT',
+            },
+          ],
+        },
+      },
+    ]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    await api.placement.listMyApplications();
+
+    expect(calls[0]?.url).toBe('https://api.smart.test/api/v1/me/applications');
+    expect(calls[0]?.url).not.toContain('studentId');
+    expect(calls[0]?.init.method ?? 'GET').toBe('GET');
+  });
+});
+
+describe('assessmentApi contracts', () => {
+  const sessionBody = {
+    attemptId: '55555555-5555-4555-8555-555555555555',
+    studentId: '11111111-1111-4111-8111-111111111111',
+    trackCode: 'MBA_FINANCE',
+    levelNumber: 1,
+    levelFormat: 'MCQ',
+    status: 'IN_PROGRESS',
+    formId: 'A',
+    startedAt: '2026-09-02T10:00:00.000Z',
+    expiresAt: '2026-09-02T11:00:00.000Z',
+    serverRemainingSeconds: 1800,
+    totalItems: 2,
+    answeredItems: 0,
+    currentItemIndex: 0,
+    integrityFlag: 'CLEAN',
+    locked: false,
+  };
+
+  it('parses POST /assessment/start as AttemptSessionDto', async () => {
+    const { fetchImpl } = stubFetch([{ status: 201, body: sessionBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const session = await api.assessment.start({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
+    expect(session.attemptId).toBe(sessionBody.attemptId);
+    expect(session.serverRemainingSeconds).toBe(1800);
+  });
+
+  it('parses POST /assessment/complete as CompleteAttemptResponse', async () => {
+    const { fetchImpl } = stubFetch([
+      {
+        body: {
+          attemptId: sessionBody.attemptId,
+          status: 'EVALUATED',
+          evaluationJobId: null,
+          estimatedResultSeconds: null,
+          marksEarned: 1,
+          marksTotal: 1,
+          scorePercent: 1,
+          incomplete: false,
+        },
+      },
+    ]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.assessment.complete({ attemptId: sessionBody.attemptId });
+    expect(result.status).toBe('EVALUATED');
+    expect(result.evaluationJobId).toBeNull();
+    expect(result.scorePercent).toBe(1);
   });
 });

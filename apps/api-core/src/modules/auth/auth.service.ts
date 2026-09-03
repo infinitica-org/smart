@@ -28,8 +28,13 @@ export type UserWithAuthIncludes = {
   createdAt: Date;
   passwordHash: string | null;
   heldAt: Date | null;
+  onboardingCompleted?: boolean;
   institution: {
     name: string;
+    heldAt: Date | null;
+    deactivatedAt: Date | null;
+  } | null;
+  company?: {
     heldAt: Date | null;
     deactivatedAt: Date | null;
   } | null;
@@ -47,7 +52,7 @@ export class AuthService {
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: { institution: true, primaryTrack: true, secondaryTrack: true },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
     if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedException({
@@ -89,7 +94,9 @@ export class AuthService {
     const existing = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
       include: {
-        user: { include: { institution: true, primaryTrack: true, secondaryTrack: true } },
+        user: {
+          include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+        },
       },
     });
 
@@ -209,6 +216,7 @@ function assertTenantLoginAllowed(user: {
   role: AuthenticatedUser['role'];
   heldAt: Date | null;
   institution: { heldAt: Date | null; deactivatedAt: Date | null } | null;
+  company?: { heldAt: Date | null; deactivatedAt: Date | null } | null;
 }): void {
   const hold = resolveSessionHold(user);
   if (!hold) return;
@@ -244,7 +252,9 @@ export function toAuthenticatedUser(user: {
   institutionId: string | null;
   createdAt: Date;
   heldAt?: Date | null;
+  onboardingCompleted?: boolean;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
+  company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
 }): AuthenticatedUser {
@@ -255,6 +265,12 @@ export function toAuthenticatedUser(user: {
       ? {
           heldAt: user.institution.heldAt ?? null,
           deactivatedAt: user.institution.deactivatedAt ?? null,
+        }
+      : null,
+    company: user.company
+      ? {
+          heldAt: user.company.heldAt ?? null,
+          deactivatedAt: user.company.deactivatedAt ?? null,
         }
       : null,
   });
@@ -270,6 +286,8 @@ export function toAuthenticatedUser(user: {
     provider: user.provider,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt.toISOString(),
+    // Non-students skip candidate onboarding; students require the server flag.
+    onboardingCompleted: user.role === 'STUDENT' ? Boolean(user.onboardingCompleted) : true,
     sessionHold: hold,
   };
 }

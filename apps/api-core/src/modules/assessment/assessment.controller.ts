@@ -6,18 +6,25 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
+  CompleteAttemptRequestSchema,
+  DeclareSkillClaimRequestSchema,
   SaveDraftRequestSchema,
   StartAttemptRequestSchema,
   type AttemptSessionDto,
+  type CompleteAttemptResponse,
   type NextItemDto,
   type SaveDraftResponse,
+  type SkillClaimDto,
 } from '@smart/contracts';
 import type { FastifyRequest } from 'fastify';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { NextFormRequestDto } from './dto/next-form-request.dto.js';
 import { AssessmentService } from './assessment.service.js';
@@ -39,6 +46,44 @@ export class AssessmentController {
       purpose: this.service.purpose,
       status: 'active',
     };
+  }
+
+  @Get('skill-claims')
+  @Roles('STUDENT', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List skill claims the matcher reads (same SkillClaimStatus enum).' })
+  @ApiResponse({ status: 200, description: 'Skill claims visible to the caller.' })
+  @ApiResponse({ status: 403, description: 'Forbidden role or missing institution' })
+  listSkillClaims(@CurrentUser() user: RequestUser): Promise<SkillClaimDto[]> {
+    return this.service.listSkillClaims(user);
+  }
+
+  @Post('skill-claims')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Declare a skill claim at DECLARED (CN-T04). Re-declare after LOCKED cooldown.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['skillCode', 'proficiency'],
+      properties: {
+        skillCode: { type: 'string' },
+        proficiency: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Skill claim declared or updated.' })
+  @ApiResponse({ status: 400, description: 'Unknown skill code' })
+  @ApiResponse({ status: 403, description: 'Locked cooldown still active' })
+  @ApiResponse({ status: 409, description: 'Skill already claimed' })
+  async declareSkillClaim(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<SkillClaimDto> {
+    const dto = DeclareSkillClaimRequestSchema.parse(body);
+    return this.service.declareSkillClaim(user, dto);
   }
 
   @Post('start')
@@ -92,6 +137,7 @@ export class AssessmentController {
   async nextItem(
     @Req() req: FastifyRequest & { user?: RequestUser },
     @Param('attemptId') attemptId: string,
+    @Query('index') index?: string,
   ): Promise<NextItemDto> {
     const user = req.user;
     if (!user || user.role !== 'STUDENT') {
@@ -101,7 +147,9 @@ export class AssessmentController {
         statusCode: 403,
       });
     }
-    return this.service.getNextItem(user.sub, attemptId);
+    const requestedIndex =
+      index === undefined || index === '' ? undefined : Number.parseInt(index, 10);
+    return this.service.getNextItem(user.sub, attemptId, requestedIndex);
   }
 
   @Post('submit-l1')
@@ -124,6 +172,32 @@ export class AssessmentController {
     }
     const dto = SaveDraftRequestSchema.parse(body);
     return this.service.saveDraft(user.sub, dto);
+  }
+
+  @Post('complete')
+  @ApiOperation({
+    summary:
+      'Finalise an attempt: mark-weighted scoring, (with claimId) SE-T01 skill-claim settlement, emits smart.assessment.submitted.',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Attempt scored; claim state, if any, updated' })
+  @ApiResponse({ status: 403, description: 'Not your attempt/claim, or the claim blocks it' })
+  @ApiResponse({ status: 404, description: 'Attempt or claim not found' })
+  @ApiResponse({ status: 409, description: 'Attempt already finalised' })
+  async completeAttempt(
+    @Req() req: FastifyRequest & { user?: RequestUser },
+    @Body() body: unknown,
+  ): Promise<CompleteAttemptResponse> {
+    const user = req.user;
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student role required to complete an assessment attempt',
+        statusCode: 403,
+      });
+    }
+    const dto = CompleteAttemptRequestSchema.parse(body);
+    return this.service.completeAttempt(user, dto);
   }
 
   /**

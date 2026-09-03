@@ -53,6 +53,15 @@ describe('ResumeParseDraftSchema', () => {
     const parsed = ResumeParseDraftSchema.parse({ parseConfidence: 0.2 });
     expect(parsed.education).toEqual([]);
     expect(parsed.skills).toEqual([]);
+    expect(parsed.licenses).toEqual([]);
+  });
+
+  it('accepts a license or certification row', () => {
+    const parsed = ResumeParseDraftSchema.parse({
+      ...sampleDraft,
+      licenses: [{ name: 'AWS Cloud Practitioner', issuer: 'Amazon' }],
+    });
+    expect(parsed.licenses).toHaveLength(1);
   });
 });
 

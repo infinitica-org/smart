@@ -18,10 +18,10 @@ break-glass / first-time setup.
 
 ## 1. DNS (A records)
 
-| Host                                                                                                 | → IP    |
-| ---------------------------------------------------------------------------------------------------- | ------- |
-| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `db.`                             | kvm4 IP |
-| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.db.` | kvm2 IP |
+| Host                                                                                                     | → IP    |
+| -------------------------------------------------------------------------------------------------------- | ------- |
+| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`                             | kvm4 IP |
+| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.` | kvm2 IP |
 
 ## 2. Server setup (each VPS) — one-time
 
@@ -38,6 +38,12 @@ git clone https://github.com/infinitica-org/smart.git ~/smart
 cd ~/smart
 ```
 
+Run this **as the `deploy` user** — the checkout lives at `~deploy/smart`
+(i.e. `/home/deploy/smart`), never `/root/smart`. After the first CI deploy,
+`~deploy/smart` is kept in sync by `rsync`, not `git`: there is no `.git`
+there and `git pull` will fail. Break-glass edits go through a normal PR to
+`dev`/`main`; do not hand-edit or `git`-manage the server checkout.
+
 On **kvm2**: `git checkout dev`, `cp .env.dev.example .env.dev`, fill secrets,
 `bash scripts/deploy-vps.sh dev`.
 
@@ -48,20 +54,31 @@ On **kvm4** (brittytino only): `git checkout main`, `cp .env.prod.example
 
 Docker Postgres + pgvector, one volume per host (`smart-dev` / `smart-prod`
 compose projects) — physically separate databases, distinct generated
-passwords, never shared. Optional: point `DATABASE_URL` at a per-environment
-Supabase Postgres URI instead — see `docs/delivery/DATABASE.md`. Postgres is
+passwords, never shared. See `docs/delivery/DATABASE.md`. Postgres is
 **not** published to the internet; browse it via the DB admin UI below or an
 SSH tunnel.
 
 Migrations (`prisma migrate deploy`, already-committed migrations only) run
 automatically at the end of `scripts/deploy-vps.sh` / every CI deploy.
 
+Seeding is manual and not run by CI (it is a one-time / break-glass op, not
+part of every deploy). The running `api` container is a slim production
+image with no `pnpm` and no TypeScript source, so `prisma/seed.ts` cannot run
+via `docker compose exec api ...`. Use the wrapper instead, from
+`~deploy/smart`:
+
+```bash
+bash scripts/seed-vps.sh dev    # kvm2 — smart-dev
+bash scripts/seed-vps.sh qa     # kvm2 — smart-qa
+bash scripts/seed-vps.sh prod   # kvm4 — smart-prod
+```
+
 ## 4. DB admin UI
 
-`https://db.becomesmart.online` (prod) / `https://dev.db.becomesmart.online`
-(dev) — Adminer behind Caddy, gated by HTTP Basic Auth (`DB_BASIC_AUTH_USER`
-/ `DB_BASIC_AUTH_HASH` in the env file) **and** the Postgres login itself.
-Raw port 5432 is never exposed publicly.
+`https://studio.becomesmart.online` (prod) / `https://dev.studio.becomesmart.online`
+(dev) — Prisma Studio behind Caddy, gated by HTTP Basic Auth
+(`DB_BASIC_AUTH_USER` / `DB_BASIC_AUTH_HASH` in the env file) **and** the
+Postgres login itself. Raw port 5432 is never exposed publicly.
 
 ## 5. Laptop (not a VPS)
 

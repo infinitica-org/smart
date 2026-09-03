@@ -132,6 +132,7 @@ describe('CandidateProfileCard', () => {
           email: 'varun@example.com',
           phone: '+919999999999',
           linkedIn: 'https://linkedin.com/in/varun',
+          github: 'https://github.com/varun',
         }}
       />,
     );
@@ -139,6 +140,7 @@ describe('CandidateProfileCard', () => {
     expect(screen.getByText('varun@example.com')).toBeDefined();
     expect(screen.getByText('+919999999999')).toBeDefined();
     expect(screen.getByText('LinkedIn')).toBeDefined();
+    expect(screen.getByText('GitHub')).toBeDefined();
   });
 
   it('renders optional AI Match Insight panel only when provided', () => {

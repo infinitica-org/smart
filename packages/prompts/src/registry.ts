@@ -4,8 +4,21 @@ import { barsL3Template } from './templates/bars-grading.js';
 import { defenseExaminerTemplate, defenseGraderTemplate } from './templates/l4-defense.js';
 import { capstoneReviewTemplate } from './templates/capstone-review.js';
 import { jdParseTemplate } from './templates/jd-parsing.js';
+import { resumeParseTemplate } from './templates/resume-parsing.js';
 import { itemDraftTemplate } from './templates/item-authoring.js';
 import { gapNarrativeTemplate } from './templates/gap-report.js';
+import {
+  skillInterviewExaminerTemplate,
+  skillInterviewGraderTemplate,
+} from './templates/skill-interview.js';
+import {
+  proficiencyCodingDesignRubricTemplate,
+  proficiencyDebugScenarioTemplate,
+  proficiencyLongAnswerTemplate,
+  proficiencyShortAnswerTemplate,
+} from './templates/proficiency-grading.js';
+import { projectVerifyTemplate } from './templates/project-verify.js';
+import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 
 /**
  * The prompt registry.
@@ -31,8 +44,17 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   defenseGraderTemplate,
   capstoneReviewTemplate,
   jdParseTemplate,
+  resumeParseTemplate,
   itemDraftTemplate,
   gapNarrativeTemplate,
+  skillInterviewExaminerTemplate,
+  skillInterviewGraderTemplate,
+  proficiencyShortAnswerTemplate,
+  proficiencyLongAnswerTemplate,
+  proficiencyCodingDesignRubricTemplate,
+  proficiencyDebugScenarioTemplate,
+  projectVerifyTemplate,
+  workExperienceProofParseTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

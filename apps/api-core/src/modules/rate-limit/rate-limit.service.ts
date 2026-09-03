@@ -1,20 +1,14 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { SMART_TOPICS, getRateLimitPolicy, type RateLimitPolicy } from '@smart/contracts';
 import {
-  RateLimitExceededEventSchema,
-  SMART_TOPICS,
-  getRateLimitPolicy,
-  type RateLimitPolicy,
-} from '@smart/contracts';
-import {
-  getContext,
   LOG_EVENTS,
   logEvent,
   rateLimitRejections,
   rateLimitUtilisation,
 } from '@smart/observability';
 import { env } from '../../platform/config/env.js';
-import { KafkaService } from '../../platform/kafka/kafka.service.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { SLIDING_WINDOW_LUA } from './sliding-window.lua.js';
 import { TOKEN_BUCKET_LUA } from './token-bucket.lua.js';
@@ -34,7 +28,7 @@ export class RateLimitService {
 
   constructor(
     @Inject(RedisService) private readonly redis: RedisService,
-    @Inject(KafkaService) private readonly kafka: KafkaService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   async consume(
@@ -127,31 +121,26 @@ export class RateLimitService {
     route: string,
     attemptId: string | null,
   ): Promise<void> {
-    const event = RateLimitExceededEventSchema.parse({
-      meta: {
-        eventId: randomUUID(),
-        eventType: SMART_TOPICS.rateLimitExceeded,
-        version: 1,
-        occurredAt: new Date().toISOString(),
-        traceId: getContext()?.correlationId ?? randomUUID(),
-        source: 'rate-limit',
-      },
-      data: {
-        identifier: identity,
-        scope: policy.scope,
-        policyKey: policy.key,
-        endpoint: route,
-        limit: policy.limit,
-        windowSeconds: policy.windowSeconds,
-        violationsInWindow: 1,
-        attemptId: isUuid(attemptId) ? attemptId : null,
-      },
-    });
     try {
-      await this.kafka.emit(SMART_TOPICS.rateLimitExceeded, identity, event, 'rate-limit');
+      await this.outbox.enqueueEnvelope({
+        topic: SMART_TOPICS.rateLimitExceeded,
+        partitionKey: identity,
+        eventType: SMART_TOPICS.rateLimitExceeded,
+        source: 'rate-limit',
+        data: {
+          identifier: identity,
+          scope: policy.scope,
+          policyKey: policy.key,
+          endpoint: route,
+          limit: policy.limit,
+          windowSeconds: policy.windowSeconds,
+          violationsInWindow: 1,
+          attemptId: isUuid(attemptId) ? attemptId : null,
+        },
+      });
     } catch (error) {
       this.logger.warn(
-        `Failed to publish ${SMART_TOPICS.rateLimitExceeded}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to enqueue ${SMART_TOPICS.rateLimitExceeded}: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
   }

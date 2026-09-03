@@ -1,6 +1,6 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { TRACK_DEFINITIONS, assertDomainWeightsSumToOne } from '@smart/contracts';
+import { QuestionSchema, TRACK_DEFINITIONS, assertDomainWeightsSumToOne } from '@smart/contracts';
 import { ItemAuthoringSchema } from './schema.js';
 
 export const CONTENT_DATA_GLOB = 'data/**/*.json';
@@ -67,6 +67,35 @@ export function runValidate(files?: string[], cwd: string = process.cwd()): Vali
     const items = Array.isArray(parsed) ? parsed : [parsed];
     for (const [index, candidate] of items.entries()) {
       const label = Array.isArray(parsed) ? `${relative}[${String(index)}]` : relative;
+
+      const isQuestionBank =
+        typeof candidate === 'object' &&
+        candidate !== null &&
+        ('skillCode' in candidate || 'stream' in candidate);
+
+      if (isQuestionBank) {
+        const result = QuestionSchema.safeParse(candidate);
+        if (!result.success) {
+          ok = false;
+          for (const issue of result.error.issues) {
+            const at = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+            messages.push(`${label}: ${at} — ${issue.message}`);
+          }
+          continue;
+        }
+
+        itemCount += 1;
+        const id = result.data.id;
+        const existing = seenItemIds.get(id);
+        if (existing) {
+          ok = false;
+          messages.push(`${label}: duplicate question id ${id} (also in ${existing})`);
+        } else {
+          seenItemIds.set(id, label);
+        }
+        continue;
+      }
+
       const result = ItemAuthoringSchema.safeParse(candidate);
       if (!result.success) {
         ok = false;

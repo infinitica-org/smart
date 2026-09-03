@@ -146,10 +146,25 @@ export const STUDENT_INVITE_FILTERS = [
 export const StudentInviteFilterSchema = z.enum(STUDENT_INVITE_FILTERS);
 export type StudentInviteFilter = z.infer<typeof StudentInviteFilterSchema>;
 
+export const COMPANY_MODES = ['SERVICE', 'PRODUCT'] as const;
+export const CompanyModeSchema = z.enum(COMPANY_MODES);
+export type CompanyMode = z.infer<typeof CompanyModeSchema>;
+
+export const CANDIDATE_VIEW_REASON_CODES = [
+  'support_ticket',
+  'integrity_review',
+  'billing_dispute',
+  'other',
+] as const;
+export const CandidateViewReasonCodeSchema = z.enum(CANDIDATE_VIEW_REASON_CODES);
+export type CandidateViewReasonCode = z.infer<typeof CandidateViewReasonCodeSchema>;
+
 export const SESSION_HOLD_CODES = [
   'institution_held',
   'institution_deactivated',
   'account_held',
+  'company_held',
+  'company_deactivated',
 ] as const;
 export const SessionHoldCodeSchema = z.enum(SESSION_HOLD_CODES);
 export type SessionHoldCode = z.infer<typeof SessionHoldCodeSchema>;
@@ -159,6 +174,8 @@ export const SESSION_HOLD_MESSAGE: Readonly<Record<SessionHoldCode, string>> = {
   institution_deactivated:
     'This institution is deactivated. You cannot use SMART until it is restored.',
   account_held: 'Your account is on hold. Contact your TPO or platform administrator.',
+  company_held: 'This company is on hold. You cannot use SMART until it is released.',
+  company_deactivated: 'This company is deactivated. You cannot use SMART until it is restored.',
 };
 
 export function isSessionHoldCode(code: string): code is SessionHoldCode {
@@ -326,7 +343,10 @@ export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 
 /**
  * Skill-claim state machine. Technical failures must not consume a strike.
- * `LOCKED` is cooldown after two failed verification attempts.
+ *
+ * Product Owner / playbook lock (1 Sep 2026): one reattempt, then 35-day refresh.
+ * `BEGINNER_REATTEMPT` is that single retry. `LOCKED` lasts
+ * {@link SKILL_REFRESH_DAYS} — not a second retry window.
  */
 export const SKILL_CLAIM_STATUSES = [
   'DECLARED',
@@ -334,12 +354,52 @@ export const SKILL_CLAIM_STATUSES = [
   'BEGINNER_REATTEMPT',
   'LOCKED',
 ] as const;
+
+/** Initial attempt + one reattempt. SE-T01 must not implement a third try. */
+export const SKILL_MAX_ATTEMPTS = 2;
+
+/** Reattempts after the first fail. Not 2 (old PRD) and not 3 (old playbook). */
+export const SKILL_REATTEMPTS = 1;
+
+/** Days after lock (or verified expiry) before the skill can be declared again. */
+export const SKILL_REFRESH_DAYS = 35;
+
+/** Hours between the first fail and the single reattempt. */
+export const SKILL_INTER_ATTEMPT_COOLDOWN_HOURS = 48;
 export const SkillClaimStatusSchema = z.enum(SKILL_CLAIM_STATUSES);
 export type SkillClaimStatus = z.infer<typeof SkillClaimStatusSchema>;
 
 export const JOB_OPENING_STATUSES = ['DRAFT', 'OPEN', 'CLOSED'] as const;
 export const JobOpeningStatusSchema = z.enum(JOB_OPENING_STATUSES);
 export type JobOpeningStatus = z.infer<typeof JobOpeningStatusSchema>;
+
+/** V1 TPO structured opening — closed set; not free text. */
+export const EMPLOYMENT_TYPES = [
+  'FULL_TIME',
+  'PART_TIME',
+  'CONTRACT',
+  'INTERNSHIP',
+  'FREELANCE',
+] as const;
+export const EmploymentTypeSchema = z.enum(EMPLOYMENT_TYPES);
+export type EmploymentType = z.infer<typeof EmploymentTypeSchema>;
+
+export const WORK_EXPERIENCE_VERIFICATION_STATUSES = ['DRAFT', 'SUBMITTED', 'REJECTED'] as const;
+export const WorkExperienceVerificationStatusSchema = z.enum(WORK_EXPERIENCE_VERIFICATION_STATUSES);
+export type WorkExperienceVerificationStatus = z.infer<
+  typeof WorkExperienceVerificationStatusSchema
+>;
+
+export const EXPERIENCE_DOCUMENT_TYPES = [
+  'OFFER_LETTER',
+  'EXPERIENCE_LETTER',
+  'PAYSLIP',
+  'RELIEVING_LETTER',
+  'FORM_16',
+  'OTHER',
+] as const;
+export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
+export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
 
 /** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
 export const ATS_STAGES = [
@@ -380,3 +440,30 @@ export const WEBHOOK_DELIVERY_STATUSES = [
 ] as const;
 export const WebhookDeliveryStatusSchema = z.enum(WEBHOOK_DELIVERY_STATUSES);
 export type WebhookDeliveryStatus = z.infer<typeof WebhookDeliveryStatusSchema>;
+
+/** CN-T08 / SE-T03 project lifecycle. Agents never set REJECTED. */
+export const PROJECT_STATUSES = ['SUBMITTED', 'VERIFIED', 'UNDER_REVIEW', 'REJECTED'] as const;
+export const ProjectStatusSchema = z.enum(PROJECT_STATUSES);
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
+
+export const PROJECT_VERIFY_FLAGS = [
+  'DUPLICATE_TEXT',
+  'PUBLIC_WEB_SIMILARITY',
+  'TECH_AGE',
+  'SNAPSHOT_UNAVAILABLE',
+  'LOW_CONFIDENCE',
+  'LLM_UNAVAILABLE',
+  'STACK_LANGUAGE_MISMATCH',
+] as const;
+export const ProjectVerifyFlagSchema = z.enum(PROJECT_VERIFY_FLAGS);
+export type ProjectVerifyFlag = z.infer<typeof ProjectVerifyFlagSchema>;
+
+export const GITHUB_SNAPSHOT_UNAVAILABLE_REASONS = [
+  'oauth_missing',
+  'not_found',
+  'private',
+  'rate_limited',
+  'timeout',
+] as const;
+export const GithubSnapshotUnavailableReasonSchema = z.enum(GITHUB_SNAPSHOT_UNAVAILABLE_REASONS);
+export type GithubSnapshotUnavailableReason = z.infer<typeof GithubSnapshotUnavailableReasonSchema>;

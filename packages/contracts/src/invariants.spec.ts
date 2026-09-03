@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_RATE_LIMIT_POLICIES,
+  BatchImportMappingSchema,
+  BatchImportResultDtoSchema,
   CreateJobOpeningRequestSchema,
   LATENCY_BUDGET_MS,
   LEVEL_DEFINITIONS,
@@ -10,6 +12,9 @@ import {
   ParseResumeRequestSchema,
   ROUTES,
   SKILL_CLAIM_STATUSES,
+  SKILL_MAX_ATTEMPTS,
+  SKILL_REATTEMPTS,
+  SKILL_REFRESH_DAYS,
   SKILL_DEFINITIONS,
   SMART_TOPICS,
   TOPIC_SPECS,
@@ -285,19 +290,36 @@ describe('sprint 3 MMP placement contracts', () => {
     expect(SKILL_CLAIM_STATUSES).toEqual(['DECLARED', 'VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED']);
   });
 
+  it('locks Product Owner retry policy: one reattempt, 35-day refresh', () => {
+    expect(SKILL_REATTEMPTS).toBe(1);
+    expect(SKILL_MAX_ATTEMPTS).toBe(2);
+    expect(SKILL_REFRESH_DAYS).toBe(35);
+  });
+
   it('rejects a job opening with no required skills', () => {
     const parsed = CreateJobOpeningRequestSchema.safeParse({
-      institutionId: '00000000-0000-4000-8000-000000000001',
       companyName: 'Acme',
       roleTitle: 'Analyst',
+      domain: 'SOFTWARE_IT',
       requiredSkills: [],
+      minYearsExperience: 0,
+      maxYearsExperience: 2,
+      location: 'Chennai',
+      employmentType: 'FULL_TIME',
+      headcount: 1,
     });
     expect(parsed.success).toBe(false);
   });
 
+  it('lists structured openings on GET /placement/openings', () => {
+    expect(
+      ROUTES.some((route) => route.method === 'GET' && route.path === '/placement/openings'),
+    ).toBe(true);
+  });
+
   it('registers ATS stage-change for My Applications sync', () => {
     expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
-    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
+    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('placement');
   });
 });
 
@@ -315,5 +337,123 @@ describe('CN-T02 resume parse contracts', () => {
 
   it('refuses a parse request with neither text nor object key', () => {
     expect(ParseResumeRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('batch import contracts', () => {
+  it('rejects duplicate uploaded-column mappings', () => {
+    expect(
+      BatchImportMappingSchema.safeParse({
+        fullName: 'Student',
+        email: 'Student',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts preview metadata without breaking the import result shape', () => {
+    expect(
+      BatchImportResultDtoSchema.safeParse({
+        imported: 0,
+        skipped: 0,
+        errors: [],
+        headers: ['Student Name', 'Email Address'],
+        totalRows: 1,
+        validRows: 1,
+        invalidRows: 0,
+        existingStudents: 0,
+        newAccounts: 1,
+        previewTruncated: false,
+        preview: [
+          {
+            row: 2,
+            fullName: 'John Student',
+            email: 'john.student@example.test',
+            valid: true,
+            existingStudent: false,
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('SE-T02 skill interview contracts', () => {
+  it('registers generate and grade routes with an LLM spend cap', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/questions'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/skill-interview/grade'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.skillInterview',
+    });
+    expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
+  });
+});
+
+describe('CN-T06 my applications route', () => {
+  it('exposes a student-only poll route with no studentId parameter', () => {
+    const route = ROUTES.find((entry) => entry.path === '/me/applications');
+    expect(route).toMatchObject({
+      method: 'GET',
+      roles: ['STUDENT'],
+      rateLimit: 'placement.application',
+    });
+    expect(route?.path.includes('studentId')).toBe(false);
+  });
+});
+
+describe('AC-T06 send-to-company routes', () => {
+  it('registers TPO confidence read and send without inventing a new ATS stage', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/placement/applications/:applicationId/confidence'),
+    ).toMatchObject({
+      method: 'GET',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+      rateLimit: 'placement.application',
+    });
+    expect(
+      ROUTES.find(
+        (entry) => entry.path === '/placement/applications/:applicationId/send-to-company',
+      ),
+    ).toMatchObject({
+      method: 'POST',
+      roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    });
+  });
+});
+
+describe('SE-T03 project verification contracts', () => {
+  it('registers GitHub picker, submit, poll, and a separate project review queue', () => {
+    expect(ROUTES.find((entry) => entry.path === '/projects/github/status')).toMatchObject({
+      owner: 'Vishal V',
+      rateLimit: 'projects.github',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/projects')).toMatchObject({
+      method: 'POST',
+      owner: 'Vishal V',
+      rateLimit: 'projects.submit',
+    });
+    expect(ROUTES.find((entry) => entry.path === '/admin/project-review-queue')).toMatchObject({
+      owner: 'Vishal Bharath R',
+      module: 'assessment',
+    });
+    expect(getRateLimitPolicy('evaluation.projectVerify').limit).toBe(8);
+  });
+
+  it('does not reuse smart.eval.completed for project scores', () => {
+    expect(SMART_TOPICS.projectVerifyCompleted).toBe('smart.project.verify.completed');
+    expect(getTopicSpec(SMART_TOPICS.projectVerifyCompleted).producerModule).toBe('evaluation');
+    expect(getTopicSpec(SMART_TOPICS.evalCompleted).purpose).toMatch(/certificate/i);
   });
 });

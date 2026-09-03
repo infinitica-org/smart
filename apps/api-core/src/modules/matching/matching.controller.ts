@@ -12,7 +12,7 @@ export class MatchingController {
       module: 'matching',
       owner: this.service.owner,
       purpose: this.service.purpose,
-      status: 'scaffold',
+      status: 'active',
     };
   }
 }

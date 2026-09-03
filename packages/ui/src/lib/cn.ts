@@ -11,3 +11,18 @@ import { twMerge } from 'tailwind-merge';
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
+
+/** First letters of each word, for avatars. Empty / whitespace → "?". */
+export function getInitials(str: string): string {
+  if (typeof str !== 'string' || !str.trim()) return '?';
+
+  return (
+    str
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase() || '?'
+  );
+}

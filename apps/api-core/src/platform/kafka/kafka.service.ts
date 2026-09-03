@@ -2,6 +2,12 @@ import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { Kafka, type Consumer, type Producer } from 'kafkajs';
 import {
+  consumerGroupFor,
+  deadLetterTopicFor,
+  SMART_TOPICS,
+  type SmartTopic,
+} from '@smart/contracts';
+import {
   CORRELATION_KAFKA_HEADER,
   getContext,
   kafkaCorrelationHeaders,
@@ -9,8 +15,14 @@ import {
   LOG_EVENTS,
   logEvent,
 } from '@smart/observability';
-import { consumerGroupFor, deadLetterTopicFor, SMART_TOPICS } from '@smart/contracts';
 import { env } from '../config/env.js';
+
+export interface KafkaSubscribeParams {
+  readonly topic: SmartTopic;
+  /** Module name used for consumer group id and DLQ attribution. */
+  readonly module: string;
+  readonly handler: (payload: unknown, headers: Record<string, string>) => Promise<void>;
+}
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -22,7 +34,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   });
 
   readonly producer: Producer = this.kafka.producer();
-  private consumer: Consumer | undefined;
+  private readonly consumers: Consumer[] = [];
 
   async onModuleInit(): Promise<void> {
     if (env.NODE_ENV === 'test') return;
@@ -39,7 +51,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    if (this.consumer) await this.consumer.disconnect();
+    await Promise.all(this.consumers.map((consumer) => consumer.disconnect()));
+    this.consumers.length = 0;
     if (this.available) await this.producer.disconnect();
     this.available = false;
   }
@@ -105,20 +118,17 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async subscribeAssessmentSubmitted(
-    handler: (
-      payload: unknown,
-      headers: Record<string, Buffer | string | undefined>,
-    ) => Promise<void>,
-  ): Promise<void> {
+  async subscribe(params: KafkaSubscribeParams): Promise<void> {
     if (env.NODE_ENV === 'test') return;
-    const topic = SMART_TOPICS.assessmentSubmitted;
-    this.consumer = this.kafka.consumer({
-      groupId: consumerGroupFor('platform', topic),
+
+    const consumer = this.kafka.consumer({
+      groupId: consumerGroupFor(params.module, params.topic),
     });
-    await this.consumer.connect();
-    await this.consumer.subscribe({ topic, fromBeginning: false });
-    await this.consumer.run({
+    this.consumers.push(consumer);
+    await consumer.connect();
+    await consumer.subscribe({ topic: params.topic, fromBeginning: false });
+
+    await consumer.run({
       eachMessage: async ({ message }) => {
         const value = message.value ? JSON.parse(message.value.toString()) : null;
         const headers: Record<string, string> = {};
@@ -126,26 +136,39 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
           if (headerValue) headers[headerKey] = headerValue.toString();
         }
         try {
-          await handler(value, headers);
+          await params.handler(value, headers);
         } catch (error) {
           logEvent(
             this.logger,
             'error',
             LOG_EVENTS.KAFKA_EMIT_FAILED,
             {
-              topic,
+              topic: params.topic,
               err: error instanceof Error ? error.message : 'unknown',
             },
-            'assessment.submitted consumer failed; sending to DLQ',
+            `${params.topic} consumer failed; sending to DLQ`,
           );
           await this.emit(
-            deadLetterTopicFor(topic),
+            deadLetterTopicFor(params.topic),
             message.key?.toString() ?? 'unknown',
             { original: value, error: error instanceof Error ? error.message : 'unknown' },
-            'platform',
+            params.module,
           );
         }
       },
+    });
+  }
+
+  async subscribeAssessmentSubmitted(
+    handler: (
+      payload: unknown,
+      headers: Record<string, string | Buffer | undefined>,
+    ) => Promise<void>,
+  ): Promise<void> {
+    await this.subscribe({
+      topic: SMART_TOPICS.assessmentSubmitted,
+      module: 'platform',
+      handler: async (payload, headers) => handler(payload, headers),
     });
   }
 }

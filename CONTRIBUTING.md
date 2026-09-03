@@ -25,6 +25,7 @@ Read these in order before writing code:
 - **Conventional Commits** — `<type>(<scope>): <summary> (<TICKET>)` with scopes from `commitlint.config.mjs`. Details: [`.cursor/rules/09-commits-and-prs.mdc`](./.cursor/rules/09-commits-and-prs.mdc).
 - **PR labels (tags)** — every PR: one of `P0-blocker`/`P1`/`P2-droppable` + one `area:*` + `sprint-N`. Optional: `needs-contract`, `needs-content`, `blocked`.
 - **PR size.** ≤ 400 hand-written LOC; one ticket per PR.
+- **No personal names in file/folder names or content.** Refer to external stakeholders (product owner, design partner, client, etc.) by role, not by name — e.g. `docs/product/PRODUCT_ROADMAP_V1.1_TO_V1.3.md`, "the Product Owner locked V1", not a person's name. Internal team files that exist specifically to record ownership (`TEAM.md`, `CODEOWNERS`) are the intentional exception.
 
 Personal Cursor notes (identity, working memory) live in `.cursor/local/` and are gitignored — copy the `*.example.md` files there.
 
@@ -42,4 +43,7 @@ Seeded logins (local only): `student@smart.local` / `tpo@smart.local` / `admin@s
 
 ## VPS
 
-See [`infra/vps/README.md`](./infra/vps/README.md).
+See [`infra/vps/README.md`](./infra/vps/README.md). SSH in as `deploy`, not
+`root` — the checkout lives at `~deploy/smart` and is synced by CI (`rsync`),
+not `git pull`. To seed a server database: `bash scripts/seed-vps.sh
+<dev|qa|prod>` (see [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md)).
