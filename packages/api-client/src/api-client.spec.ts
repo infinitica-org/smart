@@ -483,3 +483,65 @@ describe('CN-T06 my applications client', () => {
     expect(calls[0]?.init.method ?? 'GET').toBe('GET');
   });
 });
+
+describe('assessmentApi contracts', () => {
+  const sessionBody = {
+    attemptId: '55555555-5555-4555-8555-555555555555',
+    studentId: '11111111-1111-4111-8111-111111111111',
+    trackCode: 'MBA_FINANCE',
+    levelNumber: 1,
+    levelFormat: 'MCQ',
+    status: 'IN_PROGRESS',
+    formId: 'A',
+    startedAt: '2026-09-02T10:00:00.000Z',
+    expiresAt: '2026-09-02T11:00:00.000Z',
+    serverRemainingSeconds: 1800,
+    totalItems: 2,
+    answeredItems: 0,
+    currentItemIndex: 0,
+    integrityFlag: 'CLEAN',
+    locked: false,
+  };
+
+  it('parses POST /assessment/start as AttemptSessionDto', async () => {
+    const { fetchImpl } = stubFetch([{ status: 201, body: sessionBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const session = await api.assessment.start({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
+    expect(session.attemptId).toBe(sessionBody.attemptId);
+    expect(session.serverRemainingSeconds).toBe(1800);
+  });
+
+  it('parses POST /assessment/complete as CompleteAttemptResponse', async () => {
+    const { fetchImpl } = stubFetch([
+      {
+        body: {
+          attemptId: sessionBody.attemptId,
+          status: 'EVALUATED',
+          evaluationJobId: null,
+          estimatedResultSeconds: null,
+          marksEarned: 1,
+          marksTotal: 1,
+          scorePercent: 1,
+          incomplete: false,
+        },
+      },
+    ]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.assessment.complete({ attemptId: sessionBody.attemptId });
+    expect(result.status).toBe('EVALUATED');
+    expect(result.evaluationJobId).toBeNull();
+    expect(result.scorePercent).toBe(1);
+  });
+});

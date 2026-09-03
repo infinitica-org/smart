@@ -33,7 +33,14 @@ describe('declareSkillClaim', () => {
         update: updateClaim,
       },
     };
-    service = new AssessmentService(prisma as never, {} as never, {} as never, {} as never);
+    service = new AssessmentService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
   });
 
   it('creates a SkillClaim at DECLARED for a new INF-05 skill', async () => {

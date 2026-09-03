@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   SkillClaimDtoSchema,
   SMART_TOPICS,
+  UuidSchema,
   type AiCompletionRequest,
   type AttemptSessionDto,
   type AttemptStatus,
@@ -36,8 +38,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { attemptsStarted, draftsSaved } from '@smart/observability';
+import { attemptsStarted, draftsSaved, getContext } from '@smart/observability';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import {
@@ -377,6 +378,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     user: RequestUser,
     body: CompleteAttemptRequest,
   ): Promise<CompleteAttemptResponse> {
+    await this.flushDraftsToPostgres();
+
     const attempt = await this.prisma.attempt.findUnique({
       where: { id: body.attemptId },
       include: {
@@ -424,45 +427,74 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const completedAt = new Date();
+    const submittedAt = new Date();
+    const remainingSeconds = attempt.expiresAt
+      ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
+      : 0;
+    const autoSubmitted = body.autoSubmitted || remainingSeconds <= 0;
+
+    const responses = (attempt.responses ?? []).map((row) => {
+      const raw = row.answer;
+      let answer: unknown = raw;
+      if (raw && typeof raw === 'object' && !Array.isArray(raw) && '_clientSequence' in raw) {
+        const { _clientSequence, ...rest } = raw as Record<string, unknown>;
+        answer = rest;
+      }
+      const itemId = row.item.id;
+      const competencyIdRaw =
+        typeof row.item.competencyId === 'string' ? row.item.competencyId : itemId;
+      const responseId = UuidSchema.safeParse(row.id).success ? row.id : randomUUID();
+      const competencyId = UuidSchema.safeParse(competencyIdRaw).success ? competencyIdRaw : itemId;
+      return {
+        responseId,
+        itemId,
+        competencyId,
+        itemWeight: 1,
+        answer,
+        objectKey: null,
+      };
+    });
+
     await this.prisma.attempt.update({
       where: { id: body.attemptId },
-      data: { status: 'EVALUATED', completedAt },
+      data: { status: 'EVALUATED', completedAt: submittedAt },
     });
 
     await this.outbox.enqueueAssessmentSubmitted({
       meta: {
         eventId: randomUUID(),
         eventType: SMART_TOPICS.assessmentSubmitted,
-        version: 1,
-        occurredAt: completedAt.toISOString(),
-        traceId: randomUUID(),
+        version: 1 as const,
+        occurredAt: submittedAt.toISOString(),
+        traceId: getContext()?.correlationId ?? randomUUID(),
         source: 'assessment',
       },
       data: {
         attemptId: attempt.id,
         studentId: attempt.userId,
         trackCode: attempt.level.track.code as TrackCode,
-        levelNumber: attempt.level.levelNumber as LevelNumber,
-        status: 'EVALUATED',
-        autoSubmitted: body.autoSubmitted,
-        integrityFlag: attempt.integrityFlag as IntegrityFlag,
-        submittedAt: completedAt.toISOString(),
-        responses: attempt.responses.map((response) => ({
-          responseId: response.id,
-          itemId: response.item.id,
-          competencyId: response.item.competencyId,
-          itemWeight: 1,
-          answer: response.answer,
-          objectKey: null,
-        })),
+        levelNumber: (attempt.level.levelNumber ?? 1) as LevelNumber,
+        status: 'EVALUATED' as AttemptStatus,
+        autoSubmitted,
+        integrityFlag: (attempt.integrityFlag ?? 'CLEAN') as IntegrityFlag,
+        submittedAt: submittedAt.toISOString(),
+        responses,
       },
     });
 
     try {
-      await this.redis.del(`session:assessment:${attempt.id}`);
+      const cached = await this.redis.get(`session:assessment:${attempt.id}`);
+      if (cached) {
+        const session = JSON.parse(cached) as AttemptSessionDto;
+        if (session.studentId === user.sub) {
+          session.status = 'EVALUATED';
+          session.locked = true;
+          session.serverRemainingSeconds = remainingSeconds;
+          await this.saveRedisSession(session);
+        }
+      }
     } catch {
-      // Non-fatal: session cache entry will simply expire on its TTL.
+      // Session lock is best-effort; Postgres status is authoritative.
     }
 
     return {
@@ -903,9 +935,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (existingAttempt) {
-      const activeSession = this.buildSessionDto(existingAttempt);
-      await this.saveRedisSession(activeSession);
-      return activeSession;
+      return this.getSession(studentId, existingAttempt.id);
     }
 
     // Level Unlock Rule: Level 2+ requires preceding level cleared with BRONZE or higher
@@ -1036,7 +1066,11 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     return sessionDto;
   }
 
-  async getNextItem(studentId: string, attemptId: string): Promise<NextItemDto> {
+  async getNextItem(
+    studentId: string,
+    attemptId: string,
+    requestedIndex?: number,
+  ): Promise<NextItemDto> {
     const session = await this.getSession(studentId, attemptId);
 
     if (session.locked || session.serverRemainingSeconds <= 0) {
@@ -1047,9 +1081,21 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    if (requestedIndex !== undefined) {
+      if (!Number.isInteger(requestedIndex) || requestedIndex < 0) {
+        throw new BadRequestException({
+          error: 'invalid_index',
+          message: 'Item index must be a non-negative integer.',
+          statusCode: 400,
+        });
+      }
+      session.currentItemIndex = requestedIndex;
+    }
+
     const currentItemIndex = session.currentItemIndex ?? 0;
 
     if (session.totalItems > 0 && currentItemIndex >= session.totalItems) {
+      await this.persistSessionIndex(session, currentItemIndex);
       return {
         attemptId: session.attemptId,
         item: null,
@@ -1117,6 +1163,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (currentItemIndex >= items.length) {
+      await this.persistSessionIndex(session, currentItemIndex);
       return {
         attemptId: session.attemptId,
         item: null,
@@ -1167,6 +1214,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       'assessment.next-item-served',
     );
 
+    await this.persistSessionIndex(session, currentItemIndex);
+
     return {
       attemptId: session.attemptId,
       item: deliverableItem,
@@ -1199,6 +1248,14 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       integrityFlag: attempt.integrityFlag as IntegrityFlag,
       locked: isLocked,
     };
+  }
+
+  private async persistSessionIndex(
+    session: AttemptSessionDto,
+    currentItemIndex: number,
+  ): Promise<void> {
+    session.currentItemIndex = currentItemIndex;
+    await this.saveRedisSession(session);
   }
 
   private async saveRedisSession(session: AttemptSessionDto): Promise<void> {

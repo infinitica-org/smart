@@ -17,13 +17,15 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
+  SaveDraftRequest,
+  StartAttemptRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
   AdminDashboardDtoSchema,
   AiHealthDtoSchema,
-  AssignedFormDtoSchema,
   AttemptSessionDtoSchema,
+  CompleteAttemptResponseSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -55,6 +57,7 @@ import {
   HealthStatusSchema,
   ParseResumeResponseSchema,
   ProjectDtoSchema,
+  SaveDraftResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -397,8 +400,8 @@ export function catalogApi(client: SmartApiClient) {
 
 export function assessmentApi(client: SmartApiClient) {
   return {
-    start: (body: { trackCode: string; levelNumber: number }) =>
-      client.post(prefixed('/assessment/start'), body, { schema: AssignedFormDtoSchema }),
+    start: (body: StartAttemptRequest) =>
+      client.post(prefixed('/assessment/start'), body, { schema: AttemptSessionDtoSchema }),
 
     listSkillClaims: () =>
       client.get(prefixed('/assessment/skill-claims'), {
@@ -416,16 +419,22 @@ export function assessmentApi(client: SmartApiClient) {
         schema: AttemptSessionDtoSchema,
       }),
 
-    nextItem: (attemptId: string) =>
-      client.get(prefixed(`/assessment/${attemptId}/next-item`), { schema: NextItemDtoSchema }),
+    nextItem: (attemptId: string, options?: { index?: number }) =>
+      client.get(prefixed(`/assessment/${attemptId}/next-item`), {
+        schema: NextItemDtoSchema,
+        query: options?.index === undefined ? undefined : { index: options.index },
+      }),
 
     /**
      * Answer drafts. Short timeout on purpose: this fires on every keystroke
      * pause, and a slow save must fail fast and retry rather than queue behind
      * itself while the candidate keeps typing.
      */
-    saveAnswer: (body: unknown) =>
-      client.post<void>(prefixed('/assessment/submit-l1'), body, { timeoutMs: 5_000 }),
+    saveAnswer: (body: SaveDraftRequest) =>
+      client.post(prefixed('/assessment/submit-l1'), body, {
+        schema: SaveDraftResponseSchema,
+        timeoutMs: 5_000,
+      }),
 
     compileCode: (body: unknown) =>
       client.post(prefixed('/assessment/compile-l2'), body, { schema: JobAcceptedSchema }),
@@ -443,7 +452,9 @@ export function assessmentApi(client: SmartApiClient) {
       }),
 
     complete: (body: { attemptId: string }) =>
-      client.post(prefixed('/assessment/complete'), body, { schema: JobAcceptedSchema }),
+      client.post(prefixed('/assessment/complete'), body, {
+        schema: CompleteAttemptResponseSchema,
+      }),
 
     /**
      * Integrity telemetry. Fire-and-forget by design: a candidate's assessment
