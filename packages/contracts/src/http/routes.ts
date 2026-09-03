@@ -1324,6 +1324,31 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Score typed/transcribed answers; always returns pass/fail plus a one-line why.',
   },
 
+  /* -------------- cognitive / communication profile (SE-T04) -------------- */
+  {
+    method: 'GET',
+    path: '/evaluation/cognitive-profile',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 100,
+    summary: 'Read own cognitive and communication narrative snapshot.',
+  },
+  {
+    method: 'POST',
+    path: '/evaluation/cognitive-profile/refresh',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'evaluation.cognitiveProfile',
+    criticality: 'REPORTING',
+    execution: 'ASYNC',
+    summary: 'Generate or reuse a person-level strengths/weaknesses narrative (not a skill grade).',
+  },
+
   /* -------------------- project verification (SE-T03) ---------------------- */
   {
     method: 'GET',
