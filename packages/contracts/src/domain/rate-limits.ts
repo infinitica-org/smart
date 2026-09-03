@@ -291,6 +291,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     redisKey: 'rl:project_verify:user:{id}',
     rationale: 'SE-T03 LLM quality/relevance scoring; fail closed to review, not reject.',
   },
+  {
+    key: 'evaluation.cognitiveProfile',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:cognitive_profile:user:{id}',
+    rationale:
+      'SE-T04 narrative spend is P3_BATCH; cap refreshes so one student cannot drain the batch lane.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
