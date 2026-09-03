@@ -50,6 +50,7 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
+import { env } from '../../platform/config/env.js';
 import { ItemRotationService } from './item-rotation.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import type { Prisma } from '../../generated/prisma/index.js';
@@ -1034,6 +1035,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         const expiresAtMs = new Date(session.expiresAt).getTime();
         session.serverRemainingSeconds = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
         session.locked = session.status !== 'IN_PROGRESS' || session.serverRemainingSeconds <= 0;
+        session.locked = session.locked || (await this.proctorLocked(attemptId));
         return session;
       }
     } catch (err) {
@@ -1062,8 +1064,18 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }
 
     const sessionDto = this.buildSessionDto(attempt);
+    sessionDto.locked = sessionDto.locked || (await this.proctorLocked(attemptId));
     await this.saveRedisSession(sessionDto);
     return sessionDto;
+  }
+
+  private async proctorLocked(attemptId: string): Promise<boolean> {
+    if (!env.PROCTORING_FULL) return false;
+    try {
+      return (await this.redis.exists(`proctor:lock:${attemptId}`)) === 1;
+    } catch {
+      return false;
+    }
   }
 
   async getNextItem(
