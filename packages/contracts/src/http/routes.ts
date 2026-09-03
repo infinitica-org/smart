@@ -298,6 +298,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/users/me/work-experiences/:id/documents/:documentId/validate',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 5_000,
+    summary: 'Validate an attached work experience proof document using AI classification.',
+  },
+  {
+    method: 'POST',
     path: '/admin/api-keys',
     module: 'auth',
     owner: 'Vishal V',

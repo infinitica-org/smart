@@ -218,6 +218,32 @@ export function WorkExperienceSection() {
     }
   };
 
+  // Document validation state
+  const [validatingDocId, setValidatingDocId] = useState<string | null>(null);
+  const [validationResults, setValidationResults] = useState<
+    Record<string, { validationStatus: string; rejectionReason?: string | null }>
+  >({});
+
+  const handleValidateProof = async (expId: string, docId: string) => {
+    try {
+      setValidatingDocId(docId);
+      setError(null);
+      const result = await api.users.validateWorkExperienceProof(expId, docId);
+      setValidationResults((prev) => ({
+        ...prev,
+        [docId]: {
+          validationStatus: result.validationResult.validationStatus,
+          rejectionReason: result.validationResult.rejectionReason,
+        },
+      }));
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Proof document validation failed.');
+    } finally {
+      setValidatingDocId(null);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
@@ -421,26 +447,74 @@ export function WorkExperienceSection() {
                 </div>
 
                 {exp.documents && exp.documents.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {exp.documents.map((doc: WorkExperienceDocumentDto) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-[#00fad0]" />
-                        <span className="font-medium">
-                          {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:
-                        </span>
-                        <span className="text-white/60 truncate max-w-[150px]">{doc.fileName}</span>
-                        <button
-                          onClick={() => handleRemoveDocument(exp.id, doc.id)}
-                          className="ml-1 text-white/30 hover:text-red-400"
-                          title="Remove document"
+                  <div className="flex flex-col gap-2">
+                    {exp.documents.map((doc: WorkExperienceDocumentDto) => {
+                      const docRecord = doc as unknown as Record<string, unknown>;
+                      const valState = validationResults[doc.id] || {
+                        validationStatus: docRecord.validationStatus as string | undefined,
+                        rejectionReason: (
+                          docRecord.validationResult as Record<string, unknown> | undefined
+                        )?.rejectionReason as string | undefined,
+                      };
+                      const isValidating = validatingDocId === doc.id;
+
+                      return (
+                        <div
+                          key={doc.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/80"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-[#00fad0] shrink-0" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:
+                                </span>
+                                <span className="text-white/60 truncate max-w-[180px]">
+                                  {doc.fileName}
+                                </span>
+                              </div>
+                              {valState.validationStatus === 'VALIDATED' && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-[#00fad0] font-medium mt-0.5">
+                                  <CheckCircle2 className="h-3 w-3" /> ✓ Proof Validated
+                                </span>
+                              )}
+                              {valState.validationStatus === 'REJECTED' && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium mt-0.5">
+                                  <AlertCircle className="h-3 w-3" /> Proof Rejected:{' '}
+                                  {valState.rejectionReason || 'Offer Letter or mismatch detected'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            {!valState.validationStatus && (
+                              <button
+                                onClick={() => handleValidateProof(exp.id, doc.id)}
+                                disabled={isValidating}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-1 text-[11px] font-medium text-[#00fad0] hover:bg-[#00fad0]/20 disabled:opacity-50 transition-colors"
+                              >
+                                {isValidating ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin" /> Validating...
+                                  </>
+                                ) : (
+                                  'Validate Proof'
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleRemoveDocument(exp.id, doc.id)}
+                              className="text-white/30 hover:text-red-400 p-1"
+                              title="Remove document"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <span className="text-[11px] text-white/35 italic">

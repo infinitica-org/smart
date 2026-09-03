@@ -38,6 +38,7 @@ export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';
 export * from './dto/work-experience.dto.js';
+export * from './dto/work-experience-proof.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

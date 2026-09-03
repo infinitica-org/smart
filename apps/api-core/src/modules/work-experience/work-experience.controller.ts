@@ -79,4 +79,20 @@ export class WorkExperienceController {
   ) {
     return this.service.removeDocument(user.sub, id, documentId);
   }
+
+  @Post(':id/documents/:documentId/validate')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Validate an attached work experience proof document using AI classification.',
+  })
+  @ApiResponse({ status: 200, description: 'Work experience proof document validation result.' })
+  validateDocument(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @Body() body?: { rawText?: string },
+  ) {
+    return this.service.validateProofDocument(user.sub, id, documentId, body?.rawText);
+  }
 }

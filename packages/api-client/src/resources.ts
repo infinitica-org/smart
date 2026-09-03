@@ -60,6 +60,7 @@ import {
   SaveDraftResponseSchema,
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
+  ValidateWorkExperienceProofResponseSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
@@ -189,6 +190,15 @@ export function usersApi(client: SmartApiClient) {
 
     removeWorkExperienceDocument: (id: string, documentId: string) =>
       client.delete<void>(prefixed(`/users/me/work-experiences/${id}/documents/${documentId}`)),
+
+    validateWorkExperienceProof: (id: string, documentId: string, rawText?: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/documents/${documentId}/validate`),
+        rawText ? { rawText } : {},
+        {
+          schema: ValidateWorkExperienceProofResponseSchema,
+        },
+      ),
   };
 }
 
