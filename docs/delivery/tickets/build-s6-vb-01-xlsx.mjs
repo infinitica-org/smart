@@ -119,7 +119,7 @@ const collect = [
     'Candidate',
     'Mandatory where available',
     'Second existence signal',
-    'Allen: do not skip',
+    'Product Owner: do not skip',
   ],
   [
     '17',

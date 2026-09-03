@@ -72,7 +72,7 @@ export const ResumeParseSkillSchema = z.discriminatedUnion('type', [
 ]);
 export type ResumeParseSkill = z.infer<typeof ResumeParseSkillSchema>;
 
-/** Professional licenses and certifications (Allen, 1 Sep 2026 — was missing). */
+/** Professional licenses and certifications (Product Owner, 1 Sep 2026 — was missing). */
 export const LicenseCredentialSchema = z.object({
   name: z.string().min(1).max(200),
   issuer: z.string().min(1).max(200),

@@ -44,3 +44,12 @@ Only Vishal V authors Prisma migrations (ADR-0007). On a server:
 docker compose -f infra/docker/docker-compose.yml --profile apps exec api \
   sh -c 'npx prisma migrate deploy'
 ```
+
+## Seeding
+
+Local: `pnpm bootstrap` (or `pnpm --filter @smart/api-core db:seed`).
+
+VPS: the `api` container is a slim production image — no `pnpm`, no
+TypeScript source — so `prisma/seed.ts` cannot run via `docker compose exec`.
+Use `bash scripts/seed-vps.sh <dev|qa|prod>` from `~deploy/smart` instead; see
+`infra/vps/README.md`.

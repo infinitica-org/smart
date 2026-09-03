@@ -7,7 +7,7 @@
 
 ## Context
 
-Allen assigned Vishal V the matching algorithms and the Jobs & Placements outcome path. The existing CODEOWNERS map is: Ramansh owns `matching/` (JD NLP + pgvector), Vedika owns `placement/` (JD records, shortlists, outcomes).
+The Product Owner assigned Vishal V the matching algorithms and the Jobs & Placements outcome path. The existing CODEOWNERS map is: Ramansh owns `matching/` (JD NLP + pgvector), Vedika owns `placement/` (JD records, shortlists, outcomes).
 
 PRD v1 is explicit: V1 matching is a **transparent weighted score** shown to the TPO, who shortlists by hand. Autonomous matching and a candidate job feed are **V2**. AGILE_PLAN Sprint 3 still lists pgvector cosine as P0 for Ramansh.
 
@@ -24,13 +24,13 @@ A “dating app” in V1 means: structured JD in → ranked verified candidates 
 
 **RACI for the outcome path (does not silently rewrite CODEOWNERS):**
 
-| Concern                                              | O                                                                                        | C                               | I    |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------- | ---- |
-| Rules ranker + match API orchestration (`SE-T05`)    | **Vishal V**                                                                             | Ramansh (if vector signal)      | Tino |
-| JD NLP parse / embeddings (`S3-RM-01`)               | **Ramansh**                                                                              | VV                              | Tino |
-| JD records, shortlist rows, outcomes (`S3-VG-01/02`) | **Vedika G**                                                                             | VV                              | Tino |
-| TPO JD inbox / shortlist UI / send-to-company        | **Satheswaran V** (UI) + **Vishal Bharath R** (ATS/opportunity APIs per Allen AC-T03–06) | VV                              | Tino |
-| Skill verification state machine (PRD 7.3)           | **Vishal Bharath R**                                                                     | Ramansh (MCQ/interview scoring) | Tino |
+| Concern                                              | O                                                                                                | C                               | I    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------- | ---- |
+| Rules ranker + match API orchestration (`SE-T05`)    | **Vishal V**                                                                                     | Ramansh (if vector signal)      | Tino |
+| JD NLP parse / embeddings (`S3-RM-01`)               | **Ramansh**                                                                                      | VV                              | Tino |
+| JD records, shortlist rows, outcomes (`S3-VG-01/02`) | **Vedika G**                                                                                     | VV                              | Tino |
+| TPO JD inbox / shortlist UI / send-to-company        | **Satheswaran V** (UI) + **Vishal Bharath R** (ATS/opportunity APIs per Product Owner AC-T03–06) | VV                              | Tino |
+| Skill verification state machine (PRD 7.3)           | **Vishal Bharath R**                                                                             | Ramansh (MCQ/interview scoring) | Tino |
 
 Path owners in Git remain: `matching/**` Ramansh, `placement/**` Vedika, `assessment/**` Vishal Bharath, platform Vishal V. Vishal V **implements the rules ranker** in `matching` via PR + Ramansh review, or as `matching/rules-ranker` that Ramansh merges. Do not duplicate a second matcher.
 
