@@ -42,7 +42,7 @@ function apply(
 }
 
 describe('skill-claim state machine (SE-T01)', () => {
-  it('locks Allen/ADR 0013 constants (never 3 / 60 / 90 / 180)', () => {
+  it('locks Product Owner/ADR 0013 constants (never 3 / 60 / 90 / 180)', () => {
     expect(SKILL_MAX_ATTEMPTS).toBe(2);
     expect(SKILL_REATTEMPTS).toBe(1);
     expect(SKILL_INTER_ATTEMPT_COOLDOWN_HOURS).toBe(48);

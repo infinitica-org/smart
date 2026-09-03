@@ -38,6 +38,12 @@ git clone https://github.com/infinitica-org/smart.git ~/smart
 cd ~/smart
 ```
 
+Run this **as the `deploy` user** — the checkout lives at `~deploy/smart`
+(i.e. `/home/deploy/smart`), never `/root/smart`. After the first CI deploy,
+`~deploy/smart` is kept in sync by `rsync`, not `git`: there is no `.git`
+there and `git pull` will fail. Break-glass edits go through a normal PR to
+`dev`/`main`; do not hand-edit or `git`-manage the server checkout.
+
 On **kvm2**: `git checkout dev`, `cp .env.dev.example .env.dev`, fill secrets,
 `bash scripts/deploy-vps.sh dev`.
 
@@ -54,6 +60,18 @@ SSH tunnel.
 
 Migrations (`prisma migrate deploy`, already-committed migrations only) run
 automatically at the end of `scripts/deploy-vps.sh` / every CI deploy.
+
+Seeding is manual and not run by CI (it is a one-time / break-glass op, not
+part of every deploy). The running `api` container is a slim production
+image with no `pnpm` and no TypeScript source, so `prisma/seed.ts` cannot run
+via `docker compose exec api ...`. Use the wrapper instead, from
+`~deploy/smart`:
+
+```bash
+bash scripts/seed-vps.sh dev    # kvm2 — smart-dev
+bash scripts/seed-vps.sh qa     # kvm2 — smart-qa
+bash scripts/seed-vps.sh prod   # kvm4 — smart-prod
+```
 
 ## 4. DB admin UI
 

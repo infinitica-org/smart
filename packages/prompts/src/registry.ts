@@ -19,6 +19,7 @@ import {
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
 import { cognitiveCommProfileTemplate } from './templates/cognitive-comm-profile.js';
+import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 
 /**
  * The prompt registry.
@@ -55,6 +56,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
   cognitiveCommProfileTemplate,
+  workExperienceProofParseTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

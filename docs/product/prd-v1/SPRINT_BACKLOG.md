@@ -1,4 +1,4 @@
-# Allen sprint backlog (lightweight, subject to change)
+# Sprint backlog (lightweight, subject to change)
 
 > Extracted from `SMART_Sprint_Backlog.xlsx` (28 Aug 2026). **Not** the GA sprint plan.
 

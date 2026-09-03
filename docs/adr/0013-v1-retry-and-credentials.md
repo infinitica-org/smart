@@ -4,13 +4,13 @@
 - **Date:** 2026-09-01
 - **Owner:** Tino (`@brittytino`)
 - **Ticket:** S2-TN-04
-- **Product source:** Allen (1 Sep 2026) + playbook §5.2 / §5.6 + V1 launch roadmap
+- **Product source:** Product Owner (1 Sep 2026) + playbook §5.2 / §5.6 + V1 launch roadmap
 
 ## Context
 
 Playbook §5.6 said 3 attempts in 90 days. PRD §7.3 said a 2-strike model with a long cooldown. Prisma `Skill` still defaults `cooldown_days = 60` and `validity_days = 180`. Profile/parse contracts had education, experience, and skills — not licenses or certifications.
 
-Allen locked V1: add licenses & certifications, one reattempt, refresh the skill in 35 days.
+The Product Owner locked V1: add licenses & certifications, one reattempt, refresh the skill in 35 days.
 
 ## Decision
 

@@ -1,0 +1,6 @@
+# Tech debt register
+
+| Date       | Item                                    | Owner        | Notes                                                                                                                                                                                                                                    |
+| ---------- | --------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | `ProctoringSession` Prisma table        | Vishal V     | Interim Redis keys `proctor:*` with TTLs. Requested fields: `attemptId` unique, `consentAt`, `onboardingPassedAt`, `warningCount`, `warningLimit`, `integrityScore`, `deviceFingerprint`, `faceEmbeddingRef`. Do not log raw embeddings. |
+| 2026-09-03 | DPDP retention for face/voice snapshots | Ramansh / VV | Need a documented purge window for R2 object keys after scoring. Stub CV stores nothing.                                                                                                                                                 |

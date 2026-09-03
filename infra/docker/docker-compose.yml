@@ -26,6 +26,8 @@ x-app-env: &app-env
   GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
   OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   AI_MONTHLY_CEILING_USD: ${AI_MONTHLY_CEILING_USD:-500}
+  PROCTORING_FULL: ${PROCTORING_FULL:-true}
+  PROCTORING_CV_URL: ${PROCTORING_CV_URL:-http://proctoring-cv:8091}
 
 services:
   postgres:
@@ -180,6 +182,26 @@ services:
       timeout: 5s
       retries: 8
       start_period: 25s
+    profiles: ["apps"]
+
+  proctoring-cv:
+    build:
+      context: ../../apps/proctoring-cv
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROCTORING_CV_PORT:-8091}:8091"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health')",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 8
     profiles: ["apps"]
 
   web-student:

@@ -207,6 +207,7 @@ function createMockRedis() {
       return sets.get(key)?.size ?? 0;
     }),
     expire: vi.fn(async () => 1),
+    exists: vi.fn(async () => 0),
   } as any;
 }
 

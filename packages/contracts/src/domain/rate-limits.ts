@@ -191,6 +191,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'IP_CHALLENGE',
   },
   {
+    key: 'verify.workExperience',
+    scope: 'IP',
+    limit: 20,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:verify_we:ip:{id}',
+    rationale: 'Public work experience verification token endpoints; cap brute force.',
+    onViolation: 'IP_CHALLENGE',
+  },
+  {
     key: 'placement.match',
     scope: 'INSTITUTION',
     limit: 30,
@@ -301,6 +311,25 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale:
       'SE-T04 narrative spend is P3_BATCH; cap refreshes so one student cannot drain the batch lane.',
   },
+  {
+    key: 'proctoring.telemetry',
+    scope: 'ATTEMPT',
+    limit: 40,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:proctor:tel:{id}',
+    rationale: 'Signed sensors and heartbeats; bursty but must not starve the item player.',
+    onViolation: 'INTEGRITY_LOG',
+  },
+  {
+    key: 'proctoring.media',
+    scope: 'ATTEMPT',
+    limit: 12,
+    windowSeconds: 60,
+    burst: 3,
+    redisKey: 'rl:proctor:media:{id}',
+    rationale: 'Onboarding frames, voice clips, and checkpoint object keys.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
@@ -342,4 +371,9 @@ export const REDIS_TTL_SECONDS = {
   githubRepoList: 5 * 60,
   projectWebSimilarity: 5 * 60,
   projectSnapshotLock: 10 * 60,
+  proctoringNonce: 90,
+  proctoringHeartbeat: 2 * 60 * 60,
+  proctoringWarning: 2 * 60 * 60,
+  proctoringHmac: 2 * 60 * 60,
+  proctoringBlob: 60,
 } as const;

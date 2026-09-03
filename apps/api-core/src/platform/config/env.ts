@@ -72,6 +72,12 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
+  PROCTORING_FULL: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  PROCTORING_CV_URL: z.string().default('http://127.0.0.1:8091'),
+
   ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),

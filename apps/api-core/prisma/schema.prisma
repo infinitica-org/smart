@@ -333,6 +333,7 @@ model User {
   auditLogs           AuditLog[]
   jobOpeningsCreated  JobOpening[] @relation("JobOpeningCreatedBy")
   notifications       Notification[]
+  workExperiences     WorkExperience[]
 
   @@index([institutionId])
   @@index([batchId])
@@ -726,6 +727,7 @@ model Company {
   users                User[]
   jobOpenings          JobOpening[]
   featureFlagOverrides FeatureFlagOverride[]
+  workExperiences     WorkExperience[]
 
   @@map("companies")
 }
@@ -1010,4 +1012,105 @@ model FeatureFlagOverride {
   @@index([institutionId])
   @@index([companyId])
   @@map("feature_flag_overrides")
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum WorkExperienceVerificationStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_EMPLOYER
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum ExperienceDocumentType {
+  OFFER_LETTER
+  EXPERIENCE_LETTER
+  PAYSLIP
+  RELIEVING_LETTER
+  FORM_16
+  OTHER
+}
+
+model WorkExperience {
+  id                  String                           @id @default(uuid()) @db.Uuid
+  studentId           String                           @map("student_id") @db.Uuid
+  student             User                             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  companyId           String?                          @map("company_id") @db.Uuid
+  company             Company?                         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyName         String                           @map("company_name")
+  companyWebsite      String?                          @map("company_website")
+  companyLinkedinUrl  String?                          @map("company_linkedin_url")
+  role                String
+  employmentType      EmploymentType                   @default(FULL_TIME) @map("employment_type")
+  department          String?
+  domain              String?
+  workLocation        String?                          @map("work_location")
+  startDate           DateTime                         @map("start_date") @db.Timestamptz(6)
+  endDate             DateTime?                        @map("end_date") @db.Timestamptz(6)
+  isCurrent           Boolean                          @default(false) @map("is_current")
+  responsibilities    String?                          @db.Text
+  skills              String[]                         @default([])
+  projects            Json?
+  candidateLinkedin   String?                          @map("candidate_linkedin")
+  verifierName        String?                          @map("verifier_name")
+  verifierEmail       String?                          @map("verifier_email")
+  verifierDesignation String?                          @map("verifier_designation")
+  verifierPhone       String?                          @map("verifier_phone")
+  status              WorkExperienceVerificationStatus @default(SUBMITTED)
+  rejectionReason     String?                          @map("rejection_reason")
+  createdAt           DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  documents            WorkExperienceDocument[]
+  verificationAttempts WorkExperienceVerificationAttempt[]
+
+  @@index([studentId, status])
+  @@index([companyId])
+  @@map("work_experiences")
+}
+
+model WorkExperienceDocument {
+  id           String                 @id @default(uuid()) @db.Uuid
+  experienceId String                 @map("experience_id") @db.Uuid
+  experience   WorkExperience         @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  documentType ExperienceDocumentType @map("document_type")
+  fileUrl      String                 @map("file_url")
+  fileName     String                 @map("file_name")
+  fileSizeBytes Int                    @map("file_size_bytes")
+  mimeType      String                 @map("mime_type")
+  validationStatus String?             @map("validation_status")
+  validationResult Json?               @map("validation_result")
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([experienceId])
+  @@map("work_experience_documents")
+}
+
+model WorkExperienceVerificationAttempt {
+  id            String         @id @default(uuid()) @db.Uuid
+  experienceId  String         @map("experience_id") @db.Uuid
+  experience    WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  tokenHash     String         @unique @map("token_hash")
+  verifierEmail String         @map("verifier_email")
+  sentAt        DateTime       @default(now()) @map("sent_at") @db.Timestamptz(6)
+  expiresAt     DateTime       @map("expires_at") @db.Timestamptz(6)
+  respondedAt   DateTime?      @map("responded_at") @db.Timestamptz(6)
+  reminderSentAt DateTime?     @map("reminder_sent_at") @db.Timestamptz(6)
+  approved      Boolean?
+  comments      String?        @db.Text
+  ipAddress     String?        @map("ip_address")
+  userAgent     String?        @map("user_agent")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([experienceId])
+  @@map("work_experience_verification_attempts")
 }
