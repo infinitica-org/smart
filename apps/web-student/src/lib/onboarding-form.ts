@@ -179,10 +179,18 @@ export function buildOnboardingDraftPayload(
   const skills = [
     ...form.languages
       .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({ type: 'language' as const, name: l.language.trim(), proficiency: l.proficiency.trim() })),
+      .map((l) => ({
+        type: 'language' as const,
+        name: l.language.trim(),
+        proficiency: l.proficiency.trim(),
+      })),
     ...form.codingProficiencies
       .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({ type: 'technical' as const, name: l.language.trim(), proficiency: l.proficiency.trim() })),
+      .map((l) => ({
+        type: 'technical' as const,
+        name: l.language.trim(),
+        proficiency: l.proficiency.trim(),
+      })),
   ];
 
   return {

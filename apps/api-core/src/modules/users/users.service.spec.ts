@@ -132,9 +132,9 @@ describe('UsersService saveOnboardingDraft', () => {
     const user = studentRow({ onboardingCompleted: true });
     prisma.user.findUnique.mockResolvedValueOnce(user);
 
-    await expect(
-      service.saveOnboardingDraft(user.id, { firstName: 'Ada' }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.saveOnboardingDraft(user.id, { firstName: 'Ada' })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 

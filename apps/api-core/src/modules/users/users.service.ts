@@ -80,7 +80,10 @@ export class UsersService {
   }
 
   /** Persist in-progress onboarding data so it survives a lost session or a closed tab. */
-  async saveOnboardingDraft(userId: string, body: unknown): Promise<CandidateOnboardingProfileResponse> {
+  async saveOnboardingDraft(
+    userId: string,
+    body: unknown,
+  ): Promise<CandidateOnboardingProfileResponse> {
     const parsed = SaveCandidateOnboardingDraftRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
