@@ -3,7 +3,7 @@
 import { signOutAndRedirect } from '@smart/api-client';
 import { api } from './api';
 
-const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
+const authUrl = process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002';
 const portalOrigins = {
   student: process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001',
   tpo: process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002',

@@ -9,6 +9,7 @@ import {
   type ApplicationDto,
   type BatchDto,
   type InstitutionStudentDto,
+  type JobOpeningDto,
   type SkillClaimDto,
 } from '@smart/contracts';
 import { Alert, Button, DashboardPanel } from '@smart/ui';
@@ -90,7 +91,9 @@ export function AcademiaDashboard() {
       setOpeningCount(openings.length);
       try {
         const lists = await Promise.all(
-          openings.map((opening) => applicationsApi.listForOpening(opening.openingId)),
+          openings.map((opening: JobOpeningDto) =>
+            applicationsApi.listForOpening(opening.openingId),
+          ),
         );
         setApplications(lists.flatMap((list) => list.applications));
       } catch (caught) {

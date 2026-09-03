@@ -20,7 +20,7 @@ describe('searchPublicProjectMatches', () => {
   it('scores a public GitHub hit that restates the brief and skips the student repo', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
-      if (url.includes('api.github.com')) {
+      if (new URL(url).hostname === 'api.github.com') {
         return new Response(
           JSON.stringify({
             items: [
