@@ -1,10 +1,10 @@
 # Architect review — SMART PRD v1 + Sprint 3 (Jobs & Placements)
 
-> **Author:** Tino · **Date:** 28 Aug 2026 · **Audience:** Allen + all six engineers  
+> **Author:** Tino · **Date:** 28 Aug 2026 · **Audience:** Product Owner + all six engineers  
 > **Frozen pack:** [`docs/product/prd-v1/`](../product/prd-v1/README.md)  
 > **ADRs:** [0011](../adr/0011-prd-v1-frozen.md) (freeze) · [0012](../adr/0012-mmp-placement-matching.md) (rules matching)
 
-Allen asked for an architect read of the final PRD. Vishal V was asked to own matching and the Jobs & Placements outcome path, and to help Vishal Bharath on skill verification. This note is that review plus the Sprint 3 execution map.
+The Product Owner asked for an architect read of the final PRD. Vishal V was asked to own matching and the Jobs & Placements outcome path, and to help Vishal Bharath on skill verification. This note is that review plus the Sprint 3 execution map.
 
 ---
 
@@ -12,7 +12,7 @@ Allen asked for an architect read of the final PRD. Vishal V was asked to own ma
 
 **Accept the PRD as V1 MMP product freeze.** It is coherent: colleges engineer verified talent; companies ingest JDs; TPOs mediate; companies never get a scrapeable resume lake.
 
-**Do not treat it as a greenfield rewrite.** CI, auth, contracts, L1–L5 assessment, catalogs, and rate limits already exist. Allen’s xlsx (`INF-01`…`QA-T04`) is a **5-day demo loop** written as if day 1 were empty. Mapping below says what is already done, what is Sprint 2, what is Sprint 3, and what we drop.
+**Do not treat it as a greenfield rewrite.** CI, auth, contracts, L1–L5 assessment, catalogs, and rate limits already exist. The Product Owner’s xlsx (`INF-01`…`QA-T04`) is a **5-day demo loop** written as if day 1 were empty. Mapping below says what is already done, what is Sprint 2, what is Sprint 3, and what we drop.
 
 **Do not fork a second product.** Certification (5×3 grid, tracks, certificates) is the _trust signal_. PRD Jobs & Placements is the _marketplace outcome_. VEGA ([SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md](./SPRINT03_PROFILE_CALIBRATION_AND_VEGA.md)) is L4’s engine reused as the confidence interview — not a new AI platform.
 
@@ -31,20 +31,20 @@ Allen asked for an architect read of the final PRD. Vishal V was asked to own ma
 
 ## 3. Tension with the repo (resolve, don’t ignore)
 
-| Topic                | PRD v1                                       | Repo today                                                    | Architect call                                                                                                                                                                       |
-| -------------------- | -------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| North star           | Verified skill % + time-to-shortlist         | Gold vs cohort interview/offer conversion                     | **Both.** Certificate is the profile. Shortlist conversion is the outcome KPI.                                                                                                       |
-| Matching             | Rules, TPO-mediated                          | `S3-RM-02` pgvector cosine (Ramansh)                          | **Rules are P0. Cosine is P1 / first cut.** ADR 0012.                                                                                                                                |
-| Skill model          | Claimed Beginner/Int/Adv per skill           | Track × level × Gold/Silver/Bronze                            | **VB maps claims → attempts on catalog skills.** Tiers still come from cut scores. Do not invent a parallel score.                                                                   |
-| Company app          | Full ATS portal                              | `B2B_PARTNER` + `web-verify`                                  | **V1 company UI can live in `web-tpo` company-mode or a thin `web-admin` slice — not a fifth app before freeze.**                                                                    |
-| Ownership            | Allen: VV matching; VB TPO placement tickets | CODEOWNERS: RM `matching/`, VG `placement/`, VB `assessment/` | **Git owners unchanged.** VV lands the rules ranker via PR to `matching` (Ramansh reviews). VG still owns shortlist rows + outcomes. VB owns verification SM + opportunity/ATS APIs. |
-| Tino feature tickets | CO-T04 dashboard, CO-T05 sync, INF-02 schema | Tino writes **no** feature code                               | **Reassign CO-T04 → SV, CO-T05 → VV, INF-02 → VV (schema steward).** Tino: contracts, ADRs, demo script, review.                                                                     |
+| Topic                | PRD v1                                               | Repo today                                                    | Architect call                                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| North star           | Verified skill % + time-to-shortlist                 | Gold vs cohort interview/offer conversion                     | **Both.** Certificate is the profile. Shortlist conversion is the outcome KPI.                                                                                                       |
+| Matching             | Rules, TPO-mediated                                  | `S3-RM-02` pgvector cosine (Ramansh)                          | **Rules are P0. Cosine is P1 / first cut.** ADR 0012.                                                                                                                                |
+| Skill model          | Claimed Beginner/Int/Adv per skill                   | Track × level × Gold/Silver/Bronze                            | **VB maps claims → attempts on catalog skills.** Tiers still come from cut scores. Do not invent a parallel score.                                                                   |
+| Company app          | Full ATS portal                                      | `B2B_PARTNER` + `web-verify`                                  | **V1 company UI can live in `web-tpo` company-mode or a thin `web-admin` slice — not a fifth app before freeze.**                                                                    |
+| Ownership            | Product Owner: VV matching; VB TPO placement tickets | CODEOWNERS: RM `matching/`, VG `placement/`, VB `assessment/` | **Git owners unchanged.** VV lands the rules ranker via PR to `matching` (Ramansh reviews). VG still owns shortlist rows + outcomes. VB owns verification SM + opportunity/ATS APIs. |
+| Tino feature tickets | CO-T04 dashboard, CO-T05 sync, INF-02 schema         | Tino writes **no** feature code                               | **Reassign CO-T04 → SV, CO-T05 → VV, INF-02 → VV (schema steward).** Tino: contracts, ADRs, demo script, review.                                                                     |
 
 ---
 
 ## 4. Skill verification — scope for Vishal Bharath
 
-Allen: “engineering talent profiles… ingest JDs & match from our pool.” Vishal V asked: customer UI or what?
+Product Owner: “engineering talent profiles… ingest JDs & match from our pool.” Vishal V asked: customer UI or what?
 
 **VB owns the verification engine and the trust chain, not the company sales UI.**
 
@@ -82,9 +82,9 @@ Ramansh still does S3-RM-01 (JD parse) if there is a PDF. If the company form is
 
 ---
 
-## 6. Allen xlsx → reality (do not restart S0)
+## 6. Product Owner xlsx → reality (do not restart S0)
 
-| Allen ID                                  | Status vs repo                                                                       | Sprint home                  |
+| Ticket ID                                 | Status vs repo                                                                       | Sprint home                  |
 | ----------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------- |
 | INF-01 repo/CI                            | **Done**                                                                             | —                            |
 | INF-02 schema                             | Partial (users, catalog, attempts). Add JD/application/skill-claim tables            | S3 · VV                      |

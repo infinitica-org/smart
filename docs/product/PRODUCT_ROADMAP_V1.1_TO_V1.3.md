@@ -1,10 +1,10 @@
-# SMART — Product roadmap for Allen
+# SMART — Product roadmap
 
 **v1.1.0 (15 Sep 2026) → v1.2 → v1.3**
 
 | Field    | Value                                                                                                            |
 | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| Audience | Allen (product) + design-partner conversation                                                                    |
+| Audience | Product Owner + design-partner conversation                                                                      |
 | Author   | Tino, from Playbook §2/§11, `SMART_V1_Launch_Roadmap.md`, PRD v1, and what is actually on `dev` as of 3 Sep 2026 |
 | Rule     | Product thinking first. A feature ships only if it changes what a recruiter is willing to **believe** or **do**. |
 
@@ -247,7 +247,7 @@ v1.3  we prove the evidence predicted interviews
 
 ---
 
-## 6. Risks Allen should force us to name
+## 6. Risks the Product Owner should force us to name
 
 1. **Voucher deliverability.** If HR mail lands in spam, v1.1 is a costume. Dedicated domain + bounce watch from day one of v1.1.
 2. **48-hour restart fatigue.** Students will rage if we burn them for a silent employer. Product copy must treat expiry as “try another verifier,” not “you failed.”

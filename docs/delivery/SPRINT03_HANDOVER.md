@@ -34,7 +34,7 @@ Demo fails only if step “ranked list” is empty. Public profile is bonus.
 | **Satheswaran**    | Verification badge. TPO ranked list + JD form (taxonomy picks). ATS Kanban. My Applications. **Never rank in the browser.**                                                  | Backend ranker, skill SM           |
 | **Tino**           | Review + merge. 17:00 board. No feature code.                                                                                                                                | Your tickets                       |
 
-Allen xlsx: `CO-T04` dashboard → **SV**. `CO-T05` stage sync + `INF-02` schema → **VV**.
+Product Owner xlsx: `CO-T04` dashboard → **SV**. `CO-T05` stage sync + `INF-02` schema → **VV**.
 
 ---
 
