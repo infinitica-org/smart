@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import type { AtsStage } from '@smart/contracts';
 import { cn } from '@smart/ui';
-import { ATS_STAGES, type AtsStage } from '@/lib/candidate-dashboard-data';
+import { ATS_PIPELINE_STAGES, ATS_STAGE_LABELS, stageReached } from '@/lib/my-applications';
 
 export function PageHeader({
   title,
@@ -100,16 +101,17 @@ export function AtsStageBar({
   stage: AtsStage;
   showLabels?: boolean;
 }) {
-  const current = ATS_STAGES.indexOf(stage);
   return (
     <div className="flex w-full gap-1.5">
-      {ATS_STAGES.map((label, idx) => {
-        const done = idx <= current;
+      {ATS_PIPELINE_STAGES.map((column) => {
+        const done = stageReached(stage, column);
         return (
-          <div key={label} className="min-w-0 flex-1">
+          <div key={column} className="min-w-0 flex-1">
             <div className={cn('h-1.5 rounded-full', done ? 'bg-[#00fad0]' : 'bg-white/[0.08]')} />
             {showLabels ? (
-              <p className="mt-2 hidden truncate text-[10px] text-white/30 sm:block">{label}</p>
+              <p className="mt-2 hidden truncate text-[10px] text-white/30 sm:block">
+                {ATS_STAGE_LABELS[column]}
+              </p>
             ) : null}
           </div>
         );

@@ -48,6 +48,20 @@ export function claimToBadgeStatus(claim: SkillClaimDto): string {
   return 'DECLARED';
 }
 
+/** UI label for existing SkillClaimStatus (+ IN_VERIFICATION hint). No extra statuses. */
+export function claimStatusLabel(badge: string): string {
+  switch (badge) {
+    case 'VERIFIED':
+      return 'Verified';
+    case 'IN_VERIFICATION':
+      return 'In verification';
+    case 'LOCKED':
+      return 'Locked';
+    default:
+      return 'Declared';
+  }
+}
+
 export function formatCooldown(lockedUntil: string | null): string | null {
   if (!lockedUntil) return null;
   const parsed = new Date(lockedUntil);

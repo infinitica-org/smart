@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { claimToBadgeStatus, formatCooldown, skillsForStream } from './skill-declarations';
+import {
+  claimStatusLabel,
+  claimToBadgeStatus,
+  formatCooldown,
+  skillsForStream,
+} from './skill-declarations';
 import type { SkillClaimDto } from '@smart/contracts';
 
 function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
@@ -33,6 +38,8 @@ describe('skill-declarations helpers', () => {
     expect(claimToBadgeStatus(claim({ status: 'BEGINNER_REATTEMPT' }))).toBe('IN_VERIFICATION');
     expect(claimToBadgeStatus(claim({ status: 'VERIFIED' }))).toBe('VERIFIED');
     expect(claimToBadgeStatus(claim({ status: 'LOCKED' }))).toBe('LOCKED');
+    expect(claimStatusLabel('IN_VERIFICATION')).toBe('In verification');
+    expect(claimStatusLabel('VERIFIED')).toBe('Verified');
   });
 
   it('formats lockedUntil for cooldown display', () => {

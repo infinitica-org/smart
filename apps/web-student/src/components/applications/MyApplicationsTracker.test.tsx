@@ -97,10 +97,18 @@ describe('MyApplicationsTracker', () => {
 
     renderTracker(25);
 
-    await waitFor(() => expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0), {
-      timeout: 1500,
-    });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
+        'SHORTLISTED',
+      ),
+    );
+    await waitFor(
+      () =>
+        expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
+          'INTERVIEW',
+        ),
+      { timeout: 1500 },
+    );
     expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
   });
 

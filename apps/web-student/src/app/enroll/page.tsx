@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, Button, Card, CardHeader, CardTitle, CardDescription, Alert } from '@smart/ui';
 import { api } from '../../lib/api';
+import { destinationAfterEnrollment } from '../../lib/candidate-routing';
 import type { TrackDto } from '@smart/contracts';
 
 export default function EnrollPage() {
@@ -35,8 +36,8 @@ export default function EnrollPage() {
     setEnrolling(true);
     setError(null);
     try {
-      await api.auth.enrollTrack({ trackCode: selectedTrack });
-      router.push('/onboarding');
+      const user = await api.auth.enrollTrack({ trackCode: selectedTrack });
+      router.push(destinationAfterEnrollment(user));
     } catch (err: unknown) {
       console.error(err);
       setError('Failed to enroll in the track. Please try again.');

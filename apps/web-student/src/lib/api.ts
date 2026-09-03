@@ -19,7 +19,7 @@ const MOCK_TRACK_CODES = TRACK_CODES as readonly string[];
  * dev doesn't look like the server forgot a completed onboarding and bounce the
  * candidate back to /onboarding.
  */
-const MOCK_ONBOARDING_STATE_KEY = 'smart.mock.onboarding-state';
+export const MOCK_ONBOARDING_STATE_KEY = 'smart.mock.onboarding-state';
 
 interface MockOnboardingState {
   completed: boolean;
@@ -43,21 +43,12 @@ function loadMockOnboardingState(): MockOnboardingState {
   }
 }
 
-function saveMockOnboardingState(): void {
+function saveMockOnboardingState(state: MockOnboardingState): void {
   if (typeof window === 'undefined') return;
-  const state: MockOnboardingState = {
-    completed: mockOnboardingCompleted,
-    profile: mockOnboardingProfile,
-    draft: mockOnboardingDraft,
-  };
   window.sessionStorage.setItem(MOCK_ONBOARDING_STATE_KEY, JSON.stringify(state));
 }
 
-const initialMockOnboardingState = loadMockOnboardingState();
-let mockOnboardingCompleted = initialMockOnboardingState.completed;
 let mockPrimaryTrack: string | null = null;
-let mockOnboardingProfile: unknown = initialMockOnboardingState.profile;
-let mockOnboardingDraft: unknown = initialMockOnboardingState.draft;
 let mockSkillClaims: Array<{
   claimId: string;
   studentId: string;
@@ -141,7 +132,7 @@ function mockStudentUser(overrides: Record<string, unknown> = {}) {
     emailVerified: true,
     createdAt: new Date().toISOString(),
     sessionHold: null,
-    onboardingCompleted: mockOnboardingCompleted,
+    onboardingCompleted: loadMockOnboardingState().completed,
     ...overrides,
   };
 }
@@ -172,8 +163,6 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
   if (url.includes('/auth/login') && method === 'POST') {
     mockPrimaryTrack = null;
-    mockOnboardingCompleted = false;
-    saveMockOnboardingState();
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
@@ -184,7 +173,6 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           institutionName: null,
           primaryTrack: null,
           provider: 'PASSWORD',
-          onboardingCompleted: false,
         }),
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -219,8 +207,6 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
   if (url.includes('/auth/sso/callback') && method === 'POST') {
     mockPrimaryTrack = null;
-    mockOnboardingCompleted = false;
-    saveMockOnboardingState();
     return new Response(
       JSON.stringify({
         accessToken: mockStudentAccessToken(),
@@ -230,7 +216,6 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           institutionId: null,
           institutionName: null,
           primaryTrack: null,
-          onboardingCompleted: false,
         }),
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -292,14 +277,15 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    mockOnboardingCompleted = true;
-    mockOnboardingProfile = {
-      ...body,
-      dpdpConsentAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-    };
-    mockOnboardingDraft = null;
-    saveMockOnboardingState();
+    saveMockOnboardingState({
+      completed: true,
+      profile: {
+        ...body,
+        dpdpConsentAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      draft: null,
+    });
     return new Response(
       JSON.stringify(
         mockStudentUser({
@@ -313,28 +299,34 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
   if (url.includes('/users/me/onboarding') && method === 'PUT') {
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
-    mockOnboardingDraft = {
-      ...(mockOnboardingDraft as Record<string, unknown> | null),
+    const previous = loadMockOnboardingState();
+    const draft = {
+      ...(previous.draft as Record<string, unknown> | null),
       ...body,
       savedAt: new Date().toISOString(),
     };
-    saveMockOnboardingState();
+    saveMockOnboardingState({
+      completed: previous.completed,
+      profile: previous.profile,
+      draft,
+    });
     return new Response(
       JSON.stringify({
-        profile: null,
-        draft: mockOnboardingDraft,
-        onboardingCompleted: false,
+        profile: previous.profile,
+        draft,
+        onboardingCompleted: previous.completed,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
 
   if (url.includes('/users/me/onboarding') && method === 'GET') {
+    const state = loadMockOnboardingState();
     return new Response(
       JSON.stringify({
-        profile: mockOnboardingProfile,
-        draft: mockOnboardingCompleted ? null : mockOnboardingDraft,
-        onboardingCompleted: mockOnboardingCompleted,
+        profile: state.profile,
+        draft: state.completed ? null : state.draft,
+        onboardingCompleted: state.completed,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -353,7 +345,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       );
     }
     mockPrimaryTrack = body.trackCode;
-    return new Response(JSON.stringify(mockStudentUser({ onboardingCompleted: false })), {
+    return new Response(JSON.stringify(mockStudentUser()), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -651,6 +643,9 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   // eslint-disable-next-line no-restricted-globals
   return fetch(input, init);
 };
+
+/** Exported for unit tests of mock auth/onboarding persistence. */
+export const mockStudentApiFetch = mockFetch;
 
 // eslint-disable-next-line no-restricted-globals
 export const smartFetch = IS_MOCK_ENV ? (mockFetch as typeof fetch) : fetch;

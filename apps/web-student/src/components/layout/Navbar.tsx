@@ -4,9 +4,11 @@ import { Bell } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { DEFAULT_PROFILE } from '@/lib/candidate-dashboard-data';
-import { cn } from '@smart/ui';
+import { queryKeys } from '@smart/api-client';
+import { cn, useQuery } from '@smart/ui';
 import { useState } from 'react';
+import { api } from '@/lib/api';
+import { initialsFromFullName } from '@/lib/student-identity';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -18,9 +20,11 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const initials =
-    `${DEFAULT_PROFILE.firstName[0] ?? ''}${DEFAULT_PROFILE.lastName[0] ?? ''}`.toUpperCase() ||
-    'SV';
+  const { data: me } = useQuery({
+    queryKey: queryKeys.me(),
+    queryFn: () => api.auth.me(),
+  });
+  const initials = me?.fullName ? initialsFromFullName(me.fullName) : '—';
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
@@ -70,7 +74,6 @@ export function Navbar() {
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#00fad0]" />
           </button>
           {notificationsOpen ? (
             <>
@@ -87,7 +90,10 @@ export function Navbar() {
             </>
           ) : null}
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-semibold text-black"
+          aria-label={me?.fullName ? `Signed in as ${me.fullName}` : 'Student'}
+        >
           {initials}
         </div>
       </div>
