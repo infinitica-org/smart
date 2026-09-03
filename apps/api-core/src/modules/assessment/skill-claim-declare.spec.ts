@@ -39,6 +39,7 @@ describe('declareSkillClaim', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
   });
 

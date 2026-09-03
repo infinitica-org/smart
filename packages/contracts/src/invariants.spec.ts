@@ -319,7 +319,7 @@ describe('sprint 3 MMP placement contracts', () => {
 
   it('registers ATS stage-change for My Applications sync', () => {
     expect(SMART_TOPICS.applicationStageChanged).toBe('smart.application.stage_changed');
-    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('assessment');
+    expect(getTopicSpec(SMART_TOPICS.applicationStageChanged).producerModule).toBe('placement');
   });
 });
 

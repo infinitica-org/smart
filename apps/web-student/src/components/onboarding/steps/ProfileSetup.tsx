@@ -7,6 +7,7 @@ import {
   LANGUAGE_OPTIONS,
   FLUENCY_OPTIONS,
   buildCompleteOnboardingRequest,
+  buildOnboardingDraftPayload,
   clearOnboardingDraft,
   saveOnboardingDraft,
   validateEducationItems,
@@ -35,7 +36,7 @@ const TABS: { id: TabID; label: string }[] = [
   { id: 'education', label: 'Education' },
   { id: 'experience', label: 'Experience' },
   { id: 'phone', label: 'Phone number' },
-  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'linkedin', label: 'LinkedIn & GitHub' },
   { id: 'languages', label: 'Languages' },
   { id: 'preferences', label: 'Preferences' },
   { id: 'consent', label: 'Consent' },
@@ -141,6 +142,9 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
     if (currentIndex < TABS.length - 1) {
       const nextTab = tabAt(currentIndex + 1);
       if (nextTab) setActiveTab(nextTab);
+      // Best-effort: persist progress server-side so it survives a lost session
+      // or a different device. The local draft (below) remains the UI fallback.
+      void api.users.saveOnboarding(buildOnboardingDraftPayload(formData)).catch(() => {});
       return;
     }
 
@@ -731,24 +735,51 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                 <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
                   5
                 </span>
-                LinkedIn Profile <span className="text-gray-500 font-normal ml-1">(Required)</span>
+                LinkedIn &amp; GitHub
               </h3>
               <p className="text-sm text-gray-400 mb-6 ml-8">
-                Add your LinkedIn profile to showcase your professional network.
+                Add your LinkedIn profile to showcase your professional network, and your GitHub
+                profile if you have one.
               </p>
 
-              <div className="max-w-lg ml-8 relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-sm">https://</span>
+              <div className="flex flex-col gap-5 max-w-lg ml-8">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-white/70">
+                    LinkedIn Profile <span className="text-[#00fad0]">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">https://</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.linkedinUrl}
+                      onChange={(e) => updateField('linkedinUrl', e.target.value)}
+                      autoComplete="url"
+                      placeholder="linkedin.com/in/you"
+                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
+                    />
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={formData.linkedinUrl}
-                  onChange={(e) => updateField('linkedinUrl', e.target.value)}
-                  autoComplete="url"
-                  placeholder="linkedin.com/in/you"
-                  className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
-                />
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-white/70">
+                    GitHub Profile <span className="text-gray-500 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">https://</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.githubUrl}
+                      onChange={(e) => updateField('githubUrl', e.target.value)}
+                      autoComplete="url"
+                      placeholder="github.com/you"
+                      className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}

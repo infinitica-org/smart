@@ -8,6 +8,7 @@ import type {
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
   ParseResumeRequest,
+  SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
   TenantActionReason,
   UpdateCompanyRequest,
@@ -134,6 +135,14 @@ export function usersApi(client: SmartApiClient) {
 
     getOnboarding: () =>
       client.get(prefixed('/users/me/onboarding'), {
+        schema: CandidateOnboardingProfileResponseSchema,
+      }),
+
+    saveOnboarding: (body: SaveCandidateOnboardingDraftRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/onboarding'),
+        body,
         schema: CandidateOnboardingProfileResponseSchema,
       }),
 

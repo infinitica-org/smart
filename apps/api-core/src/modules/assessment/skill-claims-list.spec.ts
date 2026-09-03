@@ -25,6 +25,7 @@ describe('listSkillClaims', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
   });
 

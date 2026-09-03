@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import 'dotenv/config';
+import './platform/config/load-dotenv.bootstrap.js';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';

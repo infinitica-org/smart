@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import type { AiProvider } from '@smart/contracts';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { AiCompletionRecordedDataSchema, SMART_TOPICS, type AiProvider } from '@smart/contracts';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 
 export interface ModelPricing {
   readonly promptPerMillion: number;
@@ -12,12 +12,10 @@ const DEFAULT_PRICING: ModelPricing = { promptPerMillion: 1.0, completionPerMill
 export const MODEL_PRICING_TABLE: Record<string, ModelPricing> = {
   'claude-3-5-sonnet-latest': { promptPerMillion: 3.0, completionPerMillion: 15.0 },
   'claude-3-5-haiku-latest': { promptPerMillion: 0.8, completionPerMillion: 4.0 },
-  'gemini-2.5-pro': { promptPerMillion: 1.25, completionPerMillion: 10.0 },
-  'gemini-2.5-flash': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
+  'gemini-3.5-flash-lite': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
   'anthropic/claude-3.5-sonnet': { promptPerMillion: 3.0, completionPerMillion: 15.0 },
   'anthropic/claude-3.5-haiku': { promptPerMillion: 0.8, completionPerMillion: 4.0 },
-  'google/gemini-2.5-pro': { promptPerMillion: 1.25, completionPerMillion: 10.0 },
-  'google/gemini-2.5-flash': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
+  'google/gemini-3.5-flash-lite': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
 };
 
 export interface AuditRecordInput {
@@ -40,7 +38,9 @@ export interface AuditRecordResult {
 export class AiGatewayAuditService {
   private readonly logger = new Logger(AiGatewayAuditService.name);
 
-  constructor(@Optional() @Inject(PrismaService) private readonly prisma?: PrismaService) {}
+  constructor(
+    @Optional() @Inject(KafkaOutboxService) private readonly outbox?: KafkaOutboxService,
+  ) {}
 
   estimateCostUsd(model: string, promptTokens: number, completionTokens: number): number {
     const pricing = MODEL_PRICING_TABLE[model] ?? DEFAULT_PRICING;
@@ -57,44 +57,37 @@ export class AiGatewayAuditService {
       input.completionTokens,
     );
 
-    const data = {
-      promptRef: input.promptRef,
-      provider: input.provider,
-      model: input.model,
-      promptTokens: input.promptTokens,
-      completionTokens: input.completionTokens,
-      latencyMs: input.latencyMs,
-      usedFallback: input.usedFallback,
-      estimatedCostUsd,
-      responseId: input.responseId,
-    };
-
-    if (!this.prisma) {
-      this.logger.warn('Prisma is unavailable; skipping ai_evaluation_audits insert.');
+    if (!this.outbox) {
+      this.logger.warn('Kafka outbox unavailable; skipping ai.completion.recorded publish.');
       return { auditId: null, estimatedCostUsd };
     }
 
     try {
-      const row = await this.prisma.aiEvaluationAudit.create({
-        data: {
-          promptRef: data.promptRef,
-          provider: data.provider,
-          model: data.model,
-          promptTokens: data.promptTokens,
-          completionTokens: data.completionTokens,
-          latencyMs: data.latencyMs,
-          usedFallback: data.usedFallback,
-          estimatedCostUsd: data.estimatedCostUsd,
-          responseId: data.responseId,
-        },
-        select: { id: true },
+      const data = AiCompletionRecordedDataSchema.parse({
+        promptRef: input.promptRef,
+        provider: input.provider,
+        model: input.model,
+        promptTokens: input.promptTokens,
+        completionTokens: input.completionTokens,
+        latencyMs: input.latencyMs,
+        usedFallback: input.usedFallback,
+        estimatedCostUsd,
+        responseId: input.responseId ?? null,
+        recordedAt: new Date().toISOString(),
       });
-      return { auditId: row.id, estimatedCostUsd };
+      await this.outbox.enqueueEnvelope({
+        topic: SMART_TOPICS.aiCompletionRecorded,
+        partitionKey: input.responseId ?? input.promptRef,
+        eventType: SMART_TOPICS.aiCompletionRecorded,
+        source: 'ai-gateway',
+        data,
+      });
     } catch (err) {
       this.logger.warn(
-        `Audit insert failed; completion still returned. ${err instanceof Error ? err.message : String(err)}`,
+        `Audit publish failed; completion still returned. ${err instanceof Error ? err.message : String(err)}`,
       );
-      return { auditId: null, estimatedCostUsd };
     }
+
+    return { auditId: null, estimatedCostUsd };
   }
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ResumeParseDraftSchema } from '@smart/contracts';
 import {
   applyResumeDraft,
+  applyServerDraft,
   buildCompleteOnboardingRequest,
+  buildOnboardingDraftPayload,
   emptyOnboardingForm,
   validateEducationItems,
   validateExperienceItems,
@@ -81,6 +83,52 @@ describe('onboarding-form', () => {
     expect(result.skills).toEqual([
       { type: 'language', name: 'English', proficiency: 'Native or Bilingual' },
     ]);
+  });
+
+  it('leaves githubUrl optional and normalizes it like linkedinUrl when present', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.preferences = ['Coding'];
+    form.dpdpConsent = true;
+
+    const withoutGithub = buildCompleteOnboardingRequest(form);
+    expect('error' in withoutGithub).toBe(false);
+    if (!('error' in withoutGithub)) expect(withoutGithub.githubUrl).toBeUndefined();
+
+    form.githubUrl = 'github.com/ada';
+    const withGithub = buildCompleteOnboardingRequest(form);
+    expect('error' in withGithub).toBe(false);
+    if (!('error' in withGithub)) expect(withGithub.githubUrl).toBe('https://github.com/ada');
+  });
+
+  it('hydrates the form from a server-persisted draft', () => {
+    const form = applyServerDraft(emptyOnboardingForm(), {
+      firstName: 'Grace',
+      lastName: 'Hopper',
+      linkedinUrl: 'https://www.linkedin.com/in/grace',
+      githubUrl: 'https://github.com/grace',
+      skills: [{ type: 'language', name: 'English', proficiency: 'Native' }],
+      education: [{ institutionName: 'Yale' }],
+    });
+    expect(form.firstName).toBe('Grace');
+    expect(form.lastName).toBe('Hopper');
+    expect(form.githubUrl).toBe('https://github.com/grace');
+    expect(form.languages[0]?.language).toBe('English');
+    expect(form.education[0]?.institutionName).toBe('Yale');
+  });
+
+  it('round-trips a draft payload through buildOnboardingDraftPayload', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.githubUrl = 'https://github.com/ada';
+    const payload = buildOnboardingDraftPayload(form);
+    expect(payload.firstName).toBe('Ada');
+    expect(payload.githubUrl).toBe('https://github.com/ada');
+    expect(payload.lastName).toBeUndefined();
   });
 
   it('pre-fills profile fields from a resume parse draft', () => {

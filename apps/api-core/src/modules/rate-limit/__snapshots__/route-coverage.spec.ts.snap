@@ -34,6 +34,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /certificates/mine": "role.student",
   "GET /evaluation/results/:attemptId": "role.student",
   "GET /me/applications": "placement.application",
+  "GET /me/notifications": "role.student",
   "GET /placement/applications/:applicationId/confidence": "placement.application",
   "GET /placement/openings": "role.placementStaff",
   "GET /placement/openings/:openingId": "role.placementStaff",
@@ -57,6 +58,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PATCH /admin/institutions/:institutionId": "role.superAdmin",
   "PATCH /admin/plans/:planId/entitlements": "role.superAdmin",
   "PATCH /certificates/:certificateId/visibility": "role.student",
+  "PATCH /me/notifications/:notificationId/read": "role.student",
   "PATCH /placement/applications/:applicationId/stage": "placement.application",
   "PATCH /tpo/batches/:batchId": "role.institutionAdmin",
   "POST /admin/api-keys": "role.superAdmin",
@@ -122,6 +124,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /users/me/resume/parse": "users.resumeParse",
   "PUT /admin/institutions/:institutionId/feature-flags": "role.superAdmin",
   "PUT /admin/rate-limits/:policyKey": "role.superAdmin",
+  "PUT /users/me/onboarding": "role.student",
   "PUT /users/me/track": "role.student",
 }
 `;

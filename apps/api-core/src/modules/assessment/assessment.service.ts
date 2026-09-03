@@ -37,10 +37,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { getContext } from '@smart/observability';
-import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { attemptsStarted, draftsSaved } from '@smart/observability';
+import { attemptsStarted, draftsSaved, getContext } from '@smart/observability';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import {
@@ -48,6 +46,8 @@ import {
   MARK_WEIGHTS,
   type MarkWeightedItemType,
 } from '@smart/scoring-engine';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
@@ -107,8 +107,9 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
-    @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+    @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
   ) {}
 
   onModuleInit() {
@@ -440,18 +441,26 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         answer = rest;
       }
       const itemId = row.item.id;
+      const competencyIdRaw =
+        typeof row.item.competencyId === 'string' ? row.item.competencyId : itemId;
       const responseId = UuidSchema.safeParse(row.id).success ? row.id : randomUUID();
+      const competencyId = UuidSchema.safeParse(competencyIdRaw).success ? competencyIdRaw : itemId;
       return {
         responseId,
         itemId,
-        competencyId: itemId,
+        competencyId,
         itemWeight: 1,
         answer,
         objectKey: null,
       };
     });
 
-    const event = {
+    await this.prisma.attempt.update({
+      where: { id: body.attemptId },
+      data: { status: 'EVALUATED', completedAt: submittedAt },
+    });
+
+    await this.outbox.enqueueAssessmentSubmitted({
       meta: {
         eventId: randomUUID(),
         eventType: SMART_TOPICS.assessmentSubmitted,
@@ -471,13 +480,6 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         submittedAt: submittedAt.toISOString(),
         responses,
       },
-    };
-
-    await this.outbox.enqueueAssessmentSubmitted(event);
-
-    await this.prisma.attempt.update({
-      where: { id: body.attemptId },
-      data: { status: 'EVALUATED', completedAt: submittedAt },
     });
 
     try {
@@ -1316,14 +1318,12 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
       include: { user: true },
     });
-    await this.prisma.auditLog.create({
-      data: {
-        actorId,
-        action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
-        resourceType: 'attempt',
-        resourceId: attemptId,
-        reasonCode: body.reason,
-      },
+    await this.auditPublisher.record({
+      actorId,
+      action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+      resourceType: 'attempt',
+      resourceId: attemptId,
+      reasonCode: body.reason,
     });
     return {
       attemptId: updated.id,
