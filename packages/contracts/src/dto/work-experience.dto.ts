@@ -116,3 +116,53 @@ export const WorkExperienceSchema = z.object({
   documents: z.array(WorkExperienceDocumentSchema).default([]),
 });
 export type WorkExperienceDto = z.infer<typeof WorkExperienceSchema>;
+
+export const SendWorkExperienceVerificationResponseSchema = z.object({
+  success: z.boolean(),
+  experienceId: z.string().uuid(),
+  status: WorkExperienceVerificationStatusSchema,
+  message: z.string(),
+  expiresAt: z.string(),
+});
+export type SendWorkExperienceVerificationResponseDto = z.infer<
+  typeof SendWorkExperienceVerificationResponseSchema
+>;
+
+export const GetWorkExperienceVerificationResponseSchema = z.object({
+  experienceId: z.string().uuid(),
+  candidateName: z.string(),
+  companyName: z.string(),
+  role: z.string(),
+  employmentType: EmploymentTypeSchema,
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  isCurrent: z.boolean(),
+  responsibilities: z.string().nullable(),
+  verifierName: z.string().nullable(),
+  verifierEmail: z.string(),
+  verifierDesignation: z.string().nullable(),
+  status: WorkExperienceVerificationStatusSchema,
+  expiresAt: z.string(),
+  isExpired: z.boolean(),
+  isAlreadyResponded: z.boolean(),
+});
+export type GetWorkExperienceVerificationResponseDto = z.infer<
+  typeof GetWorkExperienceVerificationResponseSchema
+>;
+
+export const SubmitWorkExperienceVerificationSchema = z.object({
+  approved: z.boolean(),
+  comments: z.string().max(2000).optional().nullable().or(z.literal('')),
+});
+export type SubmitWorkExperienceVerificationDto = z.infer<
+  typeof SubmitWorkExperienceVerificationSchema
+>;
+
+export const SubmitWorkExperienceVerificationResponseSchema = z.object({
+  success: z.boolean(),
+  status: WorkExperienceVerificationStatusSchema,
+  message: z.string(),
+});
+export type SubmitWorkExperienceVerificationResponseDto = z.infer<
+  typeof SubmitWorkExperienceVerificationResponseSchema
+>;

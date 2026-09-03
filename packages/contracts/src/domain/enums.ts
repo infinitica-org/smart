@@ -384,7 +384,14 @@ export const EMPLOYMENT_TYPES = [
 export const EmploymentTypeSchema = z.enum(EMPLOYMENT_TYPES);
 export type EmploymentType = z.infer<typeof EmploymentTypeSchema>;
 
-export const WORK_EXPERIENCE_VERIFICATION_STATUSES = ['DRAFT', 'SUBMITTED', 'REJECTED'] as const;
+export const WORK_EXPERIENCE_VERIFICATION_STATUSES = [
+  'DRAFT',
+  'SUBMITTED',
+  'PENDING_EMPLOYER',
+  'VERIFIED',
+  'REJECTED',
+  'EXPIRED',
+] as const;
 export const WorkExperienceVerificationStatusSchema = z.enum(WORK_EXPERIENCE_VERIFICATION_STATUSES);
 export type WorkExperienceVerificationStatus = z.infer<
   typeof WorkExperienceVerificationStatusSchema

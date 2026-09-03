@@ -95,4 +95,13 @@ export class WorkExperienceController {
   ) {
     return this.service.validateProofDocument(user.sub, id, documentId, body?.rawText);
   }
+
+  @Post(':id/send-verification')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Dispatch employer verification request to designated verifier.' })
+  @ApiResponse({ status: 200, description: 'Employer verification request dispatched.' })
+  sendVerification(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.service.sendEmployerVerification(user.sub, id);
+  }
 }
