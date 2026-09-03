@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AiCompletionRequestSchema,
   BarsGradeSchema,
+  COGNITIVE_PROFILE_PROMPT_REF,
   PROJECT_VERIFY_PROMPT_REF,
   ResumeParseDraftSchema,
   TRACK_CODES,
@@ -29,6 +30,7 @@ import {
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
   projectVerifyTemplate,
+  cognitiveCommProfileTemplate,
 } from './index.js';
 
 /**
@@ -109,6 +111,15 @@ describe('prompt registry', () => {
   it('allows temperature only on the conversational examiner', () => {
     // A scripted interrogation is memorised and shared between candidates.
     expect(defenseExaminerTemplate.temperature).toBeGreaterThan(0);
+  });
+
+  it('refuses empty bio digest for cognitive profile before tokens are spent', () => {
+    expect(() =>
+      renderPrompt(cognitiveCommProfileTemplate, {
+        bioDigest: 'too short',
+        refreshReason: 'onboarding',
+      }),
+    ).toThrow(InvalidPromptVariablesError);
   });
 });
 
@@ -204,6 +215,18 @@ describe('rendered grading prompts', () => {
     expect(rendered.promptRef).toBe(PROJECT_VERIFY_PROMPT_REF);
     expect(rendered.system).toContain('Do not say Gold');
     expect(rendered.system).toContain('Never recommend rejecting');
+  });
+
+  it('keeps the cognitive/comm profile off skill claims and certification tiers', () => {
+    const rendered = renderPrompt(cognitiveCommProfileTemplate, {
+      bioDigest:
+        'Education: B.E. Computer Science at PSG. Experience: intern who wrote weekly stand-up notes. Preferences: backend internships.',
+      refreshReason: 'onboarding',
+    });
+    expect(rendered.promptRef).toBe(COGNITIVE_PROFILE_PROMPT_REF);
+    expect(rendered.user).toContain('<candidate_response>');
+    expect(rendered.system).toContain('Do not mention Gold');
+    expect(rendered.system).toContain('named skill claim');
   });
 });
 
