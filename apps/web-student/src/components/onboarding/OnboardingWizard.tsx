@@ -1,16 +1,19 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { ResumeParseDraft } from '@smart/contracts';
 
+import { api } from '@/lib/api';
 import ResumeUpload from './steps/ResumeUpload';
 import ProfileSetup from './steps/ProfileSetup';
 import {
   applyResumeDraft,
-  emptyOnboardingForm,
+  applyServerDraft,
+  buildOnboardingDraftPayload,
+  loadOnboardingDraft,
   saveOnboardingDraft,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
@@ -33,13 +36,40 @@ const TRACKS = [
 
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<'resume' | 'profile'>('resume');
-  const [formSeed, setFormSeed] = useState<OnboardingProfileForm>(emptyOnboardingForm);
+  const [formSeed, setFormSeed] = useState<OnboardingProfileForm>(loadOnboardingDraft);
   const router = useRouter();
 
+  // Hydrate from whatever the server already has (a previous session, a
+  // different browser). The local draft above is only a same-machine cache.
+  useEffect(() => {
+    let cancelled = false;
+    api.users
+      .getOnboarding()
+      .then((response) => {
+        if (cancelled || !response.draft) return;
+        setFormSeed((prev) => {
+          const next = applyServerDraft(prev, response.draft);
+          saveOnboardingDraft(next);
+          return next;
+        });
+        if (response.draft.firstName || response.draft.lastName) {
+          setCurrentStep('profile');
+        }
+      })
+      .catch(() => {
+        // No persisted draft yet, or the request failed — fall back to the
+        // local cache already loaded into formSeed.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleResumeContinue = (draft: ResumeParseDraft | null) => {
-    const next = draft ? applyResumeDraft(emptyOnboardingForm(), draft) : emptyOnboardingForm();
+    const next = draft ? applyResumeDraft(formSeed, draft) : formSeed;
     setFormSeed(next);
     saveOnboardingDraft(next);
+    void api.users.saveOnboarding(buildOnboardingDraftPayload(next)).catch(() => {});
     setCurrentStep('profile');
   };
 

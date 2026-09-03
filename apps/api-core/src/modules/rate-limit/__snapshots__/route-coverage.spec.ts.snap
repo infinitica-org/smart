@@ -124,6 +124,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /users/me/resume/parse": "users.resumeParse",
   "PUT /admin/institutions/:institutionId/feature-flags": "role.superAdmin",
   "PUT /admin/rate-limits/:policyKey": "role.superAdmin",
+  "PUT /users/me/onboarding": "role.student",
   "PUT /users/me/track": "role.student",
 }
 `;

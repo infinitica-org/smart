@@ -1,4 +1,9 @@
-import type { CompleteCandidateOnboardingRequest, ResumeParseDraft } from '@smart/contracts';
+import type {
+  CandidateOnboardingDraft,
+  CompleteCandidateOnboardingRequest,
+  ResumeParseDraft,
+  SaveCandidateOnboardingDraftRequest,
+} from '@smart/contracts';
 
 export interface OnboardingProfileForm {
   firstName: string;
@@ -10,6 +15,7 @@ export interface OnboardingProfileForm {
   phoneCountryCode: string;
   phoneNumber: string;
   linkedinUrl: string;
+  githubUrl: string;
   languages: { id: string; language: string; proficiency: string }[];
   preferences: string[];
   codingProficiencies: { id: string; language: string; proficiency: string }[];
@@ -32,6 +38,7 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     phoneCountryCode: '+91',
     phoneNumber: '',
     linkedinUrl: '',
+    githubUrl: '',
     languages: [],
     preferences: [],
     codingProficiencies: [],
@@ -94,6 +101,104 @@ export function applyResumeDraft(
       codingProficiencies.length > 0 ? codingProficiencies : form.codingProficiencies,
     education: draft.education.length > 0 ? draft.education : form.education,
     experiences: draft.experiences.length > 0 ? draft.experiences : form.experiences,
+  };
+}
+
+/**
+ * Hydrate the wizard from a draft the server already persisted (CN-T01 draft
+ * save). Used on mount so progress survives a lost session or a different
+ * device/browser, not just a localStorage cache on the same machine.
+ */
+export function applyServerDraft(
+  form: OnboardingProfileForm,
+  draft: CandidateOnboardingDraft | null | undefined,
+): OnboardingProfileForm {
+  if (!draft) return form;
+
+  const validSkills = (draft.skills ?? []).filter(
+    (s): s is { type: 'technical' | 'language'; name: string; proficiency: string } =>
+      Boolean(s.type && s.name?.trim() && s.proficiency?.trim()),
+  );
+  const languages = validSkills
+    .filter((s) => s.type === 'language')
+    .map((s) => ({ id: crypto.randomUUID(), language: s.name, proficiency: s.proficiency }));
+  const codingProficiencies = validSkills
+    .filter((s) => s.type === 'technical')
+    .map((s) => ({ id: crypto.randomUUID(), language: s.name, proficiency: s.proficiency }));
+
+  return {
+    ...form,
+    firstName: draft.firstName ?? form.firstName,
+    lastName: draft.lastName ?? form.lastName,
+    gender: draft.gender ?? form.gender,
+    phoneCountryCode: draft.phoneCountryCode ?? form.phoneCountryCode,
+    phoneNumber: draft.phoneNumber ?? form.phoneNumber,
+    linkedinUrl: draft.linkedinUrl ?? form.linkedinUrl,
+    githubUrl: draft.githubUrl ?? form.githubUrl,
+    languages: languages.length > 0 ? languages : form.languages,
+    codingProficiencies:
+      codingProficiencies.length > 0 ? codingProficiencies : form.codingProficiencies,
+    preferences: draft.preferences ?? form.preferences,
+    dpdpConsent: draft.dpdpConsent ?? form.dpdpConsent,
+    education:
+      draft.education && draft.education.length > 0
+        ? draft.education.map((item) => ({
+            institutionName: item.institutionName ?? '',
+            degree: item.degree ?? '',
+            fieldOfStudy: item.fieldOfStudy ?? '',
+            startDate: item.startDate ?? '',
+            endDate: item.endDate ?? '',
+            current: item.current ?? false,
+            grade: item.grade ?? '',
+          }))
+        : form.education,
+    experiences:
+      draft.experiences && draft.experiences.length > 0
+        ? draft.experiences.map((item) => ({
+            role: item.role ?? '',
+            company: item.company ?? '',
+            location: item.location ?? '',
+            startDate: item.startDate ?? '',
+            endDate: item.endDate ?? '',
+            description: item.description ?? '',
+            tags: item.tags ?? [],
+          }))
+        : form.experiences,
+  };
+}
+
+/** Best-effort snapshot of the in-progress form, sent to the server as a draft. */
+export function buildOnboardingDraftPayload(
+  form: OnboardingProfileForm,
+): SaveCandidateOnboardingDraftRequest {
+  const dateOfBirth =
+    form.dobYear && form.dobMonth && form.dobDay
+      ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
+      : undefined;
+
+  const skills = [
+    ...form.languages
+      .filter((l) => l.language.trim() && l.proficiency.trim())
+      .map((l) => ({ type: 'language' as const, name: l.language.trim(), proficiency: l.proficiency.trim() })),
+    ...form.codingProficiencies
+      .filter((l) => l.language.trim() && l.proficiency.trim())
+      .map((l) => ({ type: 'technical' as const, name: l.language.trim(), proficiency: l.proficiency.trim() })),
+  ];
+
+  return {
+    firstName: form.firstName.trim() || undefined,
+    lastName: form.lastName.trim() || undefined,
+    gender: form.gender.trim() || undefined,
+    dateOfBirth,
+    phoneCountryCode: form.phoneCountryCode.trim() || undefined,
+    phoneNumber: form.phoneNumber.trim() || undefined,
+    linkedinUrl: form.linkedinUrl.trim() || undefined,
+    githubUrl: form.githubUrl.trim() || undefined,
+    education: form.education,
+    experiences: form.experiences,
+    skills,
+    preferences: form.preferences,
+    dpdpConsent: form.dpdpConsent,
   };
 }
 
@@ -195,6 +300,11 @@ export function buildCompleteOnboardingRequest(
     linkedinUrl = `https://${linkedinUrl}`;
   }
 
+  let githubUrl = form.githubUrl.trim();
+  if (githubUrl && !/^https?:\/\//i.test(githubUrl)) {
+    githubUrl = `https://${githubUrl}`;
+  }
+
   return {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
@@ -203,6 +313,7 @@ export function buildCompleteOnboardingRequest(
     phoneCountryCode: form.phoneCountryCode.trim() || '+91',
     phoneNumber: form.phoneNumber.trim(),
     linkedinUrl,
+    githubUrl: githubUrl || undefined,
     education: form.education,
     experiences: form.experiences,
     skills,
