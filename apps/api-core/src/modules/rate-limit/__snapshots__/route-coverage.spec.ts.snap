@@ -2,6 +2,8 @@
 
 exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → policy so a silent matrix drift fails CI 1`] = `
 {
+  "DELETE /users/me/work-experiences/:id": "role.student",
+  "DELETE /users/me/work-experiences/:id/documents/:documentId": "role.student",
   "GET /admin/ai-health": "role.superAdmin",
   "GET /admin/audit-logs": "role.superAdmin",
   "GET /admin/companies": "role.superAdmin",
@@ -53,6 +55,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /tpo/students": "role.institutionAdmin",
   "GET /users/me": "role.student",
   "GET /users/me/onboarding": "role.student",
+  "GET /users/me/work-experiences": "role.student",
+  "GET /users/me/work-experiences/:id": "role.student",
   "GET /verify/:certificateId": "verify.certificate",
   "PATCH /admin/companies/:companyId": "role.superAdmin",
   "PATCH /admin/institutions/:institutionId": "role.superAdmin",
@@ -122,9 +126,13 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /users/me/onboarding/complete": "role.student",
   "POST /users/me/password": "role.student",
   "POST /users/me/resume/parse": "users.resumeParse",
+  "POST /users/me/work-experiences": "role.student",
+  "POST /users/me/work-experiences/:id/documents": "role.student",
+  "POST /users/me/work-experiences/:id/documents/:documentId/validate": "role.student",
   "PUT /admin/institutions/:institutionId/feature-flags": "role.superAdmin",
   "PUT /admin/rate-limits/:policyKey": "role.superAdmin",
   "PUT /users/me/onboarding": "role.student",
   "PUT /users/me/track": "role.student",
+  "PUT /users/me/work-experiences/:id": "role.student",
 }
 `;
