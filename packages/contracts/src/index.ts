@@ -37,6 +37,7 @@ export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';
+export * from './dto/work-experience.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

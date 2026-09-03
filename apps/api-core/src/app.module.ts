@@ -24,6 +24,7 @@ import { ProjectsModule } from './modules/projects/projects.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
+import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
 import { ConfigModule } from './platform/config/config.module.js';
 import { AuditModule } from './platform/audit/audit.module.js';
@@ -57,6 +58,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,
     AssessmentModule,

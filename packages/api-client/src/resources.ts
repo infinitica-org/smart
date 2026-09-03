@@ -58,6 +58,11 @@ import {
   ParseResumeResponseSchema,
   ProjectDtoSchema,
   SaveDraftResponseSchema,
+  WorkExperienceSchema,
+  WorkExperienceDocumentSchema,
+  type CreateWorkExperienceDto,
+  type UpdateWorkExperienceDto,
+  type CreateWorkExperienceDocumentDto,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -150,6 +155,40 @@ export function usersApi(client: SmartApiClient) {
       client.post(prefixed('/users/me/onboarding/complete'), body, {
         schema: AuthenticatedUserSchema,
       }),
+
+    listWorkExperiences: () =>
+      client.get(prefixed('/users/me/work-experiences'), {
+        schema: z.array(WorkExperienceSchema),
+      }),
+
+    getWorkExperience: (id: string) =>
+      client.get(prefixed(`/users/me/work-experiences/${id}`), {
+        schema: WorkExperienceSchema,
+      }),
+
+    createWorkExperience: (body: CreateWorkExperienceDto) =>
+      client.post(prefixed('/users/me/work-experiences'), body, {
+        schema: WorkExperienceSchema,
+      }),
+
+    updateWorkExperience: (id: string, body: UpdateWorkExperienceDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/work-experiences/${id}`),
+        body,
+        schema: WorkExperienceSchema,
+      }),
+
+    deleteWorkExperience: (id: string) =>
+      client.delete<void>(prefixed(`/users/me/work-experiences/${id}`)),
+
+    attachWorkExperienceDocument: (id: string, body: CreateWorkExperienceDocumentDto) =>
+      client.post(prefixed(`/users/me/work-experiences/${id}/documents`), body, {
+        schema: WorkExperienceDocumentSchema,
+      }),
+
+    removeWorkExperienceDocument: (id: string, documentId: string) =>
+      client.delete<void>(prefixed(`/users/me/work-experiences/${id}/documents/${documentId}`)),
   };
 }
 

@@ -374,9 +374,32 @@ export const JobOpeningStatusSchema = z.enum(JOB_OPENING_STATUSES);
 export type JobOpeningStatus = z.infer<typeof JobOpeningStatusSchema>;
 
 /** V1 TPO structured opening — closed set; not free text. */
-export const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP'] as const;
+export const EMPLOYMENT_TYPES = [
+  'FULL_TIME',
+  'PART_TIME',
+  'CONTRACT',
+  'INTERNSHIP',
+  'FREELANCE',
+] as const;
 export const EmploymentTypeSchema = z.enum(EMPLOYMENT_TYPES);
 export type EmploymentType = z.infer<typeof EmploymentTypeSchema>;
+
+export const WORK_EXPERIENCE_VERIFICATION_STATUSES = ['DRAFT', 'SUBMITTED', 'REJECTED'] as const;
+export const WorkExperienceVerificationStatusSchema = z.enum(WORK_EXPERIENCE_VERIFICATION_STATUSES);
+export type WorkExperienceVerificationStatus = z.infer<
+  typeof WorkExperienceVerificationStatusSchema
+>;
+
+export const EXPERIENCE_DOCUMENT_TYPES = [
+  'OFFER_LETTER',
+  'EXPERIENCE_LETTER',
+  'PAYSLIP',
+  'RELIEVING_LETTER',
+  'FORM_16',
+  'OTHER',
+] as const;
+export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
+export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
 
 /** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
 export const ATS_STAGES = [

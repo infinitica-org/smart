@@ -1,0 +1,750 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Briefcase,
+  Building2,
+  Calendar,
+  Plus,
+  Trash2,
+  Edit3,
+  FileText,
+  Upload,
+  Globe,
+  ExternalLink,
+  MapPin,
+  X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
+import type { WorkExperienceDto, WorkExperienceDocumentDto } from '@smart/contracts';
+import { api } from '@/lib/api';
+
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  CONTRACT: 'Contract',
+  INTERNSHIP: 'Internship',
+  FREELANCE: 'Freelance',
+};
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  OFFER_LETTER: 'Offer Letter',
+  EXPERIENCE_LETTER: 'Experience Letter',
+  PAYSLIP: 'Payslip',
+  RELIEVING_LETTER: 'Relieving Letter',
+  FORM_16: 'Form 16',
+  OTHER: 'Other Proof Document',
+};
+
+export function WorkExperienceSection() {
+  const [experiences, setExperiences] = useState<WorkExperienceDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form Fields
+  const [companyName, setCompanyName] = useState('');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [companyLinkedinUrl, setCompanyLinkedinUrl] = useState('');
+  const [role, setRole] = useState('');
+  const [employmentType, setEmploymentType] = useState('FULL_TIME');
+  const [department, setDepartment] = useState('');
+  const [domain, setDomain] = useState('');
+  const [workLocation, setWorkLocation] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isCurrent, setIsCurrent] = useState(false);
+  const [responsibilities, setResponsibilities] = useState('');
+  const [skillsInput, setSkillsInput] = useState('');
+  const [verifierName, setVerifierName] = useState('');
+  const [verifierEmail, setVerifierEmail] = useState('');
+  const [verifierDesignation, setVerifierDesignation] = useState('');
+
+  // Document Upload Modal state
+  const [docModalExpId, setDocModalExpId] = useState<string | null>(null);
+  const [docType, setDocType] = useState('EXPERIENCE_LETTER');
+  const [fileName, setFileName] = useState('');
+  const [fileSizeBytes] = useState<number>(1048576);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
+  const fetchExperiences = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.users.listWorkExperiences();
+      setExperiences(res);
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to load work experiences.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExperiences();
+  }, []);
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setCompanyName('');
+    setCompanyWebsite('');
+    setCompanyLinkedinUrl('');
+    setRole('');
+    setEmploymentType('FULL_TIME');
+    setDepartment('');
+    setDomain('');
+    setWorkLocation('');
+    setStartDate('');
+    setEndDate('');
+    setIsCurrent(false);
+    setResponsibilities('');
+    setSkillsInput('');
+    setVerifierName('');
+    setVerifierEmail('');
+    setVerifierDesignation('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (exp: WorkExperienceDto) => {
+    setEditingId(exp.id);
+    setCompanyName(exp.companyName);
+    setCompanyWebsite(exp.companyWebsite || '');
+    setCompanyLinkedinUrl(exp.companyLinkedinUrl || '');
+    setRole(exp.role);
+    setEmploymentType(exp.employmentType);
+    setDepartment(exp.department || '');
+    setDomain(exp.domain || '');
+    setWorkLocation(exp.workLocation || '');
+    setStartDate(exp.startDate ? exp.startDate.substring(0, 10) : '');
+    setEndDate(exp.endDate ? exp.endDate.substring(0, 10) : '');
+    setIsCurrent(exp.isCurrent);
+    setResponsibilities(exp.responsibilities || '');
+    setSkillsInput((exp.skills || []).join(', '));
+    setVerifierName(exp.verifierName || '');
+    setVerifierEmail(exp.verifierEmail || '');
+    setVerifierDesignation(exp.verifierDesignation || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      setError(null);
+      const skillsArray = skillsInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const payload = {
+        companyName,
+        companyWebsite: companyWebsite || null,
+        companyLinkedinUrl: companyLinkedinUrl || null,
+        role,
+        employmentType: employmentType as WorkExperienceDto['employmentType'],
+        department: department || null,
+        domain: domain || null,
+        workLocation: workLocation || null,
+        startDate: new Date(startDate).toISOString(),
+        endDate: !isCurrent && endDate ? new Date(endDate).toISOString() : null,
+        isCurrent,
+        responsibilities: responsibilities || null,
+        skills: skillsArray,
+        verifierName: verifierName || null,
+        verifierEmail: verifierEmail || null,
+        verifierDesignation: verifierDesignation || null,
+      };
+
+      if (editingId) {
+        await api.users.updateWorkExperience(editingId, payload);
+      } else {
+        await api.users.createWorkExperience(payload);
+      }
+
+      setIsModalOpen(false);
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to save work experience entry.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this work experience entry?')) return;
+    try {
+      await api.users.deleteWorkExperience(id);
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to delete work experience entry.');
+    }
+  };
+
+  const handleAttachDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docModalExpId || !fileName) return;
+    try {
+      setUploadingDoc(true);
+      await api.users.attachWorkExperienceDocument(docModalExpId, {
+        documentType: docType as WorkExperienceDocumentDto['documentType'],
+        fileName,
+        fileUrl: `storage/proofs/${fileName.toLowerCase().replace(/[^a-z0-9.]/g, '_')}`,
+        fileSizeBytes,
+        mimeType: fileName.endsWith('.pdf') ? 'application/pdf' : 'image/png',
+      });
+      setDocModalExpId(null);
+      setFileName('');
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to attach document.');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleRemoveDocument = async (expId: string, docId: string) => {
+    if (!confirm('Remove this proof document attachment?')) return;
+    try {
+      await api.users.removeWorkExperienceDocument(expId, docId);
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to remove document.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-medium text-white">
+            <Briefcase className="h-5 w-5 text-[#00fad0]" />
+            Work Experience
+          </h3>
+          <p className="text-xs text-white/50">
+            Add your professional work history and attach supporting proof documents.
+          </p>
+        </div>
+        <button
+          onClick={openAddModal}
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2 text-sm font-medium text-black hover:bg-[#00e0ba] transition-colors md:mt-0"
+        >
+          <Plus className="h-4 w-4" />
+          Add Experience
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-white/45">
+          <Loader2 className="h-6 w-6 animate-spin text-[#00fad0]" />
+          <span className="ml-2 text-sm">Loading work experience entries...</span>
+        </div>
+      ) : experiences.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+          <Building2 className="h-10 w-10 text-white/20" />
+          <p className="mt-3 text-sm font-medium text-white/60">No work experience added yet</p>
+          <p className="mt-1 text-xs text-white/40 max-w-md">
+            Demonstrate your domain experience by listing your employment history, internships, and
+            corporate roles.
+          </p>
+          <button
+            onClick={openAddModal}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/15 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add First Entry
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {experiences.map((exp) => (
+            <div
+              key={exp.id}
+              className="group relative flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/20"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-semibold text-white">{exp.role}</h4>
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
+                      {EMPLOYMENT_TYPE_LABELS[exp.employmentType] || exp.employmentType}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                        exp.status === 'SUBMITTED'
+                          ? 'bg-[#00fad0]/15 text-[#00fad0]'
+                          : exp.status === 'REJECTED'
+                            ? 'bg-red-500/15 text-red-400'
+                            : 'bg-yellow-500/15 text-yellow-300'
+                      }`}
+                    >
+                      {exp.status}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/60">
+                    <span className="flex items-center gap-1 font-medium text-white/80">
+                      <Building2 className="h-3.5 w-3.5 text-[#00fad0]" />
+                      {exp.companyName}
+                    </span>
+                    {exp.workLocation && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {exp.workLocation}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-white/45">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {new Date(exp.startDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        year: 'numeric',
+                      })}{' '}
+                      -{' '}
+                      {exp.isCurrent
+                        ? 'Present'
+                        : exp.endDate
+                          ? new Date(exp.endDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditModal(exp)}
+                    className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white transition-colors"
+                    title="Edit Experience"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(exp.id)}
+                    className="rounded-lg p-1.5 text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                    title="Delete Entry"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Company links */}
+              {(exp.companyWebsite || exp.companyLinkedinUrl) && (
+                <div className="flex items-center gap-3 text-xs text-[#00fad0]/80">
+                  {exp.companyWebsite && (
+                    <a
+                      href={exp.companyWebsite}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:underline"
+                    >
+                      <Globe className="h-3 w-3" />
+                      Website
+                    </a>
+                  )}
+                  {exp.companyLinkedinUrl && (
+                    <a
+                      href={exp.companyLinkedinUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      LinkedIn Page
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Responsibilities */}
+              {exp.responsibilities && (
+                <p className="text-xs text-white/70 leading-relaxed whitespace-pre-line">
+                  {exp.responsibilities}
+                </p>
+              )}
+
+              {/* Skills Tags */}
+              {exp.skills && exp.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {exp.skills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Verifier Contact Summary */}
+              {exp.verifierEmail && (
+                <div className="mt-1 flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 text-xs text-white/60">
+                  <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
+                  <span>
+                    Employer Verifier:{' '}
+                    <strong className="text-white/80">{exp.verifierName || 'HR/Manager'}</strong> (
+                    {exp.verifierEmail})
+                  </span>
+                </div>
+              )}
+
+              {/* Documents Section */}
+              <div className="mt-2 flex flex-col gap-2 border-t border-white/5 pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-white/50">
+                    Supporting Proof Documents
+                  </span>
+                  <button
+                    onClick={() => {
+                      setDocModalExpId(exp.id);
+                      setFileName('');
+                    }}
+                    className="flex items-center gap-1 text-xs text-[#00fad0] hover:underline font-medium"
+                  >
+                    <Upload className="h-3 w-3" />
+                    Attach Proof
+                  </button>
+                </div>
+
+                {exp.documents && exp.documents.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {exp.documents.map((doc: WorkExperienceDocumentDto) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-[#00fad0]" />
+                        <span className="font-medium">
+                          {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:
+                        </span>
+                        <span className="text-white/60 truncate max-w-[150px]">{doc.fileName}</span>
+                        <button
+                          onClick={() => handleRemoveDocument(exp.id, doc.id)}
+                          className="ml-1 text-white/30 hover:text-red-400"
+                          title="Remove document"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[11px] text-white/35 italic">
+                    No proof document attached yet.
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Experience Create / Edit Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-white/15 bg-[#0e131f] p-6 shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {editingId ? 'Edit Work Experience' : 'Add Work Experience'}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="rounded-full p-1 text-white/40 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70">Company Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="e.g. Acme Corporation"
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-white/70">
+                    Role / Designation *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    placeholder="e.g. Software Engineer Intern"
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70">
+                    Employment Type *
+                  </label>
+                  <select
+                    value={employmentType}
+                    onChange={(e) => setEmploymentType(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  >
+                    <option value="FULL_TIME">Full-time</option>
+                    <option value="PART_TIME">Part-time</option>
+                    <option value="CONTRACT">Contract</option>
+                    <option value="INTERNSHIP">Internship</option>
+                    <option value="FREELANCE">Freelance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-white/70">Work Location</label>
+                  <input
+                    type="text"
+                    value={workLocation}
+                    onChange={(e) => setWorkLocation(e.target.value)}
+                    placeholder="e.g. Bangalore, India (or Remote)"
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70">Company Website</label>
+                  <input
+                    type="url"
+                    value={companyWebsite}
+                    onChange={(e) => setCompanyWebsite(e.target.value)}
+                    placeholder="https://company.com"
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-white/70">
+                    Company LinkedIn URL
+                  </label>
+                  <input
+                    type="url"
+                    value={companyLinkedinUrl}
+                    onChange={(e) => setCompanyLinkedinUrl(e.target.value)}
+                    placeholder="https://linkedin.com/company/acme"
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/70">Start Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-white/70">End Date</label>
+                  <input
+                    type="date"
+                    disabled={isCurrent}
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white disabled:opacity-40 focus:border-[#00fad0] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isCurrent"
+                  checked={isCurrent}
+                  onChange={(e) => setIsCurrent(e.target.checked)}
+                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#00fad0] focus:ring-0"
+                />
+                <label htmlFor="isCurrent" className="text-xs text-white/80">
+                  I currently work in this role
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70">
+                  Responsibilities & Accomplishments
+                </label>
+                <textarea
+                  rows={3}
+                  value={responsibilities}
+                  onChange={(e) => setResponsibilities(e.target.value)}
+                  placeholder="Key responsibilities, projects, and technologies used..."
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70">
+                  Skills Used (comma separated)
+                </label>
+                <input
+                  type="text"
+                  value={skillsInput}
+                  onChange={(e) => setSkillsInput(e.target.value)}
+                  placeholder="TypeScript, Node.js, React, PostgreSQL"
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                />
+              </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#00fad0]">
+                  Employer Verifier Contact (Optional)
+                </h4>
+                <p className="mt-0.5 text-[11px] text-white/50">
+                  Provide HR/Manager contact details for verification dispatch.
+                </p>
+
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-[11px] text-white/70">Verifier Name</label>
+                    <input
+                      type="text"
+                      value={verifierName}
+                      onChange={(e) => setVerifierName(e.target.value)}
+                      placeholder="Jane Manager"
+                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-white/70">Official Work Email</label>
+                    <input
+                      type="email"
+                      value={verifierEmail}
+                      onChange={(e) => setVerifierEmail(e.target.value)}
+                      placeholder="jane@company.com"
+                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-white/70">Designation</label>
+                    <input
+                      type="text"
+                      value={verifierDesignation}
+                      onChange={(e) => setVerifierDesignation(e.target.value)}
+                      placeholder="Engineering Lead"
+                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-xl border border-white/15 px-4 py-2 text-xs font-medium text-white hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-5 py-2 text-xs font-medium text-black hover:bg-[#00e0ba] disabled:opacity-50"
+                >
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {editingId ? 'Save Changes' : 'Submit Experience'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Document Attach Modal */}
+      {docModalExpId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="flex w-full max-w-md flex-col rounded-3xl border border-white/15 bg-[#0e131f] p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-base font-semibold text-white">Attach Proof Document</h3>
+              <button
+                onClick={() => setDocModalExpId(null)}
+                className="rounded-full p-1 text-white/40 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAttachDocument} className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-white/70">Document Type *</label>
+                <select
+                  value={docType}
+                  onChange={(e) => setDocType(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                >
+                  <option value="EXPERIENCE_LETTER">Experience Letter</option>
+                  <option value="OFFER_LETTER">Offer Letter</option>
+                  <option value="PAYSLIP">Payslip</option>
+                  <option value="RELIEVING_LETTER">Relieving Letter</option>
+                  <option value="FORM_16">Form 16</option>
+                  <option value="OTHER">Other Proof Document</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70">Proof File Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  placeholder="e.g. Acme_Relieving_Letter.pdf"
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                />
+              </div>
+
+              <div className="mt-2 flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setDocModalExpId(null)}
+                  className="rounded-xl border border-white/15 px-4 py-2 text-xs font-medium text-white hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingDoc}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-5 py-2 text-xs font-medium text-black hover:bg-[#00e0ba] disabled:opacity-50"
+                >
+                  {uploadingDoc && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Attach Document
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

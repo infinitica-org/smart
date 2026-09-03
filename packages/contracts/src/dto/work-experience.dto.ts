@@ -1,0 +1,118 @@
+import { z } from 'zod';
+import {
+  EmploymentTypeSchema,
+  ExperienceDocumentTypeSchema,
+  WorkExperienceVerificationStatusSchema,
+} from '../domain/enums.js';
+
+export const WorkExperienceDocumentSchema = z.object({
+  id: z.string().uuid(),
+  experienceId: z.string().uuid(),
+  documentType: ExperienceDocumentTypeSchema,
+  fileUrl: z.string().min(1),
+  fileName: z.string().min(1),
+  fileSizeBytes: z.number().int().positive(),
+  mimeType: z.string().min(1),
+  createdAt: z.string().datetime(),
+});
+export type WorkExperienceDocumentDto = z.infer<typeof WorkExperienceDocumentSchema>;
+
+export const CreateWorkExperienceDocumentSchema = z.object({
+  documentType: ExperienceDocumentTypeSchema,
+  fileUrl: z.string().min(1, 'File URL is required'),
+  fileName: z.string().min(1, 'File name is required'),
+  fileSizeBytes: z.number().int().positive('File size must be positive'),
+  mimeType: z.string().min(1, 'MIME type is required'),
+});
+export type CreateWorkExperienceDocumentDto = z.infer<typeof CreateWorkExperienceDocumentSchema>;
+
+export const CreateWorkExperienceBaseSchema = z.object({
+  companyId: z.string().uuid().optional().nullable(),
+  companyName: z.string().min(1, 'Company name is required').max(200),
+  companyWebsite: z
+    .string()
+    .url('Invalid company website URL')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  companyLinkedinUrl: z
+    .string()
+    .url('Invalid company LinkedIn URL')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  role: z.string().min(1, 'Role/designation is required').max(200),
+  employmentType: EmploymentTypeSchema.default('FULL_TIME'),
+  department: z.string().max(120).optional().nullable().or(z.literal('')),
+  domain: z.string().max(120).optional().nullable().or(z.literal('')),
+  workLocation: z.string().max(120).optional().nullable().or(z.literal('')),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().optional().nullable().or(z.literal('')),
+  isCurrent: z.boolean().default(false),
+  responsibilities: z.string().max(4000).optional().nullable().or(z.literal('')),
+  skills: z.array(z.string()).default([]),
+  projects: z.unknown().optional().nullable(),
+  candidateLinkedin: z
+    .string()
+    .url('Invalid candidate LinkedIn URL')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  verifierName: z.string().max(120).optional().nullable().or(z.literal('')),
+  verifierEmail: z
+    .string()
+    .email('Invalid verifier email format')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  verifierDesignation: z.string().max(120).optional().nullable().or(z.literal('')),
+  verifierPhone: z.string().max(32).optional().nullable().or(z.literal('')),
+});
+
+export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.refine(
+  (data) => {
+    if (!data.isCurrent && !data.endDate) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'End date is required if not currently employed',
+    path: ['endDate'],
+  },
+);
+export type CreateWorkExperienceDto = z.infer<typeof CreateWorkExperienceSchema>;
+
+export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial();
+export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>;
+
+export const WorkExperienceSchema = z.object({
+  id: z.string().uuid(),
+  studentId: z.string().uuid(),
+  companyId: z.string().uuid().nullable(),
+  companyName: z.string(),
+  companyWebsite: z.string().nullable(),
+  companyLinkedinUrl: z.string().nullable(),
+  role: z.string(),
+  employmentType: EmploymentTypeSchema,
+  department: z.string().nullable(),
+  domain: z.string().nullable(),
+  workLocation: z.string().nullable(),
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  isCurrent: z.boolean(),
+  responsibilities: z.string().nullable(),
+  skills: z.array(z.string()),
+  projects: z.unknown().nullable(),
+  candidateLinkedin: z.string().nullable(),
+  verifierName: z.string().nullable(),
+  verifierEmail: z.string().nullable(),
+  verifierDesignation: z.string().nullable(),
+  verifierPhone: z.string().nullable(),
+  status: WorkExperienceVerificationStatusSchema,
+  rejectionReason: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  documents: z.array(WorkExperienceDocumentSchema).default([]),
+});
+export type WorkExperienceDto = z.infer<typeof WorkExperienceSchema>;
