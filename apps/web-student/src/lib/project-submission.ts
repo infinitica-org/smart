@@ -1,6 +1,7 @@
 import {
   CreateProjectRequestSchema,
   type CreateProjectRequest,
+  type GithubRepoRef,
   type ProjectDto,
   type ProjectStatus,
 } from '@smart/contracts';
@@ -25,7 +26,10 @@ export const EMPTY_PROJECT_FORM: ProjectFormFields = {
   githubUrl: '',
 };
 
-export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProjectRequest {
+export function buildCreateProjectRequest(
+  fields: ProjectFormFields,
+  githubRepos: GithubRepoRef[] = [],
+): CreateProjectRequest {
   return CreateProjectRequestSchema.parse({
     title: fields.title.trim(),
     problem: fields.problem.trim(),
@@ -34,6 +38,7 @@ export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProj
     outcome: fields.outcome.trim(),
     loomUrl: fields.loomUrl.trim() || undefined,
     githubUrl: fields.githubUrl.trim() || undefined,
+    githubRepos,
   });
 }
 

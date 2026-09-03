@@ -1,8 +1,10 @@
-import type {
-  CandidateOnboardingDraft,
-  CompleteCandidateOnboardingRequest,
-  ResumeParseDraft,
-  SaveCandidateOnboardingDraftRequest,
+import {
+  CompleteCandidateOnboardingRequestSchema,
+  SaveCandidateOnboardingDraftRequestSchema,
+  type CandidateOnboardingDraft,
+  type CompleteCandidateOnboardingRequest,
+  type ResumeParseDraft,
+  type SaveCandidateOnboardingDraftRequest,
 } from '@smart/contracts';
 
 export interface OnboardingProfileForm {
@@ -26,6 +28,21 @@ export interface OnboardingProfileForm {
 
 /** Draft-only UI cache while the wizard is open — never the source of truth for completion. */
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
+
+export const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 export function emptyOnboardingForm(): OnboardingProfileForm {
   return {
@@ -167,14 +184,96 @@ export function applyServerDraft(
   };
 }
 
+function issueAt(
+  issues: { path: PropertyKey[]; message: string; code?: string }[],
+): { path: PropertyKey[]; message: string; code?: string } | undefined {
+  return issues[0];
+}
+
+/** Maps a contract Zod issue onto the existing candidate-facing copy. */
+export function onboardingIssueMessage(issue: {
+  path: PropertyKey[];
+  message: string;
+  code?: string;
+}): string {
+  const root = issue.path[0];
+  const index = typeof issue.path[1] === 'number' ? issue.path[1] : 0;
+  const nested = issue.path[2];
+  const tooBig = issue.code === 'too_big';
+
+  if (root === 'firstName' || root === 'lastName') {
+    if (tooBig) {
+      return root === 'firstName'
+        ? 'First name must be 50 characters or fewer.'
+        : 'Last name must be 50 characters or fewer.';
+    }
+    return 'First and last name are required.';
+  }
+  if (root === 'phoneNumber' || root === 'phoneCountryCode') {
+    if (tooBig) return 'Phone number must be 32 characters or fewer.';
+    return 'Phone number is required.';
+  }
+  if (root === 'linkedinUrl') {
+    return 'Enter a valid LinkedIn URL, or leave it blank.';
+  }
+  if (root === 'githubUrl') {
+    return 'Enter a valid GitHub URL, or leave it blank.';
+  }
+  if (root === 'dateOfBirth') {
+    return 'Date of birth must be 32 characters or fewer.';
+  }
+  if (root === 'preferences') {
+    return 'Please select at least one project preference.';
+  }
+  if (root === 'dpdpConsent') {
+    return 'You must agree to the DPDP consent terms to complete your profile.';
+  }
+  if (root === 'education') {
+    return `Institution name is required for education entry #${String(index + 1)}.`;
+  }
+  if (root === 'experiences') {
+    if (nested === 'company') {
+      return `Company name is required for experience entry #${String(index + 1)}.`;
+    }
+    return `Role / Job Title is required for experience entry #${String(index + 1)}.`;
+  }
+  return issue.message;
+}
+
+export function normalizeHttpUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (!/^https?:\/\//iu.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
+}
+
+export function validateContractUrlField(
+  raw: string,
+  field: 'linkedinUrl' | 'githubUrl',
+): string | null {
+  const normalized = normalizeHttpUrl(raw);
+  const parsed =
+    field === 'linkedinUrl'
+      ? CompleteCandidateOnboardingRequestSchema.shape.linkedinUrl.safeParse(normalized)
+      : CompleteCandidateOnboardingRequestSchema.shape.githubUrl.safeParse(normalized || undefined);
+  if (parsed.success) return null;
+  return field === 'linkedinUrl'
+    ? 'Enter a valid LinkedIn URL, or leave it blank.'
+    : 'Enter a valid GitHub URL, or leave it blank.';
+}
+
+export function buildDateOfBirth(form: OnboardingProfileForm): string | undefined {
+  if (!form.dobYear || !form.dobMonth || !form.dobDay) return undefined;
+  const monthIndex = MONTHS.indexOf(form.dobMonth);
+  if (monthIndex < 0) return undefined;
+  return `${form.dobYear}-${String(monthIndex + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`;
+}
+
 /** Best-effort snapshot of the in-progress form, sent to the server as a draft. */
 export function buildOnboardingDraftPayload(
   form: OnboardingProfileForm,
 ): SaveCandidateOnboardingDraftRequest {
-  const dateOfBirth =
-    form.dobYear && form.dobMonth && form.dobDay
-      ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
-      : undefined;
+  const dateOfBirth = buildDateOfBirth(form);
 
   const skills = [
     ...form.languages
@@ -193,7 +292,7 @@ export function buildOnboardingDraftPayload(
       })),
   ];
 
-  return {
+  const payload = {
     firstName: form.firstName.trim() || undefined,
     lastName: form.lastName.trim() || undefined,
     gender: form.gender.trim() || undefined,
@@ -208,83 +307,65 @@ export function buildOnboardingDraftPayload(
     preferences: form.preferences,
     dpdpConsent: form.dpdpConsent,
   };
+
+  const parsed = SaveCandidateOnboardingDraftRequestSchema.safeParse(payload);
+  return parsed.success ? parsed.data : payload;
+}
+
+export function validatePhoneFields(form: OnboardingProfileForm): string | null {
+  const parsed = CompleteCandidateOnboardingRequestSchema.pick({
+    phoneCountryCode: true,
+    phoneNumber: true,
+  }).safeParse({
+    phoneCountryCode: form.phoneCountryCode.trim() || '+91',
+    phoneNumber: form.phoneNumber.trim(),
+  });
+  if (parsed.success) return null;
+  const issue = issueAt(parsed.error.issues);
+  return issue ? onboardingIssueMessage(issue) : 'Phone number is required.';
+}
+
+export function validateNameFields(form: OnboardingProfileForm): string | null {
+  const parsed = CompleteCandidateOnboardingRequestSchema.pick({
+    firstName: true,
+    lastName: true,
+  }).safeParse({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+  });
+  if (parsed.success) return null;
+  const issue = issueAt(parsed.error.issues);
+  return issue ? onboardingIssueMessage(issue) : 'First and last name are required.';
 }
 
 export function validateEducationItems(
   education: CompleteCandidateOnboardingRequest['education'],
 ): string | null {
-  for (let i = 0; i < education.length; i++) {
-    const item = education[i];
-    if (!item?.institutionName?.trim()) {
-      return `Institution name is required for education entry #${i + 1}.`;
-    }
-  }
-  return null;
+  const parsed = CompleteCandidateOnboardingRequestSchema.pick({ education: true }).safeParse({
+    education,
+  });
+  if (parsed.success) return null;
+  const issue = issueAt(parsed.error.issues);
+  return issue ? onboardingIssueMessage(issue) : 'Education is invalid.';
 }
 
 export function validateExperienceItems(
   experiences: CompleteCandidateOnboardingRequest['experiences'],
 ): string | null {
-  for (let i = 0; i < experiences.length; i++) {
-    const item = experiences[i];
-    if (!item?.role?.trim()) {
-      return `Role / Job Title is required for experience entry #${i + 1}.`;
-    }
-    if (!item?.company?.trim()) {
-      return `Company name is required for experience entry #${i + 1}.`;
-    }
-  }
-  return null;
+  const parsed = CompleteCandidateOnboardingRequestSchema.pick({ experiences: true }).safeParse({
+    experiences,
+  });
+  if (parsed.success) return null;
+  const issue = issueAt(parsed.error.issues);
+  return issue ? onboardingIssueMessage(issue) : 'Experience is invalid.';
 }
-
-export const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 
 export function buildCompleteOnboardingRequest(
   form: OnboardingProfileForm,
 ): CompleteCandidateOnboardingRequest | { error: string } {
-  if (!form.firstName.trim() || !form.lastName.trim()) {
-    return { error: 'First and last name are required.' };
-  }
-  if (!form.phoneNumber.trim()) {
-    return { error: 'Phone number is required.' };
-  }
-  if (!form.linkedinUrl.trim()) {
-    return { error: 'LinkedIn profile is required.' };
-  }
   if (!form.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
     return { error: 'At least one language is required.' };
   }
-
-  const eduError = validateEducationItems(form.education);
-  if (eduError) return { error: eduError };
-
-  const expError = validateExperienceItems(form.experiences);
-  if (expError) return { error: expError };
-
-  if (form.preferences.length === 0) {
-    return { error: 'Please select at least one project preference.' };
-  }
-  if (!form.dpdpConsent) {
-    return { error: 'You must agree to the DPDP consent terms to complete your profile.' };
-  }
-
-  const dateOfBirth =
-    form.dobYear && form.dobMonth && form.dobDay
-      ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
-      : undefined;
 
   const skills = [
     ...form.languages
@@ -303,31 +384,29 @@ export function buildCompleteOnboardingRequest(
       })),
   ];
 
-  let linkedinUrl = form.linkedinUrl.trim();
-  if (linkedinUrl && !/^https?:\/\//i.test(linkedinUrl)) {
-    linkedinUrl = `https://${linkedinUrl}`;
-  }
-
-  let githubUrl = form.githubUrl.trim();
-  if (githubUrl && !/^https?:\/\//i.test(githubUrl)) {
-    githubUrl = `https://${githubUrl}`;
-  }
-
-  return {
+  const parsed = CompleteCandidateOnboardingRequestSchema.safeParse({
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     gender: form.gender.trim() || undefined,
-    dateOfBirth,
+    dateOfBirth: buildDateOfBirth(form),
     phoneCountryCode: form.phoneCountryCode.trim() || '+91',
     phoneNumber: form.phoneNumber.trim(),
-    linkedinUrl,
-    githubUrl: githubUrl || undefined,
+    linkedinUrl: normalizeHttpUrl(form.linkedinUrl),
+    githubUrl: normalizeHttpUrl(form.githubUrl) || undefined,
     education: form.education,
     experiences: form.experiences,
     skills,
     preferences: form.preferences,
-    dpdpConsent: true,
-  };
+    dpdpConsent: form.dpdpConsent,
+  });
+
+  if (!parsed.success) {
+    const issue = issueAt(parsed.error.issues);
+    return {
+      error: issue ? onboardingIssueMessage(issue) : 'Please check the form and try again.',
+    };
+  }
+  return parsed.data;
 }
 
 export const LANGUAGE_OPTIONS = [

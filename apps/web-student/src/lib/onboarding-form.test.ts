@@ -6,14 +6,89 @@ import {
   buildCompleteOnboardingRequest,
   buildOnboardingDraftPayload,
   emptyOnboardingForm,
+  validateContractUrlField,
   validateEducationItems,
   validateExperienceItems,
+  validatePhoneFields,
 } from './onboarding-form';
 
+function completeForm(
+  overrides: Partial<ReturnType<typeof emptyOnboardingForm>> = {},
+): ReturnType<typeof emptyOnboardingForm> {
+  const form = emptyOnboardingForm();
+  form.firstName = 'Ada';
+  form.lastName = 'Lovelace';
+  form.phoneNumber = '9876543210';
+  form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+  form.preferences = ['Coding'];
+  form.dpdpConsent = true;
+  return { ...form, ...overrides };
+}
+
 describe('onboarding-form', () => {
-  it('blocks completion when required fields are missing', () => {
-    const result = buildCompleteOnboardingRequest(emptyOnboardingForm());
-    expect(result).toEqual({ error: 'First and last name are required.' });
+  it('blocks completion when product-required language is missing', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.preferences = ['Coding'];
+    form.dpdpConsent = true;
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'At least one language is required.',
+    });
+  });
+
+  it('blocks completion when contract-required names are missing', () => {
+    const form = completeForm({ firstName: '', lastName: '' });
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'First and last name are required.',
+    });
+  });
+
+  it('allows an empty LinkedIn URL because the contract treats blank as valid', () => {
+    const result = buildCompleteOnboardingRequest(completeForm({ linkedinUrl: '' }));
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.linkedinUrl).toBe('');
+  });
+
+  it('rejects invalid LinkedIn and GitHub URLs using the contract url union', () => {
+    expect(buildCompleteOnboardingRequest(completeForm({ linkedinUrl: 'not a url' }))).toEqual({
+      error: 'Enter a valid LinkedIn URL, or leave it blank.',
+    });
+    expect(buildCompleteOnboardingRequest(completeForm({ githubUrl: 'not a url' }))).toEqual({
+      error: 'Enter a valid GitHub URL, or leave it blank.',
+    });
+  });
+
+  it('rejects names and phone numbers that exceed contract max length', () => {
+    expect(buildCompleteOnboardingRequest(completeForm({ firstName: 'A'.repeat(51) }))).toEqual({
+      error: 'First name must be 50 characters or fewer.',
+    });
+    expect(buildCompleteOnboardingRequest(completeForm({ phoneNumber: '9'.repeat(33) }))).toEqual({
+      error: 'Phone number must be 32 characters or fewer.',
+    });
+  });
+
+  it('includes dateOfBirth when month, day, and year are set', () => {
+    const result = buildCompleteOnboardingRequest(
+      completeForm({ dobMonth: 'January', dobDay: '10', dobYear: '1990' }),
+    );
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.dateOfBirth).toBe('1990-01-10');
+  });
+
+  it('validates optional URLs and phone at field boundaries', () => {
+    expect(validateContractUrlField('', 'linkedinUrl')).toBeNull();
+    expect(validateContractUrlField('linkedin.com/in/ada', 'linkedinUrl')).toBeNull();
+    expect(validateContractUrlField('not a url', 'linkedinUrl')).toBe(
+      'Enter a valid LinkedIn URL, or leave it blank.',
+    );
+    expect(validatePhoneFields(completeForm({ phoneNumber: '' }))).toBe(
+      'Phone number is required.',
+    );
+    expect(validatePhoneFields(completeForm())).toBeNull();
   });
 
   it('blocks completion when DPDP consent is declined', () => {

@@ -1,4 +1,5 @@
 import {
+  DeclareSkillClaimRequestSchema,
   SKILL_DEFINITIONS,
   type SkillClaimDto,
   type SkillClaimStatus,
@@ -34,6 +35,10 @@ export function skillsForStream(stream: SkillStream) {
 
 export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
+}
+
+export function buildDeclareSkillClaimRequest(skillCode: string, proficiency: SkillProficiency) {
+  return DeclareSkillClaimRequestSchema.parse({ skillCode, proficiency });
 }
 
 /**

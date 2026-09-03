@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { PROJECT_VERIFY_REPO_MAX, type GithubRepoRef } from '@smart/contracts';
 import {
   buildCreateProjectRequest,
   fieldErrorsFromZod,
   isProcessingStatus,
   processingStateCopy,
 } from './project-submission';
+
+function githubRepo(n: number): GithubRepoRef {
+  return {
+    owner: 'ada',
+    name: `repo-${String(n)}`,
+    htmlUrl: `https://github.com/ada/repo-${String(n)}`,
+    defaultBranch: 'main',
+    isPrivate: false,
+    githubRepoId: n,
+  };
+}
 
 const valid = {
   title: 'Campus bus tracker',
@@ -26,6 +38,20 @@ describe('buildCreateProjectRequest', () => {
 
   it('rejects a one-line problem', () => {
     expect(() => buildCreateProjectRequest({ ...valid, problem: 'too short' })).toThrow();
+  });
+
+  it('rejects invalid Loom and GitHub URLs', () => {
+    expect(() => buildCreateProjectRequest({ ...valid, loomUrl: 'not-a-url' })).toThrow();
+    expect(() => buildCreateProjectRequest({ ...valid, githubUrl: 'not-a-url' })).toThrow();
+  });
+
+  it('accepts up to PROJECT_VERIFY_REPO_MAX githubRepos and rejects more', () => {
+    const three = Array.from({ length: PROJECT_VERIFY_REPO_MAX }, (_, i) => githubRepo(i + 1));
+    const body = buildCreateProjectRequest(valid, three);
+    expect(body.githubRepos).toHaveLength(PROJECT_VERIFY_REPO_MAX);
+
+    const four = [...three, githubRepo(PROJECT_VERIFY_REPO_MAX + 1)];
+    expect(() => buildCreateProjectRequest(valid, four)).toThrow();
   });
 });
 

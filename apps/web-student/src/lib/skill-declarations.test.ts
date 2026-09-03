@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDeclareSkillClaimRequest,
   claimStatusLabel,
   claimToBadgeStatus,
   formatCooldown,
@@ -45,5 +46,14 @@ describe('skill-declarations helpers', () => {
   it('formats lockedUntil for cooldown display', () => {
     expect(formatCooldown(null)).toBeNull();
     expect(formatCooldown('2026-09-30T00:00:00.000Z')).toMatch(/2026/);
+  });
+
+  it('validates declare payloads with DeclareSkillClaimRequestSchema', () => {
+    expect(buildDeclareSkillClaimRequest('GIT_VERSION_CONTROL', 'BEGINNER')).toEqual({
+      skillCode: 'GIT_VERSION_CONTROL',
+      proficiency: 'BEGINNER',
+    });
+    expect(() => buildDeclareSkillClaimRequest('x', 'BEGINNER')).toThrow();
+    expect(() => buildDeclareSkillClaimRequest('GIT_VERSION_CONTROL', 'NOVICE' as never)).toThrow();
   });
 });

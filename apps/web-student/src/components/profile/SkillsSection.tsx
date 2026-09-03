@@ -9,6 +9,7 @@ import {
   PROFICIENCY_OPTIONS,
   SOFTWARE_IT_DOMAIN_LABEL,
   STREAM_LABELS,
+  buildDeclareSkillClaimRequest,
   claimToBadgeStatus,
   formatCooldown,
   skillNameForCode,
@@ -74,7 +75,9 @@ export function SkillsSection() {
           const created: SkillClaimDto[] = [];
           for (const skillCode of selectedCodes) {
             if (declaredCodes.has(skillCode)) continue;
-            const row = await api.assessment.declareSkillClaim({ skillCode, proficiency });
+            const row = await api.assessment.declareSkillClaim(
+              buildDeclareSkillClaimRequest(skillCode, proficiency),
+            );
             created.push(row);
           }
           if (created.length === 0) {
@@ -89,6 +92,17 @@ export function SkillsSection() {
               : `${String(created.length)} skills declared.`,
           );
         } catch (err) {
+          const issues =
+            typeof err === 'object' &&
+            err !== null &&
+            'issues' in err &&
+            Array.isArray((err as { issues: unknown }).issues)
+              ? (err as { issues: { message: string }[] }).issues
+              : null;
+          if (issues?.[0]?.message) {
+            setError(issues[0].message);
+            return;
+          }
           setError(err instanceof Error ? err.message : 'Failed to declare skill.');
         }
       })();

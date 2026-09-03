@@ -12,6 +12,9 @@ import {
   saveOnboardingDraft,
   validateEducationItems,
   validateExperienceItems,
+  validateContractUrlField,
+  validateNameFields,
+  validatePhoneFields,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
 
@@ -101,9 +104,12 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
 
     setSaveError(null);
 
-    if (activeTab === 'profile' && (!formData.firstName.trim() || !formData.lastName.trim())) {
-      setSaveError('First and last name are required.');
-      return;
+    if (activeTab === 'profile') {
+      const err = validateNameFields(formData);
+      if (err) {
+        setSaveError(err);
+        return;
+      }
     }
     if (activeTab === 'education') {
       const err = validateEducationItems(formData.education);
@@ -119,13 +125,24 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
         return;
       }
     }
-    if (activeTab === 'phone' && !formData.phoneNumber.trim()) {
-      setSaveError('Phone number is required.');
-      return;
+    if (activeTab === 'phone') {
+      const err = validatePhoneFields(formData);
+      if (err) {
+        setSaveError(err);
+        return;
+      }
     }
-    if (activeTab === 'linkedin' && !formData.linkedinUrl.trim()) {
-      setSaveError('LinkedIn profile is required.');
-      return;
+    if (activeTab === 'linkedin') {
+      const linkedinError = validateContractUrlField(formData.linkedinUrl, 'linkedinUrl');
+      if (linkedinError) {
+        setSaveError(linkedinError);
+        return;
+      }
+      const githubError = validateContractUrlField(formData.githubUrl, 'githubUrl');
+      if (githubError) {
+        setSaveError(githubError);
+        return;
+      }
     }
     if (
       activeTab === 'languages' &&
@@ -161,7 +178,8 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
         setActiveTab('experience');
       else if (payload.error.includes('language')) setActiveTab('languages');
       else if (payload.error.includes('preference')) setActiveTab('preferences');
-      else if (payload.error.includes('LinkedIn')) setActiveTab('linkedin');
+      else if (payload.error.includes('GitHub') || payload.error.includes('LinkedIn'))
+        setActiveTab('linkedin');
       else if (payload.error.includes('Phone')) setActiveTab('phone');
       else setActiveTab('profile');
       return;
@@ -738,15 +756,12 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
                 LinkedIn &amp; GitHub
               </h3>
               <p className="text-sm text-gray-400 mb-6 ml-8">
-                Add your LinkedIn profile to showcase your professional network, and your GitHub
-                profile if you have one.
+                LinkedIn and GitHub are optional. If you add a URL, it must be a valid web address.
               </p>
 
               <div className="flex flex-col gap-5 max-w-lg ml-8">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-white/70">
-                    LinkedIn Profile <span className="text-[#00fad0]">*</span>
-                  </label>
+                  <label className="text-sm font-medium text-white/70">LinkedIn Profile</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <span className="text-gray-500 text-sm">https://</span>
@@ -978,7 +993,11 @@ export default function ProfileSetup({ initialForm, onBack, onComplete }: Profil
         </>
       </div>
 
-      {saveError ? <p className="mt-6 text-sm text-red-400">{saveError}</p> : null}
+      {saveError ? (
+        <p className="mt-6 text-sm text-red-400" role="alert">
+          {saveError}
+        </p>
+      ) : null}
 
       <div className="mt-8 flex gap-3 pt-6 border-t border-white/8">
         <button
