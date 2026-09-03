@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
+import type { Prisma } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
 
 const DATA_DIR = path.join(
@@ -233,11 +234,82 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.user.update({
+  const onboardedAt = new Date().toISOString();
+  const student = await prisma.user.update({
     where: { email: 'student@smart.local' },
     data: {
       batchId: pilotBatch.id,
       groupLabel: 'Section A',
+      onboardingCompleted: true,
+      onboardingDetails: {
+        firstName: 'Pilot',
+        lastName: 'Student',
+        phoneCountryCode: '+91',
+        phoneNumber: '9000000000',
+        linkedinUrl: '',
+        education: [
+          {
+            institutionName: 'PSG College of Technology',
+            degree: 'B.E.',
+            fieldOfStudy: 'Computer Science',
+          },
+        ],
+        experiences: [
+          {
+            role: 'Intern',
+            company: 'Infinitica',
+            description: 'Wrote weekly stand-up notes for a small intern cohort.',
+            tags: [],
+          },
+        ],
+        skills: [],
+        preferences: ['backend internships'],
+        dpdpConsent: true,
+        dpdpConsentAt: onboardedAt,
+        completedAt: onboardedAt,
+      } as Prisma.InputJsonValue,
+    },
+  });
+
+  const cognitiveNarrative =
+    'Breaks intern work into ordered steps and checks constraints before choosing a tool. Asks what success looks like before starting a task.';
+  const communicationNarrative =
+    'Writes short updates that name the blocker and the decision needed. Explains intern work in concrete terms rather than slogans.';
+  const now = new Date();
+  await prisma.cognitiveProfile.upsert({
+    where: { studentId: student.id },
+    update: {
+      narrative: cognitiveNarrative,
+      strengths: ['Checks constraints before picking a tool for intern tasks.'],
+      weaknesses: ['Starts building before writing the constraint list down.'],
+      score: 62,
+      refreshedAt: now,
+    },
+    create: {
+      studentId: student.id,
+      narrative: cognitiveNarrative,
+      strengths: ['Checks constraints before picking a tool for intern tasks.'],
+      weaknesses: ['Starts building before writing the constraint list down.'],
+      score: 62,
+      refreshedAt: now,
+    },
+  });
+  await prisma.communicationProfile.upsert({
+    where: { studentId: student.id },
+    update: {
+      narrative: communicationNarrative,
+      strengths: ['Leads written updates with the decision that is needed.'],
+      weaknesses: ['Omits who the audience is when explaining a trade-off.'],
+      score: 58,
+      refreshedAt: now,
+    },
+    create: {
+      studentId: student.id,
+      narrative: communicationNarrative,
+      strengths: ['Leads written updates with the decision that is needed.'],
+      weaknesses: ['Omits who the audience is when explaining a trade-off.'],
+      score: 58,
+      refreshedAt: now,
     },
   });
 
