@@ -28,7 +28,6 @@
 @import '../ui/src/assets/fonts/CabinetGrotesk/css/cabinet-grotesk.css';
 @import '../ui/src/assets/fonts/Manrope/css/manrope.css';
 
-
 /* =========================================================
    SOURCES
    ========================================================= */
@@ -40,20 +39,17 @@
 @source '../../apps/web-verify/src/**/*.{ts,tsx}';
 @source '../../apps/web-auth/src/**/*.{ts,tsx}';
 
-
 /* =========================================================
    DARK MODE
    ========================================================= */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-
 /* =========================================================
    COLORS
    ========================================================= */
 
 @theme {
-
   /* -------------------------
      MAIN BRAND COLORS
      ------------------------- */
@@ -64,7 +60,6 @@
   --color-teal: #00fad0;
   --color-blue: #004c63;
 
-
   /* -------------------------
      STATUS COLORS
      ------------------------- */
@@ -74,13 +69,11 @@
   --color-red: #ef4444;
   --color-info: #3b82f6;
 
-
   /* -------------------------
      DASHBOARD HIGHLIGHT
      ------------------------- */
 
   --color-purple: #8b5cf6;
-
 
   /* -------------------------
      CERTIFICATION COLORS
@@ -89,7 +82,6 @@
   --color-gold: #d9ad3f;
   --color-silver: #a8adb5;
   --color-bronze: #b77945;
-
 
   /* -------------------------
      SOFT STATUS COLORS
@@ -101,7 +93,6 @@
   --color-info-soft: #dbeafe;
   --color-purple-soft: #ede9fe;
 
-
   /* -------------------------
      DARK STATUS COLORS
      ------------------------- */
@@ -112,7 +103,6 @@
   --color-info-dark: #1d4ed8;
   --color-purple-dark: #6d28d9;
 
-
   /* -------------------------
      GRADIENT
      ------------------------- */
@@ -120,38 +110,19 @@
   --color-gradient-start: #00fad0;
   --color-gradient-end: #004c63;
 
-
   /* -------------------------
      TYPOGRAPHY
      ------------------------- */
 
   --font-display:
-    'Cabinet Grotesk',
-    'CabinetGrotesk-Variable',
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+    'Cabinet Grotesk', 'CabinetGrotesk-Variable', ui-sans-serif, system-ui, sans-serif;
 
   --font-heading:
-    'Cabinet Grotesk',
-    'CabinetGrotesk-Variable',
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+    'Cabinet Grotesk', 'CabinetGrotesk-Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --font-sans:
-    'Manrope',
-    'Cabinet Grotesk',
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+  --font-sans: 'Manrope', 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
 
-  --font-mono:
-    'JetBrains Mono',
-    ui-monospace,
-    SFMono-Regular,
-    monospace;
-
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* -------------------------
      RADIUS
@@ -160,23 +131,18 @@
   --radius-card: 1.25rem;
   --radius-badge: 9999px;
 
-
   /* -------------------------
      SHADOW
      ------------------------- */
 
-  --shadow-card:
-    0 2px 10px rgb(19 19 19 / 0.06),
-    0 1px 2px rgb(19 19 19 / 0.04);
+  --shadow-card: 0 2px 10px rgb(19 19 19 / 0.06), 0 1px 2px rgb(19 19 19 / 0.04);
 }
-
 
 /* =========================================================
    SHADCN / SEMANTIC TOKENS
    ========================================================= */
 
 @theme inline {
-
   --radius-sm: 0.625rem;
   --radius-md: 0.875rem;
   --radius-lg: 1.125rem;
@@ -185,14 +151,12 @@
   --radius-3xl: 2rem;
   --radius-4xl: 2.5rem;
 
-
   /* -------------------------
      GENERAL
      ------------------------- */
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-
 
   /* -------------------------
      CARD
@@ -201,14 +165,12 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
 
-
   /* -------------------------
      POPOVER
      ------------------------- */
 
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-
 
   /* -------------------------
      PRIMARY
@@ -217,14 +179,12 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 
-
   /* -------------------------
      SECONDARY
      ------------------------- */
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-
 
   /* -------------------------
      MUTED
@@ -233,7 +193,6 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
-
   /* -------------------------
      ACCENT
      ------------------------- */
@@ -241,13 +200,11 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
 
-
   /* -------------------------
      DESTRUCTIVE
      ------------------------- */
 
   --color-destructive: var(--destructive);
-
 
   /* -------------------------
      BORDER / INPUT
@@ -256,7 +213,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
 
   /* -------------------------
      CHARTS
@@ -267,7 +223,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-
 
   /* -------------------------
      SIDEBAR
@@ -286,14 +241,12 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-
 /* =========================================================
    LIGHT MODE
    ========================================================= */
 
 :root,
 .light {
-
   /* =======================================================
      BRAND
      ======================================================= */
@@ -304,18 +257,11 @@
   --brand-teal: #00fad0;
   --brand-blue: #004c63;
 
-
   /* =======================================================
      BRAND GRADIENT
      ======================================================= */
 
-  --brand-gradient:
-    linear-gradient(
-      135deg,
-      #00fad0 0%,
-      #004c63 100%
-    );
-
+  --brand-gradient: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
 
   /* =======================================================
      NEUTRAL COLORS
@@ -332,7 +278,6 @@
   --gray-800: #262626;
   --gray-900: #171717;
 
-
   /* =======================================================
      BASE
      ======================================================= */
@@ -342,14 +287,12 @@
   --background: #f4f4f4;
   --foreground: #131313;
 
-
   /* =======================================================
      CARD
      ======================================================= */
 
   --card: #ffffff;
   --card-foreground: #131313;
-
 
   /* =======================================================
      POPOVER
@@ -358,14 +301,12 @@
   --popover: #ffffff;
   --popover-foreground: #131313;
 
-
   /* =======================================================
      PRIMARY
      ======================================================= */
 
   --primary: #00fad0;
   --primary-foreground: #131313;
-
 
   /* =======================================================
      SECONDARY
@@ -374,14 +315,12 @@
   --secondary: #eeeeee;
   --secondary-foreground: #131313;
 
-
   /* =======================================================
      MUTED
      ======================================================= */
 
   --muted: #eeeeee;
   --muted-foreground: #737373;
-
 
   /* =======================================================
      ACCENT
@@ -390,13 +329,11 @@
   --accent: #00fad0;
   --accent-foreground: #131313;
 
-
   /* =======================================================
      DESTRUCTIVE
      ======================================================= */
 
   --destructive: #ef4444;
-
 
   /* =======================================================
      BORDER
@@ -405,7 +342,6 @@
   --border: #e4e4e4;
   --input: #eeeeee;
   --ring: #00fad0;
-
 
   /* =======================================================
      CHART COLORS
@@ -418,7 +354,6 @@
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #3b82f6;
-
 
   /* =======================================================
      SIDEBAR
@@ -436,7 +371,6 @@
   --sidebar-border: #e4e4e4;
   --sidebar-ring: #00fad0;
 
-
   /* =======================================================
      SMART SURFACE TOKENS
      ======================================================= */
@@ -450,26 +384,20 @@
 
   --accent-deep: var(--brand-blue);
 
-
   /* =======================================================
      SHADOW
      ======================================================= */
 
-  --shadow-card:
-    0 2px 10px rgb(19 19 19 / 0.05),
-    0 1px 2px rgb(19 19 19 / 0.04);
-
+  --shadow-card: 0 2px 10px rgb(19 19 19 / 0.05), 0 1px 2px rgb(19 19 19 / 0.04);
 
   color-scheme: light;
 }
-
 
 /* =========================================================
    DARK MODE
    ========================================================= */
 
 .dark {
-
   /* =======================================================
      BRAND
      ======================================================= */
@@ -480,18 +408,11 @@
   --brand-teal: #00fad0;
   --brand-blue: #004c63;
 
-
   /* =======================================================
      GRADIENT
      ======================================================= */
 
-  --brand-gradient:
-    linear-gradient(
-      135deg,
-      #00fad0 0%,
-      #004c63 100%
-    );
-
+  --brand-gradient: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
 
   /* =======================================================
      BASE
@@ -500,14 +421,12 @@
   --background: #131313;
   --foreground: #f4f4f4;
 
-
   /* =======================================================
      CARD
      ======================================================= */
 
   --card: #1b1c1e;
   --card-foreground: #f4f4f4;
-
 
   /* =======================================================
      POPOVER
@@ -516,14 +435,12 @@
   --popover: #1b1c1e;
   --popover-foreground: #f4f4f4;
 
-
   /* =======================================================
      PRIMARY
      ======================================================= */
 
   --primary: #00fad0;
   --primary-foreground: #131313;
-
 
   /* =======================================================
      SECONDARY
@@ -532,14 +449,12 @@
   --secondary: #202224;
   --secondary-foreground: #f4f4f4;
 
-
   /* =======================================================
      MUTED
      ======================================================= */
 
   --muted: #202224;
   --muted-foreground: rgb(244 244 244 / 0.58);
-
 
   /* =======================================================
      ACCENT
@@ -548,22 +463,19 @@
   --accent: #00fad0;
   --accent-foreground: #131313;
 
-
   /* =======================================================
      DESTRUCTIVE
      ======================================================= */
 
   --destructive: #ef4444;
 
-
   /* =======================================================
      BORDER
      ======================================================= */
 
-  --border: rgb(244 244 244 / 0.10);
+  --border: rgb(244 244 244 / 0.1);
   --input: #202224;
   --ring: #00fad0;
-
 
   /* =======================================================
      CHART COLORS
@@ -574,7 +486,6 @@
   --chart-3: #22c55e;
   --chart-4: #eab308;
   --chart-5: #3b82f6;
-
 
   /* =======================================================
      SIDEBAR
@@ -592,7 +503,6 @@
   --sidebar-border: rgb(244 244 244 / 0.08);
   --sidebar-ring: #00fad0;
 
-
   /* =======================================================
      SMART SURFACES
      ======================================================= */
@@ -606,26 +516,20 @@
 
   --accent-deep: var(--brand-blue);
 
-
   /* =======================================================
      SHADOW
      ======================================================= */
 
-  --shadow-card:
-    0 2px 10px rgb(0 0 0 / 0.25),
-    0 1px 2px rgb(0 0 0 / 0.20);
-
+  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.25), 0 1px 2px rgb(0 0 0 / 0.2);
 
   color-scheme: dark;
 }
-
 
 /* =========================================================
    BASE STYLES
    ========================================================= */
 
 @layer base {
-
   html {
     color-scheme: light;
   }
@@ -633,7 +537,6 @@
   html.dark {
     color-scheme: dark;
   }
-
 
   /* -------------------------
      GLOBAL BORDER
@@ -643,13 +546,11 @@
     @apply border-border;
   }
 
-
   /* -------------------------
      BODY
      ------------------------- */
 
   body {
-
     background-color: var(--background);
     color: var(--foreground);
 
@@ -665,7 +566,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-
   /* -------------------------
      HEADINGS
      ------------------------- */
@@ -677,7 +577,6 @@
   h5,
   h6,
   .font-heading {
-
     font-family: var(--font-heading);
 
     font-weight: 700;
@@ -689,38 +588,31 @@
     color: var(--text-primary);
   }
 
-
   /* -------------------------
      PARAGRAPH
      ------------------------- */
 
   p {
-
     font-family: var(--font-sans);
 
     font-weight: 400;
   }
-
 
   /* -------------------------
      HR
      ------------------------- */
 
   hr {
-
     border: 0;
 
-    border-top:
-      1px solid var(--surface-border);
+    border-top: 1px solid var(--surface-border);
   }
-
 
   /* -------------------------
      SELECT
      ------------------------- */
 
   select {
-
     @apply h-10
       rounded-xl
       border
@@ -732,30 +624,24 @@
       outline-none;
   }
 
-
   /* -------------------------
      FOCUS
      ------------------------- */
 
   :focus-visible {
-
-    outline:
-      2px solid #00fad0;
+    outline: 2px solid #00fad0;
 
     outline-offset: 2px;
   }
-
 
   /* -------------------------
      REDUCED MOTION
      ------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-
     *,
     *::before,
     *::after {
-
       animation-duration: 0.01ms !important;
 
       transition-duration: 0.01ms !important;
@@ -763,20 +649,16 @@
   }
 }
 
-
 /* =========================================================
    COMPONENTS
    ========================================================= */
 
 @layer components {
-
-
   /* =======================================================
      STANDARD PANEL
      ========================================================= */
 
   .surface-panel {
-
     @apply rounded-3xl
       border
       border-border
@@ -786,34 +668,20 @@
     box-shadow: var(--shadow-card);
   }
 
-
   /* =======================================================
      BRAND GRADIENT
      ======================================================= */
 
   .brand-gradient {
-
-    background:
-      linear-gradient(
-        135deg,
-        #00fad0 0%,
-        #004c63 100%
-      );
+    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
   }
-
 
   /* =======================================================
      BRAND TEXT
      ======================================================= */
 
   .brand-text {
-
-    background:
-      linear-gradient(
-        135deg,
-        #00fad0 0%,
-        #004c63 100%
-      );
+    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
 
     background-clip: text;
     -webkit-background-clip: text;
@@ -821,72 +689,53 @@
     color: transparent;
   }
 
-
   /* =======================================================
      STATUS
      ======================================================= */
 
   .status-green {
-
     background: var(--color-green-soft);
 
     color: var(--color-green-dark);
   }
 
-
   .status-yellow {
-
     background: var(--color-yellow-soft);
 
     color: var(--color-yellow-dark);
   }
 
-
   .status-red {
-
     background: var(--color-red-soft);
 
     color: var(--color-red-dark);
   }
 
-
   .status-info {
-
     background: var(--color-info-soft);
 
     color: var(--color-info-dark);
   }
 
-
   .status-purple {
-
     background: var(--color-purple-soft);
 
     color: var(--color-purple-dark);
   }
-
 
   /* =======================================================
      SIMPLE COLOR HELPERS
      ======================================================= */
 
   .bg-gradient {
-
-    background:
-      linear-gradient(
-        135deg,
-        #00fad0 0%,
-        #004c63 100%
-      );
+    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
   }
-
 
   /* =======================================================
      DASHBOARD HIGHLIGHT
      ======================================================= */
 
   .dashboard-highlight {
-
     background: var(--color-purple-soft);
 
     color: var(--color-purple-dark);
