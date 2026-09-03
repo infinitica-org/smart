@@ -35,7 +35,7 @@ async function bootstrap(): Promise<void> {
     )
     .setVersion(env.APP_VERSION)
     .addBearerAuth()
-    .addTag('assessment', 'Attempt lifecycles, item delivery, integrity tracking')
+    .addTag('proctoring', 'HMAC integrity ingest, Blob HUD, CV checkpoints')
     .addTag('certificate', 'Issuance, visibility control, public verification')
     .addTag('webhooks', 'Outbound HMAC-SHA256 signed event delivery')
     .build();
