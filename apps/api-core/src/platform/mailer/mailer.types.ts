@@ -8,7 +8,9 @@ export type EmailTemplateName =
   | 'application-stage-changed'
   | 'verification-passed'
   | 'verification-failed'
-  | 'verification-locked';
+  | 'verification-locked'
+  | 'work-experience-verifier-invite'
+  | 'work-experience-verifier-reminder';
 
 export interface InviteEmailData {
   readonly fullName: string;
@@ -41,11 +43,51 @@ export interface VerificationEmailData {
   readonly profileUrl: string;
 }
 
+export interface WorkExperienceVerifierInviteEmailData {
+  readonly verifierName: string;
+  readonly candidateName: string;
+  readonly companyName: string;
+  readonly roleTitle: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly verificationUrl: string;
+  readonly expiresAtFormatted: string;
+}
+
+export interface WorkExperienceVerifierReminderEmailData {
+  readonly verifierName: string;
+  readonly candidateName: string;
+  readonly companyName: string;
+  readonly roleTitle: string;
+  readonly verificationUrl: string;
+  readonly expiresAtFormatted: string;
+}
+
 export type EmailTemplateData =
-  InviteEmailData | OpportunityEmailData | StageChangeEmailData | VerificationEmailData;
+  | InviteEmailData
+  | OpportunityEmailData
+  | StageChangeEmailData
+  | VerificationEmailData
+  | WorkExperienceVerifierInviteEmailData
+  | WorkExperienceVerifierReminderEmailData;
 
 export interface EmailJobPayload {
   readonly to: string;
   readonly template: EmailTemplateName;
   readonly data: EmailTemplateData;
 }
+
+export interface WorkExperienceReminderJobPayload {
+  readonly attemptId: string;
+  readonly to: string;
+  readonly template: EmailTemplateName;
+  readonly data: EmailTemplateData;
+}
+
+export interface WorkExperienceExpireJobPayload {
+  readonly attemptId: string;
+  readonly experienceId: string;
+}
+
+export type EmailQueueJobData =
+  EmailJobPayload | WorkExperienceReminderJobPayload | WorkExperienceExpireJobPayload;

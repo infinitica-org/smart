@@ -11,6 +11,11 @@ import {
 import { DeliverableItemDtoSchema } from './catalog.dto.js';
 import { SkillClaimDtoSchema } from './placement.dto.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
+import {
+  ProctoringEventClassSchema,
+  ProctoringSeveritySchema,
+  ProctoringViolationKindSchema,
+} from './proctoring.dto.js';
 
 /**
  * Assessment lifecycle contracts.
@@ -210,23 +215,17 @@ export type CompleteAttemptResponse = z.infer<typeof CompleteAttemptResponseSche
 /* --------------------------- integrity telemetry -------------------------- */
 
 /**
- * Client-reported integrity signals. Advisory only — the server correlates them
- * with response-time analysis before flagging, because a single tab-blur is not
- * cheating and must not void a candidate's attempt.
+ * Client-reported integrity signals. A single tab-blur is not cheating and must
+ * not void an attempt. HMAC fields are required on `/proctoring/violations`.
  */
 export const IntegrityEventSchema = z.object({
   attemptId: UuidSchema,
-  kind: z.enum([
-    'TAB_BLUR',
-    'FULLSCREEN_EXIT',
-    'PASTE_DETECTED',
-    'DEVTOOLS_OPEN',
-    'MULTIPLE_FACES',
-    'NO_FACE',
-    'AUDIO_SILENCE',
-    'NETWORK_LOSS',
-  ]),
+  kind: ProctoringViolationKindSchema,
   occurredAt: IsoDateTimeSchema,
+  severity: ProctoringSeveritySchema.optional(),
+  eventClass: ProctoringEventClassSchema.optional(),
+  nonce: z.string().min(16).max(128).optional(),
+  signature: z.string().min(32).max(128).optional(),
   metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 export type IntegrityEvent = z.infer<typeof IntegrityEventSchema>;

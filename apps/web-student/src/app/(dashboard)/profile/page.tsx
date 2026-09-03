@@ -9,8 +9,9 @@ import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionFor
 import { SkillsSection } from '@/components/profile/SkillsSection';
 import { api } from '@/lib/api';
 import { profileSubtitle } from '@/lib/student-identity';
+import { WorkExperienceSection } from '@/components/profile/WorkExperienceSection';
 
-/** Candidate console profile: CN-T04 skills + CN-T08 project submission. */
+/** Candidate console profile: CN-T04 skills + CN-T08 project submission + Work Experience. */
 export default function ProfilePage() {
   const meQuery = useQuery({
     queryKey: queryKeys.me(),
@@ -37,7 +38,7 @@ export default function ProfilePage() {
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
       <PageHeader
         title="My Profile"
-        subtitle="Skill verification and project submission for the candidate console."
+        subtitle="Profile strength, work experience, skill verification, and project submission for the candidate console."
       />
 
       <Surface className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -64,6 +65,10 @@ export default function ProfilePage() {
           Public preview
           <ChevronRight className="h-4 w-4" />
         </Link>
+      </Surface>
+
+      <Surface>
+        <WorkExperienceSection />
       </Surface>
 
       <Surface>

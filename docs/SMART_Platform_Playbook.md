@@ -407,7 +407,7 @@ The following are explicitly out of engineering's authority to resolve and are t
 
 This playbook is versioned. Any change to a standard in §5 (trust weights, cutoffs, retry policy, matching eligibility bar) must be recorded with the prior value, the new value, and the data or incident that motivated the change — particularly once tier cutoffs and trust weights begin being recalibrated against real placement and mobility outcomes through ORION.
 
-| Date       | Standard     | Prior                | New                                | Why                               |
-| ---------- | ------------ | -------------------- | ---------------------------------- | --------------------------------- |
-| 2026-09-01 | §5.6 retry   | 3 attempts / 90 days | 1 reattempt, 35-day refresh        | Allen — V1 ship lock              |
-| 2026-09-01 | §5.2 profile | licenses omitted     | licenses & certifications required | Allen — missed on profile / parse |
+| Date       | Standard     | Prior                | New                                | Why                                       |
+| ---------- | ------------ | -------------------- | ---------------------------------- | ----------------------------------------- |
+| 2026-09-01 | §5.6 retry   | 3 attempts / 90 days | 1 reattempt, 35-day refresh        | Product Owner — V1 ship lock              |
+| 2026-09-01 | §5.2 profile | licenses omitted     | licenses & certifications required | Product Owner — missed on profile / parse |

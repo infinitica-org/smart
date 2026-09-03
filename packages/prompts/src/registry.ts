@@ -18,6 +18,7 @@ import {
   proficiencyShortAnswerTemplate,
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
+import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 
 /**
  * The prompt registry.
@@ -53,6 +54,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyCodingDesignRubricTemplate,
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
+  workExperienceProofParseTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
