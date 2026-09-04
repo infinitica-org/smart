@@ -279,7 +279,6 @@
   --accent-deep: var(--brand-teal-deep);
   --shadow-card: 0 2px 10px rgb(0 0 0 / 0.25), 0 1px 2px rgb(0 0 0 / 0.2);
   color-scheme: dark;
->>>>>>> origin/main
 }
 
 /* =========================================================
@@ -682,44 +681,20 @@
     color-scheme: dark;
   }
 
-<<<<<<< HEAD
-  /* -------------------------
-     GLOBAL BORDER
-     ------------------------- */
-
-=======
->>>>>>> origin/main
   * {
     @apply border-border;
   }
 
-  /* -------------------------
-     BODY
-     ------------------------- */
-
   body {
     background-color: var(--background);
     color: var(--foreground);
-
     font-family: var(--font-sans);
-<<<<<<< HEAD
-
     font-weight: 400;
-
-=======
-    font-weight: 400;
->>>>>>> origin/main
     letter-spacing: 0;
-
     line-height: 1.6;
-
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-
-  /* -------------------------
-     HEADINGS
-     ------------------------- */
 
   h1,
   h2,
@@ -729,189 +704,38 @@
   h6,
   .font-heading {
     font-family: var(--font-heading);
-<<<<<<< HEAD
-
-    font-weight: 700;
-
-    letter-spacing: -0.02em;
-
-    line-height: 1.2;
-
-=======
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
->>>>>>> origin/main
     color: var(--text-primary);
   }
 
-  /* -------------------------
-     PARAGRAPH
-     ------------------------- */
-
   p {
     font-family: var(--font-sans);
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
     font-weight: 400;
   }
 
-  /* -------------------------
-     HR
-     ------------------------- */
-
   hr {
     border: 0;
-
     border-top: 1px solid var(--surface-border);
   }
 
-<<<<<<< HEAD
-  /* -------------------------
-     SELECT
-     ------------------------- */
-
-  select {
-    @apply h-10
-      rounded-xl
-      border
-      border-border
-      bg-muted
-      px-3
-      text-sm
-      text-foreground
-      outline-none;
-  }
-
-  /* -------------------------
-     FOCUS
-     ------------------------- */
-
-  :focus-visible {
-    outline: 2px solid #00fad0;
-
-    outline-offset: 2px;
-  }
-
-  /* -------------------------
-     REDUCED MOTION
-     ------------------------- */
-
-=======
   select {
     @apply h-10 rounded-xl border border-border bg-muted px-3 text-sm text-foreground outline-none;
   }
 
->>>>>>> origin/main
+  :focus-visible {
+    outline: 2px solid #00fad0;
+    outline-offset: 2px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
-
       transition-duration: 0.01ms !important;
     }
-  }
-}
-
-<<<<<<< HEAD
-/* =========================================================
-   COMPONENTS
-   ========================================================= */
-
-@layer components {
-  /* =======================================================
-     STANDARD PANEL
-     ========================================================= */
-
-  .surface-panel {
-    @apply rounded-3xl
-      border
-      border-border
-      bg-card
-      text-card-foreground;
-
-    box-shadow: var(--shadow-card);
-  }
-
-  /* =======================================================
-     BRAND GRADIENT
-     ======================================================= */
-
-  .brand-gradient {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
-  }
-
-  /* =======================================================
-     BRAND TEXT
-     ======================================================= */
-
-  .brand-text {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
-
-    background-clip: text;
-    -webkit-background-clip: text;
-
-    color: transparent;
-  }
-
-  /* =======================================================
-     STATUS
-     ======================================================= */
-
-  .status-green {
-    background: var(--color-green-soft);
-
-    color: var(--color-green-dark);
-  }
-
-  .status-yellow {
-    background: var(--color-yellow-soft);
-
-    color: var(--color-yellow-dark);
-  }
-
-  .status-red {
-    background: var(--color-red-soft);
-
-    color: var(--color-red-dark);
-  }
-
-  .status-info {
-    background: var(--color-info-soft);
-
-    color: var(--color-info-dark);
-  }
-
-  .status-purple {
-    background: var(--color-purple-soft);
-
-    color: var(--color-purple-dark);
-  }
-
-  /* =======================================================
-     SIMPLE COLOR HELPERS
-     ======================================================= */
-
-  .bg-gradient {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
-  }
-
-  /* =======================================================
-     DASHBOARD HIGHLIGHT
-     ======================================================= */
-
-  .dashboard-highlight {
-    background: var(--color-purple-soft);
-
-    color: var(--color-purple-dark);
-=======
-  :focus-visible {
-    outline: 2px solid var(--color-brand-500);
-    outline-offset: 2px;
->>>>>>> origin/main
   }
 }
 
@@ -919,5 +743,43 @@
   .surface-panel {
     @apply rounded-3xl border border-border bg-card text-card-foreground;
     box-shadow: var(--shadow-card);
+  }
+
+  .brand-gradient,
+  .bg-gradient {
+    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
+  }
+
+  .brand-text {
+    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .status-green {
+    background: var(--color-green-soft);
+    color: var(--color-green-dark);
+  }
+
+  .status-yellow {
+    background: var(--color-yellow-soft);
+    color: var(--color-yellow-dark);
+  }
+
+  .status-red {
+    background: var(--color-red-soft);
+    color: var(--color-red-dark);
+  }
+
+  .status-info {
+    background: var(--color-info-soft);
+    color: var(--color-info-dark);
+  }
+
+  .status-purple,
+  .dashboard-highlight {
+    background: var(--color-purple-soft);
+    color: var(--color-purple-dark);
   }
 }
