@@ -5,6 +5,7 @@ import {
   ProjectSubmittedDataSchema,
   SMART_TOPICS,
   UuidSchema,
+  type ListMyProjectsResponse,
   type ProjectDto,
 } from '@smart/contracts';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -20,6 +21,7 @@ interface ProjectRow {
   outcome: string;
   loomUrl: string | null;
   githubUrl: string | null;
+  liveUrl: string | null;
   status: string;
   createdAt: Date;
 }
@@ -49,6 +51,7 @@ export class ProjectsService {
         outcome: request.outcome,
         loomUrl: request.loomUrl ?? null,
         githubUrl,
+        liveUrl: request.liveUrl ?? null,
         status: 'SUBMITTED',
       },
     });
@@ -63,6 +66,14 @@ export class ProjectsService {
 
     this.logger.log(`Project ${row.id} queued on ${SMART_TOPICS.projectSubmitted}`);
     return toProjectDto(row);
+  }
+
+  async listMine(studentId: string): Promise<ListMyProjectsResponse> {
+    const rows = await this.prisma.project.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { projects: rows.map((row) => toProjectDto(row)) };
   }
 
   async getForStudent(studentId: string, projectId: string): Promise<ProjectDto> {
@@ -97,6 +108,7 @@ export function toProjectDto(row: ProjectRow): ProjectDto {
     outcome: row.outcome,
     loomUrl: row.loomUrl,
     githubUrl: row.githubUrl,
+    liveUrl: row.liveUrl,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     report: null,

@@ -186,6 +186,15 @@ enum SkillClaimStatus {
   LOCKED
 }
 
+/// CN-T01 — where a SkillClaim's initial declaration came from. GITHUB_DERIVED
+/// claims are auto-declared (BEGINNER only) from onboarding GitHub language
+/// analysis; they still go through the same verification state machine as a
+/// manually declared claim.
+enum SkillClaimSource {
+  MANUAL
+  GITHUB_DERIVED
+}
+
 enum JobOpeningStatus {
   DRAFT
   OPEN
@@ -314,6 +323,8 @@ model User {
   /// Structured onboarding profile + consent snapshot (JSON).
   onboardingDetails   Json?    @map("onboarding_details")
   dpdpConsentAt       DateTime? @map("dpdp_consent_at") @db.Timestamptz(6)
+  /// Persistent, non-expiring public-profile share link (lazily minted on first request).
+  publicProfileSlug   String?  @unique @map("public_profile_slug")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens       RefreshToken[]
@@ -758,6 +769,9 @@ model SkillClaim {
   skill          Skill            @relation(fields: [skillId], references: [id])
   proficiency    SkillProficiency
   status         SkillClaimStatus @default(DECLARED)
+  source         SkillClaimSource @default(MANUAL)
+  /// GITHUB_DERIVED provenance, e.g. { language, byteShare, repoCount }. Null for MANUAL.
+  sourceMetadata Json?            @map("source_metadata")
   strikes        Int              @default(0)
   lockedUntil    DateTime?        @map("locked_until") @db.Timestamptz(6)
   verifiedUntil  DateTime?        @map("verified_until") @db.Timestamptz(6)
@@ -804,6 +818,7 @@ model Project {
   outcome     String
   loomUrl     String?       @map("loom_url")
   githubUrl   String?       @map("github_url")
+  liveUrl     String?       @map("live_url")
   status      ProjectStatus @default(SUBMITTED)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 

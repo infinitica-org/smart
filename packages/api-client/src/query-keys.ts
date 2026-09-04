@@ -16,6 +16,7 @@ export const queryKeys = {
   /* ------------------------------- identity ------------------------------- */
   me: () => ['me'] as const,
   myTracks: () => ['me', 'tracks'] as const,
+  myNotifications: () => ['me', 'notifications'] as const,
 
   /* -------------------------------- catalog ------------------------------- */
   catalog: () => ['catalog'] as const,

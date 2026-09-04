@@ -147,6 +147,7 @@ export const CreateProjectRequestSchema = z.object({
   outcome: z.string().min(20).max(8_000),
   loomUrl: z.url().optional(),
   githubUrl: z.url().optional(),
+  liveUrl: z.url().optional(),
   githubRepos: z.array(GithubRepoRefSchema).max(PROJECT_VERIFY_REPO_MAX).default([]),
 });
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
@@ -190,11 +191,18 @@ export const ProjectDtoSchema = z.object({
   outcome: z.string(),
   loomUrl: z.string().nullable(),
   githubUrl: z.string().nullable(),
+  liveUrl: z.string().nullable(),
   status: ProjectStatusSchema,
   createdAt: IsoDateTimeSchema,
   report: ProjectVerificationReportDtoSchema.nullable(),
 });
 export type ProjectDto = z.infer<typeof ProjectDtoSchema>;
+
+/** CN-T08 — a candidate's own submitted projects, newest first. */
+export const ListMyProjectsResponseSchema = z.object({
+  projects: z.array(ProjectDtoSchema),
+});
+export type ListMyProjectsResponse = z.infer<typeof ListMyProjectsResponseSchema>;
 
 export const ProjectReviewQueueItemDtoSchema = z.object({
   projectId: UuidSchema,

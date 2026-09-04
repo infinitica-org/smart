@@ -67,6 +67,26 @@ const EnvSchema = z.object({
   S3_ACCESS_KEY: z.string().default('smart'),
   S3_SECRET_KEY: z.string().default('smartsecret'),
 
+  /**
+   * CN-T01 GitHub identity/repo-picker proxy. Unauthenticated GitHub REST calls
+   * are capped at 60/hr per source IP — far too low once real traffic hits this
+   * endpoint. Setting a PAT (no scopes needed, public data only) raises that to
+   * 5,000/hr. No user-facing GitHub OAuth: we only ever read public data.
+   */
+  GITHUB_API_TOKEN: z.string().optional(),
+
+  /**
+   * CN-T01 LinkedIn identity verification. LinkedIn has no public profile-
+   * scraping API, so verification is the compliant "Sign in with LinkedIn"
+   * OIDC flow (scope: openid profile email) — never scraping the pasted URL.
+   */
+  LINKEDIN_CLIENT_ID: z.string().optional(),
+  LINKEDIN_CLIENT_SECRET: z.string().optional(),
+  /** Must exactly match the redirect URI registered on the LinkedIn app. */
+  LINKEDIN_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/api/v1/users/onboarding/linkedin/callback'),
+
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),

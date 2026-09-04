@@ -107,6 +107,12 @@ export const InstitutionStudentDtoSchema = z.object({
 });
 export type InstitutionStudentDto = z.infer<typeof InstitutionStudentDtoSchema>;
 
+/** TPO "copy invite link" action — the raw URL is never persisted, only ever returned here to copy. */
+export const StudentInviteLinkResponseSchema = z.object({
+  inviteUrl: z.string(),
+});
+export type StudentInviteLinkResponse = z.infer<typeof StudentInviteLinkResponseSchema>;
+
 export const GlobalStudentSearchQuerySchema = z.object({
   q: z.string().trim().min(3).max(200),
 });

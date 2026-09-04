@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { cn } from '@smart/ui';
-import { ATS_STAGES, type AtsStage } from '@/lib/candidate-dashboard-data';
 
 export function PageHeader({
   title,
@@ -89,31 +88,6 @@ export function KpiPill({
           />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-export function AtsStageBar({
-  stage,
-  showLabels = true,
-}: {
-  stage: AtsStage;
-  showLabels?: boolean;
-}) {
-  const current = ATS_STAGES.indexOf(stage);
-  return (
-    <div className="flex w-full gap-1.5">
-      {ATS_STAGES.map((label, idx) => {
-        const done = idx <= current;
-        return (
-          <div key={label} className="min-w-0 flex-1">
-            <div className={cn('h-1.5 rounded-full', done ? 'bg-[#00fad0]' : 'bg-white/[0.08]')} />
-            {showLabels ? (
-              <p className="mt-2 hidden truncate text-[10px] text-white/30 sm:block">{label}</p>
-            ) : null}
-          </div>
-        );
-      })}
     </div>
   );
 }

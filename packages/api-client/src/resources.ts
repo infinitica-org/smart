@@ -4,10 +4,14 @@ import type {
   CompleteCandidateOnboardingRequest,
   CreateProjectRequest,
   DeclareSkillClaimRequest,
+  FetchGithubProfileRequest,
+  GithubRepoReadmeRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
+  ListGithubReposRequest,
   ParseResumeRequest,
+  RepoLanguagesRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
   TenantActionReason,
@@ -36,6 +40,8 @@ import {
   CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
+  FetchGithubProfileResponseSchema,
+  GithubRepoReadmeResponseSchema,
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
@@ -44,13 +50,22 @@ import {
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
+  LinkedinOauthUrlResponseSchema,
+  ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
+  ListMyProjectsResponseSchema,
+  ListNotificationsResponseSchema,
   NextItemDtoSchema,
+  NotificationDtoSchema,
+  PublicCandidateProfileDtoSchema,
+  PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
+  RepoLanguagesResponseSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
   SsoStartResponseSchema,
+  StudentInviteLinkResponseSchema,
   SubscriptionPlanDtoSchema,
   TenantEntitlementsDtoSchema,
   TrackDtoSchema,
@@ -168,6 +183,42 @@ export function usersApi(client: SmartApiClient) {
     completeOnboarding: (body: CompleteCandidateOnboardingRequest) =>
       client.post(prefixed('/users/me/onboarding/complete'), body, {
         schema: AuthenticatedUserSchema,
+      }),
+
+    /** Begins "Sign in with LinkedIn" (OIDC) — open the returned URL to verify. */
+    linkedinOauthUrl: () =>
+      client.get(prefixed('/users/me/onboarding/linkedin/oauth-url'), {
+        schema: LinkedinOauthUrlResponseSchema,
+      }),
+
+    fetchGithubProfile: (body: FetchGithubProfileRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/fetch-profile'), body, {
+        schema: FetchGithubProfileResponseSchema,
+      }),
+
+    listGithubRepos: (body: ListGithubReposRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/list-repos'), body, {
+        schema: ListGithubReposResponseSchema,
+      }),
+
+    githubRepoLanguages: (body: RepoLanguagesRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/repo-languages'), body, {
+        schema: RepoLanguagesResponseSchema,
+      }),
+
+    githubRepoReadme: (body: GithubRepoReadmeRequest) =>
+      client.post(prefixed('/users/me/github/repo-readme'), body, {
+        schema: GithubRepoReadmeResponseSchema,
+      }),
+
+    getPublicProfileLink: () =>
+      client.get(prefixed('/users/me/public-profile-link'), {
+        schema: PublicProfileLinkResponseSchema,
+      }),
+
+    getMyPublicProfile: () =>
+      client.get(prefixed('/users/me/public-profile'), {
+        schema: PublicCandidateProfileDtoSchema,
       }),
 
     listWorkExperiences: () =>
@@ -417,6 +468,12 @@ export function onboardingApi(client: SmartApiClient) {
         schema: InstitutionStudentDtoSchema,
       }),
 
+    /** Mints a fresh invite link to copy and share offline — never emailed, never displayed. */
+    getStudentInviteLink: (userId: string) =>
+      client.post(prefixed(`/tpo/students/${userId}/invite-link`), undefined, {
+        schema: StudentInviteLinkResponseSchema,
+      }),
+
     inviteInstitutionAdmin: (institutionId: string, body: { fullName: string; email: string }) =>
       client.post(prefixed(`/admin/institutions/${institutionId}/admins`), body, {
         schema: InstitutionAdminDtoSchema,
@@ -658,11 +715,37 @@ export function placementApi(client: SmartApiClient) {
 
 export function projectsApi(client: SmartApiClient) {
   return {
+    listMine: () => client.get(prefixed('/projects'), { schema: ListMyProjectsResponseSchema }),
+
     create: (body: CreateProjectRequest) =>
       client.post(prefixed('/projects'), body, { schema: ProjectDtoSchema }),
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+  };
+}
+
+export function notificationsApi(client: SmartApiClient) {
+  return {
+    list: () =>
+      client.get(prefixed('/me/notifications'), { schema: ListNotificationsResponseSchema }),
+
+    markRead: (notificationId: string) =>
+      client.request({
+        method: 'PATCH',
+        path: prefixed(`/me/notifications/${notificationId}/read`),
+        schema: NotificationDtoSchema,
+      }),
+  };
+}
+
+export function publicApi(client: SmartApiClient) {
+  return {
+    getCandidateProfile: (slug: string) =>
+      client.get(prefixed(`/public/candidates/${slug}`), {
+        schema: PublicCandidateProfileDtoSchema,
+        anonymous: true,
+      }),
   };
 }
 
@@ -687,6 +770,8 @@ export function createSmartApi(client: SmartApiClient) {
     placement: placementApi(client),
     onboarding: onboardingApi(client),
     projects: projectsApi(client),
+    notifications: notificationsApi(client),
+    public: publicApi(client),
     system: systemApi(client),
   };
 }

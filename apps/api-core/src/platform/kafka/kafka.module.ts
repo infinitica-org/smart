@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { AssessmentModule } from '../../modules/assessment/assessment.module.js';
 import { CertificateModule } from '../../modules/certificate/certificate.module.js';
 import { NotificationsModule } from '../../modules/notifications/notifications.module.js';
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module.js';
@@ -7,6 +8,7 @@ import { ApplicationStageChangedConsumer } from './application-stage-changed.con
 import { AssessmentSubmittedConsumer } from './assessment-submitted.consumer.js';
 import { AssessmentSubmittedEvalConsumer } from '../../modules/evaluation/assessment-submitted-eval.consumer.js';
 import { AuditRecordedConsumer } from './audit-recorded.consumer.js';
+import { CandidateSkillsDiscoveredConsumer } from '../../modules/assessment/candidate-skills-discovered.consumer.js';
 import { EvalCompletedConsumer } from '../../modules/certificate/eval-completed.consumer.js';
 import { InvitationSentConsumer } from './invitation-sent.consumer.js';
 import { KafkaOutboxService } from './kafka-outbox.service.js';
@@ -16,7 +18,7 @@ import { WebhookDispatchConsumer } from './webhook-dispatch.consumer.js';
 
 @Global()
 @Module({
-  imports: [NotificationsModule, WebhooksModule, CertificateModule],
+  imports: [NotificationsModule, WebhooksModule, CertificateModule, AssessmentModule],
   providers: [
     KafkaService,
     KafkaOutboxService,
@@ -29,6 +31,7 @@ import { WebhookDispatchConsumer } from './webhook-dispatch.consumer.js';
     AiCompletionRecordedConsumer,
     EvalCompletedConsumer,
     WebhookDispatchConsumer,
+    CandidateSkillsDiscoveredConsumer,
   ],
   exports: [KafkaService, KafkaOutboxService],
 })

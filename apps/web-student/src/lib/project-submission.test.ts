@@ -14,6 +14,7 @@ const valid = {
   outcome: 'Average wait time dropped in a 30-student pilot.',
   loomUrl: 'https://www.loom.com/share/abc123',
   githubUrl: '',
+  liveUrl: '',
 };
 
 describe('buildCreateProjectRequest', () => {
@@ -42,6 +43,7 @@ describe('processing state', () => {
       outcome: valid.outcome,
       loomUrl: valid.loomUrl,
       githubUrl: null,
+      liveUrl: null,
       status: 'SUBMITTED',
       createdAt: '2026-09-02T10:00:00.000Z',
       report: null,
