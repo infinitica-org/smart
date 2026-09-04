@@ -94,6 +94,60 @@ function normalizeCompanyName(name: string | null | undefined): string {
     .trim();
 }
 
+export function extractDomain(urlOrEmail: string | null | undefined): string | null {
+  if (!urlOrEmail || typeof urlOrEmail !== 'string') return null;
+  const trimmed = urlOrEmail.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  let hostname = '';
+  if (trimmed.includes('@')) {
+    hostname = trimmed.split('@').pop() || '';
+  } else {
+    try {
+      const withProtocol = trimmed.match(/^https?:\/\//i) ? trimmed : `https://${trimmed}`;
+      const url = new URL(withProtocol);
+      hostname = url.hostname;
+    } catch {
+      const firstPart = trimmed.split('/')[0] || '';
+      hostname = firstPart.split(':')[0] || '';
+    }
+  }
+
+  hostname = hostname.replace(/^www\./, '').trim();
+  return hostname || null;
+}
+
+export function validateEmployerDomain(
+  verifierEmail: string | null | undefined,
+  companyWebsite: string | null | undefined,
+): {
+  verifierDomain: string | null;
+  companyDomain: string | null;
+  domainMatch: boolean;
+} {
+  const verifierDomain = extractDomain(verifierEmail);
+  const companyDomain = extractDomain(companyWebsite);
+
+  if (!verifierDomain || !companyDomain) {
+    return {
+      verifierDomain,
+      companyDomain,
+      domainMatch: false,
+    };
+  }
+
+  const domainMatch =
+    verifierDomain === companyDomain ||
+    verifierDomain.endsWith(`.${companyDomain}`) ||
+    companyDomain.endsWith(`.${verifierDomain}`);
+
+  return {
+    verifierDomain,
+    companyDomain,
+    domainMatch,
+  };
+}
+
 @Injectable()
 export class WorkExperienceService {
   readonly owner = 'Vishal V';
@@ -546,28 +600,35 @@ export class WorkExperienceService {
 
     let validationStatus: 'VALIDATED' | 'REJECTED' = 'VALIDATED';
     let rejectionReason: string | null = null;
+    let reasonCode = 'PROOF_VALIDATED';
 
     if (isOfferLetter) {
       validationStatus = 'REJECTED';
       rejectionReason =
-        'Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
+        'INVALID_DOCUMENT_TYPE: Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
+      reasonCode = 'INVALID_DOCUMENT_TYPE';
     } else if (!isActualEmploymentProof) {
       validationStatus = 'REJECTED';
       rejectionReason =
         'Uploaded document does not establish proof of actual or completed employment.';
+      reasonCode = 'PROOF_REJECTED';
     } else if (!companyNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document company name (${extracted.companyName ?? 'Unknown'}) does not match submitted company (${experience.companyName}).`;
+      reasonCode = 'PROOF_REJECTED';
     } else if (!candidateNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document candidate name (${extracted.candidateName ?? 'Unknown'}) does not match student name (${user?.fullName ?? 'Student'}).`;
+      reasonCode = 'PROOF_REJECTED';
     } else if (!roleMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document role (${extracted.role ?? 'Unknown'}) does not match submitted role (${experience.role}).`;
+      reasonCode = 'PROOF_REJECTED';
     } else if (!dateMatch) {
       validationStatus = 'REJECTED';
       rejectionReason =
         'Document employment dates could not be verified against submitted experience dates.';
+      reasonCode = 'PROOF_REJECTED';
     }
 
     const validatedAt = new Date().toISOString();
@@ -609,7 +670,7 @@ export class WorkExperienceService {
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperienceDocument',
       resourceId: documentId,
-      reasonCode: validationStatus === 'REJECTED' ? 'PROOF_REJECTED' : 'PROOF_VALIDATED',
+      reasonCode,
     });
 
     return ValidateWorkExperienceProofResponseSchema.parse({
@@ -794,6 +855,8 @@ export class WorkExperienceService {
       );
     }
 
+    const domainValidation = validateEmployerDomain(exp.verifierEmail, exp.companyWebsite);
+
     const rawToken = randomBytes(32).toString('hex');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
@@ -874,6 +937,9 @@ export class WorkExperienceService {
       metadata: {
         attemptId: attempt.id,
         verifierEmail: exp.verifierEmail,
+        verifierDomain: domainValidation.verifierDomain,
+        companyDomain: domainValidation.companyDomain,
+        domainMatch: domainValidation.domainMatch,
       },
     });
 
