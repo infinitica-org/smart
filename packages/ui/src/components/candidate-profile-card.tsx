@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import type { Tier } from '@smart/contracts';
-import { Mail, Phone, ExternalLink, MonitorPlay } from 'lucide-react';
+import { Mail, Phone, ExternalLink, MonitorPlay, Brain, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { TierBadge } from './badge';
 import { VerificationBadge } from './verification-badge';
@@ -41,6 +41,26 @@ function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+export function getLoomEmbedUrl(url?: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('loom.com')) {
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (
+        parts.length >= 2 &&
+        (parts[0] === 'share' || parts[0] === 'watch' || parts[0] === 'embed')
+      ) {
+        const videoId = parts[1];
+        return `https://www.loom.com/embed/${videoId}`;
+      }
+    }
+  } catch {
+    // Return null if parsing fails
+  }
+  return null;
+}
+
 export interface CandidateSkill {
   name: string;
   status:
@@ -62,6 +82,14 @@ export interface CandidateProject {
   stack: string[];
   loomUrl?: string;
   githubUrl?: string;
+}
+
+export interface CognitiveCommSummary {
+  cognitiveScore?: number; // 0 - 100 or percentile
+  cognitiveStrengths?: string[];
+  communicationScore?: number; // 0 - 100
+  communicationSummary?: string;
+  overallNotes?: string;
 }
 
 export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement> {
@@ -90,6 +118,8 @@ export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement
     tone?: 'brand' | 'info' | 'warning' | 'success' | 'danger';
   };
 
+  cognitiveCommSummary?: CognitiveCommSummary;
+
   projects?: CandidateProject[];
 
   actions?: ReactNode;
@@ -104,6 +134,7 @@ export function CandidateProfileCard({
   contactInfo,
   academicDetails,
   aiExplanation,
+  cognitiveCommSummary,
   projects,
   actions,
   className,
@@ -243,6 +274,77 @@ export function CandidateProfileCard({
         </div>
       )}
 
+      {/* Cognitive & Communication Summary Section */}
+      {cognitiveCommSummary && (
+        <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
+          <span className="block text-2xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+            Cognitive & Communication Profile
+          </span>
+          <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* Cognitive Summary */}
+            <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface)] p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                  <Brain className="h-3.5 w-3.5 text-purple-400" aria-hidden="true" />
+                  <span>Cognitive Strengths</span>
+                </div>
+                {cognitiveCommSummary.cognitiveScore !== undefined && (
+                  <span className="rounded bg-purple-500/10 px-1.5 py-0.5 font-mono text-3xs font-bold text-purple-300 border border-purple-500/20">
+                    {cognitiveCommSummary.cognitiveScore}%
+                  </span>
+                )}
+              </div>
+              {cognitiveCommSummary.cognitiveStrengths &&
+              cognitiveCommSummary.cognitiveStrengths.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {cognitiveCommSummary.cognitiveStrengths.map((strength, i) => (
+                    <span
+                      key={i}
+                      className="rounded bg-purple-500/10 px-1.5 py-0.5 text-3xs font-medium text-purple-200 border border-purple-500/20"
+                    >
+                      {strength}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                  Verified problem-solving capability.
+                </p>
+              )}
+            </div>
+
+            {/* Communication Summary */}
+            <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface)] p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
+                  <span>Communication & Defense</span>
+                </div>
+                {cognitiveCommSummary.communicationScore !== undefined && (
+                  <span className="rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-3xs font-bold text-blue-300 border border-blue-500/20">
+                    {cognitiveCommSummary.communicationScore}%
+                  </span>
+                )}
+              </div>
+              {cognitiveCommSummary.communicationSummary ? (
+                <p className="mt-1.5 text-xs text-[var(--text-muted)] leading-relaxed">
+                  {cognitiveCommSummary.communicationSummary}
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                  Verified technical articulation & presentation.
+                </p>
+              )}
+            </div>
+          </div>
+          {cognitiveCommSummary.overallNotes && (
+            <p className="mt-2 text-xs text-[var(--text-muted)] italic leading-relaxed">
+              {cognitiveCommSummary.overallNotes}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Verified Projects */}
       {projects && projects.length > 0 && (
         <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
@@ -250,55 +352,71 @@ export function CandidateProfileCard({
             Verified Projects
           </span>
           <div className="mt-3 space-y-3">
-            {projects.map((project, index) => (
-              <div
-                key={index}
-                className="rounded-md border border-[var(--surface-border)] bg-[var(--surface)] p-3"
-              >
-                <h4 className="font-heading text-sm font-extrabold text-[var(--text-primary)]">
-                  {project.title}
-                </h4>
-                <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">
-                  {project.description}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {project.stack.map((tech) => (
-                    <span
-                      key={tech}
-                      className="rounded-[4px] bg-[var(--surface-muted)] border border-[var(--surface-border)] px-1.5 py-0.5 text-3xs font-mono text-[var(--text-primary)]"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-                {(project.loomUrl || project.githubUrl) && (
-                  <div className="mt-3 flex items-center gap-3 text-2xs font-semibold">
-                    {project.loomUrl && (
-                      <a
-                        href={project.loomUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-[var(--accent)] hover:underline"
+            {projects.map((project, index) => {
+              const embedUrl = getLoomEmbedUrl(project.loomUrl);
+              return (
+                <div
+                  key={index}
+                  className="rounded-md border border-[var(--surface-border)] bg-[var(--surface)] p-3"
+                >
+                  <h4 className="font-heading text-sm font-extrabold text-[var(--text-primary)]">
+                    {project.title}
+                  </h4>
+                  <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">
+                    {project.description}
+                  </p>
+
+                  {embedUrl && (
+                    <div className="mt-3 aspect-video w-full overflow-hidden rounded-md border border-[var(--surface-border)] bg-black/40 relative">
+                      <iframe
+                        src={embedUrl}
+                        title={`Project video: ${project.title}`}
+                        className="absolute inset-0 h-full w-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {project.stack.map((tech) => (
+                      <span
+                        key={tech}
+                        className="rounded-[4px] bg-[var(--surface-muted)] border border-[var(--surface-border)] px-1.5 py-0.5 text-3xs font-mono text-[var(--text-primary)]"
                       >
-                        <MonitorPlay className="h-3.5 w-3.5" />
-                        Watch Loom Preview
-                      </a>
-                    )}
-                    {project.githubUrl && (
-                      <a
-                        href={project.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline"
-                      >
-                        <GithubIcon className="h-3.5 w-3.5" />
-                        Repository
-                      </a>
-                    )}
+                        {tech}
+                      </span>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
+                  {(project.loomUrl || project.githubUrl) && (
+                    <div className="mt-3 flex items-center gap-3 text-2xs font-semibold">
+                      {project.loomUrl && (
+                        <a
+                          href={project.loomUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-[var(--accent)] hover:underline"
+                        >
+                          <MonitorPlay className="h-3.5 w-3.5" />
+                          Watch Loom Preview
+                        </a>
+                      )}
+                      {project.githubUrl && (
+                        <a
+                          href={project.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline"
+                        >
+                          <GithubIcon className="h-3.5 w-3.5" />
+                          Repository
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
