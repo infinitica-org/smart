@@ -10,26 +10,24 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Free org plan: hosted minutes are billed per job. Four parallel pnpm installs
+# used ~4× the install time. One job = one install. See
+# docs/delivery/GITHUB_ACTIONS_FREE.md
 jobs:
-  lockfile:
-    name: lockfile
+  ci:
+    name: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - name: Workspace packages must be in pnpm-lock.yaml
-        run: node scripts/check-lockfile.mjs
-
-  merge-base:
-    name: merge-main
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Must merge origin/main without conflicts
+
+      - name: lockfile
+        run: node scripts/check-lockfile.mjs
+
+      - name: merge-main
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
         run: |
           set -euo pipefail
           git fetch --no-tags origin main
@@ -39,56 +37,22 @@ jobs:
             exit 1
           fi
 
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [lockfile]
-    steps:
-      - uses: actions/checkout@v5
+      - name: compose config
+        run: docker compose -f infra/docker/docker-compose.yml --profile apps --env-file .env.example config
+
       - uses: ./.github/actions/setup-node-pnpm
-      - name: Lint
+
+      - name: lint
         run: pnpm lint
-      - name: Format check
+
+      - name: format
         run: pnpm format:check
 
-  typecheck:
-    name: typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [lockfile]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-node-pnpm
-      - name: Typecheck
+      - name: typecheck
         run: pnpm typecheck
 
-  unit-tests:
-    name: unit tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [lockfile]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-node-pnpm
-      - name: Unit tests (Vitest)
+      - name: unit tests
         run: pnpm test:unit
 
-  build:
-    name: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    needs: [lockfile]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-node-pnpm
-      - name: Build
+      - name: build
         run: pnpm build
-
-  compose:
-    name: compose config
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - run: docker compose -f infra/docker/docker-compose.yml --profile apps --env-file .env.example config

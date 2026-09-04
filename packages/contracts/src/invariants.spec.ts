@@ -290,7 +290,7 @@ describe('sprint 3 MMP placement contracts', () => {
     expect(SKILL_CLAIM_STATUSES).toEqual(['DECLARED', 'VERIFIED', 'BEGINNER_REATTEMPT', 'LOCKED']);
   });
 
-  it('locks Allen retry policy: one reattempt, 35-day refresh', () => {
+  it('locks Product Owner retry policy: one reattempt, 35-day refresh', () => {
     expect(SKILL_REATTEMPTS).toBe(1);
     expect(SKILL_MAX_ATTEMPTS).toBe(2);
     expect(SKILL_REFRESH_DAYS).toBe(35);
@@ -455,5 +455,19 @@ describe('SE-T03 project verification contracts', () => {
     expect(SMART_TOPICS.projectVerifyCompleted).toBe('smart.project.verify.completed');
     expect(getTopicSpec(SMART_TOPICS.projectVerifyCompleted).producerModule).toBe('evaluation');
     expect(getTopicSpec(SMART_TOPICS.evalCompleted).purpose).toMatch(/certificate/i);
+  });
+});
+
+describe('proctoring routes (S4-RM-01)', () => {
+  it('registers student telemetry with a dedicated policy', () => {
+    expect(ROUTES.find((entry) => entry.path === '/proctoring/violations')).toMatchObject({
+      method: 'POST',
+      module: 'proctoring',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'proctoring.telemetry',
+    });
+    expect(getRateLimitPolicy('proctoring.telemetry').limit).toBe(40);
+    expect(getTopicSpec(SMART_TOPICS.proctoringSnapshotReady).producerModule).toBe('proctoring');
   });
 });

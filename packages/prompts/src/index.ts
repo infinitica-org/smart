@@ -28,5 +28,6 @@ export * from './templates/gap-report.js';
 export * from './templates/skill-interview.js';
 export * from './templates/proficiency-grading.js';
 export * from './templates/project-verify.js';
+export * from './templates/work-experience-proof-parsing.js';
 
 export const PROMPTS_VERSION = '0.1.0';

@@ -11,8 +11,8 @@ import type {
 const ROLE_TO_MODEL: Record<AiModelRole, string> = {
   PRIMARY_REASONING: 'anthropic/claude-3.5-sonnet',
   FAST_EXTRACTION: 'anthropic/claude-3.5-haiku',
-  FALLBACK_REASONING: 'google/gemini-2.5-pro',
-  FALLBACK_FAST: 'google/gemini-2.5-flash',
+  FALLBACK_REASONING: 'google/gemini-3.5-flash-lite',
+  FALLBACK_FAST: 'google/gemini-3.5-flash-lite',
   EMBEDDING: 'openai/text-embedding-3-small',
 };
 

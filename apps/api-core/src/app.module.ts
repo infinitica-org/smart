@@ -20,10 +20,12 @@ import { InstitutionsModule } from './modules/institutions/institutions.module.j
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PlacementModule } from './modules/placement/placement.module.js';
+import { ProctoringModule } from './modules/proctoring/proctoring.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
+import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
 import { CandidateCertificatesModule } from './modules/candidate-certificates/candidate-certificates.module.js';
 import { ConfigModule } from './platform/config/config.module.js';
@@ -58,6 +60,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,
     AssessmentModule,
@@ -69,6 +72,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     MatchingModule,
     NotificationsModule,
     PlacementModule,
+    ProctoringModule,
     ProjectsModule,
     AnalyticsModule,
     WebhooksModule,

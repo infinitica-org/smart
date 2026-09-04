@@ -8,12 +8,13 @@ import type {
   ModelCompletionResult,
   ProviderHealthResult,
 } from '../ai-gateway.interface.js';
+import { coerceGoogleStructuredOutput } from './google.output-coerce.js';
 
 const ROLE_TO_MODEL: Record<AiModelRole, string> = {
-  PRIMARY_REASONING: 'gemini-2.5-pro',
-  FAST_EXTRACTION: 'gemini-2.5-flash',
-  FALLBACK_REASONING: 'gemini-2.5-pro',
-  FALLBACK_FAST: 'gemini-2.5-flash',
+  PRIMARY_REASONING: 'gemini-3.5-flash-lite',
+  FAST_EXTRACTION: 'gemini-3.5-flash-lite',
+  FALLBACK_REASONING: 'gemini-3.5-flash-lite',
+  FALLBACK_FAST: 'gemini-3.5-flash-lite',
   EMBEDDING: 'text-embedding-004',
 };
 
@@ -68,7 +69,7 @@ export class GoogleAdapter implements AiProviderAdapter {
       throw new Error('Google GenAI client is not configured (missing GOOGLE_AI_API_KEY).');
     }
 
-    const model = ROLE_TO_MODEL[options.modelRole] ?? 'gemini-2.5-flash';
+    const model = ROLE_TO_MODEL[options.modelRole] ?? 'gemini-3.5-flash-lite';
     const start = Date.now();
 
     const response = await this.client.models.generateContent({
@@ -88,7 +89,7 @@ export class GoogleAdapter implements AiProviderAdapter {
     let output: unknown = rawText;
     if (options.outputSchema) {
       try {
-        const parsed = JSON.parse(rawText);
+        const parsed = coerceGoogleStructuredOutput(JSON.parse(rawText));
         output = options.outputSchema.parse(parsed);
       } catch (parseErr) {
         throw new Error(

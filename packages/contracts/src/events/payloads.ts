@@ -397,6 +397,16 @@ export const ProjectVerifyCompletedEventSchema = envelopeSchema(
 );
 export type ProjectVerifyCompletedEvent = z.infer<typeof ProjectVerifyCompletedEventSchema>;
 
+export const ProctoringSnapshotReadyDataSchema = z.object({
+  attemptId: UuidSchema,
+  objectKey: z.string().min(8).max(512),
+});
+export const ProctoringSnapshotReadyEventSchema = envelopeSchema(
+  SMART_TOPICS.proctoringSnapshotReady,
+  ProctoringSnapshotReadyDataSchema,
+);
+export type ProctoringSnapshotReadyEvent = z.infer<typeof ProctoringSnapshotReadyEventSchema>;
+
 /* -------------------------------------------------------------------------- */
 /*                              topic → schema map                            */
 /* -------------------------------------------------------------------------- */
@@ -425,6 +435,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.projectSubmitted]: ProjectSubmittedEventSchema,
   [SMART_TOPICS.projectSnapshotReady]: ProjectSnapshotReadyEventSchema,
   [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
+  [SMART_TOPICS.proctoringSnapshotReady]: ProctoringSnapshotReadyEventSchema,
 } as const;
 
 export type SmartEvent =
@@ -445,4 +456,5 @@ export type SmartEvent =
   | RateLimitExceededEvent
   | ProjectSubmittedEvent
   | ProjectSnapshotReadyEvent
-  | ProjectVerifyCompletedEvent;
+  | ProjectVerifyCompletedEvent
+  | ProctoringSnapshotReadyEvent;

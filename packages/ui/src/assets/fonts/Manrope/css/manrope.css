@@ -1,0 +1,44 @@
+/**
+ * Font Family: Manrope
+ * License: SIL Open Font License (OFL)
+ */
+@font-face {
+  font-family: 'Manrope';
+  src: url('../Manrope-VariableFont_wght.ttf') format('truetype-variations'),
+       url('../Manrope-VariableFont_wght.ttf') format('truetype');
+  font-weight: 200 800;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Manrope-Regular';
+  src: url('../static/Manrope-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Manrope-Medium';
+  src: url('../static/Manrope-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Manrope-SemiBold';
+  src: url('../static/Manrope-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Manrope-Bold';
+  src: url('../static/Manrope-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}

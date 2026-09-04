@@ -8,6 +8,7 @@ import type {
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
   ParseResumeRequest,
+  SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
   TenantActionReason,
   UpdateCompanyRequest,
@@ -16,13 +17,16 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
+  SaveDraftRequest,
+  StartAttemptRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
   AdminDashboardDtoSchema,
   AiHealthDtoSchema,
-  AssignedFormDtoSchema,
   AttemptSessionDtoSchema,
+  BlobWsPayloadSchema,
+  CompleteAttemptResponseSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -53,7 +57,26 @@ import {
   VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
+  ProctoringEnrollResponseSchema,
+  ProctoringLivenessResponseSchema,
+  ProctoringNonceResponseSchema,
+  ProctoringOnboardingStatusSchema,
+  ProctoringPingResponseSchema,
+  ProctoringPrecheckResponseSchema,
+  ProctoringVoiceResponseSchema,
+  ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
+  SaveDraftResponseSchema,
+  WorkExperienceSchema,
+  WorkExperienceDocumentSchema,
+  ValidateWorkExperienceProofResponseSchema,
+  SendWorkExperienceVerificationResponseSchema,
+  GetWorkExperienceVerificationResponseSchema,
+  SubmitWorkExperienceVerificationResponseSchema,
+  type CreateWorkExperienceDto,
+  type UpdateWorkExperienceDto,
+  type CreateWorkExperienceDocumentDto,
+  type SubmitWorkExperienceVerificationDto,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -134,9 +157,83 @@ export function usersApi(client: SmartApiClient) {
         schema: CandidateOnboardingProfileResponseSchema,
       }),
 
+    saveOnboarding: (body: SaveCandidateOnboardingDraftRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/onboarding'),
+        body,
+        schema: CandidateOnboardingProfileResponseSchema,
+      }),
+
     completeOnboarding: (body: CompleteCandidateOnboardingRequest) =>
       client.post(prefixed('/users/me/onboarding/complete'), body, {
         schema: AuthenticatedUserSchema,
+      }),
+
+    listWorkExperiences: () =>
+      client.get(prefixed('/users/me/work-experiences'), {
+        schema: z.array(WorkExperienceSchema),
+      }),
+
+    getWorkExperience: (id: string) =>
+      client.get(prefixed(`/users/me/work-experiences/${id}`), {
+        schema: WorkExperienceSchema,
+      }),
+
+    createWorkExperience: (body: CreateWorkExperienceDto) =>
+      client.post(prefixed('/users/me/work-experiences'), body, {
+        schema: WorkExperienceSchema,
+      }),
+
+    updateWorkExperience: (id: string, body: UpdateWorkExperienceDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/work-experiences/${id}`),
+        body,
+        schema: WorkExperienceSchema,
+      }),
+
+    deleteWorkExperience: (id: string) =>
+      client.delete<void>(prefixed(`/users/me/work-experiences/${id}`)),
+
+    attachWorkExperienceDocument: (id: string, body: CreateWorkExperienceDocumentDto) =>
+      client.post(prefixed(`/users/me/work-experiences/${id}/documents`), body, {
+        schema: WorkExperienceDocumentSchema,
+      }),
+
+    removeWorkExperienceDocument: (id: string, documentId: string) =>
+      client.delete<void>(prefixed(`/users/me/work-experiences/${id}/documents/${documentId}`)),
+
+    validateWorkExperienceProof: (id: string, documentId: string, rawText?: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/documents/${documentId}/validate`),
+        rawText ? { rawText } : {},
+        {
+          schema: ValidateWorkExperienceProofResponseSchema,
+        },
+      ),
+    sendWorkExperienceVerification: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/send-verification`),
+        {},
+        {
+          schema: SendWorkExperienceVerificationResponseSchema,
+        },
+      ),
+
+    getWorkExperienceVerificationByToken: (token: string) =>
+      client.get(prefixed(`/users/work-experiences/verify-token/${token}`), {
+        schema: GetWorkExperienceVerificationResponseSchema,
+        anonymous: true,
+      }),
+
+    submitWorkExperienceVerificationByToken: (
+      token: string,
+      body: SubmitWorkExperienceVerificationDto,
+    ) =>
+      client.post(prefixed(`/users/work-experiences/verify-token/${token}`), body, {
+        schema: SubmitWorkExperienceVerificationResponseSchema,
+        anonymous: true,
       }),
   };
 }
@@ -388,8 +485,8 @@ export function catalogApi(client: SmartApiClient) {
 
 export function assessmentApi(client: SmartApiClient) {
   return {
-    start: (body: { trackCode: string; levelNumber: number }) =>
-      client.post(prefixed('/assessment/start'), body, { schema: AssignedFormDtoSchema }),
+    start: (body: StartAttemptRequest) =>
+      client.post(prefixed('/assessment/start'), body, { schema: AttemptSessionDtoSchema }),
 
     listSkillClaims: () =>
       client.get(prefixed('/assessment/skill-claims'), {
@@ -407,16 +504,22 @@ export function assessmentApi(client: SmartApiClient) {
         schema: AttemptSessionDtoSchema,
       }),
 
-    nextItem: (attemptId: string) =>
-      client.get(prefixed(`/assessment/${attemptId}/next-item`), { schema: NextItemDtoSchema }),
+    nextItem: (attemptId: string, options?: { index?: number }) =>
+      client.get(prefixed(`/assessment/${attemptId}/next-item`), {
+        schema: NextItemDtoSchema,
+        query: options?.index === undefined ? undefined : { index: options.index },
+      }),
 
     /**
      * Answer drafts. Short timeout on purpose: this fires on every keystroke
      * pause, and a slow save must fail fast and retry rather than queue behind
      * itself while the candidate keeps typing.
      */
-    saveAnswer: (body: unknown) =>
-      client.post<void>(prefixed('/assessment/submit-l1'), body, { timeoutMs: 5_000 }),
+    saveAnswer: (body: SaveDraftRequest) =>
+      client.post(prefixed('/assessment/submit-l1'), body, {
+        schema: SaveDraftResponseSchema,
+        timeoutMs: 5_000,
+      }),
 
     compileCode: (body: unknown) =>
       client.post(prefixed('/assessment/compile-l2'), body, { schema: JobAcceptedSchema }),
@@ -434,16 +537,69 @@ export function assessmentApi(client: SmartApiClient) {
       }),
 
     complete: (body: { attemptId: string }) =>
-      client.post(prefixed('/assessment/complete'), body, { schema: JobAcceptedSchema }),
+      client.post(prefixed('/assessment/complete'), body, {
+        schema: CompleteAttemptResponseSchema,
+      }),
 
-    /**
-     * Integrity telemetry. Fire-and-forget by design: a candidate's assessment
-     * must never break because an advisory signal failed to send.
-     */
     reportIntegrityEvent: (body: unknown) =>
       client
         .post<void>(prefixed('/assessment/integrity-event'), body, { timeoutMs: 3_000 })
         .catch(() => undefined),
+  };
+}
+
+export function proctoringApi(client: SmartApiClient) {
+  return {
+    nonce: (attemptId: string) =>
+      client.get(prefixed(`/proctoring/${attemptId}/nonce`), {
+        schema: ProctoringNonceResponseSchema,
+      }),
+    snapshot: (attemptId: string) =>
+      client.get(prefixed(`/proctoring/${attemptId}/snapshot`), {
+        schema: ProctoringWarningSnapshotSchema,
+      }),
+    blob: (attemptId: string) =>
+      client.get(prefixed(`/proctoring/${attemptId}/blob`), { schema: BlobWsPayloadSchema }),
+    onboarding: (attemptId: string) =>
+      client.get(prefixed(`/proctoring/${attemptId}/onboarding`), {
+        schema: ProctoringOnboardingStatusSchema,
+      }),
+    ingest: (body: unknown) =>
+      client.post(prefixed('/proctoring/violations'), body, {
+        schema: ProctoringWarningSnapshotSchema,
+      }),
+    ping: (attemptId: string) =>
+      client.post(
+        prefixed('/proctoring/ping'),
+        { attemptId },
+        { schema: ProctoringPingResponseSchema },
+      ),
+    fingerprint: (body: unknown) => client.post(prefixed('/proctoring/fingerprint'), body),
+    checkpoint: (body: unknown) => client.post(prefixed('/proctoring/checkpoint'), body),
+    consent: (body: unknown) =>
+      client.post(prefixed('/proctoring/consent'), body, {
+        schema: ProctoringOnboardingStatusSchema,
+      }),
+    precheck: (body: unknown) =>
+      client.post(prefixed('/proctoring/precheck'), body, {
+        schema: ProctoringPrecheckResponseSchema,
+      }),
+    enrollFace: (attemptId: string) =>
+      client.post(
+        prefixed('/proctoring/enroll-face'),
+        { attemptId },
+        {
+          schema: ProctoringEnrollResponseSchema,
+        },
+      ),
+    liveness: (body: unknown) =>
+      client.post(prefixed('/proctoring/liveness'), body, {
+        schema: ProctoringLivenessResponseSchema,
+      }),
+    calibrateVoice: (body: unknown) =>
+      client.post(prefixed('/proctoring/calibrate-voice'), body, {
+        schema: ProctoringVoiceResponseSchema,
+      }),
   };
 }
 
@@ -525,6 +681,7 @@ export function createSmartApi(client: SmartApiClient) {
     users: usersApi(client),
     catalog: catalogApi(client),
     assessment: assessmentApi(client),
+    proctoring: proctoringApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),
     onboarding: onboardingApi(client),

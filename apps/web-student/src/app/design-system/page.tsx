@@ -195,6 +195,7 @@ export default function DesignSystemPage() {
               email: 'alex.mercer@demo.smart.io',
               phone: '+91 98765 43210',
               linkedIn: 'https://linkedin.com/in/alex-mercer-demo',
+              github: 'https://github.com/alex-mercer-demo',
             }}
             aiExplanation={{
               summary:

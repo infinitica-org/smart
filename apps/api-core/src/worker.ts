@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import 'dotenv/config';
+import './platform/config/load-dotenv.bootstrap.js';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
