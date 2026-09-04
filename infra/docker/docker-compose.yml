@@ -508,6 +508,24 @@ services:
         condition: service_healthy
     profiles: ["obs-tools"]
 
+  # Outside-the-box dead-man's-switch: pings Healthchecks.io (a free hosted
+  # service, deliberately NOT self-hosted here) so a fully unreachable VPS
+  # still triggers an alert — see infra/observability/README.md.
+  heartbeat:
+    image: curlimages/curl:8.11.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/heartbeat.sh"]
+    volumes:
+      - ./heartbeat.sh:/heartbeat.sh:ro
+    environment:
+      HEALTHCHECKS_PING_URL: ${HEALTHCHECKS_PING_URL:-}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-60}
+      HEARTBEAT_CHECK_URL: ${HEARTBEAT_CHECK_URL:-http://api:3000/health}
+    # No depends_on: it must keep running (and reporting failure) even when
+    # `api` is down or the `apps` profile isn't started at all — that's the
+    # point of it. `api` DNS just won't resolve until that profile is up.
+    profiles: ["obs"]
+
   # --- exporters: turn existing containers/services into Prometheus targets ---
 
   cadvisor:
@@ -578,3 +596,5 @@ volumes:
   alloy_data:
   tempo_data:
   uptime_kuma_data:
+  # cadvisor, node-exporter, postgres-exporter, redis-exporter are stateless
+  # scrapers — nothing to persist for them.

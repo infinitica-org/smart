@@ -4,14 +4,15 @@ Owner: Vishal V.
 
 ## Stack
 
-| Service    | Host port | Purpose                        |
-| ---------- | --------- | ------------------------------ |
-| Prometheus | 9090      | Metrics scrape                 |
-| Grafana    | 3100      | Dashboards (anon auth enabled) |
-| Loki       | 3101      | Log store                      |
-| Alloy      | —         | Docker log scrape → Loki       |
-| Tempo      | 3103      | Trace store (Grafana datasource) |
-| Uptime Kuma | 3102     | Internal uptime monitoring + status page |
+| Service     | Host port     | Purpose                                    |
+| ----------- | ------------- | ------------------------------------------- |
+| Prometheus  | 9090          | Metrics scrape                             |
+| Grafana     | 3100          | Dashboards (anon auth enabled)             |
+| Loki        | 3101          | Log store                                  |
+| Alloy       | —             | Docker log scrape → Loki                   |
+| Tempo       | 3103          | Trace store (Grafana datasource)           |
+| Uptime Kuma | 3102          | Internal uptime monitoring + status page   |
+| heartbeat   | —             | Outbound-only, pings Healthchecks.io       |
 
 ```bash
 # From repo root — infra + apps + obs
@@ -51,6 +52,11 @@ All under the **SMART** folder in Grafana; each links to the others via the
 - `apps/proctoring-cv` exposes no `/metrics` at all (plain stdlib `http.server`, no `prometheus_client`). It's dark to Prometheus entirely — not in any dashboard here.
 - **Host & Containers** → "Disk free %" and container mounts reflect the **Docker Desktop Linux VM** on a Windows dev machine, not the Windows host — this is expected locally and will show real numbers once running on the actual Linux VPS (dev/qa/prod).
 - `minio_v2/metrics/cluster` only exposes capacity + traffic; per-request/error-rate metrics live on MinIO's node/bucket metrics endpoints, not scraped here to keep this addition scoped.
+
+## Notes
+
+- Alloy only sees containers in this Compose project. Host `pnpm dev:api` stdout is not scraped — use the `apps` profile API container, or paste JSON lines into Explore for local debugging.
+- API must run with `LOG_PRETTY=false` (Compose default) so Loki receives JSON.
 
 ## Tempo (tracing)
 
@@ -121,7 +127,32 @@ environment before anything is sent to Kuma, so real credentials (e.g. the
 Postgres monitor's connection string) never need to live in this committed
 file.
 
-## Notes
+## heartbeat (external dead-man's switch)
 
-- Alloy only sees containers in this Compose project. Host `pnpm dev:api` stdout is not scraped — use the `apps` profile API container, or paste JSON lines into Explore for local debugging.
-- API must run with `LOG_PRETTY=false` (Compose default) so Loki receives JSON.
+`heartbeat` is the one piece here designed to work even when the rest of the
+stack is completely dark. It runs a small loop (`infra/docker/heartbeat.sh`)
+that checks `HEARTBEAT_CHECK_URL` (defaults to the `api` container's
+`/health`) every `HEARTBEAT_INTERVAL_SECONDS` and reports the result to
+[Healthchecks.io](https://healthchecks.io) (free, deliberately **not**
+self-hosted — the whole point is that it lives outside this infra):
+
+- health check passes → pings `$HEALTHCHECKS_PING_URL` (success)
+- health check fails → pings `$HEALTHCHECKS_PING_URL/fail` (immediate alert)
+- box/network/Docker daemon is dead → no ping reaches Healthchecks.io at all,
+  and *its* grace-period timeout fires the alert instead
+
+Setup:
+
+1. Create a check at healthchecks.io, set its **grace period** comfortably
+   above `HEARTBEAT_INTERVAL_SECONDS` (default 60s → e.g. 5 min grace) so one
+   slow response doesn't page anyone.
+2. Copy its ping URL into `HEALTHCHECKS_PING_URL` in the environment's `.env*`
+   file (local/dev/qa/prod each want their own check, so a dev outage doesn't
+   look like a prod outage).
+3. Point Healthchecks.io's integration at a channel that isn't hosted on this
+   VPS (email, Slack, Telegram) — an alert that only reaches a service
+   running on the dead box defeats the purpose.
+
+Leaving `HEALTHCHECKS_PING_URL` unset makes the container idle (it logs once
+and sleeps) instead of erroring, so it's safe to bring up the `obs` profile
+before you've created a check.
