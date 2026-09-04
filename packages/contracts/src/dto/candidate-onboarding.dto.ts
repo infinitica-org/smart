@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SkillDiscoverySchema, SocialVerificationSchema } from './candidate-social.dto.js';
 
 /**
  * CN-T01 — candidate onboarding completion payload.
@@ -50,6 +51,13 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   experiences: z.array(CandidateOnboardingExperienceSchema).max(30).default([]),
   skills: z.array(CandidateOnboardingSkillSchema).max(40).default([]),
   preferences: z.array(z.string().min(1).max(80)).min(1).max(50),
+  /**
+   * LinkedIn/GitHub identity confirmation + GitHub-derived skill suggestions.
+   * Purely a trust/UX signal — optional even on completion, since GitHub
+   * itself is optional and LinkedIn OIDC verification is never a hard gate.
+   */
+  socialVerification: SocialVerificationSchema.optional(),
+  skillDiscovery: SkillDiscoverySchema.optional(),
   /** DPDP consent must be explicitly accepted to complete onboarding. */
   dpdpConsent: z.literal(true),
 });
@@ -82,6 +90,8 @@ export const CandidateOnboardingDraftSchema = z.object({
   experiences: z.array(CandidateOnboardingExperienceSchema.partial()).max(30).optional(),
   skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
   preferences: z.array(z.string().max(80)).max(50).optional(),
+  socialVerification: SocialVerificationSchema.optional(),
+  skillDiscovery: SkillDiscoverySchema.optional(),
   dpdpConsent: z.boolean().optional(),
   savedAt: z.string().datetime().optional(),
 });

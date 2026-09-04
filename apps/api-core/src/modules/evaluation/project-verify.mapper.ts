@@ -104,6 +104,7 @@ export type ProjectRow = {
   outcome: string;
   loomUrl: string | null;
   githubUrl: string | null;
+  liveUrl: string | null;
   status: string;
   createdAt: Date;
   report: ReportRow | null;
@@ -165,6 +166,7 @@ export function toProjectDto(row: ProjectRow): ProjectDto {
     outcome: row.outcome,
     loomUrl: row.loomUrl,
     githubUrl: row.githubUrl,
+    liveUrl: row.liveUrl,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     report: row.report ? toReportDto(row.report) : null,

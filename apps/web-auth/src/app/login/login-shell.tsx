@@ -3,7 +3,7 @@ import { LoginBrandPanel } from './login-brand-panel';
 
 export function LoginShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[var(--surface-muted)] lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+    <div className="dark min-h-dvh bg-[var(--background)] text-[var(--text-primary)] lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
       <LoginBrandPanel />
       {children}
     </div>

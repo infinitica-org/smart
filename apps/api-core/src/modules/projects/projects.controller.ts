@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX, type ProjectDto } from '@smart/contracts';
+import { API_PREFIX, type ListMyProjectsResponse, type ProjectDto } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
@@ -10,6 +10,14 @@ import { ProjectsService } from './projects.service.js';
 @Controller(`${API_PREFIX}/projects`)
 export class ProjectsController {
   constructor(@Inject(ProjectsService) private readonly service: ProjectsService) {}
+
+  @Get()
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List the caller's own submitted projects, newest first." })
+  listMine(@CurrentUser() user: RequestUser): Promise<ListMyProjectsResponse> {
+    return this.service.listMine(user.sub);
+  }
 
   @Post()
   @Roles('STUDENT')

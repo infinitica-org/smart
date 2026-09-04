@@ -48,19 +48,19 @@ export function LoginForm() {
 
       <div className="relative z-10 mx-auto w-full max-w-md">
         <div className="mb-8 flex items-center gap-3 lg:hidden">
-          <SmartLogo kind="wordmark" className="h-8" title="SMART" />
+          <SmartLogo kind="wordmark" tone="on-dark" className="h-8" title="SMART" />
         </div>
 
         <MagicCard className="rounded-[var(--radius-card)] p-8 sm:p-9">
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-teal)]">
               Secure sign-in
             </p>
             <h2 className="font-heading text-2xl font-extrabold tracking-tight text-[var(--text-primary)]">
               Welcome back
             </h2>
             <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-              Use your institution email. We&apos;ll open the portal built for your role.
+              Enter your email and password — we&apos;ll open the workspace built for your role.
             </p>
           </div>
 
@@ -99,7 +99,13 @@ export function LoginForm() {
               }
             />
 
-            <Button type="submit" isLoading={loading} fullWidth size="lg">
+            <Button
+              type="submit"
+              isLoading={loading}
+              fullWidth
+              size="lg"
+              className="bg-[var(--brand-teal)] text-[var(--brand-ink)] shadow-[0_0_20px_rgba(0,250,208,0.3)] hover:opacity-90"
+            >
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>

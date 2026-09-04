@@ -35,6 +35,8 @@ export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
+export * from './dto/candidate-social.dto.js';
+export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';

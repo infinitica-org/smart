@@ -12,14 +12,17 @@ import type {
   ChangePasswordRequest,
   CompleteCandidateOnboardingRequest,
   EnrollTrackRequest,
+  LinkedinVerification,
 } from '@smart/contracts';
 import {
   CandidateOnboardingDraftSchema,
   CandidateOnboardingProfileSchema,
   CompleteCandidateOnboardingRequestSchema,
   SaveCandidateOnboardingDraftRequestSchema,
+  SMART_TOPICS,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import {
   AuthService,
@@ -36,6 +39,7 @@ export class UsersService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   async getMe(userId: string): Promise<AuthenticatedUser> {
@@ -132,6 +136,43 @@ export class UsersService {
     };
   }
 
+  /**
+   * Persists the LinkedIn OIDC verification result from the OAuth callback.
+   * A nested merge (unlike `saveOnboardingDraft`'s top-level spread) so it
+   * never clobbers the rest of the in-progress draft — the callback runs
+   * outside the wizard's normal save cycle, on a bare redirect with no form
+   * state of its own to send back.
+   */
+  async mergeLinkedinVerification(
+    userId: string,
+    verification: LinkedinVerification,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return;
+
+    const existing =
+      user.onboardingDetails && typeof user.onboardingDetails === 'object'
+        ? (user.onboardingDetails as Record<string, unknown>)
+        : {};
+    const existingSocial =
+      existing.socialVerification && typeof existing.socialVerification === 'object'
+        ? (existing.socialVerification as Record<string, unknown>)
+        : {};
+
+    const merged = {
+      ...existing,
+      socialVerification: {
+        ...existingSocial,
+        linkedin: verification,
+      },
+    };
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardingDetails: merged as Prisma.InputJsonValue },
+    });
+  }
+
   async completeOnboarding(userId: string, body: unknown): Promise<AuthenticatedUser> {
     const parsed = CompleteCandidateOnboardingRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -170,6 +211,30 @@ export class UsersService {
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+
+    const selectedSkillNames = request.skillDiscovery?.selectedSkillNames ?? [];
+    // Only the languages the candidate actually kept checked count toward
+    // skill derivation — a deselected suggestion (e.g. they unchecked "CSS")
+    // must not still influence what gets auto-declared downstream.
+    const languages = (request.skillDiscovery?.suggestedFromGithub ?? []).filter((entry) =>
+      selectedSkillNames.includes(entry.language),
+    );
+    if (selectedSkillNames.length > 0) {
+      // Fire-and-forget via the outbox: skill-catalog matching is a
+      // downstream concern (owned by `assessment`) and must never make
+      // onboarding completion wait on it or fail because of it.
+      await this.outbox
+        .enqueueEnvelope({
+          topic: SMART_TOPICS.candidateSkillsDiscovered,
+          partitionKey: userId,
+          eventType: SMART_TOPICS.candidateSkillsDiscovered,
+          source: 'users',
+          data: { userId, languages, selectedSkillNames },
+        })
+        .catch(() => {
+          /* best-effort — outbox row is durable even if this call throws */
+        });
+    }
 
     return toAuthenticatedUser(updated);
   }

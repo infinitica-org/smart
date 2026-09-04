@@ -780,6 +780,23 @@ export class InstitutionsService {
     return row ?? this.emptyStudent({ ...user, heldAt: null });
   }
 
+  /** TPO "copy invite link" action — never emailed, just handed to the caller to share offline. */
+  async getStudentInviteLink(
+    userId: string,
+    institutionId: string | null,
+  ): Promise<{ inviteUrl: string }> {
+    const user = await this.requireStudent(userId, institutionId);
+    if (!user.institutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student not found.',
+        statusCode: 404,
+      });
+    }
+    const inviteUrl = await this.invitations.mintLinkForUser(user.id, user.institutionId);
+    return { inviteUrl };
+  }
+
   private emptyStudent(user: {
     id: string;
     email: string;

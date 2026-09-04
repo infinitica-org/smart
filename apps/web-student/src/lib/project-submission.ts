@@ -13,6 +13,7 @@ export type ProjectFormFields = {
   outcome: string;
   loomUrl: string;
   githubUrl: string;
+  liveUrl: string;
 };
 
 export const EMPTY_PROJECT_FORM: ProjectFormFields = {
@@ -23,6 +24,7 @@ export const EMPTY_PROJECT_FORM: ProjectFormFields = {
   outcome: '',
   loomUrl: '',
   githubUrl: '',
+  liveUrl: '',
 };
 
 export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProjectRequest {
@@ -34,6 +36,7 @@ export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProj
     outcome: fields.outcome.trim(),
     loomUrl: fields.loomUrl.trim() || undefined,
     githubUrl: fields.githubUrl.trim() || undefined,
+    liveUrl: fields.liveUrl.trim() || undefined,
   });
 }
 
@@ -61,6 +64,31 @@ export function fieldErrorsFromZod(error: { issues: { path: PropertyKey[]; messa
 
 export function isProcessingStatus(status: ProjectStatus): boolean {
   return status === 'SUBMITTED';
+}
+
+export interface StackTagCount {
+  tag: string;
+  count: number;
+}
+
+/** Ranks stack tags (comma-separated per project) by how many projects use them. */
+export function topStackTags(projects: readonly ProjectDto[], limit = 6): StackTagCount[] {
+  const counts = new Map<string, number>();
+  for (const project of projects) {
+    const tags = new Set(
+      project.stack
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    );
+    for (const tag of tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .slice(0, limit);
 }
 
 export function processingStateCopy(project: ProjectDto): {

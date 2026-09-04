@@ -4,6 +4,7 @@ import { env } from '../../platform/config/env.js';
 import { InvitationsModule } from '../invitations/invitations.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { LinkedinOauthService } from './linkedin-oauth.service.js';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { AuthService } from './auth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
-  exports: [AuthService],
+  providers: [AuthService, LinkedinOauthService],
+  exports: [AuthService, LinkedinOauthService],
 })
 export class AuthModule {}

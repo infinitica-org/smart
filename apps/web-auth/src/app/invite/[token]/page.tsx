@@ -1,13 +1,12 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@smart/ui';
 import { api, redirectForRole, storeSession } from '../../../lib/api';
 
 export default function InvitePage() {
   const params = useParams<{ token: string }>();
-  const router = useRouter();
   const token = params.token;
   const [preview, setPreview] = useState<Awaited<
     ReturnType<typeof api.auth.previewInvitation>
@@ -35,11 +34,11 @@ export default function InvitePage() {
     try {
       const result = await api.auth.acceptInvitation(token, { password });
       storeSession(result.accessToken);
-      if (result.user.role === 'STUDENT') {
-        router.push(`/invite/${token}/next`);
-      } else {
-        redirectForRole(result.user.role, result.accessToken);
-      }
+      // Every role lands on its portal home the same way; for a student that's
+      // /dashboard, and OnboardingGate there sends them straight into
+      // /onboarding (pre-filled from the invite) since onboardingCompleted is
+      // still false on a freshly accepted account.
+      redirectForRole(result.user.role, result.accessToken);
     } catch {
       setError('Could not accept invitation.');
     } finally {

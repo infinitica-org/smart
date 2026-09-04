@@ -22,6 +22,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PlacementModule } from './modules/placement/placement.module.js';
 import { ProctoringModule } from './modules/proctoring/proctoring.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
+import { PublicProfileModule } from './modules/public-profile/public-profile.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -73,6 +74,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     PlacementModule,
     ProctoringModule,
     ProjectsModule,
+    PublicProfileModule,
     AnalyticsModule,
     WebhooksModule,
   ],
