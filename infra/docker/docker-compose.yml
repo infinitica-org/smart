@@ -103,6 +103,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
+      # Metrics scraped in-network only (127.0.0.1-bound Prometheus) — public
+      # auth mode is acceptable here, but do not expose this port beyond that.
+      MINIO_PROMETHEUS_AUTH_TYPE: public
     ports:
       - "127.0.0.1:${MINIO_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -436,6 +439,63 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
+    profiles: ["obs"]
+
+  # --- exporters: turn existing containers/services into Prometheus targets ---
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5
+    restart: unless-stopped
+    privileged: true # needed for full cgroup/device metrics on cgroup v2 hosts
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "127.0.0.1:${CADVISOR_PORT:-8085}:8080"
+    profiles: ["obs"]
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9101}:9100"
+    profiles: ["obs"]
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    profiles: ["obs"]
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.90.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${REDIS_EXPORTER_PORT:-9121}:9121"
     profiles: ["obs"]
 
 volumes:
