@@ -37,7 +37,7 @@ export function TpoSidebar() {
   return (
     <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200/80 flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans select-none">
       {/* Brand Header: Black Logo + Version on Right */}
-      <div className="h-16 px-6 flex items-center justify-between shrink-0 border-b border-r border-slate-200/80 bg-white">
+      <div className="h-16 px-5 flex items-center justify-between shrink-0 border-b border-slate-200/80 bg-white">
         <Link href="/" className="flex items-center">
           <Image
             src={BlackLogo}
@@ -52,29 +52,29 @@ export function TpoSidebar() {
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 overflow-y-auto px-6 py-2 space-y-6  border-1 border-r border-slate-200">
-        <ul className="space-y-6">
+      <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <ul className="space-y-1">
           {mainNav.map((item) => {
             const isActive =
               pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             const Icon = item.icon;
 
             return (
-              <li key={item.name} className="space-y-2">
+              <li key={item.name}>
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 text-base font-medium transition-colors group',
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group',
                     isActive
-                      ? 'font-extrabold text-slate-900'
-                      : 'text-slate-500 hover:text-slate-900',
+                      ? 'bg-[#F0FDFA] text-[#004C63] font-bold border border-[#CCFBF1]/80 shadow-[0_1px_2px_rgba(0,76,99,0.05)]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80',
                   )}
                 >
                   <Icon
                     className={cn(
-                      'size-5 transition-colors',
+                      'size-4.5 shrink-0 transition-colors',
                       isActive
-                        ? 'text-slate-900 stroke-[2.5]'
+                        ? 'text-[#004C63] stroke-[2.2]'
                         : 'text-slate-400 group-hover:text-slate-600',
                     )}
                   />
@@ -83,12 +83,12 @@ export function TpoSidebar() {
 
                 {/* Sub-items (Tree View) if Active */}
                 {item.subItems && isActive && (
-                  <div className="ml-2.5 pl-5 border-l border-slate-200 space-y-3 pt-1">
+                  <div className="ml-5 pl-4 border-l border-[#004C63]/20 space-y-1.5 pt-2 pb-1">
                     {item.subItems.map((sub) => (
                       <Link
                         key={sub.name}
                         href={sub.href}
-                        className="block text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                        className="block text-xs font-semibold text-slate-500 hover:text-[#004C63] transition-colors py-1"
                       >
                         {sub.name}
                       </Link>
@@ -102,13 +102,12 @@ export function TpoSidebar() {
       </nav>
 
       {/* Bottom Footer Section */}
-      <div className="px-6 py-4 space-y-5 border-t border-slate-100 shrink-0">
-        {/* Institution Plan / Copyright / Version */}
-        <div className="pt-1 border-t border-slate-100">
-          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-            <span>Privacy Policy | Terms</span>
-            <span className="font-semibold text-slate-400">v{UI_VERSION}</span>
-          </div>
+      <div className="px-5 py-4 border-t border-slate-100 shrink-0">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+          <span className="hover:text-slate-600 transition-colors cursor-pointer">
+            Privacy Policy · Terms
+          </span>
+          <span className="font-semibold text-slate-400">v{UI_VERSION}</span>
         </div>
       </div>
     </aside>
