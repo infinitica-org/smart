@@ -3,6 +3,8 @@ import type {
   CompleteCandidateOnboardingRequest,
   ResumeParseDraft,
   SaveCandidateOnboardingDraftRequest,
+  SkillDiscovery,
+  SocialVerification,
 } from '@smart/contracts';
 
 export interface OnboardingProfileForm {
@@ -21,8 +23,20 @@ export interface OnboardingProfileForm {
   codingProficiencies: { id: string; language: string; proficiency: string }[];
   education: CompleteCandidateOnboardingRequest['education'];
   experiences: CompleteCandidateOnboardingRequest['experiences'];
+  /** LinkedIn/GitHub identity confirmation — a trust signal, never a completion gate. */
+  socialVerification: SocialVerification;
+  /** GitHub-derived skill suggestions plus whatever the candidate picked/typed. */
+  skillDiscovery: SkillDiscovery;
   dpdpConsent: boolean;
 }
+
+export const emptySocialVerification = (): SocialVerification => ({ linkedin: null, github: null });
+
+export const emptySkillDiscovery = (): SkillDiscovery => ({
+  suggestedFromGithub: [],
+  selectedSkillNames: [],
+  customSkillNames: [],
+});
 
 /** Draft-only UI cache while the wizard is open — never the source of truth for completion. */
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
@@ -44,6 +58,8 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     codingProficiencies: [],
     education: [],
     experiences: [],
+    socialVerification: emptySocialVerification(),
+    skillDiscovery: emptySkillDiscovery(),
     dpdpConsent: false,
   };
 }
@@ -139,6 +155,12 @@ export function applyServerDraft(
     codingProficiencies:
       codingProficiencies.length > 0 ? codingProficiencies : form.codingProficiencies,
     preferences: draft.preferences ?? form.preferences,
+    socialVerification: draft.socialVerification
+      ? { ...emptySocialVerification(), ...draft.socialVerification }
+      : form.socialVerification,
+    skillDiscovery: draft.skillDiscovery
+      ? { ...emptySkillDiscovery(), ...draft.skillDiscovery }
+      : form.skillDiscovery,
     dpdpConsent: draft.dpdpConsent ?? form.dpdpConsent,
     education:
       draft.education && draft.education.length > 0
@@ -206,6 +228,8 @@ export function buildOnboardingDraftPayload(
     experiences: form.experiences,
     skills,
     preferences: form.preferences,
+    socialVerification: form.socialVerification,
+    skillDiscovery: form.skillDiscovery,
     dpdpConsent: form.dpdpConsent,
   };
 }
@@ -326,6 +350,8 @@ export function buildCompleteOnboardingRequest(
     experiences: form.experiences,
     skills,
     preferences: form.preferences,
+    socialVerification: form.socialVerification,
+    skillDiscovery: form.skillDiscovery,
     dpdpConsent: true,
   };
 }

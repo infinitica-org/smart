@@ -264,11 +264,31 @@ export async function signOutAndRedirect(options: {
 }
 
 /**
+ * In-flight reconcile call, shared across concurrent invocations.
+ *
+ * React's dev-mode double-effect (StrictMode mount/unmount/mount) — and a fast
+ * pathname change re-running RolesGuard's effect — can call this twice before
+ * the first call's Set-Cookie lands. The refresh token rotates on every use;
+ * a second call presenting the same now-already-rotated cookie reads as reuse
+ * to the server, which revokes the *entire* session family, logging the user
+ * straight back out immediately after a successful login. Single-flighting
+ * this the same way `SmartApiClient.refreshOnce` does closes that race.
+ */
+let reconcileInFlight: Promise<string | null> | null = null;
+
+/**
  * Replace a leftover per-origin JWT with the live HttpOnly refresh session.
  * Ports do not share localStorage; the cookie on the API origin is the truth.
  */
-export async function reconcileAccessTokenFromCookie(apiBaseUrl: string): Promise<string | null> {
-  if (!hasBrowserStorage()) return null;
+export function reconcileAccessTokenFromCookie(apiBaseUrl: string): Promise<string | null> {
+  if (!hasBrowserStorage()) return Promise.resolve(null);
+  reconcileInFlight ??= reconcileOnce(apiBaseUrl).finally(() => {
+    reconcileInFlight = null;
+  });
+  return reconcileInFlight;
+}
+
+async function reconcileOnce(apiBaseUrl: string): Promise<string | null> {
   try {
     const res = await fetch(`${apiBaseUrl.replace(/\/$/u, '')}${API_PREFIX}/auth/refresh`, {
       method: 'POST',

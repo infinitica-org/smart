@@ -201,6 +201,26 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'IP_CHALLENGE',
   },
   {
+    key: 'verify.certificateEndorsement',
+    scope: 'IP',
+    limit: 20,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:verify_cert_endorse:ip:{id}',
+    rationale: 'Public certificate endorsement token endpoints; cap brute force.',
+    onViolation: 'IP_CHALLENGE',
+  },
+  {
+    key: 'verify.publicProfile',
+    scope: 'IP',
+    limit: 30,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:verify_profile:ip:{id}',
+    rationale: 'Public candidate profile lookup by share slug; scraping/enumeration protection.',
+    onViolation: 'IP_CHALLENGE',
+  },
+  {
     key: 'placement.match',
     scope: 'INSTITUTION',
     limit: 30,
@@ -320,6 +340,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     redisKey: 'rl:proctor:media:{id}',
     rationale: 'Onboarding frames, voice clips, and checkpoint object keys.',
   },
+  {
+    key: 'evaluation.cognitiveProfile',
+    scope: 'USER',
+    limit: 8,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:cognitive_profile:user:{id}',
+    rationale:
+      'SE-T04 narrative spend is P3_BATCH; cap refreshes so one student cannot drain the batch lane.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
@@ -359,6 +389,9 @@ export const REDIS_TTL_SECONDS = {
   certificateVerification: 60 * 60,
   jdVector: 30 * 60,
   githubRepoList: 5 * 60,
+  githubProfile: 10 * 60,
+  githubRepoLanguages: 10 * 60,
+  githubReadme: 10 * 60,
   projectWebSimilarity: 5 * 60,
   projectSnapshotLock: 10 * 60,
   proctoringNonce: 90,

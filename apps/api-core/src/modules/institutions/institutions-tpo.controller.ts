@@ -90,6 +90,11 @@ export class InstitutionsTpoController {
     );
   }
 
+  @Post('students/:userId/invite-link')
+  getStudentInviteLink(@Param('userId') userId: string, @CurrentUser() user: RequestUser) {
+    return this.institutions.getStudentInviteLink(userId, requireInstitutionId(user));
+  }
+
   @Post('batches')
   createBatch(@Body() body: unknown, @CurrentUser() user: RequestUser) {
     const institutionId = requireInstitutionId(user);

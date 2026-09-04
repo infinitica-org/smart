@@ -12,6 +12,7 @@ import type {
   UserRole,
 } from '@smart/contracts';
 import { SMART_TOPICS } from '@smart/contracts';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import type { EmailTemplateName } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -60,6 +61,13 @@ export class InvitationsService {
         passwordHash,
         emailVerified: true,
         fullName: invitation.fullName,
+        // Seed the onboarding draft with what we already know so a freshly
+        // invited student never has to retype their own name — this is the
+        // very first authenticated write for this account, so there is no
+        // existing draft to merge with or clobber.
+        ...(invitation.role === 'STUDENT'
+          ? { onboardingDetails: onboardingSeedFromFullName(invitation.fullName) }
+          : {}),
       },
       include: { institution: true, primaryTrack: true, secondaryTrack: true },
     });
@@ -190,6 +198,34 @@ export class InvitationsService {
     await this.enqueueEmail(updated, invitation.institution.name, raw, template);
 
     return toInvitationDto(updated);
+  }
+
+  /**
+   * Mints a fresh invite URL for a TPO's "copy invite link" action — same
+   * token rotation as `resend`, but no email is queued. The raw token only
+   * ever exists in memory for the length of this call (only its hash is
+   * persisted), so there is no way to hand back an existing link — every
+   * call necessarily invalidates whatever link the student was sent before.
+   */
+  async mintLinkForUser(userId: string, institutionId: string): Promise<string> {
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { userId, institutionId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!invitation) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'This student has no pending invitation to link.',
+        statusCode: 404,
+      });
+    }
+
+    const { raw, hash } = generateInviteToken();
+    await this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { tokenHash: hash, expiresAt: invitationExpiresAt() },
+    });
+    return buildInviteUrl(raw);
   }
 
   async enqueueForBatch(batchId: string, institutionId: string): Promise<number> {
@@ -323,4 +359,17 @@ export function toInvitationDto(invitation: {
     lastSentAt: invitation.lastSentAt?.toISOString() ?? null,
     createdAt: invitation.createdAt.toISOString(),
   };
+}
+
+/**
+ * Seeds the CN-T01 onboarding draft from the one thing every invitation
+ * already knows — the invitee's name — split on the first space. A
+ * single-word name leaves `lastName` blank rather than guessing.
+ */
+function onboardingSeedFromFullName(fullName: string): Prisma.InputJsonValue {
+  const trimmed = fullName.trim();
+  const spaceIndex = trimmed.indexOf(' ');
+  const firstName = spaceIndex === -1 ? trimmed : trimmed.slice(0, spaceIndex);
+  const lastName = spaceIndex === -1 ? '' : trimmed.slice(spaceIndex + 1).trim();
+  return { firstName, lastName, savedAt: new Date().toISOString() };
 }

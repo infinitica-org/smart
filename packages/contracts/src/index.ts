@@ -16,6 +16,7 @@
 
 /* ------------------------------- domain ---------------------------------- */
 export * from './domain/enums.js';
+export * from './domain/disallowed-email-domains.js';
 export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
@@ -29,12 +30,16 @@ export * from './dto/catalog.dto.js';
 export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';
 export * from './dto/evaluation.dto.js';
+export * from './dto/cognitive-profile.dto.js';
 export * from './dto/calibration.dto.js';
 export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
+export * from './dto/candidate-social.dto.js';
+export * from './dto/candidate-certificate.dto.js';
+export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';

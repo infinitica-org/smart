@@ -13,6 +13,7 @@ import {
 } from '../domain/enums.js';
 import { TierTrailSchema } from '../domain/levels.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from '../dto/common.js';
+import { LanguageBreakdownEntrySchema } from '../dto/candidate-social.dto.js';
 import { SMART_TOPICS } from './topics.js';
 
 /**
@@ -408,6 +409,21 @@ export const ProctoringSnapshotReadyEventSchema = envelopeSchema(
 export type ProctoringSnapshotReadyEvent = z.infer<typeof ProctoringSnapshotReadyEventSchema>;
 
 /* -------------------------------------------------------------------------- */
+/*                    candidate onboarding  (owner: Vishal V)                 */
+/* -------------------------------------------------------------------------- */
+
+export const CandidateSkillsDiscoveredDataSchema = z.object({
+  userId: UuidSchema,
+  languages: z.array(LanguageBreakdownEntrySchema).max(20),
+  selectedSkillNames: z.array(z.string().min(1).max(80)).max(30),
+});
+export const CandidateSkillsDiscoveredEventSchema = envelopeSchema(
+  SMART_TOPICS.candidateSkillsDiscovered,
+  CandidateSkillsDiscoveredDataSchema,
+);
+export type CandidateSkillsDiscoveredEvent = z.infer<typeof CandidateSkillsDiscoveredEventSchema>;
+
+/* -------------------------------------------------------------------------- */
 /*                              topic → schema map                            */
 /* -------------------------------------------------------------------------- */
 
@@ -436,6 +452,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.projectSnapshotReady]: ProjectSnapshotReadyEventSchema,
   [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
   [SMART_TOPICS.proctoringSnapshotReady]: ProctoringSnapshotReadyEventSchema,
+  [SMART_TOPICS.candidateSkillsDiscovered]: CandidateSkillsDiscoveredEventSchema,
 } as const;
 
 export type SmartEvent =
@@ -457,4 +474,5 @@ export type SmartEvent =
   | ProjectSubmittedEvent
   | ProjectSnapshotReadyEvent
   | ProjectVerifyCompletedEvent
-  | ProctoringSnapshotReadyEvent;
+  | ProctoringSnapshotReadyEvent
+  | CandidateSkillsDiscoveredEvent;

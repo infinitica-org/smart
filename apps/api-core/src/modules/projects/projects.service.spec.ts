@@ -32,6 +32,7 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     outcome: template.outcome,
     loomUrl: template.loomUrl,
     githubUrl: template.githubUrl,
+    liveUrl: null,
     status: 'SUBMITTED',
     createdAt: new Date('2026-09-02T10:00:00.000Z'),
     ...overrides,
@@ -101,6 +102,22 @@ describe('CN-T08 project submission', () => {
     });
     expect(dto.status).toBe('SUBMITTED');
     expect(dto.report).toBeNull();
+  });
+
+  it('persists an optional live link', async () => {
+    const { service, prisma } = setup();
+    prisma.project.create.mockResolvedValueOnce(
+      projectRow({ liveUrl: 'https://bus-tracker.example.com' }),
+    );
+    const dto = await service.create(studentId, {
+      ...template,
+      liveUrl: 'https://bus-tracker.example.com',
+    });
+
+    expect(prisma.project.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ liveUrl: 'https://bus-tracker.example.com' }),
+    });
+    expect(dto.liveUrl).toBe('https://bus-tracker.example.com');
   });
 
   it('returns the owned project for processing polls', async () => {

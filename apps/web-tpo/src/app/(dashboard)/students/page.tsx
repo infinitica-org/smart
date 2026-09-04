@@ -25,6 +25,7 @@ export default function TpoStudentsPage() {
   const [inviteStatus, setInviteStatus] = useState<StudentInviteFilter | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
 
   // Modals
   const [isProvisioningOpen, setIsProvisioningOpen] = useState(false);
@@ -181,21 +182,53 @@ export default function TpoStudentsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {student.inviteStatus === 'ACCEPTED' && (
-                        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-                          <CheckCircle className="w-3.5 h-3.5" /> Accepted
-                        </span>
-                      )}
-                      {student.inviteStatus === 'PENDING' && (
-                        <span className="flex items-center gap-1.5 text-amber-400 text-xs font-medium">
-                          <Clock className="w-3.5 h-3.5" /> Pending
-                        </span>
-                      )}
-                      {!student.inviteStatus && (
-                        <span className="flex items-center gap-1.5 text-gray-500 text-xs font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5" /> Not Invited
-                        </span>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {student.inviteStatus === 'ACCEPTED' && (
+                          <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
+                            <CheckCircle className="w-3.5 h-3.5" /> Accepted
+                          </span>
+                        )}
+                        {student.inviteStatus === 'PENDING' && (
+                          <span className="flex items-center gap-1.5 text-amber-400 text-xs font-medium">
+                            <Clock className="w-3.5 h-3.5" /> Pending
+                          </span>
+                        )}
+                        {!student.inviteStatus && (
+                          <span className="flex items-center gap-1.5 text-gray-500 text-xs font-medium">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Not Invited
+                          </span>
+                        )}
+                        {student.inviteStatus === 'PENDING' && (
+                          <button
+                            type="button"
+                            title="Copy this student's invite link to share offline"
+                            aria-label={`Copy invite link for ${student.fullName}`}
+                            className="text-xs underline text-gray-400 hover:text-white disabled:opacity-50"
+                            disabled={copyingId === student.userId}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setCopyingId(student.userId);
+                              try {
+                                const { inviteUrl } = await api.onboarding.getStudentInviteLink(
+                                  student.userId,
+                                );
+                                await navigator.clipboard.writeText(inviteUrl);
+                                setMessage(`Invite link copied for ${student.fullName}.`);
+                              } catch (err) {
+                                setError(
+                                  isSmartApiError(err)
+                                    ? err.message
+                                    : 'Could not copy invite link.',
+                                );
+                              } finally {
+                                setCopyingId(null);
+                              }
+                            }}
+                          >
+                            {copyingId === student.userId ? 'Copying…' : 'Copy link'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       {/* Placeholder for standard Verification Badge */}
@@ -271,7 +304,7 @@ export default function TpoStudentsPage() {
       />
 
       <CandidateDetailDrawer
-        candidateId={selectedCandidateId}
+        candidate={students.find((s) => s.userId === selectedCandidateId) ?? null}
         isOpen={!!selectedCandidateId}
         onClose={() => setSelectedCandidateId(null)}
       />
