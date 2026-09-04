@@ -223,7 +223,7 @@ export class ProctoringService {
           type: 'session_terminated',
           state: 'terminated',
           reason: 'warning_limit_exceeded',
-          message: 'Test locked — warning limit reached. Submit to finish.',
+          message: 'Test terminated — warning limit reached.',
         });
       } else if (band === 'MAJOR' || warningCount >= 3) {
         integrityFlag = 'FLAGGED_PROCTOR';
@@ -446,11 +446,7 @@ export class ProctoringService {
 
   private onboardingStatus(attemptId: string, state: OnboardState): ProctoringOnboardingStatus {
     const onboardingPassed = Boolean(
-      state.consentAt &&
-      state.precheckPassed &&
-      state.faceEnrolled &&
-      state.livenessPassed &&
-      state.voiceCalibrated,
+      state.consentAt && state.precheckPassed && state.faceEnrolled && state.livenessPassed,
     );
     return { attemptId, ...state, onboardingPassed };
   }
