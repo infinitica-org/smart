@@ -931,21 +931,9 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Level ${dto.levelNumber} for track ${dto.trackCode} not found.`);
     }
 
-    // Check for existing IN_PROGRESS attempt (Approved Idempotent Policy)
-    const existingAttempt = await this.prisma.attempt.findFirst({
-      where: {
-        userId: studentId,
-        levelId: level.id,
-        status: 'IN_PROGRESS',
-      },
-      include: {
-        level: { include: { track: true } },
-        responses: true,
-      },
-    });
-
-    if (existingAttempt) {
-      return this.getSession(studentId, existingAttempt.id);
+    const existingOutcome = await this.resumeOrCloseStaleAttempt(studentId, level.id);
+    if (existingOutcome !== 'create') {
+      return existingOutcome;
     }
 
     // Level Unlock Rule: Level 2+ requires preceding level cleared with BRONZE or higher
@@ -1076,6 +1064,70 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     sessionDto.locked = sessionDto.locked || (await this.proctorLocked(attemptId));
     await this.saveRedisSession(sessionDto);
     return sessionDto;
+  }
+
+  /**
+   * Idempotent start: resume a live attempt, or atomically close a stale one.
+   * `updateMany` + status filter so only one concurrent start wins the close.
+   * The loser re-reads and resumes the winner's new IN_PROGRESS row.
+   */
+  private async resumeOrCloseStaleAttempt(
+    studentId: string,
+    levelId: string,
+  ): Promise<AttemptSessionDto | 'create'> {
+    const existingAttempt = await this.prisma.attempt.findFirst({
+      where: {
+        userId: studentId,
+        levelId,
+        status: 'IN_PROGRESS',
+      },
+      include: {
+        level: { include: { track: true } },
+        responses: true,
+      },
+    });
+
+    if (!existingAttempt) {
+      return 'create';
+    }
+
+    const stillOpen = existingAttempt.expiresAt.getTime() > Date.now();
+    const lockedByProctor = stillOpen && (await this.proctorLocked(existingAttempt.id));
+    if (stillOpen && !lockedByProctor) {
+      return this.getSession(studentId, existingAttempt.id);
+    }
+
+    const closed = await this.prisma.attempt.updateMany({
+      where: { id: existingAttempt.id, status: 'IN_PROGRESS' },
+      data: { status: 'AUTO_SUBMITTED', completedAt: new Date() },
+    });
+
+    if (closed.count === 0) {
+      const winner = await this.prisma.attempt.findFirst({
+        where: {
+          userId: studentId,
+          levelId,
+          status: 'IN_PROGRESS',
+        },
+      });
+      if (winner) {
+        const winnerOpen = winner.expiresAt.getTime() > Date.now();
+        const winnerLocked = winnerOpen && (await this.proctorLocked(winner.id));
+        if (winnerOpen && !winnerLocked) {
+          return this.getSession(studentId, winner.id);
+        }
+      }
+      return 'create';
+    }
+
+    try {
+      await this.redis.del(`session:assessment:${existingAttempt.id}`);
+      await this.redis.del(`proctor:lock:${existingAttempt.id}`);
+      await this.redis.del(`proctor:warn:${existingAttempt.id}`);
+    } catch {
+      // Fail open — Postgres is the source of truth after auto-submit.
+    }
+    return 'create';
   }
 
   private async proctorLocked(attemptId: string): Promise<boolean> {

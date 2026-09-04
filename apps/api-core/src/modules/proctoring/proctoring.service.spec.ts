@@ -91,4 +91,60 @@ describe('ProctoringService', () => {
     expect(snap.warningCount).toBe(1);
     expect(snap.locked).toBe(false);
   });
+
+  it('locks the attempt at five integrity warnings', async () => {
+    redis.incr.mockResolvedValue(5);
+    redis.get.mockImplementation(async (key: string) => {
+      if (String(key).includes('hmac')) return 'hmac-secret-value-hmac-secret';
+      return '4';
+    });
+    const snap = await service.record(ATTEMPT, 'CLEAN', 'FULLSCREEN_EXIT');
+    expect(snap.warningCount).toBe(5);
+    expect(snap.locked).toBe(true);
+    expect(snap.warningLimit).toBe(5);
+    expect(prisma.attempt.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { integrityFlag: 'UNDER_REVIEW' } }),
+    );
+  });
+
+  it('sets FLAGGED_PROCTOR at three integrity warnings without locking', async () => {
+    redis.incr.mockResolvedValue(3);
+    const snap = await service.record(ATTEMPT, 'CLEAN', 'OS_KEY');
+    expect(snap.warningCount).toBe(3);
+    expect(snap.locked).toBe(false);
+    expect(prisma.attempt.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { integrityFlag: 'FLAGGED_PROCTOR' } }),
+    );
+  });
+
+  it('increments for right-click and writes an integrity event', async () => {
+    redis.incr.mockResolvedValue(1);
+    const snap = await service.record(ATTEMPT, 'CLEAN', 'RIGHT_CLICK');
+    expect(snap.warningCount).toBe(1);
+    expect(prisma.integrityEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          attemptId: ATTEMPT,
+          detail: expect.objectContaining({ kind: 'RIGHT_CLICK', classified: 'INTEGRITY' }),
+        }),
+      }),
+    );
+  });
+
+  it('does not increment warnings for extra-display technical interruption', async () => {
+    const snap = await service.record(ATTEMPT, 'CLEAN', 'TECHNICAL_INTERRUPTION');
+    expect(redis.incr).not.toHaveBeenCalled();
+    expect(snap.warningCount).toBe(0);
+    expect(snap.locked).toBe(false);
+    expect(prisma.integrityEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          detail: expect.objectContaining({
+            kind: 'TECHNICAL_INTERRUPTION',
+            classified: 'TECHNICAL',
+          }),
+        }),
+      }),
+    );
+  });
 });
