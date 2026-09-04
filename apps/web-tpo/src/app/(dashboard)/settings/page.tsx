@@ -42,20 +42,24 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <main className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-8 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <main className="max-w-[1000px] mx-auto space-y-6 font-sans select-none">
+      {/* Header Banner */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white">Institution Settings</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Manage your SMART plan, team access, and notification preferences.
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 mb-1">
+            Institution Settings
+          </h1>
+          <p className="text-slate-500 text-xs font-medium">
+            Manage your SMART plan, tier entitlement flags, team access, and notification
+            preferences.
           </p>
         </div>
       </div>
 
       {/* Plan & Verification Status */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium text-white flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-emerald-400" /> Plan & Verification
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" /> Plan & Verification
         </h3>
 
         {error ? (
@@ -63,17 +67,17 @@ export default function SettingsPage() {
             {error}
           </Alert>
         ) : loading ? (
-          <p role="status" className="text-sm text-gray-400">
+          <p role="status" className="text-sm text-slate-500 font-medium">
             Loading your plan…
           </p>
         ) : (
-          <Card className="bg-[#131313] border-emerald-500/20 p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+          <Card className="bg-white border border-slate-200/80 shadow-sm p-6 relative overflow-hidden rounded-2xl">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h4 className="text-xl font-bold text-white">
+                <div className="flex items-center gap-3 mb-3">
+                  <h4 className="text-xl font-bold text-slate-900">
                     {entitlements?.planCode
                       ? (PLAN_NAMES[entitlements.planCode] ?? entitlements.planCode)
                       : 'No plan assigned'}
@@ -84,23 +88,25 @@ export default function SettingsPage() {
                     {entitlements.flags.map((flag) => (
                       <span
                         key={flag.key}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
                           flag.enabled
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-white/5 text-gray-500 border-white/10'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}
                       >
                         {flag.enabled ? (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                         ) : (
-                          <XCircle className="w-3.5 h-3.5" />
+                          <XCircle className="w-3.5 h-3.5 text-slate-400" />
                         )}
                         {flag.name}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400 max-w-md">No feature flags configured.</p>
+                  <p className="text-xs text-slate-500 font-medium max-w-md">
+                    No feature flags configured.
+                  </p>
                 )}
               </div>
             </div>
@@ -110,10 +116,10 @@ export default function SettingsPage() {
 
       {/* Team Management — not built yet */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-gray-400" /> Team Access
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
+          <Users className="w-4 h-4 text-slate-400" /> Team Access
         </h3>
-        <Card className="bg-[#131313] border-white/5 p-6 text-sm text-gray-400">
+        <Card className="bg-white border border-slate-200/80 shadow-sm p-6 text-xs text-slate-500 rounded-2xl leading-relaxed font-medium">
           Inviting additional placement staff from this screen is coming soon. In the meantime,
           reach out to your SMART account team to add team members.
         </Card>
@@ -121,10 +127,10 @@ export default function SettingsPage() {
 
       {/* Notifications — not built yet */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium text-white flex items-center gap-2">
-          <Bell className="w-5 h-5 text-gray-400" /> Notifications
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
+          <Bell className="w-4 h-4 text-slate-400" /> Notifications
         </h3>
-        <Card className="bg-[#131313] border-white/5 p-6 text-sm text-gray-400">
+        <Card className="bg-white border border-slate-200/80 shadow-sm p-6 text-xs text-slate-500 rounded-2xl leading-relaxed font-medium">
           Notification preferences aren&apos;t configurable yet — you&apos;ll see this section fill
           in as that feature ships.
         </Card>

@@ -121,23 +121,26 @@ export function TpoTopbar() {
   const hasResults = candidateResults.length > 0 || openingResults.length > 0;
 
   return (
-    <header className="h-[66px] flex items-center justify-between px-8 bg-[#0a0a0a] border-b border-white/5 text-white shrink-0 font-sans">
+    <header className="h-16 flex items-center justify-between px-6 lg:px-8 bg-white/90 backdrop-blur-md border-b border-slate-200/80 text-slate-900 shrink-0 font-sans sticky top-0 z-30 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]">
       {/* Left side: Breadcrumbs / Title */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-md font-medium text-gray-500">
-          <span>SMART</span>
-          <ChevronRight className="w-3 h-3" />
-          <span>Academia</span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-gray-300">{title}</span>
-        </div>
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <span
+          className="text-slate-400 font-semibold tracking-tight hover:text-slate-700 transition-colors cursor-pointer"
+          onClick={() => router.push('/')}
+        >
+          SMART
+        </span>
+        <ChevronRight className="size-3.5 text-slate-300 stroke-[2.5]" />
+        <span className="text-slate-400 font-semibold tracking-tight">Academia</span>
+        <ChevronRight className="size-3.5 text-slate-300 stroke-[2.5]" />
+        <span className="text-slate-900 font-bold text-sm tracking-tight">{title}</span>
       </div>
 
       {/* Right side: Actions */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3">
         {/* Search */}
         <div ref={searchBoxRef} className="hidden md:flex relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#00fad0] transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400 group-focus-within:text-[#004c63] transition-colors" />
           <input
             ref={searchInputRef}
             type="text"
@@ -145,25 +148,27 @@ export function TpoTopbar() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => hasResults && setSearchOpen(true)}
             placeholder="Search candidates, JDs..."
-            className="w-[280px] bg-[#131313] text-white text-sm rounded-full py-2 pl-10 pr-4 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 focus:bg-[#161616] placeholder-gray-600 transition-all"
+            className="w-64 lg:w-72 bg-slate-100/80 text-slate-900 text-xs rounded-xl py-2 pl-9 pr-12 border border-slate-200/80 focus:outline-none focus:border-[#004c63] focus:bg-white focus:ring-2 focus:ring-[#004c63]/15 placeholder:text-slate-400 transition-all font-medium"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex">
-            <span className="text-[10px] text-gray-600 border border-gray-700/50 rounded px-1.5 py-0.5">
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:flex items-center">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold font-mono text-slate-400 bg-white border border-slate-200/90 rounded shadow-[0_1px_1px_rgba(0,0,0,0.04)]">
               ⌘K
-            </span>
+            </kbd>
           </div>
 
           {searchOpen && query.trim().length >= MIN_SEARCH_CHARS && (
-            <div className="absolute top-full mt-2 left-0 w-[340px] rounded-xl border border-white/10 bg-[#131313] shadow-2xl overflow-hidden z-50">
+            <div className="absolute top-full mt-2 right-0 w-[360px] rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-2xl overflow-hidden z-50 p-1.5">
               {searching ? (
-                <p className="p-4 text-sm text-gray-400">Searching…</p>
+                <p className="p-4 text-xs text-slate-500 font-medium">Searching…</p>
               ) : !hasResults ? (
-                <p className="p-4 text-sm text-gray-400">No matches for &quot;{query}&quot;.</p>
+                <p className="p-4 text-xs text-slate-500 font-medium">
+                  No matches for &quot;{query}&quot;.
+                </p>
               ) : (
                 <>
                   {candidateResults.length > 0 && (
-                    <div className="py-2">
-                      <p className="px-4 pb-1 text-[11px] uppercase tracking-wide text-gray-500">
+                    <div className="py-1">
+                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Candidates
                       </p>
                       {candidateResults.map((candidate) => (
@@ -171,17 +176,17 @@ export function TpoTopbar() {
                           key={candidate.userId}
                           type="button"
                           onClick={() => goTo('/students')}
-                          className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white truncate"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100/80 text-xs font-semibold text-slate-900 truncate flex items-center justify-between transition-colors"
                         >
-                          {candidate.fullName}{' '}
-                          <span className="text-gray-500">{candidate.email}</span>
+                          <span>{candidate.fullName}</span>
+                          <span className="text-slate-400 font-normal">{candidate.email}</span>
                         </button>
                       ))}
                     </div>
                   )}
                   {openingResults.length > 0 && (
-                    <div className="py-2 border-t border-white/5">
-                      <p className="px-4 pb-1 text-[11px] uppercase tracking-wide text-gray-500">
+                    <div className="py-1 border-t border-slate-100">
+                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Job openings
                       </p>
                       {openingResults.map((opening) => (
@@ -189,10 +194,10 @@ export function TpoTopbar() {
                           key={opening.openingId}
                           type="button"
                           onClick={() => goTo('/placements')}
-                          className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white truncate"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100/80 text-xs font-semibold text-slate-900 truncate flex items-center justify-between transition-colors"
                         >
-                          {opening.roleTitle}{' '}
-                          <span className="text-gray-500">{opening.companyName}</span>
+                          <span>{opening.roleTitle}</span>
+                          <span className="text-slate-400 font-normal">{opening.companyName}</span>
                         </button>
                       ))}
                     </div>
@@ -203,51 +208,69 @@ export function TpoTopbar() {
           )}
         </div>
 
-        <div className="w-px h-6 bg-white/10 hidden md:block"></div>
+        <div className="w-px h-5 bg-slate-200/80 hidden md:block mx-1"></div>
 
         {/* Notifications */}
-        <button className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
-          <Bell className="w-5 h-5" />
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="relative p-2 text-slate-400 hover:text-slate-700 transition-colors rounded-xl hover:bg-slate-100/80"
+        >
+          <Bell className="size-4" />
+          <span className="absolute top-2 right-2 size-2 rounded-full bg-[#004c63] ring-2 ring-white"></span>
         </button>
 
         {/* Profile */}
         <div ref={profileRef} className="relative">
           <button
+            type="button"
             onClick={() => setProfileOpen((v) => !v)}
-            className="flex items-center gap-2 pl-2 border-l border-white/5"
+            className="flex items-center gap-2.5 p-1.5 pl-2.5 rounded-xl hover:bg-slate-100/80 transition-all border border-transparent hover:border-slate-200/60 group"
           >
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-sm font-medium text-white">{user?.fullName ?? ' '}</span>
-              <span className="text-xs text-gray-500">
-                {user ? (ROLE_LABELS[user.role] ?? user.role) : ''}
+            <div className="hidden md:flex flex-col items-end text-right">
+              <span className="text-xs font-bold text-slate-900 leading-tight">
+                {user?.fullName ?? 'Pilot TPO'}
+              </span>
+              <span className="text-[11px] font-medium text-slate-400 leading-tight">
+                {user ? (ROLE_LABELS[user.role] ?? user.role) : 'Institution Admin'}
               </span>
             </div>
-            <Avatar className="w-9 h-9 border-2 border-transparent hover:border-white/10 transition-colors">
-              <AvatarFallback>{(user?.fullName.charAt(0) ?? 'T').toUpperCase()}</AvatarFallback>
+            <Avatar className="size-8 rounded-full border border-slate-200/80 bg-[#004c63] text-white text-xs font-bold flex items-center justify-center shadow-xs">
+              <AvatarFallback className="bg-[#004c63] text-white font-bold text-xs">
+                {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
+              </AvatarFallback>
             </Avatar>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-500 hidden md:block" />
+            <ChevronDown className="size-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 hidden md:block" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/10 bg-[#131313] shadow-2xl overflow-hidden z-50">
-              <div className="px-4 py-3 border-b border-white/5">
-                <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-2xl overflow-hidden z-50 p-1">
+              <div className="px-3.5 py-3 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {user?.fullName ?? 'Pilot TPO'}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {user?.email ?? 'tpo@institution.edu'}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50/80 transition-colors mt-1"
               >
-                <LogOut className="w-4 h-4" /> Sign out
+                <LogOut className="size-3.5" /> Sign out
               </button>
             </div>
           )}
         </div>
 
         {/* Mobile menu trigger */}
-        <button className="lg:hidden p-2 text-gray-400 hover:text-white transition-colors">
-          <MenuIcon className="w-6 h-6" />
+        <button
+          type="button"
+          aria-label="Open menu"
+          className="lg:hidden p-2 text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          <MenuIcon className="size-5" />
         </button>
       </div>
     </header>
