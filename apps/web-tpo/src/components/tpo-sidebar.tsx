@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn, UI_VERSION } from '@smart/ui';
 import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
-import type { TenantEntitlementsDto } from '@smart/contracts';
 import {
   LayoutDashboard,
   Users,
@@ -14,11 +12,8 @@ import {
   Target,
   Layers,
   Settings,
-  HelpCircle,
-  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
-import { api } from '../lib/api';
 
 interface NavItem {
   name: string;
@@ -36,29 +31,8 @@ const mainNav: NavItem[] = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-const footerNav: NavItem[] = [
-  { name: 'Support', href: '/settings', icon: HelpCircle },
-  { name: 'Feedback', href: '/settings', icon: MessageSquare },
-];
-
-const PLAN_NAMES: Record<string, string> = {
-  FREE: 'Free plan',
-  BASIC: 'Basic plan',
-  PRO: 'Pro member',
-};
-
 export function TpoSidebar() {
   const pathname = usePathname();
-  const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
-
-  useEffect(() => {
-    api.onboarding
-      .tpoEntitlements()
-      .then(setEntitlements)
-      .catch(() => {
-        /* footer just shows nothing plan-specific if this fails */
-      });
-  }, []);
 
   return (
     <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200/80 flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans select-none">
