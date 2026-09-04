@@ -26,6 +26,22 @@ const THEMES = {
   muted: { accent: '#64748b', soft: '#f8fafc' },
 } as const;
 
+/** CO-T05: per-stage accent so the offer/hired/rejected emails read distinctly, not identically. */
+const STAGE_EMAIL_THEME: Partial<Record<string, { accent: string; soft: string }>> = {
+  OFFER: THEMES.success,
+  HIRED: THEMES.success,
+  REJECTED: THEMES.danger,
+};
+
+/** CO-T05: one extra line of stage-specific context appended to the generic move copy. */
+const STAGE_EMAIL_NOTE: Partial<Record<string, string>> = {
+  AI_VERIFIED: 'Your profile has passed AI verification and is now visible to the company.',
+  OFFER: 'Congratulations on the offer — review the details with your placement office.',
+  HIRED: "Congratulations — you've been hired! Wishing you all the best in the new role.",
+  REJECTED:
+    "This one didn't work out, but your placement office can help you find the next opening.",
+};
+
 function inviteCopy(data: InviteEmailData): {
   subject: string;
   heading: string;
@@ -112,21 +128,35 @@ export function renderEmailTemplate(
       const payload = data as StageChangeEmailData;
       const fromLabel = payload.fromStage ? formatStage(payload.fromStage) : 'Applied';
       const toLabel = formatStage(payload.toStage);
+      const theme = STAGE_EMAIL_THEME[payload.toStage] ?? THEMES.stage;
+      const extraLine = STAGE_EMAIL_NOTE[payload.toStage];
       const subject = `Application update: ${payload.roleTitle} at ${payload.companyName}`;
-      const text = `${subject}\n\nHello ${payload.fullName},\n\nYour application moved from ${fromLabel} to ${toLabel}.\n\nView details: ${payload.applicationsUrl}`;
+      const text = [
+        subject,
+        '',
+        `Hello ${payload.fullName},`,
+        '',
+        `Your application moved from ${fromLabel} to ${toLabel}.`,
+        extraLine ? extraLine : null,
+        '',
+        `View details: ${payload.applicationsUrl}`,
+      ]
+        .filter((line) => line !== null)
+        .join('\n');
       return {
         subject,
         text,
         html: renderEmailLayout({
           previewText: subject,
           heading: 'Application status updated',
-          accentColor: THEMES.stage.accent,
-          accentSoftColor: THEMES.stage.soft,
+          accentColor: theme.accent,
+          accentSoftColor: theme.soft,
           bodyHtml: [
             paragraph(`Hello ${strong(payload.fullName)},`),
             paragraph(
               `Your application for ${strong(payload.roleTitle)} at ${strong(payload.companyName)} moved from ${strong(fromLabel)} to ${strong(toLabel)}.`,
             ),
+            extraLine ? paragraph(extraLine) : '',
           ].join(''),
           cta: { label: 'Open applications', url: payload.applicationsUrl },
         }),

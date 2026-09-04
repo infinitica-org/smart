@@ -408,12 +408,19 @@ export const EXPERIENCE_DOCUMENT_TYPES = [
 export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
 export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
 
-/** Company ATS columns. V1 is TPO-mediated; candidate job feed is V2. */
+/**
+ * Company ATS columns (CO-T02 kanban). V1 is TPO-mediated; candidate job feed
+ * is V2. Order matches the kanban left-to-right: New Matches -> Shortlisted ->
+ * AI-Verified -> Interviewing -> Offer -> Hired, with Rejected/Withdrawn as
+ * off-pipeline terminal columns.
+ */
 export const ATS_STAGES = [
   'APPLIED',
   'SHORTLISTED',
+  'AI_VERIFIED',
   'INTERVIEW',
   'OFFER',
+  'HIRED',
   'REJECTED',
   'WITHDRAWN',
 ] as const;

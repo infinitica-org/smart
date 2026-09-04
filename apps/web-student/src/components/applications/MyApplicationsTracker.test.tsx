@@ -79,8 +79,30 @@ describe('MyApplicationsTracker', () => {
       'true',
       'true',
       'true',
+      'true',
+      'false',
       'false',
     ]);
+  });
+
+  it('renders the AI-Verified stage introduced alongside CO-T02', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [application({ stage: 'AI_VERIFIED' })],
+    });
+
+    renderTracker();
+
+    await waitFor(() => expect(screen.getAllByText('AI-Verified').length).toBeGreaterThan(0));
+  });
+
+  it('renders the Hired stage as the final, non-terminal pipeline step', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [application({ stage: 'HIRED' })],
+    });
+
+    renderTracker();
+
+    await waitFor(() => expect(screen.getAllByText('Hired').length).toBeGreaterThan(0));
   });
 
   it('shows the updated stage after a poll cycle without a manual refresh', async () => {

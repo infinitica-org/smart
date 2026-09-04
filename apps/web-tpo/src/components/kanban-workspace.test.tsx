@@ -105,10 +105,10 @@ describe('CO-T02 ATS Kanban Workspace', () => {
     expect(await screen.findByText(/Could not move candidate to SHORTLISTED/)).toBeDefined();
   });
 
-  it('keeps a sent-to-company INTERVIEW candidate visible in the ATS', async () => {
+  it('keeps a sent-to-company AI_VERIFIED candidate visible in the ATS', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
     vi.mocked(applicationsApi.listForOpening).mockResolvedValue({
-      applications: [{ ...mockApplication, stage: 'INTERVIEW' }],
+      applications: [{ ...mockApplication, stage: 'AI_VERIFIED' }],
     });
 
     render(<KanbanWorkspace />);
@@ -116,8 +116,32 @@ describe('CO-T02 ATS Kanban Workspace', () => {
     expect(await screen.findByText('Aarav Sharma')).toBeDefined();
     expect(screen.getByLabelText('Change stage for Aarav Sharma')).toHaveProperty(
       'value',
-      'INTERVIEW',
+      'AI_VERIFIED',
     );
+  });
+
+  it('renders all eight CO-T02 kanban columns including AI-Verified and Hired', async () => {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(applicationsApi.listForOpening).mockResolvedValue({
+      applications: [mockApplication],
+    });
+
+    render(<KanbanWorkspace />);
+
+    await screen.findByText('Aarav Sharma');
+
+    for (const label of [
+      'Applied / New Matches',
+      'Shortlisted',
+      'AI-Verified',
+      'Interviewing',
+      'Offer',
+      'Hired',
+      'Rejected',
+      'Withdrawn',
+    ]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    }
   });
 
   it('allows manual refresh', async () => {

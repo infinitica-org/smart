@@ -117,13 +117,15 @@ describe('CO-T04 company dashboard mapping', () => {
     expect(pipelineStages()).toEqual([
       'APPLIED',
       'SHORTLISTED',
+      'AI_VERIFIED',
       'INTERVIEW',
       'OFFER',
+      'HIRED',
       'REJECTED',
       'WITHDRAWN',
     ]);
-    expect(counts).not.toHaveProperty('AI_VERIFIED');
-    expect(counts).not.toHaveProperty('HIRED');
+    expect(counts).toHaveProperty('AI_VERIFIED', 0);
+    expect(counts).toHaveProperty('HIRED', 0);
     expect(counts).not.toHaveProperty('SENT_TO_COMPANY');
   });
 
