@@ -14,6 +14,7 @@
       "require": "./dist/index.cjs"
     },
     "./styles.css": "./src/styles.css",
+    "./assets/*": "./src/assets/*",
     "./assets/brand/*": "./src/assets/brand/*",
     "./utils": "./src/lib/cn.ts",
     "./theme-provider": "./src/components/theme-provider.tsx",

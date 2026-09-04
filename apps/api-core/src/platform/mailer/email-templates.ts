@@ -6,6 +6,8 @@ import type {
   OpportunityEmailData,
   StageChangeEmailData,
   VerificationEmailData,
+  WorkExperienceVerifierInviteEmailData,
+  WorkExperienceVerifierReminderEmailData,
 } from './mailer.types.js';
 
 export interface RenderedEmail {
@@ -143,6 +145,55 @@ export function renderEmailTemplate(
       const payload = data as VerificationEmailData;
       const subject = `Skill locked: ${payload.skillName}`;
       return buildVerificationEmail(payload, subject, THEMES.stage, 'Skill temporarily locked');
+    }
+    case 'work-experience-verifier-invite': {
+      const payload = data as WorkExperienceVerifierInviteEmailData;
+      const subject = `Work Experience Verification Request for ${payload.candidateName} at ${payload.companyName}`;
+      const text = `${subject}\n\nHello ${payload.verifierName},\n\n${payload.candidateName} has listed work experience at ${payload.companyName} as ${payload.roleTitle} (${payload.startDate} - ${payload.endDate}) on the SMART platform and listed you as the verifier.\n\nPlease verify or reject this claim using the link below:\n${payload.verificationUrl}\n\nNote: This link will expire in ${payload.expiresAtFormatted}.`;
+      return {
+        subject,
+        text,
+        html: renderEmailLayout({
+          previewText: subject,
+          heading: 'Work Experience Verification Request',
+          accentColor: THEMES.invite.accent,
+          accentSoftColor: THEMES.invite.soft,
+          bodyHtml: [
+            paragraph(`Hello ${strong(payload.verifierName)},`),
+            paragraph(
+              `${strong(payload.candidateName)} has submitted a work experience entry for ${strong(payload.roleTitle)} at ${strong(payload.companyName)} (${payload.startDate} to ${payload.endDate}) on the SMART platform.`,
+            ),
+            paragraph(
+              'As the designated employer contact, please click the button below to review and approve or reject this work experience claim.',
+            ),
+          ].join(''),
+          cta: { label: 'Verify Work Experience', url: payload.verificationUrl },
+          footerNote: `This verification link expires in ${payload.expiresAtFormatted}.`,
+        }),
+      };
+    }
+    case 'work-experience-verifier-reminder': {
+      const payload = data as WorkExperienceVerifierReminderEmailData;
+      const subject = `Reminder: Work Experience Verification Request for ${payload.candidateName}`;
+      const text = `${subject}\n\nHello ${payload.verifierName},\n\nThis is a reminder to verify the work experience claim for ${payload.candidateName} at ${payload.companyName} as ${payload.roleTitle}.\n\nPlease complete verification using the link below:\n${payload.verificationUrl}\n\nNote: This link will expire soon.`;
+      return {
+        subject,
+        text,
+        html: renderEmailLayout({
+          previewText: subject,
+          heading: 'Verification Request Pending',
+          accentColor: THEMES.stage.accent,
+          accentSoftColor: THEMES.stage.soft,
+          bodyHtml: [
+            paragraph(`Hello ${strong(payload.verifierName)},`),
+            paragraph(
+              `This is a friendly reminder to verify the work experience claim for ${strong(payload.candidateName)} at ${strong(payload.companyName)} (${strong(payload.roleTitle)}).`,
+            ),
+          ].join(''),
+          cta: { label: 'Complete Verification', url: payload.verificationUrl },
+          footerNote: `This verification link will expire in ${payload.expiresAtFormatted}.`,
+        }),
+      };
     }
   }
 }

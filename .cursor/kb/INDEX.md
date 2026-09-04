@@ -14,6 +14,7 @@ Condensed shared knowledge. Canonical detail stays in repo docs.
 | [doc-authority.md](./doc-authority.md)           | Which doc wins (includes frozen PRD v1 pack)                          |
 | [commits-and-prs.md](./commits-and-prs.md)       | Commit subject + PR label tags                                        |
 | [backlog-issues.md](./backlog-issues.md)         | Sprint backlog → GitHub Issues only (not Zoho)                        |
+| [common-issues.md](./common-issues.md)           | Dirty merges, Actions billing, seed logins, escalation brief          |
 
 **Sprint 3 handover (pull `main`):** [`docs/delivery/SPRINT03_HANDOVER.md`](../../docs/delivery/SPRINT03_HANDOVER.md) · MMP pack: [`docs/product/prd-v1/`](../../docs/product/prd-v1/README.md) · Architect map: [`docs/delivery/PRD_V1_ARCHITECT_REVIEW.md`](../../docs/delivery/PRD_V1_ARCHITECT_REVIEW.md)
 

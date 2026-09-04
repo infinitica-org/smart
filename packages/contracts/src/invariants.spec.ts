@@ -457,3 +457,17 @@ describe('SE-T03 project verification contracts', () => {
     expect(getTopicSpec(SMART_TOPICS.evalCompleted).purpose).toMatch(/certificate/i);
   });
 });
+
+describe('proctoring routes (S4-RM-01)', () => {
+  it('registers student telemetry with a dedicated policy', () => {
+    expect(ROUTES.find((entry) => entry.path === '/proctoring/violations')).toMatchObject({
+      method: 'POST',
+      module: 'proctoring',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'proctoring.telemetry',
+    });
+    expect(getRateLimitPolicy('proctoring.telemetry').limit).toBe(40);
+    expect(getTopicSpec(SMART_TOPICS.proctoringSnapshotReady).producerModule).toBe('proctoring');
+  });
+});

@@ -48,6 +48,10 @@ export function WorkExperienceSection() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Verification state
+  const [sendingVerificationId, setSendingVerificationId] = useState<string | null>(null);
+  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
+
   // Form Fields
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
@@ -130,6 +134,22 @@ export function WorkExperienceSection() {
     setVerifierEmail(exp.verifierEmail || '');
     setVerifierDesignation(exp.verifierDesignation || '');
     setIsModalOpen(true);
+  };
+
+  const handleSendVerification = async (experienceId: string) => {
+    try {
+      setSendingVerificationId(experienceId);
+      setError(null);
+      setVerificationSuccess(null);
+      const res = await api.users.sendWorkExperienceVerification(experienceId);
+      setVerificationSuccess(res.message);
+      await fetchExperiences();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to send verification request.';
+      setError(message);
+    } finally {
+      setSendingVerificationId(null);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -265,6 +285,21 @@ export function WorkExperienceSection() {
         </button>
       </div>
 
+      {verificationSuccess && (
+        <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <span>{verificationSuccess}</span>
+          </div>
+          <button
+            onClick={() => setVerificationSuccess(null)}
+            className="text-emerald-400 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -309,14 +344,18 @@ export function WorkExperienceSection() {
                     </span>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                        exp.status === 'SUBMITTED'
-                          ? 'bg-[#00fad0]/15 text-[#00fad0]'
-                          : exp.status === 'REJECTED'
-                            ? 'bg-red-500/15 text-red-400'
-                            : 'bg-yellow-500/15 text-yellow-300'
+                        exp.status === 'VERIFIED'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : exp.status === 'PENDING_EMPLOYER'
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            : exp.status === 'SUBMITTED'
+                              ? 'bg-[#00fad0]/15 text-[#00fad0]'
+                              : exp.status === 'REJECTED'
+                                ? 'bg-red-500/15 text-red-400'
+                                : 'bg-white/10 text-white/50'
                       }`}
                     >
-                      {exp.status}
+                      {exp.status === 'PENDING_EMPLOYER' ? 'PENDING EMPLOYER' : exp.status}
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/60">
@@ -416,15 +455,48 @@ export function WorkExperienceSection() {
                 </div>
               )}
 
-              {/* Verifier Contact Summary */}
-              {exp.verifierEmail && (
-                <div className="mt-1 flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 text-xs text-white/60">
-                  <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
+              {/* Verifier Contact & Verification Action */}
+              {exp.verifierEmail ? (
+                <div className="mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
+                    <span>
+                      Employer Verifier:{' '}
+                      <strong className="text-white/80">{exp.verifierName || 'HR/Manager'}</strong>{' '}
+                      ({exp.verifierEmail})
+                    </span>
+                  </div>
+                  {exp.status !== 'VERIFIED' && (
+                    <button
+                      onClick={() => handleSendVerification(exp.id)}
+                      disabled={sendingVerificationId === exp.id}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#00fad0]/10 border border-[#00fad0]/30 px-3 py-1.5 text-xs font-semibold text-[#00fad0] hover:bg-[#00fad0]/20 disabled:opacity-50 transition-colors shrink-0"
+                    >
+                      {sendingVerificationId === exp.id ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Sending...
+                        </>
+                      ) : exp.status === 'PENDING_EMPLOYER' ? (
+                        'Resend Verification Link'
+                      ) : (
+                        'Send Verification Link'
+                      )}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-1 flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">
                   <span>
-                    Employer Verifier:{' '}
-                    <strong className="text-white/80">{exp.verifierName || 'HR/Manager'}</strong> (
-                    {exp.verifierEmail})
+                    No verifier email configured. Add verifier details to initiate employer
+                    verification.
                   </span>
+                  <button
+                    onClick={() => openEditModal(exp)}
+                    className="rounded bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
+                  >
+                    Add Verifier
+                  </button>
                 </div>
               )}
 
