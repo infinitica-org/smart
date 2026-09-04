@@ -402,6 +402,7 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
       interval: 15s
@@ -440,6 +441,28 @@ services:
     depends_on:
       - loki
     profiles: ["obs"]
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    restart: unless-stopped
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ../observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3103}:3200" # query API (Grafana datasource)
+      - "127.0.0.1:${TEMPO_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC ingest
+      - "127.0.0.1:${TEMPO_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP ingest
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3200/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    profiles: ["obs"]
+    # No app currently emits OTel traces to this — wiring an OTel SDK into
+    # api-core (and pointing it at http://tempo:4318) is a separate task.
+    # If /var/tempo permission errors show up on first boot, add `user: root`.
 
   # --- exporters: turn existing containers/services into Prometheus targets ---
 
@@ -509,3 +532,4 @@ volumes:
   grafana_data:
   loki_data:
   alloy_data:
+  tempo_data:
