@@ -137,6 +137,14 @@ function createMockPrisma() {
         Object.assign(found, data);
         return found;
       }),
+      updateMany: vi.fn(async ({ where, data }: any) => {
+        const found = attemptsStore.find(
+          (a) => a.id === where.id && (where.status === undefined || a.status === where.status),
+        );
+        if (!found) return { count: 0 };
+        Object.assign(found, data);
+        return { count: 1 };
+      }),
     },
     levelResult: {
       findFirst: vi.fn(async ({ where }: any) => {
@@ -437,6 +445,56 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
     expect(prisma._attemptsStore[0]?.status).toBe('AUTO_SUBMITTED');
     expect(prisma.attempt.create).toHaveBeenCalledTimes(2);
     expect(await redis.exists(`proctor:lock:${firstSession.attemptId}`)).toBe(0);
+  });
+
+  it('7d. Losing the stale-close race resumes the winner IN_PROGRESS attempt', async () => {
+    const firstSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+    const stale = prisma._attemptsStore[0] as {
+      id: string;
+      userId: string;
+      levelId: string;
+      status: string;
+      expiresAt: Date;
+      level: unknown;
+    };
+    stale.expiresAt = new Date(Date.now() - 1000);
+
+    const winnerId = '55555555-5555-5555-5555-555555555559';
+    const winner = {
+      id: winnerId,
+      userId: STUDENT_ID,
+      levelId: LEVEL1_ID,
+      formCode: 'A',
+      status: 'IN_PROGRESS',
+      integrityFlag: 'CLEAN',
+      startedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      level: stale.level,
+      responses: [],
+    };
+    prisma._attemptsStore.push(winner);
+
+    let attemptFinds = 0;
+    prisma.attempt.findFirst.mockImplementation(async () => {
+      attemptFinds += 1;
+      if (attemptFinds === 1) {
+        return { ...stale, responses: [] };
+      }
+      return winner;
+    });
+    prisma.attempt.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    const secondSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+
+    expect(secondSession.attemptId).toBe(winnerId);
+    expect(prisma.attempt.create).toHaveBeenCalledTimes(1);
+    expect(attemptsStartedSpy).toHaveBeenCalledTimes(1);
   });
 
   it('8. New attempt is persisted correctly', async () => {
