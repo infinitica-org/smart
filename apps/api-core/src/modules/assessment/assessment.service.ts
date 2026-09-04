@@ -945,7 +945,22 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (existingAttempt) {
-      return this.getSession(studentId, existingAttempt.id);
+      const stillOpen = existingAttempt.expiresAt.getTime() > Date.now();
+      const lockedByProctor = stillOpen && (await this.proctorLocked(existingAttempt.id));
+      if (stillOpen && !lockedByProctor) {
+        return this.getSession(studentId, existingAttempt.id);
+      }
+      await this.prisma.attempt.update({
+        where: { id: existingAttempt.id },
+        data: { status: 'AUTO_SUBMITTED', completedAt: new Date() },
+      });
+      try {
+        await this.redis.del(`session:assessment:${existingAttempt.id}`);
+        await this.redis.del(`proctor:lock:${existingAttempt.id}`);
+        await this.redis.del(`proctor:warn:${existingAttempt.id}`);
+      } catch {
+        // Fail open — Postgres is the source of truth after auto-submit.
+      }
     }
 
     // Level Unlock Rule: Level 2+ requires preceding level cleared with BRONZE or higher
