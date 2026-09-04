@@ -214,7 +214,7 @@ export function ProctoringShell({
   if (!enabled) return children;
   if (!mounted) return null;
 
-  const hideExam = hidePlayerForFullscreen(blocked || extendedDisplay, locked);
+  const hideExam = hidePlayerForFullscreen(blocked || extendedDisplay);
   const kiosk = (
     <div
       ref={kioskRef}

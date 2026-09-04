@@ -32,8 +32,8 @@ export function unlockAssessmentKeyboard(): void {
   }
 }
 
-/** Hide questions whenever fullscreen is lost — including after a session lock. */
-export function hidePlayerForFullscreen(blocked: boolean, _sessionLocked = false): boolean {
+/** Hide questions whenever fullscreen is lost. Session lock uses a separate terminate UI. */
+export function hidePlayerForFullscreen(blocked: boolean): boolean {
   return blocked;
 }
 

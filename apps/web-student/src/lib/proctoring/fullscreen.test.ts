@@ -8,9 +8,8 @@ import {
 
 describe('proctoring fullscreen helpers', () => {
   it('hides the player whenever fullscreen is lost', () => {
-    expect(hidePlayerForFullscreen(true, false)).toBe(true);
-    expect(hidePlayerForFullscreen(false, false)).toBe(false);
-    expect(hidePlayerForFullscreen(true, true)).toBe(true);
+    expect(hidePlayerForFullscreen(true)).toBe(true);
+    expect(hidePlayerForFullscreen(false)).toBe(false);
   });
 
   it('locks the Chromium keyboard after fullscreen is already active', async () => {

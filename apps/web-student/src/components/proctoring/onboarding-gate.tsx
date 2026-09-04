@@ -1,9 +1,13 @@
 'use client';
 
-import { useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Alert, Button } from '@smart/ui';
 import { api } from '../../lib/api';
-import { requestProctoringMedia, sampleEnvironment } from '../../lib/proctoring/media';
+import {
+  requestProctoringMedia,
+  sampleEnvironment,
+  stopProctoringMedia,
+} from '../../lib/proctoring/media';
 import { enterAssessmentFullscreen } from '../../lib/proctoring/fullscreen';
 
 export function OnboardingGate({
@@ -23,6 +27,16 @@ export function OnboardingGate({
   );
   const [busy, setBusy] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const handedOffRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (!handedOffRef.current) {
+        stopProctoringMedia(streamRef.current);
+        streamRef.current = null;
+      }
+    };
+  }, []);
 
   async function run() {
     setBusy(true);
@@ -60,6 +74,7 @@ export function OnboardingGate({
         yawDelta: 0.1,
         earDelta: 0.05,
       });
+      handedOffRef.current = true;
       onPassed(streamRef.current);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Onboarding failed.');
