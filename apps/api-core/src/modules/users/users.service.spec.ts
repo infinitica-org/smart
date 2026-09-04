@@ -28,6 +28,7 @@ function studentRow(overrides: Record<string, unknown> = {}) {
 
 describe('UsersService completeOnboarding', () => {
   const auth = { revokeAllForUser: vi.fn() };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -43,7 +44,8 @@ describe('UsersService completeOnboarding', () => {
         update: vi.fn(),
       },
     };
-    service = new UsersService(prisma as never, auth as never);
+    outbox.enqueueEnvelope.mockClear();
+    service = new UsersService(prisma as never, auth as never, outbox as never);
   });
 
   it('rejects payloads without DPDP consent', async () => {
@@ -100,10 +102,80 @@ describe('UsersService completeOnboarding', () => {
     );
     expect(result.onboardingCompleted).toBe(true);
   });
+
+  it('enqueues candidate.skills_discovered only for skills the candidate kept selected', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce({
+      ...user,
+      onboardingCompleted: true,
+      institution: null,
+      company: null,
+      primaryTrack: null,
+      secondaryTrack: null,
+    });
+
+    await service.completeOnboarding(user.id, {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phoneCountryCode: '+91',
+      phoneNumber: '9876543210',
+      linkedinUrl: 'https://www.linkedin.com/in/ada',
+      education: [],
+      experiences: [],
+      skills: [],
+      preferences: ['Coding'],
+      skillDiscovery: {
+        suggestedFromGithub: [
+          { language: 'TypeScript', bytes: 900, byteShare: 0.9, repoCount: 3 },
+          { language: 'CSS', bytes: 100, byteShare: 0.1, repoCount: 1 },
+        ],
+        // CSS was suggested but the candidate unchecked it — must not be sent downstream.
+        selectedSkillNames: ['TypeScript'],
+        customSkillNames: [],
+      },
+      dpdpConsent: true,
+    });
+
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledTimes(1);
+    const call = outbox.enqueueEnvelope.mock.calls[0][0] as { data: { languages: unknown[] } };
+    expect(call.data.languages).toEqual([
+      { language: 'TypeScript', bytes: 900, byteShare: 0.9, repoCount: 3 },
+    ]);
+  });
+
+  it('does not enqueue candidate.skills_discovered when no skills were selected', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce({
+      ...user,
+      onboardingCompleted: true,
+      institution: null,
+      company: null,
+      primaryTrack: null,
+      secondaryTrack: null,
+    });
+
+    await service.completeOnboarding(user.id, {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phoneCountryCode: '+91',
+      phoneNumber: '9876543210',
+      linkedinUrl: 'https://www.linkedin.com/in/ada',
+      education: [],
+      experiences: [],
+      skills: [],
+      preferences: ['Coding'],
+      dpdpConsent: true,
+    });
+
+    expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
+  });
 });
 
 describe('UsersService saveOnboardingDraft', () => {
   const auth = { revokeAllForUser: vi.fn() };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -119,7 +191,7 @@ describe('UsersService saveOnboardingDraft', () => {
         update: vi.fn(),
       },
     };
-    service = new UsersService(prisma as never, auth as never);
+    service = new UsersService(prisma as never, auth as never, outbox as never);
   });
 
   it('rejects an invalid draft payload', async () => {

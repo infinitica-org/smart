@@ -1,17 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@smart/ui';
-import {
-  LayoutDashboard,
-  Users,
-  Briefcase,
-  Target,
-  Layers,
-  FileText,
-  Settings,
-} from 'lucide-react';
+import type { TenantEntitlementsDto } from '@smart/contracts';
+import { LayoutDashboard, Users, Briefcase, Target, Layers, Settings } from 'lucide-react';
+import { api } from '../lib/api';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -19,12 +14,27 @@ const navItems = [
   { name: 'Placements', href: '/placements', icon: Briefcase },
   { name: 'Opportunities', href: '/opportunities', icon: Target },
   { name: 'Batches', href: '/batches', icon: Layers },
-  { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
+const PLAN_NAMES: Record<string, string> = {
+  FREE: 'Free plan',
+  BASIC: 'Basic plan',
+  PRO: 'Pro member',
+};
+
 export function TpoSidebar() {
   const pathname = usePathname();
+  const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
+
+  useEffect(() => {
+    api.onboarding
+      .tpoEntitlements()
+      .then(setEntitlements)
+      .catch(() => {
+        /* footer just shows nothing plan-specific if this fails */
+      });
+  }, []);
 
   return (
     <aside className="hidden lg:flex w-64 border-r border-white/5 bg-[#131313] flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans">
@@ -64,18 +74,19 @@ export function TpoSidebar() {
       </nav>
 
       {/* Footer Area - Plan / User */}
-      <div className="p-4 border-t border-white/5 shrink-0">
+      <Link href="/settings" className="p-4 border-t border-white/5 shrink-0 block">
         <div className="bg-[#161616] rounded-xl p-4 border border-white/5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-[#00fad0]/10 blur-xl -mr-8 -mt-8" />
           <div className="text-xs font-semibold text-white mb-1 relative z-10">
             Institution Plan
           </div>
           <div className="text-[11px] text-[#00fad0] mb-1 relative z-10 font-medium">
-            Pro Member
+            {entitlements?.planCode
+              ? (PLAN_NAMES[entitlements.planCode] ?? entitlements.planCode)
+              : 'No plan assigned'}
           </div>
-          <div className="text-[10px] text-gray-500 relative z-10">Verification complete</div>
         </div>
-      </div>
+      </Link>
     </aside>
   );
 }

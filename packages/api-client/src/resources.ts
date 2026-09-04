@@ -1,16 +1,25 @@
 import type {
+  AddCertificateSkillsRequest,
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
+  CreateCandidateCertificateRequest,
+  CreateCertificateEndorsementRequest,
   CreateProjectRequest,
   DeclareSkillClaimRequest,
+  FetchGithubProfileRequest,
+  GithubRepoReadmeRequest,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
+  ListGithubReposRequest,
   ParseResumeRequest,
+  RepoLanguagesRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
+  SubmitCertificateEndorsementDecisionRequest,
   TenantActionReason,
+  UpdateCertificateLearningRequest,
   UpdateCompanyRequest,
   UpdateInstitutionRequest,
   UpdatePlanEntitlementsRequest,
@@ -33,9 +42,13 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
+  CandidateCertificateDtoSchema,
   CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
+  FetchGithubProfileResponseSchema,
+  GetCertificateEndorsementResponseSchema,
+  GithubRepoReadmeResponseSchema,
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
@@ -44,13 +57,25 @@ import {
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
+  LinkedinOauthUrlResponseSchema,
+  ListCertificateVerificationEventsResponseSchema,
+  ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
+  ListMyCandidateCertificatesResponseSchema,
+  ListMyProjectsResponseSchema,
+  ListNotificationsResponseSchema,
   NextItemDtoSchema,
+  NotificationDtoSchema,
+  SubmitCertificateEndorsementDecisionResponseSchema,
+  PublicCandidateProfileDtoSchema,
+  PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
+  RepoLanguagesResponseSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
   SsoStartResponseSchema,
+  StudentInviteLinkResponseSchema,
   SubscriptionPlanDtoSchema,
   TenantEntitlementsDtoSchema,
   TrackDtoSchema,
@@ -170,6 +195,42 @@ export function usersApi(client: SmartApiClient) {
         schema: AuthenticatedUserSchema,
       }),
 
+    /** Begins "Sign in with LinkedIn" (OIDC) — open the returned URL to verify. */
+    linkedinOauthUrl: () =>
+      client.get(prefixed('/users/me/onboarding/linkedin/oauth-url'), {
+        schema: LinkedinOauthUrlResponseSchema,
+      }),
+
+    fetchGithubProfile: (body: FetchGithubProfileRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/fetch-profile'), body, {
+        schema: FetchGithubProfileResponseSchema,
+      }),
+
+    listGithubRepos: (body: ListGithubReposRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/list-repos'), body, {
+        schema: ListGithubReposResponseSchema,
+      }),
+
+    githubRepoLanguages: (body: RepoLanguagesRequest) =>
+      client.post(prefixed('/users/me/onboarding/github/repo-languages'), body, {
+        schema: RepoLanguagesResponseSchema,
+      }),
+
+    githubRepoReadme: (body: GithubRepoReadmeRequest) =>
+      client.post(prefixed('/users/me/github/repo-readme'), body, {
+        schema: GithubRepoReadmeResponseSchema,
+      }),
+
+    getPublicProfileLink: () =>
+      client.get(prefixed('/users/me/public-profile-link'), {
+        schema: PublicProfileLinkResponseSchema,
+      }),
+
+    getMyPublicProfile: () =>
+      client.get(prefixed('/users/me/public-profile'), {
+        schema: PublicCandidateProfileDtoSchema,
+      }),
+
     listWorkExperiences: () =>
       client.get(prefixed('/users/me/work-experiences'), {
         schema: z.array(WorkExperienceSchema),
@@ -212,6 +273,7 @@ export function usersApi(client: SmartApiClient) {
           schema: ValidateWorkExperienceProofResponseSchema,
         },
       ),
+
     sendWorkExperienceVerification: (id: string) =>
       client.post(
         prefixed(`/users/me/work-experiences/${id}/send-verification`),
@@ -414,6 +476,12 @@ export function onboardingApi(client: SmartApiClient) {
     releaseTpoStudentHold: (userId: string, body: TenantActionReason) =>
       client.post(prefixed(`/tpo/students/${userId}/release-hold`), body, {
         schema: InstitutionStudentDtoSchema,
+      }),
+
+    /** Mints a fresh invite link to copy and share offline — never emailed, never displayed. */
+    getStudentInviteLink: (userId: string) =>
+      client.post(prefixed(`/tpo/students/${userId}/invite-link`), undefined, {
+        schema: StudentInviteLinkResponseSchema,
       }),
 
     inviteInstitutionAdmin: (institutionId: string, body: { fullName: string; email: string }) =>
@@ -657,11 +725,96 @@ export function placementApi(client: SmartApiClient) {
 
 export function projectsApi(client: SmartApiClient) {
   return {
+    listMine: () => client.get(prefixed('/projects'), { schema: ListMyProjectsResponseSchema }),
+
     create: (body: CreateProjectRequest) =>
       client.post(prefixed('/projects'), body, { schema: ProjectDtoSchema }),
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+  };
+}
+
+export function candidateCertificatesApi(client: SmartApiClient) {
+  return {
+    create: (body: CreateCandidateCertificateRequest) =>
+      client.post(prefixed('/candidate-certificates'), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    listMine: () =>
+      client.get(prefixed('/candidate-certificates'), {
+        schema: ListMyCandidateCertificatesResponseSchema,
+      }),
+
+    get: (id: string) =>
+      client.get(prefixed(`/candidate-certificates/${id}`), {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    upload: (id: string, file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed(`/candidate-certificates/${id}/upload`), formData, {
+        schema: CandidateCertificateDtoSchema,
+      });
+    },
+
+    replaceSkills: (id: string, body: AddCertificateSkillsRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/skills`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    updateLearning: (id: string, body: UpdateCertificateLearningRequest) =>
+      client.patch(prefixed(`/candidate-certificates/${id}`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    requestEndorsement: (id: string, body: CreateCertificateEndorsementRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/endorsement`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    listEvents: (id: string) =>
+      client.get(prefixed(`/candidate-certificates/${id}/verification/events`), {
+        schema: ListCertificateVerificationEventsResponseSchema,
+      }),
+
+    getEndorsement: (token: string) =>
+      client.get(prefixed(`/certificate-endorsements/${token}`), {
+        schema: GetCertificateEndorsementResponseSchema,
+        anonymous: true,
+      }),
+
+    submitEndorsementDecision: (token: string, body: SubmitCertificateEndorsementDecisionRequest) =>
+      client.post(prefixed(`/certificate-endorsements/${token}`), body, {
+        schema: SubmitCertificateEndorsementDecisionResponseSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function notificationsApi(client: SmartApiClient) {
+  return {
+    list: () =>
+      client.get(prefixed('/me/notifications'), { schema: ListNotificationsResponseSchema }),
+
+    markRead: (notificationId: string) =>
+      client.request({
+        method: 'PATCH',
+        path: prefixed(`/me/notifications/${notificationId}/read`),
+        schema: NotificationDtoSchema,
+      }),
+  };
+}
+
+export function publicApi(client: SmartApiClient) {
+  return {
+    getCandidateProfile: (slug: string) =>
+      client.get(prefixed(`/public/candidates/${slug}`), {
+        schema: PublicCandidateProfileDtoSchema,
+        anonymous: true,
+      }),
   };
 }
 
@@ -686,6 +839,9 @@ export function createSmartApi(client: SmartApiClient) {
     placement: placementApi(client),
     onboarding: onboardingApi(client),
     projects: projectsApi(client),
+    candidateCertificates: candidateCertificatesApi(client),
+    notifications: notificationsApi(client),
+    public: publicApi(client),
     system: systemApi(client),
   };
 }

@@ -158,6 +158,7 @@ describe('ProjectDtoSchema', () => {
       outcome: 'Average wait time dropped in a 30-student pilot.',
       loomUrl: null,
       githubUrl: null,
+      liveUrl: null,
       status: 'SUBMITTED',
       createdAt: '2026-09-02T10:00:00.000Z',
       report: null,

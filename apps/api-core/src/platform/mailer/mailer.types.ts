@@ -10,7 +10,8 @@ export type EmailTemplateName =
   | 'verification-failed'
   | 'verification-locked'
   | 'work-experience-verifier-invite'
-  | 'work-experience-verifier-reminder';
+  | 'work-experience-verifier-reminder'
+  | 'certificate-endorsement-request';
 
 export interface InviteEmailData {
   readonly fullName: string;
@@ -63,13 +64,23 @@ export interface WorkExperienceVerifierReminderEmailData {
   readonly expiresAtFormatted: string;
 }
 
+export interface CertificateEndorsementRequestEmailData {
+  readonly endorserName: string;
+  readonly candidateName: string;
+  readonly certificateTitle: string;
+  readonly certificateIssuer: string;
+  readonly endorsementUrl: string;
+  readonly expiresAtFormatted: string;
+}
+
 export type EmailTemplateData =
   | InviteEmailData
   | OpportunityEmailData
   | StageChangeEmailData
   | VerificationEmailData
   | WorkExperienceVerifierInviteEmailData
-  | WorkExperienceVerifierReminderEmailData;
+  | WorkExperienceVerifierReminderEmailData
+  | CertificateEndorsementRequestEmailData;
 
 export interface EmailJobPayload {
   readonly to: string;

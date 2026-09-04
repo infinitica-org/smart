@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
 import { getAccessToken } from '@smart/api-client';
 import { SessionHoldWall } from '@smart/ui';
 import { TpoSidebar } from './tpo-sidebar';
@@ -10,13 +9,6 @@ import { api } from '../lib/api';
 import { signOut } from '../lib/auth';
 
 export function TpoShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const isLogin = pathname === '/login' || pathname.startsWith('/login/');
-
-  if (isLogin) {
-    return children;
-  }
-
   return (
     <SessionHoldWall
       getAccessToken={getAccessToken}

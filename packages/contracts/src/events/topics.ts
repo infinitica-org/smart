@@ -28,6 +28,7 @@ export const SMART_TOPICS = {
   projectSnapshotReady: 'smart.project.snapshot.ready',
   projectVerifyCompleted: 'smart.project.verify.completed',
   proctoringSnapshotReady: 'smart.proctoring.snapshot.ready',
+  candidateSkillsDiscovered: 'smart.candidate.skills_discovered',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -242,6 +243,19 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     retentionHours: 24,
     partitionKey: 'attemptId',
     purpose: 'Webcam checkpoint object is ready for the CV sidecar. Not continuous video.',
+  },
+  {
+    topic: SMART_TOPICS.candidateSkillsDiscovered,
+    producerOwner: 'Vishal V',
+    producerModule: 'users',
+    consumerModules: ['assessment'],
+    partitions: 3,
+    retentionHours: 168,
+    partitionKey: 'userId',
+    purpose:
+      'CN-T01 candidate confirmed GitHub-derived skill suggestions at onboarding completion; ' +
+      'consumer best-effort matches languages against the Software & IT catalog and auto-declares ' +
+      'BEGINNER SkillClaims tagged source=GITHUB_DERIVED. Never overwrites an existing claim.',
   },
 ] as const;
 

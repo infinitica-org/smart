@@ -53,7 +53,7 @@ import { RedisService } from '../../platform/redis/redis.service.js';
 import { env } from '../../platform/config/env.js';
 import { ItemRotationService } from './item-rotation.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
-import type { Prisma } from '../../generated/prisma/index.js';
+import { Prisma } from '../../generated/prisma/index.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { passThresholdsFor } from '../catalog/skill-pass-thresholds.js';
 import {
@@ -243,6 +243,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
   async declareSkillClaim(
     user: RequestUser,
     body: DeclareSkillClaimRequest,
+    provenance?: { source: 'GITHUB_DERIVED'; sourceMetadata: Record<string, unknown> },
   ): Promise<SkillClaimDto> {
     if (user.role !== 'STUDENT') {
       throw new ForbiddenException({
@@ -305,6 +306,10 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
           data: {
             proficiency: body.proficiency,
             status: 'DECLARED',
+            source: provenance?.source ?? 'MANUAL',
+            sourceMetadata: provenance
+              ? (provenance.sourceMetadata as Prisma.InputJsonValue)
+              : Prisma.JsonNull,
             strikes: 0,
             lockedUntil: null,
             lastAttemptId: null,
@@ -318,6 +323,10 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
             skillId: skill.id,
             proficiency: body.proficiency,
             status: 'DECLARED',
+            source: provenance?.source ?? 'MANUAL',
+            sourceMetadata: provenance
+              ? (provenance.sourceMetadata as Prisma.InputJsonValue)
+              : Prisma.JsonNull,
           },
           include: { skill: { select: { code: true } } },
         });
