@@ -55,4 +55,9 @@ jobs:
         run: pnpm test:unit
 
       - name: build
-        run: pnpm build
+        # kvm2 self-hosted runner is 2 vCPU/8GB and also runs the live dev stack —
+        # turbo's default concurrency builds multiple Next.js apps in parallel and
+        # OOM-kills under that memory pressure. Force one package at a time.
+        # (Invoke turbo directly — `pnpm build -- --concurrency=1` forwards the
+        # flag into each package's own build script instead of turbo's CLI.)
+        run: pnpm exec turbo run build --concurrency=1
