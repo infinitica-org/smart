@@ -1025,7 +1025,10 @@ enum EmploymentType {
 enum WorkExperienceVerificationStatus {
   DRAFT
   SUBMITTED
+  PENDING_EMPLOYER
+  VERIFIED
   REJECTED
+  EXPIRED
 }
 
 enum ExperienceDocumentType {
@@ -1067,7 +1070,8 @@ model WorkExperience {
   createdAt           DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  documents           WorkExperienceDocument[]
+  documents            WorkExperienceDocument[]
+  verificationAttempts WorkExperienceVerificationAttempt[]
 
   @@index([studentId, status])
   @@index([companyId])
@@ -1089,4 +1093,24 @@ model WorkExperienceDocument {
 
   @@index([experienceId])
   @@map("work_experience_documents")
+}
+
+model WorkExperienceVerificationAttempt {
+  id            String         @id @default(uuid()) @db.Uuid
+  experienceId  String         @map("experience_id") @db.Uuid
+  experience    WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  tokenHash     String         @unique @map("token_hash")
+  verifierEmail String         @map("verifier_email")
+  sentAt        DateTime       @default(now()) @map("sent_at") @db.Timestamptz(6)
+  expiresAt     DateTime       @map("expires_at") @db.Timestamptz(6)
+  respondedAt   DateTime?      @map("responded_at") @db.Timestamptz(6)
+  reminderSentAt DateTime?     @map("reminder_sent_at") @db.Timestamptz(6)
+  approved      Boolean?
+  comments      String?        @db.Text
+  ipAddress     String?        @map("ip_address")
+  userAgent     String?        @map("user_agent")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([experienceId])
+  @@map("work_experience_verification_attempts")
 }

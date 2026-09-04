@@ -27,6 +27,7 @@ export const SMART_TOPICS = {
   projectSubmitted: 'smart.project.submitted',
   projectSnapshotReady: 'smart.project.snapshot.ready',
   projectVerifyCompleted: 'smart.project.verify.completed',
+  proctoringSnapshotReady: 'smart.proctoring.snapshot.ready',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -231,6 +232,16 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     retentionHours: 336,
     partitionKey: 'projectId',
     purpose: 'SE-T03 report written. Never auto-rejects. Do not treat as a cert tier.',
+  },
+  {
+    topic: SMART_TOPICS.proctoringSnapshotReady,
+    producerOwner: 'Ramansh',
+    producerModule: 'proctoring',
+    consumerModules: ['proctoring'],
+    partitions: 6,
+    retentionHours: 24,
+    partitionKey: 'attemptId',
+    purpose: 'Webcam checkpoint object is ready for the CV sidecar. Not continuous video.',
   },
 ] as const;
 

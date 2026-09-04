@@ -19,3 +19,4 @@ packages/config-next/index.js
 packages/config-next/index.d.ts
 packages/config-next/index.d.ts.map
 packages/config-next/index.js.map
+**/next-env.d.ts

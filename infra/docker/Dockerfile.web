@@ -20,7 +20,15 @@ FROM deps AS build
 COPY . .
 ARG APP=web-student
 ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_AUTH_URL=http://localhost:3005
+ARG NEXT_PUBLIC_STUDENT_URL=http://localhost:3001
+ARG NEXT_PUBLIC_TPO_URL=http://localhost:3002
+ARG NEXT_PUBLIC_ADMIN_URL=http://localhost:3003
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL
+ENV NEXT_PUBLIC_STUDENT_URL=$NEXT_PUBLIC_STUDENT_URL
+ENV NEXT_PUBLIC_TPO_URL=$NEXT_PUBLIC_TPO_URL
+ENV NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL
 RUN pnpm --filter @smart/${APP}... build
 # Not every app ships a public/ dir (e.g. web-auth) — ensure it exists so the
 # runner stage's COPY below never fails on a missing source path.

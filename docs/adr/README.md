@@ -17,5 +17,6 @@ Accepted ADRs for SMART. One decision per file. Owner: Tino (`@brittytino`).
 | [0011](./0011-prd-v1-frozen.md)            | Freeze SMART PRD v1 MMP pack            | Accepted |
 | [0012](./0012-mmp-placement-matching.md)   | V1 matching is rules + TPO-mediated     | Accepted |
 | [0013](./0013-v1-retry-and-credentials.md) | One reattempt, 35-day refresh, licenses | Accepted |
+| [0014](./0014-proctoring-sidecar.md)       | Proctoring CV sidecar + snapshots       | Proposed |
 
 If an ADR conflicts with `ARCHITECTURE.md`, open a PR to fix the ADR or the architecture doc — do not leave them divergent.

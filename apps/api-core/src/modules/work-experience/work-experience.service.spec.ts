@@ -12,6 +12,10 @@ describe('WorkExperienceService', () => {
   const mockStudentId = randomUUID();
 
   beforeEach(() => {
+    const emailQueue: any = {
+      add: vi.fn().mockResolvedValue({ id: 'job-1' }),
+    };
+
     prisma = {
       workExperience: {
         findMany: vi.fn(),
@@ -27,6 +31,11 @@ describe('WorkExperienceService', () => {
         update: vi.fn(),
         delete: vi.fn(),
       },
+      workExperienceVerificationAttempt: {
+        create: vi.fn(),
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
       company: {
         findFirst: vi.fn(),
       },
@@ -36,6 +45,7 @@ describe('WorkExperienceService', () => {
           fullName: 'John Doe',
         }),
       },
+      $transaction: vi.fn().mockImplementation(async (promises) => Promise.all(promises)),
     };
 
     auditPublisher = {
@@ -46,7 +56,7 @@ describe('WorkExperienceService', () => {
       complete: vi.fn(),
     };
 
-    service = new WorkExperienceService(prisma, auditPublisher, aiGateway);
+    service = new WorkExperienceService(prisma, auditPublisher, aiGateway, emailQueue);
   });
 
   describe('create', () => {
@@ -621,6 +631,187 @@ describe('WorkExperienceService', () => {
       } finally {
         await fs.unlink(testFile).catch(() => undefined);
       }
+    });
+  });
+
+  describe('Employer Verification (Phase 3)', () => {
+    describe('sendEmployerVerification', () => {
+      it('throws NotFoundException if experience does not exist', async () => {
+        prisma.workExperience.findUnique.mockResolvedValueOnce(null);
+
+        await expect(service.sendEmployerVerification(mockStudentId, randomUUID())).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('throws BadRequestException if verifier email is missing', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: null,
+        });
+
+        await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it('creates verification attempt, updates status to PENDING_EMPLOYER, and returns response', async () => {
+        const expId = randomUUID();
+        const mockExp = {
+          id: expId,
+          studentId: mockStudentId,
+          companyName: 'Acme Corp',
+          role: 'Software Engineer',
+          verifierName: 'Jane Smith',
+          verifierEmail: 'jane@acme.com',
+          startDate: new Date('2022-01-01'),
+          endDate: null,
+          isCurrent: true,
+          student: { fullName: 'John Candidate' },
+        };
+
+        prisma.workExperience.findUnique.mockResolvedValueOnce(mockExp);
+        prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({
+          id: randomUUID(),
+          experienceId: expId,
+          tokenHash: 'hash',
+          verifierEmail: 'jane@acme.com',
+          expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+        });
+        prisma.workExperience.update.mockResolvedValueOnce({
+          ...mockExp,
+          status: 'PENDING_EMPLOYER',
+        });
+
+        const res = await service.sendEmployerVerification(mockStudentId, expId);
+
+        expect(res.success).toBe(true);
+        expect(res.status).toBe('PENDING_EMPLOYER');
+        expect(prisma.workExperienceVerificationAttempt.create).toHaveBeenCalled();
+        expect(prisma.workExperience.update).toHaveBeenCalledWith({
+          where: { id: expId },
+          data: { status: 'PENDING_EMPLOYER', rejectionReason: null },
+        });
+      });
+    });
+
+    describe('getVerificationByToken', () => {
+      it('throws NotFoundException for invalid token', async () => {
+        prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce(null);
+
+        await expect(service.getVerificationByToken('invalid-token')).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('returns verification details for valid token', async () => {
+        const expId = randomUUID();
+        prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
+          id: randomUUID(),
+          tokenHash: 'hash',
+          verifierEmail: 'jane@acme.com',
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+          respondedAt: null,
+          experience: {
+            id: expId,
+            companyName: 'Acme Corp',
+            role: 'Lead Developer',
+            employmentType: 'FULL_TIME',
+            startDate: new Date('2021-01-01'),
+            endDate: null,
+            isCurrent: true,
+            responsibilities: 'Coding',
+            verifierName: 'Jane Manager',
+            verifierDesignation: 'VP Eng',
+            status: 'PENDING_EMPLOYER',
+            student: { fullName: 'Alice Student' },
+          },
+        });
+
+        const res = await service.getVerificationByToken('valid-raw-token');
+
+        expect(res.experienceId).toBe(expId);
+        expect(res.candidateName).toBe('Alice Student');
+        expect(res.companyName).toBe('Acme Corp');
+        expect(res.isExpired).toBe(false);
+        expect(res.isAlreadyResponded).toBe(false);
+      });
+    });
+
+    describe('submitEmployerVerification', () => {
+      it('approves verification claim and updates status to VERIFIED', async () => {
+        const expId = randomUUID();
+        const attemptId = randomUUID();
+        prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
+          id: attemptId,
+          tokenHash: 'hash',
+          verifierEmail: 'jane@acme.com',
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+          respondedAt: null,
+          experience: {
+            id: expId,
+            status: 'PENDING_EMPLOYER',
+          },
+        });
+
+        prisma.workExperienceVerificationAttempt.update.mockResolvedValueOnce({});
+        prisma.workExperience.update.mockResolvedValueOnce({
+          id: expId,
+          status: 'VERIFIED',
+        });
+
+        const res = await service.submitEmployerVerification('valid-raw-token', {
+          approved: true,
+          comments: 'Everything checks out!',
+        });
+
+        expect(res.success).toBe(true);
+        expect(res.status).toBe('VERIFIED');
+        expect(auditPublisher.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_APPROVED',
+            resourceId: expId,
+          }),
+        );
+      });
+
+      it('rejects verification claim and updates status to REJECTED with reason', async () => {
+        const expId = randomUUID();
+        const attemptId = randomUUID();
+        prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
+          id: attemptId,
+          tokenHash: 'hash',
+          verifierEmail: 'jane@acme.com',
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+          respondedAt: null,
+          experience: {
+            id: expId,
+            status: 'PENDING_EMPLOYER',
+          },
+        });
+
+        prisma.workExperienceVerificationAttempt.update.mockResolvedValueOnce({});
+        prisma.workExperience.update.mockResolvedValueOnce({
+          id: expId,
+          status: 'REJECTED',
+        });
+
+        const res = await service.submitEmployerVerification('valid-raw-token', {
+          approved: false,
+          comments: 'Did not work here during stated dates',
+        });
+
+        expect(res.success).toBe(true);
+        expect(res.status).toBe('REJECTED');
+        expect(auditPublisher.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_REJECTED',
+            resourceId: expId,
+          }),
+        );
+      });
     });
   });
 });
