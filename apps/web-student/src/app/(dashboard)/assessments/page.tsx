@@ -8,7 +8,7 @@ import type { TrackCode } from '@smart/contracts';
 import { api } from '@/lib/api';
 import {
   clearLastL1AttemptId,
-  isInProgressSession,
+  isResumableSession,
   playerErrorFromUnknown,
   readLastL1AttemptId,
   resolveL1TrackCode,
@@ -47,7 +47,7 @@ export default function AssessmentsPage() {
         try {
           const session = await api.assessment.session(stored);
           if (cancelled) return;
-          if (isInProgressSession(session)) {
+          if (isResumableSession(session)) {
             setResumeAttemptId(session.attemptId);
           } else {
             clearLastL1AttemptId();
