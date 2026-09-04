@@ -453,6 +453,51 @@ export const PROJECT_STATUSES = ['SUBMITTED', 'VERIFIED', 'UNDER_REVIEW', 'REJEC
 export const ProjectStatusSchema = z.enum(PROJECT_STATUSES);
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
+/**
+ * Candidate certificate verification (externally-issued certs, e.g. AWS/Coursera —
+ * distinct from the platform's own issued `Certificate`/`Tier` model above).
+ * Verification is either LLM-based (owned separately, not this contract's concern
+ * beyond recording the method) or endorsement-based (a named, work-email-gated
+ * external reviewer approves/rejects — see `CertificateEndorsementStatusSchema`).
+ */
+export const CANDIDATE_CERTIFICATE_STATUSES = [
+  'DECLARED',
+  'UPLOADED',
+  'IN_VERIFICATION',
+  'VERIFIED',
+  'REJECTED',
+] as const;
+export const CandidateCertificateStatusSchema = z.enum(CANDIDATE_CERTIFICATE_STATUSES);
+export type CandidateCertificateStatus = z.infer<typeof CandidateCertificateStatusSchema>;
+
+export const CERTIFICATE_VERIFICATION_METHODS = ['LLM', 'ENDORSEMENT'] as const;
+export const CertificateVerificationMethodSchema = z.enum(CERTIFICATE_VERIFICATION_METHODS);
+export type CertificateVerificationMethod = z.infer<typeof CertificateVerificationMethodSchema>;
+
+/**
+ * Self-assessed proficiency for a certificate's claimed skills. Deliberately
+ * separate from `SkillProficiencySchema` (BEGINNER/INTERMEDIATE/ADVANCED only,
+ * tied to the SkillClaim verification-threshold framework) — this one adds
+ * EXPERT and is purely a candidate self-assessment, never itself a verified claim.
+ */
+export const CERTIFICATE_PROFICIENCIES = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'EXPERT',
+] as const;
+export const CertificateProficiencySchema = z.enum(CERTIFICATE_PROFICIENCIES);
+export type CertificateProficiency = z.infer<typeof CertificateProficiencySchema>;
+
+export const CERTIFICATE_ENDORSEMENT_STATUSES = [
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'EXPIRED',
+] as const;
+export const CertificateEndorsementStatusSchema = z.enum(CERTIFICATE_ENDORSEMENT_STATUSES);
+export type CertificateEndorsementStatus = z.infer<typeof CertificateEndorsementStatusSchema>;
+
 export const PROJECT_VERIFY_FLAGS = [
   'DUPLICATE_TEXT',
   'PUBLIC_WEB_SIMILARITY',

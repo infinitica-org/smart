@@ -13,6 +13,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AssessmentModule } from './modules/assessment/assessment.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CalibrationModule } from './modules/calibration/calibration.module.js';
+import { CandidateCertificatesModule } from './modules/candidate-certificates/candidate-certificates.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { CertificateModule } from './modules/certificate/certificate.module.js';
 import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
@@ -37,6 +38,7 @@ import { MailerModule } from './platform/mailer/mailer.module.js';
 import { PrismaModule } from './platform/prisma/prisma.module.js';
 import { QueueModule } from './platform/queue/queue.module.js';
 import { RedisModule } from './platform/redis/redis.module.js';
+import { StorageModule } from './platform/storage/storage.module.js';
 
 @Module({
   imports: [
@@ -53,6 +55,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     AuditModule,
     PrismaModule,
     RedisModule,
+    StorageModule,
     KafkaModule,
     MailerModule,
     QueueModule,
@@ -68,6 +71,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     EvaluationModule,
     AiGatewayModule,
     CalibrationModule,
+    CandidateCertificatesModule,
     CertificateModule,
     MatchingModule,
     NotificationsModule,

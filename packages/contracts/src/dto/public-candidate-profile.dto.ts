@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
   CertifiableTierSchema,
+  CertificateProficiencySchema,
+  CertificateVerificationMethodSchema,
   EmploymentTypeSchema,
   ProjectStatusSchema,
   SkillProficiencySchema,
@@ -51,6 +53,20 @@ export const PublicCertificateSchema = z.object({
 });
 export type PublicCertificate = z.infer<typeof PublicCertificateSchema>;
 
+/** An externally-issued certificate (AWS, Coursera, etc.) verified via endorsement or LLM — distinct from SMART's own issued `certificate` above. */
+export const PublicExternalCertificateSchema = z.object({
+  title: z.string(),
+  issuer: z.string(),
+  verificationMethod: CertificateVerificationMethodSchema.nullable(),
+  skills: z.array(
+    z.object({
+      skillName: z.string(),
+      proficiency: CertificateProficiencySchema,
+    }),
+  ),
+});
+export type PublicExternalCertificate = z.infer<typeof PublicExternalCertificateSchema>;
+
 export const PublicCandidateProfileDtoSchema = z.object({
   fullName: z.string(),
   trackName: z.string().nullable(),
@@ -62,6 +78,8 @@ export const PublicCandidateProfileDtoSchema = z.object({
   /** VERIFIED work-experience entries only (employer-confirmed). */
   workExperience: z.array(PublicWorkExperienceSchema),
   certificate: PublicCertificateSchema.nullable(),
+  /** Only VERIFIED externally-issued certificates — same proof-not-declaration rule as everything else here. */
+  externalCertificates: z.array(PublicExternalCertificateSchema),
 });
 export type PublicCandidateProfileDto = z.infer<typeof PublicCandidateProfileDtoSchema>;
 

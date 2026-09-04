@@ -115,6 +115,22 @@ services:
       retries: 10
       start_period: 10s
 
+  # One-shot: provisions the "smart" bucket so a fresh stack never hits
+  # NoSuchBucket on first upload. Idempotent (--ignore-existing) and exits
+  # after running — StorageService also self-heals this on boot as a
+  # second-layer guard for anyone running MinIO outside this compose file.
+  minio-init:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-smart} ${MINIO_ROOT_PASSWORD:-smartsecret} &&
+      mc mb --ignore-existing local/smart
+      "
+
   mailpit:
     image: axllent/mailpit:v1.27
     restart: unless-stopped
@@ -168,6 +184,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
     healthcheck:
