@@ -98,6 +98,9 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-arm64-msvc@16.3.2"
   - "@next/swc-win32-x64-msvc@16.3.2"
   - next@16.3.2
+  # #183 bumped these; pnpm's 24h minimumReleaseAge failed CI on kvm2 until they age in.
+  - "@aws-sdk/client-s3@3.1126.0"
+  - "@aws-sdk/s3-request-presigner@3.1126.0"
 
 allowBuilds:
   "@prisma/engines": true
