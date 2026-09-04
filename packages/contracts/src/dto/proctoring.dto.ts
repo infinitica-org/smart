@@ -72,7 +72,7 @@ export const DEFAULT_VIOLATION_SEVERITY: Record<ProctoringViolationKind, Proctor
   TECHNICAL_INTERRUPTION: 'medium',
 };
 
-export const PROCTORING_WARNING_LIMIT_DEFAULT = 15;
+export const PROCTORING_WARNING_LIMIT_DEFAULT = 5;
 
 export const IntegrityScoreBandSchema = z.enum(['CLEAN', 'MINOR', 'MAJOR']);
 export type IntegrityScoreBand = z.infer<typeof IntegrityScoreBandSchema>;
