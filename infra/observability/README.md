@@ -10,6 +10,7 @@ Owner: Vishal V.
 | Grafana    | 3100      | Dashboards (anon auth enabled) |
 | Loki       | 3101      | Log store                      |
 | Alloy      | —         | Docker log scrape → Loki       |
+| Tempo      | 3103      | Trace store (Grafana datasource) |
 
 ```bash
 # From repo root — infra + apps + obs
@@ -49,6 +50,18 @@ All under the **SMART** folder in Grafana; each links to the others via the
 - `apps/proctoring-cv` exposes no `/metrics` at all (plain stdlib `http.server`, no `prometheus_client`). It's dark to Prometheus entirely — not in any dashboard here.
 - **Host & Containers** → "Disk free %" and container mounts reflect the **Docker Desktop Linux VM** on a Windows dev machine, not the Windows host — this is expected locally and will show real numbers once running on the actual Linux VPS (dev/qa/prod).
 - `minio_v2/metrics/cluster` only exposes capacity + traffic; per-request/error-rate metrics live on MinIO's node/bucket metrics endpoints, not scraped here to keep this addition scoped.
+
+## Tempo (tracing)
+
+Tempo is up and provisioned as a Grafana datasource (with trace-to-logs and
+service-map correlation already wired to Loki/Prometheus), but **nothing
+emits traces to it yet** — this is infra only. `api-core` needs an OTel SDK
+added, exporting to `http://tempo:4318` (OTLP/HTTP) or `http://tempo:4317`
+(OTLP/gRPC), before Explore → Tempo shows anything. That's a follow-up, not
+part of this change.
+
+If Tempo fails to start with a permission error writing to `/var/tempo`, add
+`user: root` under the `tempo` service in `docker-compose.yml`.
 
 ## Notes
 
