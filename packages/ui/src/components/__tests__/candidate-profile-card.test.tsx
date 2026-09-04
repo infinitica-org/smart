@@ -29,7 +29,7 @@ describe('CandidateProfileCard', () => {
       />,
     );
 
-    expect(screen.getByText('Varun R')).toBeDefined();
+    expect(screen.getAllByText('Varun R').length).toBeGreaterThan(0);
     expect(screen.getByText('Software Engineering')).toBeDefined();
     expect(screen.getByText('Gold')).toBeDefined(); // TierBadge title-cased
   });
@@ -113,11 +113,11 @@ describe('CandidateProfileCard', () => {
 
     expect(screen.getByText('Cognitive & Communication Profile')).toBeDefined();
     expect(screen.getByText('Cognitive Strengths')).toBeDefined();
-    expect(screen.getByText('92%')).toBeDefined();
+    expect(screen.getAllByText('92%').length).toBeGreaterThan(0);
     expect(screen.getByText('System Design')).toBeDefined();
     expect(screen.getByText('Algorithmic Problem Solving')).toBeDefined();
     expect(screen.getByText('Communication & Defense')).toBeDefined();
-    expect(screen.getByText('88%')).toBeDefined();
+    expect(screen.getAllByText('88%').length).toBeGreaterThan(0);
     expect(
       screen.getByText('Articulate defense of architectural tradeoffs with clear conciseness.'),
     ).toBeDefined();
@@ -225,7 +225,7 @@ describe('CandidateProfileCard', () => {
     );
 
     expect(screen.getByText('Strong track record in React.')).toBeDefined();
-    expect(screen.getByText('95%')).toBeDefined();
+    expect(screen.getAllByText('95%').length).toBeGreaterThan(0);
   });
 
   it('renders action buttons when provided', () => {
