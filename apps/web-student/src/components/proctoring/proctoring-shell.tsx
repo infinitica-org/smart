@@ -17,6 +17,7 @@ import {
   lockAssessmentKeyboard,
   unlockAssessmentKeyboard,
 } from '../../lib/proctoring/fullscreen';
+import { attachProctorSensors } from '../../lib/proctoring/sensors';
 import { DisplayGate, FullscreenGate } from './fullscreen-gate';
 import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
@@ -86,6 +87,7 @@ export function ProctoringShell({
   useEffect(() => {
     if (!enabled || !ready) return undefined;
     let cancelled = false;
+    let detach: () => void = () => undefined;
     void (async () => {
       try {
         const snap = await api.proctoring.snapshot(attemptId);
@@ -100,40 +102,15 @@ export function ProctoringShell({
           userAgent: navigator.userAgent,
           screenResolution: `${screen.width}x${screen.height}`,
         });
-        if (!cancelled) setBlocked(!document.fullscreenElement);
+        if (cancelled || !secretRef.current) return;
+        detach = attachProctorSensors((kind) => {
+          void report(kind);
+        });
+        setBlocked(!document.fullscreenElement);
       } catch {
         if (!cancelled) setBlocked(!document.fullscreenElement);
       }
     })();
-    const onVis = () => {
-      if (document.hidden) void report('TAB_BLUR');
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (
-        event.key === 'F12' ||
-        (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'i')
-      ) {
-        event.preventDefault();
-        void report('DEVTOOLS_OPEN');
-      }
-      if (event.key === 'PrintScreen') {
-        event.preventDefault();
-        void report('PRINT_SCREEN');
-      }
-    };
-    const onCopy = (event: Event) => {
-      event.preventDefault();
-      void report('COPY_ATTEMPT');
-    };
-    const onContext = (event: Event) => {
-      event.preventDefault();
-      void report('RIGHT_CLICK');
-    };
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('keydown', onKey, true);
-    document.addEventListener('copy', onCopy);
-    document.addEventListener('paste', onCopy);
-    document.addEventListener('contextmenu', onContext);
 
     const ping = window.setInterval(
       () => void api.proctoring.ping(attemptId).catch(() => undefined),
@@ -146,14 +123,10 @@ export function ProctoringShell({
     }, 18_000);
     return () => {
       cancelled = true;
+      detach();
       unlockAssessmentKeyboard();
       window.clearInterval(ping);
       window.clearInterval(checkpoint);
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('keydown', onKey, true);
-      document.removeEventListener('copy', onCopy);
-      document.removeEventListener('paste', onCopy);
-      document.removeEventListener('contextmenu', onContext);
     };
   }, [attemptId, enabled, ready, report, terminateIfLocked]);
 
