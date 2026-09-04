@@ -263,6 +263,7 @@ export function usersApi(client: SmartApiClient) {
           schema: ValidateWorkExperienceProofResponseSchema,
         },
       ),
+
     sendWorkExperienceVerification: (id: string) =>
       client.post(
         prefixed(`/users/me/work-experiences/${id}/send-verification`),
