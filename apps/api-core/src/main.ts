@@ -26,6 +26,7 @@ async function bootstrap(): Promise<void> {
   await app.register(cors as never, {
     origin: env.CORS_ORIGINS.split(',').map((origin) => origin.trim()),
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
 
   const openApi = new DocumentBuilder()

@@ -16,6 +16,7 @@ const navItems = [
   { name: 'Applications', href: '/applications' },
   { name: 'Assessments', href: '/assessments' },
   { name: 'Interviews', href: '/interviews' },
+  { name: 'Certificates', href: '/certificates' },
   { name: 'Profile', href: '/profile' },
 ];
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { TierBadge, useQuery } from '@smart/ui';
 import {
+  Award,
   Briefcase,
   CheckCircle2,
   Code2,
@@ -15,6 +16,11 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { initialsOf } from '@/lib/candidate-identity';
+
+const VERIFICATION_METHOD_LABELS: Record<string, string> = {
+  ENDORSEMENT: 'Endorsed',
+  LLM: 'AI-verified',
+};
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   FULL_TIME: 'Full-time',
@@ -300,6 +306,63 @@ export default function PublicProfilePreviewPage() {
                                 </span>
                               ))}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Certifications */}
+                <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
+                  <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <Award className="h-4 w-4 text-gray-500" />
+                    Certifications
+                  </h3>
+                  {profile.externalCertificates.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No verified certifications yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {profile.externalCertificates.map((cert, idx) => (
+                        <div
+                          key={`${cert.title}-${String(idx)}`}
+                          className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-5 dark:border-white/5 dark:bg-white/[0.02]"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {cert.title}
+                            </p>
+                            {cert.verificationMethod ? (
+                              <span className="flex items-center gap-1 rounded-full bg-[#00fad0]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {VERIFICATION_METHOD_LABELS[cert.verificationMethod] ??
+                                  cert.verificationMethod}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            {cert.issuer}
+                          </p>
+                          {cert.skills.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {cert.skills.map((skill) => (
+                                <div
+                                  key={skill.skillName}
+                                  className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 dark:border-white/10 dark:bg-white/5"
+                                >
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {skill.skillName}
+                                  </span>
+                                  <div className="h-3 w-px bg-gray-300 dark:bg-white/20" />
+                                  <span className="text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                                    {skill.proficiency.charAt(0) +
+                                      skill.proficiency.slice(1).toLowerCase()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>

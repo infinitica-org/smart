@@ -201,6 +201,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'IP_CHALLENGE',
   },
   {
+    key: 'verify.certificateEndorsement',
+    scope: 'IP',
+    limit: 20,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:verify_cert_endorse:ip:{id}',
+    rationale: 'Public certificate endorsement token endpoints; cap brute force.',
+    onViolation: 'IP_CHALLENGE',
+  },
+  {
     key: 'verify.publicProfile',
     scope: 'IP',
     limit: 30,

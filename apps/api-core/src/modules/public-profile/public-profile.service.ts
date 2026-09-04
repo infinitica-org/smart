@@ -64,33 +64,45 @@ export class PublicProfileService {
   }
 
   private async build(userId: string): Promise<PublicCandidateProfileDto> {
-    const [user, skillClaims, declaredCount, projects, workExperience, certificate] =
-      await Promise.all([
-        this.prisma.user.findUniqueOrThrow({
-          where: { id: userId },
-          select: { fullName: true, primaryTrack: { select: { code: true } } },
-        }),
-        this.prisma.skillClaim.findMany({
-          where: { studentId: userId, status: 'VERIFIED' },
-          include: { skill: { select: { code: true } } },
-        }),
-        this.prisma.skillClaim.count({ where: { studentId: userId } }),
-        this.prisma.project.findMany({
-          // A reviewer-rejected project (possible plagiarism/integrity flag) is never
-          // portfolio material — everything else the student put up stays visible.
-          where: { studentId: userId, status: { not: 'REJECTED' } },
-          orderBy: { createdAt: 'desc' },
-          include: { report: { select: { score: true } } },
-        }),
-        this.prisma.workExperience.findMany({
-          where: { studentId: userId, status: 'VERIFIED' },
-          orderBy: { startDate: 'desc' },
-        }),
-        this.prisma.certificate.findFirst({
-          where: { userId, status: 'ISSUED', isPublic: true },
-          include: { track: { select: { name: true } } },
-        }),
-      ]);
+    const [
+      user,
+      skillClaims,
+      declaredCount,
+      projects,
+      workExperience,
+      certificate,
+      externalCertificates,
+    ] = await Promise.all([
+      this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { fullName: true, primaryTrack: { select: { code: true } } },
+      }),
+      this.prisma.skillClaim.findMany({
+        where: { studentId: userId, status: 'VERIFIED' },
+        include: { skill: { select: { code: true } } },
+      }),
+      this.prisma.skillClaim.count({ where: { studentId: userId } }),
+      this.prisma.project.findMany({
+        // A reviewer-rejected project (possible plagiarism/integrity flag) is never
+        // portfolio material — everything else the student put up stays visible.
+        where: { studentId: userId, status: { not: 'REJECTED' } },
+        orderBy: { createdAt: 'desc' },
+        include: { report: { select: { score: true } } },
+      }),
+      this.prisma.workExperience.findMany({
+        where: { studentId: userId, status: 'VERIFIED' },
+        orderBy: { startDate: 'desc' },
+      }),
+      this.prisma.certificate.findFirst({
+        where: { userId, status: 'ISSUED', isPublic: true },
+        include: { track: { select: { name: true } } },
+      }),
+      this.prisma.candidateCertificate.findMany({
+        where: { candidateId: userId, status: 'VERIFIED' },
+        orderBy: { createdAt: 'desc' },
+        include: { skills: true },
+      }),
+    ]);
 
     const track = user.primaryTrack
       ? TRACK_BY_CODE.get(user.primaryTrack.code as TrackCode)
@@ -127,6 +139,15 @@ export class PublicProfileService {
       certificate: certificate
         ? { trackName: certificate.track.name, tier: certificate.headlineTier }
         : null,
+      externalCertificates: externalCertificates.map((cert) => ({
+        title: cert.title,
+        issuer: cert.issuer,
+        verificationMethod: cert.verificationMethod,
+        skills: cert.skills.map((skill) => ({
+          skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
+          proficiency: skill.selfAssessedProficiency,
+        })),
+      })),
     };
   }
 }

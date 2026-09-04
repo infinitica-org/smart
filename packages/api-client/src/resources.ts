@@ -1,7 +1,10 @@
 import type {
+  AddCertificateSkillsRequest,
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
+  CreateCandidateCertificateRequest,
+  CreateCertificateEndorsementRequest,
   CreateProjectRequest,
   DeclareSkillClaimRequest,
   FetchGithubProfileRequest,
@@ -14,7 +17,9 @@ import type {
   RepoLanguagesRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
+  SubmitCertificateEndorsementDecisionRequest,
   TenantActionReason,
+  UpdateCertificateLearningRequest,
   UpdateCompanyRequest,
   UpdateInstitutionRequest,
   UpdatePlanEntitlementsRequest,
@@ -37,10 +42,12 @@ import {
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
+  CandidateCertificateDtoSchema,
   CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
   FetchGithubProfileResponseSchema,
+  GetCertificateEndorsementResponseSchema,
   GithubRepoReadmeResponseSchema,
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
@@ -51,12 +58,15 @@ import {
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   LinkedinOauthUrlResponseSchema,
+  ListCertificateVerificationEventsResponseSchema,
   ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
+  ListMyCandidateCertificatesResponseSchema,
   ListMyProjectsResponseSchema,
   ListNotificationsResponseSchema,
   NextItemDtoSchema,
   NotificationDtoSchema,
+  SubmitCertificateEndorsementDecisionResponseSchema,
   PublicCandidateProfileDtoSchema,
   PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
@@ -725,6 +735,65 @@ export function projectsApi(client: SmartApiClient) {
   };
 }
 
+export function candidateCertificatesApi(client: SmartApiClient) {
+  return {
+    create: (body: CreateCandidateCertificateRequest) =>
+      client.post(prefixed('/candidate-certificates'), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    listMine: () =>
+      client.get(prefixed('/candidate-certificates'), {
+        schema: ListMyCandidateCertificatesResponseSchema,
+      }),
+
+    get: (id: string) =>
+      client.get(prefixed(`/candidate-certificates/${id}`), {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    upload: (id: string, file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed(`/candidate-certificates/${id}/upload`), formData, {
+        schema: CandidateCertificateDtoSchema,
+      });
+    },
+
+    replaceSkills: (id: string, body: AddCertificateSkillsRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/skills`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    updateLearning: (id: string, body: UpdateCertificateLearningRequest) =>
+      client.patch(prefixed(`/candidate-certificates/${id}`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    requestEndorsement: (id: string, body: CreateCertificateEndorsementRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/endorsement`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    listEvents: (id: string) =>
+      client.get(prefixed(`/candidate-certificates/${id}/verification/events`), {
+        schema: ListCertificateVerificationEventsResponseSchema,
+      }),
+
+    getEndorsement: (token: string) =>
+      client.get(prefixed(`/certificate-endorsements/${token}`), {
+        schema: GetCertificateEndorsementResponseSchema,
+        anonymous: true,
+      }),
+
+    submitEndorsementDecision: (token: string, body: SubmitCertificateEndorsementDecisionRequest) =>
+      client.post(prefixed(`/certificate-endorsements/${token}`), body, {
+        schema: SubmitCertificateEndorsementDecisionResponseSchema,
+        anonymous: true,
+      }),
+  };
+}
+
 export function notificationsApi(client: SmartApiClient) {
   return {
     list: () =>
@@ -770,6 +839,7 @@ export function createSmartApi(client: SmartApiClient) {
     placement: placementApi(client),
     onboarding: onboardingApi(client),
     projects: projectsApi(client),
+    candidateCertificates: candidateCertificatesApi(client),
     notifications: notificationsApi(client),
     public: publicApi(client),
     system: systemApi(client),

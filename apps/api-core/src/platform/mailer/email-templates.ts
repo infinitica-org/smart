@@ -1,5 +1,6 @@
 import { renderEmailLayout, bulletList, paragraph, strong } from './email-layout.js';
 import type {
+  CertificateEndorsementRequestEmailData,
   EmailTemplateData,
   EmailTemplateName,
   InviteEmailData,
@@ -192,6 +193,32 @@ export function renderEmailTemplate(
           ].join(''),
           cta: { label: 'Complete Verification', url: payload.verificationUrl },
           footerNote: `This verification link will expire in ${payload.expiresAtFormatted}.`,
+        }),
+      };
+    }
+    case 'certificate-endorsement-request': {
+      const payload = data as CertificateEndorsementRequestEmailData;
+      const subject = `${payload.candidateName} asked you to endorse a certificate on SMART`;
+      const text = `${subject}\n\nHello ${payload.endorserName},\n\n${payload.candidateName} has asked you to endorse their certificate "${payload.certificateTitle}" (issued by ${payload.certificateIssuer}) on the SMART platform.\n\nPlease review and approve or reject using the link below:\n${payload.endorsementUrl}\n\nNote: This link will expire in ${payload.expiresAtFormatted}.`;
+      return {
+        subject,
+        text,
+        html: renderEmailLayout({
+          previewText: subject,
+          heading: 'Certificate Endorsement Request',
+          accentColor: THEMES.invite.accent,
+          accentSoftColor: THEMES.invite.soft,
+          bodyHtml: [
+            paragraph(`Hello ${strong(payload.endorserName)},`),
+            paragraph(
+              `${strong(payload.candidateName)} has asked you to endorse their certificate ${strong(payload.certificateTitle)} (issued by ${strong(payload.certificateIssuer)}) on the SMART platform.`,
+            ),
+            paragraph(
+              'Please click the button below to review the certificate and the skills/learning they claimed, then approve or reject.',
+            ),
+          ].join(''),
+          cta: { label: 'Review Certificate', url: payload.endorsementUrl },
+          footerNote: `This endorsement link expires in ${payload.expiresAtFormatted}.`,
         }),
       };
     }
