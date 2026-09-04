@@ -448,7 +448,7 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
   });
 
   it('7d. Losing the stale-close race resumes the winner IN_PROGRESS attempt', async () => {
-    const firstSession = await service.startAttempt(STUDENT_ID, {
+    await service.startAttempt(STUDENT_ID, {
       trackCode: 'TECH_FULLSTACK',
       levelNumber: 1,
     });
