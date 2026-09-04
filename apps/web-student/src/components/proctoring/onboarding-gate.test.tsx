@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as ProctoringMedia from '../../lib/proctoring/media';
 
 const mocks = vi.hoisted(() => ({
   consent: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock('../../lib/api', () => ({
 }));
 
 vi.mock('../../lib/proctoring/media', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../lib/proctoring/media')>();
+  const actual = await importOriginal<typeof ProctoringMedia>();
   return {
     ...actual,
     requestProctoringMedia: (...args: unknown[]) => mocks.requestProctoringMedia(...args),
