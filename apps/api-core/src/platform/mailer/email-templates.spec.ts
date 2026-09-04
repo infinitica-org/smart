@@ -43,4 +43,44 @@ describe('renderEmailTemplate', () => {
     expect(locked.html).toContain('#d97706');
     expect(passed.text).toContain('Database fundamentals');
   });
+
+  it('renders distinct content per CO-T05 stage for application-stage-changed', () => {
+    const base = {
+      fullName: 'Alex Student',
+      companyName: 'Infinitica Labs',
+      roleTitle: 'Backend Engineer',
+      applicationsUrl: 'http://localhost:3001/applications',
+    };
+
+    const aiVerified = renderEmailTemplate('application-stage-changed', {
+      ...base,
+      fromStage: 'SHORTLISTED',
+      toStage: 'AI_VERIFIED',
+    });
+    const offer = renderEmailTemplate('application-stage-changed', {
+      ...base,
+      fromStage: 'INTERVIEW',
+      toStage: 'OFFER',
+    });
+    const hired = renderEmailTemplate('application-stage-changed', {
+      ...base,
+      fromStage: 'OFFER',
+      toStage: 'HIRED',
+    });
+    const rejected = renderEmailTemplate('application-stage-changed', {
+      ...base,
+      fromStage: 'INTERVIEW',
+      toStage: 'REJECTED',
+    });
+
+    expect(aiVerified.text).toContain('AI verification');
+    expect(offer.html).toContain('#16a34a');
+    expect(offer.text).toContain('Congratulations on the offer');
+    expect(hired.text).toContain("you've been hired");
+    expect(rejected.html).toContain('#dc2626');
+    expect(rejected.text).toContain("didn't work out");
+
+    const bodies = [aiVerified.text, offer.text, hired.text, rejected.text];
+    expect(new Set(bodies).size).toBe(bodies.length);
+  });
 });

@@ -25,6 +25,12 @@ const KANBAN_STAGES: Array<{
     headerColor: 'border-t-blue-500 bg-blue-50/50 dark:bg-blue-950/20',
   },
   {
+    id: 'AI_VERIFIED',
+    label: 'AI-Verified',
+    description: 'Passed AI confidence check and sent to the company',
+    headerColor: 'border-t-teal-500 bg-teal-50/50 dark:bg-teal-950/20',
+  },
+  {
     id: 'INTERVIEW',
     label: 'Interviewing',
     description: 'Active candidates undergoing interviews',
@@ -35,6 +41,12 @@ const KANBAN_STAGES: Array<{
     label: 'Offer',
     description: 'Candidates with job offer extended',
     headerColor: 'border-t-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
+  },
+  {
+    id: 'HIRED',
+    label: 'Hired',
+    description: 'Candidates who accepted the offer',
+    headerColor: 'border-t-green-500 bg-green-50/50 dark:bg-green-950/20',
   },
   {
     id: 'REJECTED',
@@ -249,7 +261,7 @@ export function KanbanWorkspace() {
       ) : null}
 
       {loadingApps || loadingOpenings ? (
-        <div role="status" className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div role="status" className="grid grid-cols-1 gap-4 md:grid-cols-4 lg:grid-cols-8">
           {KANBAN_STAGES.map((column) => (
             <div
               key={column.id}
@@ -267,7 +279,7 @@ export function KanbanWorkspace() {
       ) : (
         <section
           aria-label="Kanban columns"
-          className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6"
+          className="grid grid-cols-1 gap-4 md:grid-cols-4 lg:grid-cols-8"
         >
           {KANBAN_STAGES.map((column) => {
             const columnApps = applications.filter((app) => app.stage === column.id);
