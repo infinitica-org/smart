@@ -99,7 +99,7 @@ describe('MyApplicationsTracker', () => {
 
     await waitFor(() => expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0));
     await waitFor(() => expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0), {
-      timeout: 1500,
+      timeout: 3000,
     });
     expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
   });

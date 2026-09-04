@@ -333,7 +333,7 @@ export default function DashboardPage() {
 
               <div className="space-y-6">
                 {[
-                  { icon: Video, title: 'Interview', time: 'Sep 13, 08:30', done: true },
+                  { icon: Video, title: 'Interview', time: 'Sep 13, 08: 30', done: true },
                   { icon: TrendingUp, title: 'Team Meeting', time: 'Sep 13, 10:30', done: true },
                   { icon: FileText, title: 'Project Update', time: 'Sep 13, 13:00', done: false },
                   { icon: FileText, title: 'Discuss Q3 Goals', time: 'Sep 13, 14:45', done: false },

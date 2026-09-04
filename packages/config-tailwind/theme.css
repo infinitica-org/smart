@@ -1,25 +1,37 @@
 /**
- * SMART design tokens — Tailwind CSS 4 (CSS-first configuration).
+ * SMART Theme
+ * Tailwind CSS 4
  *
- * Soft / minimal schema, Airbnb-influenced:
- *   Headings  — Cabinet Grotesk
- *   Body      — Axiforma
- *   Canvas    — warm off-white (light) / soft charcoal (dark) — never pure black
- *   Ink       — #1c1c1e
- *   Accent    — single desaturated teal, used sparingly (no gradients, no neon)
+ * MAIN BRAND
+ * black   #131313
+ * white   #F4F4F4
+ * teal    #00FAD0
+ 
+ * blue    #004C63
  *
- * Every SMART surface imports this file via `@smart/ui/styles.css`.
- * Certification tier colours stay product identity (Gold / Silver / Bronze)
- * and must render identically across portals.
+ * STATUS
+ * green   Success
+ * yellow  Warning
+ * red     Danger
+ * info    Information
  *
- * Semantic shadcn tokens (`background`, `card`, `primary`, `sidebar`, …) live
- * here so every app can use `@smart/ui/button` and friends without copying CSS.
- * Portals that set `class="dark"` on `<html>` keep the charcoal canvas; portals
- * that omit it (or set `class="light"`) get the warm paper canvas.
+ * DASHBOARD
+ * purple  Highlight / AI / Special metrics
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 @import 'tailwindcss';
+
+/* =========================================================
+   FONTS
+   ========================================================= */
+
+@import '../ui/src/assets/fonts/CabinetGrotesk/css/cabinet-grotesk.css';
+@import '../ui/src/assets/fonts/Manrope/css/manrope.css';
+
+
+/* =========================================================
+   SOURCES
+   ========================================================= */
 
 @source '../ui/src/**/*.{ts,tsx}';
 @source '../../apps/web-student/src/**/*.{ts,tsx}';
@@ -28,48 +40,143 @@
 @source '../../apps/web-verify/src/**/*.{ts,tsx}';
 @source '../../apps/web-auth/src/**/*.{ts,tsx}';
 
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
 @custom-variant dark (&:where(.dark, .dark *));
 
+
+/* =========================================================
+   COLORS
+   ========================================================= */
+
 @theme {
-  --color-ink: #131313;
-  --color-paper: #f4f4f4;
-  --color-accent: #00fad0;
-  --color-accent-deep: #004c63;
-  --color-brand-50: #eefaf7;
-  --color-brand-100: #d7f3ed;
-  --color-brand-200: #b2e8dd;
-  --color-brand-300: #85d9c9;
-  --color-brand-400: #58c7b2;
-  --color-brand-500: #2fbfae;
-  --color-brand-600: #229c8d;
-  --color-brand-700: #1a7b72;
-  --color-brand-800: #145a55;
-  --color-brand-900: #0f3f3c;
-  --color-brand-950: #092726;
-  --color-tier-gold: oklch(0.83 0.1 85);
-  --color-tier-gold-fg: oklch(0.32 0.05 85);
-  --color-tier-silver: oklch(0.86 0.015 250);
-  --color-tier-silver-fg: oklch(0.34 0.01 250);
-  --color-tier-bronze: oklch(0.72 0.08 45);
-  --color-tier-bronze-fg: oklch(0.28 0.04 45);
-  --color-tier-below: oklch(0.75 0.01 250);
-  --color-tier-below-fg: oklch(0.25 0.01 250);
-  --color-success: oklch(0.75 0.11 150);
-  --color-warning: oklch(0.82 0.11 80);
-  --color-danger: oklch(0.68 0.15 25);
-  --color-info: oklch(0.75 0.1 235);
-  --color-level-locked: #e4e2dd;
-  --color-level-active: #2fbfae;
-  --color-level-cleared: oklch(0.75 0.11 150);
-  --font-heading: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Axiforma', 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* -------------------------
+     MAIN BRAND COLORS
+     ------------------------- */
+
+  --color-black: #131313;
+  --color-white: #f4f4f4;
+
+  --color-teal: #00fad0;
+  --color-blue: #004c63;
+
+
+  /* -------------------------
+     STATUS COLORS
+     ------------------------- */
+
+  --color-green: #22c55e;
+  --color-yellow: #eab308;
+  --color-red: #ef4444;
+  --color-info: #3b82f6;
+
+
+  /* -------------------------
+     DASHBOARD HIGHLIGHT
+     ------------------------- */
+
+  --color-purple: #8b5cf6;
+
+
+  /* -------------------------
+     CERTIFICATION COLORS
+     ------------------------- */
+
+  --color-gold: #d9ad3f;
+  --color-silver: #a8adb5;
+  --color-bronze: #b77945;
+
+
+  /* -------------------------
+     SOFT STATUS COLORS
+     ------------------------- */
+
+  --color-green-soft: #dcfce7;
+  --color-yellow-soft: #fef9c3;
+  --color-red-soft: #fee2e2;
+  --color-info-soft: #dbeafe;
+  --color-purple-soft: #ede9fe;
+
+
+  /* -------------------------
+     DARK STATUS COLORS
+     ------------------------- */
+
+  --color-green-dark: #15803d;
+  --color-yellow-dark: #a16207;
+  --color-red-dark: #b91c1c;
+  --color-info-dark: #1d4ed8;
+  --color-purple-dark: #6d28d9;
+
+
+  /* -------------------------
+     GRADIENT
+     ------------------------- */
+
+  --color-gradient-start: #00fad0;
+  --color-gradient-end: #004c63;
+
+
+  /* -------------------------
+     TYPOGRAPHY
+     ------------------------- */
+
+  --font-display:
+    'Cabinet Grotesk',
+    'CabinetGrotesk-Variable',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+
+  --font-heading:
+    'Cabinet Grotesk',
+    'CabinetGrotesk-Variable',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+
+  --font-sans:
+    'Manrope',
+    'Cabinet Grotesk',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+
+  --font-mono:
+    'JetBrains Mono',
+    ui-monospace,
+    SFMono-Regular,
+    monospace;
+
+
+  /* -------------------------
+     RADIUS
+     ------------------------- */
+
   --radius-card: 1.25rem;
   --radius-badge: 9999px;
-  --shadow-card: 0 2px 8px rgb(28 28 30 / 0.06), 0 1px 2px rgb(28 28 30 / 0.04);
+
+
+  /* -------------------------
+     SHADOW
+     ------------------------- */
+
+  --shadow-card:
+    0 2px 10px rgb(19 19 19 / 0.06),
+    0 1px 2px rgb(19 19 19 / 0.04);
 }
 
+
+/* =========================================================
+   SHADCN / SEMANTIC TOKENS
+   ========================================================= */
+
 @theme inline {
+
   --radius-sm: 0.625rem;
   --radius-md: 0.875rem;
   --radius-lg: 1.125rem;
@@ -77,154 +184,448 @@
   --radius-2xl: 1.75rem;
   --radius-3xl: 2rem;
   --radius-4xl: 2.5rem;
+
+
+  /* -------------------------
+     GENERAL
+     ------------------------- */
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+
+  /* -------------------------
+     CARD
+     ------------------------- */
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+
+
+  /* -------------------------
+     POPOVER
+     ------------------------- */
+
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+
+
+  /* -------------------------
+     PRIMARY
+     ------------------------- */
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+
+
+  /* -------------------------
+     SECONDARY
+     ------------------------- */
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+
+
+  /* -------------------------
+     MUTED
+     ------------------------- */
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+
+
+  /* -------------------------
+     ACCENT
+     ------------------------- */
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+
+
+  /* -------------------------
+     DESTRUCTIVE
+     ------------------------- */
+
   --color-destructive: var(--destructive);
+
+
+  /* -------------------------
+     BORDER / INPUT
+     ------------------------- */
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+
+  /* -------------------------
+     CHARTS
+     ------------------------- */
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+
+  /* -------------------------
+     SIDEBAR
+     ------------------------- */
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/*
- * Light is the CSS default (shadcn `:root`). Dark portals keep `class="dark"`
- * on `<html>` (see SMART_HTML_CLASS) so they still render the charcoal canvas.
- */
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
+
 :root,
 .light {
-  --brand-ink: #131313;
-  --brand-paper: #f4f4f4;
+
+  /* =======================================================
+     BRAND
+     ======================================================= */
+
+  --brand-black: #131313;
+  --brand-white: #f4f4f4;
+
   --brand-teal: #00fad0;
-  --brand-teal-deep: #004c63;
-  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
-  --brand-gray-100: #f1efec;
-  --brand-gray-200: #e4e2dd;
-  --brand-gray-300: #cfccc6;
-  --brand-gray-600: #726f6a;
+  --brand-blue: #004c63;
+
+
+  /* =======================================================
+     BRAND GRADIENT
+     ======================================================= */
+
+  --brand-gradient:
+    linear-gradient(
+      135deg,
+      #00fad0 0%,
+      #004c63 100%
+    );
+
+
+  /* =======================================================
+     NEUTRAL COLORS
+     ======================================================= */
+
+  --gray-50: #fafafa;
+  --gray-100: #f4f4f4;
+  --gray-200: #e8e8e8;
+  --gray-300: #d6d6d6;
+  --gray-400: #a3a3a3;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-700: #404040;
+  --gray-800: #262626;
+  --gray-900: #171717;
+
+
+  /* =======================================================
+     BASE
+     ======================================================= */
 
   --radius: 1.25rem;
-  --background: var(--brand-paper);
-  --foreground: var(--brand-ink);
+
+  --background: #f4f4f4;
+  --foreground: #131313;
+
+
+  /* =======================================================
+     CARD
+     ======================================================= */
+
   --card: #ffffff;
-  --card-foreground: var(--brand-ink);
+  --card-foreground: #131313;
+
+
+  /* =======================================================
+     POPOVER
+     ======================================================= */
+
   --popover: #ffffff;
-  --popover-foreground: var(--brand-ink);
-  --primary: var(--brand-teal);
-  --primary-foreground: #ffffff;
-  --secondary: var(--brand-gray-100);
-  --secondary-foreground: var(--brand-ink);
-  --muted: var(--brand-gray-100);
-  --muted-foreground: var(--brand-gray-600);
-  --accent: var(--brand-teal);
-  --accent-foreground: #ffffff;
-  --destructive: oklch(0.63 0.19 25);
-  --border: var(--brand-gray-200);
-  --input: var(--brand-gray-100);
-  --ring: var(--brand-teal);
-  --chart-1: var(--brand-teal);
-  --chart-2: var(--brand-teal-deep);
-  --chart-3: var(--brand-gray-600);
-  --chart-4: var(--brand-gray-200);
-  --chart-5: #0f5c63;
+  --popover-foreground: #131313;
+
+
+  /* =======================================================
+     PRIMARY
+     ======================================================= */
+
+  --primary: #00fad0;
+  --primary-foreground: #131313;
+
+
+  /* =======================================================
+     SECONDARY
+     ======================================================= */
+
+  --secondary: #eeeeee;
+  --secondary-foreground: #131313;
+
+
+  /* =======================================================
+     MUTED
+     ======================================================= */
+
+  --muted: #eeeeee;
+  --muted-foreground: #737373;
+
+
+  /* =======================================================
+     ACCENT
+     ======================================================= */
+
+  --accent: #00fad0;
+  --accent-foreground: #131313;
+
+
+  /* =======================================================
+     DESTRUCTIVE
+     ======================================================= */
+
+  --destructive: #ef4444;
+
+
+  /* =======================================================
+     BORDER
+     ======================================================= */
+
+  --border: #e4e4e4;
+  --input: #eeeeee;
+  --ring: #00fad0;
+
+
+  /* =======================================================
+     CHART COLORS
+     
+     Keep charts within the brand + semantic palette.
+     ======================================================= */
+
+  --chart-1: #00fad0;
+  --chart-2: #004c63;
+  --chart-3: #22c55e;
+  --chart-4: #eab308;
+  --chart-5: #3b82f6;
+
+
+  /* =======================================================
+     SIDEBAR
+     ======================================================= */
+
   --sidebar: #ffffff;
-  --sidebar-foreground: var(--brand-ink);
-  --sidebar-primary: var(--brand-teal);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--brand-gray-100);
-  --sidebar-accent-foreground: var(--brand-teal-deep);
-  --sidebar-border: var(--brand-gray-200);
-  --sidebar-ring: var(--brand-teal);
+  --sidebar-foreground: #131313;
+
+  --sidebar-primary: #00fad0;
+  --sidebar-primary-foreground: #131313;
+
+  --sidebar-accent: #f4f4f4;
+  --sidebar-accent-foreground: #004c63;
+
+  --sidebar-border: #e4e4e4;
+  --sidebar-ring: #00fad0;
+
+
+  /* =======================================================
+     SMART SURFACE TOKENS
+     ======================================================= */
 
   --surface: var(--card);
   --surface-muted: var(--muted);
   --surface-border: var(--border);
+
   --text-primary: var(--foreground);
   --text-muted: var(--muted-foreground);
-  --accent-deep: var(--brand-teal-deep);
-  --radius-card: 1.5rem;
-  --shadow-card: 0 2px 10px rgb(28 28 30 / 0.05), 0 1px 2px rgb(28 28 30 / 0.04);
+
+  --accent-deep: var(--brand-blue);
+
+
+  /* =======================================================
+     SHADOW
+     ======================================================= */
+
+  --shadow-card:
+    0 2px 10px rgb(19 19 19 / 0.05),
+    0 1px 2px rgb(19 19 19 / 0.04);
+
+
   color-scheme: light;
 }
 
-.dark {
-  --brand-ink: #131313;
-  --brand-paper: #f4f4f4;
-  --brand-teal: #00fad0;
-  --brand-teal-deep: #004c63;
-  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
-  --brand-gray-100: #f1efec;
-  --brand-gray-200: #e4e2dd;
-  --brand-gray-300: #cfccc6;
-  --brand-gray-600: #726f6a;
 
-  --radius: 1.25rem;
-  --background: #17181a;
-  --foreground: #faf9f7;
-  --card: #1f2022;
-  --card-foreground: #faf9f7;
-  --popover: #1f2022;
-  --popover-foreground: #faf9f7;
-  --primary: var(--brand-teal);
-  --primary-foreground: #0f1211;
-  --secondary: #232426;
-  --secondary-foreground: #faf9f7;
-  --muted: #232426;
-  --muted-foreground: rgb(250 249 247 / 0.55);
-  --accent: var(--brand-teal);
-  --accent-foreground: #0f1211;
-  --destructive: oklch(0.7 0.17 25);
-  --border: rgb(250 249 247 / 0.1);
-  --input: #232426;
-  --ring: var(--brand-teal);
-  --chart-1: var(--brand-teal);
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+.dark {
+
+  /* =======================================================
+     BRAND
+     ======================================================= */
+
+  --brand-black: #131313;
+  --brand-white: #f4f4f4;
+
+  --brand-teal: #00fad0;
+  --brand-blue: #004c63;
+
+
+  /* =======================================================
+     GRADIENT
+     ======================================================= */
+
+  --brand-gradient:
+    linear-gradient(
+      135deg,
+      #00fad0 0%,
+      #004c63 100%
+    );
+
+
+  /* =======================================================
+     BASE
+     ======================================================= */
+
+  --background: #131313;
+  --foreground: #f4f4f4;
+
+
+  /* =======================================================
+     CARD
+     ======================================================= */
+
+  --card: #1b1c1e;
+  --card-foreground: #f4f4f4;
+
+
+  /* =======================================================
+     POPOVER
+     ======================================================= */
+
+  --popover: #1b1c1e;
+  --popover-foreground: #f4f4f4;
+
+
+  /* =======================================================
+     PRIMARY
+     ======================================================= */
+
+  --primary: #00fad0;
+  --primary-foreground: #131313;
+
+
+  /* =======================================================
+     SECONDARY
+     ======================================================= */
+
+  --secondary: #202224;
+  --secondary-foreground: #f4f4f4;
+
+
+  /* =======================================================
+     MUTED
+     ======================================================= */
+
+  --muted: #202224;
+  --muted-foreground: rgb(244 244 244 / 0.58);
+
+
+  /* =======================================================
+     ACCENT
+     ======================================================= */
+
+  --accent: #00fad0;
+  --accent-foreground: #131313;
+
+
+  /* =======================================================
+     DESTRUCTIVE
+     ======================================================= */
+
+  --destructive: #ef4444;
+
+
+  /* =======================================================
+     BORDER
+     ======================================================= */
+
+  --border: rgb(244 244 244 / 0.10);
+  --input: #202224;
+  --ring: #00fad0;
+
+
+  /* =======================================================
+     CHART COLORS
+     ======================================================= */
+
+  --chart-1: #00fad0;
   --chart-2: #58c7b2;
-  --chart-3: rgb(250 249 247 / 0.55);
-  --chart-4: #2a2b2d;
-  --chart-5: var(--brand-teal-deep);
-  --sidebar: #1a1b1d;
-  --sidebar-foreground: #faf9f7;
-  --sidebar-primary: var(--brand-teal);
-  --sidebar-primary-foreground: #0f1211;
-  --sidebar-accent: #232426;
-  --sidebar-accent-foreground: var(--brand-teal);
-  --sidebar-border: rgb(250 249 247 / 0.08);
-  --sidebar-ring: var(--brand-teal);
+  --chart-3: #22c55e;
+  --chart-4: #eab308;
+  --chart-5: #3b82f6;
+
+
+  /* =======================================================
+     SIDEBAR
+     ======================================================= */
+
+  --sidebar: #18191b;
+  --sidebar-foreground: #f4f4f4;
+
+  --sidebar-primary: #00fad0;
+  --sidebar-primary-foreground: #131313;
+
+  --sidebar-accent: #202224;
+  --sidebar-accent-foreground: #00fad0;
+
+  --sidebar-border: rgb(244 244 244 / 0.08);
+  --sidebar-ring: #00fad0;
+
+
+  /* =======================================================
+     SMART SURFACES
+     ======================================================= */
 
   --surface: var(--card);
   --surface-muted: var(--muted);
   --surface-border: var(--border);
+
   --text-primary: var(--foreground);
   --text-muted: var(--muted-foreground);
-  --accent-deep: var(--brand-teal-deep);
-  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.25), 0 1px 2px rgb(0 0 0 / 0.2);
+
+  --accent-deep: var(--brand-blue);
+
+
+  /* =======================================================
+     SHADOW
+     ======================================================= */
+
+  --shadow-card:
+    0 2px 10px rgb(0 0 0 / 0.25),
+    0 1px 2px rgb(0 0 0 / 0.20);
+
+
   color-scheme: dark;
 }
 
+
+/* =========================================================
+   BASE STYLES
+   ========================================================= */
+
 @layer base {
+
   html {
     color-scheme: light;
   }
@@ -233,20 +634,41 @@
     color-scheme: dark;
   }
 
+
+  /* -------------------------
+     GLOBAL BORDER
+     ------------------------- */
+
   * {
     @apply border-border;
   }
 
+
+  /* -------------------------
+     BODY
+     ------------------------- */
+
   body {
-    background-color: var(--surface);
-    color: var(--text-primary);
+
+    background-color: var(--background);
+    color: var(--foreground);
+
     font-family: var(--font-sans);
+
     font-weight: 400;
+
     letter-spacing: 0;
+
     line-height: 1.6;
+
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+
+  /* -------------------------
+     HEADINGS
+     ------------------------- */
 
   h1,
   h2,
@@ -255,45 +677,218 @@
   h5,
   h6,
   .font-heading {
+
     font-family: var(--font-heading);
+
     font-weight: 700;
+
     letter-spacing: -0.02em;
+
     line-height: 1.2;
+
     color: var(--text-primary);
   }
 
+
+  /* -------------------------
+     PARAGRAPH
+     ------------------------- */
+
   p {
+
     font-family: var(--font-sans);
+
     font-weight: 400;
   }
 
+
+  /* -------------------------
+     HR
+     ------------------------- */
+
   hr {
+
     border: 0;
-    border-top: 1px solid var(--surface-border);
+
+    border-top:
+      1px solid var(--surface-border);
   }
+
+
+  /* -------------------------
+     SELECT
+     ------------------------- */
 
   select {
-    @apply h-10 rounded-xl border border-border bg-muted px-3 text-sm text-foreground outline-none;
+
+    @apply h-10
+      rounded-xl
+      border
+      border-border
+      bg-muted
+      px-3
+      text-sm
+      text-foreground
+      outline-none;
   }
 
+
+  /* -------------------------
+     FOCUS
+     ------------------------- */
+
+  :focus-visible {
+
+    outline:
+      2px solid #00fad0;
+
+    outline-offset: 2px;
+  }
+
+
+  /* -------------------------
+     REDUCED MOTION
+     ------------------------- */
+
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
+
       animation-duration: 0.01ms !important;
+
       transition-duration: 0.01ms !important;
     }
   }
-
-  :focus-visible {
-    outline: 2px solid var(--color-brand-500);
-    outline-offset: 2px;
-  }
 }
 
+
+/* =========================================================
+   COMPONENTS
+   ========================================================= */
+
 @layer components {
+
+
+  /* =======================================================
+     STANDARD PANEL
+     ========================================================= */
+
   .surface-panel {
-    @apply rounded-3xl border border-border bg-card text-card-foreground;
+
+    @apply rounded-3xl
+      border
+      border-border
+      bg-card
+      text-card-foreground;
+
     box-shadow: var(--shadow-card);
+  }
+
+
+  /* =======================================================
+     BRAND GRADIENT
+     ======================================================= */
+
+  .brand-gradient {
+
+    background:
+      linear-gradient(
+        135deg,
+        #00fad0 0%,
+        #004c63 100%
+      );
+  }
+
+
+  /* =======================================================
+     BRAND TEXT
+     ======================================================= */
+
+  .brand-text {
+
+    background:
+      linear-gradient(
+        135deg,
+        #00fad0 0%,
+        #004c63 100%
+      );
+
+    background-clip: text;
+    -webkit-background-clip: text;
+
+    color: transparent;
+  }
+
+
+  /* =======================================================
+     STATUS
+     ======================================================= */
+
+  .status-green {
+
+    background: var(--color-green-soft);
+
+    color: var(--color-green-dark);
+  }
+
+
+  .status-yellow {
+
+    background: var(--color-yellow-soft);
+
+    color: var(--color-yellow-dark);
+  }
+
+
+  .status-red {
+
+    background: var(--color-red-soft);
+
+    color: var(--color-red-dark);
+  }
+
+
+  .status-info {
+
+    background: var(--color-info-soft);
+
+    color: var(--color-info-dark);
+  }
+
+
+  .status-purple {
+
+    background: var(--color-purple-soft);
+
+    color: var(--color-purple-dark);
+  }
+
+
+  /* =======================================================
+     SIMPLE COLOR HELPERS
+     ======================================================= */
+
+  .bg-gradient {
+
+    background:
+      linear-gradient(
+        135deg,
+        #00fad0 0%,
+        #004c63 100%
+      );
+  }
+
+
+  /* =======================================================
+     DASHBOARD HIGHLIGHT
+     ======================================================= */
+
+  .dashboard-highlight {
+
+    background: var(--color-purple-soft);
+
+    color: var(--color-purple-dark);
   }
 }

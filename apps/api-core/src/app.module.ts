@@ -25,6 +25,7 @@ import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
+import { CandidateCertificatesModule } from './modules/candidate-certificates/candidate-certificates.module.js';
 import { ConfigModule } from './platform/config/config.module.js';
 import { AuditModule } from './platform/audit/audit.module.js';
 import { env } from './platform/config/env.js';
@@ -71,6 +72,7 @@ import { RedisModule } from './platform/redis/redis.module.js';
     ProjectsModule,
     AnalyticsModule,
     WebhooksModule,
+    CandidateCertificatesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

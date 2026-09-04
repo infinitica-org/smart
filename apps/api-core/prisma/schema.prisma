@@ -333,6 +333,7 @@ model User {
   auditLogs           AuditLog[]
   jobOpeningsCreated  JobOpening[] @relation("JobOpeningCreatedBy")
   notifications       Notification[]
+  candidateCertificates CandidateCertificate[] @relation("StudentCandidateCertificates")
 
   @@index([institutionId])
   @@index([batchId])
@@ -743,6 +744,7 @@ model Skill {
 
   claims                  SkillClaim[]
   openingRequirements     JobOpeningSkill[]
+  candidateCertificates   CandidateCertificateSkill[]
 
   @@index([domain, active])
   @@map("skills")
@@ -1010,4 +1012,80 @@ model FeatureFlagOverride {
   @@index([institutionId])
   @@index([companyId])
   @@map("feature_flag_overrides")
+}
+
+enum CandidateCertificateStatus {
+  DECLARED
+  UPLOADED
+  ANALYZING
+  IN_VERIFICATION
+  MANUAL_REVIEW
+  VERIFIED
+  REJECTED
+  MORE_EVIDENCE_REQUIRED
+  EXPIRED
+}
+
+enum CandidateCertificateType {
+  PROFESSIONAL_CERTIFICATION
+  COURSE_COMPLETION
+  TRAINING_CERTIFICATE
+  SKILL_CERTIFICATION
+  WORKSHOP_BOOTCAMP
+  INTERNSHIP_CERTIFICATE
+  OTHER
+}
+
+model CandidateCertificate {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  studentId          String                     @map("student_id") @db.Uuid
+  student            User                       @relation("StudentCandidateCertificates", fields: [studentId], references: [id], onDelete: Cascade)
+  title              String
+  issuer             String
+  issuerType         String                     @map("issuer_type")
+  industry           String
+  certificateType    CandidateCertificateType   @map("certificate_type")
+  credentialId       String?                    @map("credential_id")
+  verificationUrl    String?                    @map("verification_url")
+  issueDate          DateTime?                  @map("issue_date") @db.Timestamptz(6)
+  expiryDate         DateTime?                  @map("expiry_date") @db.Timestamptz(6)
+  fileUrl            String?                    @map("file_url")
+  status             CandidateCertificateStatus @default(DECLARED)
+  appliedPractical   Boolean                    @default(false) @map("applied_practical")
+  practicalDetails   String?                    @map("practical_details")
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skills             CandidateCertificateSkill[]
+  events             CandidateCertificateEvent[]
+
+  @@index([studentId, status])
+  @@map("candidate_certificates")
+}
+
+model CandidateCertificateSkill {
+  id             String               @id @default(uuid()) @db.Uuid
+  certificateId  String               @map("certificate_id") @db.Uuid
+  certificate    CandidateCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  skillId        String               @map("skill_id") @db.Uuid
+  skill          Skill                @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  proficiency    SkillProficiency
+  learningDesc   String               @map("learning_desc")
+  toolsUsed      String[]             @map("tools_used")
+
+  @@unique([certificateId, skillId])
+  @@map("candidate_certificate_skills")
+}
+
+model CandidateCertificateEvent {
+  id             String               @id @default(uuid()) @db.Uuid
+  certificateId  String               @map("certificate_id") @db.Uuid
+  certificate    CandidateCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  stage          String
+  status         String
+  metadata       Json?
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([certificateId, createdAt])
+  @@map("candidate_certificate_events")
 }

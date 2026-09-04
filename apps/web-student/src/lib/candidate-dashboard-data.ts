@@ -13,6 +13,8 @@ export type AtsStage = (typeof ATS_STAGES)[number];
 export type SkillStatus = 'Declared' | 'In verification' | 'Verified' | 'Locked' | 'Expiring';
 
 export interface CandidateProfileFixture {
+  id: string;
+  handle: string;
   firstName: string;
   lastName: string;
   headline: string;
@@ -21,6 +23,8 @@ export interface CandidateProfileFixture {
 }
 
 export const DEFAULT_PROFILE: CandidateProfileFixture = {
+  id: 'usr_satheshwaran_01',
+  handle: 'satheshwaran',
   firstName: 'Sathe',
   lastName: 'V',
   headline: 'Full-stack candidate · Bangalore',

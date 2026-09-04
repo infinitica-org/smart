@@ -5,15 +5,17 @@ import { ChevronRight, User } from 'lucide-react';
 import { PageHeader, Surface } from '@/components/dashboard/ConsoleChrome';
 import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
 import { SkillsSection } from '@/components/profile/SkillsSection';
+import { CertificatesSection } from '@/components/profile/CertificatesSection';
+import { SectionVisibilityToggles } from '@/components/profile/SectionVisibilityToggles';
 import { DEFAULT_PROFILE } from '@/lib/candidate-dashboard-data';
 
-/** Candidate console profile: CN-T04 skills + CN-T08 project submission. */
+/** Candidate console profile: CN-T04 skills + CN-T07 public profile visibility + CN-T08 project submission. */
 export default function ProfilePage() {
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
       <PageHeader
         title="My Profile"
-        subtitle="Profile strength, skill verification, and project submission for the candidate console."
+        subtitle="Profile strength, skill verification, public profile visibility, and project submission."
       />
 
       <Surface className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -45,7 +47,15 @@ export default function ProfilePage() {
       </Surface>
 
       <Surface>
+        <SectionVisibilityToggles />
+      </Surface>
+
+      <Surface>
         <SkillsSection />
+      </Surface>
+
+      <Surface>
+        <CertificatesSection />
       </Surface>
 
       <Surface>
