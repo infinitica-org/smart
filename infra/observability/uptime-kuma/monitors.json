@@ -1,0 +1,92 @@
+{
+  "_comment": "Declarative Uptime Kuma monitors for the SMART stack. Applied by provision.py (idempotent: matches on name, creates or updates). String values may reference an env var in dollar-brace form, substituted from the environment provision.py runs in before anything is sent to Kuma, so no real secret lives in this file.",
+  "group": {
+    "name": "SMART Infra"
+  },
+  "monitors": [
+    {
+      "type": "http",
+      "name": "API — /health",
+      "url": "http://api:3000/health",
+      "interval": 30,
+      "retryInterval": 20,
+      "maxretries": 2,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "Grafana",
+      "url": "http://grafana:3000/api/health",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "Prometheus",
+      "url": "http://prometheus:9090/-/healthy",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "Loki",
+      "url": "http://loki:3100/ready",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "Tempo",
+      "url": "http://tempo:3200/ready",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "MinIO",
+      "url": "http://minio:9000/minio/health/live",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "http",
+      "name": "Mailpit",
+      "url": "http://mailpit:8025/api/v1/info",
+      "interval": 60,
+      "accepted_statuscodes": ["200-299"]
+    },
+    {
+      "type": "postgres",
+      "name": "Postgres",
+      "databaseConnectionString": "postgres://smart:${POSTGRES_PASSWORD}@postgres:5432/smart",
+      "databaseQuery": "select 1",
+      "interval": 30,
+      "retryInterval": 20,
+      "maxretries": 2
+    },
+    {
+      "type": "redis",
+      "name": "Redis",
+      "databaseConnectionString": "redis://redis:6379",
+      "interval": 30,
+      "retryInterval": 20,
+      "maxretries": 2
+    },
+    {
+      "type": "port",
+      "name": "Redpanda — Kafka broker",
+      "hostname": "redpanda",
+      "port": 9092,
+      "interval": 30,
+      "retryInterval": 20,
+      "maxretries": 2
+    },
+    {
+      "type": "port",
+      "name": "Redpanda — Admin API",
+      "hostname": "redpanda",
+      "port": 9644,
+      "interval": 60
+    }
+  ]
+}

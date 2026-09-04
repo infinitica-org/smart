@@ -11,6 +11,7 @@ Owner: Vishal V.
 | Loki       | 3101      | Log store                      |
 | Alloy      | —         | Docker log scrape → Loki       |
 | Tempo      | 3103      | Trace store (Grafana datasource) |
+| Uptime Kuma | 3102     | Internal uptime monitoring + status page |
 
 ```bash
 # From repo root — infra + apps + obs
@@ -62,6 +63,63 @@ part of this change.
 
 If Tempo fails to start with a permission error writing to `/var/tempo`, add
 `user: root` under the `tempo` service in `docker-compose.yml`.
+
+## Uptime Kuma (internal uptime + status page)
+
+First boot has no monitors — create an admin account at
+http://localhost:3102, then add monitors for whatever matters (API `/health`,
+each web app, Postgres/Redis TCP checks, etc.) and, if you want it, a public
+status page from the Kuma UI.
+
+Kuma runs on the same host as everything else it watches — it cannot detect
+"the whole VPS is unreachable", only "the thing it's watching is down while
+Kuma itself is still up". That gap is what `heartbeat` (below) covers.
+
+### Provisioning monitors from code
+
+Uptime Kuma has no REST write API (only Socket.IO, which is what its own
+web UI speaks) — so monitors are defined as data in
+[`uptime-kuma/monitors.json`](uptime-kuma/monitors.json) and applied by
+[`uptime-kuma/provision.py`](uptime-kuma/provision.py), using the
+[uptime-kuma-api](https://github.com/lucasheld/uptime-kuma-api) Python
+client. It's idempotent — matches existing monitors by `name` and updates
+them, so re-running it after editing `monitors.json` is the normal workflow
+for adding/changing monitors (no manual UI clicking required). On a
+never-configured Kuma instance it also creates the initial admin account
+from `KUMA_ADMIN_USERNAME` / `KUMA_ADMIN_PASSWORD`.
+
+It runs in a throwaway `python:3.12-slim` container (the `kuma-provision`
+compose service, on its own `obs-tools` profile so a routine
+`--profile obs up -d` never touches it) rather than assuming Python is
+installed on the host:
+
+```bash
+pnpm kuma:provision
+```
+
+**Wired into CD**: `scripts/deploy-vps.sh` runs this automatically after
+every **qa** and **prod** deploy, once the stack is up and healthy — editing
+`monitors.json` and merging is enough to reconcile monitors on the next
+deploy, no manual step on the VPS. **dev (kvm2) does not run the `obs`
+profile at all** (resource-constrained, apps + Caddy only), so it has no
+Kuma instance and this step is skipped there. `qa`/`prod`'s own `.env.qa` /
+`.env.prod` on the VPS need a real `KUMA_ADMIN_PASSWORD` set before the
+first deploy (not the `CHANGE_ME` placeholder) — deploy-vps.sh doesn't
+generate one for you.
+
+Compatibility note: the client library is tested against Kuma
+1.21.3–1.23.2; this compose file pins Kuma 1.23.16. That's worked fine in
+practice, but if `provision.py` starts erroring after a Kuma image bump,
+check the library's compatibility table before assuming the script is at
+fault.
+
+To add a monitor: add an entry to `monitors.json` (see the existing ones for
+the shape per Kuma monitor type — `http`, `postgres`, `redis`, `port`, etc.)
+and re-run (`pnpm kuma:provision`, or it'll pick it up on the next qa/prod
+deploy). String values may reference `${SOME_ENV_VAR}`, substituted from the
+environment before anything is sent to Kuma, so real credentials (e.g. the
+Postgres monitor's connection string) never need to live in this committed
+file.
 
 ## Notes
 

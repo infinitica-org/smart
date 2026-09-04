@@ -32,6 +32,7 @@
     "infra:reset": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml down -v",
     "infra:logs": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml logs -f",
     "infra:ps": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml ps",
+    "kuma:provision": "node ./scripts/ensure-pnpm.mjs docker compose -f infra/docker/docker-compose.yml --profile obs --profile obs-tools run --rm kuma-provision",
     "db:generate": "node ./scripts/ensure-pnpm.mjs pnpm --filter @smart/api-core db:generate",
     "db:migrate": "node ./scripts/ensure-pnpm.mjs pnpm --filter @smart/api-core db:migrate",
     "db:deploy": "node ./scripts/ensure-pnpm.mjs pnpm --filter @smart/api-core db:deploy",

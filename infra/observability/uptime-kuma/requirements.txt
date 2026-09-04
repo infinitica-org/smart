@@ -1,0 +1,5 @@
+# Uptime Kuma is tested against server 1.21.3-1.23.2 by this client version;
+# we run server 1.23.16 — newer patch releases have worked fine in practice,
+# but bump this pin and re-test if provision.py starts failing after a Kuma
+# image upgrade.
+uptime-kuma-api>=1.2.1,<2

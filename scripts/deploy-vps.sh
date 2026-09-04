@@ -65,5 +65,11 @@ echo "==> ${ENV_NAME}: health check"
 "${COMPOSE[@]}" --profile apps exec -T api \
   node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
+# dev (kvm2) doesn't run the obs profile at all — no Kuma there to provision.
+if [[ "$ENV_NAME" == "qa" || "$ENV_NAME" == "prod" ]]; then
+  echo "==> ${ENV_NAME}: provision Uptime Kuma monitors (infra/observability/uptime-kuma/monitors.json)"
+  "${COMPOSE[@]}" --profile obs --profile obs-tools run --rm kuma-provision
+fi
+
 echo
 echo "Environment: ${ENV_NAME} — deployed, migrated, healthy."

@@ -464,6 +464,50 @@ services:
     # api-core (and pointing it at http://tempo:4318) is a separate task.
     # If /var/tempo permission errors show up on first boot, add `user: root`.
 
+  # Self-hosted uptime + status page. Watches HTTP(S) endpoints, TCP ports,
+  # Postgres/Redis, etc. from inside your own infra — monitors are defined in
+  # code and applied by the `kuma-provision` service below, not clicked
+  # together in the UI.
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.16
+    restart: unless-stopped
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "127.0.0.1:${UPTIME_KUMA_PORT:-3102}:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    profiles: ["obs"]
+
+  # One-shot: applies infra/observability/uptime-kuma/monitors.json to the
+  # uptime-kuma service above. Idempotent (create-or-update by name), so this
+  # is safe to run on every deploy, not just the first one. Deliberately on
+  # its own `obs-tools` profile — NOT part of `obs` — so a routine
+  # `--profile obs up -d` never touches it; invoke it explicitly:
+  #   docker compose --profile obs-tools run --rm kuma-provision
+  # (`pnpm kuma:provision` locally; scripts/deploy-vps.sh does this for
+  # qa/prod after the stack is up.) Runs in a throwaway Python container
+  # rather than assuming Python is installed on the host.
+  kuma-provision:
+    image: python:3.12-slim
+    working_dir: /work
+    volumes:
+      - ../observability/uptime-kuma:/work:ro
+    environment:
+      KUMA_URL: http://uptime-kuma:3001
+      KUMA_ADMIN_USERNAME: ${KUMA_ADMIN_USERNAME:-admin}
+      KUMA_ADMIN_PASSWORD: ${KUMA_ADMIN_PASSWORD:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
+    entrypoint: ["sh", "-c", "pip install --quiet --no-cache-dir -r requirements.txt && python provision.py"]
+    depends_on:
+      uptime-kuma:
+        condition: service_healthy
+    profiles: ["obs-tools"]
+
   # --- exporters: turn existing containers/services into Prometheus targets ---
 
   cadvisor:
@@ -533,3 +577,4 @@ volumes:
   loki_data:
   alloy_data:
   tempo_data:
+  uptime_kuma_data:
