@@ -92,33 +92,34 @@ export default function BatchDetailPage() {
 
   return (
     <main className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-6 font-sans">
-      <div className="flex items-center gap-4 text-gray-400 text-sm mb-2">
+      <div className="flex items-center gap-4 text-slate-500 text-sm mb-2 font-medium">
         <Link
           href="/batches"
-          className="hover:text-white transition-colors flex items-center gap-1"
+          className="hover:text-[#004c63] transition-colors flex items-center gap-1"
         >
           <ArrowLeft className="w-4 h-4" />
           All Batches
         </Link>
         <span>/</span>
-        <span className="text-white">{batch?.name || 'Loading...'}</span>
+        <span className="text-slate-900 font-semibold">{batch?.name || 'Loading...'}</span>
       </div>
 
       {batch ? (
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-white">{batch.name}</h1>
-              <span className="bg-white/5 border border-white/10 text-gray-300 px-2 py-1 rounded text-xs font-mono">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">{batch.name}</h1>
+              <span className="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs font-mono font-medium">
                 {batch.code ?? 'NO-CODE'}
               </span>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-400">
+            <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
               <span className="flex items-center gap-1.5">
-                <Users className="w-4 h-4" /> {batch.memberCount} Members
+                <Users className="w-4 h-4 text-slate-400" /> {batch.memberCount} Members
               </span>
-              <span className="flex items-center gap-1.5 text-amber-400/80">
-                <Clock className="w-4 h-4" /> {batch.pendingInviteCount} Pending Invites
+              <span className="flex items-center gap-1.5 text-amber-600">
+                <Clock className="w-4 h-4 text-amber-500" /> {batch.pendingInviteCount} Pending
+                Invites
               </span>
             </div>
           </div>
@@ -126,14 +127,14 @@ export default function BatchDetailPage() {
             <Button
               variant="secondary"
               onClick={() => setIsEditing(true)}
-              className="bg-[#1a1a1a] border-white/10 text-white hover:bg-white/5 flex items-center gap-2"
+              className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 flex items-center gap-2 font-medium rounded-xl"
             >
-              <Edit3 className="w-4 h-4" /> Edit Batch
+              <Edit3 className="w-4 h-4 text-slate-500" /> Edit Batch
             </Button>
             <Button
               variant="primary"
               onClick={() => setIsAddingMember(true)}
-              className="bg-[#00fad0] hover:bg-[#00fad0]/90 text-white flex items-center gap-2"
+              className="bg-[#004c63] hover:bg-[#003a4d] text-white flex items-center gap-2 font-semibold shadow-sm rounded-xl px-4 py-2"
             >
               <UserPlus className="w-4 h-4" /> Add Member
             </Button>
@@ -142,80 +143,87 @@ export default function BatchDetailPage() {
       ) : null}
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center gap-3">
-          <Ban className="w-5 h-5 shrink-0" />
-          <p className="text-sm">{error}</p>
-          <button onClick={() => setError(null)} className="ml-auto">
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl flex items-center gap-3">
+          <Ban className="w-5 h-5 shrink-0 text-rose-500" />
+          <p className="text-sm font-medium">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-slate-400 hover:text-slate-600"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
       {message && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 shrink-0" />
-          <p className="text-sm">{message}</p>
-          <button onClick={() => setMessage(null)} className="ml-auto">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 shrink-0 text-emerald-600" />
+          <p className="text-sm font-medium">{message}</p>
+          <button
+            onClick={() => setMessage(null)}
+            className="ml-auto text-slate-400 hover:text-slate-600"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Bulk Import */}
-      <div className="bg-[#131313] border border-white/5 rounded-2xl overflow-hidden mb-6">
+      <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden mb-6">
         <BatchImportWizard batchId={batchId} onComplete={() => void load()} />
       </div>
 
-      <Card className="bg-[#131313] border-white/5 overflow-hidden">
+      <Card className="bg-white border-slate-200 shadow-sm overflow-hidden rounded-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="bg-[#161616] border-b border-white/5 text-gray-400">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold">
               <tr>
-                <th className="px-6 py-4 font-medium">Name</th>
-                <th className="px-6 py-4 font-medium">Email</th>
-                <th className="px-6 py-4 font-medium">Group</th>
-                <th className="px-6 py-4 font-medium">Invite Status</th>
-                <th className="px-6 py-4 font-medium">Access</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
+                <th className="px-6 py-3.5">Name</th>
+                <th className="px-6 py-3.5">Email</th>
+                <th className="px-6 py-3.5">Group</th>
+                <th className="px-6 py-3.5">Invite Status</th>
+                <th className="px-6 py-3.5">Access</th>
+                <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-100">
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
                     No members in this batch yet.
                   </td>
                 </tr>
               ) : (
                 members.map((member) => (
-                  <tr key={member.userId} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={member.userId} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-white">{member.fullName}</div>
+                      <div className="font-semibold text-slate-900">{member.fullName}</div>
                     </td>
-                    <td className="px-6 py-4 text-gray-400">{member.email}</td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">{member.email}</td>
                     <td className="px-6 py-4">
-                      <span className="bg-white/5 text-gray-300 px-2 py-1 rounded text-xs">
+                      <span className="bg-slate-100 border border-slate-200 text-slate-700 font-mono px-2.5 py-1 rounded text-xs">
                         {member.groupLabel ?? '—'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       {member.emailVerified ? (
-                        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-                          <CheckCircle className="w-3.5 h-3.5" /> Accepted
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Accepted
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-amber-400 text-xs font-medium">
-                          <Clock className="w-3.5 h-3.5" /> {member.invitation?.status ?? 'Pending'}
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock className="w-3.5 h-3.5 text-amber-600" />{' '}
+                          {member.invitation?.status ?? 'Pending'}
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       {member.heldAt ? (
-                        <span className="flex items-center gap-1.5 text-red-400 text-xs font-medium">
-                          <Ban className="w-3.5 h-3.5" /> On Hold
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <Ban className="w-3.5 h-3.5 text-rose-600" /> On Hold
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-                          <ShieldCheck className="w-3.5 h-3.5" /> Active
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Active
                         </span>
                       )}
                     </td>
@@ -223,7 +231,7 @@ export default function BatchDetailPage() {
                       {member.invitation?.status === 'PENDING' && !member.emailVerified ? (
                         <button
                           type="button"
-                          className="text-xs text-gray-400 hover:text-white underline transition-colors"
+                          className="text-xs text-slate-500 hover:text-[#004c63] underline font-medium transition-colors"
                           onClick={() => {
                             const invitationId = member.invitation?.invitationId;
                             if (invitationId) void onResend(invitationId);
@@ -243,51 +251,53 @@ export default function BatchDetailPage() {
 
       {/* Edit Modal */}
       {isEditing && batch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md shadow-2xl bg-[#131313] border-white/10">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Edit Batch</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md shadow-2xl bg-white border-slate-200 rounded-xl">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+              <h3 className="text-lg font-bold text-slate-900">Edit Batch</h3>
               <button
                 onClick={() => setIsEditing(false)}
-                className="text-gray-500 hover:text-white"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={onSaveEdit} className="space-y-4 p-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Batch Name</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Batch Name
+                </label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 px-3 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+                  className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 px-3 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Batch Code (Optional)
                 </label>
                 <input
                   type="text"
                   value={editCode}
                   onChange={(e) => setEditCode(e.target.value)}
-                  className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 px-3 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+                  className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 px-3 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   variant="ghost"
                   onClick={() => setIsEditing(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-slate-500 hover:text-slate-900 font-medium"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="primary"
-                  className="bg-[#00fad0] hover:bg-[#00fad0]/90 text-white"
+                  className="bg-[#004c63] hover:bg-[#003a4d] text-white font-semibold shadow-sm px-4 py-2 rounded-xl"
                 >
                   Save Changes
                 </Button>
@@ -299,47 +309,49 @@ export default function BatchDetailPage() {
 
       {/* Add Member Modal */}
       {isAddingMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md shadow-2xl bg-[#131313] border-white/10">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Add Individual Member</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md shadow-2xl bg-white border-slate-200 rounded-xl">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+              <h3 className="text-lg font-bold text-slate-900">Add Individual Member</h3>
               <button
                 onClick={() => setIsAddingMember(false)}
-                className="text-gray-500 hover:text-white"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={onAdd} className="space-y-4 p-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 px-3 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+                  className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 px-3 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 px-3 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+                  className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 px-3 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Group (Optional)
                 </label>
                 <input
                   type="text"
                   value={groupLabel}
                   onChange={(e) => setGroupLabel(e.target.value)}
-                  className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 px-3 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+                  className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 px-3 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
@@ -347,14 +359,14 @@ export default function BatchDetailPage() {
                   variant="ghost"
                   type="button"
                   onClick={() => setIsAddingMember(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-slate-500 hover:text-slate-900 font-medium"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="primary"
-                  className="bg-[#00fad0] hover:bg-[#00fad0]/90 text-white"
+                  className="bg-[#004c63] hover:bg-[#003a4d] text-white font-semibold shadow-sm px-4 py-2 rounded-xl"
                 >
                   Add Member
                 </Button>

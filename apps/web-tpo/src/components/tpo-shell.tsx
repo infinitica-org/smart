@@ -15,7 +15,7 @@ export function TpoShell({ children }: { children: ReactNode }) {
       pollMe={() => api.auth.me()}
       onSignOut={signOut}
     >
-      <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-[#00fad0]/30 font-sans overflow-hidden">
+      <div className="flex h-screen bg-slate-50 text-slate-900 selection:bg-[#004c63]/20 font-sans overflow-hidden">
         <TpoSidebar />
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <TpoTopbar />
