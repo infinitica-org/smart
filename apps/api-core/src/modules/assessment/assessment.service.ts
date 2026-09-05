@@ -400,8 +400,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     const failures = await this.prisma.skillVerificationAttempt.findMany({
       where: {
         claimId: { in: rows.map((row) => row.id) },
-        passed: false,
-        technicalFailure: false,
+        OR: [{ passed: false }, { technicalFailure: true }],
       },
       orderBy: { createdAt: 'desc' },
       select: { claimId: true, createdAt: true },

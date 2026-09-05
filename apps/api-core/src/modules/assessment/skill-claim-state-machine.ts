@@ -140,10 +140,9 @@ export function skillRetryAvailableAt(
   lockedUntil: Date | null,
   lastGenuineFailureAt: Date | null,
 ): Date | null {
+  if (status === 'VERIFIED') return null;
   if (status === 'LOCKED') return lockedUntil;
-  if (status === 'BEGINNER_REATTEMPT' && lastGenuineFailureAt) {
-    return addInterAttemptCooldown(lastGenuineFailureAt);
-  }
+  if (lastGenuineFailureAt) return addInterAttemptCooldown(lastGenuineFailureAt);
   return null;
 }
 
@@ -154,6 +153,9 @@ function applyStart(
 ): SkillClaimTransitionResult {
   switch (claim.status) {
     case 'DECLARED':
+      if (lastGenuineFailureAt && !interAttemptOpen(lastGenuineFailureAt, now)) {
+        return reject(claim, 'INTER_ATTEMPT_COOLDOWN');
+      }
       return allow(copyClaim(claim), { attemptAllowed: true });
     case 'BEGINNER_REATTEMPT':
       if (!interAttemptOpen(lastGenuineFailureAt, now)) {

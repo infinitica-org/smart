@@ -168,6 +168,27 @@ describe('SkillVerificationService', () => {
     );
   });
 
+  it('blocks prepare on DECLARED when the last sit is still inside the 48h window', async () => {
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+      },
+      skillVerificationAttempt: {
+        findFirst: vi.fn().mockResolvedValue({ createdAt: new Date() }),
+      },
+    };
+    const service = new SkillVerificationService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      { enqueueEnvelope: vi.fn() } as never,
+    );
+
+    await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it('blocks start when the claim is already verified', async () => {
     const prisma = {
       skillClaim: {
@@ -185,5 +206,82 @@ describe('SkillVerificationService', () => {
     );
 
     await expect(service.start(student(), CLAIM_ID)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('applies 48h cooldown after a technical abort so the focus cannot be sat again immediately', async () => {
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'GIT_VERSION_CONTROL',
+      skillName: 'Git',
+      sdeSkillCode: 'SDE_GIT',
+      proficiency: 'BEGINNER',
+      skillFocus: 'Branching',
+      scoringToken: 'x'.repeat(24),
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      passMarkPercent: 80,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [],
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      del: vi.fn().mockResolvedValue(1),
+      setex: vi.fn().mockResolvedValue('OK'),
+    };
+    let savedMetadata: unknown;
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockImplementation(() =>
+          Promise.resolve({
+            ...declaredClaim(),
+            sourceMetadata: savedMetadata ?? {},
+            lastAttemptId: savedMetadata ? SESSION_ID : null,
+          }),
+        ),
+        update: vi.fn().mockImplementation((args: { data: { sourceMetadata: unknown } }) => {
+          savedMetadata = args.data.sourceMetadata;
+          return Promise.resolve({
+            ...declaredClaim(),
+            sourceMetadata: savedMetadata,
+            lastAttemptId: SESSION_ID,
+          });
+        }),
+      },
+      skillVerificationAttempt: {
+        create: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+    };
+    const evaluation = { gradeSkillForm: vi.fn() };
+    const service = new SkillVerificationService(
+      prisma as never,
+      redis as never,
+      evaluation as never,
+      { enqueueEnvelope: vi.fn() } as never,
+    );
+
+    const result = await service.complete(student(), SESSION_ID, { technicalFailure: true });
+    expect(evaluation.gradeSkillForm).not.toHaveBeenCalled();
+    expect(result.technicalFailure).toBe(true);
+    expect(prisma.skillClaim.update).toHaveBeenCalled();
+    const payload = prisma.skillClaim.update.mock.calls[0]?.[0] as {
+      data: { sourceMetadata: { focusProgress: Array<{ lastGenuineFailureAt: string | null }> } };
+    };
+    expect(payload.data.sourceMetadata.focusProgress).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lastGenuineFailureAt: expect.any(String) }),
+      ]),
+    );
+    expect(result.claim.retryAvailableAt).toEqual(expect.any(String));
+    expect(Date.parse(result.claim.retryAvailableAt ?? '')).toBeGreaterThan(Date.now());
+
+    await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

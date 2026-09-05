@@ -19,9 +19,11 @@ import {
   SkillVerifySessionDtoSchema,
   StartSkillVerifyRequestSchema,
   hydrateFocusProgress,
+  readFocusProgress,
   focusProgressFor,
   mergeFocusProgressIntoMetadata,
   resolveSkillFocus,
+  retryAvailableAtForFocus,
   skillFocusFromMetadata,
   upsertFocusProgress,
   sdeV4FormCodeForCatalogSkill,
@@ -37,11 +39,7 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
-import {
-  applySkillClaimTransition,
-  type SkillClaimEvent,
-  type SkillClaimSnapshot,
-} from './skill-claim-state-machine.js';
+import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 
 function skillVerifyRedisKey(sessionId: string): string {
   return `session:skill-verify:${sessionId}`;
@@ -109,25 +107,19 @@ export class SkillVerificationService {
       });
     }
 
-    const focus = resolveSkillFocus(claim.skill.code, skillFocusFromMetadata(claim.sourceMetadata));
-    const progress = hydrateFocusProgress({
-      skillCode: claim.skill.code,
-      metadata: claim.sourceMetadata,
-      status: claim.status as SkillClaimStatus,
-      strikes: claim.strikes,
-      lockedUntil: claim.lockedUntil?.toISOString() ?? null,
-      lastAttemptId: claim.lastAttemptId,
-      lastGenuineFailureAt: null,
-    });
-    const selected = (focus ? focusProgressFor(progress, focus) : null) ?? {
-      focus: focus ?? 'default',
-      status: 'DECLARED' as const,
-      strikes: 0,
-      lockedUntil: null,
-      lastAttemptId: null,
-      lastGenuineFailureAt: null,
-      retryAvailableAt: null,
-    };
+    const { progress, selected } = this.progressForClaim(
+      claim,
+      skillFocusFromMetadata(claim.sourceMetadata),
+    );
+    let lastSit = selected.lastGenuineFailureAt ? new Date(selected.lastGenuineFailureAt) : null;
+    if (!lastSit && progress.length === 0) {
+      const lastAttempt = await this.prisma.skillVerificationAttempt.findFirst({
+        where: { claimId: claim.id },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      lastSit = lastAttempt?.createdAt ?? null;
+    }
     const startResult = applySkillClaimTransition({
       claim: {
         status: selected.status,
@@ -138,9 +130,7 @@ export class SkillVerificationService {
       },
       event: { type: 'START' },
       now: new Date(),
-      lastGenuineFailureAt: selected.lastGenuineFailureAt
-        ? new Date(selected.lastGenuineFailureAt)
-        : null,
+      lastGenuineFailureAt: lastSit,
     });
     if (!startResult.accepted) {
       throw new ForbiddenException({
@@ -232,9 +222,10 @@ export class SkillVerificationService {
       skillName: claim.skill.name,
       sdeSkillCode,
       proficiency: claim.proficiency,
-      skillFocus:
-        stored?.skillFocus ??
-        resolveSkillFocus(claim.skill.code, skillFocusFromMetadata(claim.sourceMetadata)),
+      skillFocus: resolveSkillFocus(
+        claim.skill.code,
+        stored?.skillFocus ?? skillFocusFromMetadata(claim.sourceMetadata),
+      ),
       scoringToken: form.scoringToken,
       items: form.items,
       timeMinutes: form.timeMinutes,
@@ -284,27 +275,10 @@ export class SkillVerificationService {
     }
 
     const claim = await this.loadOwnClaim(user.sub, stored.claimId);
-    const focus =
-      stored.skillFocus ??
-      resolveSkillFocus(claim.skill.code, skillFocusFromMetadata(claim.sourceMetadata));
-    const progress = hydrateFocusProgress({
-      skillCode: claim.skill.code,
-      metadata: claim.sourceMetadata,
-      status: claim.status as SkillClaimStatus,
-      strikes: claim.strikes,
-      lockedUntil: claim.lockedUntil?.toISOString() ?? null,
-      lastAttemptId: claim.lastAttemptId,
-      lastGenuineFailureAt: null,
-    });
-    const selected = (focus ? focusProgressFor(progress, focus) : null) ?? {
-      focus: focus ?? 'default',
-      status: 'DECLARED' as const,
-      strikes: 0,
-      lockedUntil: null,
-      lastAttemptId: null,
-      lastGenuineFailureAt: null,
-      retryAvailableAt: null,
-    };
+    const { progress, selected } = this.progressForClaim(
+      claim,
+      stored.skillFocus ?? skillFocusFromMetadata(claim.sourceMetadata),
+    );
 
     const technicalFailure = request.technicalFailure === true;
     let grade: CompleteSkillVerifyResponse['grade'] = null;
@@ -369,15 +343,20 @@ export class SkillVerificationService {
           : 'SDE v4 form did not clear the pass bar.');
 
     const nowIso = new Date().toISOString();
+    const lastGenuineFailureAt = event.type === 'GENUINE_PASS' ? null : nowIso;
+    const nextLockedUntil = transition.next.lockedUntil?.toISOString() ?? null;
     const nextFocus = upsertFocusProgress(progress, {
       focus: selected.focus,
       status: transition.next.status,
       strikes: transition.next.strikes,
-      lockedUntil: transition.next.lockedUntil?.toISOString() ?? null,
+      lockedUntil: nextLockedUntil,
       lastAttemptId: sessionId,
-      lastGenuineFailureAt:
-        event.type === 'GENUINE_FAIL' ? nowIso : (selected.lastGenuineFailureAt ?? null),
-      retryAvailableAt: null,
+      lastGenuineFailureAt,
+      retryAvailableAt: retryAvailableAtForFocus(
+        transition.next.status,
+        nextLockedUntil,
+        lastGenuineFailureAt,
+      ),
     });
     const nextMetadata = mergeFocusProgressIntoMetadata(
       claim.sourceMetadata,
@@ -449,22 +428,6 @@ export class SkillVerificationService {
         statusCode: 403,
       });
     }
-  }
-
-  private snapshot(claim: {
-    status: string;
-    proficiency: string;
-    strikes: number;
-    lockedUntil: Date | null;
-    verifiedUntil: Date | null;
-  }): SkillClaimSnapshot {
-    return {
-      status: claim.status as SkillClaimStatus,
-      proficiency: claim.proficiency as SkillProficiency,
-      strikes: claim.strikes,
-      lockedUntil: claim.lockedUntil,
-      verifiedUntil: claim.verifiedUntil,
-    };
   }
 
   private async loadOwnClaim(studentId: string, claimId: string) {
@@ -547,16 +510,72 @@ export class SkillVerificationService {
     sourceMetadata?: unknown;
     skill: { code: string };
   }): SkillClaimDto {
+    const requested = skillFocusFromMetadata(row.sourceMetadata);
+    const progress = hydrateFocusProgress({
+      skillCode: row.skill.code,
+      metadata: row.sourceMetadata,
+      status: row.status,
+      strikes: row.strikes,
+      lockedUntil: row.lockedUntil?.toISOString() ?? null,
+      lastAttemptId: row.lastAttemptId,
+      lastGenuineFailureAt: null,
+    });
+    const skillFocus = resolveSkillFocus(row.skill.code, requested);
+    const selected =
+      (skillFocus ? focusProgressFor(progress, skillFocus) : null) ??
+      (requested ? focusProgressFor(progress, requested) : null);
+    const retryAvailableAt = selected
+      ? retryAvailableAtForFocus(
+          selected.status,
+          selected.lockedUntil,
+          selected.lastGenuineFailureAt,
+        )
+      : null;
     return SkillClaimDtoSchema.parse({
       claimId: row.id,
       studentId: row.studentId,
       skillCode: row.skill.code,
       proficiency: row.proficiency,
-      status: row.status,
-      strikes: row.strikes,
-      lockedUntil: row.lockedUntil?.toISOString() ?? null,
-      lastAttemptId: row.lastAttemptId,
-      skillFocus: resolveSkillFocus(row.skill.code, skillFocusFromMetadata(row.sourceMetadata)),
+      status: selected?.status ?? row.status,
+      strikes: selected?.strikes ?? row.strikes,
+      lockedUntil: selected?.lockedUntil ?? row.lockedUntil?.toISOString() ?? null,
+      lastAttemptId: selected?.lastAttemptId ?? row.lastAttemptId,
+      skillFocus,
+      focusProgress: progress,
+      retryAvailableAt,
     });
+  }
+
+  private progressForClaim(
+    claim: {
+      proficiency: SkillProficiency;
+      status: string;
+      strikes: number;
+      lockedUntil: Date | null;
+      lastAttemptId: string | null;
+      sourceMetadata?: unknown;
+      skill: { code: string };
+    },
+    requested: string | null | undefined,
+  ) {
+    const fromMeta = skillFocusFromMetadata(claim.sourceMetadata);
+    const focus = resolveSkillFocus(claim.skill.code, requested ?? fromMeta);
+    const progress = readFocusProgress(claim.sourceMetadata);
+    const selected =
+      (focus ? focusProgressFor(progress, focus) : null) ??
+      (requested ? focusProgressFor(progress, requested) : null) ??
+      (fromMeta ? focusProgressFor(progress, fromMeta) : null);
+    return {
+      progress,
+      selected: selected ?? {
+        focus: focus ?? 'default',
+        status: claim.status as SkillClaimStatus,
+        strikes: claim.strikes,
+        lockedUntil: claim.lockedUntil?.toISOString() ?? null,
+        lastAttemptId: claim.lastAttemptId,
+        lastGenuineFailureAt: null,
+        retryAvailableAt: null,
+      },
+    };
   }
 }

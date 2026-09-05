@@ -7,6 +7,7 @@ import type { SkillVerifyPrepareDto, SkillVerifySessionDto } from '@smart/contra
 import { api } from '@/lib/api';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
+import { SkillVerifyLoading } from './skill-verify-loading';
 
 export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const router = useRouter();
@@ -137,22 +138,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     <ProctoringShell
       attemptId={prepared.sessionId}
       onLockTerminate={onLockTerminate}
-      cameraEnabled={false}
+      cameraEnabled
+      faceLiveCheck
       onReady={() => {
         void generateFormRef.current();
       }}
     >
       {!session ? (
-        <section className="flex h-full min-h-0 flex-col justify-center p-6">
-          {error ? (
-            <Alert tone="danger" title="Error">
-              {error}
-            </Alert>
-          ) : null}
-          <p className="text-sm text-white/50" aria-live="polite">
-            {generating ? 'Generating form…' : 'Waiting for proctoring checks…'}
-          </p>
-        </section>
+        <SkillVerifyLoading generating={generating} error={error} />
       ) : (
         <SkillVerifyExam
           session={session}

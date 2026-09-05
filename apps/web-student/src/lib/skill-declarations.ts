@@ -2,6 +2,7 @@ import {
   SKILL_DEFINITIONS,
   hydrateFocusProgress,
   focusProgressFor,
+  retryAvailableAtForFocus,
   type SkillFocusProgress,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
@@ -127,7 +128,9 @@ function asFocusProgress(rows: NonNullable<SkillClaimDto['focusProgress']>): Ski
     lockedUntil: row.lockedUntil,
     lastAttemptId: row.lastAttemptId,
     lastGenuineFailureAt: row.lastGenuineFailureAt ?? null,
-    retryAvailableAt: row.retryAvailableAt ?? null,
+    retryAvailableAt:
+      row.retryAvailableAt ??
+      retryAvailableAtForFocus(row.status, row.lockedUntil, row.lastGenuineFailureAt ?? null),
   }));
 }
 
@@ -158,16 +161,21 @@ export function viewForFocus(
 ) {
   const selected = resolveSkillFocus(skillCode, focus);
   const row = claim && selected ? focusProgressFor(progressForClaim(claim), selected) : null;
-  const status = row?.status ?? 'DECLARED';
-  const retryAt = row?.retryAvailableAt ?? null;
-  const cooling =
-    Boolean(row) &&
+  const status = row?.status ?? claim?.status ?? 'DECLARED';
+  const retryAt =
+    row?.retryAvailableAt ??
+    claim?.retryAvailableAt ??
+    row?.lockedUntil ??
+    claim?.lockedUntil ??
+    null;
+  const waitOpen =
     typeof retryAt === 'string' &&
-    Date.parse(retryAt) > now &&
-    (status === 'BEGINNER_REATTEMPT' || status === 'LOCKED');
+    Number.isFinite(Date.parse(retryAt)) &&
+    Date.parse(retryAt) > now;
+  const cooling = status !== 'VERIFIED' && (waitOpen || status === 'LOCKED');
   const hasForm = isSdeV4Verifiable(skillCode);
   const canStart =
-    hasForm && (status === 'DECLARED' || (status === 'BEGINNER_REATTEMPT' && !cooling));
+    hasForm && !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
   const synthetic: SkillClaimDto | undefined = claim
     ? {
         ...claim,

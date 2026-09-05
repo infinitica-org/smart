@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { renderPrompt } from './registry.js';
 import {
   SDE_V4_ITEM_TOTALS,
-  SDE_V4_SKILL_BY_CODE,
   SDE_V4_SKILLS,
   assertSdeV4FormShape,
   expectedFormCounts,

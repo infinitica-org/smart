@@ -479,6 +479,31 @@ describe('SDE v4 skill-verify assessment routes', () => {
     expect(rows[0]?.status).toBe('BEGINNER_REATTEMPT');
     expect(focusProgressFor(rows, 'TCP/UDP')).toBeNull();
   });
+
+  it('exposes retryAvailableAt on DECLARED after a sit so cooldown is not beginner-only', () => {
+    const rows = hydrateFocusProgress({
+      skillCode: 'GIT_VERSION_CONTROL',
+      metadata: {
+        skillFocus: 'Git basics',
+        focusProgress: [
+          {
+            focus: 'Git basics',
+            status: 'DECLARED',
+            strikes: 0,
+            lockedUntil: null,
+            lastAttemptId: 'attempt-1',
+            lastGenuineFailureAt: '2026-09-05T05:00:00.000Z',
+          },
+        ],
+      },
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: 'attempt-1',
+      lastGenuineFailureAt: null,
+    });
+    expect(rows[0]?.retryAvailableAt).toBe('2026-09-07T05:00:00.000Z');
+  });
 });
 
 describe('CN-T06 my applications route', () => {

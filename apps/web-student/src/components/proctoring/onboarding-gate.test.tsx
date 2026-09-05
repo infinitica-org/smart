@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { FaceCheckResult } from '../../lib/proctoring/face-check';
 import type * as ProctoringMedia from '../../lib/proctoring/media';
 
 const mocks = vi.hoisted(() => ({
@@ -30,6 +31,27 @@ vi.mock('../../lib/proctoring/media', async (importOriginal) => {
     sampleEnvironment: (...args: unknown[]) => mocks.sampleEnvironment(...args),
   };
 });
+
+vi.mock('./face-live-check', () => ({
+  FaceLiveCheck: ({ onPassed }: { onPassed: (sample: FaceCheckResult) => void }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onPassed({
+          faceCount: 1,
+          brightness: 140,
+          oneFace: true,
+          lightingOk: true,
+          ok: true,
+          fillOk: true,
+          message: 'Face check passed.',
+        })
+      }
+    >
+      Continue to assessment
+    </button>
+  ),
+}));
 
 import { OnboardingGate } from './onboarding-gate';
 
@@ -160,5 +182,32 @@ describe('OnboardingGate', () => {
     expect(mocks.requestProctoringMedia).not.toHaveBeenCalled();
     expect(mocks.consent).not.toHaveBeenCalled();
     expect(mocks.enrollFace).not.toHaveBeenCalled();
+  });
+
+  it('lays out face-check consent in a centered card', () => {
+    render(<OnboardingGate attemptId={ATTEMPT} faceLiveCheck onPassed={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: /skill verification/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /face check/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /continue and allow camera/i })).toBeTruthy();
+  });
+
+  it('runs a live one-face lighting check instead of enroll and blink liveness', async () => {
+    const onPassed = vi.fn();
+    const stream = { id: 'cam', getTracks: () => [] };
+    mocks.requestProctoringMedia.mockResolvedValue(stream);
+    render(<OnboardingGate attemptId={ATTEMPT} faceLiveCheck onPassed={onPassed} />);
+    fireEvent.click(screen.getByLabelText(/camera use/i));
+    expect(screen.queryByLabelText(/microphone use/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /continue and allow camera/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue to assessment/i })).toBeDefined(),
+    );
+    expect(mocks.enrollFace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /continue to assessment/i }));
+    await waitFor(() => expect(onPassed).toHaveBeenCalledWith(stream));
+    expect(mocks.precheck).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptId: ATTEMPT, faceCentered: true, brightness: 140 }),
+    );
+    expect(mocks.liveness).not.toHaveBeenCalled();
   });
 });

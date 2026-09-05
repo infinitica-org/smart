@@ -28,6 +28,7 @@ export function ProctoringShell({
   onLockTerminate,
   onReady,
   cameraEnabled = true,
+  faceLiveCheck = false,
   children,
 }: {
   attemptId: string;
@@ -37,6 +38,8 @@ export function ProctoringShell({
   onReady?: () => void;
   /** When false, skip webcam capture and preview. Fullscreen and sensors stay on. */
   cameraEnabled?: boolean;
+  /** Skill-verify: live one-face and lighting check before the form generates. */
+  faceLiveCheck?: boolean;
   children: ReactNode;
 }) {
   const enabled = isProctoringEnabled();
@@ -254,20 +257,23 @@ export function ProctoringShell({
       style={{ zIndex: 2147483646, overscrollBehavior: 'none', touchAction: 'manipulation' }}
     >
       {!ready ? (
-        <OnboardingGate
-          attemptId={attemptId}
-          fullscreenRootRef={kioskRef}
-          cameraEnabled={cameraEnabled}
-          onPassed={(stream) => {
-            mediaRef.current = stream;
-            if (cameraEnabled && previewRef.current && stream) {
-              previewRef.current.srcObject = stream;
-            }
-            setReady(true);
-            setBlocked(!document.fullscreenElement);
-            notifyReady();
-          }}
-        />
+        <div className="flex h-full min-h-full flex-col">
+          <OnboardingGate
+            attemptId={attemptId}
+            fullscreenRootRef={kioskRef}
+            cameraEnabled={cameraEnabled}
+            faceLiveCheck={faceLiveCheck}
+            onPassed={(stream) => {
+              mediaRef.current = stream;
+              if (cameraEnabled && previewRef.current && stream) {
+                previewRef.current.srcObject = stream;
+              }
+              setReady(true);
+              setBlocked(!document.fullscreenElement);
+              notifyReady();
+            }}
+          />
+        </div>
       ) : locked ? (
         <div className="flex h-full items-center justify-center p-6">
           <Alert tone="danger" title="Test terminated" className="max-w-md">
@@ -277,13 +283,16 @@ export function ProctoringShell({
         </div>
       ) : (
         <>
-          <div className={hideExam ? 'hidden' : 'h-full min-h-full'} aria-hidden={hideExam}>
+          <div
+            className={hideExam ? 'hidden' : 'flex h-full min-h-full flex-col'}
+            aria-hidden={hideExam}
+          >
             {warnings.count > 0 ? (
-              <p className="px-4 pt-3 text-xs text-amber-300">
+              <p className="shrink-0 px-4 pt-3 text-xs text-amber-300">
                 Integrity warnings {String(warnings.count)}/{String(warnings.limit)}
               </p>
             ) : null}
-            {children}
+            <div className="min-h-0 flex-1">{children}</div>
             {previewVideo}
           </div>
           <FullscreenGate

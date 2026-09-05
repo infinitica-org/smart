@@ -44,6 +44,29 @@ describe('skill-declarations helpers', () => {
 
   it('allows SDE v4 start only for mapped DECLARED or BEGINNER_REATTEMPT claims off cooldown', () => {
     expect(canStartSdeV4Verify(claim())).toBe(true);
+    expect(canStartSdeV4Verify(claim({ retryAvailableAt: '2099-01-01T00:00:00.000Z' }))).toBe(
+      false,
+    );
+    expect(
+      canStartSdeV4Verify(
+        claim({
+          skillFocus: 'Branching',
+          focusProgress: [
+            {
+              focus: 'Branching',
+              status: 'DECLARED',
+              strikes: 0,
+              lockedUntil: null,
+              lastAttemptId: '33333333-3333-4333-8333-333333333333',
+              lastGenuineFailureAt: '2026-09-05T00:00:00.000Z',
+              retryAvailableAt: '2099-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+        Date.now(),
+        'Branching',
+      ),
+    ).toBe(false);
     expect(canStartSdeV4Verify(claim({ status: 'VERIFIED' }))).toBe(false);
     expect(canStartSdeV4Verify(claim({ skillCode: 'LANGUAGE_PROFICIENCY' }))).toBe(true);
     expect(
@@ -128,6 +151,15 @@ describe('skill-declarations helpers', () => {
         }),
       ),
     ).toMatch(/already sat/i);
+    expect(
+      skillVerifyBlockMessage(
+        claim({
+          status: 'LOCKED',
+          lockedUntil: '2099-09-07T09:30:00.000Z',
+          retryAvailableAt: '2099-09-07T09:30:00.000Z',
+        }),
+      ),
+    ).toMatch(/locked until/i);
   });
 
   it('maps claim statuses onto VerificationBadge language', () => {

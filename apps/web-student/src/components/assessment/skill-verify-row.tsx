@@ -36,16 +36,22 @@ export function SkillVerifyRow({
   const focusOptions = skillFocusOptions(skillCode);
   const view = viewForFocus(claim, skillCode, focus);
   const retryLabel = formatRetryAt(view.retryAt);
+  const lockHint = view.status === 'LOCKED' ? `Locked until ${retryLabel}` : `Opens ${retryLabel}`;
 
   return (
     <li className="grid grid-cols-1 items-center gap-3 rounded-xl border border-white/10 px-3 py-3 lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem]">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{skillName}</p>
-        {view.cooling && retryLabel ? (
-          <p className="mt-0.5 text-xs text-[var(--text-secondary,rgba(255,255,255,0.4))]">
-            {view.selected ? `${view.selected}: ` : ''}available again {retryLabel}
-          </p>
-        ) : null}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+          <p className="truncate text-sm font-medium">{skillName}</p>
+          {view.cooling && retryLabel ? (
+            <time
+              dateTime={view.retryAt ?? undefined}
+              className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
+            >
+              {lockHint}
+            </time>
+          ) : null}
+        </div>
       </div>
       <div className="flex lg:justify-center">
         <VerificationBadge status={view.badge} variant="outline" className="whitespace-nowrap" />
@@ -93,7 +99,13 @@ export function SkillVerifyRow({
         title={view.hasForm ? (view.blockMessage ?? undefined) : 'No SDE verification form yet.'}
         onClick={onVerify}
       >
-        {pending ? 'Starting…' : view.hasForm ? 'Verify' : 'No assessment'}
+        {pending
+          ? 'Starting…'
+          : view.hasForm
+            ? view.cooling
+              ? 'Locked'
+              : 'Verify'
+            : 'No assessment'}
       </Button>
     </li>
   );

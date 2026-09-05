@@ -24,10 +24,9 @@ export function retryAvailableAtForFocus(
   lockedUntil: string | null,
   lastGenuineFailureAt: string | null,
 ): string | null {
+  if (status === 'VERIFIED') return null;
   if (status === 'LOCKED') return lockedUntil;
-  if (status === 'BEGINNER_REATTEMPT' && lastGenuineFailureAt) {
-    return addCooldown(lastGenuineFailureAt);
-  }
+  if (lastGenuineFailureAt) return addCooldown(lastGenuineFailureAt);
   return null;
 }
 

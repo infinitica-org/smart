@@ -58,6 +58,9 @@ describe('skill-claim state machine (SE-T01)', () => {
   it('computes retryAvailableAt for 48h beginner cooldown and lock expiry', () => {
     const failAt = new Date('2026-09-02T10:00:00.000Z');
     expect(skillRetryAvailableAt('DECLARED', null, null)).toBeNull();
+    expect(skillRetryAvailableAt('DECLARED', null, failAt)?.toISOString()).toBe(
+      '2026-09-04T10:00:00.000Z',
+    );
     expect(skillRetryAvailableAt('BEGINNER_REATTEMPT', null, failAt)?.toISOString()).toBe(
       '2026-09-04T10:00:00.000Z',
     );
@@ -119,6 +122,30 @@ describe('skill-claim state machine (SE-T01)', () => {
     expect(result.accepted).toBe(true);
     expect(result.attemptAllowed).toBe(true);
     expect(result.next.status).toBe('DECLARED');
+  });
+
+  it('START on DECLARED is blocked during the 48h cooldown after a sit', () => {
+    const failAt = NOW;
+    const tooSoon = new Date(failAt.getTime() + 60_000);
+    const result = apply(
+      declared(),
+      { type: 'START' },
+      { now: tooSoon, lastGenuineFailureAt: failAt },
+    );
+    expect(result.accepted).toBe(false);
+    expect(result.blockReason).toBe('INTER_ATTEMPT_COOLDOWN');
+    expect(result.attemptAllowed).toBe(false);
+  });
+
+  it('START on DECLARED is allowed after the 48h cooldown', () => {
+    const failAt = NOW;
+    const result = apply(
+      declared(),
+      { type: 'START' },
+      { now: addInterAttemptCooldown(failAt), lastGenuineFailureAt: failAt },
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.attemptAllowed).toBe(true);
   });
 
   it('4. BEGINNER_REATTEMPT start before 48h is rejected', () => {
