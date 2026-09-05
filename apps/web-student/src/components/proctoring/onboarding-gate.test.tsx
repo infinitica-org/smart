@@ -150,4 +150,15 @@ describe('OnboardingGate', () => {
     unmount();
     expect(stop).not.toHaveBeenCalled();
   });
+
+  it('enters fullscreen without requesting camera when camera is off', async () => {
+    const onPassed = vi.fn();
+    render(<OnboardingGate attemptId={ATTEMPT} cameraEnabled={false} onPassed={onPassed} />);
+    expect(screen.queryByLabelText(/camera use/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    await waitFor(() => expect(onPassed).toHaveBeenCalledWith(null));
+    expect(mocks.requestProctoringMedia).not.toHaveBeenCalled();
+    expect(mocks.consent).not.toHaveBeenCalled();
+    expect(mocks.enrollFace).not.toHaveBeenCalled();
+  });
 });

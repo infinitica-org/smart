@@ -27,6 +27,7 @@ export function ProctoringShell({
   attemptId,
   onLockTerminate,
   onReady,
+  cameraEnabled = true,
   children,
 }: {
   attemptId: string;
@@ -34,6 +35,8 @@ export function ProctoringShell({
   onLockTerminate?: () => Promise<unknown>;
   /** After camera/fullscreen onboarding, or immediately when proctoring is off. */
   onReady?: () => void;
+  /** When false, skip webcam capture and preview. Fullscreen and sensors stay on. */
+  cameraEnabled?: boolean;
   children: ReactNode;
 }) {
   const enabled = isProctoringEnabled();
@@ -226,27 +229,38 @@ export function ProctoringShell({
   }, [releaseMedia]);
 
   useEffect(() => {
-    if (!ready || !previewRef.current || !mediaRef.current) return;
+    if (!cameraEnabled || !ready || !previewRef.current || !mediaRef.current) return;
     previewRef.current.srcObject = mediaRef.current;
-  }, [ready]);
+  }, [cameraEnabled, ready]);
 
   if (!enabled) return children;
   if (!mounted) return null;
 
   const hideExam = hidePlayerForFullscreen(blocked || extendedDisplay);
+  const previewVideo = cameraEnabled ? (
+    <video
+      ref={previewRef}
+      className="pointer-events-none fixed right-4 bottom-4 z-40 h-24 w-32 rounded-md border border-white/20 object-cover"
+      muted
+      playsInline
+      autoPlay
+      aria-label="Proctoring camera preview"
+    />
+  ) : null;
   const kiosk = (
     <div
       ref={kioskRef}
-      className="fixed inset-0 overflow-auto bg-black"
+      className="fixed inset-0 h-full overflow-hidden bg-black"
       style={{ zIndex: 2147483646, overscrollBehavior: 'none', touchAction: 'manipulation' }}
     >
       {!ready ? (
         <OnboardingGate
           attemptId={attemptId}
           fullscreenRootRef={kioskRef}
+          cameraEnabled={cameraEnabled}
           onPassed={(stream) => {
             mediaRef.current = stream;
-            if (previewRef.current) {
+            if (cameraEnabled && previewRef.current && stream) {
               previewRef.current.srcObject = stream;
             }
             setReady(true);
@@ -263,21 +277,14 @@ export function ProctoringShell({
         </div>
       ) : (
         <>
-          <div className={hideExam ? 'hidden' : undefined} aria-hidden={hideExam}>
+          <div className={hideExam ? 'hidden' : 'h-full min-h-full'} aria-hidden={hideExam}>
             {warnings.count > 0 ? (
               <p className="px-4 pt-3 text-xs text-amber-300">
                 Integrity warnings {String(warnings.count)}/{String(warnings.limit)}
               </p>
             ) : null}
             {children}
-            <video
-              ref={previewRef}
-              className="pointer-events-none fixed right-4 bottom-4 z-40 h-24 w-32 rounded-md border border-white/20 object-cover"
-              muted
-              playsInline
-              autoPlay
-              aria-label="Proctoring camera preview"
-            />
+            {previewVideo}
           </div>
           <FullscreenGate
             blocked={blocked && !extendedDisplay}

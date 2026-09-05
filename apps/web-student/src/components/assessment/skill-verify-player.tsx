@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button } from '@smart/ui';
+import { Alert } from '@smart/ui';
 import type { SkillVerifyPrepareDto, SkillVerifySessionDto } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
+import { SkillVerifyExam } from './skill-verify-exam';
 
 export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [answers, setAnswers] = useState<Record<number, { selectedKey?: string; text?: string }>>(
     {},
   );
+  const [currentIndex, setCurrentIndex] = useState(0);
   const generateStarted = useRef(false);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         next[row.index] = { selectedKey: row.selectedKey, text: row.text };
       }
       setAnswers(next);
+      setCurrentIndex(0);
     } catch (err) {
       generateStarted.current = false;
       setError(err instanceof Error ? err.message : 'Could not generate the form.');
@@ -60,13 +63,6 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   const generateFormRef = useRef(generateForm);
   generateFormRef.current = generateForm;
-
-  const remainingLabel = useMemo(() => {
-    if (!session) return '';
-    const minutes = Math.floor(session.serverRemainingSeconds / 60);
-    const seconds = session.serverRemainingSeconds % 60;
-    return `${String(minutes)}:${String(seconds).padStart(2, '0')}`;
-  }, [session]);
 
   const responses = useMemo(
     () =>
@@ -141,86 +137,56 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     <ProctoringShell
       attemptId={prepared.sessionId}
       onLockTerminate={onLockTerminate}
+      cameraEnabled={false}
       onReady={() => {
         void generateFormRef.current();
       }}
     >
-      <section className="mx-auto flex max-w-3xl flex-col gap-6">
-        {error ? (
-          <Alert tone="danger" title="Error">
-            {error}
-          </Alert>
-        ) : null}
-        {!session ? (
+      {!session ? (
+        <section className="flex h-full min-h-0 flex-col justify-center p-6">
+          {error ? (
+            <Alert tone="danger" title="Error">
+              {error}
+            </Alert>
+          ) : null}
           <p className="text-sm text-white/50" aria-live="polite">
             {generating ? 'Generating form…' : 'Waiting for proctoring checks…'}
           </p>
-        ) : (
-          <>
-            <div>
-              <h1 className="text-xl font-semibold text-white">Skill verification</h1>
-              <p className="mt-1 text-sm text-white/40">
-                Server clock {remainingLabel} remaining. Pass bar {String(session.passMarkPercent)}
-                %. Proctored. Not a certification attempt.
-              </p>
-            </div>
-            <ol className="flex flex-col gap-6">
-              {session.items.map((item) => (
-                <li
-                  key={item.index}
-                  className="rounded-2xl border border-white/10 bg-[#141414] p-4"
-                >
-                  <p className="text-xs font-medium text-white/40">
-                    {item.format} · {item.index}
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-white">{item.prompt}</p>
-                  {item.options ? (
-                    <fieldset className="mt-3 flex flex-col gap-2">
-                      {(Object.keys(item.options) as Array<'A' | 'B' | 'C' | 'D'>).map((key) => (
-                        <label key={key} className="flex items-start gap-2 text-sm text-white/80">
-                          <input
-                            type="radio"
-                            name={`item-${String(item.index)}`}
-                            checked={answers[item.index]?.selectedKey === key}
-                            onChange={() =>
-                              setAnswers((prev) => ({
-                                ...prev,
-                                [item.index]: { ...prev[item.index], selectedKey: key },
-                              }))
-                            }
-                          />
-                          <span>
-                            {key}. {item.options?.[key]}
-                          </span>
-                        </label>
-                      ))}
-                    </fieldset>
-                  ) : (
-                    <textarea
-                      className="mt-3 min-h-32 w-full rounded-xl border border-white/10 bg-[#0a0a0a] p-3 text-sm text-white"
-                      value={answers[item.index]?.text ?? ''}
-                      onChange={(event) =>
-                        setAnswers((prev) => ({
-                          ...prev,
-                          [item.index]: { ...prev[item.index], text: event.target.value },
-                        }))
-                      }
-                    />
-                  )}
-                </li>
-              ))}
-            </ol>
-            <div className="flex gap-3">
-              <Button type="button" disabled={isPending} onClick={save}>
-                Save
-              </Button>
-              <Button type="button" disabled={isPending} onClick={complete}>
-                Submit
-              </Button>
-            </div>
-          </>
-        )}
-      </section>
+        </section>
+      ) : (
+        <SkillVerifyExam
+          session={session}
+          currentIndex={currentIndex}
+          answers={answers}
+          pending={isPending}
+          error={error}
+          onSelectKey={(itemIndex, key) =>
+            setAnswers((prev) => ({
+              ...prev,
+              [itemIndex]: { ...prev[itemIndex], selectedKey: key, text: undefined },
+            }))
+          }
+          onChangeText={(itemIndex, text) =>
+            setAnswers((prev) => ({
+              ...prev,
+              [itemIndex]: { ...prev[itemIndex], text, selectedKey: undefined },
+            }))
+          }
+          onGoTo={(index) => {
+            save();
+            setCurrentIndex(index);
+          }}
+          onClear={(itemIndex) =>
+            setAnswers((prev) => {
+              const next = { ...prev };
+              delete next[itemIndex];
+              return next;
+            })
+          }
+          onExit={() => router.push('/assessments')}
+          onSubmit={complete}
+        />
+      )}
     </ProctoringShell>
   );
 }

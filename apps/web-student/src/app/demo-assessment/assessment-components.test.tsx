@@ -32,6 +32,16 @@ describe('Assessment Components', () => {
       expect(screen.getByText('What is 2+2?')).toBeDefined();
       expect(screen.getByTestId('child')).toBeDefined();
     });
+
+    it('renders an optional eyebrow above the stem', () => {
+      render(
+        <QuestionCard eyebrow={<span>Question 1 of 14</span>} questionText="Stem">
+          <div>opt</div>
+        </QuestionCard>,
+      );
+      expect(screen.getByText('Question 1 of 14')).toBeDefined();
+      expect(screen.getByText('Stem')).toBeDefined();
+    });
   });
 
   describe('AnswerOption', () => {
