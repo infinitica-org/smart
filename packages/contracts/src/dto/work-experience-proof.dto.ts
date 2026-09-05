@@ -27,7 +27,7 @@ export const WorkExperienceProofMatchResultSchema = z.object({
 export type WorkExperienceProofMatchResult = z.infer<typeof WorkExperienceProofMatchResultSchema>;
 
 export const WorkExperienceProofValidationResultSchema = z.object({
-  validationStatus: z.enum(['VALIDATED', 'REJECTED']),
+  validationStatus: z.enum(['VALIDATED', 'REJECTED', 'NEEDS_MANUAL_REVIEW']),
   documentType: ExperienceDocumentTypeSchema,
   isOfferLetter: z.boolean(),
   extractedData: WorkExperienceProofExtractedDataSchema,

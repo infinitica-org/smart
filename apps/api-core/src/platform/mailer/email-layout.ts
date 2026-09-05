@@ -5,14 +5,7 @@ export type EmailBadgeTone = 'success' | 'warning' | 'danger' | 'info';
 // tinted with the same tone used for that template's status badge (where it
 // has one) so the icon and the badge always agree with each other.
 export type EmailIconName =
-  | 'briefcase'
-  | 'sparkles'
-  | 'bell'
-  | 'star'
-  | 'trendingUp'
-  | 'checkCircle'
-  | 'refresh'
-  | 'lock';
+  'briefcase' | 'sparkles' | 'bell' | 'star' | 'trendingUp' | 'checkCircle' | 'refresh' | 'lock';
 
 export interface EmailLayoutOptions {
   readonly previewText: string;
@@ -68,7 +61,8 @@ const ICON_GLYPHS: Record<EmailIconName, string> = {
   star: '<path d="m12 3 2.6 5.6 6.1.6-4.6 4.2 1.3 6-5.4-3.1L6.6 19.4l1.3-6L3.3 9.2l6.1-.6L12 3Z" stroke-linejoin="round"/>',
   trendingUp: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 6h6v6"/>',
   checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9"/>',
-  refresh: '<path d="M21 12a9 9 0 0 1-15.3 6.3M3 12a9 9 0 0 1 15.3-6.3"/><path d="M21 3v6h-6M3 21v-6h6"/>',
+  refresh:
+    '<path d="M21 12a9 9 0 0 1-15.3 6.3M3 12a9 9 0 0 1 15.3-6.3"/><path d="M21 3v6h-6M3 21v-6h6"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 1 1 8 0v4"/>',
 };
 

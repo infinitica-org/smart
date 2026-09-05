@@ -204,8 +204,10 @@ enum JobOpeningStatus {
 enum AtsStage {
   APPLIED
   SHORTLISTED
+  AI_VERIFIED
   INTERVIEW
   OFFER
+  HIRED
   REJECTED
   WITHDRAWN
 }

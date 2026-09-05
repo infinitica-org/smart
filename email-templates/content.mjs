@@ -42,13 +42,15 @@ const SAMPLE = {
   verifyPassed: {
     fullName: 'Aarav Sharma',
     skillName: 'Data Structures & Algorithms',
-    detail: 'You scored in the top tier — this skill is now visible as verified on your public profile.',
+    detail:
+      'You scored in the top tier — this skill is now visible as verified on your public profile.',
     profileUrl: 'https://app.smart.app/profile',
   },
   verifyFailed: {
     fullName: 'Aarav Sharma',
     skillName: 'System Design Fundamentals',
-    detail: 'You can retake this verification after 14 days. Review the focus areas in your prep guide first.',
+    detail:
+      'You can retake this verification after 14 days. Review the focus areas in your prep guide first.',
     profileUrl: 'https://app.smart.app/profile',
   },
   verifyLocked: {
@@ -366,7 +368,9 @@ export const CONTENT = {
       emoji: '✅',
       heading: 'Skill verified — nice one!',
       salutation: `Hey ${s.verifyPassed.fullName.split(' ')[0]},`,
-      paragraphs: [`You crushed the ${s.verifyPassed.skillName} assessment. ${s.verifyPassed.detail}`],
+      paragraphs: [
+        `You crushed the ${s.verifyPassed.skillName} assessment. ${s.verifyPassed.detail}`,
+      ],
       infoRows: [['Skill', s.verifyPassed.skillName]],
       cta: { label: 'See my profile', url: s.verifyPassed.profileUrl },
       badge: { label: 'Verified', tone: 'success' },
@@ -414,7 +418,9 @@ export const CONTENT = {
       emoji: '💪',
       heading: "Not this time — you'll get it",
       salutation: `Hey ${s.verifyFailed.fullName.split(' ')[0]},`,
-      paragraphs: [`${s.verifyFailed.skillName} didn't verify this round. ${s.verifyFailed.detail}`],
+      paragraphs: [
+        `${s.verifyFailed.skillName} didn't verify this round. ${s.verifyFailed.detail}`,
+      ],
       infoRows: [['Skill', s.verifyFailed.skillName]],
       cta: { label: 'Check my profile', url: s.verifyFailed.profileUrl },
       badge: { label: 'Not verified', tone: 'danger' },
@@ -462,7 +468,9 @@ export const CONTENT = {
       emoji: '🔒',
       heading: 'This one needs a breather',
       salutation: `Hey ${s.verifyLocked.fullName.split(' ')[0]},`,
-      paragraphs: [`${s.verifyLocked.detail} It reopens on ${s.verifyLocked.unlockDate} — use the time to prep.`],
+      paragraphs: [
+        `${s.verifyLocked.detail} It reopens on ${s.verifyLocked.unlockDate} — use the time to prep.`,
+      ],
       infoRows: [['Skill', s.verifyLocked.skillName]],
       cta: { label: 'Check my profile', url: s.verifyLocked.profileUrl },
       badge: { label: 'Locked', tone: 'warning' },

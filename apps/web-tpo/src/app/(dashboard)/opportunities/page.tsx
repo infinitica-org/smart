@@ -5,7 +5,18 @@ import Link from 'next/link';
 import { isSmartApiError } from '@smart/api-client';
 import type { ApplicationDto, AtsStage } from '@smart/contracts';
 import { Alert, Card, Button } from '@smart/ui';
-import { Search, Filter, Shield, Clock, Video, Building2, Ban, XCircle } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Shield,
+  Clock,
+  Video,
+  Building2,
+  Ban,
+  XCircle,
+  BadgeCheck,
+  Trophy,
+} from 'lucide-react';
 import { applicationsApi, openingsApi } from '../../../lib/api';
 
 function errorMessage(caught: unknown, fallback: string): string {
@@ -23,8 +34,10 @@ const STAGE_FILTERS: readonly (AtsStage | 'ALL')[] = [
   'ALL',
   'APPLIED',
   'SHORTLISTED',
+  'AI_VERIFIED',
   'INTERVIEW',
   'OFFER',
+  'HIRED',
   'REJECTED',
   'WITHDRAWN',
 ];
@@ -43,6 +56,12 @@ function stageBadge(stage: AtsStage) {
           <Shield className="w-3.5 h-3.5 text-sky-600" /> Shortlisted
         </span>
       );
+    case 'AI_VERIFIED':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+          <BadgeCheck className="w-3.5 h-3.5 text-teal-600" /> AI-Verified
+        </span>
+      );
     case 'INTERVIEW':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -53,6 +72,12 @@ function stageBadge(stage: AtsStage) {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
           <Shield className="w-3.5 h-3.5 text-emerald-600" /> Offer
+        </span>
+      );
+    case 'HIRED':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+          <Trophy className="w-3.5 h-3.5 text-green-600" /> Hired
         </span>
       );
     case 'REJECTED':

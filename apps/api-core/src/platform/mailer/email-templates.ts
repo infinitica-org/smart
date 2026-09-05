@@ -39,6 +39,22 @@ function firstName(fullName: string): string {
   return fullName.split(' ')[0] ?? fullName;
 }
 
+/** CO-T05: per-stage badge tone so the offer/hired/rejected emails read distinctly, not identically. */
+const STAGE_EMAIL_TONE: Partial<Record<string, 'success' | 'warning' | 'danger'>> = {
+  OFFER: 'success',
+  HIRED: 'success',
+  REJECTED: 'danger',
+};
+
+/** CO-T05: one extra line of stage-specific context appended to the generic move copy. */
+const STAGE_EMAIL_NOTE: Partial<Record<string, string>> = {
+  AI_VERIFIED: 'Your profile has passed AI verification and is now visible to the company.',
+  OFFER: 'Congratulations on the offer — review the details with your placement office.',
+  HIRED: "Congratulations — you've been hired! Wishing you all the best in the new role.",
+  REJECTED:
+    "This one didn't work out, but your placement office can help you find the next opening.",
+};
+
 function formatStage(stage: string): string {
   return stage
     .toLowerCase()
@@ -231,6 +247,8 @@ function buildStageChanged(payload: StageChangeEmailData): RenderedEmail {
   const name = firstName(payload.fullName);
   const fromLabel = payload.fromStage ? formatStage(payload.fromStage) : 'Applied';
   const toLabel = formatStage(payload.toStage);
+  const tone = STAGE_EMAIL_TONE[payload.toStage] ?? 'warning';
+  const extraLine = STAGE_EMAIL_NOTE[payload.toStage];
   const subject = `Update on your ${payload.roleTitle} application`;
   const bodyHtml = [
     paragraph(`Hi ${strong(name)},`),
@@ -238,7 +256,8 @@ function buildStageChanged(payload: StageChangeEmailData): RenderedEmail {
       `${payload.companyName} moved your application for ${strong(payload.roleTitle)} from ${fromLabel} to ${strong(toLabel)}. Progress like this usually means they liked what they saw — keep the momentum going.`,
     ),
     paragraph(
-      `If ${toLabel} involves an interview or assessment, now's a good moment to revisit the skills you got verified for this role and think through how you'd explain them out loud.`,
+      extraLine ??
+        `If ${toLabel} involves an interview or assessment, now's a good moment to revisit the skills you got verified for this role and think through how you'd explain them out loud.`,
     ),
     detailRows([
       ['Company', payload.companyName],
@@ -247,8 +266,11 @@ function buildStageChanged(payload: StageChangeEmailData): RenderedEmail {
   ].join('');
   const text = [
     `Hi ${name}, your application for ${payload.roleTitle} at ${payload.companyName} moved from ${fromLabel} to ${toLabel}.`,
+    extraLine ?? null,
     `View your application: ${payload.applicationsUrl}`,
-  ].join('\n\n');
+  ]
+    .filter((line) => line !== null)
+    .join('\n\n');
   return {
     subject,
     text,
@@ -258,7 +280,7 @@ function buildStageChanged(payload: StageChangeEmailData): RenderedEmail {
       illustration: STAGE_CHANGED_ILLUSTRATION,
       bodyHtml,
       cta: { label: 'Open my application', url: payload.applicationsUrl },
-      badge: { label: toLabel, tone: 'warning' },
+      badge: { label: toLabel, tone },
       signoff: SIGNOFF_STUDY_BUDDY,
     }),
   };

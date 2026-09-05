@@ -46,4 +46,6 @@ for (const templateName of Object.keys(CONTENT)) {
 
 writeFileSync(path.join(__dirname, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
 
-console.log(`Generated ${manifest.length} email variants (${Object.keys(CONTENT).length} templates x ${THEMES.length} themes) into ${OUT_DIR}`);
+console.warn(
+  `Generated ${manifest.length} email variants (${Object.keys(CONTENT).length} templates x ${THEMES.length} themes) into ${OUT_DIR}`,
+);

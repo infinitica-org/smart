@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type {
+  AtsStage,
   ListNotificationsResponse,
   NotificationDto,
   NotificationKind,
@@ -141,12 +142,13 @@ export class NotificationsService {
     companyName: string;
     roleTitle: string;
     fromStage: string | null;
-    toStage: string;
+    toStage: AtsStage;
     applicationId: string;
   }): Promise<NotificationDto> {
     const applicationsUrl = `${env.STUDENT_APP_URL}/applications`;
-    const title = `Application update: ${params.roleTitle}`;
-    const body = `Your application for ${params.roleTitle} at ${params.companyName} moved to ${formatStage(params.toStage)}.`;
+    const copy = STAGE_NOTIFICATION_COPY[params.toStage];
+    const title = copy.title(params.roleTitle);
+    const body = copy.body(params.roleTitle, params.companyName);
     return this.notify({
       userId: params.userId,
       email: params.email,
@@ -225,13 +227,55 @@ export class NotificationsService {
   }
 }
 
-function formatStage(stage: string): string {
-  return stage
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
+/**
+ * CO-T05: distinct in-app/email copy per CO-T02 kanban column, so a candidate
+ * gets a message that matches what actually happened rather than a generic
+ * "moved to <Stage>" line for every kind of movement.
+ */
+const STAGE_NOTIFICATION_COPY: Record<
+  AtsStage,
+  {
+    title: (roleTitle: string) => string;
+    body: (roleTitle: string, companyName: string) => string;
+  }
+> = {
+  APPLIED: {
+    title: (role) => `Application received: ${role}`,
+    body: (role, company) => `Your application for ${role} at ${company} has been recorded.`,
+  },
+  SHORTLISTED: {
+    title: (role) => `Shortlisted for ${role}`,
+    body: (role, company) => `You have been shortlisted for ${role} at ${company}.`,
+  },
+  AI_VERIFIED: {
+    title: (role) => `Profile verified: ${role}`,
+    body: (role, company) =>
+      `Your profile passed AI verification and has been sent to ${company} for ${role}.`,
+  },
+  INTERVIEW: {
+    title: (role) => `Interview stage: ${role}`,
+    body: (role, company) =>
+      `You have moved to the interviewing stage for ${role} at ${company}. Watch for a scheduling message.`,
+  },
+  OFFER: {
+    title: (role) => `Offer extended: ${role}`,
+    body: (role, company) =>
+      `Congratulations! You have received an offer for ${role} at ${company}.`,
+  },
+  HIRED: {
+    title: (role) => `You're hired: ${role}`,
+    body: (role, company) => `Congratulations, you have been hired for ${role} at ${company}!`,
+  },
+  REJECTED: {
+    title: (role) => `Application update: ${role}`,
+    body: (role, company) =>
+      `Your application for ${role} at ${company} was not selected this time.`,
+  },
+  WITHDRAWN: {
+    title: (role) => `Application withdrawn: ${role}`,
+    body: (role, company) => `Your application for ${role} at ${company} has been withdrawn.`,
+  },
+};
 
 function toNotificationDto(row: {
   id: string;

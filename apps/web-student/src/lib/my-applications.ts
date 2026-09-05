@@ -7,18 +7,22 @@ export const MY_APPLICATIONS_POLL_MS = 5_000;
 export const ATS_STAGE_LABELS: Record<AtsStage, string> = {
   APPLIED: 'Applied / New Matches',
   SHORTLISTED: 'Shortlisted',
+  AI_VERIFIED: 'AI-Verified',
   INTERVIEW: 'Interviewing',
   OFFER: 'Offer',
+  HIRED: 'Hired',
   REJECTED: 'Rejected',
   WITHDRAWN: 'Withdrawn',
 };
 
-/** Forward hiring path. REJECTED / WITHDRAWN are terminal, not steps past Offer. */
+/** Forward hiring path. REJECTED / WITHDRAWN are terminal, not steps past Hired. */
 export const ATS_PIPELINE_STAGES = [
   'APPLIED',
   'SHORTLISTED',
+  'AI_VERIFIED',
   'INTERVIEW',
   'OFFER',
+  'HIRED',
 ] as const satisfies readonly AtsStage[];
 
 export type AtsPipelineStage = (typeof ATS_PIPELINE_STAGES)[number];

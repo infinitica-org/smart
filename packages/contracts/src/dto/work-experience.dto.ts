@@ -150,8 +150,17 @@ export type GetWorkExperienceVerificationResponseDto = z.infer<
   typeof GetWorkExperienceVerificationResponseSchema
 >;
 
+export const EmployerVerificationDecisionSchema = z.enum([
+  'YES',
+  'NO',
+  'PARTIAL',
+  'NEED_CLARIFICATION',
+]);
+export type EmployerVerificationDecision = z.infer<typeof EmployerVerificationDecisionSchema>;
+
 export const SubmitWorkExperienceVerificationSchema = z.object({
-  approved: z.boolean(),
+  approved: z.boolean().optional(),
+  decision: EmployerVerificationDecisionSchema.optional(),
   comments: z.string().max(2000).optional().nullable().or(z.literal('')),
 });
 export type SubmitWorkExperienceVerificationDto = z.infer<
@@ -165,4 +174,22 @@ export const SubmitWorkExperienceVerificationResponseSchema = z.object({
 });
 export type SubmitWorkExperienceVerificationResponseDto = z.infer<
   typeof SubmitWorkExperienceVerificationResponseSchema
+>;
+
+export const WorkExperienceOpsDashboardItemSchema = z.object({
+  experienceId: z.string().uuid(),
+  candidateId: z.string().uuid(),
+  candidateName: z.string(),
+  candidateEmail: z.string(),
+  companyName: z.string(),
+  companyWebsite: z.string().nullable(),
+  role: z.string(),
+  status: WorkExperienceVerificationStatusSchema,
+  currentStep: z.string(),
+  emailState: z.string(),
+  timeRemainingHours: z.number(),
+  createdAt: z.string(),
+});
+export type WorkExperienceOpsDashboardItemDto = z.infer<
+  typeof WorkExperienceOpsDashboardItemSchema
 >;

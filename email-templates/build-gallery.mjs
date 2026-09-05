@@ -8,9 +8,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const THEMES = ['classic', 'minimal', 'genz'];
 
 const CATEGORIES = [
-  { key: 'onboarding', label: 'Onboarding', templates: ['institution-admin-invite', 'student-invite', 'invite-reminder'] },
-  { key: 'opportunities', label: 'Opportunities', templates: ['opportunity-shortlisted', 'application-stage-changed'] },
-  { key: 'verification', label: 'Verification', templates: ['verification-passed', 'verification-failed', 'verification-locked'] },
+  {
+    key: 'onboarding',
+    label: 'Onboarding',
+    templates: ['institution-admin-invite', 'student-invite', 'invite-reminder'],
+  },
+  {
+    key: 'opportunities',
+    label: 'Opportunities',
+    templates: ['opportunity-shortlisted', 'application-stage-changed'],
+  },
+  {
+    key: 'verification',
+    label: 'Verification',
+    templates: ['verification-passed', 'verification-failed', 'verification-locked'],
+  },
 ];
 
 const DATA = {};
@@ -23,7 +35,10 @@ for (const templateName of Object.keys(CONTENT)) {
   DATA[templateName] = { label: TEMPLATE_LABELS[templateName], themes };
 }
 
-const dataJson = JSON.stringify({ categories: CATEGORIES, templates: DATA }).replace(/<\/script/gi, '<\\/script');
+const dataJson = JSON.stringify({ categories: CATEGORIES, templates: DATA }).replace(
+  /<\/script/gi,
+  '<\\/script',
+);
 
 const html = `<!doctype html>
 <title>SMART Email Templates</title>
@@ -269,4 +284,4 @@ render();
 `;
 
 writeFileSync(path.join(__dirname, 'gallery.html'), html, 'utf8');
-console.log('Wrote gallery.html');
+console.warn('Wrote gallery.html');

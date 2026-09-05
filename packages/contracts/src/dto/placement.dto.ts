@@ -286,11 +286,12 @@ export const PatchApplicationStageRequestSchema = z.object({
 export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
 
 /**
- * AC-T06 send-to-company lands on the next canonical ATS column after
- * `SHORTLISTED`. The contract enum has no SENT_TO_COMPANY / AI_VERIFIED /
- * HIRED — CO-T02 maps `INTERVIEW` to the Interviewing kanban column.
+ * AC-T06 send-to-company lands on `AI_VERIFIED` — the SE-T02 confidence check
+ * gating this transition (see `sendToCompany` below) *is* the AI verification
+ * step, so it maps onto the real CO-T02 kanban column rather than skipping
+ * straight to `INTERVIEW`.
  */
-export const SEND_TO_COMPANY_STAGE = 'INTERVIEW' as const;
+export const SEND_TO_COMPANY_STAGE = 'AI_VERIFIED' as const;
 
 export const ApplicationConfidenceDtoSchema = z.object({
   applicationId: UuidSchema,

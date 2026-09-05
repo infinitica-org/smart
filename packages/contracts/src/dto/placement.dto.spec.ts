@@ -183,9 +183,18 @@ describe('CN-T06 candidate application contracts', () => {
     expect(parsed.roleTitle).toBe('Backend Engineer');
   });
 
-  it('rejects invented ATS stages such as AI_VERIFIED', () => {
+  it('accepts AI_VERIFIED and HIRED as canonical ATS stages', () => {
     expect(
       CandidateApplicationDtoSchema.safeParse({ ...validMine, stage: 'AI_VERIFIED' }).success,
+    ).toBe(true);
+    expect(CandidateApplicationDtoSchema.safeParse({ ...validMine, stage: 'HIRED' }).success).toBe(
+      true,
+    );
+  });
+
+  it('rejects a stage that is not in the canonical AtsStage enum', () => {
+    expect(
+      CandidateApplicationDtoSchema.safeParse({ ...validMine, stage: 'SENT_TO_COMPANY' }).success,
     ).toBe(false);
   });
 
@@ -197,8 +206,8 @@ describe('CN-T06 candidate application contracts', () => {
 });
 
 describe('AC-T06 send-to-company contracts', () => {
-  it('maps send-to-company onto INTERVIEW, not a new ATS stage', () => {
-    expect(SEND_TO_COMPANY_STAGE).toBe('INTERVIEW');
+  it('maps send-to-company onto the AI_VERIFIED kanban column', () => {
+    expect(SEND_TO_COMPANY_STAGE).toBe('AI_VERIFIED');
   });
 
   it('allows a TPO-readable pass/fail + explanation without a numeric score', () => {
