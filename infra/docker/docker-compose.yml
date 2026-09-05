@@ -502,7 +502,8 @@ services:
       KUMA_ADMIN_USERNAME: ${KUMA_ADMIN_USERNAME:-admin}
       KUMA_ADMIN_PASSWORD: ${KUMA_ADMIN_PASSWORD:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart}
-    entrypoint: ["sh", "-c", "pip install --quiet --no-cache-dir -r requirements.txt && python provision.py"]
+    entrypoint:
+      ["sh", "-c", "pip install --quiet --no-cache-dir -r requirements.txt && python provision.py"]
     depends_on:
       uptime-kuma:
         condition: service_healthy

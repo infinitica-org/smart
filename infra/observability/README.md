@@ -4,15 +4,15 @@ Owner: Vishal V.
 
 ## Stack
 
-| Service     | Host port     | Purpose                                    |
-| ----------- | ------------- | ------------------------------------------- |
-| Prometheus  | 9090          | Metrics scrape                             |
-| Grafana     | 3100          | Dashboards (anon auth enabled)             |
-| Loki        | 3101          | Log store                                  |
-| Alloy       | —             | Docker log scrape → Loki                   |
-| Tempo       | 3103          | Trace store (Grafana datasource)           |
-| Uptime Kuma | 3102          | Internal uptime monitoring + status page   |
-| heartbeat   | —             | Outbound-only, pings Healthchecks.io       |
+| Service     | Host port | Purpose                                  |
+| ----------- | --------- | ---------------------------------------- |
+| Prometheus  | 9090      | Metrics scrape                           |
+| Grafana     | 3100      | Dashboards (anon auth enabled)           |
+| Loki        | 3101      | Log store                                |
+| Alloy       | —         | Docker log scrape → Loki                 |
+| Tempo       | 3103      | Trace store (Grafana datasource)         |
+| Uptime Kuma | 3102      | Internal uptime monitoring + status page |
+| heartbeat   | —         | Outbound-only, pings Healthchecks.io     |
 
 ```bash
 # From repo root — infra + apps + obs
@@ -36,15 +36,15 @@ Dashboard **SMART API logs** is provisioned with a `correlationId` textbox.
 All under the **SMART** folder in Grafana; each links to the others via the
 **SMART dashboards** dropdown top-right.
 
-| Dashboard | Covers |
-| --- | --- |
-| Platform Overview | Cross-cutting: API errors/latency, Postgres/Redis headroom, disk, rate limits, Kafka, top containers — the "what's on fire" landing page |
-| API Metrics | Every real metric in `packages/observability/src/metrics.ts`: HTTP rate/latency/errors, rate limiting, assessment/proctoring domain counters, Kafka events produced, TPO import, Node.js process health (event loop lag, heap, GC) |
-| Host & Containers | node-exporter (host CPU/memory/disk/network/load) + cAdvisor (per-container CPU/memory/network/uptime) |
-| Postgres | postgres-exporter: connections, cache hit ratio, commit/rollback rate, deadlocks, database size, temp-file spill |
-| Redis | redis-exporter: memory vs maxmemory, hit ratio, connected clients, commands/sec, evictions/expirations |
-| Redpanda (Kafka) | Native `/public_metrics`: topics/partitions/brokers, per-topic produce/fetch rate, handler latency, per-shard CPU/memory |
-| MinIO | Cluster capacity used/free, S3 traffic in/out |
+| Dashboard         | Covers                                                                                                                                                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Platform Overview | Cross-cutting: API errors/latency, Postgres/Redis headroom, disk, rate limits, Kafka, top containers — the "what's on fire" landing page                                                                                           |
+| API Metrics       | Every real metric in `packages/observability/src/metrics.ts`: HTTP rate/latency/errors, rate limiting, assessment/proctoring domain counters, Kafka events produced, TPO import, Node.js process health (event loop lag, heap, GC) |
+| Host & Containers | node-exporter (host CPU/memory/disk/network/load) + cAdvisor (per-container CPU/memory/network/uptime)                                                                                                                             |
+| Postgres          | postgres-exporter: connections, cache hit ratio, commit/rollback rate, deadlocks, database size, temp-file spill                                                                                                                   |
+| Redis             | redis-exporter: memory vs maxmemory, hit ratio, connected clients, commands/sec, evictions/expirations                                                                                                                             |
+| Redpanda (Kafka)  | Native `/public_metrics`: topics/partitions/brokers, per-topic produce/fetch rate, handler latency, per-shard CPU/memory                                                                                                           |
+| MinIO             | Cluster capacity used/free, S3 traffic in/out                                                                                                                                                                                      |
 
 **Known gaps, on purpose (not silently missing):**
 
@@ -139,7 +139,7 @@ self-hosted — the whole point is that it lives outside this infra):
 - health check passes → pings `$HEALTHCHECKS_PING_URL` (success)
 - health check fails → pings `$HEALTHCHECKS_PING_URL/fail` (immediate alert)
 - box/network/Docker daemon is dead → no ping reaches Healthchecks.io at all,
-  and *its* grace-period timeout fires the alert instead
+  and _its_ grace-period timeout fires the alert instead
 
 Setup:
 
