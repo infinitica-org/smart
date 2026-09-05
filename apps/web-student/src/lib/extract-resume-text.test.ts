@@ -28,6 +28,25 @@ describe('extractResumeRawText', () => {
     expect(result).toContain('VishalBharath');
   }, 30000);
 
+  it('extracts text from ReportLab ASCII85 PDF resume (Vishal_Bharath_Siemens_EDA_Resume_Updated.pdf)', async () => {
+    const pdfPath = path.resolve(
+      process.cwd(),
+      '../../Vishal_Bharath_Siemens_EDA_Resume_Updated.pdf',
+    );
+    if (!fs.existsSync(pdfPath)) return;
+
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const file = new File([pdfBuffer], 'Vishal_Bharath_Siemens_EDA_Resume_Updated.pdf', {
+      type: 'application/pdf',
+    });
+
+    const result = await extractResumeRawText(file);
+    expect(result.length).toBeGreaterThan(500);
+    expect(result).toContain('VISHAL BHARATH R');
+    expect(result).toContain('vishalbharathonly@gmail.com');
+    expect(result).toContain('Kongu Engineering College');
+  }, 30000);
+
   it('rejects files with insufficient readable text', async () => {
     const file = new File(['short text'], 'resume.txt', { type: 'text/plain' });
     await expect(extractResumeRawText(file)).rejects.toThrow(

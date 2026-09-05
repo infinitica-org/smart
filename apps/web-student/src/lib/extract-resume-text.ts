@@ -59,7 +59,17 @@ async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
     if (latinStr[endData - 1] === '\r') endData--;
 
     if (startData < endData) {
-      const streamBytes = bytes.subarray(startData, endData);
+      let streamBytes = bytes.subarray(startData, endData);
+      const headerSnippet = latinStr.slice(Math.max(0, streamIdx - 150), streamIdx);
+      const isAscii85 =
+        headerSnippet.includes('85Decode') ||
+        latinStr.slice(startData, startData + 10).includes('<~');
+
+      if (isAscii85) {
+        const asciiStr = new TextDecoder('latin1').decode(streamBytes);
+        streamBytes = new Uint8Array(decodeASCII85(asciiStr));
+      }
+
       const decompressedBuf = await decompressStreamBytes(streamBytes);
       if (decompressedBuf) {
         decompressedStreams.push(
@@ -291,4 +301,38 @@ function extractPrintableRuns(raw: string): string {
   }
   if (current.length >= 4) runs.push(current.trim());
   return runs.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function decodeASCII85(str: string): Uint8Array {
+  let clean = str.replace(/\s/g, '');
+  if (clean.endsWith('~>')) clean = clean.slice(0, -2);
+  if (clean.startsWith('<~')) clean = clean.slice(2);
+
+  const out: number[] = [];
+  let i = 0;
+  while (i < clean.length) {
+    if (clean[i] === 'z') {
+      out.push(0, 0, 0, 0);
+      i++;
+      continue;
+    }
+    const chunk = clean.slice(i, i + 5);
+    i += 5;
+    let val = 0;
+    for (let j = 0; j < 5; j++) {
+      const code = j < chunk.length ? (chunk.charCodeAt(j) ?? 33) - 33 : 84;
+      val = val * 85 + code;
+    }
+    const b1 = (val >>> 24) & 0xff;
+    const b2 = (val >>> 16) & 0xff;
+    const b3 = (val >>> 8) & 0xff;
+    const b4 = val & 0xff;
+
+    const bytesToAdd = Math.min(4, chunk.length - 1);
+    if (bytesToAdd >= 1) out.push(b1);
+    if (bytesToAdd >= 2) out.push(b2);
+    if (bytesToAdd >= 3) out.push(b3);
+    if (bytesToAdd >= 4) out.push(b4);
+  }
+  return new Uint8Array(out);
 }
