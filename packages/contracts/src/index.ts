@@ -32,6 +32,7 @@ export * from './dto/catalog.dto.js';
 export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';
 export * from './dto/evaluation.dto.js';
+export * from './dto/cognitive-profile.dto.js';
 export * from './dto/calibration.dto.js';
 export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
