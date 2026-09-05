@@ -53,6 +53,15 @@ const ScoringKeySchema = z.object({
   rubric: z.string().optional(),
   modelAnswer: z.string().optional(),
   marksMax: z.number(),
+  hiddenTests: z
+    .array(
+      z.object({
+        input: z.string().min(1).max(800),
+        expected: z.string().min(1).max(800),
+      }),
+    )
+    .max(8)
+    .optional(),
 });
 
 const SealedSdeFormSchema = z.object({
@@ -249,6 +258,9 @@ export class EvaluationService {
           format: item.format,
           prompt: item.prompt,
           options: null,
+          ...(item.title ? { title: item.title } : {}),
+          ...(item.constraints ? { constraints: item.constraints } : {}),
+          ...(item.examples && item.examples.length > 0 ? { examples: item.examples } : {}),
         });
         scoringItems.push({
           index,
@@ -257,6 +269,7 @@ export class EvaluationService {
           rubric: item.rubric,
           modelAnswer: item.modelAnswer,
           marksMax: SDE_V4_MARKS[item.format],
+          hiddenTests: item.hiddenTests,
         });
         index += 1;
       }
@@ -319,6 +332,11 @@ export class EvaluationService {
 
     const byIndex = new Map(request.responses.map((row) => [row.index, row]));
     const scored: { itemId: string; marksEarned: number; marksMax: number }[] = [];
+    const itemResults: GradeSdeSkillFormResponse['itemResults'] = [];
+    let mcqCorrect = 0;
+    let mcqTotal = 0;
+    let traceCorrect = 0;
+    let traceTotal = 0;
 
     try {
       const openKeys = bundle.items.filter((key) => key.format !== 'MCQ' && key.format !== 'TRACE');
@@ -326,10 +344,30 @@ export class EvaluationService {
         if (key.format !== 'MCQ' && key.format !== 'TRACE') continue;
         const response = byIndex.get(key.index);
         const marksEarned = scoreClosedChoice(response?.selectedKey ?? null, key.answer ?? '');
+        const correct = marksEarned === key.marksMax;
+        if (key.format === 'MCQ') {
+          mcqTotal += 1;
+          if (correct) mcqCorrect += 1;
+        } else {
+          traceTotal += 1;
+          if (correct) traceCorrect += 1;
+        }
         scored.push({
           itemId: String(key.index),
           marksEarned,
           marksMax: key.marksMax,
+        });
+        itemResults.push({
+          index: key.index,
+          format: key.format,
+          marksEarned,
+          marksMax: key.marksMax,
+          correct,
+          selectedKey: response?.selectedKey,
+          correctKey: key.answer,
+          feedback: correct
+            ? 'Correct.'
+            : `Incorrect. The correct option was ${key.answer ?? '?'}.`,
         });
       }
 
@@ -354,11 +392,12 @@ export class EvaluationService {
                 modelAnswer: key.modelAnswer ?? '',
                 candidateResponse: response?.text ?? '',
                 maxMarks: key.marksMax,
+                hiddenTests: key.hiddenTests,
               };
             }),
           },
           correlation: {},
-          maxOutputTokens: 2_048,
+          maxOutputTokens: 3_072,
           temperature: 0,
         });
         const parsed = SdeOpenBatchGradeSchema.parse(completion.output);
@@ -366,10 +405,21 @@ export class EvaluationService {
         for (const key of openKeys) {
           const grade = gradeByIndex.get(key.index);
           if (!grade) throw new Error(`Missing batch grade for item ${String(key.index)}`);
+          const earned = Math.min(Math.max(grade.marksAwarded, 0), key.marksMax);
           scored.push({
             itemId: String(key.index),
-            marksEarned: Math.min(Math.max(grade.marksAwarded, 0), key.marksMax),
+            marksEarned: earned,
             marksMax: key.marksMax,
+          });
+          itemResults.push({
+            index: key.index,
+            format: key.format,
+            marksEarned: earned,
+            marksMax: key.marksMax,
+            testsPassed: grade.testsPassed,
+            testsTotal: grade.testsTotal,
+            missedTests: grade.missedTests,
+            feedback: grade.justification,
           });
         }
       }
@@ -391,6 +441,11 @@ export class EvaluationService {
         scorePercent: result.right.scorePercent,
         passed: result.right.passed,
         promptRef: SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
+        mcqCorrect,
+        mcqTotal,
+        traceCorrect,
+        traceTotal,
+        itemResults,
       });
     } catch (err) {
       this.failClosed(err, 'skill_form_unavailable', 'Skill form could not be graded.');

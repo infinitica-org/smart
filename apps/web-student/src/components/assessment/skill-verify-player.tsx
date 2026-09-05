@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert } from '@smart/ui';
-import type { SkillVerifyPrepareDto, SkillVerifySessionDto } from '@smart/contracts';
+import type {
+  GradeSdeSkillFormResponse,
+  SkillVerifyPrepareDto,
+  SkillVerifySessionDto,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
+import { SkillVerifyReport } from './skill-verify-report';
 
 export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const router = useRouter();
@@ -20,6 +25,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     {},
   );
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [report, setReport] = useState<GradeSdeSkillFormResponse | null>(null);
   const generateStarted = useRef(false);
 
   useEffect(() => {
@@ -106,10 +112,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     startTransition(() => {
       void (async () => {
         try {
-          await api.assessment.completeSkillVerify(session.sessionId, {
+          const settled = await api.assessment.completeSkillVerify(session.sessionId, {
             responses,
             technicalFailure: false,
           });
+          if (settled.grade && !settled.technicalFailure) {
+            setReport(settled.grade);
+            return;
+          }
           router.push('/assessments');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not complete verification.');
@@ -146,6 +156,8 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     >
       {!session ? (
         <SkillVerifyLoading generating={generating} error={error} />
+      ) : report ? (
+        <SkillVerifyReport grade={report} onDone={() => router.push('/assessments')} />
       ) : (
         <SkillVerifyExam
           session={session}

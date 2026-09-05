@@ -260,6 +260,13 @@ export const GenerateSdeSkillFormRequestSchema = z.object({
 });
 export type GenerateSdeSkillFormRequest = z.infer<typeof GenerateSdeSkillFormRequestSchema>;
 
+export const SdeSkillFormExampleSchema = z.object({
+  input: z.string().min(1).max(800),
+  output: z.string().min(1).max(800),
+  explanation: z.string().max(800).optional(),
+});
+export type SdeSkillFormExample = z.infer<typeof SdeSkillFormExampleSchema>;
+
 export const SdeSkillFormPublicItemSchema = z.object({
   index: z.number().int().min(1),
   format: SdeSkillFormFormatSchema,
@@ -272,6 +279,10 @@ export const SdeSkillFormPublicItemSchema = z.object({
       D: z.string(),
     })
     .nullable(),
+  title: z.string().min(1).max(120).optional(),
+  constraints: z.string().min(1).max(2_000).optional(),
+  /** Visible examples only. Hidden judge cases stay in the scoring token. */
+  examples: z.array(SdeSkillFormExampleSchema).max(4).optional(),
 });
 export type SdeSkillFormPublicItem = z.infer<typeof SdeSkillFormPublicItemSchema>;
 
@@ -305,6 +316,28 @@ export const GradeSdeSkillFormRequestSchema = z.object({
 });
 export type GradeSdeSkillFormRequest = z.infer<typeof GradeSdeSkillFormRequestSchema>;
 
+export const SdeSkillFormMissedTestSchema = z.object({
+  input: z.string().max(400),
+  expected: z.string().max(400),
+  reason: z.string().max(400),
+});
+export type SdeSkillFormMissedTest = z.infer<typeof SdeSkillFormMissedTestSchema>;
+
+export const SdeSkillFormItemResultSchema = z.object({
+  index: z.number().int().min(1),
+  format: SdeSkillFormFormatSchema,
+  marksEarned: z.number(),
+  marksMax: z.number(),
+  correct: z.boolean().optional(),
+  selectedKey: z.string().max(4).optional(),
+  correctKey: z.string().max(4).optional(),
+  testsPassed: z.number().int().min(0).max(20).optional(),
+  testsTotal: z.number().int().min(0).max(20).optional(),
+  missedTests: z.array(SdeSkillFormMissedTestSchema).max(8).optional(),
+  feedback: z.string().max(2_000).optional(),
+});
+export type SdeSkillFormItemResult = z.infer<typeof SdeSkillFormItemResultSchema>;
+
 export const GradeSdeSkillFormResponseSchema = z.object({
   skillCode: z.string().min(2).max(64),
   proficiency: SdeV4FormProficiencySchema,
@@ -313,6 +346,11 @@ export const GradeSdeSkillFormResponseSchema = z.object({
   scorePercent: z.number(),
   passed: z.boolean(),
   promptRef: z.string().regex(/^[a-z0-9-]+@\d+$/),
+  mcqCorrect: z.number().int().nonnegative(),
+  mcqTotal: z.number().int().nonnegative(),
+  traceCorrect: z.number().int().nonnegative(),
+  traceTotal: z.number().int().nonnegative(),
+  itemResults: z.array(SdeSkillFormItemResultSchema),
 });
 export type GradeSdeSkillFormResponse = z.infer<typeof GradeSdeSkillFormResponseSchema>;
 

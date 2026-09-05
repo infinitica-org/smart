@@ -115,6 +115,28 @@ describe('EvaluationService skill interview (SE-T02)', () => {
   });
 });
 
+function codingOpenItem() {
+  return {
+    format: 'CODING' as const,
+    title: 'Two Sum',
+    prompt:
+      'Given an integer array nums and an integer target, return indices of the two numbers that add up to target.',
+    constraints: '2 <= nums.length <= 10000. Exactly one valid pair. Do not reuse the same index.',
+    examples: [
+      { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explanation: '2 + 7 = 9' },
+      { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
+    ],
+    hiddenTests: [
+      { input: 'nums = [3,3], target = 6', expected: '[0,1]' },
+      { input: 'nums = [0,4,3,0], target = 0', expected: '[0,3]' },
+      { input: 'nums = [-1,-2,-3,-4,-5], target = -8', expected: '[2,4]' },
+    ],
+    rubric: 'Correct indices for every hidden test. Hash map O(n) is preferred.',
+    modelAnswer:
+      'Scan once with a map from value to index and return when target minus current exists.',
+  };
+}
+
 function closedItems(mcq: number, trace: number) {
   const options = {
     A: 'Alpha option text',
@@ -263,6 +285,11 @@ describe('EvaluationService SDE v4 skill form', () => {
     );
 
     expect(result.passed).toBe(true);
+    expect(result.mcqCorrect).toBe(8);
+    expect(result.mcqTotal).toBe(8);
+    expect(result.traceCorrect).toBe(3);
+    expect(result.traceTotal).toBe(3);
+    expect(result.itemResults.some((row) => row.format === 'SCENARIO' && row.feedback)).toBe(true);
     expect(generateComplete).toHaveBeenCalledTimes(3);
   });
 
@@ -316,6 +343,71 @@ describe('EvaluationService SDE v4 skill form', () => {
         OTHER_ID,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('exposes coding examples publicly and grades against hidden tests', async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedItems(8, 3) } })
+      .mockResolvedValueOnce({ output: { items: [codingOpenItem()] } })
+      .mockResolvedValueOnce({
+        output: {
+          grades: [
+            {
+              index: 12,
+              marksAwarded: 7,
+              justification: 'Passed two hidden tests; missed duplicate zeros.',
+              testsPassed: 2,
+              testsTotal: 3,
+              missedTests: [
+                {
+                  input: 'nums = [3,3], target = 6',
+                  expected: '[0,1]',
+                  reason: 'Did not handle duplicate values.',
+                },
+              ],
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const form = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_PROGRAMMING_FUNDAMENTALS',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-coding',
+      },
+      OWNER_ID,
+    );
+    const coding = form.items.find((item) => item.format === 'CODING');
+    expect(coding?.title).toBe('Two Sum');
+    expect(coding?.examples).toHaveLength(2);
+    expect(JSON.stringify(form.items)).not.toContain('hiddenTests');
+    expect(JSON.stringify(form.items)).not.toContain('nums = [3,3]');
+
+    const result = await service.gradeSkillForm(
+      {
+        skillCode: 'SDE_PROGRAMMING_FUNDAMENTALS',
+        proficiency: 'BEGINNER',
+        scoringToken: form.scoringToken,
+        responses: [
+          ...form.items
+            .filter((item) => item.format === 'MCQ' || item.format === 'TRACE')
+            .map((item) => ({
+              index: item.index,
+              selectedKey: item.format === 'MCQ' ? 'A' : 'B',
+            })),
+          { index: 12, text: 'function twoSum(nums, target) { return [0, 1]; }' },
+        ],
+      },
+      OWNER_ID,
+    );
+    expect(result.mcqCorrect).toBe(8);
+    expect(result.mcqTotal).toBe(8);
+    const codingResult = result.itemResults.find((row) => row.format === 'CODING');
+    expect(codingResult?.testsPassed).toBe(2);
+    expect(codingResult?.missedTests?.[0]?.reason).toContain('duplicate');
+    expect(complete.mock.calls[2]?.[0]?.variables.items[0]?.hiddenTests).toHaveLength(3);
   });
 
   it('keeps answer keys out of the opaque scoring token', () => {

@@ -8,9 +8,9 @@ import {
 } from '../sde-skill-matrix-v4.js';
 
 export const SDE_SKILL_FORM_CLOSED_PROMPT_REF = 'sde-skill-form-closed@1' as const;
-export const SDE_SKILL_FORM_OPEN_PROMPT_REF = 'sde-skill-form-open@1' as const;
+export const SDE_SKILL_FORM_OPEN_PROMPT_REF = 'sde-skill-form-open@2' as const;
 export const SDE_SKILL_OPEN_GRADER_PROMPT_REF = 'sde-skill-open-grader@1' as const;
-export const SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF = 'sde-skill-open-batch-grader@1' as const;
+export const SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF = 'sde-skill-open-batch-grader@2' as const;
 
 const FormatSchema = z.enum(SDE_V4_FORMATS);
 
@@ -94,12 +94,49 @@ export const SdeSkillFormOpenVariables = z.object({
 });
 export type SdeSkillFormOpenVariables = z.infer<typeof SdeSkillFormOpenVariables>;
 
-export const SdeOpenItemSchema = z.object({
-  format: z.enum(['CODING', 'SCENARIO', 'DEBUG', 'DESIGN_REASONING']),
-  prompt: z.string().min(20).max(4_000),
-  rubric: z.string().min(20).max(2_000),
-  modelAnswer: z.string().min(10).max(4_000),
+const SdeVisibleExampleSchema = z.object({
+  input: z.string().min(1).max(800),
+  output: z.string().min(1).max(800),
+  explanation: z.string().max(800).optional(),
 });
+
+const SdeHiddenTestSchema = z.object({
+  input: z.string().min(1).max(800),
+  expected: z.string().min(1).max(800),
+});
+
+export const SdeOpenItemSchema = z
+  .object({
+    format: z.enum(['CODING', 'SCENARIO', 'DEBUG', 'DESIGN_REASONING']),
+    prompt: z.string().min(20).max(4_000),
+    rubric: z.string().min(20).max(2_000),
+    modelAnswer: z.string().min(10).max(4_000),
+    title: z.string().min(3).max(120).optional(),
+    constraints: z.string().min(8).max(2_000).optional(),
+    examples: z.array(SdeVisibleExampleSchema).max(4).optional(),
+    hiddenTests: z.array(SdeHiddenTestSchema).max(8).optional(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.format !== 'CODING') return;
+    if (!item.title) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CODING items need a title.' });
+    }
+    if (!item.constraints) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CODING items need constraints.' });
+    }
+    if (!item.examples || item.examples.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CODING items need at least two visible examples.',
+      });
+    }
+    if (!item.hiddenTests || item.hiddenTests.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CODING items need at least three hidden tests.',
+      });
+    }
+  });
 
 export const SdeSkillFormOpenOutputSchema = z.object({
   items: z.array(SdeOpenItemSchema).min(1).max(3),
@@ -107,7 +144,7 @@ export const SdeSkillFormOpenOutputSchema = z.object({
 
 export const sdeSkillFormOpenTemplate: PromptTemplate<SdeSkillFormOpenVariables> = {
   id: 'sde-skill-form-open',
-  version: 1,
+  version: 2,
   purpose: 'Generate v4 coding/scenario/debug/design items for one SDE skill form.',
   modelRole: 'PRIMARY_REASONING',
   temperature: 0.4,
@@ -118,14 +155,16 @@ export const sdeSkillFormOpenTemplate: PromptTemplate<SdeSkillFormOpenVariables>
     system: [
       'You write open items for SMART SDE skill verification (v4, assessment-only). No interview.',
       `Return exactly ${String(variables.formats.length)} items with formats in this order: ${variables.formats.join(', ')}.`,
-      'CODING: a concrete task with constraints. SCENARIO: applied ops/network/git/deploy/design situation.',
+      'CODING must be LeetCode-style: short title, problem statement in prompt, constraints, two or more visible examples (input/output/explanation), and at least three hiddenTests (input/expected) that the student must not see.',
+      'Visible examples are sample tests. hiddenTests are extra judge cases, including edge cases.',
+      'SCENARIO: applied ops/network/git/deploy/design situation.',
       'DEBUG: logs or broken snippet; ask for root cause and fix. DESIGN_REASONING: trade-offs, not trivia.',
       'Difficulty matches proficiency (easy / medium / hard / professional).',
       'If a FOCUS is set, every item must be about that language, framework, or topic only.',
       'Vary using attemptId. Include a model answer and a short rubric.',
       INJECTION_GUARD,
       jsonOnly(
-        `{"items":[{"format":string,"prompt":string,"rubric":string,"modelAnswer":string}]}`,
+        `{"items":[{"format":string,"prompt":string,"rubric":string,"modelAnswer":string,"title":string,"constraints":string,"examples":[{"input":string,"output":string,"explanation":string}],"hiddenTests":[{"input":string,"expected":string}]}]}`,
       ),
     ].join('\n'),
     user: [
@@ -175,6 +214,15 @@ export const SdeOpenBatchGraderVariables = z.object({
         modelAnswer: z.string().min(1),
         candidateResponse: z.string(),
         maxMarks: z.number().int().min(1).max(10),
+        hiddenTests: z
+          .array(
+            z.object({
+              input: z.string().min(1).max(800),
+              expected: z.string().min(1).max(800),
+            }),
+          )
+          .max(8)
+          .optional(),
       }),
     )
     .min(1)
@@ -189,6 +237,18 @@ export const SdeOpenBatchGradeSchema = z.object({
         index: z.number().int().min(1),
         marksAwarded: z.number().min(0).max(10),
         justification: z.string().min(10).max(2_000),
+        testsPassed: z.number().int().min(0).max(20).optional(),
+        testsTotal: z.number().int().min(0).max(20).optional(),
+        missedTests: z
+          .array(
+            z.object({
+              input: z.string().max(400),
+              expected: z.string().max(400),
+              reason: z.string().max(400),
+            }),
+          )
+          .max(8)
+          .optional(),
       }),
     )
     .min(1)
@@ -197,19 +257,23 @@ export const SdeOpenBatchGradeSchema = z.object({
 
 export const sdeSkillOpenBatchGraderTemplate: PromptTemplate<SdeOpenBatchGraderVariables> = {
   id: 'sde-skill-open-batch-grader',
-  version: 1,
+  version: 2,
   purpose: 'Rubric-grade all open SDE v4 items in one call (0–10 each).',
   modelRole: 'PRIMARY_REASONING',
   temperature: 0,
-  maxOutputTokens: 2_048,
+  maxOutputTokens: 3_072,
   outputSchema: SdeOpenBatchGradeSchema,
   variablesSchema: SdeOpenBatchGraderVariables,
   render: (variables) => ({
     system: [
       'Grade every open item in this SMART SDE v4 form. Assessment-only; no certification tier.',
       'Return one grades[] entry per item index. Award 0-maxMarks. Integers or half-marks. Do not inflate.',
+      'For CODING: mentally execute the candidate code against each hiddenTests case. Set testsPassed/testsTotal. List failed cases in missedTests with input, expected, and a short reason. Marks should track how many hidden tests would pass, plus a small rubric share for clarity.',
+      'For non-coding items omit testsPassed or set them to 0/0.',
       INJECTION_GUARD,
-      jsonOnly(`{"grades":[{"index":number,"marksAwarded":number,"justification":string}]}`),
+      jsonOnly(
+        `{"grades":[{"index":number,"marksAwarded":number,"justification":string,"testsPassed":number,"testsTotal":number,"missedTests":[{"input":string,"expected":string,"reason":string}]}]}`,
+      ),
     ].join('\n'),
     user: [
       `SKILL ${variables.skillCode} ${variables.proficiency}`,
@@ -218,10 +282,15 @@ export const sdeSkillOpenBatchGraderTemplate: PromptTemplate<SdeOpenBatchGraderV
         `QUESTION\n${item.prompt}`,
         `RUBRIC\n${item.rubric}`,
         `MODEL ANSWER\n${item.modelAnswer}`,
+        item.hiddenTests && item.hiddenTests.length > 0
+          ? `HIDDEN TESTS\n${item.hiddenTests.map((test, i) => `${String(i + 1)}. input=${test.input} expected=${test.expected}`).join('\n')}`
+          : '',
         untrusted(item.candidateResponse),
       ]),
       'Grade all items now.',
-    ].join('\n'),
+    ]
+      .filter((section) => section !== '')
+      .join('\n'),
   }),
 };
 

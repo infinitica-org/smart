@@ -6,6 +6,7 @@ export type VerificationState =
   | 'DECLARED'
   | 'IN_PROGRESS'
   | 'IN_VERIFICATION'
+  | 'NOT_VERIFIED'
   | 'PENDING_REVIEW'
   | 'LOCKED'
   | 'VERIFIED'
@@ -39,7 +40,13 @@ const STATE_CONFIGS: Record<string, StateStyle> = {
     icon: Clock,
   },
   IN_VERIFICATION: {
-    label: 'In verification',
+    label: 'Not verified',
+    classNameSolid: 'bg-warning text-[#070707] border-transparent',
+    classNameOutline: 'bg-warning/10 text-warning border-warning/30',
+    icon: Clock,
+  },
+  NOT_VERIFIED: {
+    label: 'Not verified',
     classNameSolid: 'bg-warning text-[#070707] border-transparent',
     classNameOutline: 'bg-warning/10 text-warning border-warning/30',
     icon: Clock,

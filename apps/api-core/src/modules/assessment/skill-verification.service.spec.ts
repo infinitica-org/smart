@@ -108,7 +108,23 @@ describe('SkillVerificationService', () => {
         marksTotal: 12,
         scorePercent: 100,
         passed: true,
-        promptRef: 'sde-skill-open-batch-grader@1',
+        promptRef: 'sde-skill-open-batch-grader@2',
+        mcqCorrect: 1,
+        mcqTotal: 1,
+        traceCorrect: 0,
+        traceTotal: 0,
+        itemResults: [
+          {
+            index: 1,
+            format: 'MCQ',
+            marksEarned: 1,
+            marksMax: 1,
+            correct: true,
+            selectedKey: 'A',
+            correctKey: 'A',
+            feedback: 'Correct.',
+          },
+        ],
       }),
     };
     const stored = {

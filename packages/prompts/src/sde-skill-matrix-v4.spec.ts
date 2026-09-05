@@ -9,6 +9,7 @@ import {
 import {
   SdeSkillFormClosedOutputSchema,
   sdeSkillFormClosedTemplate,
+  sdeSkillFormOpenTemplate,
 } from './templates/sde-skill-form.js';
 
 describe('SDE v4 matrix', () => {
@@ -107,5 +108,22 @@ describe('SDE v4 matrix', () => {
       skillFocus: 'Python',
     });
     expect(rendered.user).toContain('FOCUS Python');
+  });
+
+  it('asks coding items for a LeetCode statement, examples, and hidden tests', () => {
+    const rendered = renderPrompt(sdeSkillFormOpenTemplate, {
+      skillCode: 'SDE_PROGRAMMING_FUNDAMENTALS',
+      skillName: 'Programming Fundamentals',
+      proficiency: 'BEGINNER',
+      taskFamily: 'CODING',
+      attemptId: 'attempt-1',
+      formats: ['CODING'],
+      flavorNotes: ['Easy coding task'],
+      priorStems: [],
+      skillFocus: '',
+    });
+    expect(rendered.system).toContain('LeetCode');
+    expect(rendered.system).toContain('hiddenTests');
+    expect(rendered.promptRef).toBe('sde-skill-form-open@2');
   });
 });
