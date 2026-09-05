@@ -109,7 +109,10 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     startTransition(() => {
       void (async () => {
         try {
-          await api.assessment.completeSkillVerify(session.sessionId, { responses });
+          await api.assessment.completeSkillVerify(session.sessionId, {
+            responses,
+            technicalFailure: false,
+          });
           router.push('/assessments');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not complete verification.');

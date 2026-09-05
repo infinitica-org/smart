@@ -2,6 +2,7 @@ import {
   SKILL_DEFINITIONS,
   hydrateFocusProgress,
   focusProgressFor,
+  type SkillFocusProgress,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
@@ -118,9 +119,21 @@ export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
   return null;
 }
 
-export function progressForClaim(claim: SkillClaimDto) {
+function asFocusProgress(rows: NonNullable<SkillClaimDto['focusProgress']>): SkillFocusProgress[] {
+  return rows.map((row) => ({
+    focus: row.focus,
+    status: row.status,
+    strikes: row.strikes,
+    lockedUntil: row.lockedUntil,
+    lastAttemptId: row.lastAttemptId,
+    lastGenuineFailureAt: row.lastGenuineFailureAt ?? null,
+    retryAvailableAt: row.retryAvailableAt ?? null,
+  }));
+}
+
+export function progressForClaim(claim: SkillClaimDto): SkillFocusProgress[] {
   if (claim.focusProgress && claim.focusProgress.length > 0) {
-    return claim.focusProgress;
+    return asFocusProgress(claim.focusProgress);
   }
   const rows = hydrateFocusProgress({
     skillCode: claim.skillCode,

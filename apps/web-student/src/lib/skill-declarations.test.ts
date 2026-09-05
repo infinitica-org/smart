@@ -4,6 +4,7 @@ import {
   canStartSdeV4Verify,
   formatCooldown,
   mandatorySkillsForStream,
+  progressForClaim,
   skillsForStream,
   skillVerifyBlockMessage,
 } from './skill-declarations';
@@ -96,6 +97,25 @@ describe('skill-declarations helpers', () => {
         'HTTP & REST',
       ),
     ).toBe(false);
+  });
+
+  it('coerces optional focus-progress timestamps to null', () => {
+    const rows = progressForClaim(
+      claim({
+        skillCode: 'COMPUTER_NETWORKS_BASICS',
+        focusProgress: [
+          {
+            focus: 'HTTP & REST',
+            status: 'DECLARED',
+            strikes: 0,
+            lockedUntil: null,
+            lastAttemptId: null,
+          },
+        ],
+      }),
+    );
+    expect(rows[0]?.lastGenuineFailureAt).toBeNull();
+    expect(rows[0]?.retryAvailableAt).toBeNull();
   });
 
   it('explains verified, locked, and cooldown blocks', () => {
