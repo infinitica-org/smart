@@ -86,23 +86,12 @@ async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
       ];
       for (const [, singleHex, tjArray, plainTj] of tokens) {
         if (singleHex) {
-          for (let i = 0; i < singleHex.length; i += 4) {
-            const hex = singleHex
-              .slice(i, i + 4)
-              .padStart(4, '0')
-              .toLowerCase();
-            extractedText += cmapDict[hex] || '';
-          }
+          extractedText += decodeHexToken(singleHex, cmapDict);
         } else if (tjArray) {
           const hexes = [...tjArray.matchAll(/<([0-9a-fA-F]+)>/g)];
           for (const [, hexGroup] of hexes) {
-            if (!hexGroup) continue;
-            for (let i = 0; i < hexGroup.length; i += 4) {
-              const hex = hexGroup
-                .slice(i, i + 4)
-                .padStart(4, '0')
-                .toLowerCase();
-              extractedText += cmapDict[hex] || '';
+            if (hexGroup) {
+              extractedText += decodeHexToken(hexGroup, cmapDict);
             }
           }
           const plainStrings = [...tjArray.matchAll(/\((.*?)\)/g)];
@@ -123,6 +112,32 @@ async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
     .replace(/[^\x20-\x7E\n]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function decodeHexToken(hexToken: string, cmapDict: Record<string, string>): string {
+  let out = '';
+  for (let i = 0; i < hexToken.length; i += 4) {
+    const hex4 = hexToken
+      .slice(i, i + 4)
+      .padStart(4, '0')
+      .toLowerCase();
+    if (cmapDict[hex4]) {
+      out += cmapDict[hex4];
+      continue;
+    }
+    const val4 = parseInt(hex4, 16);
+    if (val4 >= 32 && val4 <= 126) {
+      out += String.fromCharCode(val4);
+      continue;
+    }
+    const hex2a = hexToken.slice(i, i + 2);
+    const hex2b = hexToken.slice(i + 2, i + 4);
+    const val2a = parseInt(hex2a, 16);
+    const val2b = parseInt(hex2b, 16);
+    if (val2a >= 32 && val2a <= 126) out += String.fromCharCode(val2a);
+    if (val2b >= 32 && val2b <= 126) out += String.fromCharCode(val2b);
+  }
+  return out;
 }
 
 async function extractDocxText(buffer: ArrayBuffer): Promise<string> {
