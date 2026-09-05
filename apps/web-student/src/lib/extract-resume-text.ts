@@ -8,8 +8,14 @@ export async function extractResumeRawText(file: File): Promise<string> {
   const isPdf = file.type === 'application/pdf' || lower.endsWith('.pdf');
   const isDocx =
     file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    lower.endsWith('.docx') ||
-    lower.endsWith('.doc');
+    lower.endsWith('.docx');
+  const isDoc = file.type === 'application/msword' || lower.endsWith('.doc');
+
+  if (isDoc) {
+    throw new Error(
+      'Legacy Word (.doc) format is not supported directly. Please convert your resume to .docx, .pdf, or .txt format.',
+    );
+  }
 
   if (isPdf) {
     const textFromPdf = await extractPdfText(buffer);

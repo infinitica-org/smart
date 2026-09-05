@@ -47,6 +47,15 @@ describe('extractResumeRawText', () => {
     expect(result).toContain('Kongu Engineering College');
   }, 30000);
 
+  it('throws a clear error for unsupported legacy .doc files', async () => {
+    const file = new File(['legacy doc binary data'], 'resume.doc', {
+      type: 'application/msword',
+    });
+    await expect(extractResumeRawText(file)).rejects.toThrow(
+      'Legacy Word (.doc) format is not supported directly',
+    );
+  });
+
   it('rejects files with insufficient readable text', async () => {
     const file = new File(['short text'], 'resume.txt', { type: 'text/plain' });
     await expect(extractResumeRawText(file)).rejects.toThrow(
