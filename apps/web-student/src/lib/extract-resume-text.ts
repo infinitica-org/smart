@@ -95,8 +95,12 @@ async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
   let extractedText = '';
 
   for (const decompressedStr of decompressedStreams) {
+    if (!decompressedStr.includes('Tj') && !decompressedStr.includes('TJ')) continue;
+
     const lines = decompressedStr.split('\n');
     for (const line of lines) {
+      if (!line.includes('Tj') && !line.includes('TJ')) continue;
+
       const tokens = [
         ...line.matchAll(/<([0-9a-fA-F]+)>\s*T[jJ]|\[([\s\S]*?)\]\s*TJ|\((.*?)\)\s*T[jJ]/g),
       ];
@@ -259,34 +263,45 @@ async function decompressStreamBytes(
 
 function parseCMapStream(decompressedStr: string): Record<string, string> {
   const cmapDict: Record<string, string> = {};
-  const charMatches = [...decompressedStr.matchAll(/<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>/g)];
-  for (const [, code, ucode] of charMatches) {
-    if (!code || !ucode) continue;
-    try {
-      const hexes = ucode.match(/.{1,4}/g) || [];
-      const charStr = String.fromCharCode(...hexes.map((h) => parseInt(h, 16)));
-      cmapDict[code.padStart(4, '0').toLowerCase()] = charStr;
-    } catch {
-      // Ignore invalid character mappings
-    }
-  }
-  const rangeMatches = [
-    ...decompressedStr.matchAll(/<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>/g),
-  ];
-  for (const [, start, end, ustart] of rangeMatches) {
-    if (!start || !end || !ustart) continue;
-    try {
-      const s = parseInt(start, 16);
-      const e = parseInt(end, 16);
-      const u = parseInt(ustart, 16);
-      for (let i = s; i <= e; i++) {
-        const key = i.toString(16).padStart(4, '0').toLowerCase();
-        cmapDict[key] = String.fromCharCode(u + (i - s));
+
+  const bfCharBlocks = [...decompressedStr.matchAll(/beginbfchar([\s\S]*?)endbfchar/g)];
+  for (const [, block] of bfCharBlocks) {
+    if (!block) continue;
+    const charMatches = [...block.matchAll(/<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>/g)];
+    for (const [, code, ucode] of charMatches) {
+      if (!code || !ucode) continue;
+      try {
+        const hexes = ucode.match(/.{1,4}/g) || [];
+        const charStr = String.fromCharCode(...hexes.map((h) => parseInt(h, 16)));
+        cmapDict[code.padStart(4, '0').toLowerCase()] = charStr;
+      } catch {
+        // Ignore invalid character mappings
       }
-    } catch {
-      // Ignore invalid ranges
     }
   }
+
+  const bfRangeBlocks = [...decompressedStr.matchAll(/beginbfrange([\s\S]*?)endbfrange/g)];
+  for (const [, block] of bfRangeBlocks) {
+    if (!block) continue;
+    const rangeMatches = [
+      ...block.matchAll(/<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>/g),
+    ];
+    for (const [, start, end, ustart] of rangeMatches) {
+      if (!start || !end || !ustart) continue;
+      try {
+        const s = parseInt(start, 16);
+        const e = parseInt(end, 16);
+        const u = parseInt(ustart, 16);
+        for (let i = s; i <= e; i++) {
+          const key = i.toString(16).padStart(4, '0').toLowerCase();
+          cmapDict[key] = String.fromCharCode(u + (i - s));
+        }
+      } catch {
+        // Ignore invalid ranges
+      }
+    }
+  }
+
   return cmapDict;
 }
 
