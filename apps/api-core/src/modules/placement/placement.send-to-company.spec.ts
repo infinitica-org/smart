@@ -198,22 +198,22 @@ describe('AC-T06 send-to-company', () => {
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
-  it('moves SHORTLISTED → INTERVIEW and reuses smart.application.stage_changed', async () => {
+  it('moves SHORTLISTED → AI_VERIFIED and reuses smart.application.stage_changed', async () => {
     const { controller, prisma, outbox } = setup();
 
     const result = await controller.sendToCompany(tpoAdmin as never, applicationId);
 
-    expect(result.stage).toBe('INTERVIEW');
+    expect(result.stage).toBe('AI_VERIFIED');
     expect(prisma.application.update).toHaveBeenCalledWith({
       where: { id: applicationId },
-      data: { stage: 'INTERVIEW' },
+      data: { stage: 'AI_VERIFIED' },
       include: expect.anything(),
     });
     expect(prisma.applicationStageEvent.create).toHaveBeenCalledWith({
       data: {
         applicationId,
         fromStage: 'SHORTLISTED',
-        toStage: 'INTERVIEW',
+        toStage: 'AI_VERIFIED',
       },
     });
     expect(outbox.enqueueEnvelope).toHaveBeenCalledTimes(1);
@@ -227,20 +227,20 @@ describe('AC-T06 send-to-company', () => {
         openingId,
         studentId,
         fromStage: 'SHORTLISTED',
-        toStage: 'INTERVIEW',
+        toStage: 'AI_VERIFIED',
       }),
     });
   });
 
   it('is idempotent: a second send does not create another row or event', async () => {
     const { controller, prisma, outbox } = setup({
-      application: storedApplication({ stage: 'INTERVIEW' }),
+      application: storedApplication({ stage: 'AI_VERIFIED' }),
     });
 
     const result = await controller.sendToCompany(tpoAdmin as never, applicationId);
 
     expect(result.applicationId).toBe(applicationId);
-    expect(result.stage).toBe('INTERVIEW');
+    expect(result.stage).toBe('AI_VERIFIED');
     expect(prisma.application.update).not.toHaveBeenCalled();
     expect(prisma.applicationStageEvent.create).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -282,7 +282,7 @@ describe('AC-T06 send-to-company', () => {
 
   it('leaves the candidate listed on the CO-T02 ATS after send', async () => {
     const { controller, prisma } = setup({
-      application: storedApplication({ stage: 'INTERVIEW' }),
+      application: storedApplication({ stage: 'AI_VERIFIED' }),
     });
 
     const listed = await controller.listApplications(tpoAdmin as never, openingId);
@@ -293,7 +293,7 @@ describe('AC-T06 send-to-company', () => {
     expect(listed.applications).toHaveLength(1);
     expect(listed.applications[0]).toMatchObject({
       applicationId,
-      stage: 'INTERVIEW',
+      stage: 'AI_VERIFIED',
       studentName: 'Aarav Sharma',
     });
   });

@@ -82,4 +82,35 @@ describe('AssessmentsPage L1 start', () => {
     expect(startMock).not.toHaveBeenCalled();
     expect(screen.queryByText(/Score \d|Score %/i)).toBeNull();
   });
+
+  it('does not resume an expired in-progress attempt from sessionStorage', async () => {
+    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, liveSession.attemptId);
+    sessionMock.mockResolvedValue({
+      ...liveSession,
+      locked: true,
+      serverRemainingSeconds: 0,
+    });
+    render(<AssessmentsPage />);
+    const start = await screen.findByRole('button', { name: /Start/i });
+    fireEvent.click(start);
+    await waitFor(() => {
+      expect(startMock).toHaveBeenCalledWith({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
+    });
+  });
+
+  it('does not resume a proctor-locked attempt that still has clock remaining', async () => {
+    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, liveSession.attemptId);
+    sessionMock.mockResolvedValue({
+      ...liveSession,
+      locked: true,
+      serverRemainingSeconds: 1800,
+    });
+    render(<AssessmentsPage />);
+    const start = await screen.findByRole('button', { name: /Start/i });
+    expect(screen.queryByRole('button', { name: /Resume/i })).toBeNull();
+    fireEvent.click(start);
+    await waitFor(() => {
+      expect(startMock).toHaveBeenCalledWith({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
+    });
+  });
 });

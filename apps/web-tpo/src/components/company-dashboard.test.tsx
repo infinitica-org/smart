@@ -112,8 +112,8 @@ describe('CO-T04 company dashboard', () => {
     ).toBeDefined();
     expect(screen.getByText('Bhavna Patel')).toBeDefined();
     expect(screen.getByText('Chirag Iyer')).toBeDefined();
-    expect(screen.queryByText('AI-Verified')).toBeNull();
-    expect(screen.queryByText('Hired')).toBeNull();
+    expect(screen.getByText('AI-Verified')).toBeDefined();
+    expect(screen.getByText('Hired')).toBeDefined();
     expect(screen.queryByText('SENT_TO_COMPANY')).toBeNull();
   });
 
