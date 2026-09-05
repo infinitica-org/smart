@@ -1,0 +1,170 @@
+[
+  {
+    "templateName": "institution-admin-invite",
+    "templateLabel": "TPO / Institution Admin Invite",
+    "theme": "classic",
+    "subject": "Invitation to administer Bansal Institute of Technology on SMART",
+    "file": "preview/classic/institution-admin-invite.html"
+  },
+  {
+    "templateName": "institution-admin-invite",
+    "templateLabel": "TPO / Institution Admin Invite",
+    "theme": "minimal",
+    "subject": "You're invited to manage Bansal Institute of Technology on SMART",
+    "file": "preview/minimal/institution-admin-invite.html"
+  },
+  {
+    "templateName": "institution-admin-invite",
+    "templateLabel": "TPO / Institution Admin Invite",
+    "theme": "genz",
+    "subject": "🎉 You're the new placement admin for Bansal Institute of Technology",
+    "file": "preview/genz/institution-admin-invite.html"
+  },
+  {
+    "templateName": "student-invite",
+    "templateLabel": "Student Invite",
+    "theme": "classic",
+    "subject": "You're invited to SMART — Bansal Institute of Technology",
+    "file": "preview/classic/student-invite.html"
+  },
+  {
+    "templateName": "student-invite",
+    "templateLabel": "Student Invite",
+    "theme": "minimal",
+    "subject": "Bansal Institute of Technology invited you to SMART — let's get your skills verified",
+    "file": "preview/minimal/student-invite.html"
+  },
+  {
+    "templateName": "student-invite",
+    "templateLabel": "Student Invite",
+    "theme": "genz",
+    "subject": "👋 Your SMART invite from Bansal Institute of Technology",
+    "file": "preview/genz/student-invite.html"
+  },
+  {
+    "templateName": "invite-reminder",
+    "templateLabel": "Invite Reminder",
+    "theme": "classic",
+    "subject": "Reminder: complete your SMART account setup",
+    "file": "preview/classic/invite-reminder.html"
+  },
+  {
+    "templateName": "invite-reminder",
+    "templateLabel": "Invite Reminder",
+    "theme": "minimal",
+    "subject": "Still there? Your SMART invite is waiting",
+    "file": "preview/minimal/invite-reminder.html"
+  },
+  {
+    "templateName": "invite-reminder",
+    "templateLabel": "Invite Reminder",
+    "theme": "genz",
+    "subject": "⏳ 3 days left to activate your SMART account",
+    "file": "preview/genz/invite-reminder.html"
+  },
+  {
+    "templateName": "opportunity-shortlisted",
+    "templateLabel": "Opportunity Shortlisted",
+    "theme": "classic",
+    "subject": "New opportunity: Graduate Software Engineer at Nimbus Robotics",
+    "file": "preview/classic/opportunity-shortlisted.html"
+  },
+  {
+    "templateName": "opportunity-shortlisted",
+    "templateLabel": "Opportunity Shortlisted",
+    "theme": "minimal",
+    "subject": "You're shortlisted for Graduate Software Engineer at Nimbus Robotics",
+    "file": "preview/minimal/opportunity-shortlisted.html"
+  },
+  {
+    "templateName": "opportunity-shortlisted",
+    "templateLabel": "Opportunity Shortlisted",
+    "theme": "genz",
+    "subject": "🎉 Shortlisted for Graduate Software Engineer at Nimbus Robotics!",
+    "file": "preview/genz/opportunity-shortlisted.html"
+  },
+  {
+    "templateName": "application-stage-changed",
+    "templateLabel": "Application Stage Changed",
+    "theme": "classic",
+    "subject": "Application update: Graduate Software Engineer at Nimbus Robotics",
+    "file": "preview/classic/application-stage-changed.html"
+  },
+  {
+    "templateName": "application-stage-changed",
+    "templateLabel": "Application Stage Changed",
+    "theme": "minimal",
+    "subject": "Update on your Graduate Software Engineer application",
+    "file": "preview/minimal/application-stage-changed.html"
+  },
+  {
+    "templateName": "application-stage-changed",
+    "templateLabel": "Application Stage Changed",
+    "theme": "genz",
+    "subject": "📈 Graduate Software Engineer update: you're at Interview Scheduled",
+    "file": "preview/genz/application-stage-changed.html"
+  },
+  {
+    "templateName": "verification-passed",
+    "templateLabel": "Verification Passed",
+    "theme": "classic",
+    "subject": "Skill verified: Data Structures & Algorithms",
+    "file": "preview/classic/verification-passed.html"
+  },
+  {
+    "templateName": "verification-passed",
+    "templateLabel": "Verification Passed",
+    "theme": "minimal",
+    "subject": "Data Structures & Algorithms is now verified on your profile",
+    "file": "preview/minimal/verification-passed.html"
+  },
+  {
+    "templateName": "verification-passed",
+    "templateLabel": "Verification Passed",
+    "theme": "genz",
+    "subject": "✅ Data Structures & Algorithms — you're verified!",
+    "file": "preview/genz/verification-passed.html"
+  },
+  {
+    "templateName": "verification-failed",
+    "templateLabel": "Verification Failed",
+    "theme": "classic",
+    "subject": "Skill verification update: System Design Fundamentals",
+    "file": "preview/classic/verification-failed.html"
+  },
+  {
+    "templateName": "verification-failed",
+    "templateLabel": "Verification Failed",
+    "theme": "minimal",
+    "subject": "System Design Fundamentals — not verified this time",
+    "file": "preview/minimal/verification-failed.html"
+  },
+  {
+    "templateName": "verification-failed",
+    "templateLabel": "Verification Failed",
+    "theme": "genz",
+    "subject": "System Design Fundamentals — not verified yet, no stress",
+    "file": "preview/genz/verification-failed.html"
+  },
+  {
+    "templateName": "verification-locked",
+    "templateLabel": "Verification Locked",
+    "theme": "classic",
+    "subject": "Skill locked: Advanced SQL",
+    "file": "preview/classic/verification-locked.html"
+  },
+  {
+    "templateName": "verification-locked",
+    "templateLabel": "Verification Locked",
+    "theme": "minimal",
+    "subject": "Advanced SQL — temporarily locked",
+    "file": "preview/minimal/verification-locked.html"
+  },
+  {
+    "templateName": "verification-locked",
+    "templateLabel": "Verification Locked",
+    "theme": "genz",
+    "subject": "🔒 Advanced SQL is on a short break",
+    "file": "preview/genz/verification-locked.html"
+  }
+]
