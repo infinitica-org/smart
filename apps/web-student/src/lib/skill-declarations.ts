@@ -1,5 +1,9 @@
 import {
   SKILL_DEFINITIONS,
+  hydrateFocusProgress,
+  focusProgressFor,
+  resolveSkillFocus,
+  sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
   type SkillProficiency,
@@ -32,8 +36,25 @@ export function skillsForStream(stream: SkillStream) {
   return SKILL_DEFINITIONS.filter((s) => s.domain === 'SOFTWARE_IT' && s.stream === stream);
 }
 
+/** INF-05: Universal Core plus the chosen role stream (core loads for every stream). */
+export function mandatorySkillsForStream(stream: SkillStream) {
+  const universal = skillsForStream('UNIVERSAL');
+  if (stream === 'UNIVERSAL') return universal;
+  const seen = new Set(universal.map((skill) => skill.code));
+  const extra = skillsForStream(stream).filter((skill) => {
+    if (seen.has(skill.code)) return false;
+    seen.add(skill.code);
+    return true;
+  });
+  return [...universal, ...extra];
+}
+
 export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
+}
+
+export function isSdeV4Verifiable(skillCode: string): boolean {
+  return sdeV4FormCodeForCatalogSkill(skillCode) !== null;
 }
 
 /**
@@ -57,6 +78,112 @@ export function formatCooldown(lockedUntil: string | null): string | null {
     month: 'short',
     day: 'numeric',
   });
+}
+
+export function formatRetryAt(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export function isSkillVerifyCooldownActive(claim: SkillClaimDto, now = Date.now()): boolean {
+  if (!claim.retryAvailableAt) return false;
+  return Date.parse(claim.retryAvailableAt) > now;
+}
+
+export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
+  if (!isSdeV4Verifiable(claim.skillCode)) {
+    return 'This skill does not have a verification assessment yet.';
+  }
+  if (claim.status === 'VERIFIED') {
+    return 'This skill is already verified.';
+  }
+  if (claim.status === 'LOCKED') {
+    const until = formatRetryAt(claim.retryAvailableAt ?? claim.lockedUntil);
+    return until ? `This skill is locked until ${until}.` : 'This skill is locked.';
+  }
+  if (isSkillVerifyCooldownActive(claim)) {
+    const until = formatRetryAt(claim.retryAvailableAt);
+    return until
+      ? `You already sat this focus. You can verify it again after ${until}.`
+      : 'You already sat this focus. Wait for the cooldown to end.';
+  }
+  return null;
+}
+
+export function progressForClaim(claim: SkillClaimDto) {
+  if (claim.focusProgress && claim.focusProgress.length > 0) {
+    return claim.focusProgress;
+  }
+  const rows = hydrateFocusProgress({
+    skillCode: claim.skillCode,
+    metadata: { skillFocus: claim.skillFocus ?? undefined },
+    status: claim.status,
+    strikes: claim.strikes,
+    lockedUntil: claim.lockedUntil,
+    lastAttemptId: claim.lastAttemptId,
+    lastGenuineFailureAt: null,
+  });
+  if (rows[0] && claim.retryAvailableAt) {
+    return [{ ...rows[0], retryAvailableAt: claim.retryAvailableAt }];
+  }
+  return rows;
+}
+
+export function viewForFocus(
+  claim: SkillClaimDto | undefined,
+  skillCode: string,
+  focus: string | undefined,
+  now = Date.now(),
+) {
+  const selected = resolveSkillFocus(skillCode, focus);
+  const row = claim && selected ? focusProgressFor(progressForClaim(claim), selected) : null;
+  const status = row?.status ?? 'DECLARED';
+  const retryAt = row?.retryAvailableAt ?? null;
+  const cooling =
+    Boolean(row) &&
+    typeof retryAt === 'string' &&
+    Date.parse(retryAt) > now &&
+    (status === 'BEGINNER_REATTEMPT' || status === 'LOCKED');
+  const hasForm = isSdeV4Verifiable(skillCode);
+  const canStart =
+    hasForm && (status === 'DECLARED' || (status === 'BEGINNER_REATTEMPT' && !cooling));
+  const synthetic: SkillClaimDto | undefined = claim
+    ? {
+        ...claim,
+        status,
+        lockedUntil: row?.lockedUntil ?? null,
+        lastAttemptId: row?.lastAttemptId ?? null,
+        retryAvailableAt: retryAt,
+        skillFocus: selected,
+      }
+    : undefined;
+  return {
+    selected,
+    status,
+    badge: synthetic ? claimToBadgeStatus(synthetic) : 'DECLARED',
+    canStart,
+    cooling,
+    retryAt: cooling ? retryAt : null,
+    canEditProficiency: !row || status === 'DECLARED',
+    hasForm,
+    blockMessage: synthetic ? skillVerifyBlockMessage(synthetic) : null,
+  };
+}
+
+export function canStartSdeV4Verify(
+  claim: SkillClaimDto,
+  now = Date.now(),
+  focus?: string,
+): boolean {
+  return viewForFocus(claim, claim.skillCode, focus ?? claim.skillFocus ?? undefined, now).canStart;
 }
 
 export function isClaimActive(status: SkillClaimStatus): boolean {

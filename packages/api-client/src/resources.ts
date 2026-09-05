@@ -28,6 +28,9 @@ import type {
   ResolveIntegrityRequest,
   SaveDraftRequest,
   StartAttemptRequest,
+  CompleteSkillVerifyRequest,
+  SaveSkillVerifyRequest,
+  StartSkillVerifyRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -36,6 +39,7 @@ import {
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
+  CompleteSkillVerifyResponseSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -74,6 +78,8 @@ import {
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
+  SkillVerifyPrepareDtoSchema,
+  SkillVerifySessionDtoSchema,
   SsoStartResponseSchema,
   StudentInviteLinkResponseSchema,
   SubscriptionPlanDtoSchema,
@@ -564,6 +570,34 @@ export function assessmentApi(client: SmartApiClient) {
     declareSkillClaim: (body: DeclareSkillClaimRequest) =>
       client.post(prefixed('/assessment/skill-claims'), body, {
         schema: SkillClaimDtoSchema,
+      }),
+
+    prepareSkillVerify: (claimId: string) =>
+      client.post(
+        prefixed(`/assessment/skill-claims/${claimId}/verify/start`),
+        { prepareOnly: true } satisfies StartSkillVerifyRequest,
+        { schema: SkillVerifyPrepareDtoSchema },
+      ),
+
+    startSkillVerify: (claimId: string, body?: StartSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-claims/${claimId}/verify/start`), body ?? {}, {
+        schema: SkillVerifySessionDtoSchema,
+      }),
+
+    skillVerifySession: (sessionId: string) =>
+      client.get(prefixed(`/assessment/skill-verify/${sessionId}`), {
+        schema: SkillVerifySessionDtoSchema,
+      }),
+
+    saveSkillVerify: (sessionId: string, body: SaveSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-verify/${sessionId}/save`), body, {
+        schema: SkillVerifySessionDtoSchema,
+        timeoutMs: 5_000,
+      }),
+
+    completeSkillVerify: (sessionId: string, body: CompleteSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-verify/${sessionId}/complete`), body, {
+        schema: CompleteSkillVerifyResponseSchema,
       }),
 
     /** Resume after a refresh, a dropped connection, or a closed laptop. */

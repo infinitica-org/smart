@@ -10,7 +10,7 @@ import {
   isProctoringEnabled,
   signProctoringEvent,
 } from '../../lib/proctoring/crypto';
-import { stopProctoringMedia } from '../../lib/proctoring/media';
+import { releaseProctoringPreview } from '../../lib/proctoring/media';
 import {
   enterAssessmentFullscreen,
   hidePlayerForFullscreen,
@@ -18,18 +18,33 @@ import {
   unlockAssessmentKeyboard,
 } from '../../lib/proctoring/fullscreen';
 import { attachProctorSensors } from '../../lib/proctoring/sensors';
+import { createProctorIngest } from '../../lib/proctoring/ingest-queue';
 import { DisplayGate, FullscreenGate } from './fullscreen-gate';
 import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
 
 export function ProctoringShell({
   attemptId,
+  onLockTerminate,
+  onReady,
   children,
 }: {
   attemptId: string;
+  /** Defaults to L1 `assessment.complete`. Skill-verify must pass its own settle. */
+  onLockTerminate?: () => Promise<unknown>;
+  /** After camera/fullscreen onboarding, or immediately when proctoring is off. */
+  onReady?: () => void;
   children: ReactNode;
 }) {
   const enabled = isProctoringEnabled();
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyNotified = useRef(false);
+  const notifyReady = useCallback(() => {
+    if (readyNotified.current) return;
+    readyNotified.current = true;
+    onReadyRef.current?.();
+  }, []);
   const [ready, setReady] = useState(!enabled);
   const [blocked, setBlocked] = useState(false);
   const [extendedDisplay, setExtendedDisplay] = useState(false);
@@ -40,28 +55,32 @@ export function ProctoringShell({
   });
   const terminatedRef = useRef(false);
   const secretRef = useRef('');
-  const lastRef = useRef<Record<string, number>>({});
   const mediaRef = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const kioskRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  const onLockTerminateRef = useRef(onLockTerminate);
+  onLockTerminateRef.current = onLockTerminate;
+
   const terminateIfLocked = useCallback(
     (isLocked: boolean) => {
       if (!isLocked || terminatedRef.current) return;
       terminatedRef.current = true;
-      void api.assessment.complete({ attemptId }).catch(() => {
+      const finish = onLockTerminateRef.current
+        ? onLockTerminateRef.current()
+        : api.assessment.complete({ attemptId });
+      void finish.catch(() => {
         terminatedRef.current = false;
       });
     },
     [attemptId],
   );
+  const terminateIfLockedRef = useRef(terminateIfLocked);
+  terminateIfLockedRef.current = terminateIfLocked;
 
   const report = useCallback(
     async (kind: ProctoringViolationKind) => {
-      const now = Date.now();
-      if (now - (lastRef.current[kind] ?? 0) < 1500) return;
-      lastRef.current[kind] = now;
       const secret = secretRef.current;
       if (!secret) return;
       try {
@@ -84,10 +103,41 @@ export function ProctoringShell({
     [attemptId, terminateIfLocked],
   );
 
+  const reportRef = useRef(report);
+  reportRef.current = report;
+  const ingestRef = useRef(
+    createProctorIngest({
+      getSecret: () => secretRef.current,
+      send: (kind) => reportRef.current(kind),
+    }),
+  );
+
   useEffect(() => {
-    if (!enabled || !ready) return undefined;
+    if (!enabled || !ready || locked) return undefined;
     let cancelled = false;
     let detach: () => void = () => undefined;
+
+    const applyFullscreen = (fromEvent: boolean) => {
+      const inFs = Boolean(document.fullscreenElement);
+      if (inFs) {
+        setBlocked((prev) => (prev ? false : prev));
+        void lockAssessmentKeyboard();
+        return;
+      }
+      unlockAssessmentKeyboard();
+      setBlocked((prev) => (prev ? prev : true));
+      if (fromEvent) ingestRef.current.report('FULLSCREEN_EXIT');
+    };
+
+    detach = attachProctorSensors((kind) => ingestRef.current.report(kind), {
+      listenFullscreen: false,
+    });
+    applyFullscreen(false);
+
+    const onFs = () => applyFullscreen(true);
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+
     void (async () => {
       try {
         const snap = await api.proctoring.snapshot(attemptId);
@@ -95,20 +145,17 @@ export function ProctoringShell({
         secretRef.current = snap.hmacSecret ?? '';
         setLocked(snap.locked);
         setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
-        terminateIfLocked(snap.locked);
+        terminateIfLockedRef.current(snap.locked);
         await api.proctoring.fingerprint({
           attemptId,
           fingerprintHash: deviceFingerprintHash(),
           userAgent: navigator.userAgent,
           screenResolution: `${screen.width}x${screen.height}`,
         });
-        if (cancelled || !secretRef.current) return;
-        detach = attachProctorSensors((kind) => {
-          void report(kind);
-        });
-        setBlocked(!document.fullscreenElement);
+        await ingestRef.current.flush();
+        applyFullscreen(false);
       } catch {
-        if (!cancelled) setBlocked(!document.fullscreenElement);
+        if (!cancelled) applyFullscreen(false);
       }
     })();
 
@@ -125,59 +172,58 @@ export function ProctoringShell({
       cancelled = true;
       detach();
       unlockAssessmentKeyboard();
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
       window.clearInterval(ping);
       window.clearInterval(checkpoint);
     };
-  }, [attemptId, enabled, ready, report, terminateIfLocked]);
+  }, [attemptId, enabled, ready, locked]);
 
   useEffect(() => {
-    if (!enabled || !ready) return undefined;
-    const syncFullscreen = () => {
-      const inFs = Boolean(document.fullscreenElement);
-      if (inFs) {
-        setBlocked(false);
-        void lockAssessmentKeyboard();
-        return;
-      }
-      unlockAssessmentKeyboard();
-      setBlocked(true);
-      void report('FULLSCREEN_EXIT');
-    };
-    document.addEventListener('fullscreenchange', syncFullscreen);
-    document.addEventListener('webkitfullscreenchange', syncFullscreen);
-    return () => {
-      document.removeEventListener('fullscreenchange', syncFullscreen);
-      document.removeEventListener('webkitfullscreenchange', syncFullscreen);
-    };
-  }, [enabled, ready, report]);
-
-  useEffect(() => {
-    if (!enabled || !ready) return undefined;
+    if (!enabled || !ready || locked) return undefined;
     let flagged = false;
     const tick = () => {
       const extra = hasExtendedDisplay();
       setExtendedDisplay(extra);
       if (extra && !flagged) {
         flagged = true;
-        void report('TECHNICAL_INTERRUPTION');
+        ingestRef.current.report('TECHNICAL_INTERRUPTION');
       }
       if (!extra) flagged = false;
     };
     tick();
     const id = window.setInterval(tick, 1500);
     return () => window.clearInterval(id);
-  }, [enabled, ready, report]);
+  }, [enabled, ready, locked]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    return () => {
-      stopProctoringMedia(mediaRef.current);
-      mediaRef.current = null;
-    };
+    if (!enabled) notifyReady();
+  }, [enabled, notifyReady]);
+
+  const releaseMedia = useCallback(() => {
+    releaseProctoringPreview(previewRef.current, mediaRef.current);
+    mediaRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (!locked) return undefined;
+    releaseMedia();
+    unlockAssessmentKeyboard();
+    if (typeof document !== 'undefined' && document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+    return undefined;
+  }, [locked, releaseMedia]);
+
+  useEffect(() => {
+    return () => {
+      releaseMedia();
+    };
+  }, [releaseMedia]);
 
   useEffect(() => {
     if (!ready || !previewRef.current || !mediaRef.current) return;
@@ -205,6 +251,7 @@ export function ProctoringShell({
             }
             setReady(true);
             setBlocked(!document.fullscreenElement);
+            notifyReady();
           }}
         />
       ) : locked ? (

@@ -66,6 +66,7 @@ skills-lock.json
 !.cursor/local/IDENTITY.example.md
 !.cursor/local/preferences.example.md
 !.cursor/local/working-memory.example.md
+.cursor/plans/
 
 # --- misc ---
 .cache/

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AiCompletionRequest,
@@ -109,11 +108,29 @@ export class AiGatewayService {
       circuitState: string;
     }> = [];
 
-    // Attempt ANTHROPIC (Primary)
-    if (this.anthropic.isConfigured && this.circuitBreaker.isCallAllowed('ANTHROPIC')) {
+    const chain: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [
+      { provider: 'ANTHROPIC', adapter: this.anthropic },
+      { provider: 'GOOGLE', adapter: this.google },
+      { provider: 'OPENROUTER', adapter: this.openrouter },
+    ];
+
+    for (const { provider, adapter } of chain) {
+      if (!adapter.isConfigured) continue;
+
+      if (!this.circuitBreaker.isCallAllowed(provider)) {
+        const state = this.circuitBreaker.getState(provider);
+        attemptedErrors.push({
+          provider,
+          message: `Circuit breaker is ${state}`,
+          circuitState: state,
+        });
+        this.logger.warn(`Circuit breaker is ${state} for ${provider}. Trying next provider.`);
+        continue;
+      }
+
       try {
-        const result = await this.circuitBreaker.execute('ANTHROPIC', (signal) =>
-          this.anthropic.complete({
+        const result = await this.circuitBreaker.execute(provider, (signal) =>
+          adapter.complete({
             system: rendered.system,
             prompt: rendered.user,
             modelRole: request.modelRole,
@@ -123,82 +140,19 @@ export class AiGatewayService {
             signal,
           }),
         );
-        return {
-          output: result.output,
-          provider: result.provider,
-          model: result.model,
-          usedFallback: false,
-          promptTokens: result.promptTokens,
-          completionTokens: result.completionTokens,
-          latencyMs: result.latencyMs,
-          estimatedCostUsd: 0,
-          auditId: randomUUID(),
-        };
+        return this.toCompletionResponse(request, result, provider !== 'ANTHROPIC');
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        const circuitState = this.circuitBreaker.getState('ANTHROPIC');
-        attemptedErrors.push({
-          provider: 'ANTHROPIC',
-          message: errMsg,
-          circuitState,
-        });
+        const circuitState = this.circuitBreaker.getState(provider);
+        attemptedErrors.push({ provider, message: errMsg, circuitState });
         logEvent(
           this.logger,
           'warn',
           LOG_EVENTS.AI_PROVIDER_FAILED,
-          {
-            provider: 'ANTHROPIC',
-            err: errMsg,
-            circuitState,
-          },
+          { provider, err: errMsg, circuitState },
           'AI provider failed; trying next fallback if available',
         );
       }
-    } else if (this.anthropic.isConfigured) {
-      const state = this.circuitBreaker.getState('ANTHROPIC');
-      attemptedErrors.push({
-        provider: 'ANTHROPIC',
-        message: `Circuit breaker is ${state}`,
-        circuitState: state,
-      });
-      this.logger.warn(`Circuit breaker is ${state} for ANTHROPIC. Failing over to GOOGLE.`);
-    }
-
-    // Attempt GOOGLE (Fallback)
-    if (this.google.isConfigured && this.circuitBreaker.isCallAllowed('GOOGLE')) {
-      try {
-        const result = await this.circuitBreaker.execute('GOOGLE', (signal) =>
-          this.google.complete({
-            system: rendered.system,
-            prompt: rendered.user,
-            modelRole: request.modelRole,
-            temperature: request.temperature,
-            maxTokens: request.maxOutputTokens,
-            outputSchema: rendered.outputSchema,
-            signal,
-          }),
-        );
-        return this.toCompletionResponse(request, result, true);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        const circuitState = this.circuitBreaker.getState('GOOGLE');
-        attemptedErrors.push({
-          provider: 'GOOGLE',
-          message: errMsg,
-          circuitState,
-        });
-        this.logger.warn(
-          `Fallback provider GOOGLE failed: ${errMsg} (circuitState: ${circuitState}).`,
-        );
-      }
-    } else if (this.google.isConfigured) {
-      const state = this.circuitBreaker.getState('GOOGLE');
-      attemptedErrors.push({
-        provider: 'GOOGLE',
-        message: `Circuit breaker is ${state}`,
-        circuitState: state,
-      });
-      this.logger.warn(`Circuit breaker is ${state} for GOOGLE.`);
     }
 
     throw new AiGatewayAllProvidersFailedError(attemptedErrors);
@@ -228,7 +182,7 @@ export class AiGatewayService {
       promptTokens: result.promptTokens,
       completionTokens: result.completionTokens,
       latencyMs: result.latencyMs,
-      estimatedCostUsd: recorded.estimatedCostUsd,
+      estimatedCostUsd: recorded.estimatedCostUsd ?? 0,
       auditId: recorded.auditId,
     };
   }

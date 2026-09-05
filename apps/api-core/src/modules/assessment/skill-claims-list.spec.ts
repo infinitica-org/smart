@@ -18,7 +18,10 @@ describe('listSkillClaims', () => {
 
   beforeEach(() => {
     findMany.mockReset();
-    const prisma = { skillClaim: { findMany } };
+    const prisma = {
+      skillClaim: { findMany },
+      skillVerificationAttempt: { findMany: vi.fn().mockResolvedValue([]) },
+    };
     service = new AssessmentService(
       prisma as never,
       {} as never,

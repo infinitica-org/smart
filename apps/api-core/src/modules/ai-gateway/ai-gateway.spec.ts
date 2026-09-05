@@ -360,6 +360,51 @@ describe('AiGatewayService', () => {
     await expect(service.complete(sampleRequest)).rejects.toThrow(AiGatewayAllProvidersFailedError);
   });
 
+  it('fails over to OpenRouter when Anthropic and Gemini both fail', async () => {
+    const mockAnthropic = {
+      provider: 'ANTHROPIC' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockRejectedValue(new Error('Anthropic outage 500')),
+    };
+
+    const mockGoogle = {
+      provider: 'GOOGLE' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockRejectedValue(new Error('Google quota exceeded 429')),
+    };
+
+    const mockOpenRouter = {
+      provider: 'OPENROUTER' as const,
+      isConfigured: true,
+      checkHealth: vi.fn(),
+      complete: vi.fn().mockResolvedValue({
+        output: { matchedAnchor: 'GOLD', barsScore: 88, confidence: 0.9 },
+        rawText: '{"matchedAnchor":"GOLD"}',
+        provider: 'OPENROUTER' as const,
+        model: 'anthropic/claude-3.5-sonnet',
+        promptTokens: 140,
+        completionTokens: 40,
+        latencyMs: 200,
+      }),
+    };
+
+    const cb = new AiCircuitBreaker({ failureThreshold: 1 });
+    const service = new AiGatewayService(
+      mockAnthropic as never,
+      mockGoogle as never,
+      mockOpenRouter as never,
+      { record: () => Promise.resolve({ auditId: null, estimatedCostUsd: 0 }) } as never,
+      cb,
+    );
+
+    const result = await service.complete(sampleRequest);
+    expect(result.provider).toBe('OPENROUTER');
+    expect(result.usedFallback).toBe(true);
+    expect(mockOpenRouter.complete).toHaveBeenCalledTimes(1);
+  });
+
   it.skip('reflects dynamic circuit breaker state in /ai/health', async () => {
     const mockAnthropic = {
       provider: 'ANTHROPIC' as const,

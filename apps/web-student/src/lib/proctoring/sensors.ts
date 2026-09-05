@@ -75,7 +75,10 @@ export async function scrambleScreenshotClipboard(): Promise<void> {
   }
 }
 
-export function attachProctorSensors(report: (kind: ProctoringViolationKind) => void): () => void {
+export function attachProctorSensors(
+  report: (kind: ProctoringViolationKind) => void,
+  options?: { listenFullscreen?: boolean },
+): () => void {
   const onKeyDown = (event: KeyboardEvent) => {
     const kind = classifyProctorKey(event);
     if (!kind) return;
@@ -110,6 +113,8 @@ export function attachProctorSensors(report: (kind: ProctoringViolationKind) => 
     report('PASTE_DETECTED');
   };
   const onSelect = (event: Event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
     event.preventDefault();
   };
   const onDrag = (event: Event) => {
@@ -119,10 +124,13 @@ export function attachProctorSensors(report: (kind: ProctoringViolationKind) => 
   const onVis = () => {
     if (document.hidden) report('TAB_BLUR');
   };
-  const onOffline = () => report('NETWORK_LOSS');
+  const onBlur = () => {
+    if (document.hidden || !document.hasFocus()) report('TAB_BLUR');
+  };
   const onFs = () => {
     if (!document.fullscreenElement) report('FULLSCREEN_EXIT');
   };
+  const onOffline = () => report('NETWORK_LOSS');
   const onWheel = (event: WheelEvent) => {
     const kind = classifyTrackpadGesture({
       type: 'wheel',
@@ -176,7 +184,10 @@ export function attachProctorSensors(report: (kind: ProctoringViolationKind) => 
   document.addEventListener('selectstart', onSelect, true);
   document.addEventListener('dragstart', onDrag, true);
   document.addEventListener('visibilitychange', onVis);
-  document.addEventListener('fullscreenchange', onFs);
+  window.addEventListener('blur', onBlur);
+  if (options?.listenFullscreen !== false) {
+    document.addEventListener('fullscreenchange', onFs);
+  }
   document.addEventListener('wheel', onWheel, { capture: true, passive: false });
   document.addEventListener('touchstart', onTouch, { capture: true, passive: false });
   document.addEventListener('touchmove', onTouch, { capture: true, passive: false });
@@ -192,7 +203,12 @@ export function attachProctorSensors(report: (kind: ProctoringViolationKind) => 
     report('AUTOMATION_DETECTED');
   }
 
+  let skipDevtoolsProbe = true;
   const devtoolsTick = window.setInterval(() => {
+    if (skipDevtoolsProbe) {
+      skipDevtoolsProbe = false;
+      return;
+    }
     const gap =
       window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
     if (gap) report('DEVTOOLS_OPEN');
@@ -209,6 +225,7 @@ export function attachProctorSensors(report: (kind: ProctoringViolationKind) => 
     document.removeEventListener('selectstart', onSelect, true);
     document.removeEventListener('dragstart', onDrag, true);
     document.removeEventListener('visibilitychange', onVis);
+    window.removeEventListener('blur', onBlur);
     document.removeEventListener('fullscreenchange', onFs);
     document.removeEventListener('wheel', onWheel, true);
     document.removeEventListener('touchstart', onTouch, true);

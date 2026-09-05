@@ -41,12 +41,6 @@ export function OnboardingGate({
   async function run() {
     setBusy(true);
     try {
-      const fullscreenOk = await enterAssessmentFullscreen(fullscreenRootRef?.current);
-      if (!fullscreenOk) {
-        setMessage(
-          'If the browser blocks fullscreen, use Return to fullscreen after the checks finish.',
-        );
-      }
       await api.proctoring.consent({
         attemptId,
         camera: true,
@@ -74,6 +68,10 @@ export function OnboardingGate({
         yawDelta: 0.1,
         earDelta: 0.05,
       });
+      await enterAssessmentFullscreen(fullscreenRootRef?.current);
+      if (!streamRef.current) {
+        throw new Error('Camera stream missing after onboarding.');
+      }
       handedOffRef.current = true;
       onPassed(streamRef.current);
     } catch (error) {

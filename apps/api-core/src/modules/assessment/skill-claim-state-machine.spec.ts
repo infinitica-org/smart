@@ -11,6 +11,7 @@ import {
   addInterAttemptCooldown,
   addSkillRefreshPeriod,
   applySkillClaimTransition,
+  skillRetryAvailableAt,
   type SkillClaimSnapshot,
   type SkillClaimTransitionInput,
 } from './skill-claim-state-machine.js';
@@ -52,6 +53,16 @@ describe('skill-claim state machine (SE-T01)', () => {
     expect(SKILL_REFRESH_DAYS).not.toBe(60);
     expect(SKILL_REFRESH_DAYS).not.toBe(90);
     expect(SKILL_REFRESH_DAYS).not.toBe(180);
+  });
+
+  it('computes retryAvailableAt for 48h beginner cooldown and lock expiry', () => {
+    const failAt = new Date('2026-09-02T10:00:00.000Z');
+    expect(skillRetryAvailableAt('DECLARED', null, null)).toBeNull();
+    expect(skillRetryAvailableAt('BEGINNER_REATTEMPT', null, failAt)?.toISOString()).toBe(
+      '2026-09-04T10:00:00.000Z',
+    );
+    const lock = new Date('2026-10-07T10:00:00.000Z');
+    expect(skillRetryAvailableAt('LOCKED', lock, failAt)).toEqual(lock);
   });
 
   it('computes refresh and inter-attempt windows from contract constants only', () => {

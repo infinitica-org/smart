@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   enterAssessmentFullscreen,
   hidePlayerForFullscreen,
@@ -7,6 +7,11 @@ import {
 } from './fullscreen';
 
 describe('proctoring fullscreen helpers', () => {
+  afterEach(() => {
+    unlockAssessmentKeyboard();
+    vi.unstubAllGlobals();
+  });
+
   it('hides the player whenever fullscreen is lost', () => {
     expect(hidePlayerForFullscreen(true)).toBe(true);
     expect(hidePlayerForFullscreen(false)).toBe(false);
@@ -18,7 +23,15 @@ describe('proctoring fullscreen helpers', () => {
     vi.stubGlobal('navigator', { keyboard: { lock, unlock: vi.fn() } });
     await expect(enterAssessmentFullscreen()).resolves.toBe(true);
     expect(lock).toHaveBeenCalledTimes(1);
-    vi.unstubAllGlobals();
+  });
+
+  it('does not call Chromium keyboard.lock again while already held', async () => {
+    const lock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('document', { fullscreenElement: {}, documentElement: {} });
+    vi.stubGlobal('navigator', { keyboard: { lock, unlock: vi.fn() } });
+    await expect(lockAssessmentKeyboard()).resolves.toBe(true);
+    await expect(lockAssessmentKeyboard()).resolves.toBe(true);
+    expect(lock).toHaveBeenCalledTimes(1);
   });
 
   it('does not lock the keyboard when the page is not fullscreen', async () => {
@@ -27,8 +40,6 @@ describe('proctoring fullscreen helpers', () => {
     vi.stubGlobal('navigator', { keyboard: { lock, unlock: vi.fn() } });
     await expect(lockAssessmentKeyboard()).resolves.toBe(false);
     expect(lock).not.toHaveBeenCalled();
-    unlockAssessmentKeyboard();
-    vi.unstubAllGlobals();
   });
 
   it('returns false when requestFullscreen is not available', async () => {
@@ -37,6 +48,5 @@ describe('proctoring fullscreen helpers', () => {
       documentElement: {},
     });
     await expect(enterAssessmentFullscreen()).resolves.toBe(false);
-    vi.unstubAllGlobals();
   });
 });
