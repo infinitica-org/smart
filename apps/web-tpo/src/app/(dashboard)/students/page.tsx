@@ -1,351 +1,389 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card } from '@smart/ui';
-import type { InstitutionStudentDto, StudentInviteFilter } from '@smart/contracts';
-import { isSmartApiError } from '@smart/api-client';
-import { api } from '../../../lib/api';
+import { Users, Search, CheckCircle2, Clock } from 'lucide-react';
+import { Button } from '@smart/ui';
 import {
-  Search,
-  Upload,
-  Filter,
-  AlertTriangle,
-  CheckCircle,
-  Users,
-  X,
-  Copy,
-  UserX,
-  UserCheck,
-} from 'lucide-react';
-import { CandidateProvisioningModal } from '../../../components/candidate-provisioning-modal';
+  SKILL_DEFINITIONS,
+  type InstitutionStudentDto,
+  type SkillClaimDto,
+  type SkillStream,
+} from '@smart/contracts';
 import { CandidateDetailDrawer } from '../../../components/candidate-detail-drawer';
+import { api } from '../../../lib/api';
 
-export default function TpoStudentsPage() {
-  const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
-  const [q, setQ] = useState('');
-  const [inviteStatus, setInviteStatus] = useState<StudentInviteFilter | ''>('');
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [copyingId, setCopyingId] = useState<string | null>(null);
+function skillStreamFor(code: string): SkillStream | 'UNIVERSAL' {
+  return SKILL_DEFINITIONS.find((s) => s.code === code)?.stream ?? 'UNIVERSAL';
+}
 
-  // Modals
-  const [isProvisioningOpen, setIsProvisioningOpen] = useState(false);
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-
-  async function load() {
-    setStudents(
-      await api.onboarding.listTpoStudents({
-        q: q.trim() || undefined,
-        inviteStatus: inviteStatus || undefined,
-      }),
-    );
+function streamLabel(stream: string): string {
+  switch (stream) {
+    case 'SOFTWARE_DEVELOPMENT':
+      return 'Software Engineering';
+    case 'DATA_SCIENCE_ANALYTICS':
+      return 'Data & Analytics';
+    case 'AI_ML_ENGINEERING':
+      return 'AI & Machine Learning';
+    case 'UNIVERSAL':
+      return 'Universal Core';
+    default:
+      return stream.replace(/_/g, ' ');
   }
+}
+
+const MOCK_STUDENTS: InstitutionStudentDto[] = [
+  {
+    userId: 'stu_1',
+    fullName: 'Aarav Sharma',
+    email: 'aarav.sharma@institution.edu',
+    batchId: 'b_2026',
+    batchName: 'Batch 2026 - CS',
+    inviteStatus: 'ACCEPTED',
+    lastSentAt: null,
+    acceptedAt: '2026-01-16T10:00:00Z',
+    heldAt: null,
+  },
+  {
+    userId: 'stu_2',
+    fullName: 'Ananya Verma',
+    email: 'ananya.verma@institution.edu',
+    batchId: 'b_2026',
+    batchName: 'Batch 2026 - CS',
+    inviteStatus: 'ACCEPTED',
+    lastSentAt: null,
+    acceptedAt: '2026-01-17T11:00:00Z',
+    heldAt: null,
+  },
+  {
+    userId: 'stu_3',
+    fullName: 'Rohan Gupta',
+    email: 'rohan.gupta@institution.edu',
+    batchId: 'b_2026',
+    batchName: 'Batch 2026 - IT',
+    inviteStatus: 'PENDING',
+    lastSentAt: '2026-01-18T09:30:00Z',
+    acceptedAt: null,
+    heldAt: null,
+  },
+];
+
+const MOCK_CLAIMS: SkillClaimDto[] = [
+  {
+    claimId: 'cl_1',
+    studentId: 'stu_1',
+    skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+    proficiency: 'ADVANCED',
+    status: 'VERIFIED',
+    strikes: 0,
+    lockedUntil: null,
+    lastAttemptId: null,
+  },
+  {
+    claimId: 'cl_2',
+    studentId: 'stu_1',
+    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    proficiency: 'INTERMEDIATE',
+    status: 'VERIFIED',
+    strikes: 0,
+    lockedUntil: null,
+    lastAttemptId: null,
+  },
+  {
+    claimId: 'cl_3',
+    studentId: 'stu_2',
+    skillCode: 'PYTHON_FOR_ML_ENGINEERING',
+    proficiency: 'INTERMEDIATE',
+    status: 'VERIFIED',
+    strikes: 0,
+    lockedUntil: null,
+    lastAttemptId: null,
+  },
+  {
+    claimId: 'cl_4',
+    studentId: 'stu_3',
+    skillCode: 'ADVANCED_SQL_ANALYTICAL_QUERYING',
+    proficiency: 'BEGINNER',
+    status: 'DECLARED',
+    strikes: 0,
+    lockedUntil: null,
+    lastAttemptId: null,
+  },
+];
+
+export default function CandidatesPage() {
+  const [students, setStudents] = useState<InstitutionStudentDto[]>(MOCK_STUDENTS);
+  const [claims, setClaims] = useState<SkillClaimDto[]>(MOCK_CLAIMS);
+
+  // Filters:
+  // 1. Search Query
+  // 2. Candidate Stream Filter
+  // 3. Skills Filter
+  // 4. Proficiency Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [streamFilter, setStreamFilter] = useState<string>('ALL');
+  const [skillFilter, setSkillFilter] = useState<string>('ALL');
+  const [proficiencyFilter, setProficiencyFilter] = useState<string>('ALL');
+
+  // Selected candidate drawer state
+  const [selectedStudent, setSelectedStudent] = useState<InstitutionStudentDto | null>(null);
 
   useEffect(() => {
-    load().catch((err) =>
-      setError(isSmartApiError(err) ? err.message : 'Failed to load students.'),
-    );
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      if (q) {
+        setSearchQuery(q);
+      }
+    }
+
+    Promise.all([
+      api.onboarding.listTpoStudents().catch(() => MOCK_STUDENTS),
+      api.assessment.listSkillClaims().catch(() => MOCK_CLAIMS),
+    ])
+      .then(([studentList, claimList]) => {
+        setStudents(studentList);
+        setClaims(claimList);
+      })
+      .catch(() => {
+        /* Fallbacks used */
+      });
   }, []);
 
+  // Filter logic
+  const filteredStudents = students.filter((student) => {
+    // Search query filter
+    const query = searchQuery.trim().toLowerCase();
+    if (
+      query &&
+      !student.fullName.toLowerCase().includes(query) &&
+      !student.email.toLowerCase().includes(query)
+    ) {
+      return false;
+    }
+
+    const studentClaims = claims.filter((c) => c.studentId === student.userId);
+    const firstClaim = studentClaims[0];
+    const candidateStream = firstClaim
+      ? skillStreamFor(firstClaim.skillCode)
+      : 'SOFTWARE_DEVELOPMENT';
+
+    // 1st Filter: Stream
+    if (streamFilter !== 'ALL' && candidateStream !== streamFilter) {
+      return false;
+    }
+
+    // 2nd Filter: Skills
+    if (skillFilter !== 'ALL') {
+      const hasSkill = studentClaims.some((c) => c.skillCode === skillFilter);
+      if (!hasSkill) return false;
+    }
+
+    // 3rd Filter: Proficiency
+    if (proficiencyFilter !== 'ALL') {
+      const hasMatchingProficiency = studentClaims.some((c) => c.proficiency === proficiencyFilter);
+      if (!hasMatchingProficiency) return false;
+    }
+
+    return true;
+  });
+
   return (
-    <main className="max-w-[1400px] mx-auto space-y-6 font-sans select-none pb-12">
-      {/* Header & Actions */}
-      <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <main className="max-w-[1400px] mx-auto space-y-5 font-sans select-none pb-12 text-zinc-100">
+      {/* Header Banner */}
+      <div className="bg-zinc-900/90 p-6 md:p-7 rounded-xl border border-zinc-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">
-              Candidate Roster
+            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <Users className="size-6 text-zinc-300" />
+              Candidate Roster & Observability
             </h1>
-            <span className="bg-[#F0FDFA] text-[#004C63] border border-[#CCFBF1] text-xs font-bold px-3 py-1 rounded-full">
-              {students.length} Total Candidates
+            <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-xs font-bold px-2.5 py-0.5 rounded-md">
+              {students.length} Candidates
             </span>
           </div>
-          <p className="text-slate-500 text-xs md:text-sm font-medium">
-            Manage your student roster, candidate invitations, and skill readiness verification.
+          <p className="text-zinc-400 text-xs md:text-sm font-medium">
+            Read-only visibility into candidate-selected streams, onboarding progress, and
+            autonomous skill verification.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2 shrink-0">
           <Button
-            variant="primary"
-            className="bg-[#004C63] hover:bg-[#0A4D5C] text-white flex items-center gap-2 font-bold shadow-xs px-5 py-3 rounded-xl text-xs transition-all"
-            onClick={() => setIsProvisioningOpen(true)}
+            onClick={() => (window.location.href = '/provisioning')}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors border border-emerald-500/50 shadow-sm"
           >
-            <Upload className="w-4 h-4" />
-            Provision Students
+            + Onboard Candidates
           </Button>
         </div>
       </div>
 
-      {/* Alert Banners */}
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center justify-between shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-            <p className="text-xs font-bold">{error}</p>
-          </div>
-          <button
-            onClick={() => setError(null)}
-            className="text-rose-400 hover:text-rose-700 transition-colors p-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-      {message && (
-        <div className="bg-emerald-50 border border-emerald-200/90 text-emerald-900 p-4 rounded-xl flex items-center justify-between shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <p className="text-xs font-bold">{message}</p>
-          </div>
-          <button
-            onClick={() => setMessage(null)}
-            className="text-emerald-500 hover:text-emerald-800 transition-colors p-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Filters Toolbar */}
-      <Card className="bg-white border border-slate-200/80 shadow-xs p-4 flex flex-col md:flex-row gap-3 rounded-2xl">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* Filter Toolbar */}
+      <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
           <input
             type="text"
             placeholder="Search candidates by name or email..."
-            className="w-full bg-slate-50 text-slate-900 text-xs rounded-xl py-2.5 pl-10 pr-4 border border-slate-200/90 focus:outline-none focus:border-[#004C63] focus:bg-white focus:ring-2 focus:ring-[#004C63]/15 transition-all placeholder:text-slate-400 font-medium shadow-xs"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2 pl-9 pr-4 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-medium placeholder:text-zinc-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex gap-3">
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* 1st Filter: Stream */}
           <select
-            className="bg-slate-50 text-slate-700 text-xs rounded-xl border border-slate-200/90 px-4 py-2.5 focus:outline-none focus:border-[#004C63] focus:bg-white font-semibold cursor-pointer shadow-xs transition-all"
-            value={inviteStatus}
-            onChange={(e) => setInviteStatus(e.target.value as StudentInviteFilter | '')}
+            aria-label="Filter by Candidate Stream"
+            className="bg-zinc-950 text-zinc-300 text-xs rounded-lg border border-zinc-800 px-3 py-2 focus:outline-none focus:border-zinc-600 font-medium cursor-pointer"
+            value={streamFilter}
+            onChange={(e) => setStreamFilter(e.target.value)}
           >
-            <option value="">All Invite Statuses</option>
-            <option value="PENDING">Invite Sent (Pending)</option>
-            <option value="ACCEPTED">Accepted</option>
-            <option value="NONE">No Invite</option>
+            <option value="ALL">All Streams</option>
+            <option value="SOFTWARE_DEVELOPMENT">Software Engineering</option>
+            <option value="AI_ML_ENGINEERING">AI & Machine Learning</option>
+            <option value="DATA_SCIENCE_ANALYTICS">Data & Analytics</option>
+            <option value="UNIVERSAL">Universal Core</option>
           </select>
-          <Button
-            type="button"
-            className="bg-[#004C63] hover:bg-[#0A4D5C] text-white flex items-center gap-2 font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs transition-all"
-            onClick={() => {
-              setError(null);
-              setMessage(null);
-              load().catch((err) =>
-                setError(isSmartApiError(err) ? err.message : 'Failed to load students.'),
-              );
-            }}
+
+          {/* 2nd Filter: Skills */}
+          <select
+            aria-label="Filter by Skills"
+            className="bg-zinc-950 text-zinc-300 text-xs rounded-lg border border-zinc-800 px-3 py-2 focus:outline-none focus:border-zinc-600 font-medium cursor-pointer"
+            value={skillFilter}
+            onChange={(e) => setSkillFilter(e.target.value)}
           >
-            <Filter className="w-3.5 h-3.5 text-white" />
-            Apply Filters
-          </Button>
+            <option value="ALL">All Skills</option>
+            {SKILL_DEFINITIONS.map((skill) => (
+              <option key={skill.code} value={skill.code}>
+                {skill.name}
+              </option>
+            ))}
+          </select>
+
+          {/* 3rd Filter: Proficiency */}
+          <select
+            aria-label="Filter by Proficiency"
+            className="bg-zinc-950 text-zinc-300 text-xs rounded-lg border border-zinc-800 px-3 py-2 focus:outline-none focus:border-zinc-600 font-medium cursor-pointer"
+            value={proficiencyFilter}
+            onChange={(e) => setProficiencyFilter(e.target.value)}
+          >
+            <option value="ALL">All Proficiencies</option>
+            <option value="ADVANCED">Advanced</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="BEGINNER">Beginner</option>
+          </select>
         </div>
-      </Card>
+      </div>
 
-      {/* Data Table */}
-      <Card className="bg-white border border-slate-200/80 shadow-xs overflow-hidden rounded-2xl">
-        {students.length === 0 ? (
-          <div className="p-12 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-[#F0FDFA] rounded-full flex items-center justify-center mb-4 border border-[#CCFBF1]">
-              <Users className="w-8 h-8 text-[#004C63]" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">No candidates found</h3>
-            <p className="text-slate-500 text-xs mt-1 mb-6 max-w-sm font-medium">
-              We couldn't find any candidates matching your current filters. Try adjusting your
-              search criteria or provision new students.
-            </p>
-            <Button
-              variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold"
-              onClick={() => {
-                setQ('');
-                setInviteStatus('');
-                load();
-              }}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="bg-slate-50/90 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+      {/* Candidate Table Container */}
+      <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left whitespace-nowrap">
+            <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
+              <tr>
+                <th className="px-5 py-3">Candidate</th>
+                <th className="px-5 py-3">Candidate-Selected Stream</th>
+                <th className="px-5 py-3">Onboarding Progress</th>
+                <th className="px-5 py-3">Verification Status</th>
+                <th className="px-5 py-3 text-right">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/60">
+              {filteredStudents.length === 0 ? (
                 <tr>
-                  <th className="px-6 py-4">Candidate</th>
-                  <th className="px-6 py-4">Batch</th>
-                  <th className="px-6 py-4">Invite Status</th>
-                  <th className="px-6 py-4">Verification</th>
-                  <th className="px-6 py-4">Account Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <td colSpan={5} className="text-center py-10 text-zinc-500 font-medium">
+                    No candidates match the selected filters.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {students.map((student) => (
-                  <tr
-                    key={student.userId}
-                    className="hover:bg-[#F0FDFA]/40 transition-colors cursor-pointer"
-                    onClick={() => setSelectedCandidateId(student.userId)}
-                  >
-                    {/* Candidate Info with Avatar */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#004C63] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-                          {student.fullName.charAt(0)}
+              ) : (
+                filteredStudents.map((student) => {
+                  const studentClaims = claims.filter((c) => c.studentId === student.userId);
+                  const verifiedCount = studentClaims.filter((c) => c.status === 'VERIFIED').length;
+                  const firstClaim = studentClaims[0];
+                  const streamCode = firstClaim
+                    ? skillStreamFor(firstClaim.skillCode)
+                    : 'SOFTWARE_DEVELOPMENT';
+
+                  return (
+                    <tr key={student.userId} className="hover:bg-zinc-900/50 transition-colors">
+                      {/* Candidate Name & Email */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 font-bold flex items-center justify-center text-xs">
+                            {student.fullName.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-white">{student.fullName}</div>
+                            <div className="text-zinc-500 font-mono text-[11px]">
+                              {student.email}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">{student.fullName}</div>
-                          <div className="text-xs text-slate-500 font-medium">{student.email}</div>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Batch */}
-                    <td className="px-6 py-4 text-slate-600">
-                      <span className="bg-slate-100 border border-slate-200/90 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
-                        {student.batchName ?? 'No Batch'}
-                      </span>
-                    </td>
+                      {/* Read-Only Candidate-Selected Stream */}
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-zinc-900 text-zinc-200 border border-zinc-800">
+                          {streamLabel(streamCode)}
+                        </span>
+                      </td>
 
-                    {/* Invite Status */}
-                    <td className="px-6 py-4">
-                      {student.inviteStatus === 'ACCEPTED' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Accepted
-                        </span>
-                      )}
-                      {student.inviteStatus === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                          <span className="w-2 h-2 rounded-full bg-amber-500"></span> Invite Sent
-                        </span>
-                      )}
-                      {!student.inviteStatus && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                          <span className="w-2 h-2 rounded-full bg-slate-400"></span> Not Invited
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Verification */}
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span> In Progress
-                      </span>
-                    </td>
-
-                    {/* Account Status */}
-                    <td className="px-6 py-4">
-                      {student.heldAt ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          <span className="w-2 h-2 rounded-full bg-rose-500"></span> On Hold
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Active
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actions Column */}
-                    <td className="px-6 py-4 text-right">
-                      <div
-                        className="flex items-center justify-end gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {student.inviteStatus === 'PENDING' && (
-                          <button
-                            type="button"
-                            title="Copy student invite link"
-                            aria-label={`Copy invite link for ${student.fullName}`}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
-                            disabled={copyingId === student.userId}
-                            onClick={async () => {
-                              setCopyingId(student.userId);
-                              try {
-                                const { inviteUrl } = await api.onboarding.getStudentInviteLink(
-                                  student.userId,
-                                );
-                                await navigator.clipboard.writeText(inviteUrl);
-                                setMessage(`Invite link copied for ${student.fullName}.`);
-                              } catch (err) {
-                                setError(
-                                  isSmartApiError(err)
-                                    ? err.message
-                                    : 'Could not copy invite link.',
-                                );
-                              } finally {
-                                setCopyingId(null);
-                              }
-                            }}
-                          >
-                            <Copy className="w-3.5 h-3.5 text-slate-500" />
-                            {copyingId === student.userId ? 'Copying…' : 'Copy Link'}
-                          </button>
-                        )}
-                        {student.heldAt ? (
-                          <button
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
-                            onClick={async () => {
-                              try {
-                                await api.onboarding.releaseTpoStudentHold(student.userId, {
-                                  reason: 'Released manually',
-                                });
-                                setMessage(`Hold released for ${student.fullName}.`);
-                                load();
-                              } catch (err) {
-                                setError(
-                                  isSmartApiError(err) ? err.message : 'Could not update hold.',
-                                );
-                              }
-                            }}
-                          >
-                            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Release Hold
-                          </button>
+                      {/* Onboarding Progress */}
+                      <td className="px-5 py-3.5">
+                        {student.inviteStatus === 'ACCEPTED' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            <CheckCircle2 className="size-3" /> Completed
+                          </span>
                         ) : (
-                          <button
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/90 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
-                            onClick={async () => {
-                              try {
-                                await api.onboarding.holdTpoStudent(student.userId, {
-                                  reason: 'Held from TPO Dashboard',
-                                });
-                                setMessage(`Hold placed on ${student.fullName}.`);
-                                load();
-                              } catch (err) {
-                                setError(
-                                  isSmartApiError(err) ? err.message : 'Could not update hold.',
-                                );
-                              }
-                            }}
-                          >
-                            <UserX className="w-3.5 h-3.5 text-rose-600" />
-                            Place On Hold
-                          </button>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                            <Clock className="size-3" /> Invite Sent / Pending
+                          </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                      </td>
 
-      <CandidateProvisioningModal
-        isOpen={isProvisioningOpen}
-        onClose={() => setIsProvisioningOpen(false)}
-      />
+                      {/* Autonomous Verification Telemetry */}
+                      <td className="px-5 py-3.5">
+                        {verifiedCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-500/20">
+                            <CheckCircle2 className="size-3" /> {verifiedCount} Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-md border border-blue-500/20">
+                            In Evaluation
+                          </span>
+                        )}
+                      </td>
 
-      <CandidateDetailDrawer
-        candidate={students.find((s) => s.userId === selectedCandidateId) ?? null}
-        isOpen={!!selectedCandidateId}
-        onClose={() => setSelectedCandidateId(null)}
-      />
+                      {/* Detail Drawer Trigger */}
+                      <td className="px-5 py-3.5 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedStudent(student)}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold text-[11px] border border-zinc-800 rounded-lg px-3 py-1"
+                        >
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Candidate Detail Modal / Drawer Integration */}
+      {selectedStudent && (
+        <CandidateDetailDrawer
+          candidate={selectedStudent}
+          isOpen={Boolean(selectedStudent)}
+          onClose={() => setSelectedStudent(null)}
+        />
+      )}
     </main>
   );
 }

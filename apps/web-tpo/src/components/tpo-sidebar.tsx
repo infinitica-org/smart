@@ -8,10 +8,10 @@ import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
 import {
   LayoutDashboard,
   Users,
-  Briefcase,
-  Target,
-  Layers,
+  UserPlus,
+  BarChart3,
   Settings,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,15 +19,15 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
+  isNew?: boolean;
   subItems?: { name: string; href: string }[];
 }
 
 const mainNav: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Candidates', href: '/students', icon: Users },
-  { name: 'Placements', href: '/placements', icon: Briefcase },
-  { name: 'Opportunities', href: '/opportunities', icon: Target },
-  { name: 'Batches', href: '/batches', icon: Layers },
+  { name: 'Provisioning', href: '/provisioning', icon: UserPlus },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -48,7 +48,7 @@ export function TpoSidebar() {
             priority
           />
         </Link>
-        <span className="text-sm font-semibold text-slate-400">v{UI_VERSION}</span>
+        <span className="text-xs font-semibold text-slate-400">v{UI_VERSION}</span>
       </div>
 
       {/* Main Navigation */}
@@ -78,7 +78,12 @@ export function TpoSidebar() {
                         : 'text-slate-400 group-hover:text-slate-600',
                     )}
                   />
-                  <span>{item.name}</span>
+                  <span className="truncate">{item.name}</span>
+                  {item.isNew ? (
+                    <span className="ml-auto bg-emerald-100 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      New
+                    </span>
+                  ) : null}
                 </Link>
 
                 {/* Sub-items (Tree View) if Active */}
@@ -101,11 +106,26 @@ export function TpoSidebar() {
         </ul>
       </nav>
 
+      {/* Sidebar Bottom Card */}
+      <div className="px-4 py-3 shrink-0">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-[#F0FDFA]/50 to-emerald-50/30 p-4 border border-slate-200/80 shadow-xs">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-white border border-[#CCFBF1] text-[#004C63] shadow-2xs mb-2.5">
+            <GraduationCap className="size-5" />
+          </div>
+          <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
+            Empowering Better Futures
+          </h4>
+          <p className="text-[11px] font-medium text-slate-500 mt-1 leading-snug">
+            Connect Talent. Create Opportunities.
+          </p>
+        </div>
+      </div>
+
       {/* Bottom Footer Section */}
-      <div className="px-5 py-4 border-t border-slate-100 shrink-0">
+      <div className="px-5 py-3 border-t border-slate-100 shrink-0">
         <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
           <span className="hover:text-slate-600 transition-colors cursor-pointer">
-            Privacy Policy · Terms
+            Privacy Policy | Terms
           </span>
           <span className="font-semibold text-slate-400">v{UI_VERSION}</span>
         </div>

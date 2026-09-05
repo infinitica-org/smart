@@ -155,70 +155,6 @@ export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement
   actions?: ReactNode;
 }
 
-function CircularGauge({
-  value,
-  size = 64,
-  strokeWidth = 6,
-  colorClass = 'text-[#00E5D4]',
-  label,
-  sublabel,
-}: {
-  value: number;
-  size?: number;
-  strokeWidth?: number;
-  colorClass?: string;
-  label?: string;
-  sublabel?: string;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-
-  return (
-    <div className="flex items-center gap-3.5">
-      <div
-        className="relative flex items-center justify-center shrink-0"
-        style={{ width: size, height: size }}
-      >
-        <svg width={size} height={size} className="-rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="currentColor"
-            strokeWidth={strokeWidth}
-            className="text-white/10"
-            fill="transparent"
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="currentColor"
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            className={cn('transition-all duration-500', colorClass)}
-            fill="transparent"
-          />
-        </svg>
-        <span className="absolute font-mono text-xs font-extrabold text-white">{value}%</span>
-      </div>
-      {(label || sublabel) && (
-        <div className="min-w-0">
-          {label && <h4 className="text-xs font-bold text-white tracking-tight">{label}</h4>}
-          {sublabel && (
-            <p className="text-3xs text-[var(--text-muted)] line-clamp-2 mt-0.5 leading-relaxed">
-              {sublabel}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function getSkillIcon(skillName: string) {
   const lower = skillName.toLowerCase();
   if (lower.includes('typescript')) {
@@ -258,7 +194,7 @@ export function CandidateProfileCard({
   jobTitle,
   quote,
   tags,
-  matchScore,
+  matchScore: _matchScore,
   contactInfo,
   academicDetails,
   aiExplanation,
@@ -268,10 +204,6 @@ export function CandidateProfileCard({
   className,
   ...props
 }: CandidateProfileCardProps) {
-  const computedMatchScore = matchScore ?? aiExplanation?.score ?? 96;
-  const computedCognitiveScore = cognitiveCommSummary?.cognitiveScore ?? 95;
-  const computedCommScore = cognitiveCommSummary?.communicationScore ?? 92;
-
   const displayJobTitle = jobTitle || trackName;
   const displayQuote = quote || 'Building scalable solutions for a better tomorrow.';
   const displayTags = tags || ['Full Stack', 'Open to Opportunities'];
@@ -462,38 +394,43 @@ export function CandidateProfileCard({
 
       {/* 2. ROW 2: METRICS & AI MATCH INSIGHTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Metric Cards (7 Cols) */}
-        <div className="lg:col-span-7 rounded-xl border border-white/[0.08] bg-[#111516] p-5 shadow-xl">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 h-full items-center">
-            {/* Match Score */}
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-[#15191a]/60 border border-white/[0.04]">
-              <CircularGauge
-                value={computedMatchScore}
-                colorClass="text-[#00E5D4]"
-                label="Match Score"
-                sublabel="Strong alignment for target roles"
-              />
+        {/* Left Skills & Competencies Card (7 Cols) */}
+        <div className="lg:col-span-7 rounded-xl border border-white/[0.08] bg-[#111516] p-5 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 mb-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+                <Code2 className="h-4 w-4 text-[#00E5D4]" />
+                <span>Candidate Verified Skills</span>
+              </div>
+              <span className="text-3xs text-gray-400 font-medium">
+                {skills?.length || 0} Skills Assessed
+              </span>
             </div>
 
-            {/* Cognitive Score */}
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-[#15191a]/60 border border-white/[0.04]">
-              <CircularGauge
-                value={computedCognitiveScore}
-                colorClass="text-purple-400"
-                label="Cognitive"
-                sublabel="Excellent problem solving"
-              />
-            </div>
-
-            {/* Communication Score */}
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-[#15191a]/60 border border-white/[0.04]">
-              <CircularGauge
-                value={computedCommScore}
-                colorClass="text-blue-400"
-                label="Communication"
-                sublabel="Clear and structured"
-              />
-            </div>
+            {skills && skills.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {skills.map((skill, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between rounded-lg bg-[#15191a]/80 border border-white/[0.06] p-2.5 hover:border-white/20 transition-all"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {getSkillIcon(skill.name)}
+                      <span className="text-xs font-bold text-white truncate">{skill.name}</span>
+                    </div>
+                    <VerificationBadge
+                      status={skill.status}
+                      variant="outline"
+                      className="scale-90 shrink-0"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-gray-500 font-medium">
+                No verified skills recorded yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -506,6 +443,12 @@ export function CandidateProfileCard({
                 <span>AI Match Insights</span>
               </div>
               <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-3xs font-extrabold text-emerald-400">
+                {aiExplanation?.score !== undefined && (
+                  <>
+                    <span>{aiExplanation.score}%</span>
+                    <span className="mx-1">•</span>
+                  </>
+                )}
                 {aiExplanation?.fitLabel || 'High Fit'}
               </span>
             </div>

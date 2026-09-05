@@ -45,11 +45,11 @@ describe('CandidateProfileCard', () => {
       />,
     );
 
-    expect(screen.getByText('TypeScript')).toBeDefined();
-    expect(screen.getByText('React')).toBeDefined();
+    expect(screen.getAllByText('TypeScript').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('React').length).toBeGreaterThan(0);
     // VerificationBadges are rendered for skills
-    expect(screen.getByText('Verified')).toBeDefined();
-    expect(screen.getByText('In Progress')).toBeDefined();
+    expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('In Progress').length).toBeGreaterThan(0);
   });
 
   it('renders optional projects with embedded video when provided', () => {

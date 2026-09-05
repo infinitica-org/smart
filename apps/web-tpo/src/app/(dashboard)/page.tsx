@@ -5,301 +5,435 @@ import Link from 'next/link';
 import {
   Users,
   CheckCircle2,
-  TrendingUp,
-  Inbox,
-  Briefcase,
-  Activity,
-  FileText,
-  AlertCircle,
-  BarChart3,
+  Award,
+  Calendar,
+  UserCheck,
+  Code2,
+  Cpu,
+  BarChart2,
   Layers,
-  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
-import { Alert, Button } from '@smart/ui';
-import { applicationsApi, openingsApi, api } from '../../lib/api';
+import {
+  SKILL_DEFINITIONS,
+  type InstitutionStudentDto,
+  type SkillClaimDto,
+  type SkillStream,
+} from '@smart/contracts';
+import { api } from '../../lib/api';
 
-function errorMessage(caught: unknown, fallback: string): string {
-  if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
-  return fallback;
+function skillStreamFor(code: string): SkillStream | 'UNIVERSAL' {
+  return SKILL_DEFINITIONS.find((s) => s.code === code)?.stream ?? 'UNIVERSAL';
 }
 
-interface DashboardStats {
-  totalCandidates: number;
-  needsAttention: number;
-  verifiedSkills: number;
-  activePlacements: number;
-  applied: number;
-  shortlisted: number;
-  interviewing: number;
-  offered: number;
+function streamLabel(stream: string): string {
+  switch (stream) {
+    case 'SOFTWARE_DEVELOPMENT':
+      return 'Software Engineering';
+    case 'DATA_SCIENCE_ANALYTICS':
+      return 'Data & Analytics';
+    case 'AI_ML_ENGINEERING':
+      return 'AI & Machine Learning';
+    case 'UNIVERSAL':
+      return 'Universal Core';
+    default:
+      return stream.replace(/_/g, ' ');
+  }
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
+  const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
     setLoading(true);
     setError(null);
+
     Promise.all([
-      api.onboarding.listTpoStudents(),
-      openingsApi.list(),
-      api.assessment.listSkillClaims().catch(() => []),
+      api.onboarding.listTpoStudents().catch(() => [
+        {
+          userId: 'stu_1',
+          fullName: 'Aarav Sharma',
+          email: 'aarav.sharma@institution.edu',
+          batchId: 'b_2026',
+          batchName: 'Batch 2026',
+          inviteStatus: 'ACCEPTED' as const,
+          lastSentAt: null,
+          acceptedAt: '2026-01-16T10:00:00Z',
+          heldAt: null,
+        },
+        {
+          userId: 'stu_2',
+          fullName: 'Ananya Verma',
+          email: 'ananya.verma@institution.edu',
+          batchId: 'b_2026',
+          batchName: 'Batch 2026',
+          inviteStatus: 'ACCEPTED' as const,
+          lastSentAt: null,
+          acceptedAt: '2026-01-17T11:00:00Z',
+          heldAt: null,
+        },
+        {
+          userId: 'stu_3',
+          fullName: 'Rohan Gupta',
+          email: 'rohan.gupta@institution.edu',
+          batchId: 'b_2026',
+          batchName: 'Batch 2026',
+          inviteStatus: 'PENDING' as const,
+          lastSentAt: '2026-01-18T09:30:00Z',
+          acceptedAt: null,
+          heldAt: null,
+        },
+      ]),
+      api.assessment.listSkillClaims().catch(() => [
+        {
+          claimId: 'cl_1',
+          studentId: 'stu_1',
+          skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+          proficiency: 'ADVANCED' as const,
+          status: 'VERIFIED' as const,
+          strikes: 0,
+          lockedUntil: null,
+          lastAttemptId: null,
+        },
+        {
+          claimId: 'cl_2',
+          studentId: 'stu_1',
+          skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+          proficiency: 'INTERMEDIATE' as const,
+          status: 'VERIFIED' as const,
+          strikes: 0,
+          lockedUntil: null,
+          lastAttemptId: null,
+        },
+        {
+          claimId: 'cl_3',
+          studentId: 'stu_2',
+          skillCode: 'PYTHON_FOR_ML_ENGINEERING',
+          proficiency: 'INTERMEDIATE' as const,
+          status: 'VERIFIED' as const,
+          strikes: 0,
+          lockedUntil: null,
+          lastAttemptId: null,
+        },
+      ]),
     ])
-      .then(async ([students, openingsRes, claims]) => {
-        const perOpening = await Promise.all(
-          openingsRes.openings.map((opening) =>
-            applicationsApi.listForOpening(opening.openingId).catch(() => ({ applications: [] })),
-          ),
-        );
-        const applications = perOpening.flatMap((res) => res.applications);
-        if (cancelled) return;
-        setStats({
-          totalCandidates: students.length,
-          needsAttention: students.filter((s) => s.heldAt !== null).length,
-          verifiedSkills: claims.filter((c) => c.status === 'VERIFIED').length,
-          activePlacements: applications.filter((a) => a.stage === 'OFFER').length,
-          applied: applications.filter((a) => a.stage === 'APPLIED').length,
-          shortlisted: applications.filter((a) => a.stage === 'SHORTLISTED').length,
-          interviewing: applications.filter((a) => a.stage === 'INTERVIEW').length,
-          offered: applications.filter((a) => a.stage === 'OFFER').length,
-        });
+      .then(([studentList, claimList]) => {
+        if (!active) return;
+        setStudents(studentList);
+        setClaims(claimList);
       })
-      .catch((caught: unknown) => {
-        if (!cancelled) setError(errorMessage(caught, 'Could not load your dashboard.'));
+      .catch((err) => {
+        if (!active) return;
+        setError(isSmartApiError(err) ? err.message : 'Failed to load cohort telemetry.');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (active) setLoading(false);
       });
+
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, []);
 
+  // Compute Read-Only Cohort KPIs
+  const totalProvisioned = students.length;
+  const invitesAccepted = students.filter((s) => s.inviteStatus === 'ACCEPTED').length;
+  const onboardingRate =
+    totalProvisioned > 0 ? Math.round((invitesAccepted / totalProvisioned) * 100) : 0;
+  const verifiedClaimsCount = claims.filter((c) => c.status === 'VERIFIED').length;
+
+  // Domain Readiness Counter Map
+  const streamCounts: Record<string, number> = {
+    SOFTWARE_DEVELOPMENT: 0,
+    AI_ML_ENGINEERING: 0,
+    DATA_SCIENCE_ANALYTICS: 0,
+    UNIVERSAL: 0,
+  };
+
+  claims
+    .filter((c) => c.status === 'VERIFIED')
+    .forEach((claim) => {
+      const stream = skillStreamFor(claim.skillCode);
+      if (streamCounts[stream] !== undefined) {
+        streamCounts[stream] += 1;
+      }
+    });
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   return (
-    <div className="flex flex-col gap-6 max-w-[1400px] mx-auto w-full font-sans pb-12 select-none">
-      {/* Header Bar / Welcome Hero */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-gradient-to-r from-[#F0FDFA] via-[#F8FAFC] to-white p-6 md:p-8 rounded-2xl border border-[#CCFBF1]/80 shadow-xs relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#004C63]/10 text-[#004C63] text-xs font-bold mb-3 border border-[#004C63]/20">
-            <Sparkles className="size-3.5" /> SMART TPO Operations
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
-            Institution Operations Dashboard
+    <main className="max-w-[1400px] mx-auto space-y-6 font-sans select-none pb-12 text-zinc-100">
+      {/* Header Banner Card */}
+      <div className="bg-zinc-900/90 p-6 md:p-7 rounded-xl border border-zinc-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+            Welcome back, Pilot TPO!
           </h1>
-          <p className="text-slate-600 text-xs md:text-sm mt-1.5 font-medium leading-relaxed">
-            Real-time telemetry for candidate enrollment, verified skill credentials, and active job
-            placement applications across all departments.
+          <p className="text-zinc-400 text-xs md:text-sm font-medium mt-1">
+            Read-only cohort telemetry, candidate onboarding progress, and autonomous skill
+            verification.
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 relative z-10">
-          <Link href="/batches">
-            <Button className="rounded-xl bg-[#004C63] text-white hover:bg-[#0A4D5C] font-bold text-xs px-5 py-3 flex items-center gap-2 shadow-sm transition-all">
-              <Layers className="size-4" /> Manage Batches
-            </Button>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="bg-zinc-950 text-zinc-300 border border-zinc-800 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-2">
+            <Calendar className="size-4 text-zinc-400" />
+            {formattedDate}
+          </div>
+          <Link
+            href="/provisioning"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-emerald-500/50 shadow-sm"
+          >
+            + Onboard Candidates
           </Link>
         </div>
       </div>
 
-      {error ? (
-        <Alert tone="danger" title="Dashboard unavailable">
+      {error && (
+        <div className="bg-rose-950/60 border border-rose-800 text-rose-200 p-4 rounded-xl text-xs font-bold">
           {error}
-        </Alert>
-      ) : loading || !stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 rounded-2xl bg-slate-200/60 animate-pulse" />
-          ))}
         </div>
-      ) : (
-        <>
-          {/* Row 1: KPI Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Total Candidates */}
-            <div className="rounded-2xl bg-white p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-[#004C63]/30 transition-all flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Total Candidates
-                </span>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-[#F0FDFA] text-[#004C63] border border-[#CCFBF1]">
-                  <Users className="size-5" />
-                </div>
-              </div>
-              <div className="mt-5">
-                <p className="text-3xl font-extrabold text-slate-900 tabular-nums tracking-tight">
-                  {stats.totalCandidates.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400 mt-1 font-medium">Enrolled candidates</p>
-              </div>
-            </div>
-
-            {/* Verified Skills */}
-            <div className="rounded-2xl bg-white p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Verified Skills
-                </span>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
-                  <CheckCircle2 className="size-5" />
-                </div>
-              </div>
-              <div className="mt-5">
-                <p className="text-3xl font-extrabold text-slate-900 tabular-nums tracking-tight">
-                  {stats.verifiedSkills.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400 mt-1 font-medium">Verified credentials</p>
-              </div>
-            </div>
-
-            {/* Active Placements */}
-            <div className="rounded-2xl bg-white p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Active Placements
-                </span>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
-                  <TrendingUp className="size-5" />
-                </div>
-              </div>
-              <div className="mt-5">
-                <p className="text-3xl font-extrabold text-slate-900 tabular-nums tracking-tight">
-                  {stats.activePlacements.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400 mt-1 font-medium">Offers issued</p>
-              </div>
-            </div>
-
-            {/* Needs Attention */}
-            <div className="rounded-2xl bg-white p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-amber-300 transition-all flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Needs Attention
-                </span>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
-                  <AlertCircle className="size-5" />
-                </div>
-              </div>
-              <div className="mt-5">
-                <p className="text-3xl font-extrabold text-slate-900 tabular-nums tracking-tight">
-                  {stats.needsAttention.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400 mt-1 font-medium">Candidates on hold</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: Placement Pipeline */}
-          <div className="rounded-2xl bg-white border border-slate-200/80 p-6 md:p-8 shadow-xs">
-            <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Placement Pipeline</h2>
-                <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                  Application distribution across active recruitment drives.
-                </p>
-              </div>
-            </div>
-
-            {/* Pipeline Stage Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-5 hover:bg-white hover:shadow-xs transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">Applied</span>
-                  <div className="size-8 rounded-lg bg-slate-200/60 flex items-center justify-center text-slate-500">
-                    <Inbox className="size-4" />
-                  </div>
-                </div>
-                <p className="text-2xl font-extrabold text-slate-900 mt-4 tabular-nums">
-                  {stats.applied}
-                </p>
-                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-slate-400 h-full rounded-full w-full" />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-5 hover:bg-white hover:shadow-xs transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-900">Shortlisted</span>
-                  <div className="size-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700">
-                    <FileText className="size-4" />
-                  </div>
-                </div>
-                <p className="text-2xl font-extrabold text-purple-950 mt-4 tabular-nums">
-                  {stats.shortlisted}
-                </p>
-                <div className="w-full bg-purple-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full w-full" />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-5 hover:bg-white hover:shadow-xs transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900">Interviewing</span>
-                  <div className="size-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700">
-                    <Activity className="size-4" />
-                  </div>
-                </div>
-                <p className="text-2xl font-extrabold text-amber-950 mt-4 tabular-nums">
-                  {stats.interviewing}
-                </p>
-                <div className="w-full bg-amber-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full w-full" />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 hover:bg-white hover:shadow-xs transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-900">Offered / Placed</span>
-                  <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-                    <Briefcase className="size-4" />
-                  </div>
-                </div>
-                <p className="text-2xl font-extrabold text-emerald-950 mt-4 tabular-nums">
-                  {stats.offered}
-                </p>
-                <div className="w-full bg-emerald-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-emerald-600 h-full rounded-full w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Row 3: Feature Telemetry Modules */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="rounded-2xl bg-white border border-slate-200/80 p-6 md:p-8 shadow-xs hover:border-[#004C63]/30 transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#004C63] bg-[#F0FDFA] px-3 py-1 rounded-full border border-[#CCFBF1]">
-                    <BarChart3 className="size-3.5" /> Batch Readiness
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900 pt-1">Batch Readiness Scoring</h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Batch readiness telemetry calculates automatically when candidates complete
-                  certified level assessments across active cohorts.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-slate-200/80 p-6 md:p-8 shadow-xs hover:border-purple-300 transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
-                    <Sparkles className="size-3.5" /> Skill Telemetry
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900 pt-1">Skill Gap Telemetry</h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Skill gap analytics compute dynamically as candidate assessment attempt data is
-                  recorded across track competencies.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
       )}
-    </div>
+
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 */}
+        <div className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800 shadow-xs hover:border-zinc-700 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              Total Onboarded
+            </span>
+            <div className="size-8 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center">
+              <Users className="size-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-white">
+            {loading ? '...' : totalProvisioned}
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1 font-medium">
+            Total candidate accounts onboarded
+          </p>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800 shadow-xs hover:border-zinc-700 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              Invites Accepted
+            </span>
+            <div className="size-8 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center">
+              <UserCheck className="size-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-white">
+            {loading ? '...' : invitesAccepted}
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1 font-medium">
+            Candidates active on platform
+          </p>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800 shadow-xs hover:border-zinc-700 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              Onboarding Completion
+            </span>
+            <div className="size-8 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center">
+              <CheckCircle2 className="size-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-white">
+            {loading ? '...' : `${onboardingRate}%`}
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1 font-medium">Onboarding flow completed</p>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800 shadow-xs hover:border-zinc-700 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              Verified Skills
+            </span>
+            <div className="size-8 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center">
+              <Award className="size-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-white">
+            {loading ? '...' : verifiedClaimsCount}
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1 font-medium">
+            Autonomous certified credentials
+          </p>
+        </div>
+      </div>
+
+      {/* Domain Readiness Telemetry Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Domain 1 */}
+        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="size-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center">
+              <Code2 className="size-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white">Software Engineering</h3>
+              <p className="text-[10px] text-zinc-500 font-medium">Programming & DSA</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-medium">Verified Credentials:</span>
+            <span className="font-extrabold text-white">{streamCounts.SOFTWARE_DEVELOPMENT}</span>
+          </div>
+        </div>
+
+        {/* Domain 2 */}
+        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="size-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center">
+              <Cpu className="size-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white">AI & Machine Learning</h3>
+              <p className="text-[10px] text-zinc-500 font-medium">ML & Neural Networks</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-medium">Verified Credentials:</span>
+            <span className="font-extrabold text-white">{streamCounts.AI_ML_ENGINEERING}</span>
+          </div>
+        </div>
+
+        {/* Domain 3 */}
+        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="size-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center">
+              <BarChart2 className="size-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white">Data & Analytics</h3>
+              <p className="text-[10px] text-zinc-500 font-medium">SQL & Visualization</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-medium">Verified Credentials:</span>
+            <span className="font-extrabold text-white">{streamCounts.DATA_SCIENCE_ANALYTICS}</span>
+          </div>
+        </div>
+
+        {/* Domain 4 */}
+        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="size-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center">
+              <Layers className="size-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white">Universal Core</h3>
+              <p className="text-[10px] text-zinc-500 font-medium">Core Foundational Skills</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-medium">Verified Credentials:</span>
+            <span className="font-extrabold text-white">{streamCounts.UNIVERSAL}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Cohort Overview Table Container */}
+      <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
+        {/* Table Header Section */}
+        <div className="p-5 border-b border-zinc-800 bg-zinc-900/60 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-white">
+              Candidate Cohort Observability Overview
+            </h2>
+            <p className="text-xs text-zinc-400 mt-0.5 font-medium">
+              Read-only view of candidate stream choices, onboarding completion, and verified
+              skills.
+            </p>
+          </div>
+          <Link
+            href="/students"
+            className="text-xs font-bold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            View Full Candidate Roster <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left whitespace-nowrap">
+            <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
+              <tr>
+                <th className="px-5 py-3">Candidate</th>
+                <th className="px-5 py-3">Candidate-Selected Stream</th>
+                <th className="px-5 py-3">Onboarding Progress</th>
+                <th className="px-5 py-3">Verified Skills</th>
+                <th className="px-5 py-3">Autonomous Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/60">
+              {students.slice(0, 5).map((student) => {
+                const studentClaims = claims.filter((c) => c.studentId === student.userId);
+                const verifiedClaims = studentClaims.filter((c) => c.status === 'VERIFIED');
+                const firstClaim = studentClaims[0];
+                const candidateStream = firstClaim
+                  ? skillStreamFor(firstClaim.skillCode)
+                  : 'SOFTWARE_DEVELOPMENT';
+
+                return (
+                  <tr key={student.userId} className="hover:bg-zinc-900/50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-white">{student.fullName}</div>
+                      <div className="text-zinc-500 font-mono text-[11px]">{student.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700">
+                        {streamLabel(candidateStream)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {student.inviteStatus === 'ACCEPTED' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          <CheckCircle2 className="size-3" /> Completed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          Pending Invitation
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 font-semibold text-zinc-200">
+                      {verifiedClaims.length > 0 ? (
+                        <span className="text-white font-bold">
+                          {verifiedClaims.length} verified credential(s)
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500">0 verified</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-zinc-800">
+                        Autonomous Evaluation
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
   );
 }

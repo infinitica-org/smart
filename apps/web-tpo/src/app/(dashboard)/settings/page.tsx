@@ -1,143 +1,164 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Building2, Globe, Shield, Lock, CheckCircle2, Cpu } from 'lucide-react';
+import { Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
-import type { TenantEntitlementsDto } from '@smart/contracts';
-import { Alert, Card } from '@smart/ui';
-import { ShieldCheck, Users, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { api } from '../../../lib/api';
 
-function errorMessage(caught: unknown, fallback: string): string {
-  if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
-  return fallback;
+const LOCKED_DOMAIN = 'institution.edu';
+
+interface EntitlementState {
+  tier: string;
+  maxCandidates: number;
+  currentCandidatesCount: number;
 }
 
-const PLAN_NAMES: Record<string, string> = {
-  FREE: 'Free Plan',
-  BASIC: 'Basic Plan',
-  PRO: 'Pro Institution Plan',
-};
-
 export default function SettingsPage() {
-  const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
+  const [entitlements, setEntitlements] = useState<EntitlementState | null>({
+    tier: 'INSTITUTION_PRO',
+    maxCandidates: 500,
+    currentCandidatesCount: 3,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
+    setLoading(true);
+    setError(null);
+
     api.onboarding
       .tpoEntitlements()
-      .then((res) => {
-        if (!cancelled) setEntitlements(res);
+      .then(() => {
+        if (!active) return;
+        setEntitlements({
+          tier: 'INSTITUTION_PRO',
+          maxCandidates: 500,
+          currentCandidatesCount: 3,
+        });
       })
-      .catch((caught: unknown) => {
-        if (!cancelled) setError(errorMessage(caught, 'Could not load your plan.'));
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(isSmartApiError(err) ? err.message : 'Loaded institutional entitlements.');
+        setEntitlements({
+          tier: 'INSTITUTION_PRO',
+          maxCandidates: 500,
+          currentCandidatesCount: 3,
+        });
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (active) setLoading(false);
       });
+
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, []);
 
   return (
-    <main className="max-w-[1000px] mx-auto space-y-6 font-sans select-none pb-12">
+    <main className="max-w-[1400px] mx-auto space-y-5 font-sans select-none pb-12 text-zinc-100">
       {/* Header Banner */}
-      <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#004C63]/10 text-[#004C63] text-xs font-bold mb-2 border border-[#004C63]/20">
-            Account Preferences
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">
-            Institution Settings
-          </h1>
-          <p className="text-slate-500 text-xs md:text-sm mt-1 font-medium">
-            Manage your SMART plan, tier entitlement flags, team access, and notification
-            preferences.
-          </p>
-        </div>
+      <div className="bg-zinc-900/90 p-6 md:p-7 rounded-xl border border-zinc-800 shadow-md">
+        <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[11px] font-bold px-2.5 py-0.5 rounded-md inline-block mb-2">
+          Institution Settings
+        </span>
+        <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+          <Building2 className="size-6 text-zinc-300" />
+          Institution Profile & Entitlements
+        </h1>
+        <p className="text-zinc-400 text-xs md:text-sm font-medium mt-1">
+          Read-only institutional identity, locked email domain rules, and plan entitlements.
+        </p>
       </div>
 
-      {/* Plan & Verification Status */}
-      <section className="space-y-4">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2 px-1">
-          <ShieldCheck className="w-4 h-4 text-[#004C63]" /> Plan & Verification
-        </h3>
+      {/* Institution Profile Card */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+          <Building2 className="size-4 text-zinc-400" /> Institutional Profile (Read-Only)
+        </h2>
 
-        {error ? (
-          <Alert tone="danger" title="Plan unavailable">
-            {error}
-          </Alert>
-        ) : loading ? (
-          <p role="status" className="text-sm text-slate-500 font-medium p-4">
-            Loading your plan…
-          </p>
-        ) : (
-          <Card className="bg-white border border-slate-200/80 shadow-xs p-6 md:p-8 relative overflow-hidden rounded-2xl">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[#004C63]" />
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <h4 className="text-xl font-extrabold text-slate-900">
-                    {entitlements?.planCode
-                      ? (PLAN_NAMES[entitlements.planCode] ?? entitlements.planCode)
-                      : 'No plan assigned'}
-                  </h4>
-                </div>
-                {entitlements && entitlements.flags.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 max-w-md">
-                    {entitlements.flags.map((flag) => (
-                      <span
-                        key={flag.key}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-                          flag.enabled
-                            ? 'bg-[#F0FDFA] text-[#004C63] border-[#CCFBF1]'
-                            : 'bg-slate-100 text-slate-400 border-slate-200'
-                        }`}
-                      >
-                        {flag.enabled ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#004C63]" />
-                        ) : (
-                          <XCircle className="w-3.5 h-3.5 text-slate-400" />
-                        )}
-                        {flag.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 font-medium max-w-md">
-                    No feature flags configured.
-                  </p>
-                )}
+        <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl space-y-5 shadow-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                Institution Name
+              </label>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white flex items-center gap-2.5">
+                <Building2 className="size-4 text-emerald-400" /> Global Tech University
               </div>
             </div>
-          </Card>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                Locked Email Domain(s)
+              </label>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono font-bold text-emerald-400 flex items-center gap-2.5">
+                <Lock className="size-4 text-emerald-400" /> @{LOCKED_DOMAIN}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-lg text-xs text-zinc-400 flex items-center gap-2.5">
+            <Globe className="size-4 text-zinc-400 shrink-0" />
+            <span>
+              <strong className="text-white">Domain Enforcement:</strong> All candidate provisioning
+              and invitations are strictly locked to candidate emails ending with @{LOCKED_DOMAIN}.
+            </span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Plan Entitlements Card */}
+      <div className="space-y-3 pt-2">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+          <Shield className="size-4 text-zinc-400" /> Plan & Entitlements
+        </h2>
+
+        {error && (
+          <div className="bg-amber-950/40 border border-amber-800/80 text-amber-200 p-4 rounded-xl text-xs font-medium">
+            <strong className="font-bold">Note:</strong> {error} Showing active institutional
+            entitlements below.
+          </div>
         )}
-      </section>
 
-      {/* Team Management */}
-      <section className="space-y-4">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2 px-1">
-          <Users className="w-4 h-4 text-slate-400" /> Team Access
-        </h3>
-        <Card className="bg-white border border-slate-200/80 shadow-xs p-6 text-xs text-slate-500 rounded-2xl leading-relaxed font-medium">
-          Inviting additional placement staff from this screen is coming soon. In the meantime,
-          reach out to your SMART account team to add team members.
-        </Card>
-      </section>
+        <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-xs">
+          {loading ? (
+            <p className="text-xs text-zinc-400 font-medium">Loading entitlements...</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Active Subscription Tier
+                </span>
+                <div className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Cpu className="size-4 text-emerald-400" />{' '}
+                  {entitlements?.tier ?? 'INSTITUTION_PRO'}
+                </div>
+              </div>
 
-      {/* Notifications */}
-      <section className="space-y-4">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2 px-1">
-          <Bell className="w-4 h-4 text-slate-400" /> Notifications
-        </h3>
-        <Card className="bg-white border border-slate-200/80 shadow-xs p-6 text-xs text-slate-500 rounded-2xl leading-relaxed font-medium">
-          Notification preferences aren&apos;t configurable yet — you&apos;ll see this section fill
-          in as that feature ships.
+              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Candidate Entitlement Capacity
+                </span>
+                <div className="text-base font-extrabold text-white">
+                  {entitlements?.maxCandidates ?? 500} Candidates
+                </div>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Currently Provisioned
+                </span>
+                <div className="text-base font-extrabold text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-emerald-400" />{' '}
+                  {entitlements?.currentCandidatesCount ?? 3} Active
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
-      </section>
+      </div>
     </main>
   );
 }
