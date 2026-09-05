@@ -136,12 +136,15 @@ export function WorkExperienceSection() {
     setIsModalOpen(true);
   };
 
-  const handleSendVerification = async (experienceId: string) => {
+  const handleSendVerification = async (experienceId: string, status?: string) => {
     try {
       setSendingVerificationId(experienceId);
       setError(null);
       setVerificationSuccess(null);
-      const res = await api.users.sendWorkExperienceVerification(experienceId);
+      const res =
+        status === 'EXPIRED'
+          ? await api.users.restartWorkExperienceVerification(experienceId)
+          : await api.users.sendWorkExperienceVerification(experienceId);
       setVerificationSuccess(res.message);
       await fetchExperiences();
     } catch (err: unknown) {
@@ -477,7 +480,7 @@ export function WorkExperienceSection() {
                     </div>
                     {exp.status !== 'VERIFIED' && (
                       <button
-                        onClick={() => handleSendVerification(exp.id)}
+                        onClick={() => handleSendVerification(exp.id, exp.status)}
                         disabled={sendingVerificationId === exp.id}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors shrink-0 ${
                           exp.status === 'EXPIRED'
@@ -583,6 +586,12 @@ export function WorkExperienceSection() {
                               {valState.validationStatus === 'VALIDATED' && (
                                 <span className="inline-flex items-center gap-1 text-[11px] text-[#00fad0] font-medium mt-0.5">
                                   <CheckCircle2 className="h-3 w-3" /> ✓ Proof Validated
+                                </span>
+                              )}
+                              {valState.validationStatus === 'NEEDS_MANUAL_REVIEW' && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-amber-300 font-medium mt-0.5">
+                                  <AlertCircle className="h-3 w-3" /> Manual Review Flagged:{' '}
+                                  {valState.rejectionReason || 'Role or date variance detected'}
                                 </span>
                               )}
                               {valState.validationStatus === 'REJECTED' && (

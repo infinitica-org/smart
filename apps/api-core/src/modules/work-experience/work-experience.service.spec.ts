@@ -382,13 +382,9 @@ describe('WorkExperienceService', () => {
       expect(result.validationResult.rejectionReason).toContain('Alice Smith');
     });
 
-    it('rejects validation when document role does not match submitted role', async () => {
+    it('flags NEEDS_MANUAL_REVIEW when document role does not match submitted role without auto-rejecting experience', async () => {
       prisma.workExperience.findUnique.mockResolvedValueOnce(mockExpRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
-      prisma.workExperience.update.mockResolvedValueOnce({
-        ...mockExpRecord,
-        status: 'REJECTED',
-      });
 
       aiGateway.complete.mockResolvedValueOnce({
         output: {
@@ -405,18 +401,15 @@ describe('WorkExperienceService', () => {
 
       const result = await service.validateProofDocument(mockStudentId, expId, docId);
 
-      expect(result.validationResult.validationStatus).toBe('REJECTED');
+      expect(result.validationResult.validationStatus).toBe('NEEDS_MANUAL_REVIEW');
       expect(result.validationResult.matchResult.roleMatch).toBe(false);
-      expect(result.validationResult.rejectionReason).toContain('Graphic Designer');
+      expect(result.validationResult.rejectionReason).toContain('Role variance');
+      expect(prisma.workExperience.update).not.toHaveBeenCalled();
     });
 
-    it('rejects validation when employment dates are missing or invalid', async () => {
+    it('flags NEEDS_MANUAL_REVIEW when employment dates have variance without auto-rejecting experience', async () => {
       prisma.workExperience.findUnique.mockResolvedValueOnce(mockExpRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
-      prisma.workExperience.update.mockResolvedValueOnce({
-        ...mockExpRecord,
-        status: 'REJECTED',
-      });
 
       aiGateway.complete.mockResolvedValueOnce({
         output: {
@@ -433,9 +426,10 @@ describe('WorkExperienceService', () => {
 
       const result = await service.validateProofDocument(mockStudentId, expId, docId);
 
-      expect(result.validationResult.validationStatus).toBe('REJECTED');
+      expect(result.validationResult.validationStatus).toBe('NEEDS_MANUAL_REVIEW');
       expect(result.validationResult.matchResult.dateMatch).toBe(false);
-      expect(result.validationResult.rejectionReason).toContain('employment dates');
+      expect(result.validationResult.rejectionReason).toContain('Employment dates variance');
+      expect(prisma.workExperience.update).not.toHaveBeenCalled();
     });
 
     it('reads actual document content from Data URI in production flow', async () => {
@@ -888,9 +882,47 @@ describe('WorkExperienceService', () => {
         );
       });
 
-      it('restarts verification from EXPIRED state creating a new attempt row and token', async () => {
+      it('blocks sendEmployerVerification if verifier email is a personal domain', async () => {
         const expId = randomUUID();
         prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@gmail.com',
+          companyWebsite: 'https://acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          student: { fullName: 'Alice Student' },
+        });
+
+        await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it('blocks sendEmployerVerification if verifier domain does not match company domain', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@differentdomain.com',
+          companyWebsite: 'https://acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          student: { fullName: 'Alice Student' },
+        });
+
+        await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it('restarts verification from EXPIRED state creating a new attempt row and token', async () => {
+        const expId = randomUUID();
+        const expMock = {
           id: expId,
           studentId: mockStudentId,
           verifierEmail: 'manager@acme.com',
@@ -901,7 +933,10 @@ describe('WorkExperienceService', () => {
           isCurrent: true,
           status: 'EXPIRED',
           student: { fullName: 'Alice Student' },
-        });
+        };
+        prisma.workExperience.findUnique
+          .mockResolvedValueOnce(expMock)
+          .mockResolvedValueOnce(expMock);
 
         prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({ id: 'att-new' });
         prisma.workExperience.update.mockResolvedValueOnce({
@@ -909,7 +944,7 @@ describe('WorkExperienceService', () => {
           status: 'PENDING_EMPLOYER',
         });
 
-        const res = await service.sendEmployerVerification(mockStudentId, expId);
+        const res = await service.restartEmployerVerification(mockStudentId, expId);
         expect(res.success).toBe(true);
         expect(res.status).toBe('PENDING_EMPLOYER');
         expect(prisma.workExperienceVerificationAttempt.create).toHaveBeenCalledWith({
@@ -918,6 +953,37 @@ describe('WorkExperienceService', () => {
             verifierEmail: 'manager@acme.com',
           }),
         });
+      });
+
+      it('getOpsDashboard returns candidate verification items with step and emailState', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findMany.mockResolvedValueOnce([
+          {
+            id: expId,
+            studentId: mockStudentId,
+            companyName: 'Acme Corp',
+            companyWebsite: 'https://acme.com',
+            role: 'Senior Developer',
+            status: 'PENDING_EMPLOYER',
+            createdAt: new Date(),
+            student: { fullName: 'John Doe', email: 'john@student.edu' },
+            verificationAttempts: [
+              {
+                id: 'att-1',
+                expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+                respondedAt: null,
+                reminderSentAt: null,
+              },
+            ],
+          },
+        ]);
+
+        const items = await service.getOpsDashboard();
+        expect(items).toHaveLength(1);
+        expect(items[0].candidateName).toBe('John Doe');
+        expect(items[0].companyName).toBe('Acme Corp');
+        expect(items[0].currentStep).toBe('EMPLOYER_DISPATCHED');
+        expect(items[0].emailState).toBe('SENT');
       });
     });
   });
