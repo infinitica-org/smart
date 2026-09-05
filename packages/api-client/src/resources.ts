@@ -98,6 +98,7 @@ import {
   SendWorkExperienceVerificationResponseSchema,
   GetWorkExperienceVerificationResponseSchema,
   SubmitWorkExperienceVerificationResponseSchema,
+  WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
@@ -282,6 +283,20 @@ export function usersApi(client: SmartApiClient) {
           schema: SendWorkExperienceVerificationResponseSchema,
         },
       ),
+
+    restartWorkExperienceVerification: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/restart-verification`),
+        {},
+        {
+          schema: SendWorkExperienceVerificationResponseSchema,
+        },
+      ),
+
+    getWorkExperienceOpsDashboard: () =>
+      client.get(prefixed('/users/me/work-experiences/ops-dashboard'), {
+        schema: z.array(WorkExperienceOpsDashboardItemSchema),
+      }),
 
     getWorkExperienceVerificationByToken: (token: string) =>
       client.get(prefixed(`/users/work-experiences/verify-token/${token}`), {
