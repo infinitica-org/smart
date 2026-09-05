@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { isSmartApiError } from '@smart/api-client';
-import { Alert, AnimatedGridPattern, Button, Input, MagicCard, SmartLogo } from '@smart/ui';
+import { Alert } from '@smart/ui';
+import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
 export function LoginForm() {
@@ -39,78 +41,106 @@ export function LoginForm() {
   }
 
   return (
-    <section className="relative flex min-h-dvh flex-col justify-center overflow-hidden px-6 py-16 sm:px-10">
-      <AnimatedGridPattern
-        className="fill-brand-500/5 stroke-brand-500/5 lg:hidden"
-        numSquares={24}
-        maxOpacity={0.12}
-      />
+    <section className="flex w-full max-w-sm flex-col items-start justify-center px-4 py-8 sm:px-0">
+      {/* Black Logo */}
+      <div className="mb-4">
+        <Image
+          src={BlackLogo}
+          alt="SMART Logo"
+          width={180}
+          height={48}
+          className="h-9 w-auto object-contain"
+          priority
+        />
+      </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-md">
-        <div className="mb-8 flex items-center gap-3 lg:hidden">
-          <SmartLogo kind="wordmark" tone="on-dark" className="h-8" title="SMART" />
+      {/* Title */}
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        Your magic starts here
+      </h1>
+
+      {error ? (
+        <div className="mt-4 w-full">
+          <Alert tone="danger" title={error} />
+        </div>
+      ) : null}
+
+      {/* Login Form */}
+      <form onSubmit={onSubmit} className="mt-6 w-full space-y-5">
+        {/* Username / Email field */}
+        <div className="space-y-1.5">
+          <label htmlFor="username" className="block text-xs font-semibold text-slate-800">
+            Username <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="username"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="Enter username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border border-2 border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#004c63] focus:outline-none focus:ring-2 focus:ring-[#004c63]/20"
+          />
         </div>
 
-        <MagicCard className="rounded-[var(--radius-card)] p-8 sm:p-9">
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-teal)]">
-              Secure sign-in
-            </p>
-            <h2 className="font-heading text-2xl font-extrabold tracking-tight text-[var(--text-primary)]">
-              Welcome back
-            </h2>
-            <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-              Enter your email and password — we&apos;ll open the workspace built for your role.
-            </p>
-          </div>
-
-          {error ? (
-            <div className="mt-6">
-              <Alert tone="danger" title={error} />
-            </div>
-          ) : null}
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <Input
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <Input
-              label="Password"
+        {/* Password field */}
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="block text-xs font-semibold text-slate-800">
+            Password <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              id="password"
               type={showPassword ? 'text' : 'password'}
+              required
               autoComplete="current-password"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              endIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="rounded-md p-0.5 transition-colors hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              }
+              className="w-full rounded-md border-2 border-slate-300 bg-white px-4 py-3 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#004c63] focus:outline-none focus:ring-2 focus:ring-[#004c63]/20"
             />
-
-            <Button
-              type="submit"
-              isLoading={loading}
-              fullWidth
-              size="lg"
-              className="bg-[var(--brand-teal)] text-[var(--brand-ink)] shadow-[0_0_20px_rgba(0,250,208,0.3)] hover:opacity-90"
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
             >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-        </MagicCard>
-      </div>
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
+        </div>
+
+        {/* Green Sign in Button */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-2 flex w-full items-center justify-center rounded-md bg-[#004c63] py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#003a4d] active:scale-[0.99] disabled:opacity-70"
+        >
+          {loading ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Signing in…
+            </span>
+          ) : (
+            'Sign in'
+          )}
+        </button>
+
+        {/* Change password link */}
+        <div className="pt-2 text-center">
+          <a
+            href="#change-password"
+            onClick={(e) => {
+              e.preventDefault();
+              alert('Please contact your administrator to reset your password.');
+            }}
+            className="text-sm font-semibold text-[#004c63] hover:underline"
+          >
+            Change password?
+          </a>
+        </div>
+      </form>
     </section>
   );
 }
