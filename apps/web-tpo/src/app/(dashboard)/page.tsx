@@ -54,73 +54,8 @@ export default function DashboardPage() {
     setError(null);
 
     Promise.all([
-      api.onboarding.listTpoStudents().catch(() => [
-        {
-          userId: 'stu_1',
-          fullName: 'Aarav Sharma',
-          email: 'aarav.sharma@institution.edu',
-          batchId: 'b_2026',
-          batchName: 'Batch 2026',
-          inviteStatus: 'ACCEPTED' as const,
-          lastSentAt: null,
-          acceptedAt: '2026-01-16T10:00:00Z',
-          heldAt: null,
-        },
-        {
-          userId: 'stu_2',
-          fullName: 'Ananya Verma',
-          email: 'ananya.verma@institution.edu',
-          batchId: 'b_2026',
-          batchName: 'Batch 2026',
-          inviteStatus: 'ACCEPTED' as const,
-          lastSentAt: null,
-          acceptedAt: '2026-01-17T11:00:00Z',
-          heldAt: null,
-        },
-        {
-          userId: 'stu_3',
-          fullName: 'Rohan Gupta',
-          email: 'rohan.gupta@institution.edu',
-          batchId: 'b_2026',
-          batchName: 'Batch 2026',
-          inviteStatus: 'PENDING' as const,
-          lastSentAt: '2026-01-18T09:30:00Z',
-          acceptedAt: null,
-          heldAt: null,
-        },
-      ]),
-      api.assessment.listSkillClaims().catch(() => [
-        {
-          claimId: 'cl_1',
-          studentId: 'stu_1',
-          skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-          proficiency: 'ADVANCED' as const,
-          status: 'VERIFIED' as const,
-          strikes: 0,
-          lockedUntil: null,
-          lastAttemptId: null,
-        },
-        {
-          claimId: 'cl_2',
-          studentId: 'stu_1',
-          skillCode: 'DATA_STRUCTURES_ALGORITHMS',
-          proficiency: 'INTERMEDIATE' as const,
-          status: 'VERIFIED' as const,
-          strikes: 0,
-          lockedUntil: null,
-          lastAttemptId: null,
-        },
-        {
-          claimId: 'cl_3',
-          studentId: 'stu_2',
-          skillCode: 'PYTHON_FOR_ML_ENGINEERING',
-          proficiency: 'INTERMEDIATE' as const,
-          status: 'VERIFIED' as const,
-          strikes: 0,
-          lockedUntil: null,
-          lastAttemptId: null,
-        },
-      ]),
+      api.onboarding.listTpoStudents().catch(() => [] as InstitutionStudentDto[]),
+      api.assessment.listSkillClaims().catch(() => [] as SkillClaimDto[]),
     ])
       .then(([studentList, claimList]) => {
         if (!active) return;

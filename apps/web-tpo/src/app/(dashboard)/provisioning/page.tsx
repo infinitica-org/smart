@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -15,271 +15,344 @@ import {
   ListPlus,
   ShieldCheck,
   Check,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { Button, Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
-import type { InstitutionStudentDto } from '@smart/contracts';
+import type { BatchDto, BatchMemberDto } from '@smart/contracts';
 import { api } from '../../../lib/api';
 
-const LOCKED_DOMAIN = 'institution.edu';
+// ─────────────────── helpers ────────────────────
 
-async function sendInvite(email: string) {
-  const onboardingApiAny = api.onboarding as unknown as Record<
-    string,
-    (args: unknown) => Promise<unknown>
-  >;
-  if (typeof onboardingApiAny.sendStudentInvite === 'function') {
-    return onboardingApiAny.sendStudentInvite({ email });
-  }
-  return Promise.resolve({ success: true, email });
+function extractEmailsFromText(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .split(/[\n,;\s]+/)
+        .map((s) =>
+          s
+            .trim()
+            .toLowerCase()
+            .replace(/^['"]+|['"]+$/g, ''),
+        )
+        .filter((s) => s.includes('@') && s.includes('.')),
+    ),
+  );
 }
 
-async function revokeInvite(email: string) {
-  const onboardingApiAny = api.onboarding as unknown as Record<
-    string,
-    (args: unknown) => Promise<unknown>
-  >;
-  if (typeof onboardingApiAny.revokeStudentInvite === 'function') {
-    return onboardingApiAny.revokeStudentInvite({ email });
+function extractEmailsFromCsv(text: string): string[] {
+  const emails: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    for (const cell of line.split(',')) {
+      const trimmed = cell
+        .trim()
+        .replace(/^["']+|["']+$/g, '')
+        .toLowerCase();
+      if (trimmed.includes('@') && trimmed.includes('.')) {
+        emails.push(trimmed);
+      }
+    }
   }
-  return Promise.resolve({ success: true, email });
+  return Array.from(new Set(emails));
 }
+
+function safeMsg(err: unknown, fallback: string): string {
+  if (isSmartApiError(err)) return err.message;
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
+// ─────────────────── component ────────────────────
 
 export default function ProvisioningPage() {
+  // Domain and batch scaffold
+  const [domain, setDomain] = useState<string | null>(null);
+  const [batches, setBatches] = useState<BatchDto[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [scaffoldLoading, setScaffoldLoading] = useState(true);
+
+  // Onboarding mode tabs
   const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'csv'>('single');
 
-  // Single candidate state
+  // Single candidate
+  const [singleName, setSingleName] = useState('');
   const [singleEmail, setSingleEmail] = useState('');
   const [singleSubmitting, setSingleSubmitting] = useState(false);
 
-  // Bulk candidate state
+  // Bulk paste
   const [bulkText, setBulkText] = useState('');
   const [parsedBulk, setParsedBulk] = useState<{ email: string; isValid: boolean }[]>([]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
-  // CSV candidate state
+  // CSV upload
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [parsedCsv, setParsedCsv] = useState<{ email: string; isValid: boolean }[]>([]);
   const [csvSubmitting, setCsvSubmitting] = useState(false);
 
-  // Invitation Roster state
-  const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
-  const [_loading, setLoading] = useState(true);
+  // Invitation roster (for selected batch)
+  const [members, setMembers] = useState<BatchMemberDto[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+
+  // Global feedback
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  async function loadStudents() {
-    setLoading(true);
+  // ── Load entitlements + batches ──
+  async function loadScaffold() {
+    setScaffoldLoading(true);
     try {
-      const data = await api.onboarding.listTpoStudents();
-      setStudents(data);
-    } catch {
-      // Fallback mock students if API unavailable
-      setStudents([
-        {
-          userId: 'stu_1',
-          fullName: 'Aarav Sharma',
-          email: 'aarav.sharma@institution.edu',
-          batchId: 'b_2026',
-          batchName: 'Batch 2026',
-          inviteStatus: 'ACCEPTED',
-          lastSentAt: null,
-          acceptedAt: '2026-01-16T10:00:00Z',
-          heldAt: null,
-        },
-        {
-          userId: 'stu_3',
-          fullName: 'Rohan Gupta',
-          email: 'rohan.gupta@institution.edu',
-          batchId: 'b_2026',
-          batchName: 'Batch 2026',
-          inviteStatus: 'PENDING',
-          lastSentAt: '2026-01-18T09:30:00Z',
-          acceptedAt: null,
-          heldAt: null,
-        },
+      const [ent, batchList] = await Promise.all([
+        api.onboarding.tpoEntitlements(),
+        api.onboarding.listBatches(),
       ]);
+      setDomain(ent.domain ?? null);
+      setBatches(batchList);
+      if (batchList.length > 0 && !selectedBatchId) {
+        setSelectedBatchId(batchList[0]?.batchId ?? '');
+      }
+    } catch {
+      setError('Failed to load institution data. Please refresh.');
     } finally {
-      setLoading(false);
+      setScaffoldLoading(false);
     }
   }
 
-  useEffect(() => {
-    void loadStudents();
-  }, []);
+  // ── Load invitation roster for selected batch ──
+  const loadMembers = useCallback(async () => {
+    if (!selectedBatchId) return;
+    setRosterLoading(true);
+    try {
+      setMembers(await api.onboarding.listBatchMembers(selectedBatchId));
+    } catch {
+      setError('Failed to load candidate roster.');
+    } finally {
+      setRosterLoading(false);
+    }
+  }, [selectedBatchId]);
 
+  useEffect(() => {
+    void loadScaffold();
+  }, []); // loadScaffold intentionally omitted — it only runs on mount
+
+  useEffect(() => {
+    void loadMembers();
+  }, [loadMembers]);
+
+  // ── Domain validation ──
   function validateDomain(email: string): boolean {
-    const trimmed = email.trim().toLowerCase();
-    return trimmed.endsWith(`@${LOCKED_DOMAIN}`);
+    if (!domain) return false;
+    return email.trim().toLowerCase().endsWith(`@${domain}`);
   }
 
-  // Handle single candidate provisioning
+  // ── Single candidate submit ──
   async function handleSingleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-
-    const email = singleEmail.trim();
-    if (!email) {
-      setError('Please enter a candidate email.');
+    const email = singleEmail.trim().toLowerCase();
+    const name = singleName.trim();
+    if (!name || !email) {
+      setError('Please enter both the candidate name and email.');
+      return;
+    }
+    if (!selectedBatchId) {
+      setError('Please select a batch before onboarding candidates.');
       return;
     }
     if (!validateDomain(email)) {
-      setError(`Email address must end with the institution's locked domain: @${LOCKED_DOMAIN}`);
+      setError(`Email must belong to the institution's locked domain: @${domain ?? '(loading…)'}`);
       return;
     }
-
     setSingleSubmitting(true);
     try {
-      await sendInvite(email);
-      setSuccessMsg(`Invitation successfully sent to ${email}`);
+      await api.onboarding.addBatchMember(selectedBatchId, { fullName: name, email });
+      await api.onboarding.sendBatchInvites(selectedBatchId);
+      setSuccessMsg(`Invitation sent to ${email}. They will receive a magic link via email.`);
+      setSingleName('');
       setSingleEmail('');
-      await loadStudents();
+      await loadMembers();
     } catch (caught) {
-      setError(isSmartApiError(caught) ? caught.message : `Invite sent to ${email}`);
-      setSuccessMsg(`Invitation provisioned for ${email}`);
-      setSingleEmail('');
+      setError(safeMsg(caught, 'Failed to onboard candidate. Please try again.'));
     } finally {
       setSingleSubmitting(false);
     }
   }
 
-  // Handle bulk candidate parsing
+  // ── Bulk email parse & submit ──
   function handleBulkParse() {
     setError(null);
-    const emails = bulkText
-      .split(/[\n,;]/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0);
-
-    if (emails.length === 0) {
-      setError('Please paste at least one email address.');
+    if (!bulkText.trim()) {
+      setError('Please paste at least one candidate email address.');
       return;
     }
-
-    const uniqueEmails = Array.from(new Set(emails));
-    const parsed = uniqueEmails.map((email) => ({
-      email,
-      isValid: validateDomain(email),
-    }));
-
-    setParsedBulk(parsed);
+    const emails = extractEmailsFromText(bulkText);
+    if (emails.length === 0) {
+      setError('No valid email addresses found in the pasted text.');
+      return;
+    }
+    setParsedBulk(emails.map((em) => ({ email: em, isValid: validateDomain(em) })));
   }
 
-  // Handle bulk candidate submit
   async function handleBulkSubmit() {
-    const validEmails = parsedBulk.filter((p) => p.isValid).map((p) => p.email);
-    if (validEmails.length === 0) {
-      setError('No valid emails with the locked domain to provision.');
+    const valid = parsedBulk.filter((p) => p.isValid);
+    if (valid.length === 0) {
+      setError('No candidates with the institution domain to provision.');
       return;
     }
-
+    if (!selectedBatchId) {
+      setError('Please select a batch.');
+      return;
+    }
     setBulkSubmitting(true);
     setError(null);
-    try {
-      for (const email of validEmails) {
-        await sendInvite(email).catch(() => null);
+    let added = 0;
+    const failed: string[] = [];
+    for (const { email } of valid) {
+      const namePart = email.split('@')[0] ?? email;
+      const fallbackName = namePart.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      try {
+        await api.onboarding.addBatchMember(selectedBatchId, {
+          fullName: fallbackName,
+          email,
+        });
+        added += 1;
+      } catch {
+        failed.push(email);
       }
-      setSuccessMsg(`Successfully provisioned ${validEmails.length} candidate(s).`);
+    }
+    if (added > 0) {
+      try {
+        await api.onboarding.sendBatchInvites(selectedBatchId);
+      } catch {
+        setError('Candidates added but invitation emails could not be queued.');
+      }
+      setSuccessMsg(
+        `Provisioned ${added} candidate(s).${failed.length > 0 ? ` ${failed.length} already existed or had errors.` : ''}`,
+      );
       setBulkText('');
       setParsedBulk([]);
-      await loadStudents();
-    } catch (caught) {
-      setError(isSmartApiError(caught) ? caught.message : 'Error provisioning candidates.');
-    } finally {
-      setBulkSubmitting(false);
+      await loadMembers();
+    } else {
+      setError(`All ${failed.length} candidate(s) failed. They may already be enrolled.`);
     }
+    setBulkSubmitting(false);
   }
 
-  // Handle CSV file selection and parsing
+  // ── CSV handling ──
   function handleCsvFile(file: File) {
     setCsvFile(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (!text) return;
-
-      const lines = text.split(/\r\n|\n/);
-      const emails: string[] = [];
-
-      for (const line of lines) {
-        const parts = line.split(',');
-        for (const part of parts) {
-          const trimmed = part.trim().replace(/^["']|["']$/g, '');
-          if (trimmed.includes('@')) {
-            emails.push(trimmed.toLowerCase());
-          }
-        }
-      }
-
-      const uniqueEmails = Array.from(new Set(emails));
-      setParsedCsv(
-        uniqueEmails.map((email) => ({
-          email,
-          isValid: validateDomain(email),
-        })),
-      );
+      const emails = extractEmailsFromCsv(text);
+      setParsedCsv(emails.map((em) => ({ email: em, isValid: validateDomain(em) })));
     };
     reader.readAsText(file);
   }
 
-  // Handle CSV submit
   async function handleCsvSubmit() {
-    const validEmails = parsedCsv.filter((p) => p.isValid).map((p) => p.email);
-    if (validEmails.length === 0) {
-      setError('No valid emails found matching the locked domain in the CSV.');
+    const valid = parsedCsv.filter((p) => p.isValid);
+    if (valid.length === 0) {
+      setError('No valid institutional domain emails found in the CSV.');
       return;
     }
-
+    if (!selectedBatchId) {
+      setError('Please select a batch.');
+      return;
+    }
     setCsvSubmitting(true);
     setError(null);
-    try {
-      for (const email of validEmails) {
-        await sendInvite(email).catch(() => null);
+    let added = 0;
+    const failed: string[] = [];
+    for (const { email } of valid) {
+      const namePart = email.split('@')[0] ?? email;
+      const fallbackName = namePart.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      try {
+        await api.onboarding.addBatchMember(selectedBatchId, {
+          fullName: fallbackName,
+          email,
+        });
+        added += 1;
+      } catch {
+        failed.push(email);
       }
-      setSuccessMsg(`Successfully provisioned ${validEmails.length} candidate(s) from CSV.`);
+    }
+    if (added > 0) {
+      try {
+        await api.onboarding.sendBatchInvites(selectedBatchId);
+      } catch {
+        setError('Candidates added but invitation emails could not be queued.');
+      }
+      setSuccessMsg(
+        `Provisioned ${added} candidate(s) from CSV.${failed.length > 0 ? ` ${failed.length} skipped.` : ''}`,
+      );
       setCsvFile(null);
       setParsedCsv([]);
-      await loadStudents();
+      if (csvInputRef.current) csvInputRef.current.value = '';
+      await loadMembers();
+    } else {
+      setError(`All ${failed.length} candidate(s) failed. They may already be enrolled.`);
+    }
+    setCsvSubmitting(false);
+  }
+
+  // ── Copy Invite Link ──
+  async function handleCopyInviteLink(userId: string) {
+    setActionLoadingId(`copy-${userId}`);
+    try {
+      const { inviteUrl } = await api.onboarding.getStudentInviteLink(userId);
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedId(userId);
+      setTimeout(() => setCopiedId(null), 3000);
     } catch (caught) {
-      setError(isSmartApiError(caught) ? caught.message : 'Error provisioning candidates.');
+      setError(safeMsg(caught, 'Could not generate invite link. Please try again.'));
     } finally {
-      setCsvSubmitting(false);
+      setActionLoadingId(null);
     }
   }
 
-  // Resend Invite
-  async function handleResendInvite(email: string) {
+  // ── Resend Invitation ──
+  async function handleResend(invitationId: string) {
+    setActionLoadingId(`resend-${invitationId}`);
+    setError(null);
     try {
-      await sendInvite(email);
-      setSuccessMsg(`Resent invitation to ${email}`);
-    } catch {
-      setSuccessMsg(`Resent invitation to ${email}`);
+      await api.onboarding.resendStudentInvitation(invitationId);
+      setSuccessMsg('Invitation resent successfully.');
+      await loadMembers();
+    } catch (caught) {
+      setError(safeMsg(caught, 'Failed to resend invitation.'));
+    } finally {
+      setActionLoadingId(null);
     }
   }
 
-  // Revoke Invite
-  async function handleRevokeInvite(email: string) {
+  // ── Revoke Invitation ──
+  async function handleRevoke(invitationId: string) {
+    setActionLoadingId(`revoke-${invitationId}`);
+    setError(null);
     try {
-      await revokeInvite(email);
-      setSuccessMsg(`Revoked invitation for ${email}`);
-      await loadStudents();
-    } catch {
-      setStudents((prev) => prev.filter((s) => s.email !== email));
-      setSuccessMsg(`Revoked invitation for ${email}`);
+      await api.onboarding.revokeStudentInvitation(invitationId);
+      setSuccessMsg('Invitation revoked.');
+      await loadMembers();
+    } catch (caught) {
+      setError(safeMsg(caught, 'Failed to revoke invitation.'));
+    } finally {
+      setActionLoadingId(null);
     }
   }
 
-  // Copy Invite Link
-  function handleCopyInviteLink(email: string) {
-    const inviteUrl = `${window.location.origin}/onboarding?email=${encodeURIComponent(email)}`;
-    void navigator.clipboard.writeText(inviteUrl);
-    setCopiedLink(email);
-    setTimeout(() => setCopiedLink(null), 3000);
-  }
+  const isSingleValid =
+    !!singleEmail && !!domain && singleEmail.trim().toLowerCase().endsWith(`@${domain}`);
 
-  const isSingleValid = validateDomain(singleEmail);
+  const pendingMembers = members.filter(
+    (m) => m.invitation?.status === 'PENDING' && !m.emailVerified,
+  );
+  const activeMembers = members.filter((m) => m.emailVerified);
 
   return (
     <main className="max-w-[1400px] mx-auto space-y-5 font-sans select-none pb-12 text-zinc-100">
@@ -292,16 +365,16 @@ export default function ProvisioningPage() {
               Candidate Onboarding Workspace
             </h1>
             <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1">
-              <Lock className="size-3" /> Locked Domain Enforced
+              <Lock className="size-3" /> Domain Locked
             </span>
           </div>
           <p className="text-zinc-400 text-xs md:text-sm font-medium">
-            Onboard candidate accounts by email. Candidates autonomously select their own streams
-            during onboarding.
+            Onboard candidates by email. Candidates autonomously select their own streams during
+            onboarding.
           </p>
         </div>
 
-        {/* Locked Domain Badge */}
+        {/* Domain Badge */}
         <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-lg flex items-center gap-3 shrink-0">
           <div className="size-9 rounded-md bg-zinc-800 text-zinc-200 border border-zinc-700 flex items-center justify-center">
             <ShieldCheck className="size-4" />
@@ -310,9 +383,53 @@ export default function ProvisioningPage() {
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
               Institution Domain
             </span>
-            <span className="text-xs font-extrabold text-white">@{LOCKED_DOMAIN}</span>
+            {scaffoldLoading ? (
+              <Loader2 className="size-3 animate-spin text-zinc-400" />
+            ) : (
+              <span className="text-xs font-extrabold text-white">@{domain ?? '(unknown)'}</span>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Batch Selector */}
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider shrink-0">
+          Active Batch
+        </span>
+        {scaffoldLoading ? (
+          <Loader2 className="size-4 animate-spin text-zinc-400" />
+        ) : batches.length === 0 ? (
+          <div className="flex items-center gap-3 flex-1">
+            <p className="text-xs text-zinc-500 font-medium">
+              No batches exist yet.{' '}
+              <a href="/batches" className="text-emerald-400 underline hover:text-emerald-300">
+                Create a batch first →
+              </a>
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 flex-1 flex-wrap">
+            <select
+              aria-label="Select batch for onboarding"
+              value={selectedBatchId}
+              onChange={(e) => setSelectedBatchId(e.target.value)}
+              className="bg-zinc-950 text-zinc-100 text-xs font-bold rounded-lg border border-zinc-800 px-3 py-2 focus:outline-none focus:border-emerald-600 min-w-[200px]"
+            >
+              {batches.map((b) => (
+                <option key={b.batchId} value={b.batchId}>
+                  {b.name} {b.code ? `(${b.code})` : ''} — {b.memberCount} members
+                </option>
+              ))}
+            </select>
+            <a
+              href="/batches"
+              className="text-xs text-zinc-400 hover:text-emerald-400 font-semibold underline transition-colors"
+            >
+              + Create new batch
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Notifications */}
@@ -342,7 +459,7 @@ export default function ProvisioningPage() {
         </div>
       )}
 
-      {/* Provisioning Modes Card */}
+      {/* Onboarding Modes Card */}
       <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-xs">
         {/* Tabs */}
         <div className="flex items-center gap-2 border-b border-zinc-800 pb-4 mb-6">
@@ -354,9 +471,8 @@ export default function ProvisioningPage() {
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
             }`}
           >
-            <Mail className="size-4" /> Single Candidate Email
+            <Mail className="size-4" /> Single Candidate
           </button>
-
           <button
             onClick={() => setActiveTab('bulk')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -367,7 +483,6 @@ export default function ProvisioningPage() {
           >
             <ListPlus className="size-4" /> Bulk Email Paste
           </button>
-
           <button
             onClick={() => setActiveTab('csv')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -385,12 +500,25 @@ export default function ProvisioningPage() {
           <form onSubmit={handleSingleSubmit} className="space-y-4 max-w-xl">
             <div>
               <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">
+                Candidate Full Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Aarav Sharma"
+                className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2.5 px-4 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-medium placeholder:text-zinc-500"
+                value={singleName}
+                onChange={(e) => setSingleName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">
                 Candidate Institutional Email
               </label>
               <div className="relative">
                 <input
                   type="email"
-                  placeholder={`student@${LOCKED_DOMAIN}`}
+                  placeholder={`student@${domain ?? 'institution.edu'}`}
                   className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2.5 pl-4 pr-10 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-medium placeholder:text-zinc-500"
                   value={singleEmail}
                   onChange={(e) => setSingleEmail(e.target.value)}
@@ -406,17 +534,23 @@ export default function ProvisioningPage() {
                 )}
               </div>
               <p className="text-[11px] text-zinc-500 mt-1.5 font-medium">
-                Email must belong to @{LOCKED_DOMAIN}. Stream selection will occur during candidate
+                Must belong to @{domain ?? '(loading…)'}. Candidate selects their stream during
                 onboarding.
               </p>
             </div>
 
             <Button
               type="submit"
-              disabled={singleSubmitting || !singleEmail}
+              disabled={singleSubmitting || !singleName || !singleEmail || !selectedBatchId}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors border border-emerald-500/50 shadow-xs"
             >
-              {singleSubmitting ? 'Onboarding...' : 'Onboard Candidate & Send Invitation'}
+              {singleSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-3.5 animate-spin" /> Onboarding…
+                </span>
+              ) : (
+                'Onboard Candidate & Send Invitation'
+              )}
             </Button>
           </form>
         )}
@@ -426,11 +560,11 @@ export default function ProvisioningPage() {
           <div className="space-y-4 max-w-2xl">
             <div>
               <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">
-                Paste Multiple Candidate Emails (One per line or comma-separated)
+                Paste Multiple Candidate Emails (one per line or comma-separated)
               </label>
               <textarea
                 rows={5}
-                placeholder={`student1@${LOCKED_DOMAIN}\nstudent2@${LOCKED_DOMAIN}\nstudent3@${LOCKED_DOMAIN}`}
+                placeholder={`student1@${domain ?? 'institution.edu'}\nstudent2@${domain ?? 'institution.edu'}\nstudent3@${domain ?? 'institution.edu'}`}
                 className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg p-3 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-mono placeholder:text-zinc-500"
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
@@ -471,13 +605,21 @@ export default function ProvisioningPage() {
 
                 <Button
                   type="button"
-                  onClick={handleBulkSubmit}
-                  disabled={bulkSubmitting || parsedBulk.filter((p) => p.isValid).length === 0}
+                  onClick={() => void handleBulkSubmit()}
+                  disabled={
+                    bulkSubmitting ||
+                    parsedBulk.filter((p) => p.isValid).length === 0 ||
+                    !selectedBatchId
+                  }
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors border border-emerald-500/50 shadow-xs"
                 >
-                  {bulkSubmitting
-                    ? 'Onboarding...'
-                    : `Onboard ${parsedBulk.filter((p) => p.isValid).length} Valid Candidate(s)`}
+                  {bulkSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="size-3.5 animate-spin" /> Onboarding…
+                    </span>
+                  ) : (
+                    `Onboard ${parsedBulk.filter((p) => p.isValid).length} Valid Candidate(s)`
+                  )}
                 </Button>
               </div>
             )}
@@ -491,9 +633,11 @@ export default function ProvisioningPage() {
               <UploadCloud className="size-8 text-zinc-400 mb-2" />
               <p className="text-xs font-bold text-white mb-1">Upload Candidate CSV Roster</p>
               <p className="text-[11px] text-zinc-400 mb-4 font-medium">
-                CSV file must contain an email column with institutional domain @{LOCKED_DOMAIN}.
+                CSV must contain an email column using the institution domain @
+                {domain ?? '(loading…)'}.
               </p>
               <input
+                ref={csvInputRef}
                 type="file"
                 accept=".csv"
                 id="csv-upload"
@@ -503,22 +647,20 @@ export default function ProvisioningPage() {
                   if (file) handleCsvFile(file);
                 }}
               />
-              <label htmlFor="csv-upload">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('csv-upload')?.click()}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs px-4 py-2 rounded-lg border border-zinc-700 cursor-pointer"
-                >
-                  {csvFile ? csvFile.name : 'Select CSV File'}
-                </Button>
-              </label>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('csv-upload')?.click()}
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs px-4 py-2 rounded-lg border border-zinc-700 cursor-pointer"
+              >
+                {csvFile ? csvFile.name : 'Select CSV File'}
+              </Button>
             </div>
 
             {parsedCsv.length > 0 && (
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  Parsed CSV Roster ({parsedCsv.filter((p) => p.isValid).length} Valid /{' '}
+                  Parsed Roster ({parsedCsv.filter((p) => p.isValid).length} Valid /{' '}
                   {parsedCsv.filter((p) => !p.isValid).length} Invalid)
                 </h4>
 
@@ -541,13 +683,21 @@ export default function ProvisioningPage() {
 
                 <Button
                   type="button"
-                  onClick={handleCsvSubmit}
-                  disabled={csvSubmitting || parsedCsv.filter((p) => p.isValid).length === 0}
+                  onClick={() => void handleCsvSubmit()}
+                  disabled={
+                    csvSubmitting ||
+                    parsedCsv.filter((p) => p.isValid).length === 0 ||
+                    !selectedBatchId
+                  }
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors border border-emerald-500/50 shadow-xs"
                 >
-                  {csvSubmitting
-                    ? 'Onboarding...'
-                    : `Onboard ${parsedCsv.filter((p) => p.isValid).length} Candidate(s)`}
+                  {csvSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="size-3.5 animate-spin" /> Onboarding…
+                    </span>
+                  ) : (
+                    `Onboard ${parsedCsv.filter((p) => p.isValid).length} Candidate(s) from CSV`
+                  )}
                 </Button>
               </div>
             )}
@@ -555,83 +705,183 @@ export default function ProvisioningPage() {
         )}
       </Card>
 
-      {/* Invitation Roster Management Table Container */}
+      {/* Invitation Roster */}
       <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
         <div className="p-5 border-b border-zinc-800 bg-zinc-900/60 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-white">Pending & Active Invitations</h2>
             <p className="text-xs text-zinc-400 mt-0.5 font-medium">
-              Manage candidate invitation links, resend invitations, or revoke invitations.
+              {selectedBatchId
+                ? `Showing candidates for the selected batch.`
+                : `Select a batch above to see candidates.`}
             </p>
           </div>
-          <span className="text-xs font-bold text-zinc-300 bg-zinc-800 border border-zinc-700 px-2.5 py-1 rounded-md">
-            {students.length} Candidates Enrolled
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-zinc-300 bg-zinc-800 border border-zinc-700 px-2.5 py-1 rounded-md">
+              {members.length} Total
+            </span>
+            <button
+              onClick={() => void loadMembers()}
+              disabled={rosterLoading}
+              className="p-1.5 rounded-md border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className={`size-3.5 ${rosterLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left whitespace-nowrap">
-            <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
-              <tr>
-                <th className="px-5 py-3">Candidate Email</th>
-                <th className="px-5 py-3">Candidate Name</th>
-                <th className="px-5 py-3">Invitation Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60">
-              {students.map((student) => (
-                <tr key={student.userId} className="hover:bg-zinc-900/50 transition-colors">
-                  <td className="px-5 py-3.5 font-mono font-semibold text-zinc-200">
-                    {student.email}
-                  </td>
-                  <td className="px-5 py-3.5 font-bold text-white">{student.fullName}</td>
-                  <td className="px-5 py-3.5">
-                    {student.inviteStatus === 'ACCEPTED' ? (
+        {!selectedBatchId ? (
+          <div className="p-8 text-center text-zinc-500 text-xs font-medium">
+            No batch selected. Choose a batch to view invited candidates.
+          </div>
+        ) : rosterLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-zinc-400" />
+          </div>
+        ) : members.length === 0 ? (
+          <div className="p-8 text-center text-zinc-500 text-xs font-medium">
+            No candidates in this batch yet. Use the tabs above to onboard candidates.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left whitespace-nowrap">
+              <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
+                <tr>
+                  <th className="px-5 py-3">Candidate</th>
+                  <th className="px-5 py-3">Group</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60">
+                {/* Active members first */}
+                {activeMembers.map((m) => (
+                  <tr key={m.userId} className="hover:bg-zinc-900/50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-white">{m.fullName}</div>
+                      <div className="font-mono text-zinc-500 text-[11px]">{m.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-400 font-medium">{m.groupLabel ?? '—'}</td>
+                    <td className="px-5 py-3.5">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                        <CheckCircle className="size-3" /> Accepted & Active
+                        <CheckCircle className="size-3" /> Active
                       </span>
-                    ) : (
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={() => void handleCopyInviteLink(m.userId)}
+                        disabled={actionLoadingId === `copy-${m.userId}`}
+                        className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all ml-auto"
+                        title="Copy Invitation Link"
+                      >
+                        {actionLoadingId === `copy-${m.userId}` ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Copy className="size-3 text-zinc-400" />
+                        )}
+                        {copiedId === m.userId ? 'Copied!' : 'Copy Link'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {/* Pending invitation members */}
+                {pendingMembers.map((m) => (
+                  <tr key={m.userId} className="hover:bg-zinc-900/50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-white">{m.fullName}</div>
+                      <div className="font-mono text-zinc-500 text-[11px]">{m.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-400 font-medium">{m.groupLabel ?? '—'}</td>
+                    <td className="px-5 py-3.5">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
                         Pending Invitation
                       </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleCopyInviteLink(student.email)}
-                        className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all"
-                        title="Copy Invitation Link"
-                      >
-                        <Copy className="size-3 text-zinc-400" />
-                        {copiedLink === student.email ? 'Copied Link!' : 'Copy Link'}
-                      </button>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => void handleCopyInviteLink(m.userId)}
+                          disabled={!!actionLoadingId}
+                          className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
+                          title="Copy Invitation Link"
+                        >
+                          {actionLoadingId === `copy-${m.userId}` ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Copy className="size-3 text-zinc-400" />
+                          )}
+                          {copiedId === m.userId ? 'Copied!' : 'Copy Link'}
+                        </button>
 
-                      <button
-                        onClick={() => void handleResendInvite(student.email)}
-                        className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all"
-                        title="Resend Invitation"
-                      >
-                        <RotateCcw className="size-3 text-zinc-400" />
-                        Resend
-                      </button>
+                        {m.invitation?.invitationId && (
+                          <>
+                            <button
+                              onClick={() => {
+                                const invId = m.invitation?.invitationId;
+                                if (invId) void handleResend(invId);
+                              }}
+                              disabled={!!actionLoadingId}
+                              className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
+                              title="Resend Invitation"
+                            >
+                              {actionLoadingId === `resend-${m.invitation?.invitationId}` ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : (
+                                <RotateCcw className="size-3 text-zinc-400" />
+                              )}
+                              Resend
+                            </button>
 
-                      <button
-                        onClick={() => void handleRevokeInvite(student.email)}
-                        className="px-2.5 py-1.5 rounded-md border border-rose-900/50 bg-rose-950/30 hover:bg-rose-950 text-rose-300 font-semibold flex items-center gap-1 text-[11px] transition-all"
-                        title="Revoke Invitation"
-                      >
-                        <Trash2 className="size-3 text-rose-400" />
-                        Revoke
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                            <button
+                              onClick={() => {
+                                const invId = m.invitation?.invitationId;
+                                if (invId) void handleRevoke(invId);
+                              }}
+                              disabled={!!actionLoadingId}
+                              className="px-2.5 py-1.5 rounded-md border border-rose-900/50 bg-rose-950/30 hover:bg-rose-950 text-rose-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
+                              title="Revoke Invitation"
+                            >
+                              {actionLoadingId === `revoke-${m.invitation.invitationId}` ? (
+                                <Loader2 className="size-3 animate-spin text-rose-400" />
+                              ) : (
+                                <Trash2 className="size-3 text-rose-400" />
+                              )}
+                              Revoke
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {/* Other statuses (revoked, accepted without full verification, etc.) */}
+                {members
+                  .filter((m) => !m.emailVerified && m.invitation?.status !== 'PENDING')
+                  .map((m) => (
+                    <tr
+                      key={m.userId}
+                      className="hover:bg-zinc-900/50 transition-colors opacity-60"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="font-bold text-white">{m.fullName}</div>
+                        <div className="font-mono text-zinc-500 text-[11px]">{m.email}</div>
+                      </td>
+                      <td className="px-5 py-3.5 text-zinc-400 font-medium">
+                        {m.groupLabel ?? '—'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-700">
+                          {m.invitation?.status ?? 'No Invite'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">—</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </main>
   );

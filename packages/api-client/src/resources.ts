@@ -547,6 +547,11 @@ export function onboardingApi(client: SmartApiClient) {
       client.post(prefixed(`/tpo/invitations/${invitationId}/resend`), undefined, {
         schema: InvitationDtoSchema,
       }),
+
+    revokeStudentInvitation: (invitationId: string) =>
+      client.post(prefixed(`/tpo/invitations/${invitationId}/revoke`), undefined, {
+        schema: InvitationDtoSchema,
+      }),
   };
 }
 

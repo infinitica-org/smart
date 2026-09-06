@@ -5,21 +5,10 @@ import { Building2, Globe, Shield, Lock, CheckCircle2, Cpu } from 'lucide-react'
 import { Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../../lib/api';
-
-const LOCKED_DOMAIN = 'institution.edu';
-
-interface EntitlementState {
-  tier: string;
-  maxCandidates: number;
-  currentCandidatesCount: number;
-}
-
 export default function SettingsPage() {
-  const [entitlements, setEntitlements] = useState<EntitlementState | null>({
-    tier: 'INSTITUTION_PRO',
-    maxCandidates: 500,
-    currentCandidatesCount: 3,
-  });
+  const [domain, setDomain] = useState<string | null>(null);
+  const [tier, setTier] = useState<string | null>(null);
+  const [studentCount, setStudentCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,24 +17,19 @@ export default function SettingsPage() {
     setLoading(true);
     setError(null);
 
-    api.onboarding
-      .tpoEntitlements()
-      .then(() => {
+    Promise.all([
+      api.onboarding.tpoEntitlements(),
+      api.onboarding.listTpoStudents().catch(() => []),
+    ])
+      .then(([entitlements, students]) => {
         if (!active) return;
-        setEntitlements({
-          tier: 'INSTITUTION_PRO',
-          maxCandidates: 500,
-          currentCandidatesCount: 3,
-        });
+        setDomain(entitlements.domain ?? null);
+        setTier(entitlements.planCode);
+        setStudentCount(students.length);
       })
       .catch((err: unknown) => {
         if (!active) return;
-        setError(isSmartApiError(err) ? err.message : 'Loaded institutional entitlements.');
-        setEntitlements({
-          tier: 'INSTITUTION_PRO',
-          maxCandidates: 500,
-          currentCandidatesCount: 3,
-        });
+        setError(isSmartApiError(err) ? err.message : 'Failed to load institutional entitlements.');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -85,7 +69,7 @@ export default function SettingsPage() {
                 Institution Name
               </label>
               <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white flex items-center gap-2.5">
-                <Building2 className="size-4 text-emerald-400" /> Global Tech University
+                <Building2 className="size-4 text-emerald-400" /> Institution Account
               </div>
             </div>
 
@@ -94,7 +78,8 @@ export default function SettingsPage() {
                 Locked Email Domain(s)
               </label>
               <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono font-bold text-emerald-400 flex items-center gap-2.5">
-                <Lock className="size-4 text-emerald-400" /> @{LOCKED_DOMAIN}
+                <Lock className="size-4 text-emerald-400" />{' '}
+                {domain ? `@${domain}` : 'Domain Unset'}
               </div>
             </div>
           </div>
@@ -102,8 +87,9 @@ export default function SettingsPage() {
           <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-lg text-xs text-zinc-400 flex items-center gap-2.5">
             <Globe className="size-4 text-zinc-400 shrink-0" />
             <span>
-              <strong className="text-white">Domain Enforcement:</strong> All candidate provisioning
-              and invitations are strictly locked to candidate emails ending with @{LOCKED_DOMAIN}.
+              <strong className="text-white">Domain Enforcement:</strong> Candidate provisioning and
+              invitations are strictly locked to candidate emails ending with{' '}
+              {domain ? `@${domain}` : 'the institutional domain'}.
             </span>
           </div>
         </Card>
@@ -117,8 +103,7 @@ export default function SettingsPage() {
 
         {error && (
           <div className="bg-amber-950/40 border border-amber-800/80 text-amber-200 p-4 rounded-xl text-xs font-medium">
-            <strong className="font-bold">Note:</strong> {error} Showing active institutional
-            entitlements below.
+            <strong className="font-bold">Note:</strong> {error}
           </div>
         )}
 
@@ -132,8 +117,7 @@ export default function SettingsPage() {
                   Active Subscription Tier
                 </span>
                 <div className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Cpu className="size-4 text-emerald-400" />{' '}
-                  {entitlements?.tier ?? 'INSTITUTION_PRO'}
+                  <Cpu className="size-4 text-emerald-400" /> {tier ?? 'INSTITUTION_PRO'}
                 </div>
               </div>
 
@@ -141,9 +125,7 @@ export default function SettingsPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
                   Candidate Entitlement Capacity
                 </span>
-                <div className="text-base font-extrabold text-white">
-                  {entitlements?.maxCandidates ?? 500} Candidates
-                </div>
+                <div className="text-base font-extrabold text-white">Unlimited Candidates</div>
               </div>
 
               <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
@@ -151,8 +133,7 @@ export default function SettingsPage() {
                   Currently Provisioned
                 </span>
                 <div className="text-base font-extrabold text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-emerald-400" />{' '}
-                  {entitlements?.currentCandidatesCount ?? 3} Active
+                  <CheckCircle2 className="size-4 text-emerald-400" /> {studentCount} Active
                 </div>
               </div>
             </div>

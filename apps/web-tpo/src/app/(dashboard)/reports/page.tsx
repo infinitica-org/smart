@@ -30,88 +30,10 @@ function streamLabel(stream: string): string {
   }
 }
 
-const MOCK_STUDENTS: InstitutionStudentDto[] = [
-  {
-    userId: 'stu_1',
-    fullName: 'Aarav Sharma',
-    email: 'aarav.sharma@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026',
-    inviteStatus: 'ACCEPTED',
-    lastSentAt: null,
-    acceptedAt: '2026-01-16T10:00:00Z',
-    heldAt: null,
-  },
-  {
-    userId: 'stu_2',
-    fullName: 'Ananya Verma',
-    email: 'ananya.verma@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026',
-    inviteStatus: 'ACCEPTED',
-    lastSentAt: null,
-    acceptedAt: '2026-01-17T11:00:00Z',
-    heldAt: null,
-  },
-  {
-    userId: 'stu_3',
-    fullName: 'Rohan Gupta',
-    email: 'rohan.gupta@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026',
-    inviteStatus: 'PENDING',
-    lastSentAt: '2026-01-18T09:30:00Z',
-    acceptedAt: null,
-    heldAt: null,
-  },
-];
-
-const MOCK_CLAIMS: SkillClaimDto[] = [
-  {
-    claimId: 'cl_1',
-    studentId: 'stu_1',
-    skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-    proficiency: 'ADVANCED',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_2',
-    studentId: 'stu_1',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
-    proficiency: 'INTERMEDIATE',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_3',
-    studentId: 'stu_2',
-    skillCode: 'PYTHON_FOR_ML_ENGINEERING',
-    proficiency: 'INTERMEDIATE',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_4',
-    studentId: 'stu_3',
-    skillCode: 'ADVANCED_SQL_ANALYTICAL_QUERYING',
-    proficiency: 'BEGINNER',
-    status: 'DECLARED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-];
-
 export default function ReportsPage() {
-  const [students, setStudents] = useState<InstitutionStudentDto[]>(MOCK_STUDENTS);
-  const [claims, setClaims] = useState<SkillClaimDto[]>(MOCK_CLAIMS);
+  const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
+  const [claims, setClaims] = useState<SkillClaimDto[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Updated Filters according to user requirements:
   // 1. Candidate Stream Filter
@@ -122,17 +44,16 @@ export default function ReportsPage() {
   const [proficiencyFilter, setProficiencyFilter] = useState<string>('ALL');
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      api.onboarding.listTpoStudents().catch(() => MOCK_STUDENTS),
-      api.assessment.listSkillClaims().catch(() => MOCK_CLAIMS),
+      api.onboarding.listTpoStudents().catch(() => [] as InstitutionStudentDto[]),
+      api.assessment.listSkillClaims().catch(() => [] as SkillClaimDto[]),
     ])
       .then(([studentList, claimList]) => {
         setStudents(studentList);
         setClaims(claimList);
       })
-      .catch(() => {
-        /* Fallback mock data */
-      });
+      .finally(() => setLoading(false));
   }, []);
 
   // Filtered dataset for reporting
@@ -325,7 +246,13 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {filteredStudents.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-10 text-zinc-500 font-medium">
+                    Loading reports data…
+                  </td>
+                </tr>
+              ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-10 text-zinc-500 font-medium">
                     No candidates match the report filters.

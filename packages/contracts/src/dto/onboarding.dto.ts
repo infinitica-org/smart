@@ -380,6 +380,9 @@ export type SetFeatureFlagOverrideRequest = z.infer<typeof SetFeatureFlagOverrid
 export const TenantEntitlementsDtoSchema = z.object({
   planCode: PlanCodeSchema.nullable(),
   flags: z.array(PlanEntitlementDtoSchema),
+  institutionName: z.string().optional(),
+  domain: z.string().optional(),
+  candidateCapacity: z.number().optional(),
 });
 export type TenantEntitlementsDto = z.infer<typeof TenantEntitlementsDtoSchema>;
 
