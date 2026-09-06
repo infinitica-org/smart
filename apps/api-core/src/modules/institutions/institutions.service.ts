@@ -462,8 +462,16 @@ export class InstitutionsService {
       include: { entitlements: true, overrides: true },
       orderBy: { key: 'asc' },
     });
+    const PLAN_CAPACITIES: Record<string, number | undefined> = {
+      FREE: 100,
+      BASIC: 500,
+      PRO: undefined,
+    };
     return {
       planCode: institution.plan.code,
+      institutionName: institution.name,
+      domain: institution.domain,
+      candidateCapacity: PLAN_CAPACITIES[institution.plan.code],
       flags: flags.map((flag) => {
         const override = flag.overrides.find((row) => row.institutionId === institutionId);
         const entitlement = flag.entitlements.find((row) => row.planId === institution.planId);
@@ -1391,6 +1399,13 @@ export class InstitutionsService {
     institutionId: string,
   ): Promise<ReturnType<InvitationsService['resend']>> {
     return this.invitations.resend(invitationId, institutionId);
+  }
+
+  async revokeStudentInvitation(
+    invitationId: string,
+    institutionId: string,
+  ): Promise<ReturnType<InvitationsService['revoke']>> {
+    return this.invitations.revoke(invitationId, institutionId);
   }
 
   assertInstitutionAccess(userInstitutionId: string | null, institutionId: string): void {

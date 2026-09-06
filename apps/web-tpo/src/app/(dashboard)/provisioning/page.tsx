@@ -121,16 +121,29 @@ export default function ProvisioningPage() {
     }
   }
 
+  const loadMembersRef = useRef(0);
+
   // ── Load invitation roster for selected batch ──
   const loadMembers = useCallback(async () => {
-    if (!selectedBatchId) return;
+    if (!selectedBatchId) {
+      setMembers([]);
+      return;
+    }
+    const requestId = ++loadMembersRef.current;
     setRosterLoading(true);
     try {
-      setMembers(await api.onboarding.listBatchMembers(selectedBatchId));
+      const data = await api.onboarding.listBatchMembers(selectedBatchId);
+      if (requestId === loadMembersRef.current) {
+        setMembers(data);
+      }
     } catch {
-      setError('Failed to load candidate roster.');
+      if (requestId === loadMembersRef.current) {
+        setError('Failed to load candidate roster.');
+      }
     } finally {
-      setRosterLoading(false);
+      if (requestId === loadMembersRef.current) {
+        setRosterLoading(false);
+      }
     }
   }, [selectedBatchId]);
 
@@ -144,8 +157,11 @@ export default function ProvisioningPage() {
 
   // ── Domain validation ──
   function validateDomain(email: string): boolean {
-    if (!domain) return false;
-    return email.trim().toLowerCase().endsWith(`@${domain}`);
+    if (!domain || !domain.trim()) return false;
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanDomain = domain.trim().toLowerCase();
+    if (!cleanEmail.includes('@')) return false;
+    return cleanEmail.endsWith(`@${cleanDomain}`);
   }
 
   // ── Single candidate submit ──
@@ -169,9 +185,25 @@ export default function ProvisioningPage() {
     }
     setSingleSubmitting(true);
     try {
-      await api.onboarding.addBatchMember(selectedBatchId, { fullName: name, email });
-      await api.onboarding.sendBatchInvites(selectedBatchId);
-      setSuccessMsg(`Invitation sent to ${email}. They will receive a magic link via email.`);
+      const member = await api.onboarding.addBatchMember(selectedBatchId, {
+        fullName: name,
+        email,
+      });
+      let sendFailed = false;
+      if (member.invitation?.invitationId) {
+        try {
+          await api.onboarding.resendStudentInvitation(member.invitation.invitationId);
+        } catch {
+          sendFailed = true;
+        }
+      }
+      if (sendFailed) {
+        setSuccessMsg(
+          `Candidate ${name} added to batch, but sending invitation email failed. You can resend the invitation from the candidate roster below.`,
+        );
+      } else {
+        setSuccessMsg(`Invitation sent to ${email}. They will receive a magic link via email.`);
+      }
       setSingleName('');
       setSingleEmail('');
       await loadMembers();
@@ -802,7 +834,7 @@ export default function ProvisioningPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => void handleCopyInviteLink(m.userId)}
-                          disabled={!!actionLoadingId}
+                          disabled={actionLoadingId === `copy-${m.userId}`}
                           className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
                           title="Copy Invitation Link"
                         >
@@ -821,7 +853,7 @@ export default function ProvisioningPage() {
                                 const invId = m.invitation?.invitationId;
                                 if (invId) void handleResend(invId);
                               }}
-                              disabled={!!actionLoadingId}
+                              disabled={actionLoadingId === `resend-${m.invitation?.invitationId}`}
                               className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
                               title="Resend Invitation"
                             >
@@ -838,7 +870,7 @@ export default function ProvisioningPage() {
                                 const invId = m.invitation?.invitationId;
                                 if (invId) void handleRevoke(invId);
                               }}
-                              disabled={!!actionLoadingId}
+                              disabled={actionLoadingId === `revoke-${m.invitation.invitationId}`}
                               className="px-2.5 py-1.5 rounded-md border border-rose-900/50 bg-rose-950/30 hover:bg-rose-950 text-rose-300 font-semibold flex items-center gap-1 text-[11px] transition-all disabled:opacity-50"
                               title="Revoke Invitation"
                             >

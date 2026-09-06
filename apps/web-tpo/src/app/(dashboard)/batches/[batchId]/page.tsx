@@ -94,20 +94,22 @@ export default function BatchDetailPage() {
     setMemberSubmitting(true);
     try {
       const entitlements = await api.onboarding.tpoEntitlements().catch(() => null);
-      const domain = entitlements?.domain;
+      const domain = entitlements?.domain?.trim().toLowerCase();
       const trimmedEmail = email.trim().toLowerCase();
-      if (domain && !trimmedEmail.endsWith(`@${domain.toLowerCase()}`)) {
-        setError(`Email address must belong to domain @${domain}`);
+      if (!domain || !trimmedEmail.endsWith(`@${domain}`)) {
+        setError(`Email address must belong to domain @${domain ?? '(unavailable)'}`);
         setMemberSubmitting(false);
         return;
       }
 
-      await api.onboarding.addBatchMember(batchId, {
+      const newMember = await api.onboarding.addBatchMember(batchId, {
         fullName: fullName.trim(),
         email: trimmedEmail,
         groupLabel: groupLabel.trim() || undefined,
       });
-      await api.onboarding.sendBatchInvites(batchId);
+      if (newMember.invitation?.invitationId) {
+        await api.onboarding.resendStudentInvitation(newMember.invitation.invitationId);
+      }
       setFullName('');
       setEmail('');
       setGroupLabel('');
@@ -333,7 +335,7 @@ export default function BatchDetailPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            disabled={!!actionLoadingId}
+                            disabled={actionLoadingId === `copy-${member.userId}`}
                             className="text-[11px] text-zinc-400 hover:text-white font-semibold transition-colors flex items-center gap-1 disabled:opacity-50"
                             onClick={() => void onCopyLink(member.userId)}
                           >
@@ -346,7 +348,9 @@ export default function BatchDetailPage() {
                           </button>
                           <button
                             type="button"
-                            disabled={!!actionLoadingId}
+                            disabled={
+                              actionLoadingId === `resend-${member.invitation?.invitationId}`
+                            }
                             className="text-[11px] text-zinc-400 hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1 disabled:opacity-50"
                             onClick={() => {
                               const invitationId = member.invitation?.invitationId;
@@ -362,7 +366,9 @@ export default function BatchDetailPage() {
                           </button>
                           <button
                             type="button"
-                            disabled={!!actionLoadingId}
+                            disabled={
+                              actionLoadingId === `revoke-${member.invitation?.invitationId}`
+                            }
                             className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold transition-colors flex items-center gap-1 disabled:opacity-50"
                             onClick={() => {
                               const invitationId = member.invitation?.invitationId;

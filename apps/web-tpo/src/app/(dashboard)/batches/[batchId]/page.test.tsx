@@ -15,6 +15,11 @@ vi.mock('../../../../lib/api', () => ({
       updateBatch: vi.fn(),
       addBatchMember: vi.fn(),
       resendStudentInvitation: vi.fn(),
+      revokeStudentInvitation: vi.fn(),
+      getStudentInviteLink: vi.fn(),
+      tpoEntitlements: vi
+        .fn()
+        .mockResolvedValue({ domain: 'example.test', planCode: 'PRO', flags: [] }),
     },
   },
 }));

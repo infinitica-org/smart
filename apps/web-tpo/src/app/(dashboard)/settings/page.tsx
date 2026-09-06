@@ -7,6 +7,8 @@ import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../../lib/api';
 export default function SettingsPage() {
   const [domain, setDomain] = useState<string | null>(null);
+  const [institutionName, setInstitutionName] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<number | null | undefined>(undefined);
   const [tier, setTier] = useState<string | null>(null);
   const [studentCount, setStudentCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,8 @@ export default function SettingsPage() {
       .then(([entitlements, students]) => {
         if (!active) return;
         setDomain(entitlements.domain ?? null);
+        setInstitutionName(entitlements.institutionName ?? null);
+        setCapacity(entitlements.candidateCapacity);
         setTier(entitlements.planCode);
         setStudentCount(students.length);
       })
@@ -69,7 +73,8 @@ export default function SettingsPage() {
                 Institution Name
               </label>
               <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white flex items-center gap-2.5">
-                <Building2 className="size-4 text-emerald-400" /> Institution Account
+                <Building2 className="size-4 text-emerald-400" />{' '}
+                {institutionName ?? 'Institution Account'}
               </div>
             </div>
 
@@ -125,7 +130,11 @@ export default function SettingsPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
                   Candidate Entitlement Capacity
                 </span>
-                <div className="text-base font-extrabold text-white">Unlimited Candidates</div>
+                <div className="text-base font-extrabold text-white">
+                  {capacity !== undefined && capacity !== null
+                    ? `${capacity} Candidates`
+                    : 'Unlimited Candidates'}
+                </div>
               </div>
 
               <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">

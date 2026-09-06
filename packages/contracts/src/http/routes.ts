@@ -1042,6 +1042,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 150,
     summary: 'Resend one student invitation email.',
   },
+  {
+    method: 'POST',
+    path: '/tpo/invitations/:invitationId/revoke',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN'],
+    rateLimit: 'role.institutionAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Revoke one pending student invitation.',
+  },
 
   /* -------------------------------- catalog -------------------------------- */
   {

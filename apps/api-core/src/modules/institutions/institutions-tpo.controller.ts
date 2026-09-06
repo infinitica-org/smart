@@ -245,4 +245,9 @@ export class InstitutionsTpoController {
   resendInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
     return this.institutions.resendStudentInvitation(invitationId, requireInstitutionId(user));
   }
+
+  @Post('invitations/:invitationId/revoke')
+  revokeInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
+    return this.institutions.revokeStudentInvitation(invitationId, requireInstitutionId(user));
+  }
 }
