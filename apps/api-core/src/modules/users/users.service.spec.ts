@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UsersService } from './users.service.js';
 
@@ -29,6 +29,7 @@ function studentRow(overrides: Record<string, unknown> = {}) {
 describe('UsersService completeOnboarding', () => {
   const auth = { revokeAllForUser: vi.fn() };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const assessment = { declareSkillClaim: vi.fn().mockResolvedValue(undefined) };
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -45,7 +46,14 @@ describe('UsersService completeOnboarding', () => {
       },
     };
     outbox.enqueueEnvelope.mockClear();
-    service = new UsersService(prisma as never, auth as never, outbox as never);
+    assessment.declareSkillClaim.mockClear();
+    assessment.declareSkillClaim.mockResolvedValue(undefined);
+    service = new UsersService(
+      prisma as never,
+      auth as never,
+      outbox as never,
+      assessment as never,
+    );
   });
 
   it('rejects payloads without DPDP consent', async () => {
@@ -56,7 +64,12 @@ describe('UsersService completeOnboarding', () => {
         phoneCountryCode: '+91',
         phoneNumber: '9876543210',
         linkedinUrl: 'https://www.linkedin.com/in/ada',
-        preferences: ['Coding'],
+        jobPreferences: {
+          expectedCtcLakhs: 8,
+          currentLocation: 'Bengaluru',
+          preferredLocations: ['Bengaluru'],
+          preferredWorkModes: ['FULL_TIME'],
+        },
         dpdpConsent: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -85,7 +98,12 @@ describe('UsersService completeOnboarding', () => {
       education: [],
       experiences: [],
       skills: [{ type: 'language', name: 'English', proficiency: 'Fluent' }],
-      preferences: ['Coding'],
+      jobPreferences: {
+        expectedCtcLakhs: 8,
+        currentLocation: 'Bengaluru',
+        preferredLocations: ['Bengaluru'],
+        preferredWorkModes: ['FULL_TIME'],
+      },
       dpdpConsent: true,
     });
 
@@ -124,7 +142,12 @@ describe('UsersService completeOnboarding', () => {
       education: [],
       experiences: [],
       skills: [],
-      preferences: ['Coding'],
+      jobPreferences: {
+        expectedCtcLakhs: 8,
+        currentLocation: 'Bengaluru',
+        preferredLocations: ['Bengaluru'],
+        preferredWorkModes: ['FULL_TIME'],
+      },
       skillDiscovery: {
         suggestedFromGithub: [
           { language: 'TypeScript', bytes: 900, byteShare: 0.9, repoCount: 3 },
@@ -165,17 +188,101 @@ describe('UsersService completeOnboarding', () => {
       education: [],
       experiences: [],
       skills: [],
-      preferences: ['Coding'],
+      jobPreferences: {
+        expectedCtcLakhs: 8,
+        currentLocation: 'Bengaluru',
+        preferredLocations: ['Bengaluru'],
+        preferredWorkModes: ['FULL_TIME'],
+      },
       dpdpConsent: true,
     });
 
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
+  });
+
+  it('declares a SkillClaim for a mandatory catalog skill by matching its name', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce({
+      ...user,
+      onboardingCompleted: true,
+      institution: null,
+      company: null,
+      primaryTrack: null,
+      secondaryTrack: null,
+    });
+
+    await service.completeOnboarding(user.id, {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phoneCountryCode: '+91',
+      phoneNumber: '9876543210',
+      linkedinUrl: 'https://www.linkedin.com/in/ada',
+      education: [],
+      experiences: [],
+      skills: [
+        { type: 'technical', name: 'Git & version control', proficiency: 'INTERMEDIATE' },
+        // A per-item language pick never matches a catalog name, so it must
+        // not become a SkillClaim yet (no per-language codes in the catalog).
+        { type: 'technical', name: 'Python', proficiency: 'ADVANCED' },
+      ],
+      jobPreferences: {
+        expectedCtcLakhs: 8,
+        currentLocation: 'Bengaluru',
+        preferredLocations: ['Bengaluru'],
+        preferredWorkModes: ['FULL_TIME'],
+      },
+      dpdpConsent: true,
+    });
+
+    expect(assessment.declareSkillClaim).toHaveBeenCalledTimes(1);
+    expect(assessment.declareSkillClaim).toHaveBeenCalledWith(
+      { sub: user.id, role: 'STUDENT', inst: null },
+      { skillCode: 'GIT_VERSION_CONTROL', proficiency: 'INTERMEDIATE' },
+    );
+  });
+
+  it('tolerates an already-claimed mandatory skill without failing completion', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce({
+      ...user,
+      onboardingCompleted: true,
+      institution: null,
+      company: null,
+      primaryTrack: null,
+      secondaryTrack: null,
+    });
+    assessment.declareSkillClaim.mockRejectedValueOnce(
+      new ConflictException({ error: 'skill_already_claimed' }),
+    );
+
+    const result = await service.completeOnboarding(user.id, {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phoneCountryCode: '+91',
+      phoneNumber: '9876543210',
+      linkedinUrl: 'https://www.linkedin.com/in/ada',
+      education: [],
+      experiences: [],
+      skills: [{ type: 'technical', name: 'Git & version control', proficiency: 'INTERMEDIATE' }],
+      jobPreferences: {
+        expectedCtcLakhs: 8,
+        currentLocation: 'Bengaluru',
+        preferredLocations: ['Bengaluru'],
+        preferredWorkModes: ['FULL_TIME'],
+      },
+      dpdpConsent: true,
+    });
+
+    expect(result.onboardingCompleted).toBe(true);
   });
 });
 
 describe('UsersService saveOnboardingDraft', () => {
   const auth = { revokeAllForUser: vi.fn() };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const assessment = { declareSkillClaim: vi.fn().mockResolvedValue(undefined) };
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -191,7 +298,12 @@ describe('UsersService saveOnboardingDraft', () => {
         update: vi.fn(),
       },
     };
-    service = new UsersService(prisma as never, auth as never, outbox as never);
+    service = new UsersService(
+      prisma as never,
+      auth as never,
+      outbox as never,
+      assessment as never,
+    );
   });
 
   it('rejects an invalid draft payload', async () => {

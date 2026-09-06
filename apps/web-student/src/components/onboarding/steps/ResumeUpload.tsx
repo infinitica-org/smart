@@ -1,10 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useRef, useState } from 'react';
-import { ArrowRight, FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import type { ResumeParseDraft } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { extractResumeRawText } from '@/lib/extract-resume-text';
+import { PrimaryButton, StepHeading } from '../wizard-ui';
 
 interface ResumeUploadProps {
   onContinue: (draft: ResumeParseDraft | null) => void;
@@ -64,14 +65,11 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-lg">
-      <h2 className="text-[32px] leading-tight font-display font-medium tracking-tight text-white mb-2">
-        Share your resume
-      </h2>
-      <p className="text-sm text-white/45 font-axiforma leading-relaxed mb-8">
-        We parse your file with POST /users/me/resume/parse and pre-fill the profile. You can skip
-        and enter details by hand.
-      </p>
+    <div className="flex flex-col w-full">
+      <StepHeading
+        title="Let's build your profile"
+        subtitle="Upload your resume and we'll do the rest — skills, experience, education, all mapped out."
+      />
 
       <button
         type="button"
@@ -90,14 +88,14 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
           const file = e.dataTransfer.files[0];
           if (file && uploadStatus === 'idle') void startUpload(file);
         }}
-        className={`w-full min-h-[280px] rounded-2xl border border-dashed px-8 py-10 flex flex-col items-center justify-center text-center transition-colors ${
+        className={`w-full min-h-[280px] rounded-2xl border-2 border-dashed px-8 py-10 flex flex-col items-center justify-center text-center transition-colors ${
           isDragging
-            ? 'border-[#00fad0] bg-[#00fad0]/5'
+            ? 'border-gray-400 bg-gray-50'
             : uploadStatus === 'success'
-              ? 'border-[#00fad0]/25 bg-[#00fad0]/[0.04]'
+              ? 'border-emerald-300 bg-emerald-50/40'
               : uploadStatus === 'failed'
-                ? 'border-red-400/30 bg-red-400/[0.04]'
-                : 'border-white/12 bg-white/[0.02] hover:border-white/25'
+                ? 'border-red-300 bg-red-50/40'
+                : 'border-gray-300 bg-gray-50 hover:border-gray-400'
         } ${uploadStatus === 'idle' ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <input
@@ -113,39 +111,30 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'idle' && (
           <>
-            <div className="w-12 h-12 rounded-xl border border-white/10 bg-[#141414] flex items-center justify-center mb-5">
-              <FileText className="w-5 h-5 text-white/50" />
-            </div>
-            <p className="text-base font-display font-medium text-white mb-1">Upload your resume</p>
-            <p className="text-sm text-white/40 font-axiforma mb-5">
-              <span className="text-[#00fad0]">Choose a file</span> or drop it here
+            <Upload className="w-8 h-8 text-blue-500 mb-4" />
+            <p className="text-base font-semibold text-gray-900 mb-1">Upload Resume</p>
+            <p className="text-sm text-gray-400 mb-1">Max file size of 5MB</p>
+            <p className="text-sm text-gray-400">
+              Only upload resume in (readable .pdf or .docx) format
             </p>
-            <span className="text-[11px] font-axiforma text-white/35 border border-white/8 rounded-full px-2.5 py-1">
-              PDF, DOCX, or TXT · max 5 MB
-            </span>
           </>
         )}
 
         {busy && (
           <div className="w-full max-w-xs">
-            <Loader2 className="w-6 h-6 text-[#00fad0] animate-spin mx-auto mb-4" />
-            <p className="text-sm font-display text-white mb-1">
+            <Loader2 className="w-6 h-6 text-gray-700 animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-gray-900 mb-1">
               {uploadStatus === 'extracting' ? 'Reading file…' : 'Parsing resume…'}
             </p>
-            <p className="text-xs text-white/40 truncate mb-2">{fileName}</p>
-            <p className="text-[11px] text-white/35 font-axiforma">
-              {uploadStatus === 'parsing'
-                ? 'Calling POST /users/me/resume/parse'
-                : 'Preparing raw text for the parser'}
-            </p>
+            <p className="text-xs text-gray-400 truncate">{fileName}</p>
           </div>
         )}
 
         {uploadStatus === 'success' && (
           <>
-            <CheckCircle2 className="w-8 h-8 text-[#00fad0] mb-4" />
-            <p className="text-base font-display font-medium text-white mb-1">Resume parsed</p>
-            <p className="text-sm text-white/40 font-axiforma mb-4">{fileName}</p>
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-4" />
+            <p className="text-base font-semibold text-gray-900 mb-1">Resume parsed</p>
+            <p className="text-sm text-gray-400 mb-4">{fileName}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -155,7 +144,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setDraft(null);
                 setError(null);
               }}
-              className="text-xs text-[#00fad0] font-axiforma hover:underline"
+              className="text-xs font-medium text-gray-700 hover:underline"
             >
               Use a different file
             </button>
@@ -164,9 +153,9 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'failed' && (
           <>
-            <AlertCircle className="w-8 h-8 text-red-400 mb-4" />
-            <p className="text-base font-display font-medium text-white mb-1">Parse incomplete</p>
-            <p className="text-sm text-white/40 font-axiforma mb-4">{fileName}</p>
+            <AlertCircle className="w-8 h-8 text-red-500 mb-4" />
+            <p className="text-base font-semibold text-gray-900 mb-1">Parse incomplete</p>
+            <p className="text-sm text-gray-400 mb-4">{fileName}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -175,7 +164,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setFileName('');
                 setDraft(null);
               }}
-              className="text-xs text-[#00fad0] font-axiforma hover:underline"
+              className="text-xs font-medium text-gray-700 hover:underline"
             >
               Try another file
             </button>
@@ -183,26 +172,30 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
         )}
       </button>
 
-      {error ? <p className="mt-3 text-sm text-red-400 font-axiforma">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
 
-      <div className="mt-8 flex items-center gap-4">
-        <button
-          type="button"
+      <div className="mt-6 flex items-center gap-2">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="text-xs text-gray-400 uppercase tracking-wide">OR</span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+      <button
+        type="button"
+        onClick={() => onContinue(null)}
+        disabled={busy}
+        className="mt-4 text-sm font-medium text-gray-500 hover:text-gray-900 disabled:opacity-40 mx-auto"
+      >
+        I don&apos;t have a resume yet →
+      </button>
+
+      <div className="mt-8 flex justify-end">
+        <PrimaryButton
           onClick={() => onContinue(draft)}
           disabled={busy}
-          className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#00fad0] text-[#0a0a0a] text-sm font-axiforma font-medium disabled:opacity-40"
+          loading={uploadStatus === 'parsing'}
         >
           Continue
-          <ArrowRight className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onContinue(null)}
-          disabled={busy}
-          className="text-sm text-white/40 hover:text-white/70 font-axiforma disabled:opacity-40"
-        >
-          Enter details manually
-        </button>
+        </PrimaryButton>
       </div>
     </div>
   );
