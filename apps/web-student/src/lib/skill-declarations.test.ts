@@ -168,8 +168,8 @@ describe('skill-declarations helpers', () => {
       claimToBadgeStatus(
         claim({ status: 'DECLARED', lastAttemptId: '55555555-5555-4555-8555-555555555555' }),
       ),
-    ).toBe('IN_VERIFICATION');
-    expect(claimToBadgeStatus(claim({ status: 'BEGINNER_REATTEMPT' }))).toBe('IN_VERIFICATION');
+    ).toBe('NOT_VERIFIED');
+    expect(claimToBadgeStatus(claim({ status: 'BEGINNER_REATTEMPT' }))).toBe('NOT_VERIFIED');
     expect(claimToBadgeStatus(claim({ status: 'VERIFIED' }))).toBe('VERIFIED');
     expect(claimToBadgeStatus(claim({ status: 'LOCKED' }))).toBe('LOCKED');
   });

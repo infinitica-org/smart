@@ -88,7 +88,8 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     if (!sessionId) return Promise.resolve();
     return api.assessment.completeSkillVerify(sessionId, {
       responses: responsesRef.current,
-      technicalFailure: true,
+      technicalFailure: false,
+      integrityTerminated: true,
     });
   }, [sessionId]);
 
@@ -115,6 +116,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           const settled = await api.assessment.completeSkillVerify(session.sessionId, {
             responses,
             technicalFailure: false,
+            integrityTerminated: false,
           });
           if (settled.grade && !settled.technicalFailure) {
             setReport(settled.grade);

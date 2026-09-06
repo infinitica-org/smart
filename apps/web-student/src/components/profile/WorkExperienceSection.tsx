@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { WorkExperienceDto, WorkExperienceDocumentDto } from '@smart/contracts';
 import { api } from '@/lib/api';
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   FULL_TIME: 'Full-time',
@@ -695,13 +696,23 @@ export function WorkExperienceSection() {
                   <select
                     value={employmentType}
                     onChange={(e) => setEmploymentType(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className={`${nativeSelectClass} mt-1 h-10 py-2 text-sm`}
                   >
-                    <option value="FULL_TIME">Full-time</option>
-                    <option value="PART_TIME">Part-time</option>
-                    <option value="CONTRACT">Contract</option>
-                    <option value="INTERNSHIP">Internship</option>
-                    <option value="FREELANCE">Freelance</option>
+                    <option value="FULL_TIME" className={nativeOptionClass}>
+                      Full-time
+                    </option>
+                    <option value="PART_TIME" className={nativeOptionClass}>
+                      Part-time
+                    </option>
+                    <option value="CONTRACT" className={nativeOptionClass}>
+                      Contract
+                    </option>
+                    <option value="INTERNSHIP" className={nativeOptionClass}>
+                      Internship
+                    </option>
+                    <option value="FREELANCE" className={nativeOptionClass}>
+                      Freelance
+                    </option>
                   </select>
                 </div>
 
@@ -890,13 +901,23 @@ export function WorkExperienceSection() {
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className={`${nativeSelectClass} mt-1 h-10 py-2 text-sm`}
                 >
-                  <option value="EXPERIENCE_LETTER">Experience Letter</option>
-                  <option value="OFFER_LETTER">Offer Letter</option>
-                  <option value="PAYSLIP">Payslip</option>
-                  <option value="RELIEVING_LETTER">Relieving Letter</option>
-                  <option value="FORM_16">Form 16</option>
+                  <option value="EXPERIENCE_LETTER" className={nativeOptionClass}>
+                    Experience Letter
+                  </option>
+                  <option value="OFFER_LETTER" className={nativeOptionClass}>
+                    Offer Letter
+                  </option>
+                  <option value="PAYSLIP" className={nativeOptionClass}>
+                    Payslip
+                  </option>
+                  <option value="RELIEVING_LETTER" className={nativeOptionClass}>
+                    Relieving Letter
+                  </option>
+                  <option value="FORM_16" className={nativeOptionClass}>
+                    Form 16
+                  </option>
                   <option value="OTHER">Other Proof Document</option>
                 </select>
               </div>

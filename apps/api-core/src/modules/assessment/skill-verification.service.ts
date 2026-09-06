@@ -280,11 +280,14 @@ export class SkillVerificationService {
       stored.skillFocus ?? skillFocusFromMetadata(claim.sourceMetadata),
     );
 
-    const technicalFailure = request.technicalFailure === true;
+    const integrityTerminated =
+      request.integrityTerminated === true ||
+      (await this.redis.exists(`proctor:lock:${sessionId}`)) === 1;
+    const technicalFailure = request.technicalFailure === true && !integrityTerminated;
     let grade: CompleteSkillVerifyResponse['grade'] = null;
     let genuinePass = false;
 
-    if (!technicalFailure) {
+    if (!technicalFailure && !integrityTerminated) {
       this.assertNotExpired(stored);
       grade = await this.evaluation.gradeSkillForm(
         {
@@ -305,11 +308,13 @@ export class SkillVerificationService {
       genuinePass = grade.passed;
     }
 
-    const event: SkillClaimEvent = technicalFailure
-      ? { type: 'TECHNICAL_FAILURE' }
-      : genuinePass
-        ? { type: 'GENUINE_PASS' }
-        : { type: 'GENUINE_FAIL' };
+    const event: SkillClaimEvent = integrityTerminated
+      ? { type: 'GENUINE_FAIL' }
+      : technicalFailure
+        ? { type: 'TECHNICAL_FAILURE' }
+        : genuinePass
+          ? { type: 'GENUINE_PASS' }
+          : { type: 'GENUINE_FAIL' };
 
     const transition = applySkillClaimTransition({
       claim: {
@@ -336,11 +341,13 @@ export class SkillVerificationService {
 
     const explanation =
       request.explanation ??
-      (technicalFailure
-        ? 'Technical failure recorded; claim status unchanged.'
-        : genuinePass
-          ? 'SDE v4 form cleared the pass bar (assessment-only, no interview).'
-          : 'SDE v4 form did not clear the pass bar.');
+      (integrityTerminated
+        ? 'Proctoring warning limit reached; attempt recorded as a fail.'
+        : technicalFailure
+          ? 'Technical failure recorded; claim status unchanged.'
+          : genuinePass
+            ? 'SDE v4 form cleared the pass bar (assessment-only, no interview).'
+            : 'SDE v4 form did not clear the pass bar.');
 
     const nowIso = new Date().toISOString();
     const lastGenuineFailureAt = event.type === 'GENUINE_PASS' ? null : nowIso;
@@ -368,10 +375,10 @@ export class SkillVerificationService {
       this.prisma.skillClaim.update({
         where: { id: claim.id },
         data: {
-          status: 'DECLARED',
+          status: transition.next.status,
           proficiency: transition.next.proficiency,
-          strikes: 0,
-          lockedUntil: null,
+          strikes: transition.next.strikes,
+          lockedUntil: transition.next.lockedUntil,
           verifiedUntil: transition.next.verifiedUntil,
           lastAttemptId: sessionId,
           sourceMetadata: nextMetadata as never,

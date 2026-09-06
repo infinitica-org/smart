@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { PROCTORING_WARNING_LIMIT_DEFAULT, type ProctoringViolationKind } from '@smart/contracts';
-import { Alert } from '@smart/ui';
 import { api } from '../../lib/api';
 import {
   deviceFingerprintHash,
@@ -22,6 +22,12 @@ import { createProctorIngest } from '../../lib/proctoring/ingest-queue';
 import { DisplayGate, FullscreenGate } from './fullscreen-gate';
 import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
+import { startLiveWebcamMonitor } from '../../lib/proctoring/live-webcam';
+import {
+  INTEGRITY_LOCKOUT_SECONDS,
+  IntegrityLockoutPanel,
+  IntegrityWarningModal,
+} from './integrity-notices';
 
 export function ProctoringShell({
   attemptId,
@@ -42,6 +48,7 @@ export function ProctoringShell({
   faceLiveCheck?: boolean;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const enabled = isProctoringEnabled();
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -59,6 +66,8 @@ export function ProctoringShell({
     count: 0,
     limit: PROCTORING_WARNING_LIMIT_DEFAULT,
   });
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [lockSecondsLeft, setLockSecondsLeft] = useState(INTEGRITY_LOCKOUT_SECONDS);
   const terminatedRef = useRef(false);
   const secretRef = useRef('');
   const mediaRef = useRef<MediaStream | null>(null);
@@ -84,6 +93,7 @@ export function ProctoringShell({
   );
   const terminateIfLockedRef = useRef(terminateIfLocked);
   terminateIfLockedRef.current = terminateIfLocked;
+  const dismissWarning = useCallback(() => setWarningOpen(false), []);
 
   const report = useCallback(
     async (kind: ProctoringViolationKind) => {
@@ -101,6 +111,7 @@ export function ProctoringShell({
         });
         setLocked(snap.locked);
         setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
+        if (snap.warningCount > 0 && !snap.locked) setWarningOpen(true);
         terminateIfLocked(snap.locked);
       } catch {
         // Local preventDefault still applied; ingest must not crash the player.
@@ -151,6 +162,7 @@ export function ProctoringShell({
         secretRef.current = snap.hmacSecret ?? '';
         setLocked(snap.locked);
         setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
+        if (snap.warningCount > 0 && !snap.locked) setWarningOpen(true);
         terminateIfLockedRef.current(snap.locked);
         await api.proctoring.fingerprint({
           attemptId,
@@ -184,6 +196,15 @@ export function ProctoringShell({
       window.clearInterval(checkpoint);
     };
   }, [attemptId, enabled, ready, locked]);
+
+  useEffect(() => {
+    if (!enabled || !ready || locked || !cameraEnabled) return undefined;
+    const monitor = startLiveWebcamMonitor({
+      getVideo: () => previewRef.current,
+      onViolation: (kind) => ingestRef.current.report(kind),
+    });
+    return () => monitor.stop();
+  }, [attemptId, cameraEnabled, enabled, ready, locked]);
 
   useEffect(() => {
     if (!enabled || !ready || locked) return undefined;
@@ -222,8 +243,20 @@ export function ProctoringShell({
     if (typeof document !== 'undefined' && document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
     }
-    return undefined;
-  }, [locked, releaseMedia]);
+    setLockSecondsLeft(INTEGRITY_LOCKOUT_SECONDS);
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const left = Math.max(
+        0,
+        INTEGRITY_LOCKOUT_SECONDS - Math.floor((Date.now() - started) / 1000),
+      );
+      setLockSecondsLeft(left);
+      if (left > 0) return;
+      window.clearInterval(tick);
+      router.replace('/assessments');
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [locked, releaseMedia, router]);
 
   useEffect(() => {
     return () => {
@@ -275,26 +308,23 @@ export function ProctoringShell({
           />
         </div>
       ) : locked ? (
-        <div className="flex h-full items-center justify-center p-6">
-          <Alert tone="danger" title="Test terminated" className="max-w-md">
-            You reached {String(warnings.limit)} integrity warnings. This attempt is closed and
-            flagged for review. Answers already saved are kept.
-          </Alert>
-        </div>
+        <IntegrityLockoutPanel limit={warnings.limit} secondsLeft={lockSecondsLeft} />
       ) : (
         <>
           <div
             className={hideExam ? 'hidden' : 'flex h-full min-h-full flex-col'}
             aria-hidden={hideExam}
           >
-            {warnings.count > 0 ? (
-              <p className="shrink-0 px-4 pt-3 text-xs text-amber-300">
-                Integrity warnings {String(warnings.count)}/{String(warnings.limit)}
-              </p>
-            ) : null}
             <div className="min-h-0 flex-1">{children}</div>
             {previewVideo}
           </div>
+          {warningOpen ? (
+            <IntegrityWarningModal
+              count={warnings.count}
+              limit={warnings.limit}
+              onDismiss={dismissWarning}
+            />
+          ) : null}
           <FullscreenGate
             blocked={blocked && !extendedDisplay}
             onResume={() => {

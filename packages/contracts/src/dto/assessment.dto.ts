@@ -321,6 +321,8 @@ export type SaveSkillVerifyRequest = z.infer<typeof SaveSkillVerifyRequestSchema
 export const CompleteSkillVerifyRequestSchema = z.object({
   responses: z.array(SdeSkillFormResponseItemSchema).optional(),
   technicalFailure: z.boolean().optional().default(false),
+  /** Proctor warning-cap lock — recorded as a genuine fail, not a technical abort. */
+  integrityTerminated: z.boolean().optional().default(false),
   explanation: z.string().max(2_000).optional(),
 });
 export type CompleteSkillVerifyRequest = z.infer<typeof CompleteSkillVerifyRequestSchema>;

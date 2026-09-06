@@ -11,6 +11,7 @@ import {
 import { Alert } from '@smart/ui';
 import { api } from '../../lib/api';
 import { SkillVerifyRow } from '../assessment/skill-verify-row';
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 import {
   SOFTWARE_IT_DOMAIN_LABEL,
   STREAM_LABELS,
@@ -156,10 +157,12 @@ export function SkillsSection() {
             <select
               value={domain}
               onChange={(event) => setDomain(event.target.value as 'SOFTWARE_IT')}
-              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2"
+              className={`${nativeSelectClass} py-2`}
               aria-label="Domain"
             >
-              <option value="SOFTWARE_IT">{SOFTWARE_IT_DOMAIN_LABEL}</option>
+              <option value="SOFTWARE_IT" className={nativeOptionClass}>
+                {SOFTWARE_IT_DOMAIN_LABEL}
+              </option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
@@ -167,10 +170,10 @@ export function SkillsSection() {
             <select
               value={stream}
               onChange={(e) => setStream(e.target.value as SkillStream)}
-              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2"
+              className={`${nativeSelectClass} py-2`}
             >
               {STREAM_OPTIONS.map((key) => (
-                <option key={key} value={key}>
+                <option key={key} value={key} className={nativeOptionClass}>
                   {STREAM_LABELS[key]}
                 </option>
               ))}

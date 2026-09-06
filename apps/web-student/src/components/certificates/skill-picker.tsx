@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { SKILL_DEFINITIONS, type CertificateProficiency } from '@smart/contracts';
 import { X } from 'lucide-react';
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
+import { isUnlistedSkillCode, unlistedSkillCode } from '@/lib/unlisted-skill';
 
 export interface CertificateSkillSelection {
   skillCode: string;
@@ -48,7 +50,10 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
   }, [query, selected]);
 
   const addSkill = (skillCode?: string) => {
-    const code = skillCode ?? matches[0]?.code;
+    const code =
+      skillCode ??
+      matches[0]?.code ??
+      (query.trim().length >= 2 ? unlistedSkillCode(query) : undefined);
     if (!code || selected.some((skill) => skill.skillCode === code)) {
       setQuery('');
       return;
@@ -80,7 +85,10 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
                 className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
               >
                 <span className="flex-1 text-sm font-medium text-white">
-                  {definition?.name ?? sel.skillCode}
+                  {definition?.name ??
+                    (isUnlistedSkillCode(sel.skillCode)
+                      ? sel.skillCode.replace(/^UL_/, '').replace(/_/g, ' ')
+                      : sel.skillCode)}
                 </span>
                 <select
                   value={sel.selfAssessedProficiency}
@@ -88,10 +96,10 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
                   onChange={(event) =>
                     setProficiency(sel.skillCode, event.target.value as CertificateProficiency)
                   }
-                  className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-white"
+                  className={`${nativeSelectClass} h-8 w-auto min-w-[8rem]`}
                 >
                   {PROFICIENCY_OPTIONS.map((proficiency) => (
-                    <option key={proficiency} value={proficiency}>
+                    <option key={proficiency} value={proficiency} className={nativeOptionClass}>
                       {PROFICIENCY_LABELS[proficiency]}
                     </option>
                   ))}
@@ -140,7 +148,17 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-white/30">No matching skill in our catalog.</p>
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs text-white/50">No matching skill in our catalog.</p>
+              <button
+                type="button"
+                disabled={disabled || query.trim().length < 2}
+                onClick={() => addSkill(unlistedSkillCode(query))}
+                className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/80 hover:bg-white/5 disabled:opacity-40"
+              >
+                Add “{query.trim()}” as unlisted
+              </button>
+            </div>
           )
         ) : null}
       </div>
