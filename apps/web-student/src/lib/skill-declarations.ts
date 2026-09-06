@@ -60,14 +60,14 @@ export function isSdeV4Verifiable(skillCode: string): boolean {
 }
 
 /**
- * Map persisted SkillClaimStatus (+ attempt hint) onto VerificationBadge statuses.
- * SE-T01: "In verification" is UI-only — BEGINNER_REATTEMPT or an in-flight attempt.
+ * Map persisted SkillClaimStatus onto VerificationBadge statuses.
+ * After a sit, fail/retry states show as Not verified; pass shows Verified.
  */
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
   if (claim.status === 'VERIFIED') return 'VERIFIED';
-  if (claim.status === 'BEGINNER_REATTEMPT') return 'IN_VERIFICATION';
-  if (claim.status === 'DECLARED' && claim.lastAttemptId) return 'IN_VERIFICATION';
+  if (claim.status === 'BEGINNER_REATTEMPT') return 'NOT_VERIFIED';
+  if (claim.status === 'DECLARED' && claim.lastAttemptId) return 'NOT_VERIFIED';
   return 'DECLARED';
 }
 

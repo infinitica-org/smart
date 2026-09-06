@@ -109,9 +109,9 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
   }, [customInput, discovery.selectedSkillNames]);
 
   const addCustomSkill = (name?: string) => {
-    const chosen = name ?? catalogMatches[0]?.name;
+    const chosen = (name ?? catalogMatches[0]?.name ?? customInput).trim();
     if (
-      !chosen ||
+      chosen.length < 2 ||
       discovery.selectedSkillNames.some((n) => n.toLowerCase() === chosen.toLowerCase())
     ) {
       setCustomInput('');
@@ -245,7 +245,7 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
             <button
               type="button"
               onClick={() => addCustomSkill()}
-              disabled={catalogMatches.length === 0}
+              disabled={customInput.trim().length < 2}
               className="inline-flex items-center gap-1.5 h-[42px] px-4 rounded-xl border border-white/15 text-sm text-white/80 hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent"
             >
               <Plus className="w-4 h-4" /> Add
@@ -267,9 +267,16 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-white/30 mt-2">
-                No matching skill in our catalog — try a different search.
-              </p>
+              <div className="mt-2 flex flex-col gap-2">
+                <p className="text-xs text-white/50">No matching skill in our catalog.</p>
+                <button
+                  type="button"
+                  onClick={() => addCustomSkill(customInput.trim())}
+                  className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/80 hover:bg-white/5"
+                >
+                  Add “{customInput.trim()}” as unlisted
+                </button>
+              </div>
             )
           ) : null}
         </div>

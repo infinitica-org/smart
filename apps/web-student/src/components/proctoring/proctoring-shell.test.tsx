@@ -7,6 +7,10 @@ vi.mock('../../lib/proctoring/crypto', () => ({
   signProctoringEvent: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+}));
+
 import { ProctoringShell } from './proctoring-shell';
 
 describe('ProctoringShell', () => {

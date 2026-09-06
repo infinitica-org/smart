@@ -8,9 +8,7 @@ import {
   formatRetryAt,
   viewForFocus,
 } from '@/lib/skill-declarations';
-
-const selectClass =
-  'h-9 w-full min-w-0 rounded-lg border border-[var(--surface-border,rgba(255,255,255,0.12))] bg-transparent px-2 text-xs';
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 
 export function SkillVerifyRow({
   skillCode,
@@ -62,11 +60,11 @@ export function SkillVerifyRow({
           value={proficiency}
           disabled={!view.canEditProficiency || pending}
           onChange={(event) => onProficiency(event.target.value as SkillProficiency)}
-          className={selectClass}
+          className={nativeSelectClass}
           aria-label={`Proficiency for ${skillName}`}
         >
           {PROFICIENCY_OPTIONS.map((level) => (
-            <option key={level} value={level}>
+            <option key={level} value={level} className={nativeOptionClass}>
               {PROFICIENCY_LABELS[level]}
             </option>
           ))}
@@ -79,11 +77,11 @@ export function SkillVerifyRow({
             value={focusOptions.includes(focus) ? focus : (focusOptions[0] ?? '')}
             disabled={pending}
             onChange={(event) => onFocus(event.target.value)}
-            className={selectClass}
+            className={nativeSelectClass}
             aria-label={`Focus for ${skillName}`}
           >
             {focusOptions.map((option) => (
-              <option key={option} value={option}>
+              <option key={option} value={option} className={nativeOptionClass}>
                 {option}
               </option>
             ))}

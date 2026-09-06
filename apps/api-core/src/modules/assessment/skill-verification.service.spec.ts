@@ -146,6 +146,7 @@ describe('SkillVerificationService', () => {
       get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
       del: vi.fn().mockResolvedValue(1),
       setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
     };
     const updated = {
       ...declaredClaim(),
@@ -174,6 +175,11 @@ describe('SkillVerificationService', () => {
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
 
     expect(evaluation.gradeSkillForm).toHaveBeenCalled();
+    expect(prisma.skillClaim.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'VERIFIED', strikes: 0 }),
+      }),
+    );
     expect(result.claim.status).toBe('VERIFIED');
     expect(result.grade?.passed).toBe(true);
     expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
@@ -247,6 +253,7 @@ describe('SkillVerificationService', () => {
       get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
       del: vi.fn().mockResolvedValue(1),
       setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
     };
     let savedMetadata: unknown;
     const prisma = {
@@ -299,5 +306,137 @@ describe('SkillVerificationService', () => {
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  it('persists BEGINNER_REATTEMPT when the form is a genuine fail', async () => {
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'GIT_VERSION_CONTROL',
+      skillName: 'Git',
+      sdeSkillCode: 'SDE_GIT',
+      proficiency: 'BEGINNER',
+      scoringToken: 'x'.repeat(24),
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      passMarkPercent: 80,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [{ index: 1, selectedKey: 'B' }],
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      del: vi.fn().mockResolvedValue(1),
+      exists: vi.fn().mockResolvedValue(0),
+    };
+    const updated = {
+      ...declaredClaim(),
+      status: 'BEGINNER_REATTEMPT',
+      strikes: 1,
+      lastAttemptId: SESSION_ID,
+    };
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn(),
+      },
+      skillVerificationAttempt: { create: vi.fn() },
+      $transaction: vi.fn().mockResolvedValue([updated]),
+    };
+    const evaluation = {
+      gradeSkillForm: vi.fn().mockResolvedValue({
+        skillCode: 'SDE_GIT',
+        proficiency: 'BEGINNER',
+        marksEarned: 0,
+        marksTotal: 12,
+        scorePercent: 0,
+        passed: false,
+        promptRef: 'sde-skill-open-batch-grader@2',
+        mcqCorrect: 0,
+        mcqTotal: 1,
+        traceCorrect: 0,
+        traceTotal: 0,
+        itemResults: [],
+      }),
+    };
+    const service = new SkillVerificationService(
+      prisma as never,
+      redis as never,
+      evaluation as never,
+      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
+
+    expect(prisma.skillClaim.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'BEGINNER_REATTEMPT', strikes: 1 }),
+      }),
+    );
+    expect(result.claim.status).toBe('BEGINNER_REATTEMPT');
+    expect(result.technicalFailure).toBe(false);
+    expect(result.grade?.passed).toBe(false);
+  });
+
+  it('treats a proctor warning-cap lock as a genuine fail, not a technical abort', async () => {
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'GIT_VERSION_CONTROL',
+      skillName: 'Git',
+      sdeSkillCode: 'SDE_GIT',
+      proficiency: 'BEGINNER',
+      scoringToken: 'x'.repeat(24),
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      passMarkPercent: 80,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [],
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      del: vi.fn().mockResolvedValue(1),
+      exists: vi.fn().mockResolvedValue(1),
+    };
+    const updated = {
+      ...declaredClaim(),
+      status: 'BEGINNER_REATTEMPT',
+      strikes: 1,
+      lastAttemptId: SESSION_ID,
+    };
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn(),
+      },
+      skillVerificationAttempt: { create: vi.fn() },
+      $transaction: vi.fn().mockResolvedValue([updated]),
+    };
+    const evaluation = { gradeSkillForm: vi.fn() };
+    const service = new SkillVerificationService(
+      prisma as never,
+      redis as never,
+      evaluation as never,
+      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    const result = await service.complete(student(), SESSION_ID, {
+      technicalFailure: true,
+      integrityTerminated: true,
+    });
+
+    expect(evaluation.gradeSkillForm).not.toHaveBeenCalled();
+    expect(prisma.skillClaim.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'BEGINNER_REATTEMPT', strikes: 1 }),
+      }),
+    );
+    expect(result.technicalFailure).toBe(false);
+    expect(result.claim.status).toBe('BEGINNER_REATTEMPT');
   });
 });
