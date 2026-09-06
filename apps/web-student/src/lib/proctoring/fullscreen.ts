@@ -5,6 +5,9 @@ type KeyboardLockNavigator = Navigator & {
   };
 };
 
+/** Chrome re-shows “Hold Esc to exit” on every lock() — call once per fullscreen stay. */
+let keyboardLockHeld = false;
+
 function keyboardApi(): KeyboardLockNavigator['keyboard'] | undefined {
   if (typeof navigator === 'undefined') return undefined;
   return (navigator as KeyboardLockNavigator).keyboard;
@@ -13,18 +16,27 @@ function keyboardApi(): KeyboardLockNavigator['keyboard'] | undefined {
 /** Chromium Fullscreen Keyboard Lock — hold Esc to exit; F-keys / Alt reach the page. */
 export async function lockAssessmentKeyboard(): Promise<boolean> {
   const keyboard = keyboardApi();
-  if (!keyboard?.lock || typeof document === 'undefined' || !document.fullscreenElement) {
+  if (!keyboard?.lock || typeof document === 'undefined') {
     return false;
   }
-  try {
-    await keyboard.lock();
-    return true;
-  } catch {
-    return false;
+  if (keyboardLockHeld && document.fullscreenElement) return true;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (!document.fullscreenElement) return false;
+    try {
+      await keyboard.lock();
+      keyboardLockHeld = true;
+      return true;
+    } catch {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+    }
   }
+  return false;
 }
 
 export function unlockAssessmentKeyboard(): void {
+  keyboardLockHeld = false;
   try {
     keyboardApi()?.unlock();
   } catch {

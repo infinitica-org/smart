@@ -43,6 +43,10 @@ import { RedisService } from '../../platform/redis/redis.service.js';
 import { randomNonce, signViolation, signaturesMatch } from './hmac.js';
 import { bandForScore, integrityScore, type StoredViolation } from './risk.js';
 
+function skillVerifyRedisKey(attemptId: string): string {
+  return `session:skill-verify:${attemptId}`;
+}
+
 const WARN = (id: string) => `proctor:warn:${id}`;
 const HMAC = (id: string) => `proctor:hmac:${id}`;
 const NONCE = (id: string, nonce: string) => `proctor:nonce:${id}:${nonce}`;
@@ -69,6 +73,14 @@ const emptyOnboard = (): OnboardState => ({
   voiceCalibrated: false,
 });
 
+type ProctorSubject = {
+  id: string;
+  userId: string;
+  status: string;
+  integrityFlag: IntegrityFlag;
+  persistAttempt: boolean;
+};
+
 @Injectable()
 export class ProctoringService {
   private readonly logger = new Logger(ProctoringService.name);
@@ -79,23 +91,50 @@ export class ProctoringService {
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
-  async assertAttemptOwner(userId: string, attemptId: string) {
+  async assertAttemptOwner(userId: string, attemptId: string): Promise<ProctorSubject> {
     const attempt = await this.prisma.attempt.findUnique({ where: { id: attemptId } });
-    if (!attempt) {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Attempt not found.',
-        statusCode: 404,
-      });
+    if (attempt) {
+      if (attempt.userId !== userId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Not your attempt.',
+          statusCode: 403,
+        });
+      }
+      return {
+        id: attempt.id,
+        userId: attempt.userId,
+        status: attempt.status,
+        integrityFlag: attempt.integrityFlag as IntegrityFlag,
+        persistAttempt: true,
+      };
     }
-    if (attempt.userId !== userId) {
-      throw new ForbiddenException({
-        error: 'forbidden',
-        message: 'Not your attempt.',
-        statusCode: 403,
-      });
+
+    await this.ensureRedis();
+    const raw = await this.redis.get(skillVerifyRedisKey(attemptId));
+    if (raw) {
+      const stored = JSON.parse(raw) as { userId?: string };
+      if (stored.userId !== userId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Not your attempt.',
+          statusCode: 403,
+        });
+      }
+      return {
+        id: attemptId,
+        userId,
+        status: 'IN_PROGRESS',
+        integrityFlag: 'CLEAN',
+        persistAttempt: false,
+      };
     }
-    return attempt;
+
+    throw new NotFoundException({
+      error: 'not_found',
+      message: 'Attempt not found.',
+      statusCode: 404,
+    });
   }
 
   private async ensureRedis(): Promise<void> {
@@ -184,10 +223,11 @@ export class ProctoringService {
     }
     return this.record(
       attempt.id,
-      attempt.integrityFlag as IntegrityFlag,
+      attempt.integrityFlag,
       body.kind,
       body.severity,
       body.eventClass,
+      attempt.persistAttempt,
     );
   }
 
@@ -197,6 +237,7 @@ export class ProctoringService {
     kind: ProctoringViolationKind,
     severity: ProctoringSeverity = DEFAULT_VIOLATION_SEVERITY[kind] ?? 'medium',
     eventClass?: ProctoringEventClass,
+    persistAttempt = true,
   ): Promise<ProctoringWarningSnapshot> {
     await this.ensureRedis();
     const classified: ProctoringEventClass =
@@ -228,12 +269,14 @@ export class ProctoringService {
       } else if (band === 'MAJOR' || warningCount >= 3) {
         integrityFlag = 'FLAGGED_PROCTOR';
       }
-      if (integrityFlag !== currentFlag) {
+      if (integrityFlag !== currentFlag && persistAttempt) {
         await this.prisma.attempt.update({ where: { id: attemptId }, data: { integrityFlag } });
       }
-      await this.prisma.integrityEvent.create({
-        data: { attemptId, flag: integrityFlag, detail: { kind, severity, classified } },
-      });
+      if (persistAttempt) {
+        await this.prisma.integrityEvent.create({
+          data: { attemptId, flag: integrityFlag, detail: { kind, severity, classified } },
+        });
+      }
       integrityFlags.inc({ flag: integrityFlag, track_code: 'unknown', level_number: '1' });
       if (!locked) {
         await this.publishBlob(attemptId, {
@@ -244,9 +287,11 @@ export class ProctoringService {
         });
       }
     } else {
-      await this.prisma.integrityEvent.create({
-        data: { attemptId, flag: currentFlag, detail: { kind, severity, classified } },
-      });
+      if (persistAttempt) {
+        await this.prisma.integrityEvent.create({
+          data: { attemptId, flag: currentFlag, detail: { kind, severity, classified } },
+        });
+      }
       await this.publishBlob(attemptId, {
         type: 'blob_state',
         state: 'alert',
@@ -280,13 +325,14 @@ export class ProctoringService {
     }
     const mismatch = this.fuzzyMismatch(baseline, body.fingerprintHash);
     if (mismatch) {
-      const attempt = await this.prisma.attempt.findUniqueOrThrow({
-        where: { id: body.attemptId },
-      });
+      const subject = await this.assertAttemptOwner(userId, body.attemptId);
       await this.record(
         body.attemptId,
-        attempt.integrityFlag as IntegrityFlag,
+        subject.integrityFlag,
         'AUTOMATION_DETECTED',
+        undefined,
+        undefined,
+        subject.persistAttempt,
       );
     }
     return { status: 'recorded' as const, fuzzyMismatch: mismatch };
@@ -307,13 +353,26 @@ export class ProctoringService {
 
   async applyCheckpointKinds(attemptId: string, kinds: ProctoringViolationKind[]): Promise<void> {
     const attempt = await this.prisma.attempt.findUnique({ where: { id: attemptId } });
-    if (!attempt || attempt.status !== 'IN_PROGRESS') return;
+    if (attempt?.status === 'IN_PROGRESS') {
+      if (kinds.length === 0) {
+        await this.publishBlob(attemptId, { type: 'blob_state', state: 'pass_cue' });
+        return;
+      }
+      for (const kind of kinds) {
+        const snap = await this.record(attemptId, attempt.integrityFlag as IntegrityFlag, kind);
+        if (snap.locked) break;
+      }
+      return;
+    }
+    await this.ensureRedis();
+    const skillSession = await this.redis.get(skillVerifyRedisKey(attemptId));
+    if (!skillSession) return;
     if (kinds.length === 0) {
       await this.publishBlob(attemptId, { type: 'blob_state', state: 'pass_cue' });
       return;
     }
     for (const kind of kinds) {
-      const snap = await this.record(attemptId, attempt.integrityFlag as IntegrityFlag, kind);
+      const snap = await this.record(attemptId, 'CLEAN', kind, undefined, undefined, false);
       if (snap.locked) break;
     }
   }
@@ -325,13 +384,20 @@ export class ProctoringService {
     let processed = 0;
     for (const attemptId of stale) {
       const attempt = await this.prisma.attempt.findUnique({ where: { id: attemptId } });
-      if (!attempt || attempt.status !== 'IN_PROGRESS') {
-        await this.redis.zrem(HB_ZSET, attemptId);
+      if (attempt?.status === 'IN_PROGRESS') {
+        await this.record(attemptId, attempt.integrityFlag as IntegrityFlag, 'HEARTBEAT_LOST');
+        await this.redis.zadd(HB_ZSET, Date.now(), attemptId);
+        processed += 1;
         continue;
       }
-      await this.record(attemptId, attempt.integrityFlag as IntegrityFlag, 'HEARTBEAT_LOST');
-      await this.redis.zadd(HB_ZSET, Date.now(), attemptId);
-      processed += 1;
+      const skillSession = await this.redis.get(skillVerifyRedisKey(attemptId));
+      if (skillSession) {
+        await this.record(attemptId, 'CLEAN', 'HEARTBEAT_LOST', undefined, undefined, false);
+        await this.redis.zadd(HB_ZSET, Date.now(), attemptId);
+        processed += 1;
+        continue;
+      }
+      await this.redis.zrem(HB_ZSET, attemptId);
     }
     return processed;
   }

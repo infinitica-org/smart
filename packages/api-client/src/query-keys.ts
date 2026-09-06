@@ -35,6 +35,7 @@ export const queryKeys = {
   nextItem: (attemptId: string) => ['attempt', attemptId, 'next-item'] as const,
   sandboxJob: (jobId: string) => ['sandbox', jobId] as const,
   results: (attemptId: string) => ['results', attemptId] as const,
+  skillVerifySession: (sessionId: string) => ['skill-verify', sessionId] as const,
 
   /* ------------------------------- defense -------------------------------- */
   defenseSession: (sessionId: string) => ['defense', sessionId] as const,

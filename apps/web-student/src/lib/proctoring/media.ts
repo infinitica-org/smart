@@ -39,6 +39,15 @@ export function stopProctoringMedia(stream: MediaStream | null): void {
   for (const track of stream.getTracks()) track.stop();
 }
 
+/** Drop the preview element and stop tracks (lock, submit, or leave). */
+export function releaseProctoringPreview(
+  video: HTMLVideoElement | null,
+  stream: MediaStream | null,
+): void {
+  if (video) video.srcObject = null;
+  stopProctoringMedia(stream);
+}
+
 export async function sampleEnvironment(stream: MediaStream): Promise<{
   brightness: number;
   audioRmsPercent: number;

@@ -83,4 +83,12 @@ describe('attachProctorSensors', () => {
     expect(report).toHaveBeenCalledWith('OS_KEY');
     detach();
   });
+
+  it('still reports copy chords when fullscreen listening is disabled', () => {
+    const report = vi.fn();
+    const detach = attachProctorSensors(report, { listenFullscreen: false });
+    document.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(report).toHaveBeenCalledWith('RIGHT_CLICK');
+    detach();
+  });
 });

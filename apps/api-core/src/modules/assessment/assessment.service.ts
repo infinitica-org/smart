@@ -27,6 +27,10 @@ import {
   type TrackCode,
   SKILL_DEFINITIONS,
   SKILL_REFRESH_DAYS,
+  hydrateFocusProgress,
+  focusProgressFor,
+  resolveSkillFocus,
+  skillFocusFromMetadata,
 } from '@smart/contracts';
 import {
   BadRequestException,
@@ -280,6 +284,29 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
 
     const now = new Date();
+    const skillFocus = resolveSkillFocus(def.code, body.skillFocus);
+    const nextMetadata = this.claimMetadata(existing?.sourceMetadata, provenance, skillFocus);
+
+    if (existing && (existing.status === 'DECLARED' || existing.status === 'BEGINNER_REATTEMPT')) {
+      const row = await this.prisma.skillClaim.update({
+        where: { id: existing.id },
+        data: {
+          ...(existing.status === 'DECLARED' ? { proficiency: body.proficiency } : {}),
+          sourceMetadata: nextMetadata,
+        },
+        include: { skill: { select: { code: true } } },
+      });
+      const mapped = await this.mapSkillClaims([row]);
+      const dto = mapped[0];
+      if (!dto) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Declared skill claim could not be loaded.',
+          statusCode: 404,
+        });
+      }
+      return dto;
+    }
 
     if (existing && existing.status !== 'LOCKED') {
       throw new ConflictException({
@@ -307,9 +334,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
             proficiency: body.proficiency,
             status: 'DECLARED',
             source: provenance?.source ?? 'MANUAL',
-            sourceMetadata: provenance
-              ? (provenance.sourceMetadata as Prisma.InputJsonValue)
-              : Prisma.JsonNull,
+            sourceMetadata: nextMetadata,
             strikes: 0,
             lockedUntil: null,
             lastAttemptId: null,
@@ -324,14 +349,12 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
             proficiency: body.proficiency,
             status: 'DECLARED',
             source: provenance?.source ?? 'MANUAL',
-            sourceMetadata: provenance
-              ? (provenance.sourceMetadata as Prisma.InputJsonValue)
-              : Prisma.JsonNull,
+            sourceMetadata: nextMetadata,
           },
           include: { skill: { select: { code: true } } },
         });
 
-    const mapped = this.mapSkillClaims([row]);
+    const mapped = await this.mapSkillClaims([row]);
     const dto = mapped[0];
     if (!dto) {
       throw new NotFoundException({
@@ -343,7 +366,24 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     return dto;
   }
 
-  private mapSkillClaims(
+  private claimMetadata(
+    existing: unknown,
+    provenance: { source: 'GITHUB_DERIVED'; sourceMetadata: Record<string, unknown> } | undefined,
+    skillFocus: string | null,
+  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    const fromExisting =
+      existing && typeof existing === 'object' && !Array.isArray(existing)
+        ? { ...(existing as Record<string, unknown>) }
+        : {};
+    const merged = {
+      ...fromExisting,
+      ...(provenance?.sourceMetadata ?? {}),
+      ...(skillFocus ? { skillFocus } : {}),
+    };
+    return Object.keys(merged).length > 0 ? (merged as Prisma.InputJsonValue) : Prisma.JsonNull;
+  }
+
+  private async mapSkillClaims(
     rows: Array<{
       id: string;
       studentId: string;
@@ -352,21 +392,53 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       strikes: number;
       lockedUntil: Date | null;
       lastAttemptId: string | null;
+      sourceMetadata?: unknown;
       skill: { code: string };
     }>,
-  ): SkillClaimDto[] {
-    return rows.map((row) =>
-      SkillClaimDtoSchema.parse({
-        claimId: row.id,
-        studentId: row.studentId,
+  ): Promise<SkillClaimDto[]> {
+    if (rows.length === 0) return [];
+    const failures = await this.prisma.skillVerificationAttempt.findMany({
+      where: {
+        claimId: { in: rows.map((row) => row.id) },
+        OR: [{ passed: false }, { technicalFailure: true }],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { claimId: true, createdAt: true },
+    });
+    const lastFail = new Map<string, Date>();
+    for (const row of failures) {
+      if (!lastFail.has(row.claimId)) lastFail.set(row.claimId, row.createdAt);
+    }
+    return rows.map((row) => {
+      const lastGenuineFailureAt = lastFail.get(row.id)?.toISOString() ?? null;
+      const progress = hydrateFocusProgress({
         skillCode: row.skill.code,
-        proficiency: row.proficiency,
+        metadata: row.sourceMetadata,
         status: row.status,
         strikes: row.strikes,
         lockedUntil: row.lockedUntil?.toISOString() ?? null,
         lastAttemptId: row.lastAttemptId,
-      }),
-    );
+        lastGenuineFailureAt,
+      });
+      const skillFocus = resolveSkillFocus(
+        row.skill.code,
+        skillFocusFromMetadata(row.sourceMetadata),
+      );
+      const selected = skillFocus ? focusProgressFor(progress, skillFocus) : null;
+      return SkillClaimDtoSchema.parse({
+        claimId: row.id,
+        studentId: row.studentId,
+        skillCode: row.skill.code,
+        proficiency: row.proficiency,
+        status: selected?.status ?? row.status,
+        strikes: selected?.strikes ?? row.strikes,
+        lockedUntil: selected?.lockedUntil ?? row.lockedUntil?.toISOString() ?? null,
+        lastAttemptId: selected?.lastAttemptId ?? row.lastAttemptId,
+        skillFocus,
+        focusProgress: progress,
+        retryAvailableAt: selected?.retryAvailableAt ?? null,
+      });
+    });
   }
 
   /**
@@ -718,7 +790,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       }),
     ]);
 
-    const [mapped] = this.mapSkillClaims([updatedClaim]);
+    const [mapped] = await this.mapSkillClaims([updatedClaim]);
     if (!mapped) {
       throw new NotFoundException({
         error: 'not_found',

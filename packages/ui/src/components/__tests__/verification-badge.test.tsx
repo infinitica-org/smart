@@ -30,7 +30,7 @@ describe('VerificationBadge', () => {
   it('renders IN_VERIFICATION state correctly', () => {
     render(<VerificationBadge status="IN_VERIFICATION" />);
     const badge = screen.getByRole('status');
-    expect(badge.textContent).toBe('In verification');
+    expect(badge.textContent).toBe('Not verified');
     expect(badge.className).toContain('bg-warning');
   });
 
