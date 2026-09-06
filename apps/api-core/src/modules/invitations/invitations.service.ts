@@ -200,6 +200,44 @@ export class InvitationsService {
     return toInvitationDto(updated);
   }
 
+  async revoke(invitationId: string, actorInstitutionId: string | null): Promise<InvitationDto> {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { id: invitationId },
+      include: { institution: true, batch: true },
+    });
+    if (!invitation) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Invitation not found.',
+        statusCode: 404,
+      });
+    }
+    if (actorInstitutionId && invitation.institutionId !== actorInstitutionId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Invitation not found.',
+        statusCode: 404,
+      });
+    }
+    if (invitation.status === 'ACCEPTED') {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'Accepted invitations cannot be revoked.',
+        statusCode: 409,
+      });
+    }
+
+    const updated = await this.prisma.invitation.update({
+      where: { id: invitationId },
+      data: {
+        status: 'REVOKED',
+      },
+      include: { batch: true },
+    });
+
+    return toInvitationDto(updated);
+  }
+
   /**
    * Mints a fresh invite URL for a TPO's "copy invite link" action — same
    * token rotation as `resend`, but no email is queued. The raw token only

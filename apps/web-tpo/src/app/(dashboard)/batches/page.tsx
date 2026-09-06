@@ -41,46 +41,48 @@ export default function BatchesPage() {
   }
 
   return (
-    <main className="max-w-[1400px] mx-auto space-y-6 font-sans select-none">
+    <main className="max-w-[1400px] mx-auto space-y-6 font-sans select-none pb-12 text-zinc-100">
       {/* Header Banner */}
-      <div className="bg-white p-6 rounded-md border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-zinc-900/90 p-6 md:p-7 rounded-xl border border-zinc-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Batches & Cohorts</h1>
-            <span className="bg-teal-50 text-[#004c63] border border-teal-100 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white">
+              Batches & Cohorts
+            </h1>
+            <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[11px] font-bold px-2.5 py-0.5 rounded-md">
               {batches.length} Active
             </span>
           </div>
-          <p className="text-slate-500 text-xs font-medium">
-            Manage student graduating classes, track batch-level readiness, and provision access.
+          <p className="text-zinc-400 text-xs md:text-sm font-medium">
+            Manage candidate graduating classes, track batch-level readiness, and provision access.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-md flex items-start gap-3 shadow-sm">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500" />
-          <p className="text-sm font-medium">{error}</p>
+        <div className="bg-rose-950/60 border border-rose-800 text-rose-200 p-4 rounded-xl flex items-start gap-3 shadow-sm">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
+          <p className="text-xs font-bold">{error}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Create Batch Card */}
         <div className="lg:col-span-1">
-          <Card className="bg-white border border-slate-200/80 shadow-sm p-6 rounded-md sticky top-24">
+          <Card className="bg-zinc-900/80 border border-zinc-800 shadow-sm p-6 rounded-xl sticky top-24">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-md bg-teal-50 border border-teal-100 flex items-center justify-center text-[#004c63]">
+              <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-emerald-400">
                 <Plus className="w-4 h-4" />
               </div>
-              <h2 className="text-base font-bold text-slate-900">Create New Batch</h2>
+              <h2 className="text-base font-bold text-white">Create New Batch</h2>
             </div>
-            <p className="text-xs text-slate-500 mb-5 font-medium leading-relaxed">
+            <p className="text-xs text-zinc-400 mb-5 font-medium leading-relaxed">
               Set up a new cohort to group candidates for assessment tracking (e.g. CS 2025).
             </p>
 
             <form onSubmit={onCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                   Batch Name
                 </label>
                 <input
@@ -88,21 +90,21 @@ export default function BatchesPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Computer Science 2025"
-                  className="w-full bg-slate-50/70 text-slate-900 text-sm rounded-md py-2.5 px-3.5 border border-slate-200 focus:bg-white focus:outline-none focus:border-[#004c63] focus:ring-2 focus:ring-[#004c63]/15 transition-all placeholder:text-slate-400 font-medium"
+                  className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2.5 px-3.5 border border-zinc-800 focus:bg-zinc-950 focus:outline-none focus:border-zinc-600 transition-all placeholder:text-zinc-500 font-medium"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                   Batch Code{' '}
-                  <span className="normal-case font-normal text-slate-400">(Optional)</span>
+                  <span className="normal-case font-normal text-zinc-500">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="e.g. CS-25"
-                  className="w-full bg-slate-50/70 text-slate-900 text-sm rounded-md py-2.5 px-3.5 border border-slate-200 focus:bg-white focus:outline-none focus:border-[#004c63] focus:ring-2 focus:ring-[#004c63]/15 transition-all placeholder:text-slate-400 font-medium"
+                  className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2.5 px-3.5 border border-zinc-800 focus:bg-zinc-950 focus:outline-none focus:border-zinc-600 transition-all placeholder:text-zinc-500 font-medium"
                 />
               </div>
 
@@ -110,7 +112,7 @@ export default function BatchesPage() {
                 type="submit"
                 variant="primary"
                 disabled={isSubmitting}
-                className="w-full bg-[#004c63] hover:bg-[#003a4d] text-white font-bold py-2.5 rounded-md shadow-sm transition-all mt-2"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-sm transition-all mt-2 border border-emerald-500/50"
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -128,47 +130,46 @@ export default function BatchesPage() {
         <div className="lg:col-span-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {batches.length === 0 ? (
-              <div className="sm:col-span-2 bg-white border border-slate-200/80 shadow-sm rounded-md p-12 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 border border-slate-200/60">
-                  <LayoutGrid className="w-8 h-8 text-slate-400" />
+              <div className="sm:col-span-2 bg-zinc-900/80 border border-zinc-800 shadow-sm rounded-xl p-12 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-4 border border-zinc-700">
+                  <LayoutGrid className="w-8 h-8 text-zinc-400" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">No batches created yet</h3>
-                <p className="text-xs text-slate-500 max-w-sm">
-                  Create your institution's first batch cohort using the quick setup form on the
-                  left.
+                <h3 className="text-lg font-bold text-white mb-1">No batches created yet</h3>
+                <p className="text-xs text-zinc-400 max-w-sm">
+                  Create your institution's first batch cohort using the setup form on the left.
                 </p>
               </div>
             ) : (
               batches.map((batch) => (
                 <Link key={batch.batchId} href={`/batches/${batch.batchId}`}>
-                  <Card className="bg-white border border-slate-200/80 shadow-sm p-6 hover:border-[#004c63]/40 transition-all hover:shadow-md cursor-pointer group h-full flex flex-col rounded-md relative overflow-hidden">
+                  <Card className="bg-zinc-900/80 border border-zinc-800 shadow-sm p-6 hover:border-emerald-500/40 transition-all cursor-pointer group h-full flex flex-col rounded-xl relative overflow-hidden">
                     <div className="flex items-start justify-between mb-4">
-                      <div className="w-11 h-11 bg-teal-50 border border-teal-100 rounded-md flex items-center justify-center shrink-0 group-hover:bg-[#004c63] transition-all">
-                        <Users className="w-5 h-5 text-[#004c63] group-hover:text-white transition-colors" />
+                      <div className="w-11 h-11 bg-zinc-800 border border-zinc-700 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-emerald-600 transition-all">
+                        <Users className="w-5 h-5 text-zinc-300 group-hover:text-white transition-colors" />
                       </div>
-                      <span className="bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-mono font-bold px-2.5 py-1 rounded-md tracking-wider">
+                      <span className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[11px] font-mono font-bold px-2.5 py-1 rounded-md tracking-wider">
                         {batch.code ?? 'NO-CODE'}
                       </span>
                     </div>
 
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#004c63] transition-colors line-clamp-1 mb-5">
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1 mb-5">
                       {batch.name}
                     </h3>
 
-                    <div className="mt-auto grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
-                      <div className="bg-slate-50/70 p-3 rounded-md border border-slate-100">
-                        <div className="text-[11px] text-slate-500 mb-0.5 font-semibold">
+                    <div className="mt-auto grid grid-cols-2 gap-3 pt-4 border-t border-zinc-800/80">
+                      <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                        <div className="text-[11px] text-zinc-400 mb-0.5 font-semibold">
                           Enrolled Members
                         </div>
-                        <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                        <div className="text-base font-extrabold text-white tabular-nums">
                           {batch.memberCount}
                         </div>
                       </div>
-                      <div className="bg-amber-50/60 p-3 rounded-md border border-amber-100/80">
-                        <div className="text-[11px] text-amber-700 mb-0.5 font-semibold">
+                      <div className="bg-amber-950/40 p-3 rounded-lg border border-amber-800/60">
+                        <div className="text-[11px] text-amber-400 mb-0.5 font-semibold">
                           Pending Invites
                         </div>
-                        <div className="text-base font-extrabold text-amber-700 tabular-nums">
+                        <div className="text-base font-extrabold text-amber-400 tabular-nums">
                           {batch.pendingInviteCount}
                         </div>
                       </div>

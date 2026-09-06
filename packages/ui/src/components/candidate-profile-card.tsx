@@ -153,6 +153,8 @@ export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement
   projects?: CandidateProject[];
 
   actions?: ReactNode;
+
+  onViewAllCompetencies?: () => void;
 }
 
 function getSkillIcon(skillName: string) {
@@ -201,6 +203,7 @@ export function CandidateProfileCard({
   cognitiveCommSummary,
   projects,
   actions,
+  onViewAllCompetencies,
   className,
   ...props
 }: CandidateProfileCardProps) {
@@ -384,7 +387,7 @@ export function CandidateProfileCard({
                   Location
                 </span>
                 <span className="font-semibold text-white">
-                  {academicDetails.location || 'Erode, Tamil Nadu'}
+                  {academicDetails.location || 'N/A'}
                 </span>
               </div>
             </div>
@@ -393,7 +396,7 @@ export function CandidateProfileCard({
       </div>
 
       {/* 2. ROW 2: METRICS & AI MATCH INSIGHTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" id="candidate-skills-section">
         {/* Left Skills & Competencies Card (7 Cols) */}
         <div className="lg:col-span-7 rounded-xl border border-white/[0.08] bg-[#111516] p-5 shadow-xl flex flex-col justify-between">
           <div>
@@ -497,6 +500,15 @@ export function CandidateProfileCard({
               </div>
               <button
                 type="button"
+                onClick={() => {
+                  if (onViewAllCompetencies) {
+                    onViewAllCompetencies();
+                  } else {
+                    document
+                      .getElementById('candidate-skills-section')
+                      ?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 className="text-3xs font-semibold text-[#00E5D4] hover:underline"
               >
                 View All

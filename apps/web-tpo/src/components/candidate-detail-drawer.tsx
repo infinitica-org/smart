@@ -97,9 +97,6 @@ export function CandidateDetailDrawer({
               <ShieldCheck className="size-4 text-emerald-400" />
               Candidate Profile View
             </h2>
-            <span className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-md">
-              Read-Only Telemetry
-            </span>
           </div>
           <button
             onClick={onClose}

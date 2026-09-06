@@ -53,89 +53,10 @@ function streamLabel(stream: string): string {
   }
 }
 
-const MOCK_STUDENTS: InstitutionStudentDto[] = [
-  {
-    userId: 'stu_1',
-    fullName: 'Aarav Sharma',
-    email: 'aarav.sharma@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026 - CS',
-    inviteStatus: 'ACCEPTED',
-    lastSentAt: null,
-    acceptedAt: null,
-    heldAt: null,
-  },
-  {
-    userId: 'stu_2',
-    fullName: 'Ananya Verma',
-    email: 'ananya.verma@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026 - CS',
-    inviteStatus: 'ACCEPTED',
-    lastSentAt: null,
-    acceptedAt: null,
-    heldAt: null,
-  },
-  {
-    userId: 'stu_3',
-    fullName: 'Rohan Gupta',
-    email: 'rohan.gupta@institution.edu',
-    batchId: 'b_2026',
-    batchName: 'Batch 2026 - IT',
-    inviteStatus: 'ACCEPTED',
-    lastSentAt: null,
-    acceptedAt: null,
-    heldAt: null,
-  },
-];
-
-const MOCK_CLAIMS: SkillClaimDto[] = [
-  {
-    claimId: 'cl_1',
-    studentId: 'stu_1',
-    skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-    proficiency: 'ADVANCED',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_2',
-    studentId: 'stu_1',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
-    proficiency: 'INTERMEDIATE',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_3',
-    studentId: 'stu_2',
-    skillCode: 'PYTHON_FOR_ML_ENGINEERING',
-    proficiency: 'INTERMEDIATE',
-    status: 'VERIFIED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-  {
-    claimId: 'cl_4',
-    studentId: 'stu_3',
-    skillCode: 'ADVANCED_SQL_ANALYTICAL_QUERYING',
-    proficiency: 'BEGINNER',
-    status: 'DECLARED',
-    strikes: 0,
-    lockedUntil: null,
-    lastAttemptId: null,
-  },
-];
-
 export function SkillVerificationWorkspace() {
-  const [students, setStudents] = useState<InstitutionStudentDto[]>(MOCK_STUDENTS);
+  const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
-  const [claims, setClaims] = useState<SkillClaimDto[]>(MOCK_CLAIMS);
+  const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiNotice, setApiNotice] = useState<string | null>(null);
 
