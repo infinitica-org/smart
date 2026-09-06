@@ -102,10 +102,10 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     expect(screen.getByRole('status').textContent).toContain(
       'Fetching ranked candidate suggestions',
     );
-    expect(await screen.findByText(/No openings found/)).toBeDefined();
     expect(
-      screen.getByText(/Select a job opening to view ranked candidate suggestions/),
+      await screen.findByText(/Select a job opening to view ranked candidate suggestions/),
     ).toBeDefined();
+    expect(screen.getByText(/No openings found/)).toBeDefined();
   });
 
   it('renders ranked candidate list with score percentage, headline tier, level and explanation.why', async () => {
