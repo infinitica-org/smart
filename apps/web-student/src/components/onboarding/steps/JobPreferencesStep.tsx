@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { AnimatePresence } from 'motion/react';
 import { LightSelect } from '../../ui/LightSelect';
 import { CITY_OPTIONS, type OnboardingProfileForm } from '@/lib/onboarding-form';
@@ -170,15 +171,16 @@ export default function JobPreferencesStep({
         />
         <span className="text-sm text-zinc-300">
           I consent to SMART processing my personal data as described in the{' '}
-          <a
-            href="https://smart.infinitica.io/dpdp-terms"
+          <Link
+            href="/dpdp-policy"
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="font-semibold text-[#00fad0] underline hover:text-[#7dffe6]"
+            className="font-semibold text-[#00fad0] underline hover:text-[#7dffe6] focus:outline-none focus:ring-2 focus:ring-[#00fad0] rounded px-0.5"
+            aria-label="View DPDP Act 2023 consent terms and data privacy policy sheet"
           >
-            DPDP consent terms
-          </a>
+            DPDP Act 2023 consent terms
+          </Link>
           , so my profile can be shared with prospective employers.
         </span>
       </label>

@@ -2,8 +2,8 @@ import type { ProctoringViolationKind } from '@smart/contracts';
 import { captureVideoFrame, ovalBrightness, type NormalizedFaceBox } from './face-check';
 import { detectionsToCoverBoxes, getBlazeFaceDetector } from './mediapipe-face-detector';
 
-/** ~2 Hz — enough to catch leave/second-person without running every display frame. */
-export const LIVE_WEBCAM_SAMPLE_MS = 500;
+/** Fast enough that a missing face blacks the exam on the next detector tick. */
+export const LIVE_WEBCAM_SAMPLE_MS = 150;
 /** Same kind must wait this long before another HMAC ingest (rate-limit budget). */
 export const LIVE_WEBCAM_EMIT_COOLDOWN_MS = 10_000;
 
@@ -45,6 +45,43 @@ export function classifyLiveWebcam(
   return null;
 }
 
+export const FACE_ALIGNMENT_KINDS = [
+  'NO_FACE',
+  'LOOKING_AWAY',
+  'CAMERA_OBSTRUCTED',
+  'MULTIPLE_FACES',
+] as const satisfies readonly ProctoringViolationKind[];
+
+export function isFaceAlignmentKind(
+  kind: ProctoringViolationKind | null,
+): kind is (typeof FACE_ALIGNMENT_KINDS)[number] {
+  return kind !== null && (FACE_ALIGNMENT_KINDS as readonly string[]).includes(kind);
+}
+
+export function cameraIntegrityCopy(kind: ProctoringViolationKind | null): {
+  ok: boolean;
+  title: string;
+  detail: string;
+} {
+  if (kind === 'MULTIPLE_FACES') {
+    return {
+      ok: false,
+      title: 'More than one person',
+      detail: 'Only you should be in the camera.',
+    };
+  }
+  if (kind === 'NO_FACE') {
+    return { ok: false, title: 'Face not visible', detail: 'Sit in front of the camera.' };
+  }
+  if (kind === 'CAMERA_OBSTRUCTED') {
+    return { ok: false, title: 'Camera blocked', detail: 'Uncover the lens or add light.' };
+  }
+  if (kind === 'LOOKING_AWAY') {
+    return { ok: false, title: 'Face off-centre', detail: 'Look at the screen and sit closer.' };
+  }
+  return { ok: true, title: 'Camera clear', detail: 'One face in frame. Keep it that way.' };
+}
+
 export function confirmLiveWebcamIssue(
   previousKind: ProctoringViolationKind | null,
   previousStreak: number,
@@ -59,6 +96,7 @@ export function confirmLiveWebcamIssue(
 export function startLiveWebcamMonitor(options: {
   getVideo: () => HTMLVideoElement | null;
   onViolation: (kind: ProctoringViolationKind) => void;
+  onSample?: (kind: ProctoringViolationKind | null) => void;
   detect?: (
     video: HTMLVideoElement,
     timestampMs: number,
@@ -105,6 +143,7 @@ export function startLiveWebcamMonitor(options: {
           return frame ? ovalBrightness(frame) : 0;
         })();
       const nextKind = classifyLiveWebcam(boxes, brightness);
+      options.onSample?.(nextKind);
       const stepped = confirmLiveWebcamIssue(streakKind, streak, nextKind);
       streakKind = stepped.kind;
       streak = stepped.streak;

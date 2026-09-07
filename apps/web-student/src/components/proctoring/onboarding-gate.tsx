@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { Camera } from 'lucide-react';
+import { Camera, ClipboardList } from 'lucide-react';
 import { Button, Card, CardDescription, CardHeader, CardTitle } from '@smart/ui';
 import { api } from '../../lib/api';
 import {
@@ -12,6 +12,8 @@ import {
 import { enterAssessmentFullscreen } from '../../lib/proctoring/fullscreen';
 import type { FaceCheckResult } from '../../lib/proctoring/face-check';
 import { FaceLiveCheck } from './face-live-check';
+import { isGoogleChrome } from '../../lib/proctoring/chromium';
+import { skillVerifyRuleItems } from '../../lib/proctoring/skill-verify-rules';
 
 export function OnboardingGate({
   attemptId,
@@ -19,6 +21,7 @@ export function OnboardingGate({
   fullscreenRootRef,
   cameraEnabled = true,
   faceLiveCheck = false,
+  kioskTitle,
 }: {
   attemptId: string;
   onPassed: (stream: MediaStream | null) => void;
@@ -27,6 +30,8 @@ export function OnboardingGate({
   cameraEnabled?: boolean;
   /** Live one-face + lighting check after the camera opens. */
   faceLiveCheck?: boolean;
+  /** Skill-verify: catalog skill · proficiency in the kiosk header. */
+  kioskTitle?: string;
 }) {
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(false);
@@ -36,10 +41,12 @@ export function OnboardingGate({
       ? faceLiveCheck
         ? 'Allow the camera, then we will check that only one clearly lit face is visible in the oval.'
         : 'Check all three boxes, then continue. The browser will ask for camera and microphone after consent is saved.'
-      : 'Continue to enter fullscreen lockdown. Camera is not used for this assessment.',
+      : 'Continue to enter fullscreen lockdown. Camera is not used for this attempt.',
   );
   const [busy, setBusy] = useState(false);
   const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
+  const [rulesAccepted, setRulesAccepted] = useState(!faceLiveCheck);
+  const [rulesAck, setRulesAck] = useState(false);
   const [faceEpoch, setFaceEpoch] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const handedOffRef = useRef(false);
@@ -93,7 +100,10 @@ export function OnboardingGate({
     [attemptId, finish],
   );
 
+  const chromeOk = !faceLiveCheck || isGoogleChrome();
+
   async function run() {
+    if (!chromeOk) return;
     setBusy(true);
     try {
       if (!cameraEnabled) {
@@ -143,26 +153,39 @@ export function OnboardingGate({
     }
   }
 
+  const showRules = faceLiveCheck && chromeOk && !rulesAccepted && !liveStream;
   const consentsReady = faceLiveCheck ? camera : camera && microphone && biometric;
-  const ready = cameraEnabled ? consentsReady : true;
-  const title = faceLiveCheck ? 'Face check' : 'Proctoring consent';
-  const detail = cameraEnabled
-    ? faceLiveCheck
-      ? 'The camera is used only for this attempt. Align your face with the oval. We scan only that cutout for one well-lit face. Nothing is uploaded from this preview.'
-      : 'Camera and microphone are used only for this attempt. Nothing is pre-checked. Device permission is requested only after you continue.'
-    : 'This attempt uses fullscreen lockdown and integrity sensors. Camera and microphone are not used.';
+  const ready = cameraEnabled ? consentsReady && chromeOk : true;
+  const title = !chromeOk
+    ? 'Use Google Chrome'
+    : showRules
+      ? 'How the challenge works'
+      : faceLiveCheck
+        ? 'Face check'
+        : 'Proctoring consent';
+  const detail = !chromeOk
+    ? 'Skill verification camera checks only work in Google Chrome on a computer. Other browsers cannot continue.'
+    : showRules
+      ? 'Read this playbook before camera consent. It matches what this challenge actually enforces.'
+      : cameraEnabled
+        ? faceLiveCheck
+          ? 'The camera is used only for this attempt. Align your face with the oval. We scan only that cutout for one well-lit face. Nothing is uploaded from this preview.'
+          : 'Camera and microphone are used only for this attempt. Nothing is pre-checked. Device permission is requested only after you continue.'
+        : 'This attempt uses fullscreen lockdown and integrity sensors. Camera and microphone are not used.';
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--background)] text-[var(--text-primary)]">
       <header className="flex shrink-0 items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)] px-6 py-3">
-        <h1 className="text-lg font-semibold tracking-tight">
-          {faceLiveCheck ? 'Skill verification' : 'Assessment'}
+        <h1 className="truncate text-lg font-semibold tracking-tight">
+          {kioskTitle ?? (faceLiveCheck ? 'Skill verification' : 'Assessment')}
         </h1>
         <p className="text-xs text-[var(--text-secondary)]">
           {faceLiveCheck
             ? liveStream
-              ? 'Step 2 of 2 · Stay in frame'
-              : 'Step 1 of 2 · Consent'
+              ? 'Step 3 of 3 · Stay in frame'
+              : rulesAccepted
+                ? 'Step 2 of 3 · Consent'
+                : 'Step 1 of 3 · Playbook'
             : 'Before you begin'}
         </p>
       </header>
@@ -172,12 +195,31 @@ export function OnboardingGate({
         >
           <CardHeader className={liveStream ? 'mb-4' : 'mb-5'}>
             <div className="mb-3 flex size-11 items-center justify-center rounded-full bg-teal-500/15 text-teal-300">
-              <Camera className="size-5" aria-hidden />
+              {showRules ? (
+                <ClipboardList className="size-5" aria-hidden />
+              ) : (
+                <Camera className="size-5" aria-hidden />
+              )}
             </div>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{detail}</CardDescription>
           </CardHeader>
-          {cameraEnabled && !liveStream ? (
+          {showRules ? (
+            <div className="mb-4">
+              <ol className="mb-4 list-decimal space-y-2 pl-5 text-sm text-[var(--text-secondary)]">
+                {skillVerifyRuleItems().map((rule) => (
+                  <li key={rule}>{rule}</li>
+                ))}
+              </ol>
+              <ConsentRow
+                id="proctor-rules-ack"
+                checked={rulesAck}
+                onChange={setRulesAck}
+                label="I have read this playbook and I will follow it"
+              />
+            </div>
+          ) : null}
+          {chromeOk && cameraEnabled && !liveStream && !showRules ? (
             <div className="mb-4 space-y-2">
               <ConsentRow
                 id="proctor-consent-camera"
@@ -211,8 +253,26 @@ export function OnboardingGate({
               busy={busy}
             />
           ) : null}
-          <p className="text-sm text-[var(--text-secondary)]">{message}</p>
-          {liveStream ? null : (
+          <p
+            className="text-sm text-[var(--text-secondary)]"
+            role={!chromeOk ? 'alert' : undefined}
+          >
+            {!chromeOk
+              ? 'Open this page in Google Chrome on a computer, then start verification again.'
+              : showRules
+                ? null
+                : message}
+          </p>
+          {liveStream || !chromeOk ? null : showRules ? (
+            <Button
+              type="button"
+              disabled={!rulesAck}
+              className="mt-4 w-full bg-teal text-ink hover:bg-teal/90"
+              onClick={() => setRulesAccepted(true)}
+            >
+              Continue to camera consent
+            </Button>
+          ) : (
             <Button
               type="button"
               disabled={!ready || busy}

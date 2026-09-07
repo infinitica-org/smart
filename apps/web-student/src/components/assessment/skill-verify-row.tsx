@@ -94,16 +94,12 @@ export function SkillVerifyRow({
         type="button"
         className="h-9 w-full min-w-[8rem]"
         disabled={!view.canStart || pending}
-        title={view.hasForm ? (view.blockMessage ?? undefined) : 'No SDE verification form yet.'}
+        title={
+          view.hasForm ? (view.blockMessage ?? undefined) : 'This challenge is not unlocked yet.'
+        }
         onClick={onVerify}
       >
-        {pending
-          ? 'Starting…'
-          : view.hasForm
-            ? view.cooling
-              ? 'Locked'
-              : 'Verify'
-            : 'No assessment'}
+        {pending ? 'Starting…' : view.hasForm ? (view.cooling ? 'Locked' : 'Verify') : "Can't play"}
       </Button>
     </li>
   );

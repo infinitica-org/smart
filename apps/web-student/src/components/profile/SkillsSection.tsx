@@ -117,7 +117,7 @@ export function SkillsSection() {
             return;
           }
           if (!view.hasForm || !claim) {
-            setError('This skill does not have a verification assessment yet.');
+            setError('This skill does not have a verification challenge yet.');
             return;
           }
           router.push(`/assessments/skills/${claim.claimId}`);

@@ -602,6 +602,7 @@ export function assessmentApi(client: SmartApiClient) {
     startSkillVerify: (claimId: string, body?: StartSkillVerifyRequest) =>
       client.post(prefixed(`/assessment/skill-claims/${claimId}/verify/start`), body ?? {}, {
         schema: SkillVerifySessionDtoSchema,
+        timeoutMs: 180_000,
       }),
 
     skillVerifySession: (sessionId: string) =>
