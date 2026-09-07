@@ -37,14 +37,14 @@ export function SkillVerifyRow({
   const lockHint = view.status === 'LOCKED' ? `Locked until ${retryLabel}` : `Opens ${retryLabel}`;
 
   return (
-    <li className="grid grid-cols-1 items-center gap-3 rounded-xl border border-white/10 px-3 py-3 lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem]">
+    <li className="grid grid-cols-1 items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-3 lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem]">
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-          <p className="truncate text-sm font-medium">{skillName}</p>
+          <p className="truncate text-sm font-medium text-gray-900">{skillName}</p>
           {view.cooling && retryLabel ? (
             <time
               dateTime={view.retryAt ?? undefined}
-              className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
+              className="shrink-0 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800"
             >
               {lockHint}
             </time>
@@ -54,7 +54,7 @@ export function SkillVerifyRow({
       <div className="flex lg:justify-center">
         <VerificationBadge status={view.badge} variant="outline" className="whitespace-nowrap" />
       </div>
-      <label className="flex min-w-0 flex-col gap-1 text-[11px] text-[var(--text-secondary,rgba(255,255,255,0.45))]">
+      <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-gray-500">
         Proficiency
         <select
           value={proficiency}
@@ -71,7 +71,7 @@ export function SkillVerifyRow({
         </select>
       </label>
       {focusOptions.length > 0 ? (
-        <label className="flex min-w-0 flex-col gap-1 text-[11px] text-[var(--text-secondary,rgba(255,255,255,0.45))]">
+        <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-gray-500">
           Focus
           <select
             value={focusOptions.includes(focus) ? focus : (focusOptions[0] ?? '')}

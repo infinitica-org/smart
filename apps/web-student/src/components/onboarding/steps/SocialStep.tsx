@@ -32,10 +32,6 @@ export default function SocialStep({ formData, updateField, onBack, onContinue }
   }, []);
 
   const handleContinue = () => {
-    if (!formData.linkedinUrl.trim()) {
-      setError('LinkedIn profile is required.');
-      return;
-    }
     setError(null);
     onContinue();
   };
@@ -44,7 +40,7 @@ export default function SocialStep({ formData, updateField, onBack, onContinue }
     <div>
       <StepHeading
         title="LinkedIn & GitHub"
-        subtitle="LinkedIn is required. Verifying it (and GitHub, if you have one) builds trust with employers."
+        subtitle="Connect your LinkedIn or GitHub profiles (optional, but recommended to build trust with employers)."
       />
 
       <AnimatePresence>

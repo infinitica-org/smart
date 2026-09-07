@@ -48,7 +48,7 @@ export const CandidateOnboardingJobPreferencesSchema = z.object({
   expectedCtcLakhs: z.number().positive().max(1000),
   currentLocation: z.string().min(1).max(100),
   preferredLocations: z.array(z.string().min(1).max(100)).min(1).max(3),
-  preferredWorkModes: z.array(WorkModeSchema).min(1),
+  preferredWorkModes: z.array(WorkModeSchema).default(['FULL_TIME', 'HYBRID']),
 });
 export type CandidateOnboardingJobPreferences = z.infer<
   typeof CandidateOnboardingJobPreferencesSchema

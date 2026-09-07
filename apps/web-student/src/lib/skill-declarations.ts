@@ -8,7 +8,6 @@ import {
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
-  type SkillProficiency,
   type SkillStream,
 } from '@smart/contracts';
 
@@ -21,17 +20,18 @@ export const STREAM_LABELS: Record<SkillStream, string> = {
   AI_ML_ENGINEERING: 'AI/ML Engineering',
 };
 
-/** Matches @smart/contracts SkillProficiencySchema (no PROFESSIONAL on claims). */
-export const PROFICIENCY_OPTIONS: readonly SkillProficiency[] = [
+export const PROFICIENCY_OPTIONS: readonly string[] = [
   'BEGINNER',
   'INTERMEDIATE',
   'ADVANCED',
+  'PROFESSIONAL',
 ] as const;
 
-export const PROFICIENCY_LABELS: Record<SkillProficiency, string> = {
+export const PROFICIENCY_LABELS: Record<string, string> = {
   BEGINNER: 'Beginner',
   INTERMEDIATE: 'Intermediate',
   ADVANCED: 'Advanced',
+  PROFESSIONAL: 'Professional',
 };
 
 export function skillsForStream(stream: SkillStream) {

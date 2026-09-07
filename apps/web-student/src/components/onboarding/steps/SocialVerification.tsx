@@ -50,6 +50,16 @@ function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function extractLinkedinUsername(input: string): string {
+  if (!input) return '';
+  let cleaned = input.trim();
+  cleaned = cleaned.replace(/^https?:\/\//i, '');
+  cleaned = cleaned.replace(/^www\./i, '');
+  cleaned = cleaned.replace(/^linkedin\.com\/in\//i, '');
+  cleaned = cleaned.replace(/\/+$|^[/\s]+/g, '');
+  return cleaned;
+}
+
 export default function SocialVerification({ formData, updateField }: SocialVerificationProps) {
   const [linkedinLoading, setLinkedinLoading] = useState(false);
   const [linkedinError, setLinkedinError] = useState<string | null>(null);
@@ -60,6 +70,8 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
 
   const linkedin = formData.socialVerification.linkedin;
   const github = formData.socialVerification.github;
+
+  const linkedinUsername = extractLinkedinUsername(formData.linkedinUrl);
 
   const handleVerifyLinkedin = async () => {
     if (!formData.linkedinUrl.trim()) return;
@@ -130,15 +142,17 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="text-zinc-500 text-sm">https://</span>
+            <span className="text-zinc-500 text-sm font-medium select-none">linkedin.com/in/</span>
           </div>
           <input
             type="text"
-            value={formData.linkedinUrl}
-            onChange={(e) => updateField('linkedinUrl', e.target.value)}
-            autoComplete="url"
-            placeholder="linkedin.com/in/you"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-16 pr-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+            value={linkedinUsername}
+            onChange={(e) => {
+              const uname = extractLinkedinUsername(e.target.value);
+              updateField('linkedinUrl', uname ? `https://linkedin.com/in/${uname}` : '');
+            }}
+            placeholder="username"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-[128px] pr-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
           />
         </div>
 

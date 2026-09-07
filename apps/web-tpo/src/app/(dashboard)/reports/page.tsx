@@ -11,8 +11,10 @@ import {
 } from '@smart/contracts';
 import { api } from '../../../lib/api';
 
-function skillStreamFor(code: string): SkillStream | 'UNIVERSAL' {
-  return SKILL_DEFINITIONS.find((s) => s.code === code)?.stream ?? 'UNIVERSAL';
+function skillStreamFor(code: string): SkillStream {
+  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
+  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
+  return stream;
 }
 
 function streamLabel(stream: string): string {
@@ -23,8 +25,6 @@ function streamLabel(stream: string): string {
       return 'Data & Analytics';
     case 'AI_ML_ENGINEERING':
       return 'AI & Machine Learning';
-    case 'UNIVERSAL':
-      return 'Universal Core';
     default:
       return stream.replace(/_/g, ' ');
   }
@@ -82,18 +82,24 @@ export default function ReportsPage() {
     return true;
   });
 
-  // CSV Export Handler (Proficiency column removed per request)
+  // CSV / Excel Export Handler (RFC 4180 compliant with UTF-8 BOM for Excel compatibility)
   function handleExportCsv() {
     const headers = [
       'Candidate ID',
       'Full Name',
-      'Email',
-      'Batch',
-      'Stream',
+      'Email Address',
+      'Batch Name',
+      'Candidate Stream',
       'Onboarding Status',
-      'Verified Skills Count',
+      'Verified Credentials Count',
       'Skills List',
     ];
+
+    const formatCell = (val: string | number | null | undefined): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
 
     const rows = filteredStudents.map((student) => {
       const studentClaims = claims.filter((c) => c.studentId === student.userId);
@@ -108,27 +114,27 @@ export default function ReportsPage() {
         .join('; ');
 
       return [
-        student.userId,
-        `"${student.fullName}"`,
-        `"${student.email}"`,
-        `"${student.batchName}"`,
-        `"${streamLabel(candidateStream)}"`,
-        student.inviteStatus === 'ACCEPTED' ? 'Completed' : 'Pending',
+        formatCell(student.userId),
+        formatCell(student.fullName),
+        formatCell(student.email),
+        formatCell(student.batchName ?? 'N/A'),
+        formatCell(streamLabel(candidateStream)),
+        formatCell(student.inviteStatus === 'ACCEPTED' ? 'Completed' : 'Pending'),
         verifiedClaims.length,
-        `"${skillNames}"`,
+        formatCell(skillNames || 'Enrolled Core Skills'),
       ];
     });
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent =
+      '\uFEFF' +
+      [headers.map((h) => formatCell(h)).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+    const today = new Date().toISOString().slice(0, 10);
     link.setAttribute('href', url);
-    link.setAttribute(
-      'download',
-      `cohort_telemetry_report_${new Date().toISOString().slice(0, 10)}.csv`,
-    );
+    link.setAttribute('download', `smart_tpo_cohort_telemetry_report_${today}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -184,7 +190,6 @@ export default function ReportsPage() {
               <option value="SOFTWARE_DEVELOPMENT">Software Engineering</option>
               <option value="AI_ML_ENGINEERING">AI & Machine Learning</option>
               <option value="DATA_SCIENCE_ANALYTICS">Data & Analytics</option>
-              <option value="UNIVERSAL">Universal Core</option>
             </select>
 
             {/* 2nd Filter: Skills */}

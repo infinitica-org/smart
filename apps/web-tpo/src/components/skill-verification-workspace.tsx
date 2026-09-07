@@ -34,8 +34,10 @@ function skillNameFor(code: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === code)?.name ?? code;
 }
 
-function skillStreamFor(code: string): SkillStream | 'UNIVERSAL' {
-  return SKILL_DEFINITIONS.find((s) => s.code === code)?.stream ?? 'UNIVERSAL';
+function skillStreamFor(code: string): SkillStream {
+  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
+  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
+  return stream;
 }
 
 function streamLabel(stream: string): string {
@@ -46,8 +48,6 @@ function streamLabel(stream: string): string {
       return 'Data & Analytics';
     case 'AI_ML_ENGINEERING':
       return 'AI & Machine Learning';
-    case 'UNIVERSAL':
-      return 'Universal Core';
     default:
       return stream.replace(/_/g, ' ');
   }

@@ -1,4 +1,4 @@
-import { SKILL_DEFINITIONS, SKILL_PROFICIENCIES, type SkillDefinition } from '@smart/contracts';
+import { SKILL_DEFINITIONS, type SkillDefinition } from '@smart/contracts';
 
 /**
  * V1 candidate onboarding only ships the Software Engineering stream — the
@@ -40,21 +40,26 @@ export const FRONTEND_BACKEND_FRAMEWORK_SKILL = NICHE_SKILLS.find(
   (skill) => skill.code === 'FRONTEND_BACKEND_FRAMEWORK',
 );
 
-/** Self-declared proficiency options during onboarding — PROFESSIONAL is earned via verification, never self-declared. */
-export const SELF_DECLARED_PROFICIENCIES = SKILL_PROFICIENCIES;
+/** Self-declared proficiency options during onboarding — includes Professional. */
+export const SELF_DECLARED_PROFICIENCIES = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'PROFESSIONAL',
+] as const;
 
-export const PROFICIENCY_LABELS: Record<(typeof SKILL_PROFICIENCIES)[number], string> = {
+export const PROFICIENCY_LABELS: Record<string, string> = {
   BEGINNER: 'Beginner',
   INTERMEDIATE: 'Intermediate',
   ADVANCED: 'Advanced',
+  PROFESSIONAL: 'Professional',
 };
 
-export const COMMON_PROGRAMMING_LANGUAGES = [
-  'Python',
-  'JavaScript',
+export const CONTROLLED_PROGRAMMING_LANGUAGES = [
   'TypeScript',
+  'JavaScript',
+  'Python',
   'Java',
-  'C',
   'C++',
   'C#',
   'Go',
@@ -66,17 +71,27 @@ export const COMMON_PROGRAMMING_LANGUAGES = [
   'SQL',
 ];
 
-export const COMMON_FRAMEWORKS = [
+export const FRONTEND_FRAMEWORKS = [
   'React',
   'Next.js',
-  'Vue',
+  'Vue.js',
   'Angular',
+  'Svelte',
+  'HTML5 / CSS3',
+  'React Native',
+];
+
+export const BACKEND_FRAMEWORKS = [
   'Node.js',
-  'Express',
+  'Express.js',
+  'NestJS',
   'Django',
   'Flask',
-  'Spring Boot',
-  '.NET',
   'FastAPI',
-  'NestJS',
+  'Spring Boot',
+  '.NET / C#',
+  'Ruby on Rails',
 ];
+
+export const COMMON_PROGRAMMING_LANGUAGES = CONTROLLED_PROGRAMMING_LANGUAGES;
+export const COMMON_FRAMEWORKS = [...FRONTEND_FRAMEWORKS, ...BACKEND_FRAMEWORKS];

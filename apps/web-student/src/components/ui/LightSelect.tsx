@@ -83,7 +83,7 @@ export function LightSelect({
 
   return (
     <div
-      className={`relative w-full border border-gray-200 rounded-xl px-4 py-3 bg-white ${className}`}
+      className={`relative w-full border border-zinc-800 rounded-xl px-4 py-3 bg-zinc-950 ${className}`}
       ref={containerRef}
     >
       <button
@@ -91,11 +91,15 @@ export function LightSelect({
         onClick={() => setIsOpen((open) => !open)}
         className="w-full flex items-center justify-between text-left focus:outline-none h-full"
       >
-        <span className={selectedOption ? 'text-gray-900 truncate' : 'text-gray-400 truncate'}>
+        <span
+          className={
+            selectedOption ? 'text-zinc-100 font-medium truncate' : 'text-zinc-500 truncate'
+          }
+        >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 text-gray-400 ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#00fad0]' : 'text-zinc-400'}`}
         />
       </button>
 
@@ -112,7 +116,7 @@ export function LightSelect({
               maxHeight: menuBox.maxHeight,
               ...(menuBox.openUp ? { bottom: menuBox.bottom } : { top: menuBox.top }),
             }}
-            className="bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-y-auto"
           >
             <div className="p-1 flex flex-col gap-1">
               {options.map((option) => {
@@ -125,8 +129,10 @@ export function LightSelect({
                       onChange(option.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm ${
-                      isSelected ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                      isSelected
+                        ? 'bg-[#00fad0]/15 text-[#00fad0] font-semibold'
+                        : 'text-zinc-200 hover:bg-zinc-800 hover:text-white'
                     }`}
                   >
                     {option.label}

@@ -291,22 +291,20 @@ export function ProjectSubmissionForm() {
         </Button>
 
         {showImport ? (
-          <div className="rounded-lg border border-[var(--surface-border)] p-3 text-sm">
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-sm">
             {!githubLogin ? (
-              <p className="text-[var(--text-secondary)]">
+              <p className="text-gray-500">
                 No GitHub account connected. Connect one from onboarding, or just fill this in
                 manually below.
               </p>
             ) : reposLoading ? (
-              <p className="flex items-center gap-2 text-[var(--text-secondary)]">
+              <p className="flex items-center gap-2 text-gray-500">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading your repos…
               </p>
             ) : reposError ? (
-              <p className="text-red-400">{reposError}</p>
+              <p className="text-red-600">{reposError}</p>
             ) : repos && repos.length === 0 ? (
-              <p className="text-[var(--text-secondary)]">
-                No public repos found for {githubLogin}.
-              </p>
+              <p className="text-gray-500">No public repos found for {githubLogin}.</p>
             ) : (
               <ul className="flex flex-col gap-1">
                 {(repos ?? []).map((repo) => (
@@ -315,7 +313,7 @@ export function ProjectSubmissionForm() {
                       type="button"
                       onClick={() => importRepo(repo)}
                       disabled={importingRepo !== null}
-                      className="flex w-full flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-[var(--surface-hover)] disabled:opacity-50"
+                      className="flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-left hover:bg-gray-100 disabled:opacity-50"
                     >
                       <span className="flex items-center gap-2 font-medium">
                         {repo.fullName}
