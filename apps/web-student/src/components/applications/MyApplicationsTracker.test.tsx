@@ -34,7 +34,9 @@ function application(overrides: Partial<CandidateApplicationDto> = {}): Candidat
 
 function renderTracker(pollIntervalMs = 60_000): ReturnType<typeof render> {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, refetchIntervalInBackground: true },
+    },
   });
   return render(
     <QueryClientProvider client={client}>
@@ -120,10 +122,15 @@ describe('MyApplicationsTracker', () => {
     renderTracker(25);
 
     await waitFor(() => expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0), {
-      timeout: 1500,
-    });
-    expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
+    await waitFor(
+      () => {
+        expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
+        expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
+          'INTERVIEW',
+        );
+      },
+      { timeout: 1500 },
+    );
   });
 
   it('stops polling after unmount', async () => {

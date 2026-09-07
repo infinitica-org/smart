@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { LightSelect } from '../../ui/LightSelect';
@@ -29,6 +29,15 @@ export default function LanguagesStep({
 }: LanguagesStepProps) {
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (formData.languages.length === 0) {
+      updateField('languages', [
+        { id: crypto.randomUUID(), language: 'English', proficiency: '' },
+        { id: crypto.randomUUID(), language: '', proficiency: '' },
+      ]);
+    }
+  }, []);
+
   const addLanguage = () =>
     updateField('languages', [
       ...formData.languages,
@@ -46,10 +55,19 @@ export default function LanguagesStep({
     );
 
   const handleContinue = () => {
-    if (!formData.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
-      setError('Add at least one language.');
+    const valid = formData.languages.filter((l) => l.language.trim() && l.proficiency.trim());
+    const hasEnglish = valid.some((l) => l.language.trim().toLowerCase() === 'english');
+    const hasNative = valid.some((l) => l.language.trim().toLowerCase() !== 'english');
+
+    if (!hasEnglish) {
+      setError('English is mandatory. Please add English and set your fluency level.');
       return;
     }
+    if (!hasNative) {
+      setError('Please select at least one native or regional language in addition to English.');
+      return;
+    }
+
     setError(null);
     onContinue();
   };
@@ -71,7 +89,7 @@ export default function LanguagesStep({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex gap-3 items-center rounded-xl border border-gray-200 bg-gray-50 p-3"
+              className="flex gap-3 items-center rounded-xl border border-zinc-800 bg-zinc-900/60 p-3"
             >
               <LightSelect
                 value={item.language}
@@ -90,7 +108,7 @@ export default function LanguagesStep({
               <button
                 type="button"
                 onClick={() => removeLanguage(item.id)}
-                className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+                className="p-2 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -102,7 +120,7 @@ export default function LanguagesStep({
       <button
         type="button"
         onClick={addLanguage}
-        className="mt-3 text-sm font-medium text-gray-900 hover:underline flex items-center gap-1"
+        className="mt-3 text-sm font-semibold text-[#00fad0] hover:text-[#7dffe6] hover:underline flex items-center gap-1 transition-colors"
       >
         <Plus className="w-4 h-4" /> Add a language
       </button>

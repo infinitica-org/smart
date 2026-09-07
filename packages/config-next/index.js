@@ -4,6 +4,7 @@
  */
 export function withSmartConfig(config = {}) {
     const baseConfig = {
+        allowedDevOrigins: ['localhost', '127.0.0.1', 'localhost:3001', '127.0.0.1:3001'],
         output: 'standalone',
         transpilePackages: [
             '@smart/ui',

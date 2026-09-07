@@ -3,6 +3,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { motion } from 'motion/react';
 import { NumberTicker } from '@smart/ui';
 import { AnimatedCircularProgressBar } from '@smart/ui';
 import { cn } from '@smart/ui';
@@ -22,7 +23,12 @@ export function KpiTile({
   tone?: IconTone;
 }) {
   return (
-    <article className="flex items-start justify-between gap-3 rounded-2xl bg-card p-5 text-card-foreground">
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="flex items-start justify-between gap-3 rounded-2xl bg-card p-5 text-card-foreground"
+    >
       <div className="space-y-2">
         <p className="text-sm text-card-foreground/70">{label}</p>
         <p className="font-heading text-4xl font-semibold tracking-tight">
@@ -31,7 +37,7 @@ export function KpiTile({
         {hint ? <p className="text-xs text-card-foreground/70">{hint}</p> : null}
       </div>
       <IconWell icon={icon} tone={tone} />
-    </article>
+    </motion.article>
   );
 }
 
@@ -49,7 +55,10 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn('flex h-full flex-col rounded-2xl bg-card text-card-foreground', className)}
     >
       <header className="flex items-start justify-between gap-3 px-5 pt-5">
@@ -62,7 +71,7 @@ export function Panel({
         {action}
       </header>
       <div className="flex-1 p-5">{children}</div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -80,8 +89,8 @@ export function TenantMix({
           value={percent}
           label="Active"
           className="size-36"
-          gaugePrimaryColor="var(--brand-turquoise)"
-          gaugeSecondaryColor="color-mix(in srgb, var(--brand-white) 22%, var(--brand-teal))"
+          gaugePrimaryColor="var(--brand-teal)"
+          gaugeSecondaryColor="color-mix(in srgb, #ffffff 22%, var(--brand-teal))"
         />
         <ul className="w-full space-y-3 text-sm">
           {legend.map((item) => (

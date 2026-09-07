@@ -1,12 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import AssessmentsPage from './page';
-import { L1_LAST_ATTEMPT_STORAGE_KEY } from '@/lib/l1-mcq';
+import SkillsPage from './page';
 
 const push = vi.fn();
-const startMock = vi.fn();
-const meMock = vi.fn();
-const sessionMock = vi.fn();
+const listSkillClaimsMock = vi.fn();
+const declareSkillClaimMock = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
@@ -14,105 +12,62 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/api', () => ({
   api: {
-    auth: { me: (...args: unknown[]) => meMock(...args) },
     assessment: {
-      start: (...args: unknown[]) => startMock(...args),
-      session: (...args: unknown[]) => sessionMock(...args),
-      listSkillClaims: () => Promise.resolve([]),
-      declareSkillClaim: vi.fn(),
+      listSkillClaims: () => listSkillClaimsMock(),
+      declareSkillClaim: (...args: unknown[]) => declareSkillClaimMock(...args),
     },
   },
 }));
 
-const liveSession = {
-  attemptId: '55555555-5555-4555-8555-555555555555',
-  studentId: '11111111-1111-4111-8111-111111111111',
-  trackCode: 'MBA_FINANCE',
-  levelNumber: 1,
-  levelFormat: 'MCQ',
-  status: 'IN_PROGRESS' as const,
-  formId: 'A',
-  startedAt: new Date().toISOString(),
-  expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
-  serverRemainingSeconds: 3600,
-  totalItems: 2,
-  answeredItems: 1,
-  currentItemIndex: 1,
-  integrityFlag: 'CLEAN' as const,
-  locked: false,
-};
-
-describe('AssessmentsPage L1 start', () => {
+describe('SkillsPage', () => {
   beforeEach(() => {
-    sessionStorage.clear();
     push.mockReset();
-    startMock.mockReset();
-    meMock.mockReset();
-    sessionMock.mockReset();
-    meMock.mockResolvedValue({ primaryTrack: 'MBA_FINANCE' });
-    startMock.mockResolvedValue(liveSession);
+    listSkillClaimsMock.mockReset();
+    declareSkillClaimMock.mockReset();
+    listSkillClaimsMock.mockResolvedValue([
+      {
+        claimId: 'claim-1',
+        studentId: 'student-1',
+        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        proficiency: 'INTERMEDIATE',
+        status: 'VERIFIED',
+      },
+      {
+        claimId: 'claim-2',
+        studentId: 'student-1',
+        skillCode: 'GIT_VERSION_CONTROL',
+        proficiency: 'BEGINNER',
+        status: 'DECLARED',
+      },
+    ]);
   });
 
-  it('starts an L1 attempt with the enrolled track and routes to the player', async () => {
-    render(<AssessmentsPage />);
-    const start = await screen.findByRole('button', { name: /Start/i });
-    fireEvent.click(start);
+  it('renders the Skills header and lists real database skill claims', async () => {
+    render(<SkillsPage />);
+    expect(await screen.findByRole('heading', { name: 'Skills' })).toBeDefined();
+    expect(screen.getByText('Programming fundamentals & logic')).toBeDefined();
+    expect(screen.getByText('Git & version control')).toBeDefined();
+    expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Not Verified').length).toBeGreaterThan(0);
+  });
+
+  it('allows starting a skill verification exam for an unverified skill', async () => {
+    declareSkillClaimMock.mockResolvedValue({ claimId: 'claim-2' });
+    render(<SkillsPage />);
+    const startButtons = await screen.findAllByRole('button', { name: /Start/i });
+    expect(startButtons.length).toBeGreaterThan(0);
+    if (!startButtons[0]) throw new Error('Button not found');
+    fireEvent.click(startButtons[0]);
     await waitFor(() => {
-      expect(startMock).toHaveBeenCalledWith({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
-    });
-    expect(push).toHaveBeenCalledWith('/assessments/55555555-5555-4555-8555-555555555555');
-  });
-
-  it('does not pick a catalog track when primaryTrack is missing', async () => {
-    meMock.mockResolvedValue({ primaryTrack: null });
-    render(<AssessmentsPage />);
-    expect(await screen.findByText('No enrolled track')).toBeDefined();
-    expect(screen.getByRole('link', { name: /Enroll in a track/i })).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Start/i })).toBeNull();
-    expect(startMock).not.toHaveBeenCalled();
-  });
-
-  it('resumes an in-progress attempt from sessionStorage without calling start', async () => {
-    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, liveSession.attemptId);
-    sessionMock.mockResolvedValue(liveSession);
-    render(<AssessmentsPage />);
-    const resume = await screen.findByRole('button', { name: /Resume/i });
-    fireEvent.click(resume);
-    await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/assessments/55555555-5555-4555-8555-555555555555');
-    });
-    expect(startMock).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Score \d|Score %/i)).toBeNull();
-  });
-
-  it('does not resume an expired in-progress attempt from sessionStorage', async () => {
-    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, liveSession.attemptId);
-    sessionMock.mockResolvedValue({
-      ...liveSession,
-      locked: true,
-      serverRemainingSeconds: 0,
-    });
-    render(<AssessmentsPage />);
-    const start = await screen.findByRole('button', { name: /Start/i });
-    fireEvent.click(start);
-    await waitFor(() => {
-      expect(startMock).toHaveBeenCalledWith({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
+      expect(push).toHaveBeenCalledWith('/assessments/skills/claim-2');
     });
   });
 
-  it('does not resume a proctor-locked attempt that still has clock remaining', async () => {
-    sessionStorage.setItem(L1_LAST_ATTEMPT_STORAGE_KEY, liveSession.attemptId);
-    sessionMock.mockResolvedValue({
-      ...liveSession,
-      locked: true,
-      serverRemainingSeconds: 1800,
-    });
-    render(<AssessmentsPage />);
-    const start = await screen.findByRole('button', { name: /Start/i });
-    expect(screen.queryByRole('button', { name: /Resume/i })).toBeNull();
-    fireEvent.click(start);
-    await waitFor(() => {
-      expect(startMock).toHaveBeenCalledWith({ trackCode: 'MBA_FINANCE', levelNumber: 1 });
-    });
+  it('opens details modal when View Details is clicked', async () => {
+    render(<SkillsPage />);
+    const detailsButtons = await screen.findAllByRole('button', { name: /View Details/i });
+    if (!detailsButtons[0]) throw new Error('Button not found');
+    fireEvent.click(detailsButtons[0]);
+    expect(await screen.findByText('Database Claim ID:')).toBeDefined();
   });
 });

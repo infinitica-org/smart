@@ -159,7 +159,7 @@ export default function OnboardingWizard() {
     return (
       <WizardPage>
         <div className="flex justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
         </div>
       </WizardPage>
     );

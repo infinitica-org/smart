@@ -11,7 +11,6 @@ import {
   Code2,
   Cpu,
   BarChart2,
-  Layers,
   ArrowRight,
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
@@ -23,8 +22,10 @@ import {
 } from '@smart/contracts';
 import { api } from '../../lib/api';
 
-function skillStreamFor(code: string): SkillStream | 'UNIVERSAL' {
-  return SKILL_DEFINITIONS.find((s) => s.code === code)?.stream ?? 'UNIVERSAL';
+function skillStreamFor(code: string): SkillStream {
+  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
+  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
+  return stream;
 }
 
 function streamLabel(stream: string): string {
@@ -35,8 +36,6 @@ function streamLabel(stream: string): string {
       return 'Data & Analytics';
     case 'AI_ML_ENGINEERING':
       return 'AI & Machine Learning';
-    case 'UNIVERSAL':
-      return 'Universal Core';
     default:
       return stream.replace(/_/g, ' ');
   }
@@ -87,7 +86,6 @@ export default function DashboardPage() {
     SOFTWARE_DEVELOPMENT: 0,
     AI_ML_ENGINEERING: 0,
     DATA_SCIENCE_ANALYTICS: 0,
-    UNIVERSAL: 0,
   };
 
   claims
@@ -214,7 +212,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Domain Readiness Telemetry Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Domain 1 */}
         <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
           <div className="flex items-center gap-3 mb-2">
@@ -263,23 +261,6 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
             <span className="text-zinc-400 font-medium">Verified Credentials:</span>
             <span className="font-extrabold text-white">{streamCounts.DATA_SCIENCE_ANALYTICS}</span>
-          </div>
-        </div>
-
-        {/* Domain 4 */}
-        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-xs">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="size-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center">
-              <Layers className="size-4" />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-white">Universal Core</h3>
-              <p className="text-[10px] text-zinc-500 font-medium">Core Foundational Skills</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
-            <span className="text-zinc-400 font-medium">Verified Credentials:</span>
-            <span className="font-extrabold text-white">{streamCounts.UNIVERSAL}</span>
           </div>
         </div>
       </div>

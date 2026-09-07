@@ -21,17 +21,18 @@ export const STREAM_LABELS: Record<SkillStream, string> = {
   AI_ML_ENGINEERING: 'AI/ML Engineering',
 };
 
-/** Matches @smart/contracts SkillProficiencySchema (no PROFESSIONAL on claims). */
-export const PROFICIENCY_OPTIONS: readonly SkillProficiency[] = [
+export const PROFICIENCY_OPTIONS: readonly string[] = [
   'BEGINNER',
   'INTERMEDIATE',
   'ADVANCED',
+  'PROFESSIONAL',
 ] as const;
 
-export const PROFICIENCY_LABELS: Record<SkillProficiency, string> = {
+export const PROFICIENCY_LABELS: Record<string, string> = {
   BEGINNER: 'Beginner',
   INTERMEDIATE: 'Intermediate',
   ADVANCED: 'Advanced',
+  PROFESSIONAL: 'Professional',
 };
 
 export function skillsForStream(stream: SkillStream) {
@@ -53,6 +54,13 @@ export function mandatorySkillsForStream(stream: SkillStream) {
 
 export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
+}
+
+export function formatSkillVerifyKioskTitle(
+  skillCode: string,
+  proficiency: SkillProficiency,
+): string {
+  return `${skillNameForCode(skillCode)} · ${PROFICIENCY_LABELS[proficiency]}`;
 }
 
 export function isSdeV4Verifiable(skillCode: string): boolean {
@@ -102,7 +110,7 @@ export function isSkillVerifyCooldownActive(claim: SkillClaimDto, now = Date.now
 
 export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
   if (!isSdeV4Verifiable(claim.skillCode)) {
-    return 'This skill does not have a verification assessment yet.';
+    return 'This skill does not have a verification challenge yet.';
   }
   if (claim.status === 'VERIFIED') {
     return 'This skill is already verified.';

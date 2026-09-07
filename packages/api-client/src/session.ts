@@ -117,7 +117,7 @@ export function portalHomeForRole(role: UserRole, origins: PortalOrigins): strin
     case 'PLACEMENT_STAFF':
       return `${origins.tpo.replace(/\/$/u, '')}/batches`;
     case 'SUPER_ADMIN':
-      return `${origins.admin.replace(/\/$/u, '')}/admin/health`;
+      return `${origins.admin.replace(/\/$/u, '')}/admin`;
     default:
       return null;
   }

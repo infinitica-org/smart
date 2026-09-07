@@ -30,7 +30,7 @@ export async function requestProctoringMedia(): Promise<MediaStream> {
       audio: true,
     });
   } catch {
-    throw new Error('Allow camera and microphone to continue this assessment.');
+    throw new Error('Allow camera and microphone to continue.');
   }
 }
 

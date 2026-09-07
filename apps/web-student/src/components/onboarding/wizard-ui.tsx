@@ -3,34 +3,37 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 
-/** Shared light-theme primitives for the rewritten candidate onboarding wizard. */
+/** Dark-themed primitives for the candidate onboarding wizard. */
 
 export function StepHeading({ title, subtitle }: { title: string; subtitle?: ReactNode }) {
   return (
     <div className="mb-8">
-      <h1 className="text-3xl md:text-[34px] font-bold tracking-tight text-gray-900 mb-2">
-        {title}
-      </h1>
-      {subtitle ? <p className="text-gray-500 leading-relaxed">{subtitle}</p> : null}
+      <h1 className="text-3xl md:text-[34px] font-bold tracking-tight text-white mb-2">{title}</h1>
+      {subtitle ? <p className="text-zinc-400 leading-relaxed">{subtitle}</p> : null}
     </div>
   );
 }
 
 export function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
   return (
-    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-      {children} {required ? <span className="text-red-500">*</span> : null}
+    <label className="block text-sm font-semibold text-zinc-200 mb-1.5">
+      {children} {required ? <span className="text-[#00fad0]">*</span> : null}
     </label>
   );
 }
 
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  const { className = '', ...rest } = props;
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  const { className = '', invalid, ...rest } = props;
   return (
     <input
       {...rest}
-      className={`w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-all ${className}`}
+      className={`w-full bg-zinc-950 border rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition-all ${
+        invalid
+          ? 'border-rose-500 ring-1 ring-rose-500/30'
+          : 'border-zinc-800 focus:border-[#00fad0] focus:ring-1 focus:ring-[#00fad0]'
+      } ${className}`}
     />
   );
 }
@@ -41,7 +44,7 @@ export function ErrorBanner({ children }: { children: ReactNode }) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
     >
       {children}
     </motion.div>
@@ -63,8 +66,8 @@ export function PillToggle({
       onClick={onClick}
       className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.97] ${
         active
-          ? 'border-gray-900 bg-gray-900 text-white'
-          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+          ? 'border-[#00fad0] bg-[#00fad0]/20 text-[#00fad0]'
+          : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60 hover:text-white'
       }`}
     >
       {children}
@@ -82,7 +85,7 @@ export function PrimaryButton({
     <button
       type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#00fad0] hover:bg-[#7dffe6] px-7 py-3 text-sm font-bold text-zinc-950 shadow-lg shadow-[#00fad0]/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       {children}
@@ -97,7 +100,7 @@ export function BackButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-700 transition-all hover:bg-gray-50 active:scale-[0.98] ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-6 py-3 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white active:scale-[0.98] ${className}`}
     >
       <ArrowLeft className="h-4 w-4" />
       {children ?? 'Back'}
@@ -130,7 +133,7 @@ export function ProgressDots({ current }: { current: WizardStepId }) {
             initial={false}
             animate={{
               width: active ? 22 : 8,
-              backgroundColor: done || active ? '#0f172a' : '#e5e7eb',
+              backgroundColor: done || active ? '#00fad0' : '#27272a',
             }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="h-2 rounded-full"
@@ -141,12 +144,6 @@ export function ProgressDots({ current }: { current: WizardStepId }) {
   );
 }
 
-/**
- * Slide+fade-in for a `key`-ed step/tab container. Enter-only (no `exit`) —
- * `AnimatePresence` + a keyed swap looked right but its exit animation never
- * resolved in this app, permanently blocking the incoming step from mounting.
- * A plain keyed remount still animates the new content in via `initial`/`animate`.
- */
 export const stepMotionProps = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0 },
@@ -155,8 +152,35 @@ export const stepMotionProps = {
 
 export function WizardPage({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-[100dvh] w-full bg-white">
-      <div className="mx-auto w-full max-w-xl px-6 py-14">{children}</div>
+    <div className="min-h-[100dvh] w-full bg-zinc-950 text-white font-sans flex flex-col items-center justify-start relative overflow-y-auto px-4 py-8 sm:py-12">
+      {/* Subtle ambient background glow */}
+      <div
+        className="fixed inset-0 opacity-[0.2] pointer-events-none z-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(ellipse at 50% 0%, rgba(0,250,208,0.15) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Top Header Logo */}
+      <header className="relative z-10 w-full max-w-2xl flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/img/Logo/white-logo.png"
+            alt="SMART"
+            width={130}
+            height={32}
+            className="h-7 w-auto object-contain"
+            priority
+          />
+          <span className="text-xs text-zinc-500 font-axiforma border-l border-zinc-800 pl-3">
+            Candidate onboarding
+          </span>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="relative z-10 w-full max-w-2xl flex flex-col">{children}</main>
     </div>
   );
 }

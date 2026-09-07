@@ -3,6 +3,7 @@ import {
   claimToBadgeStatus,
   canStartSdeV4Verify,
   formatCooldown,
+  formatSkillVerifyKioskTitle,
   mandatorySkillsForStream,
   progressForClaim,
   skillsForStream,
@@ -25,6 +26,12 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
 }
 
 describe('skill-declarations helpers', () => {
+  it('formats the kiosk title as skill name and proficiency', () => {
+    expect(formatSkillVerifyKioskTitle('GIT_VERSION_CONTROL', 'INTERMEDIATE')).toBe(
+      'Git & version control · Intermediate',
+    );
+  });
+
   it('filters SOFTWARE_IT skills by stream', () => {
     const universal = skillsForStream('UNIVERSAL');
     expect(universal.length).toBeGreaterThan(0);

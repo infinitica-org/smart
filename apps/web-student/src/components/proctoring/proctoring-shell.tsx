@@ -22,8 +22,10 @@ import { createProctorIngest } from '../../lib/proctoring/ingest-queue';
 import { DisplayGate, FullscreenGate } from './fullscreen-gate';
 import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
-import { startLiveWebcamMonitor } from '../../lib/proctoring/live-webcam';
+import { isFaceAlignmentKind, startLiveWebcamMonitor } from '../../lib/proctoring/live-webcam';
+import { ProctorLiveProvider } from './proctor-live-context';
 import {
+  FaceAlignmentBlackout,
   INTEGRITY_LOCKOUT_SECONDS,
   IntegrityLockoutPanel,
   IntegrityWarningModal,
@@ -35,6 +37,7 @@ export function ProctoringShell({
   onReady,
   cameraEnabled = true,
   faceLiveCheck = false,
+  kioskTitle,
   children,
 }: {
   attemptId: string;
@@ -46,6 +49,7 @@ export function ProctoringShell({
   cameraEnabled?: boolean;
   /** Skill-verify: live one-face and lighting check before the form generates. */
   faceLiveCheck?: boolean;
+  kioskTitle?: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -67,11 +71,16 @@ export function ProctoringShell({
     limit: PROCTORING_WARNING_LIMIT_DEFAULT,
   });
   const [warningOpen, setWarningOpen] = useState(false);
+  const [faceBlackout, setFaceBlackout] = useState(false);
+  const [liveKind, setLiveKind] = useState<ProctoringViolationKind | null>(null);
+  const [cameraSampled, setCameraSampled] = useState(false);
+  const [previewHosted, setPreviewHosted] = useState(false);
   const [lockSecondsLeft, setLockSecondsLeft] = useState(INTEGRITY_LOCKOUT_SECONDS);
   const terminatedRef = useRef(false);
   const secretRef = useRef('');
   const mediaRef = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
+  const fallbackPreviewRef = useRef<HTMLVideoElement | null>(null);
   const kioskRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -94,6 +103,21 @@ export function ProctoringShell({
   const terminateIfLockedRef = useRef(terminateIfLocked);
   terminateIfLockedRef.current = terminateIfLocked;
   const dismissWarning = useCallback(() => setWarningOpen(false), []);
+  const dismissFaceBlackout = useCallback(() => setFaceBlackout(false), []);
+
+  const bindPreview = useCallback((el: HTMLVideoElement | null) => {
+    if (el) {
+      previewRef.current = el;
+      setPreviewHosted(true);
+      if (mediaRef.current) {
+        el.srcObject = mediaRef.current;
+        void el.play().catch(() => undefined);
+      }
+      return;
+    }
+    previewRef.current = null;
+    setPreviewHosted(false);
+  }, []);
 
   const report = useCallback(
     async (kind: ProctoringViolationKind) => {
@@ -111,7 +135,10 @@ export function ProctoringShell({
         });
         setLocked(snap.locked);
         setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
-        if (snap.warningCount > 0 && !snap.locked) setWarningOpen(true);
+        if (snap.warningCount > 0 && !snap.locked) {
+          if (isFaceAlignmentKind(kind)) setFaceBlackout(true);
+          else setWarningOpen(true);
+        }
         terminateIfLocked(snap.locked);
       } catch {
         // Local preventDefault still applied; ingest must not crash the player.
@@ -200,9 +227,15 @@ export function ProctoringShell({
   useEffect(() => {
     if (!enabled || !ready || locked || !cameraEnabled) return undefined;
     const monitor = startLiveWebcamMonitor({
-      getVideo: () => previewRef.current,
+      getVideo: () => previewRef.current ?? fallbackPreviewRef.current,
       onViolation: (kind) => ingestRef.current.report(kind),
+      onSample: (kind) => {
+        setLiveKind(kind);
+        setCameraSampled(true);
+        if (isFaceAlignmentKind(kind)) setFaceBlackout(true);
+      },
     });
+    void monitor.tick();
     return () => monitor.stop();
   }, [attemptId, cameraEnabled, enabled, ready, locked]);
 
@@ -233,6 +266,7 @@ export function ProctoringShell({
 
   const releaseMedia = useCallback(() => {
     releaseProctoringPreview(previewRef.current, mediaRef.current);
+    releaseProctoringPreview(fallbackPreviewRef.current, null);
     mediaRef.current = null;
   }, []);
 
@@ -265,76 +299,92 @@ export function ProctoringShell({
   }, [releaseMedia]);
 
   useEffect(() => {
-    if (!cameraEnabled || !ready || !previewRef.current || !mediaRef.current) return;
-    previewRef.current.srcObject = mediaRef.current;
-  }, [cameraEnabled, ready]);
+    if (!cameraEnabled || !ready || !mediaRef.current) return;
+    const hosted = previewRef.current;
+    const fallback = fallbackPreviewRef.current;
+    if (hosted) hosted.srcObject = mediaRef.current;
+    else if (fallback) fallback.srcObject = mediaRef.current;
+  }, [cameraEnabled, ready, previewHosted]);
 
   if (!enabled) return children;
   if (!mounted) return null;
 
   const hideExam = hidePlayerForFullscreen(blocked || extendedDisplay);
-  const previewVideo = cameraEnabled ? (
-    <video
-      ref={previewRef}
-      className="pointer-events-none fixed right-4 bottom-4 z-40 h-24 w-32 rounded-md border border-white/20 object-cover"
-      muted
-      playsInline
-      autoPlay
-      aria-label="Proctoring camera preview"
-    />
-  ) : null;
+  const liveValue = {
+    cameraEnabled,
+    liveKind,
+    sampled: cameraSampled,
+    warningCount: warnings.count,
+    warningLimit: warnings.limit,
+    bindPreview,
+  };
   const kiosk = (
-    <div
-      ref={kioskRef}
-      className="fixed inset-0 h-full overflow-hidden bg-black"
-      style={{ zIndex: 2147483646, overscrollBehavior: 'none', touchAction: 'manipulation' }}
-    >
-      {!ready ? (
-        <div className="flex h-full min-h-full flex-col">
-          <OnboardingGate
-            attemptId={attemptId}
-            fullscreenRootRef={kioskRef}
-            cameraEnabled={cameraEnabled}
-            faceLiveCheck={faceLiveCheck}
-            onPassed={(stream) => {
-              mediaRef.current = stream;
-              if (cameraEnabled && previewRef.current && stream) {
-                previewRef.current.srcObject = stream;
-              }
-              setReady(true);
-              setBlocked(!document.fullscreenElement);
-              notifyReady();
-            }}
-          />
-        </div>
-      ) : locked ? (
-        <IntegrityLockoutPanel limit={warnings.limit} secondsLeft={lockSecondsLeft} />
-      ) : (
-        <>
-          <div
-            className={hideExam ? 'hidden' : 'flex h-full min-h-full flex-col'}
-            aria-hidden={hideExam}
-          >
-            <div className="min-h-0 flex-1">{children}</div>
-            {previewVideo}
-          </div>
-          {warningOpen ? (
-            <IntegrityWarningModal
-              count={warnings.count}
-              limit={warnings.limit}
-              onDismiss={dismissWarning}
+    <ProctorLiveProvider value={liveValue}>
+      <div
+        ref={kioskRef}
+        className="fixed inset-0 h-full overflow-hidden bg-black"
+        style={{ zIndex: 2147483646, overscrollBehavior: 'none', touchAction: 'manipulation' }}
+      >
+        {!ready ? (
+          <div className="flex h-full min-h-full flex-col">
+            <OnboardingGate
+              attemptId={attemptId}
+              fullscreenRootRef={kioskRef}
+              cameraEnabled={cameraEnabled}
+              faceLiveCheck={faceLiveCheck}
+              kioskTitle={kioskTitle}
+              onPassed={(stream) => {
+                mediaRef.current = stream;
+                if (cameraEnabled && previewRef.current && stream) {
+                  previewRef.current.srcObject = stream;
+                }
+                setReady(true);
+                setBlocked(!document.fullscreenElement);
+                notifyReady();
+              }}
             />
-          ) : null}
-          <FullscreenGate
-            blocked={blocked && !extendedDisplay}
-            onResume={() => {
-              void enterAssessmentFullscreen(kioskRef.current).then((ok) => setBlocked(!ok));
-            }}
-          />
-          <DisplayGate blocked={extendedDisplay} />
-        </>
-      )}
-    </div>
+          </div>
+        ) : locked ? (
+          <IntegrityLockoutPanel limit={warnings.limit} secondsLeft={lockSecondsLeft} />
+        ) : (
+          <>
+            <div
+              className={hideExam ? 'hidden' : 'relative flex h-full min-h-full flex-col'}
+              aria-hidden={hideExam}
+            >
+              <div className="min-h-0 flex-1">{children}</div>
+              {cameraEnabled && !previewHosted ? (
+                <video
+                  ref={fallbackPreviewRef}
+                  className="pointer-events-none absolute right-6 bottom-6 z-40 h-36 w-52 rounded-md border border-white/20 object-cover"
+                  muted
+                  playsInline
+                  autoPlay
+                  aria-label="Proctoring camera preview"
+                />
+              ) : null}
+            </div>
+            {faceBlackout ? (
+              <FaceAlignmentBlackout liveKind={liveKind} onDismiss={dismissFaceBlackout} />
+            ) : null}
+            {warningOpen && !faceBlackout ? (
+              <IntegrityWarningModal
+                count={warnings.count}
+                limit={warnings.limit}
+                onDismiss={dismissWarning}
+              />
+            ) : null}
+            <FullscreenGate
+              blocked={blocked && !extendedDisplay}
+              onResume={() => {
+                void enterAssessmentFullscreen(kioskRef.current).then((ok) => setBlocked(!ok));
+              }}
+            />
+            <DisplayGate blocked={extendedDisplay} />
+          </>
+        )}
+      </div>
+    </ProctorLiveProvider>
   );
 
   return createPortal(kiosk, document.body);

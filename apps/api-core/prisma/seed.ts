@@ -6,6 +6,11 @@ import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
+import {
+  resolveSeedEmailDomain,
+  resolveSeedPassword,
+  seedAccountEmails,
+} from '../src/platform/prisma/seed-accounts.js';
 
 const DATA_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -87,12 +92,16 @@ async function main(): Promise<void> {
     create: { code: 'sql', name: 'SQL', domain: 'SOFTWARE_IT' },
   });
 
+  const seedDomain = resolveSeedEmailDomain();
+  const seedPassword = resolveSeedPassword();
+  const seedEmails = seedAccountEmails(seedDomain);
+
   const institution = await prisma.institution.upsert({
-    where: { domain: 'smart.local' },
+    where: { domain: seedDomain },
     update: {},
     create: {
       name: 'SMART Pilot Institute',
-      domain: 'smart.local',
+      domain: seedDomain,
       planId: proPlan.id,
     },
   });
@@ -168,7 +177,7 @@ async function main(): Promise<void> {
   }
 
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
-  const passwordHash = await hashPassword('ChangeMe!Dev');
+  const passwordHash = await hashPassword(seedPassword);
 
   const accounts: Array<{
     email: string;
@@ -177,19 +186,19 @@ async function main(): Promise<void> {
     primaryTrackId: string | null;
   }> = [
     {
-      email: 'admin@smart.local',
+      email: seedEmails.admin,
       fullName: 'SMART Super Admin',
       role: 'SUPER_ADMIN',
       primaryTrackId: null,
     },
     {
-      email: 'tpo@smart.local',
+      email: seedEmails.tpo,
       fullName: 'Pilot TPO',
       role: 'INSTITUTION_ADMIN',
       primaryTrackId: null,
     },
     {
-      email: 'student@smart.local',
+      email: seedEmails.student,
       fullName: 'Pilot Student',
       role: 'STUDENT',
       primaryTrackId: fullstack.id,
@@ -214,7 +223,7 @@ async function main(): Promise<void> {
     usersByEmail.set(account.email, user);
   }
 
-  const tpo = usersByEmail.get('tpo@smart.local');
+  const tpo = usersByEmail.get(seedEmails.tpo);
   if (!tpo) throw new Error('Seed failed: tpo user missing');
 
   const pilotBatch = await prisma.batch.upsert({
@@ -234,7 +243,7 @@ async function main(): Promise<void> {
   });
 
   await prisma.user.update({
-    where: { email: 'student@smart.local' },
+    where: { email: seedEmails.student },
     data: {
       batchId: pilotBatch.id,
       groupLabel: 'Section A',
@@ -242,7 +251,7 @@ async function main(): Promise<void> {
   });
 
   console.log(
-    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as ${seedEmails.student} (password from SEED_PASSWORD or dest default)`,
   );
   await prisma.$disconnect();
 }

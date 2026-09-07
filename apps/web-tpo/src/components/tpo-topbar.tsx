@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   Search,
@@ -16,7 +15,7 @@ import {
   Settings,
   type LucideIcon,
 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@smart/ui';
+import { Avatar, AvatarFallback, SmartLogo } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
 import { signOut } from '../lib/auth';
@@ -155,13 +154,11 @@ export function TpoTopbar() {
       {/* Brand / Logo */}
       <div className="flex items-center gap-6 shrink-0">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image
-            src="/logo.svg"
-            alt="SMART"
-            width={96}
-            height={24}
-            className="h-5.5 w-auto brightness-0 invert group-hover:opacity-90 transition-opacity"
-            priority
+          <SmartLogo
+            kind="wordmark"
+            tone="on-dark"
+            className="h-6 w-auto group-hover:opacity-90 transition-opacity"
+            title="SMART"
           />
           <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-800 text-white border border-zinc-700">
             PRO

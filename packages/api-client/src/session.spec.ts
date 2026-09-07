@@ -68,7 +68,7 @@ describe('login redirect per role', () => {
     expect(portalHomeForRole('STUDENT', origins)).toBe('http://localhost:3001/dashboard');
     expect(portalHomeForRole('INSTITUTION_ADMIN', origins)).toBe('http://localhost:3002/batches');
     expect(portalHomeForRole('PLACEMENT_STAFF', origins)).toBe('http://localhost:3002/batches');
-    expect(portalHomeForRole('SUPER_ADMIN', origins)).toBe('http://localhost:3003/admin/health');
+    expect(portalHomeForRole('SUPER_ADMIN', origins)).toBe('http://localhost:3003/admin');
   });
 
   it('ignores returnTo that points at a different portal', () => {
@@ -133,7 +133,7 @@ describe('INF-03 session auth end-to-end (SSO excluded)', () => {
     );
     expect(returnToForRole('PLACEMENT_STAFF', null, origins)).toBe('http://localhost:3002/batches');
     expect(returnToForRole('SUPER_ADMIN', 'http://localhost:3002/batches', origins)).toBe(
-      'http://localhost:3003/admin/health',
+      'http://localhost:3003/admin',
     );
   });
 

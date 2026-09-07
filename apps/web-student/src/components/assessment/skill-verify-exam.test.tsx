@@ -1,7 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SkillVerifySessionDto } from '@smart/contracts';
-import { SkillVerifyExam, isSkillVerifyAnswered, splitProblemProse } from './skill-verify-exam';
+import {
+  SkillVerifyExam,
+  isSkillVerifyAnswered,
+  splitProblemProse,
+  splitPromptSegments,
+} from './skill-verify-exam';
 
 function session(overrides: Partial<SkillVerifySessionDto> = {}): SkillVerifySessionDto {
   return {
@@ -51,7 +56,9 @@ describe('SkillVerifyExam layout', () => {
     );
     expect(screen.getByText('First stem')).toBeDefined();
     expect(screen.queryByText('Second stem')).toBeNull();
-    expect(screen.getByText('Question 1 of 2')).toBeDefined();
+    expect(
+      screen.getByRole('heading', { name: /git & version control · beginner/i }),
+    ).toBeDefined();
     expect(screen.getByText('Single Choice')).toBeDefined();
     expect(screen.queryByText(/Pass bar/)).toBeNull();
     expect(screen.getByRole('button', { name: /submit and see results/i })).toBeDefined();
@@ -136,5 +143,80 @@ describe('SkillVerifyExam layout', () => {
     expect(
       screen.getAllByRole('button', { name: /submit and see results/i }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it('splits fenced code out of a trace stem', () => {
+    expect(
+      splitPromptSegments('What prints?\n```js\nconsole.log(1)\n```\nChoose the output.'),
+    ).toEqual([
+      { type: 'prose', text: 'What prints?' },
+      { type: 'code', language: 'js', text: 'console.log(1)' },
+      { type: 'prose', text: 'Choose the output.' },
+    ]);
+  });
+
+  it('renders a split studio pane for TRACE items', () => {
+    const onSelectKey = vi.fn();
+    render(
+      <SkillVerifyExam
+        session={session({
+          items: [
+            {
+              index: 1,
+              format: 'TRACE',
+              prompt: 'What is printed?\n```js\nconsole.log(a)\n```',
+              options: { A: '42', B: 'undefined', C: 'Error', D: 'null' },
+            },
+          ],
+        })}
+        currentIndex={0}
+        answers={{}}
+        pending={false}
+        error={null}
+        onSelectKey={onSelectKey}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'Trace the snippet' })).toBeDefined();
+    expect(screen.getByText('Answer')).toBeDefined();
+    expect(screen.getByText('console.log(a)')).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /42/ }));
+    expect(onSelectKey).toHaveBeenCalledWith(1, 'A');
+  });
+
+  it('renders a split studio pane for DEBUG items', () => {
+    render(
+      <SkillVerifyExam
+        session={session({
+          items: [
+            {
+              index: 1,
+              format: 'DEBUG',
+              title: 'Null pointer in parser',
+              prompt: 'Find the bug.\n```ts\nfoo(null)\n```',
+              options: null,
+            },
+          ],
+        })}
+        currentIndex={0}
+        answers={{}}
+        pending={false}
+        error={null}
+        onSelectKey={vi.fn()}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Null pointer in parser')).toBeDefined();
+    expect(screen.getByText('Root cause and fix')).toBeDefined();
+    expect(screen.getByPlaceholderText('Describe the bug and the fix')).toBeDefined();
+    expect(screen.getByLabelText('Debug response')).toBeDefined();
   });
 });
