@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ArrowRight, FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight, FileText } from 'lucide-react';
 import type { ResumeParseDraft } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { extractResumeRawText } from '@/lib/extract-resume-text';

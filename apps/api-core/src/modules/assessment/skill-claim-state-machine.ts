@@ -134,6 +134,18 @@ function interAttemptOpen(lastGenuineFailureAt: Date | null, now: Date): boolean
   return now.getTime() >= addInterAttemptCooldown(lastGenuineFailureAt).getTime();
 }
 
+/** When the student may sit this claim again. Null means no extra wait beyond status. */
+export function skillRetryAvailableAt(
+  status: SkillClaimStatus,
+  lockedUntil: Date | null,
+  lastGenuineFailureAt: Date | null,
+): Date | null {
+  if (status === 'VERIFIED') return null;
+  if (status === 'LOCKED') return lockedUntil;
+  if (lastGenuineFailureAt) return addInterAttemptCooldown(lastGenuineFailureAt);
+  return null;
+}
+
 function applyStart(
   claim: SkillClaimSnapshot,
   now: Date,
@@ -141,6 +153,9 @@ function applyStart(
 ): SkillClaimTransitionResult {
   switch (claim.status) {
     case 'DECLARED':
+      if (lastGenuineFailureAt && !interAttemptOpen(lastGenuineFailureAt, now)) {
+        return reject(claim, 'INTER_ATTEMPT_COOLDOWN');
+      }
       return allow(copyClaim(claim), { attemptAllowed: true });
     case 'BEGINNER_REATTEMPT':
       if (!interAttemptOpen(lastGenuineFailureAt, now)) {

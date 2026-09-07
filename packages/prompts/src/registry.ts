@@ -19,6 +19,12 @@ import {
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
+import {
+  sdeSkillFormClosedTemplate,
+  sdeSkillFormOpenTemplate,
+  sdeSkillOpenBatchGraderTemplate,
+  sdeSkillOpenGraderTemplate,
+} from './templates/sde-skill-form.js';
 
 /**
  * The prompt registry.
@@ -55,6 +61,10 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
   workExperienceProofParseTemplate,
+  sdeSkillFormClosedTemplate,
+  sdeSkillFormOpenTemplate,
+  sdeSkillOpenBatchGraderTemplate,
+  sdeSkillOpenGraderTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

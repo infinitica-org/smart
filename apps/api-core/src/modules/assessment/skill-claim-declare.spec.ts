@@ -32,6 +32,7 @@ describe('declareSkillClaim', () => {
         create: createClaim,
         update: updateClaim,
       },
+      skillVerificationAttempt: { findMany: vi.fn().mockResolvedValue([]) },
     };
     service = new AssessmentService(
       prisma as never,
@@ -150,12 +151,48 @@ describe('declareSkillClaim', () => {
     expect(row.status).toBe('DECLARED');
   });
 
-  it('rejects declare when an active claim already exists', async () => {
+  it('updates proficiency and focus on an existing DECLARED claim', async () => {
     findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
     findUniqueClaim.mockResolvedValue({
       id: CLAIM_ID,
       studentId: STUDENT_ID,
       status: 'DECLARED',
+      lockedUntil: null,
+      proficiency: 'BEGINNER',
+      strikes: 0,
+      lastAttemptId: null,
+      sourceMetadata: null,
+      skill: { code: 'GIT_VERSION_CONTROL' },
+    });
+    updateClaim.mockResolvedValue({
+      id: CLAIM_ID,
+      studentId: STUDENT_ID,
+      proficiency: 'ADVANCED',
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: null,
+      sourceMetadata: { skillFocus: 'Rebase' },
+      skill: { code: 'GIT_VERSION_CONTROL' },
+    });
+
+    const row = await service.declareSkillClaim(studentUser(), {
+      skillCode: 'GIT_VERSION_CONTROL',
+      proficiency: 'ADVANCED',
+      skillFocus: 'Rebase',
+    });
+
+    expect(updateClaim).toHaveBeenCalled();
+    expect(row.proficiency).toBe('ADVANCED');
+    expect(row.skillFocus).toBe('Rebase');
+  });
+
+  it('rejects declare when a verified claim already exists', async () => {
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
+    findUniqueClaim.mockResolvedValue({
+      id: CLAIM_ID,
+      studentId: STUDENT_ID,
+      status: 'VERIFIED',
       lockedUntil: null,
       proficiency: 'BEGINNER',
       strikes: 0,

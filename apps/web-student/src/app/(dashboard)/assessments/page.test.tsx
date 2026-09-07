@@ -18,6 +18,8 @@ vi.mock('@/lib/api', () => ({
     assessment: {
       start: (...args: unknown[]) => startMock(...args),
       session: (...args: unknown[]) => sessionMock(...args),
+      listSkillClaims: () => Promise.resolve([]),
+      declareSkillClaim: vi.fn(),
     },
   },
 }));

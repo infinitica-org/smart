@@ -18,12 +18,13 @@ describe('renderEmailTemplate', () => {
 
     expect(invite.subject).toContain('SMART University');
     expect(opportunity.subject).toContain('Backend Engineer');
-    expect(invite.html).toContain('#4f46e5');
-    expect(opportunity.html).toContain('#059669');
+    // Both templates share the single brand accent (no more per-type colored header).
+    expect(invite.html).toContain('#2fbfae');
+    expect(opportunity.html).toContain('#2fbfae');
     expect(invite.html).not.toEqual(opportunity.html);
   });
 
-  it('renders verification templates with different accent colors', () => {
+  it('renders verification templates with a status-specific badge color', () => {
     const passed = renderEmailTemplate('verification-passed', {
       fullName: 'Alex Student',
       skillName: 'Database fundamentals',
@@ -39,9 +40,27 @@ describe('renderEmailTemplate', () => {
       profileUrl: 'http://localhost:3001/profile',
     });
 
-    expect(passed.html).toContain('#16a34a');
-    expect(locked.html).toContain('#d97706');
+    expect(passed.html).toContain('#1f9d55'); // success badge
+    expect(locked.html).toContain('#d97706'); // warning badge
+    expect(passed.html).toContain('Verified');
+    expect(locked.html).toContain('Locked for cooldown');
     expect(passed.text).toContain('Database fundamentals');
+  });
+
+  it('renders the certificate endorsement request template', () => {
+    const email = renderEmailTemplate('certificate-endorsement-request', {
+      endorserName: 'Priya Manager',
+      candidateName: 'Alex Student',
+      certificateTitle: 'AWS Solutions Architect',
+      certificateIssuer: 'Amazon Web Services',
+      endorsementUrl: 'http://localhost:3001/endorse/token',
+      expiresAtFormatted: '7 days',
+    });
+
+    expect(email.subject).toContain('Alex Student');
+    expect(email.html).toContain('AWS Solutions Architect');
+    expect(email.html).toContain('Amazon Web Services');
+    expect(email.text).toContain('http://localhost:3001/endorse/token');
   });
 
   it('renders distinct content per CO-T05 stage for application-stage-changed', () => {
@@ -74,7 +93,7 @@ describe('renderEmailTemplate', () => {
     });
 
     expect(aiVerified.text).toContain('AI verification');
-    expect(offer.html).toContain('#16a34a');
+    expect(offer.html).toContain('#1f9d55');
     expect(offer.text).toContain('Congratulations on the offer');
     expect(hired.text).toContain("you've been hired");
     expect(rejected.html).toContain('#dc2626');

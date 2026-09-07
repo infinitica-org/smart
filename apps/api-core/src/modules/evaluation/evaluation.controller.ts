@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { EvaluationService } from './evaluation.service.js';
 
@@ -15,8 +17,33 @@ export class EvaluationController {
       module: 'evaluation',
       owner: this.service.owner,
       purpose: this.service.purpose,
-      status: 'skill-interview',
+      status: 'skill-interview+sde-v4-form',
     };
+  }
+
+  @Post('skill-form/questions')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Generate an SDE v4 skill-verification form (LLM via gateway). Stateless.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Public items plus opaque scoringToken. Answer keys are not in plaintext.',
+  })
+  @ApiResponse({ status: 502, description: 'Gateway or model output failed closed.' })
+  generateSkillForm(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.service.generateSkillForm(body, user.sub);
+  }
+
+  @Post('skill-form/grade')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Score an SDE v4 form: MCQ/TRACE local, open items via LLM rubric.' })
+  @ApiResponse({ status: 200, description: 'marks, scorePercent, passed against v4 bars.' })
+  @ApiResponse({ status: 502, description: 'Gateway or model output failed closed.' })
+  gradeSkillForm(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.service.gradeSkillForm(body, user.sub);
   }
 
   @Post('skill-interview/questions')

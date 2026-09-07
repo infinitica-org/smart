@@ -92,6 +92,7 @@ describe('completeAttempt', () => {
       },
       skillVerificationAttempt: {
         findFirst: findFirstVerificationAttempt,
+        findMany: vi.fn().mockResolvedValue([]),
         create: vi.fn().mockResolvedValue({}),
       },
       $transaction: transaction,

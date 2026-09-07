@@ -1,35 +1,57 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
-import { type SkillClaimDto, type SkillProficiency, type SkillStream } from '@smart/contracts';
-import { Alert, Button, VerificationBadge } from '@smart/ui';
-import { api } from '../../lib/api';
+import { useRouter } from 'next/navigation';
 import {
-  PROFICIENCY_LABELS,
-  PROFICIENCY_OPTIONS,
+  type SkillClaimDto,
+  type SkillProficiency,
+  type SkillStream,
+  skillFocusOptions,
+} from '@smart/contracts';
+import { Alert } from '@smart/ui';
+import { api } from '../../lib/api';
+import { SkillVerifyRow } from '../assessment/skill-verify-row';
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
+import {
   SOFTWARE_IT_DOMAIN_LABEL,
   STREAM_LABELS,
-  claimToBadgeStatus,
-  formatCooldown,
-  skillNameForCode,
-  skillsForStream,
+  mandatorySkillsForStream,
+  viewForFocus,
 } from '../../lib/skill-declarations';
 
 const STREAM_OPTIONS = Object.keys(STREAM_LABELS) as SkillStream[];
 
+function emptyFoci(codes: readonly string[]): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const code of codes) {
+    const options = skillFocusOptions(code);
+    if (options[0]) next[code] = options[0];
+  }
+  return next;
+}
+
+function emptyProficiencies(codes: readonly string[]): Record<string, SkillProficiency> {
+  const next: Record<string, SkillProficiency> = {};
+  for (const code of codes) next[code] = 'BEGINNER';
+  return next;
+}
+
 export function SkillsSection() {
+  const router = useRouter();
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [stream, setStream] = useState<SkillStream>('UNIVERSAL');
-  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const [proficiency, setProficiency] = useState<SkillProficiency>('BEGINNER');
+  const [domain, setDomain] = useState<'SOFTWARE_IT'>('SOFTWARE_IT');
+  const [stream, setStream] = useState<SkillStream>('SOFTWARE_DEVELOPMENT');
+  const [proficiencies, setProficiencies] = useState<Record<string, SkillProficiency>>({});
+  const [foci, setFoci] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const refreshClaims = useCallback(async () => {
     const rows = await api.assessment.listSkillClaims();
     setClaims(rows);
+    return rows;
   }, []);
 
   useEffect(() => {
@@ -51,45 +73,58 @@ export function SkillsSection() {
     };
   }, []);
 
-  const availableSkills = useMemo(() => skillsForStream(stream), [stream]);
-  const declaredCodes = useMemo(() => new Set(claims.map((c) => c.skillCode)), [claims]);
+  const mandatorySkills = useMemo(() => mandatorySkillsForStream(stream), [stream]);
 
-  const toggleCode = (code: string) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
-    );
-  };
+  useEffect(() => {
+    const claimed = new Map(claims.map((row) => [row.skillCode, row]));
+    setProficiencies((prev) => {
+      const next = emptyProficiencies(mandatorySkills.map((skill) => skill.code));
+      for (const skill of mandatorySkills) {
+        next[skill.code] = claimed.get(skill.code)?.proficiency ?? prev[skill.code] ?? 'BEGINNER';
+      }
+      return next;
+    });
+    setFoci((prev) => {
+      const next = emptyFoci(mandatorySkills.map((skill) => skill.code));
+      for (const skill of mandatorySkills) {
+        const options = skillFocusOptions(skill.code);
+        next[skill.code] = prev[skill.code] ?? options[0] ?? '';
+      }
+      return next;
+    });
+  }, [mandatorySkills, claims]);
 
-  const declareSelected = () => {
+  const claimByCode = useMemo(() => new Map(claims.map((row) => [row.skillCode, row])), [claims]);
+
+  const verifySkill = (skillCode: string) => {
     setError(null);
-    setNotice(null);
-    if (selectedCodes.length === 0) {
-      setError('Select at least one skill from the taxonomy.');
-      return;
-    }
-
+    setPendingCode(skillCode);
     startTransition(() => {
       void (async () => {
         try {
-          const created: SkillClaimDto[] = [];
-          for (const skillCode of selectedCodes) {
-            if (declaredCodes.has(skillCode)) continue;
-            const row = await api.assessment.declareSkillClaim({ skillCode, proficiency });
-            created.push(row);
+          let claim = claimByCode.get(skillCode);
+          if (!claim || claim.status === 'DECLARED' || claim.status === 'BEGINNER_REATTEMPT') {
+            claim = await api.assessment.declareSkillClaim({
+              skillCode,
+              proficiency: proficiencies[skillCode] ?? 'BEGINNER',
+              skillFocus: foci[skillCode] || undefined,
+            });
+            await refreshClaims();
           }
-          if (created.length === 0) {
-            setError('Those skills are already on your profile.');
+          const view = viewForFocus(claim, skillCode, foci[skillCode]);
+          if (view.blockMessage && !view.canStart) {
+            setError(view.blockMessage);
             return;
           }
-          await refreshClaims();
-          setSelectedCodes([]);
-          setNotice(
-            created.length === 1
-              ? `${skillNameForCode(created[0]?.skillCode ?? '')} declared.`
-              : `${String(created.length)} skills declared.`,
-          );
+          if (!view.hasForm || !claim) {
+            setError('This skill does not have a verification assessment yet.');
+            return;
+          }
+          router.push(`/assessments/skills/${claim.claimId}`);
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to declare skill.');
+          setError(err instanceof Error ? err.message : 'Could not start verification.');
+        } finally {
+          setPendingCode(null);
         }
       })();
     });
@@ -110,8 +145,8 @@ export function SkillsSection() {
           Skills
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[var(--text-secondary)]">
-          Declare skills from the Software &amp; IT taxonomy (INF-05). Declaring writes a SkillClaim
-          at Declared and feeds SE-T01 verification.
+          Choose your domain and stream, set a proficiency and focus, then verify. Cooldown applies
+          only to the focus you sat, not every sub-skill.
         </p>
       </div>
 
@@ -119,24 +154,26 @@ export function SkillsSection() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Domain</span>
-            <input
-              readOnly
-              value={SOFTWARE_IT_DOMAIN_LABEL}
-              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2"
-            />
+            <select
+              value={domain}
+              onChange={(event) => setDomain(event.target.value as 'SOFTWARE_IT')}
+              className={`${nativeSelectClass} py-2`}
+              aria-label="Domain"
+            >
+              <option value="SOFTWARE_IT" className={nativeOptionClass}>
+                {SOFTWARE_IT_DOMAIN_LABEL}
+              </option>
+            </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Stream</span>
             <select
               value={stream}
-              onChange={(e) => {
-                setStream(e.target.value as SkillStream);
-                setSelectedCodes([]);
-              }}
-              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2"
+              onChange={(e) => setStream(e.target.value as SkillStream)}
+              className={`${nativeSelectClass} py-2`}
             >
               {STREAM_OPTIONS.map((key) => (
-                <option key={key} value={key}>
+                <option key={key} value={key} className={nativeOptionClass}>
                   {STREAM_LABELS[key]}
                 </option>
               ))}
@@ -144,101 +181,45 @@ export function SkillsSection() {
           </label>
         </div>
 
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium">Skills</legend>
-          <div className="flex max-h-56 flex-col gap-2 overflow-y-auto rounded-xl border border-[var(--surface-border)] p-3">
-            {availableSkills.map((skill) => {
-              const already = declaredCodes.has(skill.code);
-              const checked = selectedCodes.includes(skill.code);
-              return (
-                <label
-                  key={skill.code}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 text-sm ${
-                    already ? 'opacity-50' : 'hover:bg-[var(--surface-muted)]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    disabled={already || isPending}
-                    checked={checked}
-                    onChange={() => toggleCode(skill.code)}
-                  />
-                  <span>
-                    <span className="font-medium">{skill.name}</span>
-                    {already ? (
-                      <span className="ml-2 text-xs text-[var(--text-secondary)]">
-                        Already claimed
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <label className="flex max-w-xs flex-col gap-1.5 text-sm">
-          <span className="font-medium">Proficiency</span>
-          <select
-            value={proficiency}
-            onChange={(e) => setProficiency(e.target.value as SkillProficiency)}
-            className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2"
-          >
-            {PROFICIENCY_OPTIONS.map((level) => (
-              <option key={level} value={level}>
-                {PROFICIENCY_LABELS[level]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {error ? (
-          <Alert tone="danger" title="Could not declare">
-            {error}
-          </Alert>
-        ) : null}
-        {notice ? (
-          <Alert tone="success" title="Declared">
-            {notice}
-          </Alert>
-        ) : null}
-
         <div>
-          <Button type="button" disabled={isPending} onClick={declareSelected}>
-            {isPending ? 'Declaring…' : 'Declare selected'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
-          Your claims
-        </h3>
-        {claims.length === 0 ? (
-          <p className="text-sm text-[var(--text-secondary)]">No skills declared yet.</p>
-        ) : (
+          <h3 className="mb-2 text-sm font-medium">Required skills</h3>
           <ul className="flex flex-col gap-2">
-            {claims.map((claim) => {
-              const cooldown = formatCooldown(claim.lockedUntil);
+            <li className="hidden px-3 text-[11px] font-medium tracking-wide text-[var(--text-secondary)] uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem] lg:gap-3">
+              <span>Skill</span>
+              <span className="text-center">Status</span>
+              <span>Proficiency</span>
+              <span>Focus</span>
+              <span>Action</span>
+            </li>
+            {mandatorySkills.map((skill) => {
+              const claim = claimByCode.get(skill.code);
+              const focusOptions = skillFocusOptions(skill.code);
+              const busy = pendingCode === skill.code;
               return (
-                <li
-                  key={claim.claimId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{skillNameForCode(claim.skillCode)}</p>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      {PROFICIENCY_LABELS[claim.proficiency] ?? claim.proficiency}
-                      {cooldown ? ` · Locked until ${cooldown}` : null}
-                    </p>
-                  </div>
-                  <VerificationBadge status={claimToBadgeStatus(claim)} variant="outline" />
-                </li>
+                <SkillVerifyRow
+                  key={skill.code}
+                  skillCode={skill.code}
+                  skillName={skill.name}
+                  claim={claim}
+                  proficiency={proficiencies[skill.code] ?? 'BEGINNER'}
+                  focus={foci[skill.code] ?? focusOptions[0] ?? ''}
+                  pending={busy || (isPending && pendingCode === skill.code)}
+                  onProficiency={(value) =>
+                    setProficiencies((prev) => ({ ...prev, [skill.code]: value }))
+                  }
+                  onFocus={(value) => setFoci((prev) => ({ ...prev, [skill.code]: value }))}
+                  onVerify={() => verifySkill(skill.code)}
+                />
               );
             })}
           </ul>
-        )}
+        </div>
+
+        {error ? (
+          <Alert tone="danger" title="Could not verify">
+            {error}
+          </Alert>
+        ) : null}
       </div>
     </section>
   );

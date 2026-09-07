@@ -1,101 +1,234 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { motion } from 'motion/react';
 import type { ResumeParseDraft } from '@smart/contracts';
 
 import { api } from '@/lib/api';
 import ResumeUpload from './steps/ResumeUpload';
-import ProfileSetup from './steps/ProfileSetup';
+import BasicProfileStep from './steps/BasicProfileStep';
+import StreamStep from './steps/StreamStep';
+import SkillsStep from './steps/SkillsStep';
+import LanguagesStep from './steps/LanguagesStep';
+import SocialStep from './steps/SocialStep';
+import JobPreferencesStep from './steps/JobPreferencesStep';
+import DoneStep from './steps/DoneStep';
 import {
   applyResumeDraft,
   applyServerDraft,
+  buildCompleteOnboardingRequest,
   buildOnboardingDraftPayload,
+  clearOnboardingDraft,
   loadOnboardingDraft,
   saveOnboardingDraft,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
+import {
+  ProgressDots,
+  WIZARD_STEP_META,
+  WizardPage,
+  stepMotionProps,
+  type WizardStepId,
+} from './wizard-ui';
+
+type Step = WizardStepId | 'done';
+
+const STEP_ORDER: WizardStepId[] = WIZARD_STEP_META.map((s) => s.id);
+
+function nextStepAfter(step: WizardStepId): Step {
+  const idx = STEP_ORDER.indexOf(step);
+  return (STEP_ORDER[idx + 1] ?? 'done') as Step;
+}
+
+function previousStepBefore(step: WizardStepId): WizardStepId | null {
+  const idx = STEP_ORDER.indexOf(step);
+  return STEP_ORDER[idx - 1] ?? null;
+}
+
+/**
+ * Infers the furthest step the candidate already reached, from whatever data
+ * is already on the form — there is no server-side step-index column, so
+ * this mirrors (and extends) the single `firstName` heuristic the old wizard used.
+ */
+function furthestStep(form: OnboardingProfileForm): WizardStepId {
+  const hasPreferences = Boolean(form.jobPreferences.expectedCtcLakhs.trim());
+  if (hasPreferences) return 'preferences';
+  const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
+  if (hasSocial) return 'social';
+  if (form.languages.some((l) => l.language.trim())) return 'languages';
+  const hasSkills =
+    Object.keys(form.catalogSkills).length > 0 ||
+    form.codingProficiencies.length > 0 ||
+    form.frameworkProficiencies.length > 0;
+  if (hasSkills) return 'skills';
+  if (form.firstName.trim() || form.lastName.trim()) return 'profile';
+  return 'resume';
+}
 
 export default function OnboardingWizard() {
-  const [currentStep, setCurrentStep] = useState<'resume' | 'profile'>('resume');
-  const [formSeed, setFormSeed] = useState<OnboardingProfileForm>(loadOnboardingDraft);
+  const [currentStep, setCurrentStep] = useState<Step>('resume');
+  const [formData, setFormData] = useState<OnboardingProfileForm>(loadOnboardingDraft);
+  const [saving, setSaving] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+  // Blocks step navigation until the one-time server-draft hydration below
+  // finishes — otherwise a slow response could land after the candidate has
+  // already clicked forward and silently snap them back a step.
+  const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
 
-  // Hydrate from whatever the server already has (a previous session, a
-  // different browser). The local draft above is only a same-machine cache.
   useEffect(() => {
     let cancelled = false;
     api.users
       .getOnboarding()
       .then((response) => {
-        if (cancelled || !response.draft) return;
-        setFormSeed((prev) => {
-          const next = applyServerDraft(prev, response.draft);
+        if (cancelled) return;
+        if (response.draft) {
+          const next = applyServerDraft(formData, response.draft);
+          setFormData(next);
           saveOnboardingDraft(next);
-          return next;
-        });
-        if (response.draft.firstName || response.draft.lastName) {
-          setCurrentStep('profile');
+          setCurrentStep(furthestStep(next));
         }
       })
       .catch(() => {
-        // No persisted draft yet, or the request failed — fall back to the
-        // local cache already loaded into formSeed.
+        // No persisted draft yet, or the request failed — fall back to the local cache.
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const updateField = <K extends keyof OnboardingProfileForm>(
+    field: K,
+    value: OnboardingProfileForm[K],
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      saveOnboardingDraft(next);
+      return next;
+    });
+  };
+
+  const persistDraft = (form: OnboardingProfileForm) => {
+    void api.users.saveOnboarding(buildOnboardingDraftPayload(form)).catch(() => {});
+  };
+
   const handleResumeContinue = (draft: ResumeParseDraft | null) => {
-    const next = draft ? applyResumeDraft(formSeed, draft) : formSeed;
-    setFormSeed(next);
+    const next = draft ? applyResumeDraft(formData, draft) : formData;
+    setFormData(next);
     saveOnboardingDraft(next);
-    void api.users.saveOnboarding(buildOnboardingDraftPayload(next)).catch(() => {});
+    persistDraft(next);
     setCurrentStep('profile');
   };
 
-  return (
-    <div className="min-h-[100dvh] w-full bg-zinc-950 text-white font-sans flex flex-col items-center justify-start relative overflow-y-auto px-4 py-8 sm:py-12">
-      {/* Subtle ambient background glow */}
-      <div
-        className="fixed inset-0 opacity-[0.2] pointer-events-none z-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(ellipse at 50% 0%, rgba(16,185,129,0.15) 0%, transparent 70%)',
-        }}
-      />
+  const advanceFrom = (step: WizardStepId) => {
+    persistDraft(formData);
+    setCurrentStep(nextStepAfter(step));
+  };
 
-      {/* Top Header Logo */}
-      <header className="relative z-10 w-full max-w-2xl flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/img/Logo/white-logo.png"
-            alt="SMART"
-            width={130}
-            height={32}
-            className="h-7 w-auto object-contain"
-            priority
-          />
-          <span className="text-xs text-zinc-500 font-axiforma border-l border-zinc-800 pl-3">
-            Candidate onboarding
-          </span>
+  const goBackTo = (step: WizardStepId) => {
+    const prev = previousStepBefore(step);
+    setCurrentStep(prev ?? 'resume');
+  };
+
+  const handleComplete = async () => {
+    setCompleteError(null);
+    const payload = buildCompleteOnboardingRequest(formData);
+    if ('error' in payload) {
+      setCompleteError(payload.error);
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.users.completeOnboarding(payload);
+      clearOnboardingDraft();
+      setCurrentStep('done');
+    } catch {
+      setCompleteError(
+        'Could not save your profile to the server. Check your connection and try again.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!hydrated) {
+    return (
+      <WizardPage>
+        <div className="flex justify-center py-24">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
         </div>
-      </header>
+      </WizardPage>
+    );
+  }
 
-      {/* Main Wizard Form Container (Clean format without outer card box border) */}
-      <main className="relative z-10 w-full max-w-2xl flex flex-col">
-        {currentStep === 'resume' ? (
-          <ResumeUpload onContinue={handleResumeContinue} />
-        ) : (
-          <ProfileSetup
-            initialForm={formSeed}
+  return (
+    <WizardPage>
+      {currentStep !== 'done' ? (
+        <div className="mb-8">
+          <ProgressDots current={currentStep} />
+        </div>
+      ) : null}
+
+      <motion.div key={currentStep} {...stepMotionProps}>
+        {currentStep === 'resume' && <ResumeUpload onContinue={handleResumeContinue} />}
+
+        {currentStep === 'profile' && (
+          <BasicProfileStep
+            formData={formData}
+            updateField={updateField}
             onBack={() => setCurrentStep('resume')}
-            onComplete={() => router.push('/dashboard')}
+            onContinue={() => advanceFrom('profile')}
           />
         )}
-      </main>
-    </div>
+
+        {currentStep === 'stream' && (
+          <StreamStep onBack={() => goBackTo('stream')} onContinue={() => advanceFrom('stream')} />
+        )}
+
+        {currentStep === 'skills' && (
+          <SkillsStep
+            formData={formData}
+            updateField={updateField}
+            onBack={() => goBackTo('skills')}
+            onContinue={() => advanceFrom('skills')}
+          />
+        )}
+
+        {currentStep === 'languages' && (
+          <LanguagesStep
+            formData={formData}
+            updateField={updateField}
+            onBack={() => goBackTo('languages')}
+            onContinue={() => advanceFrom('languages')}
+          />
+        )}
+
+        {currentStep === 'social' && (
+          <SocialStep
+            formData={formData}
+            updateField={updateField}
+            onBack={() => goBackTo('social')}
+            onContinue={() => advanceFrom('social')}
+          />
+        )}
+
+        {currentStep === 'preferences' && (
+          <JobPreferencesStep
+            formData={formData}
+            updateField={updateField}
+            onBack={() => goBackTo('preferences')}
+            onComplete={() => void handleComplete()}
+            saving={saving}
+            error={completeError}
+          />
+        )}
+
+        {currentStep === 'done' && <DoneStep onGoToDashboard={() => router.push('/dashboard')} />}
+      </motion.div>
+    </WizardPage>
   );
 }

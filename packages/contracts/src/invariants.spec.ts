@@ -28,6 +28,11 @@ import {
   getTopicSpec,
   getTrackDefinition,
   routesExceedingLatencyBudget,
+  sdeV4FormCodeForCatalogSkill,
+  skillFocusOptions,
+  resolveSkillFocus,
+  hydrateFocusProgress,
+  focusProgressFor,
 } from './index.js';
 
 /**
@@ -398,6 +403,106 @@ describe('SE-T02 skill interview contracts', () => {
       rateLimit: 'evaluation.skillInterview',
     });
     expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
+  });
+
+  it('registers SDE v4 skill-form routes on the same LLM spend cap', () => {
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/skill-form/questions')).toMatchObject(
+      {
+        method: 'POST',
+        owner: 'Ramansh',
+        rateLimit: 'evaluation.skillInterview',
+      },
+    );
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/skill-form/grade')).toMatchObject({
+      method: 'POST',
+      owner: 'Ramansh',
+      rateLimit: 'evaluation.skillInterview',
+    });
+  });
+});
+
+describe('SDE v4 skill-verify assessment routes', () => {
+  it('registers start/session/save/complete without colliding with L1 attemptId', () => {
+    expect(
+      ROUTES.find((entry) => entry.path === '/assessment/skill-claims/:claimId/verify/start'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'assessment',
+      owner: 'Vishal Bharath R',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/assessment/skill-verify/:sessionId'),
+    ).toMatchObject({
+      method: 'GET',
+      criticality: 'CANDIDATE_CRITICAL',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/assessment/skill-verify/:sessionId/complete'),
+    ).toMatchObject({
+      method: 'POST',
+      rateLimit: 'evaluation.skillInterview',
+    });
+  });
+
+  it('maps Software & IT catalog codes onto v4 form codes', () => {
+    expect(sdeV4FormCodeForCatalogSkill('GIT_VERSION_CONTROL')).toBe('SDE_GIT');
+    expect(sdeV4FormCodeForCatalogSkill('LANGUAGE_PROFICIENCY')).toBe(
+      'SDE_PROGRAMMING_FUNDAMENTALS',
+    );
+    expect(sdeV4FormCodeForCatalogSkill('UNKNOWN_SKILL_CODE')).toBeNull();
+  });
+
+  it('lists language/framework foci for catalog skills including Language proficiency', () => {
+    expect(skillFocusOptions('LANGUAGE_PROFICIENCY')).toEqual([
+      'Java',
+      'Python',
+      'JavaScript',
+      'C++',
+    ]);
+    expect(skillFocusOptions('FRONTEND_BACKEND_FRAMEWORK')).toContain('React');
+    expect(resolveSkillFocus('LANGUAGE_PROFICIENCY', 'Python')).toBe('Python');
+    expect(resolveSkillFocus('LANGUAGE_PROFICIENCY', 'COBOL')).toBe('Java');
+  });
+
+  it('seeds legacy claim status onto the last-used focus only', () => {
+    const rows = hydrateFocusProgress({
+      skillCode: 'COMPUTER_NETWORKS_BASICS',
+      metadata: { skillFocus: 'HTTP & REST' },
+      status: 'BEGINNER_REATTEMPT',
+      strikes: 1,
+      lockedUntil: null,
+      lastAttemptId: null,
+      lastGenuineFailureAt: '2026-09-05T05:00:00.000Z',
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.focus).toBe('HTTP & REST');
+    expect(rows[0]?.status).toBe('BEGINNER_REATTEMPT');
+    expect(focusProgressFor(rows, 'TCP/UDP')).toBeNull();
+  });
+
+  it('exposes retryAvailableAt on DECLARED after a sit so cooldown is not beginner-only', () => {
+    const rows = hydrateFocusProgress({
+      skillCode: 'GIT_VERSION_CONTROL',
+      metadata: {
+        skillFocus: 'Git basics',
+        focusProgress: [
+          {
+            focus: 'Git basics',
+            status: 'DECLARED',
+            strikes: 0,
+            lockedUntil: null,
+            lastAttemptId: 'attempt-1',
+            lastGenuineFailureAt: '2026-09-05T05:00:00.000Z',
+          },
+        ],
+      },
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: 'attempt-1',
+      lastGenuineFailureAt: null,
+    });
+    expect(rows[0]?.retryAvailableAt).toBe('2026-09-07T05:00:00.000Z');
   });
 });
 

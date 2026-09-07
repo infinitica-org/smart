@@ -1,5 +1,16 @@
-import { BadGatewayException, Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import {
+  BadGatewayException,
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import {
+  GenerateSdeSkillFormRequestSchema,
+  GenerateSdeSkillFormResponseSchema,
+  GradeSdeSkillFormRequestSchema,
+  GradeSdeSkillFormResponseSchema,
   GenerateSkillInterviewRequestSchema,
   GenerateSkillInterviewResponseSchema,
   GradeSkillInterviewRequestSchema,
@@ -8,14 +19,58 @@ import {
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
   SKILL_INTERVIEW_QUESTION_COUNT,
   SkillInterviewQuestionSchema,
+  type GenerateSdeSkillFormResponse,
   type GenerateSkillInterviewResponse,
+  type GradeSdeSkillFormResponse,
   type GradeSkillInterviewResponse,
 } from '@smart/contracts';
+import {
+  SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+  SDE_SKILL_FORM_OPEN_PROMPT_REF,
+  SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
+  SDE_V4_PROFICIENCIES,
+  SDE_V4_SKILL_BY_CODE,
+  SdeOpenBatchGradeSchema,
+  SdeSkillFormClosedOutputSchema,
+  SdeSkillFormOpenOutputSchema,
+  assertSdeV4FormShape,
+  type SdeV4Format,
+} from '@smart/prompts';
+import { computeSdeV4FormScore, SDE_V4_MARKS, scoreClosedChoice } from '@smart/scoring-engine';
+import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
+import { sealSdeFormPayload, unsealSdeFormPayload } from './sde-form-seal.js';
 
 export const SKILL_INTERVIEW_EXAMINER_PROMPT_REF = 'skill-interview-examiner@1' as const;
 export const SKILL_INTERVIEW_GRADER_PROMPT_REF = 'skill-interview-grader@1' as const;
+
+const ScoringKeySchema = z.object({
+  index: z.number().int().min(1),
+  format: z.enum(['MCQ', 'TRACE', 'CODING', 'SCENARIO', 'DEBUG', 'DESIGN_REASONING']),
+  answer: z.enum(['A', 'B', 'C', 'D']).optional(),
+  prompt: z.string().optional(),
+  rubric: z.string().optional(),
+  modelAnswer: z.string().optional(),
+  marksMax: z.number(),
+  hiddenTests: z
+    .array(
+      z.object({
+        input: z.string().min(1).max(800),
+        expected: z.string().min(1).max(800),
+      }),
+    )
+    .max(8)
+    .optional(),
+});
+
+const SealedSdeFormSchema = z.object({
+  exp: z.number(),
+  userId: z.string().uuid(),
+  skillCode: z.string(),
+  proficiency: z.enum(SDE_V4_PROFICIENCIES),
+  items: z.array(ScoringKeySchema).min(1),
+});
 
 const ExaminerOutputSchema = z.object({
   questions: z.array(SkillInterviewQuestionSchema).length(SKILL_INTERVIEW_QUESTION_COUNT),
@@ -29,7 +84,8 @@ const GraderOutputSchema = z.object({
 @Injectable()
 export class EvaluationService {
   readonly owner = 'Ramansh';
-  readonly purpose = 'BARS grading, L4 defense, and SE-T02 skill interview. Produces raw scores.';
+  readonly purpose =
+    'BARS grading, L4 defense, SE-T02 skill interview, and SDE v4 skill-form generate/grade.';
   private readonly logger = new Logger(EvaluationService.name);
 
   constructor(@Inject(AiGatewayService) private readonly gateway: AiGatewayService) {}
@@ -54,7 +110,11 @@ export class EvaluationService {
         promptRef: SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
       });
     } catch (err) {
-      this.failClosed(err);
+      this.failClosed(
+        err,
+        'skill_interview_unavailable',
+        'Skill interview could not be completed.',
+      );
     }
   }
 
@@ -93,17 +153,339 @@ export class EvaluationService {
         auditId: result.auditId ?? null,
       });
     } catch (err) {
-      this.failClosed(err);
+      this.failClosed(
+        err,
+        'skill_interview_unavailable',
+        'Skill interview could not be completed.',
+      );
     }
   }
 
-  private failClosed(err: unknown): never {
+  async generateSkillForm(
+    body: unknown,
+    ownerUserId: string,
+  ): Promise<GenerateSdeSkillFormResponse> {
+    const request = GenerateSdeSkillFormRequestSchema.parse(body);
+    const skill = SDE_V4_SKILL_BY_CODE.get(request.skillCode);
+    if (!skill) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Unknown SDE v4 skill code.',
+      });
+    }
+    const proficiency = request.proficiency;
+    const spec = skill.levels[proficiency];
+    const attemptId = request.attemptId ?? randomUUID();
+    const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
+
+    try {
+      const closedResult = await this.gateway.complete({
+        promptRef: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          skillCode: skill.code,
+          skillName: skill.name,
+          proficiency,
+          attemptId,
+          mcqCount: spec.closed.MCQ,
+          traceCount: spec.closed.TRACE,
+          priorStems,
+          skillFocus: request.skillFocus ?? '',
+        },
+        correlation: {},
+        maxOutputTokens: 6_144,
+        temperature: 0.4,
+      });
+      const closedParsed = SdeSkillFormClosedOutputSchema.parse(closedResult.output);
+      const closedOrdered = this.orderClosed(
+        closedParsed.items,
+        spec.closed.MCQ,
+        spec.closed.TRACE,
+      );
+
+      const openResult = await this.gateway.complete({
+        promptRef: SDE_SKILL_FORM_OPEN_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          skillCode: skill.code,
+          skillName: skill.name,
+          proficiency,
+          taskFamily: skill.taskFamily,
+          attemptId,
+          formats: [...spec.openFormats],
+          flavorNotes: request.skillFocus
+            ? [`Focus exclusively on ${request.skillFocus}`, ...spec.flavorNotes].slice(0, 6)
+            : [...spec.flavorNotes],
+          priorStems,
+          skillFocus: request.skillFocus ?? '',
+        },
+        correlation: {},
+        maxOutputTokens: 6_144,
+        temperature: 0.4,
+      });
+      const openParsed = SdeSkillFormOpenOutputSchema.parse(openResult.output);
+      const openOrdered = this.orderOpen(openParsed.items, spec.openFormats);
+
+      const formats: SdeV4Format[] = [
+        ...closedOrdered.map((item) => item.format),
+        ...openOrdered.map((item) => item.format),
+      ];
+      assertSdeV4FormShape(skill, proficiency, formats);
+
+      const items: GenerateSdeSkillFormResponse['items'] = [];
+      const scoringItems: z.infer<typeof ScoringKeySchema>[] = [];
+      let index = 1;
+      for (const item of closedOrdered) {
+        items.push({
+          index,
+          format: item.format,
+          prompt: item.prompt,
+          options: item.options,
+        });
+        scoringItems.push({
+          index,
+          format: item.format,
+          answer: item.answer,
+          marksMax: SDE_V4_MARKS[item.format],
+        });
+        index += 1;
+      }
+      for (const item of openOrdered) {
+        items.push({
+          index,
+          format: item.format,
+          prompt: item.prompt,
+          options: null,
+          ...(item.title ? { title: item.title } : {}),
+          ...(item.constraints ? { constraints: item.constraints } : {}),
+          ...(item.examples && item.examples.length > 0 ? { examples: item.examples } : {}),
+        });
+        scoringItems.push({
+          index,
+          format: item.format,
+          prompt: item.prompt,
+          rubric: item.rubric,
+          modelAnswer: item.modelAnswer,
+          marksMax: SDE_V4_MARKS[item.format],
+          hiddenTests: item.hiddenTests,
+        });
+        index += 1;
+      }
+
+      const scoringToken = sealSdeFormPayload({
+        exp: Date.now() + (spec.timeMinutes + 30) * 60_000,
+        userId: ownerUserId,
+        skillCode: skill.code,
+        proficiency,
+        items: scoringItems,
+      });
+
+      return GenerateSdeSkillFormResponseSchema.parse({
+        skillCode: skill.code,
+        proficiency,
+        attemptId,
+        timeMinutes: spec.timeMinutes,
+        passMarkPercent: spec.passMarkPercent,
+        promptRefs: {
+          closed: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+          open: SDE_SKILL_FORM_OPEN_PROMPT_REF,
+        },
+        items,
+        scoringToken,
+      });
+    } catch (err) {
+      this.failClosed(err, 'skill_form_unavailable', 'Skill form could not be generated.');
+    }
+  }
+
+  async gradeSkillForm(body: unknown, ownerUserId: string): Promise<GradeSdeSkillFormResponse> {
+    const request = GradeSdeSkillFormRequestSchema.parse(body);
+    let bundle: z.infer<typeof SealedSdeFormSchema>;
+    try {
+      bundle = SealedSdeFormSchema.parse(unsealSdeFormPayload(request.scoringToken));
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Invalid scoring token.',
+      });
+    }
+    if (bundle.exp < Date.now()) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token expired.',
+      });
+    }
+    if (bundle.userId !== ownerUserId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this student.',
+      });
+    }
+    if (bundle.skillCode !== request.skillCode || bundle.proficiency !== request.proficiency) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this form.',
+      });
+    }
+
+    const byIndex = new Map(request.responses.map((row) => [row.index, row]));
+    const scored: { itemId: string; marksEarned: number; marksMax: number }[] = [];
+    const itemResults: GradeSdeSkillFormResponse['itemResults'] = [];
+    let mcqCorrect = 0;
+    let mcqTotal = 0;
+    let traceCorrect = 0;
+    let traceTotal = 0;
+
+    try {
+      const openKeys = bundle.items.filter((key) => key.format !== 'MCQ' && key.format !== 'TRACE');
+      for (const key of bundle.items) {
+        if (key.format !== 'MCQ' && key.format !== 'TRACE') continue;
+        const response = byIndex.get(key.index);
+        const marksEarned = scoreClosedChoice(response?.selectedKey ?? null, key.answer ?? '');
+        const correct = marksEarned === key.marksMax;
+        if (key.format === 'MCQ') {
+          mcqTotal += 1;
+          if (correct) mcqCorrect += 1;
+        } else {
+          traceTotal += 1;
+          if (correct) traceCorrect += 1;
+        }
+        scored.push({
+          itemId: String(key.index),
+          marksEarned,
+          marksMax: key.marksMax,
+        });
+        itemResults.push({
+          index: key.index,
+          format: key.format,
+          marksEarned,
+          marksMax: key.marksMax,
+          correct,
+          selectedKey: response?.selectedKey,
+          correctKey: key.answer,
+          feedback: correct
+            ? 'Correct.'
+            : `Incorrect. The correct option was ${key.answer ?? '?'}.`,
+        });
+      }
+
+      if (openKeys.length > 0) {
+        const completion = await this.gateway.complete({
+          promptRef: SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
+          modelRole: 'PRIMARY_REASONING',
+          priority: 'P2_ASYNC_EVAL',
+          variables: {
+            skillCode: request.skillCode,
+            proficiency: request.proficiency,
+            items: openKeys.map((key) => {
+              const response = byIndex.get(key.index);
+              if (key.format === 'MCQ' || key.format === 'TRACE') {
+                throw new Error('Closed item leaked into open batch');
+              }
+              return {
+                index: key.index,
+                format: key.format,
+                prompt: key.prompt ?? 'see rubric',
+                rubric: key.rubric ?? 'Award marks for a correct, complete solution.',
+                modelAnswer: key.modelAnswer ?? '',
+                candidateResponse: response?.text ?? '',
+                maxMarks: key.marksMax,
+                hiddenTests: key.hiddenTests,
+              };
+            }),
+          },
+          correlation: {},
+          maxOutputTokens: 3_072,
+          temperature: 0,
+        });
+        const parsed = SdeOpenBatchGradeSchema.parse(completion.output);
+        const gradeByIndex = new Map(parsed.grades.map((grade) => [grade.index, grade]));
+        for (const key of openKeys) {
+          const grade = gradeByIndex.get(key.index);
+          if (!grade) throw new Error(`Missing batch grade for item ${String(key.index)}`);
+          const earned = Math.min(Math.max(grade.marksAwarded, 0), key.marksMax);
+          scored.push({
+            itemId: String(key.index),
+            marksEarned: earned,
+            marksMax: key.marksMax,
+          });
+          itemResults.push({
+            index: key.index,
+            format: key.format,
+            marksEarned: earned,
+            marksMax: key.marksMax,
+            testsPassed: grade.testsPassed,
+            testsTotal: grade.testsTotal,
+            missedTests: grade.missedTests,
+            feedback: grade.justification,
+          });
+        }
+      }
+
+      const result = Effect.runSync(
+        Effect.either(computeSdeV4FormScore(scored, request.proficiency)),
+      );
+      if (Either.isLeft(result)) {
+        throw new BadGatewayException({
+          error: 'skill_form_unavailable',
+          message: 'Skill form could not be scored.',
+        });
+      }
+      return GradeSdeSkillFormResponseSchema.parse({
+        skillCode: request.skillCode,
+        proficiency: request.proficiency,
+        marksEarned: result.right.marksEarned,
+        marksTotal: result.right.marksTotal,
+        scorePercent: result.right.scorePercent,
+        passed: result.right.passed,
+        promptRef: SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
+        mcqCorrect,
+        mcqTotal,
+        traceCorrect,
+        traceTotal,
+        itemResults,
+      });
+    } catch (err) {
+      this.failClosed(err, 'skill_form_unavailable', 'Skill form could not be graded.');
+    }
+  }
+
+  private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(
+    items: readonly T[],
+    mcqCount: number,
+    traceCount: number,
+  ): T[] {
+    const mcq = items.filter((item) => item.format === 'MCQ');
+    const trace = items.filter((item) => item.format === 'TRACE');
+    if (mcq.length !== mcqCount || trace.length !== traceCount) {
+      throw new Error('Closed item counts did not match the v4 spec');
+    }
+    return [...mcq, ...trace];
+  }
+
+  private orderOpen<T extends { format: SdeV4Format }>(
+    items: readonly T[],
+    expected: readonly SdeV4Format[],
+  ): T[] {
+    const pool = [...items];
+    const ordered: T[] = [];
+    for (const format of expected) {
+      const idx = pool.findIndex((item) => item.format === format);
+      if (idx < 0) throw new Error(`Missing open item format ${format}`);
+      const picked = pool.splice(idx, 1)[0];
+      if (!picked) throw new Error(`Missing open item format ${format}`);
+      ordered.push(picked);
+    }
+    if (pool.length > 0) throw new Error('Unexpected extra open items');
+    return ordered;
+  }
+
+  private failClosed(err: unknown, error: string, message: string): never {
     if (err instanceof BadGatewayException) throw err;
-    const message = err instanceof Error ? err.message : String(err);
-    this.logger.warn(`Skill interview failed closed: ${message}`);
-    throw new BadGatewayException({
-      error: 'skill_interview_unavailable',
-      message: 'Skill interview could not be completed.',
-    });
+    const detail = err instanceof Error ? err.message : String(err);
+    this.logger.warn(`Evaluation failed closed: ${detail}`);
+    throw new BadGatewayException({ error, message });
   }
 }

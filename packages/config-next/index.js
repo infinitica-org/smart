@@ -5,7 +5,13 @@
 export function withSmartConfig(config = {}) {
     const baseConfig = {
         output: 'standalone',
-        transpilePackages: ['@smart/ui', '@smart/api-client', '@smart/contracts', 'motion'],
+        transpilePackages: [
+            '@smart/ui',
+            '@smart/api-client',
+            '@smart/contracts',
+            'motion',
+            '@mediapipe/tasks-vision',
+        ],
         ...config,
     };
     return baseConfig;

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   lumaFromRgba,
+  releaseProctoringPreview,
   requestProctoringMedia,
   rmsPercentFromTimeDomain,
   stopProctoringMedia,
@@ -51,5 +52,13 @@ describe('proctoring media helpers', () => {
     const stop = vi.fn();
     stopProctoringMedia({ getTracks: () => [{ stop }, { stop }] } as unknown as MediaStream);
     expect(stop).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears the preview element and stops tracks', () => {
+    const stop = vi.fn();
+    const video = { srcObject: {} } as HTMLVideoElement;
+    releaseProctoringPreview(video, { getTracks: () => [{ stop }] } as unknown as MediaStream);
+    expect(video.srcObject).toBeNull();
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 });

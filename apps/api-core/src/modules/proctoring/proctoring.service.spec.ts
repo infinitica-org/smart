@@ -147,4 +147,20 @@ describe('ProctoringService', () => {
       }),
     );
   });
+
+  it('accepts a skill-verify Redis session without writing Attempt integrity rows', async () => {
+    prisma.attempt.findUnique.mockResolvedValue(null);
+    redis.get.mockImplementation(async (key: string) => {
+      if (String(key).includes('session:skill-verify')) {
+        return JSON.stringify({ userId: USER });
+      }
+      if (String(key).includes('hmac')) return 'hmac-secret-value-hmac-secret';
+      return null;
+    });
+    const snap = await service.snapshot(USER, ATTEMPT);
+    expect(snap.attemptId).toBe(ATTEMPT);
+    await service.record(ATTEMPT, 'CLEAN', 'TAB_BLUR', undefined, undefined, false);
+    expect(prisma.attempt.update).not.toHaveBeenCalled();
+    expect(prisma.integrityEvent.create).not.toHaveBeenCalled();
+  });
 });

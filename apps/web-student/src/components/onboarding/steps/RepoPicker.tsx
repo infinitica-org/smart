@@ -13,7 +13,7 @@ interface RepoPickerProps {
   ) => void;
 }
 
-const MIN_REPOS = 3;
+const MIN_REPOS = 1;
 const MAX_REPOS = 5;
 
 export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
@@ -32,11 +32,31 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
       .listGithubRepos({ login: github.login })
       .then((response) => {
         if (cancelled) return;
-        setRepos(
-          [...response.repos].sort(
-            (a, b) => b.stars - a.stars || (a.fullName < b.fullName ? -1 : 1),
-          ),
+        // Most stars first — this also is exactly the "best repo" heuristic
+        // used below to pre-select a sensible default.
+        const sorted = [...response.repos].sort(
+          (a, b) => b.stars - a.stars || (a.fullName < b.fullName ? -1 : 1),
         );
+        setRepos(sorted);
+        // Pull/identify the candidate's best repo automatically so they don't
+        // start from a blank picker — they can still swap or add more.
+        const best = sorted[0];
+        if (best && (github.selectedRepos?.length ?? 0) === 0) {
+          updateField('socialVerification', {
+            ...formData.socialVerification,
+            github: {
+              ...github,
+              selectedRepos: [
+                {
+                  id: best.id,
+                  fullName: best.fullName,
+                  primaryLanguage: best.primaryLanguage,
+                  stars: best.stars,
+                },
+              ],
+            },
+          });
+        }
       })
       .catch(() => {
         if (!cancelled)
@@ -82,18 +102,11 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
 
   return (
     <div key="repo-picks">
-      <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-          6
-        </span>
-        Your best work <span className="text-emerald-400">*</span>
-      </h3>
-      <p className="text-sm text-zinc-400 mb-4 ml-8">
-        Pick {MIN_REPOS}-{MAX_REPOS} repositories you&apos;re proud of. We&apos;ll use them to
-        suggest skills next.
+      <p className="text-sm text-zinc-400 mb-4">
+        We picked your top starred repo as your best work — swap it or add up to {MAX_REPOS} more.
       </p>
 
-      <div className="ml-8 max-w-xl">
+      <div>
         <div className="flex items-center justify-between mb-3">
           <div className="relative flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -119,7 +132,7 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
             <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Loading your repositories…
           </div>
         ) : error ? (
-          <p className="text-xs text-amber-400 flex items-center gap-1 py-4">
+          <p className="text-xs text-amber-500 flex items-center gap-1 py-4">
             <AlertCircle className="w-3.5 h-3.5" /> {error}
           </p>
         ) : (
