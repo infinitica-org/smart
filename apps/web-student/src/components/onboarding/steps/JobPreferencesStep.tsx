@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AnimatePresence } from 'motion/react';
 import { WORK_MODES } from '@smart/contracts';
 import { LightSelect } from '../../ui/LightSelect';
@@ -164,8 +165,18 @@ export default function JobPreferencesStep({
           className="mt-0.5 rounded border-gray-300"
         />
         <span className="text-sm text-gray-600">
-          I consent to Good Freshers processing my personal data as described in the DPDP consent
-          terms, so my profile can be shared with prospective employers.
+          I consent to SMART processing my personal data as described in the{' '}
+          <Link
+            href="/dpdp-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="font-medium text-blue-600 underline hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-0.5"
+            aria-label="View DPDP Act 2023 consent terms and data privacy policy sheet"
+          >
+            DPDP Act 2023 consent terms
+          </Link>
+          , so my profile can be shared with prospective employers.
         </span>
       </label>
 
