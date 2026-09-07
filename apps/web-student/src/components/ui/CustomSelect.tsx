@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -96,11 +96,11 @@ export function CustomSelect({
         onClick={() => setIsOpen((open) => !open)}
         className="w-full flex items-center justify-between text-left focus:outline-none h-full"
       >
-        <span className={selectedOption ? 'text-white truncate' : 'text-white/40 truncate'}>
+        <span className={selectedOption ? 'text-zinc-100 truncate' : 'text-zinc-500 truncate'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#00fad0]' : 'text-white/40'}`}
+          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-400' : 'text-zinc-400'}`}
         />
       </button>
 
@@ -117,7 +117,7 @@ export function CustomSelect({
               maxHeight: menuBox.maxHeight,
               ...(menuBox.openUp ? { bottom: menuBox.bottom } : { top: menuBox.top }),
             }}
-            className={`bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-y-auto ${dropdownClassName}`}
+            className={`bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-y-auto ${dropdownClassName}`}
           >
             <div className="p-1 flex flex-col gap-1">
               {options.map((option) => {
@@ -130,10 +130,10 @@ export function CustomSelect({
                       onChange(option.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm ${
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
                       isSelected
-                        ? 'bg-[#00fad0]/10 text-[#00fad0]'
-                        : 'text-white/70 hover:bg-white/5 hover:text-white'
+                        ? 'bg-emerald-500/10 text-emerald-400 font-bold'
+                        : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                     } ${optionClassName}`}
                   >
                     {option.label}
