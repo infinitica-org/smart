@@ -24,6 +24,15 @@ async function sampleFaceCheck(
   video: HTMLVideoElement,
   hold: OvalHoldState,
 ): Promise<{ result: FaceCheckResult; hold: OvalHoldState } | null> {
+  if (
+    video.readyState < 2 ||
+    video.videoWidth === 0 ||
+    video.videoHeight === 0 ||
+    video.paused ||
+    video.ended
+  ) {
+    return null;
+  }
   const cover = captureVideoFrame(video, 192, 108, 'cover');
   if (!cover) return null;
   const detector = await getBlazeFaceDetector();
@@ -180,7 +189,7 @@ export function FaceLiveCheck({
         className="w-full bg-teal text-ink hover:bg-teal/90"
         onClick={continueToAssessment}
       >
-        {busy ? 'Starting…' : 'Continue to assessment'}
+        {busy ? 'Starting…' : 'Enter the challenge'}
       </Button>
     </div>
   );

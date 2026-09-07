@@ -7,6 +7,10 @@ import type {
   SkillVerifySessionDto,
 } from '@smart/contracts';
 import { AnswerOption, Badge, Button, ProgressIndicator, QuestionCard, Timer } from '@smart/ui';
+import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
+import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+
+const SUBMIT_LABEL = 'Submit and see results';
 
 const FORMAT_LABEL: Record<SdeSkillFormFormat, string> = {
   MCQ: 'Single Choice',
@@ -42,6 +46,31 @@ export function isSkillVerifyAnswered(
 
 type ProseBlock =
   { type: 'p'; text: string } | { type: 'ol'; items: string[] } | { type: 'ul'; items: string[] };
+
+export type PromptSegment =
+  { type: 'prose'; text: string } | { type: 'code'; text: string; language: string };
+
+export function splitPromptSegments(text: string): PromptSegment[] {
+  const segments: PromptSegment[] = [];
+  const fence = /```(\w*)\r?\n([\s\S]*?)```/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null = fence.exec(text);
+  while (match) {
+    const before = text.slice(cursor, match.index).trim();
+    if (before) segments.push({ type: 'prose', text: before });
+    segments.push({
+      type: 'code',
+      language: match[1] && match[1].length > 0 ? match[1] : 'text',
+      text: match[2]!.replace(/\n$/, ''),
+    });
+    cursor = fence.lastIndex;
+    match = fence.exec(text);
+  }
+  const rest = text.slice(cursor).trim();
+  if (rest) segments.push({ type: 'prose', text: rest });
+  if (segments.length === 0) segments.push({ type: 'prose', text });
+  return segments;
+}
 
 export function splitProblemProse(text: string): ProseBlock[] {
   const blocks: ProseBlock[] = [];
@@ -99,6 +128,7 @@ export function SkillVerifyExam({
   answers,
   pending,
   error,
+  kioskTitle,
   onSelectKey,
   onChangeText,
   onGoTo,
@@ -111,6 +141,7 @@ export function SkillVerifyExam({
   answers: Record<number, { selectedKey?: string; text?: string }>;
   pending: boolean;
   error: string | null;
+  kioskTitle?: string;
   onSelectKey: (itemIndex: number, key: 'A' | 'B' | 'C' | 'D') => void;
   onChangeText: (itemIndex: number, text: string) => void;
   onGoTo: (index: number) => void;
@@ -128,22 +159,27 @@ export function SkillVerifyExam({
     ? (Object.keys(item.options) as Array<'A' | 'B' | 'C' | 'D'>)
     : [];
   const coding = item.format === 'CODING';
+  const trace = item.format === 'TRACE';
+  const debug = item.format === 'DEBUG';
+  const studio = coding || trace || debug;
+
+  const heading = kioskTitle ?? formatSkillVerifyKioskTitle(session.skillCode, session.proficiency);
 
   return (
     <div className="flex h-full min-h-[100dvh] w-full flex-col bg-[var(--background)] text-[var(--text-primary)]">
       <header className="flex shrink-0 items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)] px-6 py-3">
-        <h1 className="text-lg font-semibold tracking-tight">Skill verification</h1>
+        <h1 className="truncate pr-3 text-lg font-semibold tracking-tight">{heading}</h1>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" disabled={pending} onClick={onExit}>
             Exit
           </Button>
           <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-            Submit and see results
+            {SUBMIT_LABEL}
           </Button>
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-6 overflow-hidden p-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+      <div className="grid min-h-0 flex-1 gap-6 overflow-hidden p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-h-0 flex-col overflow-hidden">
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
             <Badge variant="secondary">{session.proficiency}</Badge>
@@ -159,18 +195,37 @@ export function SkillVerifyExam({
             </p>
           ) : null}
 
-          {coding ? (
+          {studio ? (
             <div className="grid min-h-0 flex-1 overflow-hidden rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] lg:grid-cols-2">
               <div className="min-h-0 overflow-y-auto border-b border-[var(--surface-border)] p-5 lg:border-b-0 lg:border-r">
-                <p className="mb-4 text-xs font-medium text-[var(--text-muted)]">
+                <div className="mb-4 text-xs font-medium text-[var(--text-muted)]">
                   <ProgressIndicator current={currentIndex + 1} total={total} />
-                </p>
-                <CodingProblemPrompt item={item} />
+                </div>
+                <ProblemStatement
+                  item={item}
+                  heading={
+                    item.title ??
+                    (coding ? 'Coding problem' : debug ? 'Debug' : 'Trace the snippet')
+                  }
+                />
               </div>
-              <SolutionEditor
-                value={answer?.text ?? ''}
-                onChange={(text) => onChangeText(item.index, text)}
-              />
+              {trace && item.options ? (
+                <TraceAnswerPane
+                  itemIndex={item.index}
+                  optionKeys={optionKeys}
+                  options={item.options}
+                  selectedKey={answer?.selectedKey}
+                  onSelectKey={onSelectKey}
+                />
+              ) : (
+                <SolutionEditor
+                  value={answer?.text ?? ''}
+                  onChange={(text) => onChangeText(item.index, text)}
+                  label={debug ? 'Root cause and fix' : 'Solution'}
+                  placeholder={debug ? 'Describe the bug and the fix' : 'Write your solution'}
+                  ariaLabel={debug ? 'Debug response' : 'Code solution'}
+                />
+              )}
             </div>
           ) : (
             <QuestionCard
@@ -228,7 +283,7 @@ export function SkillVerifyExam({
               </Button>
               {last ? (
                 <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-                  Submit and see results
+                  {SUBMIT_LABEL}
                 </Button>
               ) : (
                 <Button
@@ -244,15 +299,16 @@ export function SkillVerifyExam({
           </div>
         </div>
 
-        <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto">
-          <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
+        <aside className="flex min-h-0 flex-col gap-4 overflow-hidden">
+          <CameraIntegrityDock />
+          <div className="shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
               Time remaining
             </p>
             <Timer {...skillVerifyTimerProps(session)} />
           </div>
 
-          <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
+          <div className="shrink-0 overflow-y-auto rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
             <p className="mb-3 text-sm font-medium">Questions</p>
             <div className="grid grid-cols-5 gap-2">
               {session.items.map((row, index) => {
@@ -295,43 +351,22 @@ export function SkillVerifyExam({
   );
 }
 
-function CodingProblemPrompt({ item }: { item: SdeSkillFormPublicItem }) {
-  const blocks = splitProblemProse(item.prompt);
+function ProblemStatement({ item, heading }: { item: SdeSkillFormPublicItem; heading: string }) {
+  const segments = splitPromptSegments(item.prompt);
   return (
     <article className="flex flex-col gap-5 text-sm leading-relaxed">
-      <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-        {item.title ?? 'Coding problem'}
-      </h2>
-      {blocks.map((block, index) => {
-        if (block.type === 'p') {
+      <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{heading}</h2>
+      {segments.map((segment, index) => {
+        if (segment.type === 'code') {
           return (
-            <p key={`p-${String(index)}`} className="text-[var(--text-primary)]">
-              {block.text}
-            </p>
+            <CodeSnippet
+              key={`code-${String(index)}`}
+              language={segment.language}
+              code={segment.text}
+            />
           );
         }
-        if (block.type === 'ol') {
-          return (
-            <ol
-              key={`ol-${String(index)}`}
-              className="list-decimal space-y-2 pl-5 text-[var(--text-primary)]"
-            >
-              {block.items.map((entry) => (
-                <li key={entry}>{entry}</li>
-              ))}
-            </ol>
-          );
-        }
-        return (
-          <ul
-            key={`ul-${String(index)}`}
-            className="list-disc space-y-2 pl-5 text-[var(--text-primary)]"
-          >
-            {block.items.map((entry) => (
-              <li key={entry}>{entry}</li>
-            ))}
-          </ul>
-        );
+        return <ProseBlocks key={`prose-${String(index)}`} text={segment.text} />;
       })}
       {item.examples && item.examples.length > 0 ? (
         <section>
@@ -388,7 +423,119 @@ function CodingProblemPrompt({ item }: { item: SdeSkillFormPublicItem }) {
   );
 }
 
-function SolutionEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ProseBlocks({ text }: { text: string }) {
+  return (
+    <>
+      {splitProblemProse(text).map((block, index) => {
+        if (block.type === 'p') {
+          return (
+            <p key={`p-${String(index)}`} className="text-[var(--text-primary)]">
+              {block.text}
+            </p>
+          );
+        }
+        if (block.type === 'ol') {
+          return (
+            <ol
+              key={`ol-${String(index)}`}
+              className="list-decimal space-y-2 pl-5 text-[var(--text-primary)]"
+            >
+              {block.items.map((entry) => (
+                <li key={entry}>{entry}</li>
+              ))}
+            </ol>
+          );
+        }
+        return (
+          <ul
+            key={`ul-${String(index)}`}
+            className="list-disc space-y-2 pl-5 text-[var(--text-primary)]"
+          >
+            {block.items.map((entry) => (
+              <li key={entry}>{entry}</li>
+            ))}
+          </ul>
+        );
+      })}
+    </>
+  );
+}
+
+function CodeSnippet({ language, code }: { language: string; code: string }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111827]">
+      <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/45">
+          {language}
+        </span>
+        <span className="text-[10px] text-white/30">Snippet</span>
+      </div>
+      <pre className="overflow-x-auto px-3 py-3 font-mono text-xs leading-6 text-[#e5e7eb]">
+        {code}
+      </pre>
+    </div>
+  );
+}
+
+function TraceAnswerPane({
+  itemIndex,
+  optionKeys,
+  options,
+  selectedKey,
+  onSelectKey,
+}: {
+  itemIndex: number;
+  optionKeys: Array<'A' | 'B' | 'C' | 'D'>;
+  options: NonNullable<SdeSkillFormPublicItem['options']>;
+  selectedKey?: string;
+  onSelectKey: (itemIndex: number, key: 'A' | 'B' | 'C' | 'D') => void;
+}) {
+  return (
+    <div className="flex min-h-[22rem] flex-col bg-[#111827] lg:min-h-0">
+      <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-white/55">Answer</span>
+        <span className="text-[10px] text-white/35">Choose one</span>
+      </div>
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
+        role="radiogroup"
+        aria-label={`Question ${String(itemIndex)} options`}
+      >
+        {optionKeys.map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="radio"
+            aria-checked={selectedKey === key}
+            onClick={() => onSelectKey(itemIndex, key)}
+            className={
+              selectedKey === key
+                ? 'rounded-md border border-brand-400 bg-brand-500/20 px-3 py-3 text-left text-sm text-[#e5e7eb]'
+                : 'rounded-md border border-white/15 bg-white/5 px-3 py-3 text-left text-sm text-[#e5e7eb] hover:bg-white/10'
+            }
+          >
+            <span className="mr-2 font-semibold text-white/70">{key}.</span>
+            {options[key]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SolutionEditor({
+  value,
+  onChange,
+  label = 'Solution',
+  placeholder = 'Write your solution',
+  ariaLabel = 'Code solution',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+}) {
   const gutterRef = useRef<HTMLPreElement>(null);
   const lineCount = Math.max(value.split('\n').length, 12);
   const lines = Array.from({ length: lineCount }, (_, index) => String(index + 1)).join('\n');
@@ -396,7 +543,7 @@ function SolutionEditor({ value, onChange }: { value: string; onChange: (value: 
   return (
     <div className="flex min-h-[22rem] flex-col bg-[#111827] lg:min-h-0">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/55">Solution</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-white/55">{label}</span>
         <span className="text-[10px] text-white/35">Tab inserts spaces</span>
       </div>
       <div className="flex min-h-0 flex-1">
@@ -427,8 +574,8 @@ function SolutionEditor({ value, onChange }: { value: string; onChange: (value: 
               target.selectionEnd = start + 2;
             });
           }}
-          aria-label="Code solution"
-          placeholder="Write your solution"
+          aria-label={ariaLabel}
+          placeholder={placeholder}
           spellCheck={false}
           autoComplete="off"
           autoCorrect="off"

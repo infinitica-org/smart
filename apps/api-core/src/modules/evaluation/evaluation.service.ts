@@ -179,54 +179,59 @@ export class EvaluationService {
     const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
 
     try {
-      const closedResult = await this.gateway.complete({
-        promptRef: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
-        modelRole: 'PRIMARY_REASONING',
-        priority: 'P1_REALTIME',
-        variables: {
-          skillCode: skill.code,
-          skillName: skill.name,
-          proficiency,
-          attemptId,
-          mcqCount: spec.closed.MCQ,
-          traceCount: spec.closed.TRACE,
-          priorStems,
-          skillFocus: request.skillFocus ?? '',
-        },
-        correlation: {},
-        maxOutputTokens: 6_144,
-        temperature: 0.4,
-      });
+      const [closedResult, openResult] = await Promise.all([
+        this.completeWithRetry({
+          promptRef: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+          modelRole: 'PRIMARY_REASONING',
+          priority: 'P1_REALTIME',
+          variables: {
+            skillCode: skill.code,
+            skillName: skill.name,
+            proficiency,
+            attemptId,
+            mcqCount: spec.closed.MCQ,
+            traceCount: spec.closed.TRACE,
+            priorStems,
+            skillFocus: request.skillFocus ?? '',
+          },
+          correlation: {},
+          maxOutputTokens: 3_072,
+          temperature: 0.4,
+        }),
+        this.completeWithRetry({
+          promptRef: SDE_SKILL_FORM_OPEN_PROMPT_REF,
+          modelRole: 'PRIMARY_REASONING',
+          priority: 'P1_REALTIME',
+          variables: {
+            skillCode: skill.code,
+            skillName: skill.name,
+            proficiency,
+            taskFamily: skill.taskFamily,
+            attemptId,
+            formats: [...spec.openFormats],
+            flavorNotes: request.skillFocus
+              ? [`Focus exclusively on ${request.skillFocus}`, ...spec.flavorNotes].slice(0, 6)
+              : [...spec.flavorNotes],
+            priorStems,
+            skillFocus: request.skillFocus ?? '',
+          },
+          correlation: {},
+          maxOutputTokens: 4_096,
+          temperature: 0.4,
+        }),
+      ]);
       const closedParsed = SdeSkillFormClosedOutputSchema.parse(closedResult.output);
       const closedOrdered = this.orderClosed(
         closedParsed.items,
         spec.closed.MCQ,
         spec.closed.TRACE,
       );
-
-      const openResult = await this.gateway.complete({
-        promptRef: SDE_SKILL_FORM_OPEN_PROMPT_REF,
-        modelRole: 'PRIMARY_REASONING',
-        priority: 'P1_REALTIME',
-        variables: {
-          skillCode: skill.code,
-          skillName: skill.name,
-          proficiency,
-          taskFamily: skill.taskFamily,
-          attemptId,
-          formats: [...spec.openFormats],
-          flavorNotes: request.skillFocus
-            ? [`Focus exclusively on ${request.skillFocus}`, ...spec.flavorNotes].slice(0, 6)
-            : [...spec.flavorNotes],
-          priorStems,
-          skillFocus: request.skillFocus ?? '',
-        },
-        correlation: {},
-        maxOutputTokens: 6_144,
-        temperature: 0.4,
-      });
       const openParsed = SdeSkillFormOpenOutputSchema.parse(openResult.output);
       const openOrdered = this.orderOpen(openParsed.items, spec.openFormats);
+
+      this.logger.log(
+        `skill_form ${skill.code} ${proficiency} closed in=${String(closedResult.promptTokens ?? 0)} out=${String(closedResult.completionTokens ?? 0)} ${String(closedResult.latencyMs ?? 0)}ms ~$${(closedResult.estimatedCostUsd ?? 0).toFixed(6)} | open in=${String(openResult.promptTokens ?? 0)} out=${String(openResult.completionTokens ?? 0)} ${String(openResult.latencyMs ?? 0)}ms ~$${(openResult.estimatedCostUsd ?? 0).toFixed(6)} | total ~$${((closedResult.estimatedCostUsd ?? 0) + (openResult.estimatedCostUsd ?? 0)).toFixed(6)}`,
+      );
 
       const formats: SdeV4Format[] = [
         ...closedOrdered.map((item) => item.format),
@@ -482,10 +487,22 @@ export class EvaluationService {
     return ordered;
   }
 
+  private async completeWithRetry(
+    request: Parameters<AiGatewayService['complete']>[0],
+  ): Promise<Awaited<ReturnType<AiGatewayService['complete']>>> {
+    try {
+      return await this.gateway.complete(request);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Skill form LLM call failed; retrying once: ${detail}`);
+      return await this.gateway.complete(request);
+    }
+  }
+
   private failClosed(err: unknown, error: string, message: string): never {
     if (err instanceof BadGatewayException) throw err;
     const detail = err instanceof Error ? err.message : String(err);
-    this.logger.warn(`Evaluation failed closed: ${detail}`);
+    this.logger.error(`Evaluation failed closed: ${detail}`);
     throw new BadGatewayException({ error, message });
   }
 }

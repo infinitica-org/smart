@@ -42,8 +42,8 @@ describe('SkillVerifyReport', () => {
     expect(screen.getByText(/6 correct, 2 wrong/)).toBeDefined();
     expect(screen.getByText(/2 of 3 hidden tests passed/)).toBeDefined();
     expect(screen.getByText(/Did not handle duplicate values/)).toBeDefined();
-    expect(screen.getByRole('button', { name: /back to assessments/i })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: /back to assessments/i }));
+    expect(screen.getByRole('button', { name: /back to skills/i })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /back to skills/i }));
     expect(onDone).toHaveBeenCalled();
   });
 });

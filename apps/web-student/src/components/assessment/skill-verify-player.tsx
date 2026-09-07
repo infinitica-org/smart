@@ -9,6 +9,7 @@ import type {
   SkillVerifySessionDto,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
+import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
@@ -20,6 +21,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [session, setSession] = useState<SkillVerifySessionDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [kioskTitle, setKioskTitle] = useState('Skill verification');
   const [isPending, startTransition] = useTransition();
   const [answers, setAnswers] = useState<Record<number, { selectedKey?: string; text?: string }>>(
     {},
@@ -32,8 +34,16 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     let cancelled = false;
     void (async () => {
       try {
-        const next = await api.assessment.prepareSkillVerify(claimId);
-        if (!cancelled) setPrepared(next);
+        const [next, claims] = await Promise.all([
+          api.assessment.prepareSkillVerify(claimId),
+          api.assessment.listSkillClaims().catch(() => []),
+        ]);
+        if (cancelled) return;
+        const claim = claims.find((row) => row.claimId === claimId);
+        if (claim) {
+          setKioskTitle(formatSkillVerifyKioskTitle(claim.skillCode, claim.proficiency));
+        }
+        setPrepared(next);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Could not start verification.');
@@ -54,6 +64,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         sessionId: prepared.sessionId,
       });
       setSession(started);
+      setKioskTitle(formatSkillVerifyKioskTitle(started.skillCode, started.proficiency));
       const next: Record<number, { selectedKey?: string; text?: string }> = {};
       for (const row of started.answers) {
         next[row.index] = { selectedKey: row.selectedKey, text: row.text };
@@ -152,12 +163,13 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
       onLockTerminate={onLockTerminate}
       cameraEnabled
       faceLiveCheck
+      kioskTitle={kioskTitle}
       onReady={() => {
         void generateFormRef.current();
       }}
     >
       {!session ? (
-        <SkillVerifyLoading generating={generating} error={error} />
+        <SkillVerifyLoading generating={generating} error={error} kioskTitle={kioskTitle} />
       ) : report ? (
         <SkillVerifyReport grade={report} onDone={() => router.push('/assessments')} />
       ) : (
@@ -167,6 +179,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           answers={answers}
           pending={isPending}
           error={error}
+          kioskTitle={kioskTitle}
           onSelectKey={(itemIndex, key) =>
             setAnswers((prev) => ({
               ...prev,

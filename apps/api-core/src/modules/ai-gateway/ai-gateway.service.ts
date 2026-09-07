@@ -108,11 +108,24 @@ export class AiGatewayService {
       circuitState: string;
     }> = [];
 
-    const chain: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [
+    const allProviders: Array<{ provider: AiProvider; adapter: AiProviderAdapter }> = [
       { provider: 'ANTHROPIC', adapter: this.anthropic },
       { provider: 'GOOGLE', adapter: this.google },
       { provider: 'OPENROUTER', adapter: this.openrouter },
     ];
+
+    const primaryProvider = env.AI_PRIMARY_PROVIDER;
+    const chain = primaryProvider
+      ? [
+          allProviders.find((p) => p.provider === primaryProvider)!,
+          ...allProviders.filter((p) => p.provider !== primaryProvider),
+        ]
+      : allProviders;
+
+    const timeoutMs = Math.max(
+      45_000,
+      request.maxOutputTokens ? Math.ceil((request.maxOutputTokens / 80) * 1000) : 45_000,
+    );
 
     for (const { provider, adapter } of chain) {
       if (!adapter.isConfigured) continue;
@@ -129,18 +142,26 @@ export class AiGatewayService {
       }
 
       try {
-        const result = await this.circuitBreaker.execute(provider, (signal) =>
-          adapter.complete({
-            system: rendered.system,
-            prompt: rendered.user,
-            modelRole: request.modelRole,
-            temperature: request.temperature,
-            maxTokens: request.maxOutputTokens,
-            outputSchema: rendered.outputSchema,
-            signal,
-          }),
+        const result = await this.circuitBreaker.execute(
+          provider,
+          (signal) =>
+            adapter.complete({
+              system: rendered.system,
+              prompt: rendered.user,
+              modelRole: request.modelRole,
+              temperature: request.temperature,
+              maxTokens: request.maxOutputTokens,
+              outputSchema: rendered.outputSchema,
+              signal,
+            }),
+          timeoutMs,
         );
-        return this.toCompletionResponse(request, result, provider !== 'ANTHROPIC');
+        const primary = chain[0]?.provider ?? 'ANTHROPIC';
+        const response = await this.toCompletionResponse(request, result, provider !== primary);
+        this.logger.log(
+          `ai.complete ${request.promptRef} model=${response.model} in=${String(response.promptTokens)} out=${String(response.completionTokens)} ${String(response.latencyMs)}ms ~$${response.estimatedCostUsd.toFixed(6)}`,
+        );
+        return response;
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const circuitState = this.circuitBreaker.getState(provider);

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  cameraIntegrityCopy,
   classifyLiveWebcam,
   confirmLiveWebcamIssue,
+  isFaceAlignmentKind,
   isLookingAway,
+  LIVE_WEBCAM_SAMPLE_MS,
   startLiveWebcamMonitor,
 } from './live-webcam';
 import type { NormalizedFaceBox } from './face-check';
@@ -18,6 +21,11 @@ describe('classifyLiveWebcam', () => {
     expect(classifyLiveWebcam([box(), box({ xMin: 0.05, xMax: 0.25 })], 80)).toBe('MULTIPLE_FACES');
     expect(classifyLiveWebcam([box({ xMin: 0.7, xMax: 0.95 })], 80)).toBe('LOOKING_AWAY');
     expect(classifyLiveWebcam([box()], 80)).toBeNull();
+    expect(cameraIntegrityCopy(null).title).toBe('Camera clear');
+    expect(cameraIntegrityCopy('NO_FACE').ok).toBe(false);
+    expect(isFaceAlignmentKind('NO_FACE')).toBe(true);
+    expect(isFaceAlignmentKind('TAB_BLUR')).toBe(false);
+    expect(LIVE_WEBCAM_SAMPLE_MS).toBeLessThanOrEqual(200);
   });
 
   it('treats a tiny box as looking away', () => {
@@ -44,6 +52,7 @@ describe('confirmLiveWebcamIssue', () => {
 describe('startLiveWebcamMonitor', () => {
   it('reports only after confirm samples and respects emit cooldown', async () => {
     const onViolation = vi.fn();
+    const onSample = vi.fn();
     let now = 1_000;
     const twoFaces = [box(), box({ xMin: 0.05, xMax: 0.2 })];
     const video = { videoWidth: 640 } as HTMLVideoElement;
@@ -51,6 +60,7 @@ describe('startLiveWebcamMonitor', () => {
     const monitor = startLiveWebcamMonitor({
       getVideo: () => video,
       onViolation,
+      onSample,
       detect: () => twoFaces,
       brightnessOf: () => 90,
       sampleMs: 60_000,
@@ -59,6 +69,7 @@ describe('startLiveWebcamMonitor', () => {
     });
 
     await monitor.tick();
+    expect(onSample).toHaveBeenCalledWith('MULTIPLE_FACES');
     expect(onViolation).not.toHaveBeenCalled();
     await monitor.tick();
     expect(onViolation).toHaveBeenCalledTimes(1);

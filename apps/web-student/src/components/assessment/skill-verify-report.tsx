@@ -102,7 +102,7 @@ export function SkillVerifyReport({
       ))}
 
       <Button type="button" variant="primary" onClick={onDone}>
-        Back to assessments
+        Back to skills
       </Button>
     </div>
   );

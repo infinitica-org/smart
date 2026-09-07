@@ -93,7 +93,7 @@ export class AiCircuitBreaker {
   constructor(@Optional() options?: CircuitBreakerOptions) {
     this.failureThreshold = options?.failureThreshold ?? 3;
     this.resetTimeoutMs = options?.resetTimeoutMs ?? 30_000;
-    this.requestTimeoutMs = options?.requestTimeoutMs ?? 15_000;
+    this.requestTimeoutMs = options?.requestTimeoutMs ?? 45_000;
   }
 
   private getOrCreate(provider: AiProvider): ProviderCircuitInfo {
