@@ -28,22 +28,22 @@ export interface OnboardingProfileForm {
   languages: { id: string; language: string; proficiency: string }[];
   /** Mandatory Core + straightforward Niche catalog skills, one proficiency each. Keyed by catalog skill code. */
   catalogSkills: Record<string, string>;
-  /** LANGUAGE_PROFICIENCY catalog skill — multiple named items, each with its own proficiency. */
+  /** Programming languages with proficiency. */
   codingProficiencies: { id: string; language: string; proficiency: string }[];
-  /** FRONTEND_BACKEND_FRAMEWORK catalog skill — multiple named items, each with its own proficiency. */
+  /** Frontend frameworks with proficiency. */
+  frontendFrameworks: { id: string; framework: string; proficiency: string }[];
+  /** Backend frameworks with proficiency. */
+  backendFrameworks: { id: string; framework: string; proficiency: string }[];
+  /** Legacy alias for backward compatibility. */
   frameworkProficiencies: { id: string; framework: string; proficiency: string }[];
   education: CompleteCandidateOnboardingRequest['education'];
   experiences: CompleteCandidateOnboardingRequest['experiences'];
-  /** LinkedIn/GitHub identity confirmation — a trust signal, never a completion gate. */
   socialVerification: SocialVerification;
-  /** GitHub-derived skill suggestions plus whatever the candidate picked/typed. */
   skillDiscovery: SkillDiscovery;
   jobPreferences: {
-    currentCtcLakhs: string;
     expectedCtcLakhs: string;
     currentLocation: string;
     preferredLocations: string[];
-    preferredWorkModes: WorkMode[];
   };
   dpdpConsent: boolean;
 }
@@ -57,14 +57,11 @@ export const emptySkillDiscovery = (): SkillDiscovery => ({
 });
 
 export const emptyJobPreferences = (): OnboardingProfileForm['jobPreferences'] => ({
-  currentCtcLakhs: '',
   expectedCtcLakhs: '',
   currentLocation: '',
   preferredLocations: [],
-  preferredWorkModes: [],
 });
 
-/** Draft-only UI cache while the wizard is open — never the source of truth for completion. */
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
 
 export function emptyOnboardingForm(): OnboardingProfileForm {
@@ -82,6 +79,8 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     languages: [],
     catalogSkills: {},
     codingProficiencies: [],
+    frontendFrameworks: [],
+    backendFrameworks: [],
     frameworkProficiencies: [],
     education: [],
     experiences: [],
@@ -207,15 +206,11 @@ export function applyServerDraft(
       codingProficiencies.length > 0 ? codingProficiencies : form.codingProficiencies,
     jobPreferences: jobPreferences
       ? {
-          currentCtcLakhs:
-            jobPreferences.currentCtcLakhs?.toString() ?? form.jobPreferences.currentCtcLakhs,
           expectedCtcLakhs:
             jobPreferences.expectedCtcLakhs?.toString() ?? form.jobPreferences.expectedCtcLakhs,
           currentLocation: jobPreferences.currentLocation ?? form.jobPreferences.currentLocation,
           preferredLocations:
             jobPreferences.preferredLocations ?? form.jobPreferences.preferredLocations,
-          preferredWorkModes:
-            jobPreferences.preferredWorkModes ?? form.jobPreferences.preferredWorkModes,
         }
       : form.jobPreferences,
     socialVerification: draft.socialVerification
@@ -225,30 +220,8 @@ export function applyServerDraft(
       ? { ...emptySkillDiscovery(), ...draft.skillDiscovery }
       : form.skillDiscovery,
     dpdpConsent: draft.dpdpConsent ?? form.dpdpConsent,
-    education:
-      draft.education && draft.education.length > 0
-        ? draft.education.map((item) => ({
-            institutionName: item.institutionName ?? '',
-            degree: item.degree ?? '',
-            fieldOfStudy: item.fieldOfStudy ?? '',
-            startDate: item.startDate ?? '',
-            endDate: item.endDate ?? '',
-            current: item.current ?? false,
-            grade: item.grade ?? '',
-          }))
-        : form.education,
-    experiences:
-      draft.experiences && draft.experiences.length > 0
-        ? draft.experiences.map((item) => ({
-            role: item.role ?? '',
-            company: item.company ?? '',
-            location: item.location ?? '',
-            startDate: item.startDate ?? '',
-            endDate: item.endDate ?? '',
-            description: item.description ?? '',
-            tags: item.tags ?? [],
-          }))
-        : form.experiences,
+    education: [],
+    experiences: [],
   };
 }
 
@@ -268,8 +241,6 @@ function buildSkillsPayload(
       .filter(([, proficiency]) => proficiency.trim())
       .map(([code, proficiency]) => ({
         type: 'technical' as const,
-        // Send the catalog's exact skill NAME (not its code) — that's what the
-        // server's mandatory-skill matcher (`MANDATORY_SKILL_NAME_TO_CODE`) keys on.
         name: SKILL_CODE_TO_NAME.get(code) ?? code,
         proficiency: proficiency.trim(),
       })),
@@ -279,6 +250,20 @@ function buildSkillsPayload(
         type: 'technical' as const,
         name: l.language.trim(),
         proficiency: l.proficiency.trim(),
+      })),
+    ...form.frontendFrameworks
+      .filter((f) => f.framework.trim() && f.proficiency.trim())
+      .map((f) => ({
+        type: 'technical' as const,
+        name: f.framework.trim(),
+        proficiency: f.proficiency.trim(),
+      })),
+    ...form.backendFrameworks
+      .filter((f) => f.framework.trim() && f.proficiency.trim())
+      .map((f) => ({
+        type: 'technical' as const,
+        name: f.framework.trim(),
+        proficiency: f.proficiency.trim(),
       })),
     ...form.frameworkProficiencies
       .filter((f) => f.framework.trim() && f.proficiency.trim())
@@ -295,14 +280,11 @@ function buildJobPreferencesPayload(
 ): CandidateOnboardingJobPreferences | undefined {
   const expected = Number(form.jobPreferences.expectedCtcLakhs);
   if (!form.jobPreferences.expectedCtcLakhs.trim() || Number.isNaN(expected)) return undefined;
-  const current = Number(form.jobPreferences.currentCtcLakhs);
   return {
     expectedCtcLakhs: expected,
-    currentCtcLakhs:
-      form.jobPreferences.currentCtcLakhs.trim() && !Number.isNaN(current) ? current : undefined,
     currentLocation: form.jobPreferences.currentLocation.trim(),
     preferredLocations: form.jobPreferences.preferredLocations,
-    preferredWorkModes: form.jobPreferences.preferredWorkModes,
+    preferredWorkModes: ['FULL_TIME', 'HYBRID'],
   };
 }
 
@@ -324,8 +306,8 @@ export function buildOnboardingDraftPayload(
     phoneNumber: form.phoneNumber.trim() || undefined,
     linkedinUrl: form.linkedinUrl.trim() || undefined,
     githubUrl: form.githubUrl.trim() || undefined,
-    education: form.education,
-    experiences: form.experiences,
+    education: [],
+    experiences: [],
     skills: buildSkillsPayload(form),
     jobPreferences: buildJobPreferencesPayload(form),
     socialVerification: form.socialVerification,
@@ -334,30 +316,11 @@ export function buildOnboardingDraftPayload(
   };
 }
 
-export function validateEducationItems(
-  education: CompleteCandidateOnboardingRequest['education'],
-): string | null {
-  for (let i = 0; i < education.length; i++) {
-    const item = education[i];
-    if (!item?.institutionName?.trim()) {
-      return `Institution name is required for education entry #${i + 1}.`;
-    }
-  }
+export function validateEducationItems(): string | null {
   return null;
 }
 
-export function validateExperienceItems(
-  experiences: CompleteCandidateOnboardingRequest['experiences'],
-): string | null {
-  for (let i = 0; i < experiences.length; i++) {
-    const item = experiences[i];
-    if (!item?.role?.trim()) {
-      return `Role / Job Title is required for experience entry #${i + 1}.`;
-    }
-    if (!item?.company?.trim()) {
-      return `Company name is required for experience entry #${i + 1}.`;
-    }
-  }
+export function validateExperienceItems(): string | null {
   return null;
 }
 
@@ -385,18 +348,6 @@ export function buildCompleteOnboardingRequest(
   if (!form.phoneNumber.trim()) {
     return { error: 'Phone number is required.' };
   }
-  if (!form.linkedinUrl.trim()) {
-    return { error: 'LinkedIn profile is required.' };
-  }
-  if (!form.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
-    return { error: 'At least one language is required.' };
-  }
-
-  const eduError = validateEducationItems(form.education);
-  if (eduError) return { error: eduError };
-
-  const expError = validateExperienceItems(form.experiences);
-  if (expError) return { error: expError };
 
   const jobPreferences = buildJobPreferencesPayload(form);
   if (!jobPreferences) {
@@ -407,9 +358,6 @@ export function buildCompleteOnboardingRequest(
   }
   if (jobPreferences.preferredLocations.length === 0) {
     return { error: 'Pick at least one preferred location.' };
-  }
-  if (jobPreferences.preferredWorkModes.length === 0) {
-    return { error: 'Pick at least one preferred mode of work.' };
   }
   if (!form.dpdpConsent) {
     return { error: 'You must agree to the DPDP consent terms to complete your profile.' };
@@ -439,8 +387,8 @@ export function buildCompleteOnboardingRequest(
     phoneNumber: form.phoneNumber.trim(),
     linkedinUrl,
     githubUrl: githubUrl || undefined,
-    education: form.education,
-    experiences: form.experiences,
+    education: [],
+    experiences: [],
     skills: buildSkillsPayload(form),
     jobPreferences,
     socialVerification: form.socialVerification,
@@ -467,7 +415,7 @@ export const LANGUAGE_OPTIONS = [
   'Russian',
 ];
 
-export const FLUENCY_OPTIONS = ['Native or Bilingual', 'Fluent', 'Conversational', 'Elementary'];
+export const FLUENCY_OPTIONS = ['Native', 'Fluent', 'Conversational', 'Beginner'];
 
 export const CITY_OPTIONS = [
   'Bengaluru',

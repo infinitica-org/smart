@@ -19,17 +19,21 @@ export function StepHeading({ title, subtitle }: { title: string; subtitle?: Rea
 export function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
   return (
     <label className="block text-sm font-semibold text-zinc-200 mb-1.5">
-      {children} {required ? <span className="text-emerald-400">*</span> : null}
+      {children} {required ? <span className="text-[#00fad0]">*</span> : null}
     </label>
   );
 }
 
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  const { className = '', ...rest } = props;
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  const { className = '', invalid, ...rest } = props;
   return (
     <input
       {...rest}
-      className={`w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${className}`}
+      className={`w-full bg-zinc-950 border rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition-all ${
+        invalid
+          ? 'border-rose-500 ring-1 ring-rose-500/30'
+          : 'border-zinc-800 focus:border-[#00fad0] focus:ring-1 focus:ring-[#00fad0]'
+      } ${className}`}
     />
   );
 }
@@ -62,7 +66,7 @@ export function PillToggle({
       onClick={onClick}
       className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.97] ${
         active
-          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+          ? 'border-[#00fad0] bg-[#00fad0]/20 text-[#00fad0]'
           : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60 hover:text-white'
       }`}
     >
@@ -81,7 +85,7 @@ export function PrimaryButton({
     <button
       type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-400 px-7 py-3 text-sm font-bold text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#00fad0] hover:bg-[#7dffe6] px-7 py-3 text-sm font-bold text-zinc-950 shadow-lg shadow-[#00fad0]/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       {children}
@@ -129,7 +133,7 @@ export function ProgressDots({ current }: { current: WizardStepId }) {
             initial={false}
             animate={{
               width: active ? 22 : 8,
-              backgroundColor: done || active ? '#10b981' : '#27272a',
+              backgroundColor: done || active ? '#00fad0' : '#27272a',
             }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="h-2 rounded-full"
@@ -154,7 +158,7 @@ export function WizardPage({ children }: { children: ReactNode }) {
         className="fixed inset-0 opacity-[0.2] pointer-events-none z-0"
         style={{
           backgroundImage:
-            'radial-gradient(ellipse at 50% 0%, rgba(16,185,129,0.15) 0%, transparent 70%)',
+            'radial-gradient(ellipse at 50% 0%, rgba(0,250,208,0.15) 0%, transparent 70%)',
         }}
       />
 

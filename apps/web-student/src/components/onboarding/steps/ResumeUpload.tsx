@@ -201,8 +201,8 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
       <div className="flex items-center justify-end pt-4 border-t border-zinc-900">
         <button
           type="button"
-          onClick={() => onContinue(draft)}
-          disabled={busy}
+          onClick={() => draft && onContinue(draft)}
+          disabled={busy || uploadStatus !== 'success' || !draft}
           className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-sm font-axiforma font-bold shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-40"
         >
           Continue

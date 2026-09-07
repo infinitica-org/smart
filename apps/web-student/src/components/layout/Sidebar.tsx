@@ -2,25 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@smart/ui';
-import {
-  LayoutDashboard,
-  Briefcase,
-  FileText,
-  Video,
-  User,
-  Share2,
-  Search,
-  Lock,
-} from 'lucide-react';
+import { cn, SmartLogo } from '@smart/ui';
+import { LayoutDashboard, Briefcase, FileText, Video, Search, Lock } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Applications', href: '/applications', icon: Briefcase },
-  { name: 'Assessments', href: '/assessments', icon: FileText },
+  { name: 'Skills', href: '/assessments', icon: FileText },
   { name: 'Interviews', href: '/interviews', icon: Video },
-  { name: 'My Profile', href: '/profile', icon: User },
-  { name: 'Public Profile', href: '/public-profile', icon: Share2 },
 ];
 
 export function Sidebar() {
@@ -30,14 +19,9 @@ export function Sidebar() {
     <aside className="hidden lg:flex w-64 border-r border-white/5 bg-[#111111] flex-col h-screen sticky top-0 left-0 z-40 shrink-0">
       {/* Brand / Logo Area */}
       <div className="h-16 flex items-center px-6 border-b border-white/5 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded bg-white flex items-center justify-center shadow-lg">
-            <span className="text-black font-bold text-xs font-display">S</span>
-          </div>
-          <span className="text-white font-medium text-sm tracking-wide font-display">
-            SMART<span className="text-white/40">/Student</span>
-          </span>
-        </div>
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <SmartLogo tone="on-dark" className="h-6 w-auto" />
+        </Link>
       </div>
 
       {/* Navigation Links */}

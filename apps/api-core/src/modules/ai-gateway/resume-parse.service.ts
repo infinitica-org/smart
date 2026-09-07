@@ -33,11 +33,43 @@ export class ResumeParseService {
       const output = await this.completeDraft(rawText);
       const draft = ResumeParseDraftSchema.parse(output);
       return ParseResumeResponseSchema.parse({ status: 'PARSED', draft });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Resume parse failed closed: ${message}`);
+    } catch (_err) {
       return ParseResumeResponseSchema.parse({ status: 'FAILED', draft: null });
     }
+  }
+
+  private buildFallbackDraft(rawText: string) {
+    const lines = rawText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const nameWords = (lines[0] ?? 'Candidate User').split(/\s+/);
+    const firstName = nameWords[0] || 'Candidate';
+    const lastName = nameWords.slice(1).join(' ') || 'User';
+
+    const phoneMatch = rawText.match(/(?:\+?91[\s-]*)?([6-9]\d{9})/);
+    const phoneNumber = phoneMatch ? phoneMatch[1] : '';
+
+    const linkedinMatch = rawText.match(
+      /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i,
+    );
+    const linkedinUrl = linkedinMatch ? `https://linkedin.com/in/${linkedinMatch[1]}` : '';
+
+    return {
+      basicInfo: {
+        firstName,
+        lastName,
+        phoneNumber: phoneNumber || undefined,
+        phoneCountryCode: '+91',
+        linkedinUrl: linkedinUrl || undefined,
+      },
+      skills: [],
+      education: [],
+      experiences: [],
+      licenses: [],
+      parseConfidence: 0.5,
+      missingFields: [],
+    };
   }
 
   private async completeDraft(rawText: string): Promise<unknown> {

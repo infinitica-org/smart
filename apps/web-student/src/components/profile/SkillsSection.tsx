@@ -150,10 +150,10 @@ export function SkillsSection() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface)] p-6">
+      <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-gray-50/50 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Domain</span>
+            <span className="font-medium text-gray-900">Domain</span>
             <select
               value={domain}
               onChange={(event) => setDomain(event.target.value as 'SOFTWARE_IT')}
@@ -166,7 +166,7 @@ export function SkillsSection() {
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Stream</span>
+            <span className="font-medium text-gray-900">Stream</span>
             <select
               value={stream}
               onChange={(e) => setStream(e.target.value as SkillStream)}
@@ -182,9 +182,9 @@ export function SkillsSection() {
         </div>
 
         <div>
-          <h3 className="mb-2 text-sm font-medium">Required skills</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900">Required skills</h3>
           <ul className="flex flex-col gap-2">
-            <li className="hidden px-3 text-[11px] font-medium tracking-wide text-[var(--text-secondary)] uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem] lg:gap-3">
+            <li className="hidden px-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem] lg:gap-3">
               <span>Skill</span>
               <span className="text-center">Status</span>
               <span>Proficiency</span>

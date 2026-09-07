@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { TierBadge, useQuery } from '@smart/ui';
 import {
   Award,
-  Briefcase,
   CheckCircle2,
   Code2,
   ExternalLink,
@@ -21,18 +20,6 @@ const VERIFICATION_METHOD_LABELS: Record<string, string> = {
   ENDORSEMENT: 'Endorsed',
   LLM: 'AI-verified',
 };
-
-const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
-  FULL_TIME: 'Full-time',
-  PART_TIME: 'Part-time',
-  CONTRACT: 'Contract',
-  INTERNSHIP: 'Internship',
-  FREELANCE: 'Freelance',
-};
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-}
 
 export default function PublicProfilePreviewPage() {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
@@ -193,48 +180,6 @@ export default function PublicProfilePreviewPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Work Experience */}
-                <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
-                  <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                    <Briefcase className="h-4 w-4 text-gray-500" />
-                    Work Experience
-                  </h3>
-                  {profile.workExperience.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No employer-verified work experience yet.
-                    </p>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      {profile.workExperience.map((entry, idx) => (
-                        <div
-                          key={`${entry.companyName}-${String(idx)}`}
-                          className="flex items-start gap-3 rounded-[20px] border border-gray-100 bg-gray-50/50 p-5 dark:border-white/5 dark:bg-white/[0.02]"
-                        >
-                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00fad0]/10 text-[#00967c] dark:text-[#00fad0]">
-                            <CheckCircle2 className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {entry.role} · {entry.companyName}
-                            </p>
-                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                              {EMPLOYMENT_TYPE_LABELS[entry.employmentType] ?? entry.employmentType}
-                              {' · '}
-                              {formatDate(entry.startDate)} –{' '}
-                              {entry.isCurrent
-                                ? 'Present'
-                                : entry.endDate
-                                  ? formatDate(entry.endDate)
-                                  : '—'}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Projects */}
                 <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
                   <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">

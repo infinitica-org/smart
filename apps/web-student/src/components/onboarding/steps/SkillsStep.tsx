@@ -10,8 +10,9 @@ import {
   SINGLE_VALUE_NICHE_SKILLS,
   PROFICIENCY_LABELS,
   SELF_DECLARED_PROFICIENCIES,
-  COMMON_PROGRAMMING_LANGUAGES,
-  COMMON_FRAMEWORKS,
+  CONTROLLED_PROGRAMMING_LANGUAGES,
+  FRONTEND_FRAMEWORKS,
+  BACKEND_FRAMEWORKS,
 } from '@/lib/skills-catalog';
 import { BackButton, ErrorBanner, FieldLabel, PrimaryButton, StepHeading } from '../wizard-ui';
 
@@ -26,7 +27,7 @@ interface SkillsStepProps {
 }
 
 const PROFICIENCY_OPTIONS = SELF_DECLARED_PROFICIENCIES.map((p) => ({
-  label: PROFICIENCY_LABELS[p],
+  label: PROFICIENCY_LABELS[p] ?? p,
   value: p,
 }));
 
@@ -40,13 +41,13 @@ function SingleValueSkillRow({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3">
-      <span className="text-sm font-medium text-gray-900">{name}</span>
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
+      <span className="text-sm font-medium text-zinc-100">{name}</span>
       <LightSelect
         value={value}
         onChange={onChange}
         placeholder="Proficiency"
-        className="!w-48"
+        className="!w-48 shrink-0"
         options={PROFICIENCY_OPTIONS}
       />
     </div>
@@ -61,6 +62,7 @@ function MultiItemSkillGroup({
   onAdd,
   onUpdate,
   onRemove,
+  required = false,
 }: {
   title: string;
   helper: string;
@@ -69,12 +71,13 @@ function MultiItemSkillGroup({
   onAdd: () => void;
   onUpdate: (id: string, field: 'name' | 'proficiency', value: string) => void;
   onRemove: (id: string) => void;
+  required?: boolean;
 }) {
   return (
-    <div>
-      <FieldLabel required>{title}</FieldLabel>
-      <p className="text-xs text-gray-500 -mt-1 mb-3">{helper}</p>
-      <div className="flex flex-col gap-2">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+      <FieldLabel required={required}>{title}</FieldLabel>
+      <p className="text-xs text-zinc-400 -mt-1 mb-3">{helper}</p>
+      <div className="flex flex-col gap-2.5">
         <AnimatePresence initial={false}>
           {items.map((item) => (
             <motion.div
@@ -87,7 +90,7 @@ function MultiItemSkillGroup({
               <LightSelect
                 value={item.name}
                 onChange={(val) => onUpdate(item.id, 'name', val)}
-                placeholder="Select or type"
+                placeholder="Select item"
                 className="flex-1"
                 options={suggestions.map((s) => ({ label: s, value: s }))}
               />
@@ -95,13 +98,13 @@ function MultiItemSkillGroup({
                 value={item.proficiency}
                 onChange={(val) => onUpdate(item.id, 'proficiency', val)}
                 placeholder="Proficiency"
-                className="!w-40"
+                className="!w-40 shrink-0"
                 options={PROFICIENCY_OPTIONS}
               />
               <button
                 type="button"
                 onClick={() => onRemove(item.id)}
-                className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+                className="p-2 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -112,9 +115,9 @@ function MultiItemSkillGroup({
       <button
         type="button"
         onClick={onAdd}
-        className="mt-2 text-sm font-medium text-gray-900 hover:underline flex items-center gap-1"
+        className="mt-3 text-xs font-semibold text-[#00fad0] hover:text-[#7dffe6] hover:underline flex items-center gap-1 transition-colors"
       >
-        <Plus className="w-4 h-4" /> Add another
+        <Plus className="w-3.5 h-3.5" /> Add entry
       </button>
     </div>
   );
@@ -144,24 +147,44 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
       formData.codingProficiencies.filter((item) => item.id !== id),
     );
 
-  const addFramework = () =>
-    updateField('frameworkProficiencies', [
-      ...formData.frameworkProficiencies,
+  const addFrontend = () =>
+    updateField('frontendFrameworks', [
+      ...formData.frontendFrameworks,
       { id: crypto.randomUUID(), framework: '', proficiency: '' },
     ]);
-  const updateFramework = (id: string, field: 'name' | 'proficiency', value: string) =>
+  const updateFrontend = (id: string, field: 'name' | 'proficiency', value: string) =>
     updateField(
-      'frameworkProficiencies',
-      formData.frameworkProficiencies.map((item) =>
+      'frontendFrameworks',
+      formData.frontendFrameworks.map((item) =>
         item.id === id
           ? { ...item, [field === 'name' ? 'framework' : 'proficiency']: value }
           : item,
       ),
     );
-  const removeFramework = (id: string) =>
+  const removeFrontend = (id: string) =>
     updateField(
-      'frameworkProficiencies',
-      formData.frameworkProficiencies.filter((item) => item.id !== id),
+      'frontendFrameworks',
+      formData.frontendFrameworks.filter((item) => item.id !== id),
+    );
+
+  const addBackend = () =>
+    updateField('backendFrameworks', [
+      ...formData.backendFrameworks,
+      { id: crypto.randomUUID(), framework: '', proficiency: '' },
+    ]);
+  const updateBackend = (id: string, field: 'name' | 'proficiency', value: string) =>
+    updateField(
+      'backendFrameworks',
+      formData.backendFrameworks.map((item) =>
+        item.id === id
+          ? { ...item, [field === 'name' ? 'framework' : 'proficiency']: value }
+          : item,
+      ),
+    );
+  const removeBackend = (id: string) =>
+    updateField(
+      'backendFrameworks',
+      formData.backendFrameworks.filter((item) => item.id !== id),
     );
 
   const handleContinue = () => {
@@ -169,17 +192,34 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
     const allSingleValue = [...CORE_SKILLS, ...SINGLE_VALUE_NICHE_SKILLS];
     const missing = allSingleValue.find((skill) => !formData.catalogSkills[skill.code]?.trim());
     if (missing) {
-      setError(`Set your proficiency for "${missing.name}".`);
+      setError(`Set your proficiency level for "${missing.name}".`);
       return;
     }
-    if (!formData.codingProficiencies.some((l) => l.language.trim() && l.proficiency.trim())) {
-      setError('Add at least one programming language.');
+
+    const validLangs = formData.codingProficiencies.filter(
+      (l) => l.language.trim() && l.proficiency.trim(),
+    );
+    if (validLangs.length === 0) {
+      setError('Please select at least one programming language with a proficiency level.');
       return;
     }
-    if (!formData.frameworkProficiencies.some((f) => f.framework.trim() && f.proficiency.trim())) {
-      setError('Add at least one frontend or backend framework.');
+
+    const validFrontend = formData.frontendFrameworks.filter(
+      (f) => f.framework.trim() && f.proficiency.trim(),
+    );
+    if (validFrontend.length === 0) {
+      setError('Please select at least one Frontend Framework.');
       return;
     }
+
+    const validBackend = formData.backendFrameworks.filter(
+      (f) => f.framework.trim() && f.proficiency.trim(),
+    );
+    if (validBackend.length === 0) {
+      setError('Please select at least one Backend Framework.');
+      return;
+    }
+
     onContinue();
   };
 
@@ -187,14 +227,16 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
     <div>
       <StepHeading
         title="Your skills"
-        subtitle="Every skill below is required for the Software Engineering stream. Rate yourself honestly — you'll get to prove it later."
+        subtitle="Rate your proficiency across programming languages, frontend, backend frameworks, and core skills."
       />
 
       <AnimatePresence>{error ? <ErrorBanner>{error}</ErrorBanner> : null}</AnimatePresence>
 
       <div className="flex flex-col gap-8">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Core Skills</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#00fad0] mb-3">
+            Core Skills
+          </h3>
           <div className="flex flex-col gap-2">
             {CORE_SKILLS.map((skill) => (
               <SingleValueSkillRow
@@ -208,8 +250,8 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">
-            Niche Skills — Software Engineering
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#00fad0] mb-3">
+            Technical Proficiencies
           </h3>
           <div className="flex flex-col gap-4">
             {SINGLE_VALUE_NICHE_SKILLS.map((skill) => (
@@ -222,9 +264,9 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
             ))}
 
             <MultiItemSkillGroup
-              title="Programming languages"
-              helper="Add every language you're comfortable in, with your own proficiency for each."
-              suggestions={COMMON_PROGRAMMING_LANGUAGES}
+              title="Programming Languages"
+              helper="Select at least one programming language and set your proficiency."
+              suggestions={CONTROLLED_PROGRAMMING_LANGUAGES}
               items={formData.codingProficiencies.map((l) => ({
                 id: l.id,
                 name: l.language,
@@ -233,20 +275,37 @@ export default function SkillsStep({ formData, updateField, onBack, onContinue }
               onAdd={addLanguage}
               onUpdate={updateLanguage}
               onRemove={removeLanguage}
+              required
             />
 
             <MultiItemSkillGroup
-              title="Frontend / backend frameworks"
-              helper="Add every framework you've built with, with your own proficiency for each."
-              suggestions={COMMON_FRAMEWORKS}
-              items={formData.frameworkProficiencies.map((f) => ({
+              title="Frontend Frameworks"
+              helper="Select at least one frontend framework and set your proficiency."
+              suggestions={FRONTEND_FRAMEWORKS}
+              items={formData.frontendFrameworks.map((f) => ({
                 id: f.id,
                 name: f.framework,
                 proficiency: f.proficiency,
               }))}
-              onAdd={addFramework}
-              onUpdate={updateFramework}
-              onRemove={removeFramework}
+              onAdd={addFrontend}
+              onUpdate={updateFrontend}
+              onRemove={removeFrontend}
+              required
+            />
+
+            <MultiItemSkillGroup
+              title="Backend Frameworks"
+              helper="Select at least one backend framework and set your proficiency."
+              suggestions={BACKEND_FRAMEWORKS}
+              items={formData.backendFrameworks.map((f) => ({
+                id: f.id,
+                name: f.framework,
+                proficiency: f.proficiency,
+              }))}
+              onAdd={addBackend}
+              onUpdate={updateBackend}
+              onRemove={removeBackend}
+              required
             />
           </div>
         </div>
