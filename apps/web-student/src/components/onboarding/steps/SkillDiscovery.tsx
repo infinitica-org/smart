@@ -136,12 +136,12 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
   return (
     <div key="skill-discovery">
       <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
+        <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
           <Sparkles className="w-3 h-3" />
         </span>
         Top skills
       </h3>
-      <p className="text-sm text-gray-400 mb-5 ml-8">
+      <p className="text-sm text-zinc-400 mb-5 ml-8">
         {hasRepos
           ? "Suggested from the repos you picked. Uncheck anything that isn't really you, and add anything we couldn't see."
           : 'Add the skills you want employers to see.'}
@@ -150,8 +150,9 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
       <div className="ml-8 max-w-xl">
         {hasRepos ? (
           loading ? (
-            <div className="flex items-center gap-2 text-sm text-white/40 py-6">
-              <Loader2 className="w-4 h-4 animate-spin" /> Analyzing your repositories…
+            <div className="flex items-center gap-2 text-sm text-zinc-400 py-6">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Analyzing your
+              repositories…
             </div>
           ) : error ? (
             <p className="text-xs text-amber-400 flex items-center gap-1 py-2 mb-4">
@@ -159,7 +160,7 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
             </p>
           ) : discovery.suggestedFromGithub.length > 0 ? (
             <>
-              <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-white/5 mb-2">
+              <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-zinc-800 mb-2">
                 {discovery.suggestedFromGithub.map((entry, idx) => (
                   <motion.div
                     key={entry.language}
@@ -170,7 +171,7 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
                   />
                 ))}
               </div>
-              <p className="text-[11px] text-white/30 mb-4">
+              <p className="text-[11px] text-zinc-500 mb-4">
                 From {selectedRepos.length} of your repos
               </p>
             </>
@@ -191,8 +192,8 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
                   onClick={() => toggleSuggested(entry.language)}
                   className={`inline-flex items-center gap-1.5 h-8 pl-3 pr-2.5 rounded-full text-xs font-medium border transition-colors ${
                     active
-                      ? 'border-[#00fad0]/50 bg-[#00fad0]/[0.12] text-white'
-                      : 'border-white/10 bg-white/[0.03] text-white/40 hover:text-white/60'
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                      : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   <span
@@ -200,7 +201,7 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
                     style={{ backgroundColor: BAR_COLORS[idx % BAR_COLORS.length] }}
                   />
                   {entry.language}
-                  {active ? <span className="text-[#00fad0]">✓</span> : null}
+                  {active ? <span className="text-emerald-400">✓</span> : null}
                 </motion.button>
               );
             })}
@@ -212,13 +213,13 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
             {discovery.customSkillNames.map((name) => (
               <span
                 key={name}
-                className="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full text-xs font-medium border border-white/10 bg-white/[0.03] text-white"
+                className="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-full text-xs font-medium border border-zinc-800 bg-zinc-900 text-zinc-200"
               >
                 {name}
                 <button
                   type="button"
                   onClick={() => removeSkill(name)}
-                  className="text-white/30 hover:text-white/70"
+                  className="text-zinc-400 hover:text-zinc-200"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -240,13 +241,13 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
                 }
               }}
               placeholder="Search skills (e.g. System design, SQL, Testing)"
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50"
+              className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500"
             />
             <button
               type="button"
               onClick={() => addCustomSkill()}
               disabled={catalogMatches.length === 0}
-              className="inline-flex items-center gap-1.5 h-[42px] px-4 rounded-xl border border-white/15 text-sm text-white/80 hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent"
+              className="inline-flex items-center gap-1.5 h-[42px] px-4 rounded-xl border border-zinc-700 bg-zinc-900 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-zinc-900"
             >
               <Plus className="w-4 h-4" /> Add
             </button>
@@ -254,20 +255,20 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
 
           {customInput.trim() ? (
             catalogMatches.length > 0 ? (
-              <div className="absolute z-10 mt-1.5 w-full max-w-[calc(100%-98px)] rounded-xl border border-white/10 bg-[#161616] py-1.5 shadow-xl">
+              <div className="absolute z-10 mt-1.5 w-full max-w-[calc(100%-98px)] rounded-xl border border-zinc-800 bg-zinc-900 py-1.5 shadow-xl">
                 {catalogMatches.map((skill) => (
                   <button
                     key={skill.code}
                     type="button"
                     onClick={() => addCustomSkill(skill.name)}
-                    className="flex w-full items-center justify-between px-3.5 py-2 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white"
+                    className="flex w-full items-center justify-between px-3.5 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white"
                   >
                     {skill.name}
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-white/30 mt-2">
+              <p className="text-xs text-zinc-500 mt-2">
                 No matching skill in our catalog — try a different search.
               </p>
             )
@@ -275,7 +276,7 @@ export default function SkillDiscovery({ formData, updateField }: SkillDiscovery
         </div>
 
         {discovery.selectedSkillNames.length === 0 ? (
-          <p className="text-xs text-white/30 mt-3">Add at least one skill to continue.</p>
+          <p className="text-xs text-zinc-500 mt-3">Add at least one skill to continue.</p>
         ) : null}
       </div>
     </div>
