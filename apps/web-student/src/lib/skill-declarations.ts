@@ -55,6 +55,13 @@ export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
 }
 
+export function formatSkillVerifyKioskTitle(
+  skillCode: string,
+  proficiency: SkillProficiency,
+): string {
+  return `${skillNameForCode(skillCode)} · ${PROFICIENCY_LABELS[proficiency]}`;
+}
+
 export function isSdeV4Verifiable(skillCode: string): boolean {
   return sdeV4FormCodeForCatalogSkill(skillCode) !== null;
 }
@@ -102,7 +109,7 @@ export function isSkillVerifyCooldownActive(claim: SkillClaimDto, now = Date.now
 
 export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
   if (!isSdeV4Verifiable(claim.skillCode)) {
-    return 'This skill does not have a verification assessment yet.';
+    return 'This skill does not have a verification challenge yet.';
   }
   if (claim.status === 'VERIFIED') {
     return 'This skill is already verified.';

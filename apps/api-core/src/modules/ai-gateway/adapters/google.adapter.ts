@@ -9,6 +9,7 @@ import type {
   ProviderHealthResult,
 } from '../ai-gateway.interface.js';
 import { coerceGoogleStructuredOutput } from './google.output-coerce.js';
+import { parseJsonSafely, stripJsonNulls } from './openrouter.helpers.js';
 
 const ROLE_TO_MODEL: Record<AiModelRole, string> = {
   PRIMARY_REASONING: 'gemini-3.5-flash-lite',
@@ -25,7 +26,7 @@ export class GoogleAdapter implements AiProviderAdapter {
 
   constructor() {
     const key = env.GOOGLE_AI_API_KEY?.trim();
-    this.client = key ? new GoogleGenAI({ apiKey: key }) : null;
+    this.client = key && !key.startsWith('#') ? new GoogleGenAI({ apiKey: key }) : null;
   }
 
   get isConfigured(): boolean {
@@ -89,7 +90,7 @@ export class GoogleAdapter implements AiProviderAdapter {
     let output: unknown = rawText;
     if (options.outputSchema) {
       try {
-        const parsed = coerceGoogleStructuredOutput(JSON.parse(rawText));
+        const parsed = coerceGoogleStructuredOutput(stripJsonNulls(parseJsonSafely(rawText)));
         output = options.outputSchema.parse(parsed);
       } catch (parseErr) {
         throw new Error(

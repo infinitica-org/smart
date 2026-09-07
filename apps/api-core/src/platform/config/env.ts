@@ -90,6 +90,8 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_MODEL: z.string().optional(),
+  AI_PRIMARY_PROVIDER: z.enum(['ANTHROPIC', 'GOOGLE', 'OPENROUTER']).optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
   PROCTORING_FULL: z

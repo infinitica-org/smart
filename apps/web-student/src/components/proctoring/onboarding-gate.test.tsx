@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   liveness: vi.fn(),
   requestProctoringMedia: vi.fn(),
   sampleEnvironment: vi.fn(),
+  chromium: vi.fn(() => true),
 }));
 
 vi.mock('../../lib/api', () => ({
@@ -32,6 +33,10 @@ vi.mock('../../lib/proctoring/media', async (importOriginal) => {
   };
 });
 
+vi.mock('../../lib/proctoring/chromium', () => ({
+  isGoogleChrome: () => mocks.chromium(),
+}));
+
 vi.mock('./face-live-check', () => ({
   FaceLiveCheck: ({ onPassed }: { onPassed: (sample: FaceCheckResult) => void }) => (
     <button
@@ -48,7 +53,7 @@ vi.mock('./face-live-check', () => ({
         })
       }
     >
-      Continue to assessment
+      Enter the challenge
     </button>
   ),
 }));
@@ -56,6 +61,11 @@ vi.mock('./face-live-check', () => ({
 import { OnboardingGate } from './onboarding-gate';
 
 const ATTEMPT = '0971c53e-649b-427e-b00d-12f5988a68ba';
+
+function acceptSkillVerifyRules() {
+  fireEvent.click(screen.getByLabelText(/i have read this playbook/i));
+  fireEvent.click(screen.getByRole('button', { name: /continue to camera consent/i }));
+}
 
 describe('OnboardingGate', () => {
   beforeEach(() => {
@@ -65,6 +75,8 @@ describe('OnboardingGate', () => {
     mocks.liveness.mockReset();
     mocks.requestProctoringMedia.mockReset();
     mocks.sampleEnvironment.mockReset();
+    mocks.chromium.mockReset();
+    mocks.chromium.mockReturnValue(true);
     mocks.consent.mockResolvedValue({});
     mocks.precheck.mockResolvedValue({ passed: true, message: 'ok' });
     mocks.enrollFace.mockResolvedValue({ enrolled: true, message: 'ok' });
@@ -185,8 +197,21 @@ describe('OnboardingGate', () => {
   });
 
   it('lays out face-check consent in a centered card', () => {
-    render(<OnboardingGate attemptId={ATTEMPT} faceLiveCheck onPassed={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: /skill verification/i })).toBeTruthy();
+    render(
+      <OnboardingGate
+        attemptId={ATTEMPT}
+        faceLiveCheck
+        kioskTitle="Git & version control · Beginner"
+        onPassed={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: /git & version control · beginner/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /how the challenge works/i })).toBeTruthy();
+    expect(screen.getByText(/5 integrity warnings/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /continue and allow camera/i })).toBeNull();
+    const next = screen.getByRole('button', { name: /continue to camera consent/i });
+    expect(next).toHaveProperty('disabled', true);
+    acceptSkillVerifyRules();
     expect(screen.getByRole('heading', { name: /face check/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /continue and allow camera/i })).toBeTruthy();
   });
@@ -196,18 +221,27 @@ describe('OnboardingGate', () => {
     const stream = { id: 'cam', getTracks: () => [] };
     mocks.requestProctoringMedia.mockResolvedValue(stream);
     render(<OnboardingGate attemptId={ATTEMPT} faceLiveCheck onPassed={onPassed} />);
+    acceptSkillVerifyRules();
     fireEvent.click(screen.getByLabelText(/camera use/i));
     expect(screen.queryByLabelText(/microphone use/i)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /continue and allow camera/i }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /continue to assessment/i })).toBeDefined(),
+      expect(screen.getByRole('button', { name: /enter the challenge/i })).toBeDefined(),
     );
     expect(mocks.enrollFace).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /continue to assessment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /enter the challenge/i }));
     await waitFor(() => expect(onPassed).toHaveBeenCalledWith(stream));
     expect(mocks.precheck).toHaveBeenCalledWith(
       expect.objectContaining({ attemptId: ATTEMPT, faceCentered: true, brightness: 140 }),
     );
     expect(mocks.liveness).not.toHaveBeenCalled();
+  });
+
+  it('blocks skill-verify onboarding outside Google Chrome', () => {
+    mocks.chromium.mockReturnValue(false);
+    render(<OnboardingGate attemptId={ATTEMPT} faceLiveCheck onPassed={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: /use google chrome/i })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/google chrome on a computer/i);
+    expect(screen.queryByRole('button', { name: /continue and allow camera/i })).toBeNull();
   });
 });

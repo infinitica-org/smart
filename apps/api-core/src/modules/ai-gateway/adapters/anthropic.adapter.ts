@@ -24,7 +24,7 @@ export class AnthropicAdapter implements AiProviderAdapter {
 
   constructor() {
     const key = env.ANTHROPIC_API_KEY?.trim();
-    this.client = key ? new Anthropic({ apiKey: key }) : null;
+    this.client = key && !key.startsWith('#') ? new Anthropic({ apiKey: key }) : null;
   }
 
   get isConfigured(): boolean {

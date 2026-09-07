@@ -16,7 +16,20 @@ export const MODEL_PRICING_TABLE: Record<string, ModelPricing> = {
   'anthropic/claude-3.5-sonnet': { promptPerMillion: 3.0, completionPerMillion: 15.0 },
   'anthropic/claude-3.5-haiku': { promptPerMillion: 0.8, completionPerMillion: 4.0 },
   'google/gemini-3.5-flash-lite': { promptPerMillion: 0.15, completionPerMillion: 0.6 },
+  'google/gemini-2.5-flash': { promptPerMillion: 0.3, completionPerMillion: 2.5 },
+  'google/gemini-2.0-flash-001': { promptPerMillion: 0.1, completionPerMillion: 0.4 },
 };
+
+/** OpenRouter may suffix `:provider`; unknown models use default $1/$3 per 1M. */
+export function lookupModelPricing(model: string): ModelPricing {
+  const slug = model.split(':')[0]?.trim() || model;
+  const exact = MODEL_PRICING_TABLE[slug] ?? MODEL_PRICING_TABLE[model];
+  if (exact) return exact;
+  for (const [key, pricing] of Object.entries(MODEL_PRICING_TABLE)) {
+    if (slug.startsWith(key) || key.startsWith(slug)) return pricing;
+  }
+  return DEFAULT_PRICING;
+}
 
 export interface AuditRecordInput {
   readonly promptRef: string;
@@ -43,7 +56,7 @@ export class AiGatewayAuditService {
   ) {}
 
   estimateCostUsd(model: string, promptTokens: number, completionTokens: number): number {
-    const pricing = MODEL_PRICING_TABLE[model] ?? DEFAULT_PRICING;
+    const pricing = lookupModelPricing(model);
     const raw =
       (promptTokens / 1_000_000) * pricing.promptPerMillion +
       (completionTokens / 1_000_000) * pricing.completionPerMillion;
