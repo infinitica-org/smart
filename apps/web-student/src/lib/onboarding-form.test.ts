@@ -23,7 +23,13 @@ describe('onboarding-form', () => {
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'https://www.linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
-    form.preferences = ['Coding'];
+    form.jobPreferences = {
+      currentCtcLakhs: '',
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME'],
+    };
     form.dpdpConsent = false;
     expect(buildCompleteOnboardingRequest(form)).toEqual({
       error: 'You must agree to the DPDP consent terms to complete your profile.',
@@ -68,7 +74,13 @@ describe('onboarding-form', () => {
     form.experiences = [
       { role: 'Researcher', company: 'Analytical Engine Lab', location: 'London', tags: [] },
     ];
-    form.preferences = ['Mathematics'];
+    form.jobPreferences = {
+      currentCtcLakhs: '',
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME'],
+    };
     form.dpdpConsent = true;
 
     const result = buildCompleteOnboardingRequest(form);
@@ -83,6 +95,13 @@ describe('onboarding-form', () => {
     expect(result.skills).toEqual([
       { type: 'language', name: 'English', proficiency: 'Native or Bilingual' },
     ]);
+    expect(result.jobPreferences).toEqual({
+      expectedCtcLakhs: 8,
+      currentCtcLakhs: undefined,
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME'],
+    });
   });
 
   it('leaves githubUrl optional and normalizes it like linkedinUrl when present', () => {
@@ -92,7 +111,13 @@ describe('onboarding-form', () => {
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'https://www.linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
-    form.preferences = ['Coding'];
+    form.jobPreferences = {
+      currentCtcLakhs: '',
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME'],
+    };
     form.dpdpConsent = true;
 
     const withoutGithub = buildCompleteOnboardingRequest(form);
@@ -156,5 +181,68 @@ describe('onboarding-form', () => {
     expect(form.languages[0]?.language).toBe('English');
     expect(form.codingProficiencies[0]?.language).toBe('COBOL');
     expect(form.education[0]?.institutionName).toBe('Yale');
+  });
+
+  it('requires job preferences (expected CTC, location, preferred locations, work modes)', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.dpdpConsent = true;
+
+    expect(buildCompleteOnboardingRequest(form)).toEqual({ error: 'Expected CTC is required.' });
+
+    form.jobPreferences.expectedCtcLakhs = '8';
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'Current location is required.',
+    });
+
+    form.jobPreferences.currentLocation = 'Bengaluru';
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'Pick at least one preferred location.',
+    });
+
+    form.jobPreferences.preferredLocations = ['Bengaluru'];
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'Pick at least one preferred mode of work.',
+    });
+
+    form.jobPreferences.preferredWorkModes = ['REMOTE'];
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+  });
+
+  it('merges catalog skills and framework picks into the flat skills payload', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.catalogSkills = { GIT_VERSION_CONTROL: 'INTERMEDIATE' };
+    form.codingProficiencies = [{ id: 'a', language: 'Python', proficiency: 'ADVANCED' }];
+    form.frameworkProficiencies = [{ id: 'b', framework: 'React', proficiency: 'BEGINNER' }];
+    form.jobPreferences = {
+      currentCtcLakhs: '',
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME'],
+    };
+    form.dpdpConsent = true;
+
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.skills).toEqual(
+      expect.arrayContaining([
+        { type: 'language', name: 'English', proficiency: 'Fluent' },
+        { type: 'technical', name: 'Git & version control', proficiency: 'INTERMEDIATE' },
+        { type: 'technical', name: 'Python', proficiency: 'ADVANCED' },
+        { type: 'technical', name: 'React', proficiency: 'BEGINNER' },
+      ]),
+    );
   });
 });

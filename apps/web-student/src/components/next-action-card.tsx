@@ -17,7 +17,9 @@ export function NextActionCard({ enrolled, completedLevels }: NextActionCardProp
           </CardDescription>
         </CardHeader>
         <div className="p-6 pt-0">
-          <Button onClick={() => (window.location.href = '/enroll')}>Complete enrollment</Button>
+          <Button onClick={() => (window.location.href = '/onboarding')}>
+            Complete enrollment
+          </Button>
         </div>
       </Card>
     );

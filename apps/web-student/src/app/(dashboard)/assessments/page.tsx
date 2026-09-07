@@ -179,7 +179,7 @@ export default function AssessmentsPage() {
             used.
           </p>
           <Link
-            href="/enroll"
+            href="/onboarding"
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black"
           >
             Enroll in a track <ArrowRight className="h-4 w-4" />
