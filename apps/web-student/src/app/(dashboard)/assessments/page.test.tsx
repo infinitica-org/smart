@@ -56,6 +56,7 @@ describe('SkillsPage', () => {
     render(<SkillsPage />);
     const startButtons = await screen.findAllByRole('button', { name: /Start/i });
     expect(startButtons.length).toBeGreaterThan(0);
+    if (!startButtons[0]) throw new Error('Button not found');
     fireEvent.click(startButtons[0]);
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/assessments/skills/claim-2');
@@ -65,6 +66,7 @@ describe('SkillsPage', () => {
   it('opens details modal when View Details is clicked', async () => {
     render(<SkillsPage />);
     const detailsButtons = await screen.findAllByRole('button', { name: /View Details/i });
+    if (!detailsButtons[0]) throw new Error('Button not found');
     fireEvent.click(detailsButtons[0]);
     expect(await screen.findByText('Database Claim ID:')).toBeDefined();
   });
