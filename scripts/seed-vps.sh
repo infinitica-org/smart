@@ -48,10 +48,14 @@ cleanup() { docker rmi "$IMAGE_TAG" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 PGPW="$(grep -oP '^POSTGRES_PASSWORD=\K.*' "$ENV_FILE")"
+SEED_EMAIL_DOMAIN="$(grep -oP '^SEED_EMAIL_DOMAIN=\K.*' "$ENV_FILE" || true)"
+SEED_PASSWORD="$(grep -oP '^SEED_PASSWORD=\K.*' "$ENV_FILE" || true)"
 
 echo "==> ${ENV_NAME}: seed"
 docker run --rm --network "$NETWORK" \
   -e DATABASE_URL="postgresql://smart:${PGPW}@postgres:5432/smart?schema=public" \
+  -e SEED_EMAIL_DOMAIN="${SEED_EMAIL_DOMAIN:-}" \
+  -e SEED_PASSWORD="${SEED_PASSWORD:-}" \
   -w /app/apps/api-core \
   "$IMAGE_TAG" \
   pnpm exec tsx prisma/seed.ts
