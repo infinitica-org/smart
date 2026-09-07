@@ -6,6 +6,7 @@ import {
   canSubmitLockedAttempt,
   clearLastL1AttemptId,
   isInProgressSession,
+  isResumableSession,
   isMcqSingle,
   isMockApiEnabled,
   isSessionLocked,
@@ -91,6 +92,10 @@ describe('l1-mcq helpers', () => {
     expect(canSubmitLockedAttempt(session())).toBe(false);
     expect(canSubmitLockedAttempt(session({ locked: true, serverRemainingSeconds: 0 }))).toBe(true);
     expect(canSubmitLockedAttempt(session({ status: 'EVALUATED', locked: true }))).toBe(false);
+    expect(isResumableSession(session())).toBe(true);
+    expect(isResumableSession(session({ locked: true, serverRemainingSeconds: 1800 }))).toBe(false);
+    expect(isResumableSession(session({ locked: false, serverRemainingSeconds: 0 }))).toBe(false);
+    expect(isResumableSession(session({ locked: true, serverRemainingSeconds: 0 }))).toBe(false);
   });
 
   it('builds a monotonic MCQ draft payload without answer keys', () => {

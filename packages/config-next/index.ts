@@ -7,7 +7,13 @@ import type { NextConfig } from 'next';
 export function withSmartConfig(config: NextConfig = {}): NextConfig {
   const baseConfig: NextConfig = {
     output: 'standalone',
-    transpilePackages: ['@smart/ui', '@smart/api-client', '@smart/contracts', 'motion'],
+    transpilePackages: [
+      '@smart/ui',
+      '@smart/api-client',
+      '@smart/contracts',
+      'motion',
+      '@mediapipe/tasks-vision',
+    ],
     ...config,
   };
 

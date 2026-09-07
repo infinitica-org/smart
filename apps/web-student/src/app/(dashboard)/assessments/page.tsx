@@ -1,14 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, FileText } from 'lucide-react';
-import type { TrackCode } from '@smart/contracts';
+import {
+  skillFocusOptions,
+  type SkillClaimDto,
+  type SkillProficiency,
+  type TrackCode,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
+import { SkillVerifyRow } from '@/components/assessment/skill-verify-row';
+import { isSdeV4Verifiable, skillNameForCode } from '@/lib/skill-declarations';
 import {
   clearLastL1AttemptId,
-  isInProgressSession,
+  isResumableSession,
   playerErrorFromUnknown,
   readLastL1AttemptId,
   resolveL1TrackCode,
@@ -24,6 +31,11 @@ export default function AssessmentsPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skillClaims, setSkillClaims] = useState<SkillClaimDto[]>([]);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const [foci, setFoci] = useState<Record<string, string>>({});
+  const [proficiencies, setProficiencies] = useState<Record<string, SkillProficiency>>({});
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +43,29 @@ export default function AssessmentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const me = await api.auth.me();
+        const [me, claims] = await Promise.all([
+          api.auth.me(),
+          api.assessment.listSkillClaims().catch(() => [] as SkillClaimDto[]),
+        ]);
         const enrolled = resolveL1TrackCode(me);
         if (cancelled) return;
         setTrackCode(enrolled);
+        setSkillClaims(claims);
+        setFoci((prev) => {
+          const next = { ...prev };
+          for (const claim of claims) {
+            const options = skillFocusOptions(claim.skillCode);
+            next[claim.skillCode] = prev[claim.skillCode] ?? options[0] ?? '';
+          }
+          return next;
+        });
+        setProficiencies((prev) => {
+          const next = { ...prev };
+          for (const claim of claims) {
+            next[claim.skillCode] = prev[claim.skillCode] ?? claim.proficiency;
+          }
+          return next;
+        });
         if (!enrolled) {
           setResumeAttemptId(null);
           return;
@@ -47,7 +78,7 @@ export default function AssessmentsPage() {
         try {
           const session = await api.assessment.session(stored);
           if (cancelled) return;
-          if (isInProgressSession(session)) {
+          if (isResumableSession(session)) {
             setResumeAttemptId(session.attemptId);
           } else {
             clearLastL1AttemptId();
@@ -92,6 +123,35 @@ export default function AssessmentsPage() {
     }
   };
 
+  const listedClaims = useMemo(
+    () => skillClaims.filter((claim) => isSdeV4Verifiable(claim.skillCode)),
+    [skillClaims],
+  );
+
+  const verifySkill = (claim: SkillClaimDto) => {
+    setError(null);
+    setPendingCode(claim.skillCode);
+    startTransition(() => {
+      void (async () => {
+        try {
+          let next = claim;
+          if (claim.status === 'DECLARED' || claim.status === 'BEGINNER_REATTEMPT') {
+            next = await api.assessment.declareSkillClaim({
+              skillCode: claim.skillCode,
+              proficiency: proficiencies[claim.skillCode] ?? claim.proficiency,
+              skillFocus: foci[claim.skillCode] || undefined,
+            });
+          }
+          router.push(`/assessments/skills/${next.claimId}`);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : playerErrorFromUnknown(err).message);
+        } finally {
+          setPendingCode(null);
+        }
+      })();
+    });
+  };
+
   const title = trackCode ? `${trackCode.replaceAll('_', ' ')} · Level 1 MCQ` : 'Level 1 MCQ';
 
   return (
@@ -119,7 +179,7 @@ export default function AssessmentsPage() {
             used.
           </p>
           <Link
-            href="/enroll"
+            href="/onboarding"
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black"
           >
             Enroll in a track <ArrowRight className="h-4 w-4" />
@@ -159,6 +219,43 @@ export default function AssessmentsPage() {
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
+        </section>
+      ) : null}
+
+      {!loading ? (
+        <section className="space-y-3">
+          <p className="text-[11px] font-semibold tracking-wider text-white/35 uppercase">
+            Skill verification
+          </p>
+          {listedClaims.length === 0 ? (
+            <p className="text-sm text-white/40">
+              Declare a mapped Software &amp; IT skill on Profile, then start it here. Opens the
+              proctored player — not Level 1.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {listedClaims.map((claim) => {
+                const options = skillFocusOptions(claim.skillCode);
+                const busy = pendingCode === claim.skillCode;
+                return (
+                  <SkillVerifyRow
+                    key={claim.claimId}
+                    skillCode={claim.skillCode}
+                    skillName={skillNameForCode(claim.skillCode)}
+                    claim={claim}
+                    proficiency={proficiencies[claim.skillCode] ?? claim.proficiency}
+                    focus={foci[claim.skillCode] ?? options[0] ?? ''}
+                    pending={busy || isPending}
+                    onProficiency={(value) =>
+                      setProficiencies((prev) => ({ ...prev, [claim.skillCode]: value }))
+                    }
+                    onFocus={(value) => setFoci((prev) => ({ ...prev, [claim.skillCode]: value }))}
+                    onVerify={() => verifySkill(claim)}
+                  />
+                );
+              })}
+            </ul>
+          )}
         </section>
       ) : null}
 

@@ -286,11 +286,12 @@ export const PatchApplicationStageRequestSchema = z.object({
 export type PatchApplicationStageRequest = z.infer<typeof PatchApplicationStageRequestSchema>;
 
 /**
- * AC-T06 send-to-company lands on the next canonical ATS column after
- * `SHORTLISTED`. The contract enum has no SENT_TO_COMPANY / AI_VERIFIED /
- * HIRED — CO-T02 maps `INTERVIEW` to the Interviewing kanban column.
+ * AC-T06 send-to-company lands on `AI_VERIFIED` — the SE-T02 confidence check
+ * gating this transition (see `sendToCompany` below) *is* the AI verification
+ * step, so it maps onto the real CO-T02 kanban column rather than skipping
+ * straight to `INTERVIEW`.
  */
-export const SEND_TO_COMPANY_STAGE = 'INTERVIEW' as const;
+export const SEND_TO_COMPANY_STAGE = 'AI_VERIFIED' as const;
 
 export const ApplicationConfidenceDtoSchema = z.object({
   applicationId: UuidSchema,
@@ -313,6 +314,24 @@ export const SkillClaimDtoSchema = z.object({
   strikes: z.number().int().min(0).max(2),
   lockedUntil: IsoDateTimeSchema.nullable(),
   lastAttemptId: UuidSchema.nullable(),
+  /** ISO time when START is allowed again after a genuine fail (48h) or LOCKED. */
+  retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+  /** Language/framework/topic slice; drives v4 stem generation. */
+  skillFocus: z.string().min(1).max(64).nullable().optional(),
+  /** Per-focus verification state. Cooldown/lock applies only to that slice. */
+  focusProgress: z
+    .array(
+      z.object({
+        focus: z.string().min(1).max(64),
+        status: SkillClaimStatusSchema,
+        strikes: z.number().int().min(0).max(2),
+        lockedUntil: IsoDateTimeSchema.nullable(),
+        lastAttemptId: UuidSchema.nullable(),
+        lastGenuineFailureAt: IsoDateTimeSchema.nullable().optional(),
+        retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+      }),
+    )
+    .optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 
@@ -324,6 +343,7 @@ export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 export const DeclareSkillClaimRequestSchema = z.object({
   skillCode: z.string().min(2).max(64),
   proficiency: SkillProficiencySchema,
+  skillFocus: z.string().min(1).max(64).optional(),
 });
 export type DeclareSkillClaimRequest = z.infer<typeof DeclareSkillClaimRequestSchema>;
 

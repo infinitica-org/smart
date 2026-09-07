@@ -26,6 +26,7 @@ export * from './bars/mode-consensus.js';
 
 /* ------------------------ INF-05 proficiency gate -------------------------- */
 export * from './proficiency/mark-weighted-scoring.js';
+export * from './proficiency/sde-v4-scoring.js';
 
 /* ---------------------------- Reliability gates --------------------------- */
 export * from './reliability/agreement.js';

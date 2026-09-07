@@ -39,4 +39,49 @@ describe('NotificationsService', () => {
     expect(dto.kind).toBe('OPPORTUNITY');
     expect(dto.title).toContain('Backend Engineer');
   });
+
+  it('CO-T05: sends distinct title/body copy per target stage, not one generic message', async () => {
+    const stages = ['AI_VERIFIED', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED', 'WITHDRAWN'] as const;
+    const seen: { stage: string; title: string; body: string }[] = [];
+
+    for (const toStage of stages) {
+      const prisma = {
+        notification: {
+          create: vi.fn(({ data }: { data: { title: string; body: string; kind: string } }) =>
+            Promise.resolve({
+              id: randomUUID(),
+              kind: data.kind,
+              title: data.title,
+              body: data.body,
+              linkUrl: null,
+              readAt: null,
+              createdAt: new Date('2026-09-05T00:00:00.000Z'),
+            }),
+          ),
+        },
+      };
+      const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+      const service = new NotificationsService(prisma as never, emailQueue as never);
+
+      const dto = await service.notifyStageChange({
+        userId: randomUUID(),
+        email: 'student@smart.local',
+        fullName: 'Alex Student',
+        companyName: 'Infinitica Labs',
+        roleTitle: 'Backend Engineer',
+        fromStage: 'SHORTLISTED',
+        toStage,
+        applicationId: randomUUID(),
+      });
+
+      expect(dto.kind).toBe('STAGE_CHANGE');
+      expect(dto.title).toContain('Backend Engineer');
+      seen.push({ stage: toStage, title: dto.title, body: dto.body });
+    }
+
+    const titles = new Set(seen.map((row) => row.title));
+    const bodies = new Set(seen.map((row) => row.body));
+    expect(titles.size).toBe(stages.length);
+    expect(bodies.size).toBe(stages.length);
+  });
 });

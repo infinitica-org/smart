@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   GenerateSkillInterviewRequestSchema,
   GenerateSkillInterviewResponseSchema,
+  GradeSdeSkillFormResponseSchema,
   GradeSkillInterviewRequestSchema,
   GradeSkillInterviewResponseSchema,
+  SdeSkillFormPublicItemSchema,
   SKILL_INTERVIEW_ANSWER_MAX_CHARS,
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
   SKILL_INTERVIEW_QUESTION_COUNT,
@@ -101,5 +103,60 @@ describe('GradeSkillInterviewResponseSchema', () => {
         auditId: null,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('SDE skill-form public item and grade report', () => {
+  it('allows LeetCode examples on a coding item without hidden tests', () => {
+    const parsed = SdeSkillFormPublicItemSchema.parse({
+      index: 12,
+      format: 'CODING',
+      prompt: 'Return indices of two numbers that add up to target.',
+      options: null,
+      title: 'Two Sum',
+      constraints: '2 <= n <= 10^4',
+      examples: [
+        { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explanation: '2+7=9' },
+        { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
+      ],
+    });
+    expect(parsed.examples).toHaveLength(2);
+    expect(parsed).not.toHaveProperty('hiddenTests');
+  });
+
+  it('requires MCQ and coding breakdowns on a skill-form grade', () => {
+    const parsed = GradeSdeSkillFormResponseSchema.parse({
+      skillCode: 'SDE_DSA',
+      proficiency: 'BEGINNER',
+      marksEarned: 40,
+      marksTotal: 50,
+      scorePercent: 80,
+      passed: true,
+      promptRef: 'sde-skill-open-batch-grader@2',
+      mcqCorrect: 6,
+      mcqTotal: 8,
+      traceCorrect: 2,
+      traceTotal: 3,
+      itemResults: [
+        {
+          index: 12,
+          format: 'CODING',
+          marksEarned: 7,
+          marksMax: 10,
+          testsPassed: 2,
+          testsTotal: 3,
+          missedTests: [
+            {
+              input: 'nums = [0,0], target = 0',
+              expected: '[0,1]',
+              reason: 'Did not handle duplicate zeros.',
+            },
+          ],
+          feedback: 'Missed the duplicate-zero case.',
+        },
+      ],
+    });
+    expect(parsed.mcqCorrect).toBe(6);
+    expect(parsed.itemResults[0]?.missedTests?.[0]?.reason).toContain('duplicate');
   });
 });

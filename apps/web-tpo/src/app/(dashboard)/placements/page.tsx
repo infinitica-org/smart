@@ -93,29 +93,29 @@ export default function PlacementsPage() {
     <main className="max-w-[1200px] mx-auto p-4 md:p-8 space-y-6 font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white">JD Inbox</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">JD Inbox</h2>
+          <p className="text-slate-500 text-sm mt-1">
             Review incoming Job Descriptions from partner companies and match your candidates.
           </p>
         </div>
       </div>
 
-      <Card className="bg-[#131313] border-white/5 p-4 flex flex-col md:flex-row gap-4">
+      <Card className="bg-white border-slate-200 shadow-sm p-4 flex flex-col md:flex-row gap-4 rounded-xl">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search roles or companies..."
-            className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 pl-10 pr-4 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+            className="w-full bg-slate-50 text-slate-900 text-sm rounded-lg py-2 pl-10 pr-4 border border-slate-200 focus:outline-none focus:border-[#004c63] focus:ring-1 focus:ring-[#004c63] transition-all placeholder:text-slate-400"
           />
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as JobOpeningStatus | 'ALL')}
-            className="bg-[#1a1a1a] text-gray-300 text-sm rounded-lg border border-white/5 px-4 focus:outline-none focus:border-[#00fad0]/50"
+            className="bg-slate-50 text-slate-700 text-sm rounded-lg border border-slate-200 px-4 py-2 focus:outline-none focus:border-[#004c63]"
           >
             <option value="ALL">All Statuses</option>
             <option value="DRAFT">Draft</option>
@@ -125,9 +125,9 @@ export default function PlacementsPage() {
           <Button
             type="button"
             variant="secondary"
-            className="bg-[#1a1a1a] border-white/10 text-white hover:bg-white/5 flex items-center gap-2"
+            className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 flex items-center gap-2 font-medium"
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-4 h-4 text-slate-500" />
             Apply Filters
           </Button>
         </div>
@@ -138,13 +138,13 @@ export default function PlacementsPage() {
           {error}
         </Alert>
       ) : loading ? (
-        <p role="status" className="text-sm text-gray-400">
+        <p role="status" className="text-sm text-slate-500">
           Loading job descriptions…
         </p>
       ) : filtered.length === 0 ? (
-        <Card className="bg-[#131313] border-white/5 p-8 text-center text-sm text-gray-400">
+        <Card className="bg-white border-slate-200 shadow-sm p-8 text-center text-sm text-slate-500 rounded-xl">
           No job descriptions yet.{' '}
-          <Link href="/openings" className="text-[#00fad0] hover:underline">
+          <Link href="/openings" className="text-[#004c63] font-semibold hover:underline">
             Post a structured JD
           </Link>{' '}
           to get started.
@@ -153,10 +153,10 @@ export default function PlacementsPage() {
         <div className="grid grid-cols-1 gap-4">
           {filtered.map((jd) => (
             <Link key={jd.openingId} href={`/openings?openingId=${jd.openingId}`}>
-              <Card className="bg-[#131313] border-white/5 p-5 hover:border-white/20 transition-all hover:bg-white/[0.02] cursor-pointer group relative overflow-hidden">
+              <Card className="bg-white border-slate-200 shadow-sm p-5 hover:border-[#004c63]/40 transition-all hover:shadow-md cursor-pointer group relative overflow-hidden rounded-xl">
                 {jd.status === 'DRAFT' && (
                   <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                    <div className="absolute top-4 -right-6 w-24 bg-[#00fad0] text-white text-[10px] font-bold py-1 text-center rotate-45 transform">
+                    <div className="absolute top-4 -right-6 w-24 bg-slate-200 text-slate-700 text-[10px] font-bold py-1 text-center rotate-45 transform">
                       DRAFT
                     </div>
                   </div>
@@ -164,22 +164,23 @@ export default function PlacementsPage() {
 
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-[#00fad0]/10 group-hover:text-[#00fad0] transition-colors">
-                      <Briefcase className="w-6 h-6 text-gray-400 group-hover:text-[#00fad0]" />
+                    <div className="w-12 h-12 bg-[#004c63]/10 border border-[#004c63]/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-[#004c63] group-hover:text-white transition-colors">
+                      <Briefcase className="w-6 h-6 text-[#004c63] group-hover:text-white transition-colors" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white group-hover:text-[#00fad0] transition-colors">
+                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#004c63] transition-colors">
                         {jd.roleTitle}
                       </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                      <div className="flex items-center gap-4 text-sm text-slate-500 mt-1 font-medium">
                         <span className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5" /> {jd.companyName}
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" /> {jd.companyName}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5" /> {jd.location}
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" /> {jd.location}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" /> {labelFor(jd.employmentType)}
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />{' '}
+                          {labelFor(jd.employmentType)}
                         </span>
                       </div>
                     </div>
@@ -187,32 +188,32 @@ export default function PlacementsPage() {
 
                   <div className="flex items-center gap-6">
                     <div className="text-right hidden sm:block">
-                      <div className="text-sm font-medium text-white">
+                      <div className="text-sm font-bold text-slate-900">
                         {jd.matchCount ?? '—'} Applications
                       </div>
-                      <div className="text-xs text-gray-500">{relativeTime(jd.createdAt)}</div>
+                      <div className="text-xs text-slate-400">{relativeTime(jd.createdAt)}</div>
                     </div>
 
                     {jd.status === 'OPEN' && (
-                      <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
                         Open
                       </span>
                     )}
                     {jd.status === 'CLOSED' && (
-                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Closed
+                      <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" /> Closed
                       </span>
                     )}
 
-                    <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#004c63] transition-colors" />
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+                <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2 flex-wrap">
                   {jd.requiredSkills.slice(0, 6).map((skill) => (
                     <span
                       key={skill.skillCode}
-                      className="bg-white/5 text-gray-300 px-2 py-1 rounded text-xs"
+                      className="bg-slate-100 border border-slate-200 text-slate-700 font-mono font-medium px-2.5 py-1 rounded-md text-xs"
                     >
                       {skill.skillCode}
                     </span>

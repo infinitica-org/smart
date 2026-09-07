@@ -190,7 +190,7 @@ export function CompanyDashboard() {
             {pipelineError ? null : !stageCounts || applications?.length === 0 ? (
               <DashboardPanel
                 title="Pipeline overview"
-                description="Canonical AtsStage counts from CO-T02. AI-Verified and Hired are not contract stages."
+                description="Canonical AtsStage counts from CO-T02."
               >
                 <p className="text-sm text-[var(--text-muted)]">
                   No applications yet. Shortlist a candidate to populate the ATS.
@@ -199,9 +199,9 @@ export function CompanyDashboard() {
             ) : (
               <DashboardPanel
                 title="Pipeline overview"
-                description="Canonical AtsStage counts from CO-T02. AI-Verified and Hired are not contract stages."
+                description="Canonical AtsStage counts from CO-T02."
               >
-                <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
                   {pipelineStages().map((stage) => (
                     <li
                       key={stage}

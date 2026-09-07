@@ -137,6 +137,14 @@ function createMockPrisma() {
         Object.assign(found, data);
         return found;
       }),
+      updateMany: vi.fn(async ({ where, data }: any) => {
+        const found = attemptsStore.find(
+          (a) => a.id === where.id && (where.status === undefined || a.status === where.status),
+        );
+        if (!found) return { count: 0 };
+        Object.assign(found, data);
+        return { count: 1 };
+      }),
     },
     levelResult: {
       findFirst: vi.fn(async ({ where }: any) => {
@@ -207,7 +215,11 @@ function createMockRedis() {
       return sets.get(key)?.size ?? 0;
     }),
     expire: vi.fn(async () => 1),
-    exists: vi.fn(async () => 0),
+    exists: vi.fn(async (key: string) => (store.has(key) ? 1 : 0)),
+    del: vi.fn(async (key: string) => {
+      const had = store.delete(key);
+      return had ? 1 : 0;
+    }),
   } as any;
 }
 
@@ -347,6 +359,142 @@ describe('AssessmentService (ST-04 / S1-VB-01)', () => {
     expect(secondSession.attemptId).toBe(firstSession.attemptId);
     expect(prisma.attempt.create).toHaveBeenCalledTimes(1); // Not called again
     expect(attemptsStartedSpy).toHaveBeenCalledTimes(1); // Not incremented again
+  });
+
+  it('7b. Expired IN_PROGRESS start auto-submits the old attempt and opens a new clock', async () => {
+    const firstSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+    const stored = prisma._attemptsStore[0] as { expiresAt: Date; status: string };
+    stored.expiresAt = new Date(Date.now() - 1000);
+
+    prisma.attempt.create.mockImplementationOnce(
+      async ({ data }: { data: Record<string, unknown> }) => {
+        const level = {
+          id: LEVEL1_ID,
+          levelNumber: 1,
+          track: { code: 'TECH_FULLSTACK' },
+        };
+        const newAttempt = {
+          id: '55555555-5555-5555-5555-555555555557',
+          userId: data.userId,
+          levelId: data.levelId,
+          formCode: data.formCode ?? 'A',
+          status: data.status,
+          integrityFlag: data.integrityFlag ?? 'CLEAN',
+          startedAt: data.startedAt,
+          expiresAt: data.expiresAt,
+          level,
+          responses: [],
+        };
+        prisma._attemptsStore.push(newAttempt);
+        return newAttempt;
+      },
+    );
+
+    const secondSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+
+    expect(secondSession.attemptId).not.toBe(firstSession.attemptId);
+    expect(secondSession.serverRemainingSeconds).toBeGreaterThan(0);
+    expect(prisma._attemptsStore[0]?.status).toBe('AUTO_SUBMITTED');
+    expect(prisma.attempt.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('7c. Proctor-locked IN_PROGRESS start auto-submits and opens a new attempt', async () => {
+    const firstSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+    await redis.setex(`proctor:lock:${firstSession.attemptId}`, 60, '1');
+
+    prisma.attempt.create.mockImplementationOnce(
+      async ({ data }: { data: Record<string, unknown> }) => {
+        const level = {
+          id: LEVEL1_ID,
+          levelNumber: 1,
+          track: { code: 'TECH_FULLSTACK' },
+        };
+        const newAttempt = {
+          id: '55555555-5555-5555-5555-555555555558',
+          userId: data.userId,
+          levelId: data.levelId,
+          formCode: data.formCode ?? 'A',
+          status: data.status,
+          integrityFlag: data.integrityFlag ?? 'CLEAN',
+          startedAt: data.startedAt,
+          expiresAt: data.expiresAt,
+          level,
+          responses: [],
+        };
+        prisma._attemptsStore.push(newAttempt);
+        return newAttempt;
+      },
+    );
+
+    const secondSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+
+    expect(secondSession.attemptId).not.toBe(firstSession.attemptId);
+    expect(secondSession.locked).toBe(false);
+    expect(prisma._attemptsStore[0]?.status).toBe('AUTO_SUBMITTED');
+    expect(prisma.attempt.create).toHaveBeenCalledTimes(2);
+    expect(await redis.exists(`proctor:lock:${firstSession.attemptId}`)).toBe(0);
+  });
+
+  it('7d. Losing the stale-close race resumes the winner IN_PROGRESS attempt', async () => {
+    await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+    const stale = prisma._attemptsStore[0] as {
+      id: string;
+      userId: string;
+      levelId: string;
+      status: string;
+      expiresAt: Date;
+      level: unknown;
+    };
+    stale.expiresAt = new Date(Date.now() - 1000);
+
+    const winnerId = '55555555-5555-5555-5555-555555555559';
+    const winner = {
+      id: winnerId,
+      userId: STUDENT_ID,
+      levelId: LEVEL1_ID,
+      formCode: 'A',
+      status: 'IN_PROGRESS',
+      integrityFlag: 'CLEAN',
+      startedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      level: stale.level,
+      responses: [],
+    };
+    prisma._attemptsStore.push(winner);
+
+    let attemptFinds = 0;
+    prisma.attempt.findFirst.mockImplementation(async () => {
+      attemptFinds += 1;
+      if (attemptFinds === 1) {
+        return { ...stale, responses: [] };
+      }
+      return winner;
+    });
+    prisma.attempt.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    const secondSession = await service.startAttempt(STUDENT_ID, {
+      trackCode: 'TECH_FULLSTACK',
+      levelNumber: 1,
+    });
+
+    expect(secondSession.attemptId).toBe(winnerId);
+    expect(prisma.attempt.create).toHaveBeenCalledTimes(1);
+    expect(attemptsStartedSpy).toHaveBeenCalledTimes(1);
   });
 
   it('8. New attempt is persisted correctly', async () => {

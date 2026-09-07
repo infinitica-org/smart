@@ -1,14 +1,22 @@
 @import '@smart/ui/styles.css';
 
+:root {
+  color-scheme: light;
+}
+
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
 
 /* --- Cabinet Grotesk (Variable) --- */
 @font-face {
   font-family: 'Cabinet Grotesk';
-  src: url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.woff2') format('woff2'),
-       url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.woff') format('woff'),
-       url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.ttf') format('truetype');
+  src:
+    url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.woff2')
+      format('woff2'),
+    url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.woff')
+      format('woff'),
+    url('/Fonts/CabinetGrotesk_Complete/Fonts/WEB/fonts/CabinetGrotesk-Variable.ttf')
+      format('truetype');
   font-weight: 100 900;
   font-display: swap;
   font-style: normal;

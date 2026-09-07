@@ -1,46 +1,107 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { BlobWsPayload, ProctoringViolationKind } from '@smart/contracts';
-import { Alert } from '@smart/ui';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
+import { PROCTORING_WARNING_LIMIT_DEFAULT, type ProctoringViolationKind } from '@smart/contracts';
 import { api } from '../../lib/api';
 import {
   deviceFingerprintHash,
   isProctoringEnabled,
   signProctoringEvent,
 } from '../../lib/proctoring/crypto';
-import { BlobHud } from './blob-hud';
-import { FullscreenGate } from './fullscreen-gate';
+import { releaseProctoringPreview } from '../../lib/proctoring/media';
+import {
+  enterAssessmentFullscreen,
+  hidePlayerForFullscreen,
+  lockAssessmentKeyboard,
+  unlockAssessmentKeyboard,
+} from '../../lib/proctoring/fullscreen';
+import { attachProctorSensors } from '../../lib/proctoring/sensors';
+import { createProctorIngest } from '../../lib/proctoring/ingest-queue';
+import { DisplayGate, FullscreenGate } from './fullscreen-gate';
+import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
+import { startLiveWebcamMonitor } from '../../lib/proctoring/live-webcam';
+import {
+  INTEGRITY_LOCKOUT_SECONDS,
+  IntegrityLockoutPanel,
+  IntegrityWarningModal,
+} from './integrity-notices';
 
 export function ProctoringShell({
   attemptId,
+  onLockTerminate,
+  onReady,
+  cameraEnabled = true,
+  faceLiveCheck = false,
   children,
 }: {
   attemptId: string;
+  /** Defaults to L1 `assessment.complete`. Skill-verify must pass its own settle. */
+  onLockTerminate?: () => Promise<unknown>;
+  /** After camera/fullscreen onboarding, or immediately when proctoring is off. */
+  onReady?: () => void;
+  /** When false, skip webcam capture and preview. Fullscreen and sensors stay on. */
+  cameraEnabled?: boolean;
+  /** Skill-verify: live one-face and lighting check before the form generates. */
+  faceLiveCheck?: boolean;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const enabled = isProctoringEnabled();
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyNotified = useRef(false);
+  const notifyReady = useCallback(() => {
+    if (readyNotified.current) return;
+    readyNotified.current = true;
+    onReadyRef.current?.();
+  }, []);
   const [ready, setReady] = useState(!enabled);
   const [blocked, setBlocked] = useState(false);
-  const [blob, setBlob] = useState<BlobWsPayload | null>(null);
+  const [extendedDisplay, setExtendedDisplay] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [warnings, setWarnings] = useState({
+    count: 0,
+    limit: PROCTORING_WARNING_LIMIT_DEFAULT,
+  });
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [lockSecondsLeft, setLockSecondsLeft] = useState(INTEGRITY_LOCKOUT_SECONDS);
+  const terminatedRef = useRef(false);
   const secretRef = useRef('');
-  const lastRef = useRef<Record<string, number>>({});
+  const mediaRef = useRef<MediaStream | null>(null);
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const kioskRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  const onLockTerminateRef = useRef(onLockTerminate);
+  onLockTerminateRef.current = onLockTerminate;
+
+  const terminateIfLocked = useCallback(
+    (isLocked: boolean) => {
+      if (!isLocked || terminatedRef.current) return;
+      terminatedRef.current = true;
+      const finish = onLockTerminateRef.current
+        ? onLockTerminateRef.current()
+        : api.assessment.complete({ attemptId });
+      void finish.catch(() => {
+        terminatedRef.current = false;
+      });
+    },
+    [attemptId],
+  );
+  const terminateIfLockedRef = useRef(terminateIfLocked);
+  terminateIfLockedRef.current = terminateIfLocked;
+  const dismissWarning = useCallback(() => setWarningOpen(false), []);
 
   const report = useCallback(
     async (kind: ProctoringViolationKind) => {
-      const now = Date.now();
-      if (now - (lastRef.current[kind] ?? 0) < 1500) return;
-      lastRef.current[kind] = now;
+      const secret = secretRef.current;
+      if (!secret) return;
       try {
         const nonce = await api.proctoring.nonce(attemptId);
-        const signature = await signProctoringEvent(
-          secretRef.current,
-          attemptId,
-          nonce.nonce,
-          kind,
-        );
+        const signature = await signProctoringEvent(secret, attemptId, nonce.nonce, kind);
         const snap = await api.proctoring.ingest({
           attemptId,
           kind,
@@ -49,74 +110,77 @@ export function ProctoringShell({
           signature,
         });
         setLocked(snap.locked);
+        setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
+        if (snap.warningCount > 0 && !snap.locked) setWarningOpen(true);
+        terminateIfLocked(snap.locked);
       } catch {
-        // Player must not die if telemetry fails.
+        // Local preventDefault still applied; ingest must not crash the player.
       }
     },
-    [attemptId],
+    [attemptId, terminateIfLocked],
+  );
+
+  const reportRef = useRef(report);
+  reportRef.current = report;
+  const ingestRef = useRef(
+    createProctorIngest({
+      getSecret: () => secretRef.current,
+      send: (kind) => reportRef.current(kind),
+    }),
   );
 
   useEffect(() => {
-    if (!enabled || !ready) return undefined;
+    if (!enabled || !ready || locked) return undefined;
     let cancelled = false;
+    let detach: () => void = () => undefined;
+
+    const applyFullscreen = (fromEvent: boolean) => {
+      const inFs = Boolean(document.fullscreenElement);
+      if (inFs) {
+        setBlocked((prev) => (prev ? false : prev));
+        void lockAssessmentKeyboard();
+        return;
+      }
+      unlockAssessmentKeyboard();
+      setBlocked((prev) => (prev ? prev : true));
+      if (fromEvent) ingestRef.current.report('FULLSCREEN_EXIT');
+    };
+
+    detach = attachProctorSensors((kind) => ingestRef.current.report(kind), {
+      listenFullscreen: false,
+    });
+    applyFullscreen(false);
+
+    const onFs = () => applyFullscreen(true);
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+
     void (async () => {
-      const snap = await api.proctoring.snapshot(attemptId);
-      if (cancelled) return;
-      secretRef.current = snap.hmacSecret ?? '';
-      setLocked(snap.locked);
-      await api.proctoring.fingerprint({
-        attemptId,
-        fingerprintHash: deviceFingerprintHash(),
-        userAgent: navigator.userAgent,
-        screenResolution: `${screen.width}x${screen.height}`,
-      });
+      try {
+        const snap = await api.proctoring.snapshot(attemptId);
+        if (cancelled) return;
+        secretRef.current = snap.hmacSecret ?? '';
+        setLocked(snap.locked);
+        setWarnings({ count: snap.warningCount, limit: snap.warningLimit });
+        if (snap.warningCount > 0 && !snap.locked) setWarningOpen(true);
+        terminateIfLockedRef.current(snap.locked);
+        await api.proctoring.fingerprint({
+          attemptId,
+          fingerprintHash: deviceFingerprintHash(),
+          userAgent: navigator.userAgent,
+          screenResolution: `${screen.width}x${screen.height}`,
+        });
+        await ingestRef.current.flush();
+        applyFullscreen(false);
+      } catch {
+        if (!cancelled) applyFullscreen(false);
+      }
     })();
 
-    const onFs = () => {
-      const fs = Boolean(document.fullscreenElement);
-      setBlocked(!fs);
-      if (!fs) void report('FULLSCREEN_EXIT');
-    };
-    const onVis = () => {
-      if (document.hidden) void report('TAB_BLUR');
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (
-        event.key === 'F12' ||
-        (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'i')
-      ) {
-        event.preventDefault();
-        void report('DEVTOOLS_OPEN');
-      }
-      if (event.key === 'PrintScreen') {
-        event.preventDefault();
-        void report('PRINT_SCREEN');
-      }
-    };
-    const onCopy = (event: Event) => {
-      event.preventDefault();
-      void report('COPY_ATTEMPT');
-    };
-    document.addEventListener('fullscreenchange', onFs);
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('keydown', onKey, true);
-    document.addEventListener('copy', onCopy);
-    document.addEventListener('paste', onCopy);
-    document.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-      void report('RIGHT_CLICK');
-    });
-    void document.documentElement.requestFullscreen?.().catch(() => setBlocked(true));
     const ping = window.setInterval(
       () => void api.proctoring.ping(attemptId).catch(() => undefined),
       15_000,
     );
-    const blobPoll = window.setInterval(() => {
-      void api.proctoring
-        .blob(attemptId)
-        .then((payload) => setBlob(payload))
-        .catch(() => undefined);
-    }, 2000);
     const checkpoint = window.setInterval(() => {
       void api.proctoring
         .checkpoint({ attemptId, objectKey: `stub:${attemptId}:${Date.now()}` })
@@ -124,35 +188,154 @@ export function ProctoringShell({
     }, 18_000);
     return () => {
       cancelled = true;
-      window.clearInterval(ping);
-      window.clearInterval(blobPoll);
-      window.clearInterval(checkpoint);
+      detach();
+      unlockAssessmentKeyboard();
       document.removeEventListener('fullscreenchange', onFs);
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('keydown', onKey, true);
-      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+      window.clearInterval(ping);
+      window.clearInterval(checkpoint);
     };
-  }, [attemptId, enabled, ready, report]);
+  }, [attemptId, enabled, ready, locked]);
+
+  useEffect(() => {
+    if (!enabled || !ready || locked || !cameraEnabled) return undefined;
+    const monitor = startLiveWebcamMonitor({
+      getVideo: () => previewRef.current,
+      onViolation: (kind) => ingestRef.current.report(kind),
+    });
+    return () => monitor.stop();
+  }, [attemptId, cameraEnabled, enabled, ready, locked]);
+
+  useEffect(() => {
+    if (!enabled || !ready || locked) return undefined;
+    let flagged = false;
+    const tick = () => {
+      const extra = hasExtendedDisplay();
+      setExtendedDisplay(extra);
+      if (extra && !flagged) {
+        flagged = true;
+        ingestRef.current.report('TECHNICAL_INTERRUPTION');
+      }
+      if (!extra) flagged = false;
+    };
+    tick();
+    const id = window.setInterval(tick, 1500);
+    return () => window.clearInterval(id);
+  }, [enabled, ready, locked]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) notifyReady();
+  }, [enabled, notifyReady]);
+
+  const releaseMedia = useCallback(() => {
+    releaseProctoringPreview(previewRef.current, mediaRef.current);
+    mediaRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!locked) return undefined;
+    releaseMedia();
+    unlockAssessmentKeyboard();
+    if (typeof document !== 'undefined' && document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+    setLockSecondsLeft(INTEGRITY_LOCKOUT_SECONDS);
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const left = Math.max(
+        0,
+        INTEGRITY_LOCKOUT_SECONDS - Math.floor((Date.now() - started) / 1000),
+      );
+      setLockSecondsLeft(left);
+      if (left > 0) return;
+      window.clearInterval(tick);
+      router.replace('/assessments');
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [locked, releaseMedia, router]);
+
+  useEffect(() => {
+    return () => {
+      releaseMedia();
+    };
+  }, [releaseMedia]);
+
+  useEffect(() => {
+    if (!cameraEnabled || !ready || !previewRef.current || !mediaRef.current) return;
+    previewRef.current.srcObject = mediaRef.current;
+  }, [cameraEnabled, ready]);
 
   if (!enabled) return children;
-  if (!ready) {
-    return <OnboardingGate attemptId={attemptId} onPassed={() => setReady(true)} />;
-  }
+  if (!mounted) return null;
 
-  return (
-    <div className={blocked || locked ? 'invisible' : undefined}>
-      {locked ? (
-        <Alert tone="danger" title="Session locked" className="mb-4">
-          Warning limit reached. Your answers are kept — submit to finish. A reviewer will check
-          integrity; this does not automatically void your attempt.
-        </Alert>
-      ) : null}
-      {children}
-      <FullscreenGate
-        blocked={blocked && !locked}
-        onResume={() => void document.documentElement.requestFullscreen?.()}
-      />
-      <BlobHud payload={blob} />
+  const hideExam = hidePlayerForFullscreen(blocked || extendedDisplay);
+  const previewVideo = cameraEnabled ? (
+    <video
+      ref={previewRef}
+      className="pointer-events-none fixed right-4 bottom-4 z-40 h-24 w-32 rounded-md border border-white/20 object-cover"
+      muted
+      playsInline
+      autoPlay
+      aria-label="Proctoring camera preview"
+    />
+  ) : null;
+  const kiosk = (
+    <div
+      ref={kioskRef}
+      className="fixed inset-0 h-full overflow-hidden bg-black"
+      style={{ zIndex: 2147483646, overscrollBehavior: 'none', touchAction: 'manipulation' }}
+    >
+      {!ready ? (
+        <div className="flex h-full min-h-full flex-col">
+          <OnboardingGate
+            attemptId={attemptId}
+            fullscreenRootRef={kioskRef}
+            cameraEnabled={cameraEnabled}
+            faceLiveCheck={faceLiveCheck}
+            onPassed={(stream) => {
+              mediaRef.current = stream;
+              if (cameraEnabled && previewRef.current && stream) {
+                previewRef.current.srcObject = stream;
+              }
+              setReady(true);
+              setBlocked(!document.fullscreenElement);
+              notifyReady();
+            }}
+          />
+        </div>
+      ) : locked ? (
+        <IntegrityLockoutPanel limit={warnings.limit} secondsLeft={lockSecondsLeft} />
+      ) : (
+        <>
+          <div
+            className={hideExam ? 'hidden' : 'flex h-full min-h-full flex-col'}
+            aria-hidden={hideExam}
+          >
+            <div className="min-h-0 flex-1">{children}</div>
+            {previewVideo}
+          </div>
+          {warningOpen ? (
+            <IntegrityWarningModal
+              count={warnings.count}
+              limit={warnings.limit}
+              onDismiss={dismissWarning}
+            />
+          ) : null}
+          <FullscreenGate
+            blocked={blocked && !extendedDisplay}
+            onResume={() => {
+              void enterAssessmentFullscreen(kioskRef.current).then((ok) => setBlocked(!ok));
+            }}
+          />
+          <DisplayGate blocked={extendedDisplay} />
+        </>
+      )}
     </div>
   );
+
+  return createPortal(kiosk, document.body);
 }

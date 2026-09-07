@@ -563,7 +563,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     });
   }
 
-  if (url.includes('/assessment/skill-claims') && method === 'POST') {
+  if (url.includes('/assessment/skill-claims') && method === 'POST' && !url.includes('/verify/')) {
     const body = JSON.parse(String(init?.body ?? '{}')) as {
       skillCode?: string;
       proficiency?: string;

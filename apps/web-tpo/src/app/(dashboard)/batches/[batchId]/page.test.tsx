@@ -15,6 +15,11 @@ vi.mock('../../../../lib/api', () => ({
       updateBatch: vi.fn(),
       addBatchMember: vi.fn(),
       resendStudentInvitation: vi.fn(),
+      revokeStudentInvitation: vi.fn(),
+      getStudentInviteLink: vi.fn(),
+      tpoEntitlements: vi
+        .fn()
+        .mockResolvedValue({ domain: 'example.test', planCode: 'PRO', flags: [] }),
     },
   },
 }));
@@ -78,7 +83,7 @@ describe('BatchDetailPage', () => {
     expect(screen.getByText(/1 Members/)).toBeDefined();
     expect(screen.getByText(/1 Pending Invites/)).toBeDefined();
     expect(screen.getByText('Ada Lovelace')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Resend Invite' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /Resend/i })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Edit Batch' })).toBeDefined();
     expect(screen.getByText('Bulk candidate provisioning')).toBeDefined();
     expect(screen.getByText('wizard-batch:batch-1')).toBeDefined();

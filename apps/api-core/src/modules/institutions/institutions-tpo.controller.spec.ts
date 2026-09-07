@@ -123,4 +123,16 @@ describe('InstitutionsTpoController import boundary', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('routes revoke invitation requests to InstitutionsService', async () => {
+    const revokeStudentInvitation = vi
+      .fn()
+      .mockResolvedValue({ invitationId: 'inv-1', status: 'REVOKED' });
+    const controller = new InstitutionsTpoController({ revokeStudentInvitation } as never);
+    await expect(controller.revokeInvitation('inv-1', user as never)).resolves.toEqual({
+      invitationId: 'inv-1',
+      status: 'REVOKED',
+    });
+    expect(revokeStudentInvitation).toHaveBeenCalledWith('inv-1', institutionId);
+  });
 });

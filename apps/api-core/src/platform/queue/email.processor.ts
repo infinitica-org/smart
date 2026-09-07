@@ -34,6 +34,33 @@ export class EmailProcessor extends WorkerHost {
             where: { id: attemptId },
             data: { reminderSentAt: new Date() },
           });
+
+          const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+          const remainingMs = attempt.expiresAt.getTime() - Date.now();
+          if (remainingMs > SIX_HOURS_MS) {
+            const hoursLeft = Math.max(
+              1,
+              Math.round((remainingMs - SIX_HOURS_MS) / (60 * 60 * 1000)),
+            );
+            const jobQueue = (
+              job as unknown as {
+                queue?: { add: (name: string, data: unknown, opts: unknown) => Promise<unknown> };
+              }
+            ).queue;
+            if (jobQueue && typeof jobQueue.add === 'function') {
+              await jobQueue.add(
+                'send-reminder',
+                {
+                  ...payload,
+                  data: {
+                    ...data,
+                    expiresAtFormatted: `${hoursLeft} hours`,
+                  },
+                } as WorkExperienceReminderJobPayload,
+                { delay: SIX_HOURS_MS },
+              );
+            }
+          }
         }
       }
       return;
