@@ -8,6 +8,7 @@ import {
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
+  type SkillProficiency,
   type SkillStream,
 } from '@smart/contracts';
 
