@@ -61,7 +61,7 @@ export function splitPromptSegments(text: string): PromptSegment[] {
     segments.push({
       type: 'code',
       language: match[1] && match[1].length > 0 ? match[1] : 'text',
-      text: match[2]!.replace(/\n$/, ''),
+      text: (match[2] ?? '').replace(/\n$/, ''),
     });
     cursor = fence.lastIndex;
     match = fence.exec(text);

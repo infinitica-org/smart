@@ -18,7 +18,6 @@ if (typeof window !== 'undefined') {
         args[0].includes('TensorFlow Lite') ||
         args[0].includes('XNNPACK'))
     ) {
-      console.info(...args);
       return;
     }
     originalConsoleError(...args);

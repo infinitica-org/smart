@@ -63,9 +63,9 @@ export function escapeUnescapedJsonControls(text: string): string {
 function unwrapJsonCandidate(text: string): string {
   const trimmed = text.trim();
   const closedFence = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  if (closedFence) return closedFence[1]!.trim();
+  if (closedFence?.[1]) return closedFence[1].trim();
   const openFence = trimmed.match(/^```(?:json)?\s*([\s\S]*)$/i);
-  if (openFence) return openFence[1]!.trim();
+  if (openFence?.[1]) return openFence[1].trim();
   return trimmed;
 }
 
@@ -88,7 +88,7 @@ function jsonCandidates(text: string): string[] {
     push(stripTrailingCommas(escaped));
   };
   variants(text);
-  const start = text.search(/[\{\[]/);
+  const start = text.search(/[{[]/);
   const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
   if (start !== -1 && end !== -1 && end > start) {
     variants(text.slice(start, end + 1));

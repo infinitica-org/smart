@@ -115,11 +115,11 @@ export class AiGatewayService {
     ];
 
     const primaryProvider = env.AI_PRIMARY_PROVIDER;
-    const chain = primaryProvider
-      ? [
-          allProviders.find((p) => p.provider === primaryProvider)!,
-          ...allProviders.filter((p) => p.provider !== primaryProvider),
-        ]
+    const primary = primaryProvider
+      ? allProviders.find((p) => p.provider === primaryProvider)
+      : undefined;
+    const chain = primary
+      ? [primary, ...allProviders.filter((p) => p.provider !== primaryProvider)]
       : allProviders;
 
     const timeoutMs = Math.max(
