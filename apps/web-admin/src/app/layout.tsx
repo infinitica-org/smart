@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="relative min-h-dvh bg-background font-sans text-foreground antialiased">
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="dark">
           <TooltipProvider>
             <PortalAuthGate>{children}</PortalAuthGate>
             <Toaster />
