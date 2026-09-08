@@ -22,6 +22,7 @@ import { workExperienceProofParseTemplate } from './templates/work-experience-pr
 import {
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
+  sdeSkillCodeRunnerTemplate,
   sdeSkillOpenBatchGraderTemplate,
   sdeSkillOpenGraderTemplate,
 } from './templates/sde-skill-form.js';
@@ -65,6 +66,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   sdeSkillFormOpenTemplate,
   sdeSkillOpenBatchGraderTemplate,
   sdeSkillOpenGraderTemplate,
+  sdeSkillCodeRunnerTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

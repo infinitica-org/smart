@@ -1468,6 +1468,19 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 6000,
     summary: 'Grade an SDE v4 form (closed local, open via one batch LLM call).',
   },
+  {
+    method: 'POST',
+    path: '/evaluation/skill-form/run-code',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'evaluation.skillInterview',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 6000,
+    summary:
+      'Simulate compiling and running candidate code against visible examples. No marks or hidden tests.',
+  },
 
   /* -------------- cognitive / communication profile (SE-T04) -------------- */
   {
