@@ -7,6 +7,7 @@ import { Button, Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
 import type { BatchMemberDto, BatchDto } from '@smart/contracts';
 import { api } from '../../../../lib/api';
+import { validateDomain } from '../../../../lib/domain-validation';
 import { BatchImportWizard } from '../../../../components/batch-import-wizard';
 import {
   ArrowLeft,
@@ -72,6 +73,19 @@ export default function BatchDetailPage() {
     void load();
   }, [load]);
 
+  // ── Auto-dismiss notifications after 5s ──
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(null), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
+
   async function onSaveEdit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -96,8 +110,10 @@ export default function BatchDetailPage() {
       const entitlements = await api.onboarding.tpoEntitlements().catch(() => null);
       const domain = entitlements?.domain?.trim().toLowerCase();
       const trimmedEmail = email.trim().toLowerCase();
-      if (!domain || !trimmedEmail.endsWith(`@${domain}`)) {
-        setError(`Email address must belong to domain @${domain ?? '(unavailable)'}`);
+      if (!domain || !validateDomain(trimmedEmail, domain)) {
+        setError(
+          `Email address must belong to domain @${domain ?? '(unavailable)'} or one of its subdomains.`,
+        );
         setMemberSubmitting(false);
         return;
       }
@@ -107,14 +123,25 @@ export default function BatchDetailPage() {
         email: trimmedEmail,
         groupLabel: groupLabel.trim() || undefined,
       });
+      let sendError: string | null = null;
       if (newMember.invitation?.invitationId) {
-        await api.onboarding.resendStudentInvitation(newMember.invitation.invitationId);
+        try {
+          await api.onboarding.resendStudentInvitation(newMember.invitation.invitationId);
+        } catch (caught: unknown) {
+          sendError = safeMsg(caught, 'Email delivery failed');
+        }
       }
       setFullName('');
       setEmail('');
       setGroupLabel('');
       setIsAddingMember(false);
-      setMessage('Member added and invitation sent.');
+      if (sendError) {
+        setError(
+          `Member added to batch, but invitation email delivery failed: ${sendError}. You can retry using "Resend" or use "Copy Link" in the member list.`,
+        );
+      } else {
+        setMessage('Member added and invitation sent.');
+      }
       await load();
     } catch (caught) {
       setError(safeMsg(caught, 'Could not add member.'));

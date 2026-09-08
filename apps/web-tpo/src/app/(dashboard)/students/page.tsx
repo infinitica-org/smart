@@ -58,17 +58,25 @@ export default function CandidatesPage() {
       }
     }
 
-    setLoading(true);
-    Promise.all([
-      api.onboarding.listTpoStudents().catch(() => [] as InstitutionStudentDto[]),
-      api.assessment.listSkillClaims().catch(() => [] as SkillClaimDto[]),
-    ])
-      .then(([studentList, claimList]) => {
-        setStudents(studentList);
-        setClaims(claimList);
-      })
-      .finally(() => setLoading(false));
+    api.assessment
+      .listSkillClaims()
+      .then((claimList) => setClaims(claimList))
+      .catch(() => setClaims([]));
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    const q = searchQuery.trim() || undefined;
+    const timer = setTimeout(() => {
+      api.onboarding
+        .listTpoStudents({ q })
+        .then((studentList) => setStudents(studentList))
+        .catch(() => setStudents([]))
+        .finally(() => setLoading(false));
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Filter logic
   const filteredStudents = students.filter((student) => {

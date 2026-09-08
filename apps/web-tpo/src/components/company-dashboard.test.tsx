@@ -86,11 +86,17 @@ afterEach(() => {
 
 describe('CO-T04 company dashboard', () => {
   it('shows a loading state before live data arrives', () => {
-    vi.mocked(openingsApi.list).mockReturnValue(new Promise(() => undefined));
+    let resolveOpenings: (value: { openings: [] }) => void = () => undefined;
+    vi.mocked(openingsApi.list).mockReturnValue(
+      new Promise((resolve) => {
+        resolveOpenings = resolve;
+      }),
+    );
 
     render(<CompanyDashboard />);
 
     expect(screen.getByText('Loading company dashboard…')).toBeDefined();
+    resolveOpenings({ openings: [] });
   });
 
   it('maps live CO-T01 openings and CO-T02 applications onto dashboard sections', async () => {

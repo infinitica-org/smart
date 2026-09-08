@@ -382,6 +382,7 @@ export const TenantEntitlementsDtoSchema = z.object({
   flags: z.array(PlanEntitlementDtoSchema),
   institutionName: z.string().optional(),
   domain: z.string().optional(),
+  verificationStatus: TenantVerificationStatusSchema.optional(),
   candidateCapacity: z.number().optional(),
 });
 export type TenantEntitlementsDto = z.infer<typeof TenantEntitlementsDtoSchema>;

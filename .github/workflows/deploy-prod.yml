@@ -5,6 +5,12 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Run production seed after deploy (uses SEED_* from .env.prod)
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-prod
@@ -12,13 +18,19 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: [self-hosted, dev-runner]
-    timeout-minutes: 20
+    # workflow_run.branches is not enough — CI on other default-branch SHAs
+    # can still fire this listener. Only deploy when CI ran on `main`.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main')
+    runs-on: [self-hosted, dest-runner]
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
+          fetch-depth: 1
 
       - name: Configure SSH
         run: |
@@ -41,11 +53,31 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
             ./ "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:~/smart/"
 
+      - name: Write .env.prod from GitHub secret
+        env:
+          PROD_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
+        run: |
+          set -euo pipefail
+          test -n "${PROD_ENV_FILE}" || {
+            echo "PROD_ENV_FILE secret is empty — kvm4 needs ~/smart/.env.prod"
+            exit 1
+          }
+          printf '%s\n' "${PROD_ENV_FILE}" | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}" \
+            'umask 077; mkdir -p ~/smart; cat > ~/smart/.env.prod; chmod 600 ~/smart/.env.prod'
+
       - name: Deploy + migrate + health check
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
             "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}" \
             'cd ~/smart && bash scripts/deploy-vps.sh prod'
+
+      - name: Seed production accounts
+        if: github.event_name == 'workflow_dispatch' && inputs.seed
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}" \
+            'cd ~/smart && bash scripts/seed-vps.sh prod'
 
       - name: Cleanup
         if: always()

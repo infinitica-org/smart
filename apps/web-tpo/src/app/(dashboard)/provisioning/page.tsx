@@ -22,6 +22,7 @@ import { Button, Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
 import type { BatchDto, BatchMemberDto } from '@smart/contracts';
 import { api } from '../../../lib/api';
+import { validateDomain } from '../../../lib/domain-validation';
 
 // ─────────────────── helpers ────────────────────
 
@@ -78,6 +79,7 @@ export default function ProvisioningPage() {
   // Single candidate
   const [singleName, setSingleName] = useState('');
   const [singleEmail, setSingleEmail] = useState('');
+  const [singleGroupLabel, setSingleGroupLabel] = useState('');
   const [singleSubmitting, setSingleSubmitting] = useState(false);
 
   // Bulk paste
@@ -155,13 +157,22 @@ export default function ProvisioningPage() {
     void loadMembers();
   }, [loadMembers]);
 
+  // ── Auto-dismiss notifications after 5s ──
+  useEffect(() => {
+    if (!successMsg) return;
+    const timer = setTimeout(() => setSuccessMsg(null), 5000);
+    return () => clearTimeout(timer);
+  }, [successMsg]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
+
   // ── Domain validation ──
-  function validateDomain(email: string): boolean {
-    if (!domain || !domain.trim()) return false;
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanDomain = domain.trim().toLowerCase();
-    if (!cleanEmail.includes('@')) return false;
-    return cleanEmail.endsWith(`@${cleanDomain}`);
+  function checkDomain(email: string): boolean {
+    return validateDomain(email, domain);
   }
 
   // ── Single candidate submit ──
@@ -171,6 +182,7 @@ export default function ProvisioningPage() {
     setSuccessMsg(null);
     const email = singleEmail.trim().toLowerCase();
     const name = singleName.trim();
+    const groupLabel = singleGroupLabel.trim() || undefined;
     if (!name || !email) {
       setError('Please enter both the candidate name and email.');
       return;
@@ -179,8 +191,10 @@ export default function ProvisioningPage() {
       setError('Please select a batch before onboarding candidates.');
       return;
     }
-    if (!validateDomain(email)) {
-      setError(`Email must belong to the institution's locked domain: @${domain ?? '(loading…)'}`);
+    if (!checkDomain(email)) {
+      setError(
+        `Email must belong to the institution's domain (@${domain ?? '(loading…)'} or subdomain).`,
+      );
       return;
     }
     setSingleSubmitting(true);
@@ -188,24 +202,28 @@ export default function ProvisioningPage() {
       const member = await api.onboarding.addBatchMember(selectedBatchId, {
         fullName: name,
         email,
+        groupLabel,
       });
-      let sendFailed = false;
+      let sendError: string | null = null;
       if (member.invitation?.invitationId) {
         try {
           await api.onboarding.resendStudentInvitation(member.invitation.invitationId);
-        } catch {
-          sendFailed = true;
+        } catch (caught: unknown) {
+          sendError = safeMsg(caught, 'Email delivery failed');
         }
       }
-      if (sendFailed) {
-        setSuccessMsg(
-          `Candidate ${name} added to batch, but sending invitation email failed. You can resend the invitation from the candidate roster below.`,
+      if (sendError) {
+        setError(
+          `Candidate ${name} was added to batch, but email delivery failed: ${sendError}. You can retry using "Resend" or use "Copy Link" from the roster below.`,
         );
       } else {
-        setSuccessMsg(`Invitation sent to ${email}. They will receive a magic link via email.`);
+        setSuccessMsg(
+          `Invitation sent to ${email}. Candidate will receive a magic link via email.`,
+        );
       }
       setSingleName('');
       setSingleEmail('');
+      setSingleGroupLabel('');
       await loadMembers();
     } catch (caught) {
       setError(safeMsg(caught, 'Failed to onboard candidate. Please try again.'));
@@ -226,7 +244,7 @@ export default function ProvisioningPage() {
       setError('No valid email addresses found in the pasted text.');
       return;
     }
-    setParsedBulk(emails.map((em) => ({ email: em, isValid: validateDomain(em) })));
+    setParsedBulk(emails.map((em) => ({ email: em, isValid: checkDomain(em) })));
   }
 
   async function handleBulkSubmit() {
@@ -282,7 +300,7 @@ export default function ProvisioningPage() {
       const text = e.target?.result as string;
       if (!text) return;
       const emails = extractEmailsFromCsv(text);
-      setParsedCsv(emails.map((em) => ({ email: em, isValid: validateDomain(em) })));
+      setParsedCsv(emails.map((em) => ({ email: em, isValid: checkDomain(em) })));
     };
     reader.readAsText(file);
   }
@@ -378,8 +396,7 @@ export default function ProvisioningPage() {
     }
   }
 
-  const isSingleValid =
-    !!singleEmail && !!domain && singleEmail.trim().toLowerCase().endsWith(`@${domain}`);
+  const isSingleValid = !!singleEmail && checkDomain(singleEmail);
 
   const pendingMembers = members.filter(
     (m) => m.invitation?.status === 'PENDING' && !m.emailVerified,
@@ -566,8 +583,25 @@ export default function ProvisioningPage() {
                 )}
               </div>
               <p className="text-[11px] text-zinc-500 mt-1.5 font-medium">
-                Must belong to @{domain ?? '(loading…)'}. Candidate selects their stream during
-                onboarding.
+                Must belong to @{domain ?? '(loading…)'} or its subdomains. Candidate selects their
+                stream during onboarding.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">
+                Group / Section{' '}
+                <span className="normal-case font-normal text-zinc-500">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. CSE-A, Batch 2026, Section 1"
+                className="w-full bg-zinc-950 text-zinc-100 text-xs rounded-lg py-2.5 px-4 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-medium placeholder:text-zinc-500"
+                value={singleGroupLabel}
+                onChange={(e) => setSingleGroupLabel(e.target.value)}
+              />
+              <p className="text-[11px] text-zinc-500 mt-1.5 font-medium">
+                Optional group or section label to organize candidates within the batch.
               </p>
             </div>
 
