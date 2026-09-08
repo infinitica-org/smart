@@ -52,6 +52,12 @@ function previousStepBefore(step: WizardStepId): WizardStepId | null {
  * this mirrors (and extends) the single `firstName` heuristic the old wizard used.
  */
 function furthestStep(form: OnboardingProfileForm): WizardStepId {
+  if (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('linkedinVerified') !== null
+  ) {
+    return 'social';
+  }
   const hasPreferences = Boolean(form.jobPreferences.expectedCtcLakhs.trim());
   if (hasPreferences) return 'preferences';
   const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
