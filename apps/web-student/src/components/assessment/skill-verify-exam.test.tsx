@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SkillVerifySessionDto } from '@smart/contracts';
 import {
@@ -143,6 +143,7 @@ describe('SkillVerifyExam layout', () => {
     expect(
       screen.getAllByRole('button', { name: /submit and see results/i }).length,
     ).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /^run$/i })).toBeNull();
   });
 
   it('splits fenced code out of a trace stem', () => {
@@ -218,5 +219,59 @@ describe('SkillVerifyExam layout', () => {
     expect(screen.getByText('Root cause and fix')).toBeDefined();
     expect(screen.getByPlaceholderText('Describe the bug and the fix')).toBeDefined();
     expect(screen.getByLabelText('Debug response')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^run$/i })).toBeNull();
+  });
+
+  it('runs coding source against visible examples without grading', async () => {
+    const onRunCode = vi.fn().mockResolvedValue({
+      compileError: null,
+      testsPassed: 1,
+      testsTotal: 1,
+      tests: [
+        {
+          input: 'nums = [2,7], target = 9',
+          expected: '[0,1]',
+          actual: '[0,1]',
+          passed: true,
+        },
+      ],
+      promptRef: 'sde-skill-code-runner@1',
+    });
+    render(
+      <SkillVerifyExam
+        session={session({
+          items: [
+            {
+              index: 1,
+              format: 'CODING',
+              title: 'Two Sum',
+              prompt: 'Return two indices.',
+              options: null,
+              examples: [{ input: 'nums = [2,7], target = 9', output: '[0,1]' }],
+            },
+          ],
+        })}
+        currentIndex={0}
+        answers={{ 1: { text: 'function twoSum() { return [0,1]; }' } }}
+        pending={false}
+        error={null}
+        onSelectKey={vi.fn()}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+        onRunCode={onRunCode}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^run$/i }));
+    await waitFor(() => {
+      expect(onRunCode).toHaveBeenCalledWith(
+        expect.objectContaining({ format: 'CODING', title: 'Two Sum' }),
+        'function twoSum() { return [0,1]; }',
+      );
+    });
+    expect(await screen.findByText('1/1 tests passed')).toBeDefined();
+    expect(screen.getByText(/PASS/)).toBeDefined();
   });
 });

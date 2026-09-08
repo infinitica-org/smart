@@ -31,6 +31,7 @@ import type {
   CompleteSkillVerifyRequest,
   SaveSkillVerifyRequest,
   StartSkillVerifyRequest,
+  RunSdeSkillFormCodeRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -98,6 +99,7 @@ import {
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
   SaveDraftResponseSchema,
+  RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   ValidateWorkExperienceProofResponseSchema,
@@ -883,12 +885,23 @@ export function systemApi(client: SmartApiClient) {
   };
 }
 
+export function evaluationApi(client: SmartApiClient) {
+  return {
+    runSkillFormCode: (body: RunSdeSkillFormCodeRequest) =>
+      client.post(prefixed('/evaluation/skill-form/run-code'), body, {
+        schema: RunSdeSkillFormCodeResponseSchema,
+        timeoutMs: 60_000,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
     users: usersApi(client),
     catalog: catalogApi(client),
     assessment: assessmentApi(client),
+    evaluation: evaluationApi(client),
     proctoring: proctoringApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),

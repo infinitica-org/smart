@@ -11,6 +11,7 @@ export const SDE_SKILL_FORM_CLOSED_PROMPT_REF = 'sde-skill-form-closed@1' as con
 export const SDE_SKILL_FORM_OPEN_PROMPT_REF = 'sde-skill-form-open@2' as const;
 export const SDE_SKILL_OPEN_GRADER_PROMPT_REF = 'sde-skill-open-grader@1' as const;
 export const SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF = 'sde-skill-open-batch-grader@2' as const;
+export const SDE_SKILL_CODE_RUNNER_PROMPT_REF = 'sde-skill-code-runner@1' as const;
 
 const FormatSchema = z.enum(SDE_V4_FORMATS);
 
@@ -284,6 +285,70 @@ export const sdeSkillOpenBatchGraderTemplate: PromptTemplate<SdeOpenBatchGraderV
         untrusted(item.candidateResponse),
       ]),
       'Grade all items now.',
+    ]
+      .filter((section) => section !== '')
+      .join('\n'),
+  }),
+};
+
+export const SdeCodeRunnerVariables = z.object({
+  prompt: z.string().min(1).max(4_000),
+  constraints: z.string().max(2_000).optional().default(''),
+  source: z.string().min(1).max(8_000),
+  tests: z
+    .array(
+      z.object({
+        input: z.string().min(1).max(800),
+        expected: z.string().min(1).max(800),
+      }),
+    )
+    .max(8),
+});
+export type SdeCodeRunnerVariables = z.infer<typeof SdeCodeRunnerVariables>;
+
+export const SdeCodeRunnerOutputSchema = z.object({
+  compileError: z.string().max(1_200).nullable(),
+  tests: z
+    .array(
+      z.object({
+        input: z.string().max(800),
+        expected: z.string().max(800),
+        actual: z.string().max(800),
+        passed: z.boolean(),
+      }),
+    )
+    .max(8),
+});
+
+export const sdeSkillCodeRunnerTemplate: PromptTemplate<SdeCodeRunnerVariables> = {
+  id: 'sde-skill-code-runner',
+  version: 1,
+  purpose: 'Simulate compiling and running candidate code against visible tests. No marks.',
+  modelRole: 'PRIMARY_REASONING',
+  temperature: 0,
+  maxOutputTokens: 1_536,
+  outputSchema: SdeCodeRunnerOutputSchema,
+  variablesSchema: SdeCodeRunnerVariables,
+  render: (variables) => ({
+    system: [
+      'You are a language runtime and compiler, not a grader.',
+      'Parse the candidate source. If it would not compile or parse, set compileError to a short diagnostic and set every test passed=false with actual="".',
+      'If it compiles, mentally execute the intended entrypoint against each test input. Compare stdout/return value to expected with reasonable whitespace tolerance.',
+      'Do not award marks, judge style, suggest fixes, or rewrite the solution. Do not invent extra tests.',
+      'Return one tests[] row per provided test, same order.',
+      INJECTION_GUARD,
+      jsonOnly(
+        `{"compileError":string|null,"tests":[{"input":string,"expected":string,"actual":string,"passed":boolean}]}`,
+      ),
+    ].join('\n'),
+    user: [
+      `PROBLEM\n${variables.prompt}`,
+      variables.constraints ? `CONSTRAINTS\n${variables.constraints}` : '',
+      variables.tests.length > 0
+        ? `TESTS\n${variables.tests.map((test, i) => `${String(i + 1)}. input=${test.input} expected=${test.expected}`).join('\n')}`
+        : 'TESTS\n(none)',
+      untrusted(variables.source),
+      'Run now.',
     ]
       .filter((section) => section !== '')
       .join('\n'),

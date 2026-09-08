@@ -205,6 +205,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           }
           onExit={() => router.push('/assessments')}
           onSubmit={complete}
+          onRunCode={(item, source) =>
+            api.evaluation.runSkillFormCode({
+              prompt: item.prompt,
+              constraints: item.constraints,
+              source,
+              examples: item.examples ?? [],
+            })
+          }
         />
       )}
     </ProctoringShell>

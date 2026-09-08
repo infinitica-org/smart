@@ -5,6 +5,8 @@ import {
   GradeSdeSkillFormResponseSchema,
   GradeSkillInterviewRequestSchema,
   GradeSkillInterviewResponseSchema,
+  RunSdeSkillFormCodeRequestSchema,
+  RunSdeSkillFormCodeResponseSchema,
   SdeSkillFormPublicItemSchema,
   SKILL_INTERVIEW_ANSWER_MAX_CHARS,
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
@@ -158,5 +160,27 @@ describe('SDE skill-form public item and grade report', () => {
     });
     expect(parsed.mcqCorrect).toBe(6);
     expect(parsed.itemResults[0]?.missedTests?.[0]?.reason).toContain('duplicate');
+  });
+
+  it('accepts a compile-only run report without marks', () => {
+    const parsed = RunSdeSkillFormCodeResponseSchema.parse({
+      compileError: null,
+      testsPassed: 1,
+      testsTotal: 2,
+      tests: [
+        { input: 'nums = [2,7], target = 9', expected: '[0,1]', actual: '[0,1]', passed: true },
+        { input: 'nums = [3,2,4], target = 6', expected: '[1,2]', actual: '[0,1]', passed: false },
+      ],
+      promptRef: 'sde-skill-code-runner@1',
+    });
+    expect(parsed.testsPassed).toBe(1);
+    expect(parsed).not.toHaveProperty('marksEarned');
+    expect(
+      RunSdeSkillFormCodeRequestSchema.safeParse({
+        prompt: 'Two Sum',
+        source: '',
+        examples: [],
+      }).success,
+    ).toBe(false);
   });
 });

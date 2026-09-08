@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type {
+  RunSdeSkillFormCodeResponse,
   SdeSkillFormFormat,
   SdeSkillFormPublicItem,
   SkillVerifySessionDto,
@@ -135,6 +136,7 @@ export function SkillVerifyExam({
   onClear,
   onExit,
   onSubmit,
+  onRunCode,
 }: {
   session: SkillVerifySessionDto;
   currentIndex: number;
@@ -148,7 +150,14 @@ export function SkillVerifyExam({
   onClear: (itemIndex: number) => void;
   onExit: () => void;
   onSubmit: () => void;
+  onRunCode?: (
+    item: SdeSkillFormPublicItem,
+    source: string,
+  ) => Promise<RunSdeSkillFormCodeResponse>;
 }) {
+  const [runBusy, setRunBusy] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<RunSdeSkillFormCodeResponse | null>(null);
   const total = session.items.length;
   const item = session.items[currentIndex];
   const last = currentIndex >= total - 1;
@@ -164,6 +173,27 @@ export function SkillVerifyExam({
   const studio = coding || trace || debug;
 
   const heading = kioskTitle ?? formatSkillVerifyKioskTitle(session.skillCode, session.proficiency);
+
+  const runCode = async () => {
+    if (!onRunCode || !coding) return;
+    const source = answer?.text?.trim() ?? '';
+    if (!source) {
+      setRunError('Write a solution before running.');
+      setRunResult(null);
+      return;
+    }
+    setRunBusy(true);
+    setRunError(null);
+    try {
+      const next = await onRunCode(item, source);
+      setRunResult(next);
+    } catch (err) {
+      setRunResult(null);
+      setRunError(err instanceof Error ? err.message : 'Code could not be run.');
+    } finally {
+      setRunBusy(false);
+    }
+  };
 
   return (
     <div className="flex h-full min-h-[100dvh] w-full flex-col bg-[var(--background)] text-[var(--text-primary)]">
@@ -224,6 +254,10 @@ export function SkillVerifyExam({
                   label={debug ? 'Root cause and fix' : 'Solution'}
                   placeholder={debug ? 'Describe the bug and the fix' : 'Write your solution'}
                   ariaLabel={debug ? 'Debug response' : 'Code solution'}
+                  onRun={coding && onRunCode ? runCode : undefined}
+                  runBusy={runBusy}
+                  runError={runError}
+                  runResult={coding ? runResult : null}
                 />
               )}
             </div>
@@ -529,12 +563,20 @@ function SolutionEditor({
   label = 'Solution',
   placeholder = 'Write your solution',
   ariaLabel = 'Code solution',
+  onRun,
+  runBusy = false,
+  runError = null,
+  runResult = null,
 }: {
   value: string;
   onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
   ariaLabel?: string;
+  onRun?: () => void;
+  runBusy?: boolean;
+  runError?: string | null;
+  runResult?: RunSdeSkillFormCodeResponse | null;
 }) {
   const gutterRef = useRef<HTMLPreElement>(null);
   const lineCount = Math.max(value.split('\n').length, 12);
@@ -544,7 +586,15 @@ function SolutionEditor({
     <div className="flex min-h-[22rem] flex-col bg-[#111827] lg:min-h-0">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/55">{label}</span>
-        <span className="text-[10px] text-white/35">Tab inserts spaces</span>
+        <div className="flex items-center gap-2">
+          {onRun ? (
+            <Button type="button" variant="secondary" disabled={runBusy} onClick={onRun}>
+              {runBusy ? 'Running…' : 'Run'}
+            </Button>
+          ) : (
+            <span className="text-[10px] text-white/35">Tab inserts spaces</span>
+          )}
+        </div>
       </div>
       <div className="flex min-h-0 flex-1">
         <pre
@@ -557,7 +607,7 @@ function SolutionEditor({
         <textarea
           className="min-h-0 flex-1 resize-none bg-transparent px-3 py-3 font-mono text-sm leading-6 text-[#e5e7eb] outline-none"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange(event.currentTarget.value)}
           onScroll={(event) => {
             if (gutterRef.current) gutterRef.current.scrollTop = event.currentTarget.scrollTop;
           }}
@@ -582,6 +632,30 @@ function SolutionEditor({
           autoCapitalize="off"
         />
       </div>
+      {onRun ? (
+        <div className="max-h-40 shrink-0 overflow-y-auto border-t border-white/10 px-3 py-2 text-xs text-[#e5e7eb]">
+          {runError ? (
+            <p className="text-danger" role="alert">
+              {runError}
+            </p>
+          ) : null}
+          {runResult?.compileError ? (
+            <p className="text-danger" role="alert">
+              {runResult.compileError}
+            </p>
+          ) : null}
+          {runResult ? (
+            <p className="mb-1 text-white/55">
+              {String(runResult.testsPassed)}/{String(runResult.testsTotal)} tests passed
+            </p>
+          ) : null}
+          {runResult?.tests.map((test, index) => (
+            <p key={`${test.input}-${String(index)}`} className="font-mono text-[11px] leading-5">
+              {test.passed ? 'PASS' : 'FAIL'} · {test.input} → {test.actual || test.expected}
+            </p>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

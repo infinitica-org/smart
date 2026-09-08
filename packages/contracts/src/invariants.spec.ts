@@ -418,6 +418,11 @@ describe('SE-T02 skill interview contracts', () => {
       owner: 'Ramansh',
       rateLimit: 'evaluation.skillInterview',
     });
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/skill-form/run-code')).toMatchObject({
+      method: 'POST',
+      owner: 'Ramansh',
+      rateLimit: 'evaluation.skillInterview',
+    });
   });
 });
 
