@@ -135,7 +135,7 @@ function mockStudentUser(overrides: Record<string, unknown> = {}) {
     role: 'STUDENT',
     institutionId: '223e4567-e89b-12d3-a456-426614174000',
     institutionName: 'Mock Institution',
-    primaryTrack: mockPrimaryTrack,
+    primaryTrack: mockPrimaryTrack ?? 'TECH_FULLSTACK',
     secondaryTrack: null,
     provider: 'GOOGLE',
     emailVerified: true,
@@ -433,6 +433,31 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           levels: [],
           capstoneBrief: 'Data Analyst capstone.',
         },
+        {
+          trackId: '44444444-4444-4444-8444-444444444444',
+          code: 'TECH_FULLSTACK',
+          name: 'Software Engineering / SDE',
+          description:
+            'Core CS fundamentals, full-stack development, algorithms, system design, and testing.',
+          category: 'TECH',
+          launchStatus: 'AVAILABLE_NEW',
+          calibrationStatus: 'NOT_CALIBRATED',
+          foundationWeight: 0.2,
+          competencies: [],
+          levels: [
+            {
+              levelId: '55555555-5555-4555-8555-555555555555',
+              trackCode: 'TECH_FULLSTACK',
+              levelNumber: 1,
+              name: 'Foundation',
+              format: 'MCQ',
+              durationMinutes: 60,
+              itemCount: 40,
+              cutScoresPublished: false,
+            },
+          ],
+          capstoneBrief: 'Software Engineering capstone.',
+        },
       ]),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -594,6 +619,69 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (url.includes('/assessment/verify/claims/') && url.includes('/prepare') && method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        claimId: url.split('/claims/')[1]?.split('/')[0] ?? 'mock-claim',
+        sessionId: 'mock-verify-session-id',
+        status: 'READY',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 1800000).toISOString(),
+      }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/assessment/verify/claims/') && url.includes('/start') && method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        sessionId: 'mock-verify-session-id',
+        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        proficiency: 'INTERMEDIATE',
+        answers: [],
+        remainingSeconds: 1800,
+        completedAt: null,
+      }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (
+    url.includes('/assessment/verify/sessions/') &&
+    url.includes('/complete') &&
+    method === 'POST'
+  ) {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      integrityTerminated?: boolean;
+      technicalFailure?: boolean;
+    };
+    const isTerminated = Boolean(body.integrityTerminated);
+    const lockedUntil = new Date(Date.now() + 86400000).toISOString();
+    return new Response(
+      JSON.stringify({
+        claim: {
+          claimId: crypto.randomUUID(),
+          studentId: MOCK_USER_ID,
+          skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+          proficiency: 'INTERMEDIATE',
+          status: isTerminated ? 'LOCKED' : 'VERIFIED',
+          strikes: isTerminated ? 1 : 0,
+          lockedUntil: isTerminated ? lockedUntil : null,
+          lastAttemptId: 'mock-verify-session-id',
+        },
+        technicalFailure: Boolean(body.technicalFailure),
+        grade: isTerminated
+          ? null
+          : {
+              overallBand: 'INTERMEDIATE',
+              scorePercentage: 85,
+              passed: true,
+            },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
   }
 
   if (url.includes('/projects') && method === 'POST' && !url.includes('github')) {

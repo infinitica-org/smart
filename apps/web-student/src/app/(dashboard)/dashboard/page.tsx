@@ -71,7 +71,7 @@ export default function DashboardPage() {
             <div className="rounded-[28px] bg-[#1a1a1a] p-7">
               <div className="mb-6 flex items-start justify-between">
                 <h3 className="text-lg font-medium text-white">Your skills</h3>
-                <Link href="/profile" className="text-[13px] text-[#00fad0] hover:underline">
+                <Link href="/skills" className="text-[13px] text-[#00fad0] hover:underline">
                   Manage
                 </Link>
               </div>

@@ -55,6 +55,8 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText(/Welcome back, Ada/i)).toBeTruthy();
     expect(screen.getByText('Your skills')).toBeTruthy();
+    const manageLink = screen.getByText('Manage');
+    expect(manageLink.getAttribute('href')).toBe('/skills');
     expect(screen.getByText('Verified Skills')).toBeTruthy();
     expect(screen.getByText('Skills Declared')).toBeTruthy();
 

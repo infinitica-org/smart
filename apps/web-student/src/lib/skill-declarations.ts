@@ -201,7 +201,7 @@ export function viewForFocus(
     canStart,
     cooling,
     retryAt: cooling ? retryAt : null,
-    canEditProficiency: !row || status === 'DECLARED',
+    canEditProficiency: false,
     hasForm,
     blockMessage: synthetic ? skillVerifyBlockMessage(synthetic) : null,
   };
