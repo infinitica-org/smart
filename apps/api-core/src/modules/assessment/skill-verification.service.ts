@@ -28,6 +28,7 @@ import {
   upsertFocusProgress,
   sdeV4FormCodeForCatalogSkill,
   type CompleteSkillVerifyResponse,
+  type PolymorphicAssessmentSessionDto,
   type SkillClaimDto,
   type SkillClaimStatus,
   type SkillProficiency,
@@ -40,6 +41,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
+import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
 
 function skillVerifyRedisKey(sessionId: string): string {
   return `session:skill-verify:${sessionId}`;
@@ -246,6 +248,29 @@ export class SkillVerificationService {
     const stored = await this.loadSession(user.sub, sessionId);
     this.assertNotExpired(stored);
     return this.toDto(stored);
+  }
+
+  async getPolymorphicSession(
+    user: RequestUser,
+    sessionId: string,
+  ): Promise<PolymorphicAssessmentSessionDto> {
+    this.assertStudent(user);
+    const stored = await this.loadSession(user.sub, sessionId);
+    const claim = await this.loadOwnClaim(user.sub, stored.claimId);
+    const selected = this.progressForClaim(claim, stored.skillFocus).selected;
+    const lockedUntil = selected.lockedUntil ? new Date(selected.lockedUntil) : null;
+    const retryAvailableAt = selected.retryAvailableAt ? new Date(selected.retryAvailableAt) : null;
+
+    return buildSkillPolymorphicSession({
+      sessionId: stored.sessionId,
+      claimId: stored.claimId,
+      status: selected.status,
+      hasActiveSession: true,
+      retryAvailableAt,
+      lockedUntil,
+      expiresAt: stored.expiresAt,
+      serverRemainingSeconds: ttlSeconds(stored.expiresAt),
+    });
   }
 
   async save(user: RequestUser, sessionId: string, body: unknown): Promise<SkillVerifySessionDto> {
