@@ -80,6 +80,10 @@ services:
       retries: 10
       start_period: 10s
 
+  # AOF (fsync every second) instead of relying on RDB snapshot intervals —
+  # candidate assessment session state (session:assessment:{attempt_id})
+  # changes continuously; without this, a crash between snapshots could lose
+  # several minutes of an in-progress attempt instead of at most ~1s.
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -87,9 +91,13 @@ services:
       [
         "redis-server",
         "--maxmemory",
-        "512mb",
+        "${REDIS_MAXMEMORY:-512mb}",
         "--maxmemory-policy",
         "volatile-lru",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
         "--bind",
         "0.0.0.0",
         "--protected-mode",
@@ -118,6 +126,13 @@ services:
       - internal://redpanda:9092,external://localhost:19092
       - --mode
       - dev-container
+      # --mode dev-container bundles --unsafe-bypass-fsync=true (acks writes
+      # before they hit disk) along with the auto-topic-creation/low-memory
+      # properties we still want. Override just the fsync bypass — a later
+      # explicit flag wins over the bundle — so a crash/power-loss can't
+      # silently drop "committed" Kafka messages. Verified: this still starts
+      # cleanly with auto_create_topics_enabled intact.
+      - --unsafe-bypass-fsync=false
     ports:
       - "127.0.0.1:${REDPANDA_PORT:-19092}:19092"
     volumes:
