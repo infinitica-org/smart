@@ -123,51 +123,49 @@ export default function InstitutionsPage() {
           <CardDescription>Filter by name, plan, or access status.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <FilterBar>
-            <Field label="Search">
-              <AdminInput
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Name or domain"
-              />
-            </Field>
-            <Field label="Plan">
-              <NativeSelect
-                value={planCode}
-                onChange={(e) => setPlanCode(e.target.value as PlanCode | '')}
-              >
-                <option value="">All plans</option>
-                <option value="FREE">Free</option>
-                <option value="BASIC">Basic</option>
-                <option value="PRO">Pro</option>
-              </NativeSelect>
-            </Field>
-            <Field label="Status">
-              <NativeSelect
-                value={status}
-                onChange={(e) => setStatus(e.target.value as InstitutionListStatus | '')}
-              >
-                <option value="">Active + on hold</option>
-                <option value="ACTIVE">Active</option>
-                <option value="HELD">On hold</option>
-                <option value="DEACTIVATED">Deactivated</option>
-              </NativeSelect>
-            </Field>
-            <Button
-              type="button"
-              variant="outline"
-              className={controlButtonClassName}
-              onClick={() => {
-                setError(null);
-                load().catch((err) =>
-                  setError(formatApiError(err, 'Failed to load institutions.')),
-                );
-              }}
-            >
-              <Filter data-icon="inline-start" />
-              Apply filters
-            </Button>
-          </FilterBar>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              load().catch((err) => setError(formatApiError(err, 'Failed to load institutions.')));
+            }}
+          >
+            <FilterBar>
+              <Field label="Search">
+                <AdminInput
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Name or domain"
+                />
+              </Field>
+              <Field label="Plan">
+                <NativeSelect
+                  value={planCode}
+                  onChange={(e) => setPlanCode(e.target.value as PlanCode | '')}
+                >
+                  <option value="">All plans</option>
+                  <option value="FREE">Free</option>
+                  <option value="BASIC">Basic</option>
+                  <option value="PRO">Pro</option>
+                </NativeSelect>
+              </Field>
+              <Field label="Status">
+                <NativeSelect
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as InstitutionListStatus | '')}
+                >
+                  <option value="">Active + on hold</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="HELD">On hold</option>
+                  <option value="DEACTIVATED">Deactivated</option>
+                </NativeSelect>
+              </Field>
+              <Button type="submit" variant="outline" className={controlButtonClassName}>
+                <Filter data-icon="inline-start" />
+                Apply filters
+              </Button>
+            </FilterBar>
+          </form>
         </CardContent>
       </Card>
 
