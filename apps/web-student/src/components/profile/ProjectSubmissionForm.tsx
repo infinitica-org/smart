@@ -5,6 +5,7 @@ import type { GithubRepoSummary, ProjectDto } from '@smart/contracts';
 import { Alert, Button, Input } from '@smart/ui';
 import { GitBranch, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useFeatureFlag } from '../../lib/entitlements';
 import {
   EMPTY_PROJECT_FORM,
   buildCreateProjectRequest,
@@ -29,6 +30,7 @@ const STATUS_BADGE_TONE: Record<'info' | 'success' | 'warning' | 'danger', strin
 };
 
 export function ProjectSubmissionForm() {
+  const canSubmitProjects = useFeatureFlag('project_verification');
   const [fields, setFields] = useState<ProjectFormFields>(EMPTY_PROJECT_FORM);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProjectFormFields, string>>>(
     {},
@@ -284,157 +286,165 @@ export function ProjectSubmissionForm() {
         </Alert>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        <Button type="button" variant="outline" disabled={isPending} onClick={toggleImport}>
-          <GitBranch className="h-4 w-4" />{' '}
-          {showImport ? 'Hide GitHub repos' : 'Import from GitHub'}
-        </Button>
+      {canSubmitProjects ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Button type="button" variant="outline" disabled={isPending} onClick={toggleImport}>
+              <GitBranch className="h-4 w-4" />{' '}
+              {showImport ? 'Hide GitHub repos' : 'Import from GitHub'}
+            </Button>
 
-        {showImport ? (
-          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-sm">
-            {!githubLogin ? (
-              <p className="text-gray-500">
-                No GitHub account connected. Connect one from onboarding, or just fill this in
-                manually below.
-              </p>
-            ) : reposLoading ? (
-              <p className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading your repos…
-              </p>
-            ) : reposError ? (
-              <p className="text-red-600">{reposError}</p>
-            ) : repos && repos.length === 0 ? (
-              <p className="text-gray-500">No public repos found for {githubLogin}.</p>
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {(repos ?? []).map((repo) => (
-                  <li key={repo.id}>
-                    <button
-                      type="button"
-                      onClick={() => importRepo(repo)}
-                      disabled={importingRepo !== null}
-                      className="flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-left hover:bg-gray-100 disabled:opacity-50"
-                    >
-                      <span className="flex items-center gap-2 font-medium">
-                        {repo.fullName}
-                        {importingRepo === repo.fullName ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : null}
-                      </span>
-                      {repo.description ? (
-                        <span className="text-xs text-[var(--text-secondary)]">
-                          {repo.description}
-                        </span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {showImport ? (
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-sm">
+                {!githubLogin ? (
+                  <p className="text-gray-500">
+                    No GitHub account connected. Connect one from onboarding, or just fill this in
+                    manually below.
+                  </p>
+                ) : reposLoading ? (
+                  <p className="flex items-center gap-2 text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading your repos…
+                  </p>
+                ) : reposError ? (
+                  <p className="text-red-600">{reposError}</p>
+                ) : repos && repos.length === 0 ? (
+                  <p className="text-gray-500">No public repos found for {githubLogin}.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {(repos ?? []).map((repo) => (
+                      <li key={repo.id}>
+                        <button
+                          type="button"
+                          onClick={() => importRepo(repo)}
+                          disabled={importingRepo !== null}
+                          className="flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-left hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <span className="flex items-center gap-2 font-medium">
+                            {repo.fullName}
+                            {importingRepo === repo.fullName ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                          </span>
+                          {repo.description ? (
+                            <span className="text-xs text-[var(--text-secondary)]">
+                              {repo.description}
+                            </span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
 
-      <div className="grid gap-4">
-        <Input
-          label="Title"
-          name="title"
-          value={fields.title}
-          error={fieldErrors.title}
-          disabled={isPending}
-          onChange={(event) => setField('title', event.target.value)}
-        />
-        <label className="flex flex-col gap-1.5 text-sm" htmlFor="problem">
-          <span className="font-medium">Problem</span>
-          <textarea
-            id="problem"
-            name="problem"
-            rows={4}
-            value={fields.problem}
-            disabled={isPending}
-            onChange={(event) => setField('problem', event.target.value)}
-            className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
-            aria-invalid={fieldErrors.problem ? true : undefined}
-          />
-          {fieldErrors.problem ? (
-            <span className="text-xs text-red-400">{fieldErrors.problem}</span>
-          ) : null}
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm" htmlFor="approach">
-          <span className="font-medium">Approach</span>
-          <textarea
-            id="approach"
-            name="approach"
-            rows={4}
-            value={fields.approach}
-            disabled={isPending}
-            onChange={(event) => setField('approach', event.target.value)}
-            className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
-          />
-          {fieldErrors.approach ? (
-            <span className="text-xs text-red-400">{fieldErrors.approach}</span>
-          ) : null}
-        </label>
-        <Input
-          label="Stack"
-          name="stack"
-          value={fields.stack}
-          error={fieldErrors.stack}
-          disabled={isPending}
-          onChange={(event) => setField('stack', event.target.value)}
-        />
-        <label className="flex flex-col gap-1.5 text-sm" htmlFor="outcome">
-          <span className="font-medium">Outcome</span>
-          <textarea
-            id="outcome"
-            name="outcome"
-            rows={4}
-            value={fields.outcome}
-            disabled={isPending}
-            onChange={(event) => setField('outcome', event.target.value)}
-            className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
-          />
-          {fieldErrors.outcome ? (
-            <span className="text-xs text-red-400">{fieldErrors.outcome}</span>
-          ) : null}
-        </label>
-        <Input
-          label="Loom link"
-          name="loomUrl"
-          type="url"
-          placeholder="https://www.loom.com/share/…"
-          value={fields.loomUrl}
-          error={fieldErrors.loomUrl}
-          disabled={isPending}
-          onChange={(event) => setField('loomUrl', event.target.value)}
-        />
-        <Input
-          label="GitHub link (optional)"
-          name="githubUrl"
-          type="url"
-          placeholder="https://github.com/org/repo"
-          value={fields.githubUrl}
-          error={fieldErrors.githubUrl}
-          disabled={isPending}
-          onChange={(event) => setField('githubUrl', event.target.value)}
-        />
-        <Input
-          label="Live link (optional)"
-          name="liveUrl"
-          type="url"
-          placeholder="https://your-project.example.com"
-          value={fields.liveUrl}
-          error={fieldErrors.liveUrl}
-          disabled={isPending}
-          onChange={(event) => setField('liveUrl', event.target.value)}
-        />
-      </div>
+          <div className="grid gap-4">
+            <Input
+              label="Title"
+              name="title"
+              value={fields.title}
+              error={fieldErrors.title}
+              disabled={isPending}
+              onChange={(event) => setField('title', event.target.value)}
+            />
+            <label className="flex flex-col gap-1.5 text-sm" htmlFor="problem">
+              <span className="font-medium">Problem</span>
+              <textarea
+                id="problem"
+                name="problem"
+                rows={4}
+                value={fields.problem}
+                disabled={isPending}
+                onChange={(event) => setField('problem', event.target.value)}
+                className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
+                aria-invalid={fieldErrors.problem ? true : undefined}
+              />
+              {fieldErrors.problem ? (
+                <span className="text-xs text-red-400">{fieldErrors.problem}</span>
+              ) : null}
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm" htmlFor="approach">
+              <span className="font-medium">Approach</span>
+              <textarea
+                id="approach"
+                name="approach"
+                rows={4}
+                value={fields.approach}
+                disabled={isPending}
+                onChange={(event) => setField('approach', event.target.value)}
+                className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
+              />
+              {fieldErrors.approach ? (
+                <span className="text-xs text-red-400">{fieldErrors.approach}</span>
+              ) : null}
+            </label>
+            <Input
+              label="Stack"
+              name="stack"
+              value={fields.stack}
+              error={fieldErrors.stack}
+              disabled={isPending}
+              onChange={(event) => setField('stack', event.target.value)}
+            />
+            <label className="flex flex-col gap-1.5 text-sm" htmlFor="outcome">
+              <span className="font-medium">Outcome</span>
+              <textarea
+                id="outcome"
+                name="outcome"
+                rows={4}
+                value={fields.outcome}
+                disabled={isPending}
+                onChange={(event) => setField('outcome', event.target.value)}
+                className="rounded-lg border border-[var(--surface-border)] bg-transparent px-3 py-2 text-sm"
+              />
+              {fieldErrors.outcome ? (
+                <span className="text-xs text-red-400">{fieldErrors.outcome}</span>
+              ) : null}
+            </label>
+            <Input
+              label="Loom link"
+              name="loomUrl"
+              type="url"
+              placeholder="https://www.loom.com/share/…"
+              value={fields.loomUrl}
+              error={fieldErrors.loomUrl}
+              disabled={isPending}
+              onChange={(event) => setField('loomUrl', event.target.value)}
+            />
+            <Input
+              label="GitHub link (optional)"
+              name="githubUrl"
+              type="url"
+              placeholder="https://github.com/org/repo"
+              value={fields.githubUrl}
+              error={fieldErrors.githubUrl}
+              disabled={isPending}
+              onChange={(event) => setField('githubUrl', event.target.value)}
+            />
+            <Input
+              label="Live link (optional)"
+              name="liveUrl"
+              type="url"
+              placeholder="https://your-project.example.com"
+              value={fields.liveUrl}
+              error={fieldErrors.liveUrl}
+              disabled={isPending}
+              onChange={(event) => setField('liveUrl', event.target.value)}
+            />
+          </div>
 
-      <div>
-        <Button type="button" disabled={isPending} onClick={submit}>
-          {isPending ? 'Submitting…' : 'Submit project'}
-        </Button>
-      </div>
+          <div>
+            <Button type="button" disabled={isPending} onClick={submit}>
+              {isPending ? 'Submitting…' : 'Submit project'}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Alert tone="info" title="Project verification isn't on your institution's plan">
+          Ask your TPO to upgrade the plan to submit new projects for verification.
+        </Alert>
+      )}
     </section>
   );
 }

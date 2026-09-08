@@ -219,6 +219,13 @@ export const dbQueryDuration = new Histogram({
   registers: [registry],
 });
 
+export const quotaExceeded = new Counter({
+  name: 'smart_quota_exceeded_total',
+  help: 'Actions blocked by a plan quota, by tenant type, plan code and quota dimension.',
+  labelNames: ['tenant_type', 'plan_code', 'dimension'] as const,
+  registers: [registry],
+});
+
 export const sandboxExecutions = new Counter({
   name: 'smart_sandbox_executions_total',
   help: 'Code sandbox executions by language and outcome.',

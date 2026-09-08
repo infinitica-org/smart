@@ -140,6 +140,7 @@ export const SubscriptionPlanDtoSchema = z.object({
   planId: UuidSchema,
   code: PlanCodeSchema,
   name: z.string(),
+  candidateCapacity: z.number().int().positive().nullable(),
   entitlements: z.array(PlanEntitlementDtoSchema),
   institutionCount: z.number().int().nonnegative(),
 });
@@ -395,6 +396,11 @@ export const UpdatePlanEntitlementsRequestSchema = z.object({
 });
 export type UpdatePlanEntitlementsRequest = z.infer<typeof UpdatePlanEntitlementsRequestSchema>;
 
+export const UpdatePlanCapacityRequestSchema = z.object({
+  candidateCapacity: z.number().int().positive().nullable(),
+});
+export type UpdatePlanCapacityRequest = z.infer<typeof UpdatePlanCapacityRequestSchema>;
+
 export const SetFeatureFlagOverrideRequestSchema = z.object({
   key: z.string().min(2).max(80),
   enabled: z.boolean(),
@@ -407,7 +413,8 @@ export const TenantEntitlementsDtoSchema = z.object({
   institutionName: z.string().optional(),
   domain: z.string().optional(),
   verificationStatus: TenantVerificationStatusSchema.optional(),
-  candidateCapacity: z.number().optional(),
+  candidateCapacity: z.number().nullable().optional(),
+  candidateUsage: z.number().int().nonnegative().optional(),
 });
 export type TenantEntitlementsDto = z.infer<typeof TenantEntitlementsDtoSchema>;
 

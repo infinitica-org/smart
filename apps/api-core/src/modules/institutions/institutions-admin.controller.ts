@@ -12,6 +12,7 @@ import {
   SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
   UpdateInstitutionRequestSchema,
+  UpdatePlanCapacityRequestSchema,
   UpdatePlanEntitlementsRequestSchema,
   ViewCandidateRequestSchema,
 } from '@smart/contracts';
@@ -90,6 +91,19 @@ export class InstitutionsAdminController {
     return this.institutions.updatePlanEntitlements(
       planId,
       UpdatePlanEntitlementsRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Patch('plans/:planId/capacity')
+  updatePlanCapacity(
+    @Param('planId') planId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.updatePlanCapacity(
+      planId,
+      UpdatePlanCapacityRequestSchema.parse(body),
       user.sub,
     );
   }

@@ -43,16 +43,21 @@ import type {
   PlanCode,
   SetFeatureFlagOverrideRequest,
   ResolveVerificationRequest,
+  UpdatePlanCapacityRequest,
   VerificationQueueItemDto,
 } from '@smart/contracts';
+import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
-import { batchImportRows } from '@smart/observability';
+import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
+const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
+  `entitlements:institution:${institutionId}`;
 
 /** Groups the raw UserRole enum into the three audit-log tabs the superadmin UI shows. */
 const AUDIT_LOG_SECTION_ROLES: Record<AuditLogSection, PrismaUserRole[]> = {
@@ -74,6 +79,7 @@ export class InstitutionsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   /* ----------------------------- platform admin ----------------------------- */
@@ -184,6 +190,10 @@ export class InstitutionsService {
     }
     await this.prisma.institution.update({ where: { id: institutionId }, data });
     if (body.planCode) {
+      // A plan reassignment changes this institution's effective entitlements
+      // immediately, unlike a plan-level entitlement edit — bust its cache now
+      // rather than waiting out the TTL.
+      await this.redis.del(ENTITLEMENTS_CACHE_KEY(institutionId));
       await this.writeAudit(
         actorId,
         'institution.plan_changed',
@@ -377,6 +387,7 @@ export class InstitutionsService {
       planId: plan.id,
       code: plan.code,
       name: plan.name,
+      candidateCapacity: plan.candidateCapacity,
       institutionCount: plan._count.institutions,
       entitlements: plan.entitlements.map((row) => ({
         key: row.featureFlag.key,
@@ -414,6 +425,40 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'plan.entitlements_updated', 'plan', planId, 'plan matrix', {
       entitlements: body.entitlements,
     });
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
+  }
+
+  async updatePlanCapacity(
+    planId: string,
+    body: UpdatePlanCapacityRequest,
+    actorId: string,
+  ): Promise<SubscriptionPlanDto> {
+    const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    await this.prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: { candidateCapacity: body.candidateCapacity },
+    });
+    await this.writeAudit(actorId, 'plan.capacity_updated', 'plan', planId, 'candidate capacity', {
+      candidateCapacity: body.candidateCapacity,
+    });
+    // Plan-level edits are rare admin actions; tenants on this plan see the
+    // change once their 60s entitlement cache entry naturally expires rather
+    // than us enumerating and busting every tenant's key here.
     const updated = (await this.listPlans()).find((row) => row.planId === planId);
     if (!updated) {
       throw new NotFoundException({
@@ -463,26 +508,34 @@ export class InstitutionsService {
         enabled: body.enabled,
       },
     );
+    await this.redis.del(ENTITLEMENTS_CACHE_KEY(institutionId));
     return this.resolveInstitutionEntitlements(institutionId);
   }
 
   async resolveInstitutionEntitlements(institutionId: string): Promise<TenantEntitlementsDto> {
+    const cacheKey = ENTITLEMENTS_CACHE_KEY(institutionId);
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      cacheOperations.inc({ namespace: 'entitlements', result: 'hit' });
+      return JSON.parse(cached) as TenantEntitlementsDto;
+    }
+    cacheOperations.inc({ namespace: 'entitlements', result: 'miss' });
+
     const institution = await this.requireInstitution(institutionId);
-    const flags = await this.prisma.featureFlag.findMany({
-      include: { entitlements: true, overrides: true },
-      orderBy: { key: 'asc' },
-    });
-    const PLAN_CAPACITIES: Record<string, number | undefined> = {
-      FREE: 100,
-      BASIC: 500,
-      PRO: undefined,
-    };
-    return {
+    const [flags, candidateUsage] = await Promise.all([
+      this.prisma.featureFlag.findMany({
+        include: { entitlements: true, overrides: true },
+        orderBy: { key: 'asc' },
+      }),
+      this.prisma.user.count({ where: { institutionId, role: 'STUDENT' } }),
+    ]);
+    const resolved: TenantEntitlementsDto = {
       planCode: institution.plan.code,
       institutionName: institution.name,
       domain: institution.domain,
       verificationStatus: institution.verificationStatus,
-      candidateCapacity: PLAN_CAPACITIES[institution.plan.code],
+      candidateCapacity: institution.plan.candidateCapacity,
+      candidateUsage,
       flags: flags.map((flag) => {
         const override = flag.overrides.find((row) => row.institutionId === institutionId);
         const entitlement = flag.entitlements.find((row) => row.planId === institution.planId);
@@ -493,6 +546,12 @@ export class InstitutionsService {
         };
       }),
     };
+    await this.redis.setex(
+      cacheKey,
+      REDIS_TTL_SECONDS.entitlementsResolve,
+      JSON.stringify(resolved),
+    );
+    return resolved;
   }
 
   async assertInstitutionFlag(institutionId: string, key: string): Promise<void> {
@@ -502,6 +561,28 @@ export class InstitutionsService {
       throw new ForbiddenException({
         error: 'forbidden',
         message: `This institution's plan does not include ${key}.`,
+        statusCode: 403,
+      });
+    }
+  }
+
+  /**
+   * Throws when adding `additionalCount` more students would exceed the
+   * institution's plan capacity. A null capacity means unlimited (PRO today).
+   */
+  async assertCandidateCapacity(institutionId: string, additionalCount = 1): Promise<void> {
+    const resolved = await this.resolveInstitutionEntitlements(institutionId);
+    if (resolved.candidateCapacity == null) return;
+    const projected = (resolved.candidateUsage ?? 0) + additionalCount;
+    if (projected > resolved.candidateCapacity) {
+      quotaExceeded.inc({
+        tenant_type: 'institution',
+        plan_code: resolved.planCode ?? 'FREE',
+        dimension: 'candidateCapacity',
+      });
+      throw new ForbiddenException({
+        error: 'quota_exceeded',
+        message: `This institution's plan allows up to ${String(resolved.candidateCapacity)} candidates.`,
         statusCode: 403,
       });
     }
@@ -679,6 +760,7 @@ export class InstitutionsService {
           ...(plan ? { planId: plan.id } : {}),
         },
       });
+      if (plan) await this.redis.del(ENTITLEMENTS_CACHE_KEY(tenantId));
       await this.writeAudit(
         actorId,
         'institution.verification',
@@ -711,6 +793,7 @@ export class InstitutionsService {
         ...(pro ? { planId: pro.id } : {}),
       },
     });
+    if (pro) await this.redis.del(`entitlements:company:${tenantId}`);
     await this.writeAudit(actorId, 'company.verification', 'company', tenantId, body.reason, {
       decision: body.decision,
     });
@@ -1043,6 +1126,7 @@ export class InstitutionsService {
     institutionId: string,
     body: AddBatchMemberRequest,
     invitedById: string,
+    opts?: { skipCapacityCheck?: boolean },
   ): Promise<BatchMemberDto> {
     await this.requireBatch(batchId, institutionId);
 
@@ -1050,6 +1134,12 @@ export class InstitutionsService {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
+
+    // Adding an existing student to a batch doesn't grow headcount; only a
+    // brand-new account draws down the plan's candidate capacity.
+    if (!existingUser && !opts?.skipCapacityCheck) {
+      await this.assertCandidateCapacity(institutionId);
+    }
 
     if (existingUser) {
       if (existingUser.institutionId !== institutionId) {
@@ -1163,6 +1253,10 @@ export class InstitutionsService {
     let existingStudents = 0;
     let newAccounts = 0;
     const errors = [...parsed.errors];
+    const newAccountRows = parsed.rows.filter((row) => row.valid && !row.existingStudent).length;
+    if (newAccountRows > 0) {
+      await this.assertCandidateCapacity(institutionId, newAccountRows);
+    }
     for (const row of parsed.rows) {
       if (!row.valid) continue;
       try {
@@ -1175,6 +1269,7 @@ export class InstitutionsService {
             ...(row.groupLabel ? { groupLabel: row.groupLabel } : {}),
           },
           invitedById,
+          { skipCapacityCheck: true },
         );
         imported += 1;
         if (row.existingStudent) existingStudents += 1;

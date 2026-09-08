@@ -399,4 +399,5 @@ export const REDIS_TTL_SECONDS = {
   proctoringWarning: 2 * 60 * 60,
   proctoringHmac: 2 * 60 * 60,
   proctoringBlob: 60,
+  entitlementsResolve: 60,
 } as const;
