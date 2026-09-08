@@ -66,14 +66,14 @@ describe('portal role gates', () => {
 describe('login redirect per role', () => {
   it('sends each role to its own portal home', () => {
     expect(portalHomeForRole('STUDENT', origins)).toBe('http://localhost:3001/dashboard');
-    expect(portalHomeForRole('INSTITUTION_ADMIN', origins)).toBe('http://localhost:3002/batches');
-    expect(portalHomeForRole('PLACEMENT_STAFF', origins)).toBe('http://localhost:3002/batches');
+    expect(portalHomeForRole('INSTITUTION_ADMIN', origins)).toBe('http://localhost:3002/dashboard');
+    expect(portalHomeForRole('PLACEMENT_STAFF', origins)).toBe('http://localhost:3002/dashboard');
     expect(portalHomeForRole('SUPER_ADMIN', origins)).toBe('http://localhost:3003/admin');
   });
 
   it('ignores returnTo that points at a different portal', () => {
     expect(returnToForRole('INSTITUTION_ADMIN', 'http://localhost:3001/dashboard', origins)).toBe(
-      'http://localhost:3002/batches',
+      'http://localhost:3002/dashboard',
     );
     expect(returnToForRole('INSTITUTION_ADMIN', 'http://localhost:3002/batches/abc', origins)).toBe(
       'http://localhost:3002/batches/abc',
@@ -129,9 +129,11 @@ describe('INF-03 session auth end-to-end (SSO excluded)', () => {
   it('logs each of the four roles into the matching portal home', () => {
     expect(returnToForRole('STUDENT', null, origins)).toBe('http://localhost:3001/dashboard');
     expect(returnToForRole('INSTITUTION_ADMIN', 'http://localhost:3001/dashboard', origins)).toBe(
-      'http://localhost:3002/batches',
+      'http://localhost:3002/dashboard',
     );
-    expect(returnToForRole('PLACEMENT_STAFF', null, origins)).toBe('http://localhost:3002/batches');
+    expect(returnToForRole('PLACEMENT_STAFF', null, origins)).toBe(
+      'http://localhost:3002/dashboard',
+    );
     expect(returnToForRole('SUPER_ADMIN', 'http://localhost:3002/batches', origins)).toBe(
       'http://localhost:3003/admin',
     );
