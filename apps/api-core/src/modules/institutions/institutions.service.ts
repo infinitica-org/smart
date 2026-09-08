@@ -471,6 +471,7 @@ export class InstitutionsService {
       planCode: institution.plan.code,
       institutionName: institution.name,
       domain: institution.domain,
+      verificationStatus: institution.verificationStatus,
       candidateCapacity: PLAN_CAPACITIES[institution.plan.code],
       flags: flags.map((flag) => {
         const override = flag.overrides.find((row) => row.institutionId === institutionId);
