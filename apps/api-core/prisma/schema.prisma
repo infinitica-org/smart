@@ -465,6 +465,7 @@ model Item {
   responses Response[]
 
   @@index([levelId, active, formCode])
+  @@index([competencyId])
   @@map("items")
 }
 
@@ -503,6 +504,7 @@ model Panelist {
 
   estimates AngoffEstimate[]
 
+  @@index([panelId])
   @@map("panelists")
 }
 
@@ -516,6 +518,7 @@ model AngoffEstimate {
   estimate   Decimal          @db.Decimal(5, 2)
 
   @@unique([panelistId, tier])
+  @@index([panelId])
   @@map("angoff_estimates")
 }
 
@@ -571,6 +574,7 @@ model Response {
   audits AiEvaluationAudit[]
 
   @@unique([attemptId, itemId])
+  @@index([itemId])
   @@map("responses")
 }
 
@@ -605,6 +609,7 @@ model Certificate {
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, trackId])
+  @@index([trackId])
   @@map("certificates")
 }
 
@@ -626,6 +631,7 @@ model JobDescription {
 
   placements PlacementRecord[]
 
+  @@index([trackId])
   @@map("job_descriptions")
 }
 
@@ -644,6 +650,7 @@ model PlacementRecord {
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([trackId, cycle])
+  @@index([jdId])
   @@map("placement_records")
 }
 
@@ -655,6 +662,7 @@ model IntegrityEvent {
   detail    Json?
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  @@index([attemptId])
   @@map("integrity_events")
 }
 
@@ -686,6 +694,7 @@ model AiEvaluationAudit {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([createdAt])
+  @@index([responseId])
   @@map("ai_evaluation_audits")
 }
 
