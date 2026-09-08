@@ -526,3 +526,27 @@ export const GITHUB_SNAPSHOT_UNAVAILABLE_REASONS = [
 ] as const;
 export const GithubSnapshotUnavailableReasonSchema = z.enum(GITHUB_SNAPSHOT_UNAVAILABLE_REASONS);
 export type GithubSnapshotUnavailableReason = z.infer<typeof GithubSnapshotUnavailableReasonSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                     Polymorphic Assessment & Verification                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * SE-T10 — Assessable target discriminator for polymorphic assessment sessions.
+ */
+export const ASSESSABLE_TYPES = ['SKILL', 'CERTIFICATION'] as const;
+export const AssessableTypeSchema = z.enum(ASSESSABLE_TYPES);
+export type AssessableType = z.infer<typeof AssessableTypeSchema>;
+
+/**
+ * SE-T10 — Canonical shared verification status vocabulary.
+ */
+export const SHARED_VERIFICATION_STATUSES = [
+  'unverified',
+  'in_progress',
+  'verified',
+  'rejected',
+  'voided',
+] as const;
+export const SharedVerificationStatusSchema = z.enum(SHARED_VERIFICATION_STATUSES);
+export type SharedVerificationStatus = z.infer<typeof SharedVerificationStatusSchema>;

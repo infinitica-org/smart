@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import {
+  AssessableTypeSchema,
   AttemptStatusSchema,
   IntegrityFlagSchema,
   ItemTypeSchema,
   LevelFormatSchema,
   LevelNumberSchema,
+  SharedVerificationStatusSchema,
   SkillProficiencySchema,
   TierSchema,
   TrackCodeSchema,
@@ -333,3 +335,17 @@ export const CompleteSkillVerifyResponseSchema = z.object({
   grade: GradeSdeSkillFormResponseSchema.nullable(),
 });
 export type CompleteSkillVerifyResponse = z.infer<typeof CompleteSkillVerifyResponseSchema>;
+
+/* ---------------- polymorphic assessment session (SE-T10) ---------------- */
+
+export const PolymorphicAssessmentSessionDtoSchema = z.object({
+  sessionId: UuidSchema,
+  assessableType: AssessableTypeSchema,
+  assessableId: UuidSchema,
+  status: SharedVerificationStatusSchema,
+  retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+  lockedUntil: IsoDateTimeSchema.nullable().optional(),
+  expiresAt: IsoDateTimeSchema.nullable().optional(),
+  serverRemainingSeconds: z.number().int().nonnegative().optional(),
+});
+export type PolymorphicAssessmentSessionDto = z.infer<typeof PolymorphicAssessmentSessionDtoSchema>;
