@@ -24,6 +24,12 @@ import {
   invitationExpiresAt,
 } from './invite-token.util.js';
 
+function inviteTemplateForRole(role: UserRole): EmailTemplateName {
+  if (role === 'STUDENT') return 'student-invite';
+  if (role === 'SUPER_ADMIN') return 'platform-admin-invite';
+  return 'institution-admin-invite';
+}
+
 @Injectable()
 export class InvitationsService {
   constructor(
@@ -37,7 +43,7 @@ export class InvitationsService {
       fullName: invitation.fullName,
       email: invitation.email,
       role: invitation.role as InvitationPreviewDto['role'],
-      institutionName: invitation.institution.name,
+      institutionName: invitation.institution?.name ?? 'SMART Platform',
       batchName: invitation.batch?.name ?? null,
       expiresAt: invitation.expiresAt.toISOString(),
       status: invitation.status as InvitationStatus,
@@ -84,7 +90,8 @@ export class InvitationsService {
     email: string;
     fullName: string;
     role: UserRole;
-    institutionId: string;
+    /** Null for platform-admin invites (SUPER_ADMIN) — they have no owning tenant. */
+    institutionId: string | null;
     batchId?: string | null;
     groupLabel?: string | null;
     invitedById: string;
@@ -100,15 +107,19 @@ export class InvitationsService {
       });
     }
 
-    const institution = await this.prisma.institution.findUnique({
-      where: { id: params.institutionId },
-    });
-    if (!institution) {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Institution not found.',
-        statusCode: 404,
+    let institutionName = 'SMART Platform';
+    if (params.institutionId) {
+      const institution = await this.prisma.institution.findUnique({
+        where: { id: params.institutionId },
       });
+      if (!institution) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Institution not found.',
+          statusCode: 404,
+        });
+      }
+      institutionName = institution.name;
     }
 
     const { raw, hash } = generateInviteToken();
@@ -147,9 +158,7 @@ export class InvitationsService {
     });
 
     if (params.sendEmail !== false) {
-      const template: EmailTemplateName =
-        params.role === 'STUDENT' ? 'student-invite' : 'institution-admin-invite';
-      await this.enqueueEmail(invitation, institution.name, raw, template);
+      await this.enqueueEmail(invitation, institutionName, raw, inviteTemplateForRole(params.role));
     }
 
     return { invitation: toInvitationDto(invitation), rawToken: raw };
@@ -193,9 +202,12 @@ export class InvitationsService {
       include: { batch: true },
     });
 
-    const template: EmailTemplateName =
-      invitation.role === 'STUDENT' ? 'student-invite' : 'institution-admin-invite';
-    await this.enqueueEmail(updated, invitation.institution.name, raw, template);
+    await this.enqueueEmail(
+      updated,
+      invitation.institution?.name ?? 'SMART Platform',
+      raw,
+      inviteTemplateForRole(invitation.role as UserRole),
+    );
 
     return toInvitationDto(updated);
   }
@@ -280,7 +292,12 @@ export class InvitationsService {
         data: { tokenHash: hash, expiresAt: invitationExpiresAt(), lastSentAt: new Date() },
         include: { batch: true },
       });
-      await this.enqueueEmail(updated, invitation.institution.name, raw, 'student-invite');
+      await this.enqueueEmail(
+        updated,
+        invitation.institution?.name ?? 'SMART Platform',
+        raw,
+        'student-invite',
+      );
       enqueued += 1;
     }
     return enqueued;

@@ -279,8 +279,9 @@ model Invitation {
   email         String
   fullName      String           @map("full_name")
   role          UserRole
-  institutionId String           @map("institution_id") @db.Uuid
-  institution   Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  /// Null for platform-admin invites (SUPER_ADMIN), which have no owning tenant.
+  institutionId String?          @map("institution_id") @db.Uuid
+  institution   Institution?     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   batchId       String?          @map("batch_id") @db.Uuid
   batch         Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
   groupLabel    String?          @map("group_label")

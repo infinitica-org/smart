@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   CreateInstitutionRequestSchema,
   GlobalStudentSearchQuerySchema,
+  InvitePlatformAdminRequestSchema,
   InviteUserRequestSchema,
   ListAuditLogsQuerySchema,
   ListInstitutionStudentsQuerySchema,
@@ -257,5 +258,18 @@ export class InstitutionsAdminController {
   @Post('invitations/:invitationId/resend')
   resendInvitation(@Param('invitationId') invitationId: string) {
     return this.institutions.resendAdminInvitation(invitationId);
+  }
+
+  @Get('platform-admins')
+  listPlatformAdmins() {
+    return this.institutions.listPlatformAdmins();
+  }
+
+  @Post('platform-admins')
+  invitePlatformAdmin(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.invitePlatformAdmin(
+      InvitePlatformAdminRequestSchema.parse(body),
+      user.sub,
+    );
   }
 }

@@ -193,6 +193,24 @@ export const InstitutionAdminDtoSchema = z.object({
 });
 export type InstitutionAdminDto = z.infer<typeof InstitutionAdminDtoSchema>;
 
+/* ----------------------------- platform admins ----------------------------- */
+
+export const PlatformAdminDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  emailVerified: z.boolean(),
+  invitation: InvitationDtoSchema.nullable(),
+});
+export type PlatformAdminDto = z.infer<typeof PlatformAdminDtoSchema>;
+
+export const InvitePlatformAdminRequestSchema = z.object({
+  fullName: z.string().min(2).max(200),
+  email: EmailSchema,
+  reason: z.string().trim().min(8).max(500),
+});
+export type InvitePlatformAdminRequest = z.infer<typeof InvitePlatformAdminRequestSchema>;
+
 /* -------------------------------- batches --------------------------------- */
 
 export const CreateBatchRequestSchema = z.object({
@@ -299,6 +317,7 @@ export const AuditLogDtoSchema = z.object({
   auditLogId: UuidSchema,
   actorId: UuidSchema.nullable(),
   actorEmail: EmailSchema.nullable(),
+  actorRole: UserRoleSchema.nullable(),
   action: z.string(),
   resourceType: z.string(),
   resourceId: z.string().nullable(),
@@ -308,12 +327,17 @@ export const AuditLogDtoSchema = z.object({
 });
 export type AuditLogDto = z.infer<typeof AuditLogDtoSchema>;
 
+/** Groups the generic UserRole enum into the three tabs the audit log UI shows. */
+export const AuditLogSectionSchema = z.enum(['STUDENT', 'TPO', 'SUPER_ADMIN']);
+export type AuditLogSection = z.infer<typeof AuditLogSectionSchema>;
+
 export const ListAuditLogsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   action: z.string().trim().max(80).optional(),
   resourceType: z.string().trim().max(40).optional(),
   resourceId: z.string().trim().max(80).optional(),
   actorId: UuidSchema.optional(),
+  section: AuditLogSectionSchema.optional(),
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 

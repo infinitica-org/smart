@@ -1,5 +1,6 @@
 import type {
   AddCertificateSkillsRequest,
+  AuditLogSection,
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
@@ -57,6 +58,7 @@ import {
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
+  PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
   InvitationDtoSchema,
@@ -407,6 +409,7 @@ export function onboardingApi(client: SmartApiClient) {
       action?: string;
       resourceType?: string;
       resourceId?: string;
+      section?: AuditLogSection;
     }) =>
       client.get(prefixed('/admin/audit-logs'), {
         schema: z.array(AuditLogDtoSchema),
@@ -520,6 +523,16 @@ export function onboardingApi(client: SmartApiClient) {
     resendAdminInvitation: (invitationId: string) =>
       client.post(prefixed(`/admin/invitations/${invitationId}/resend`), undefined, {
         schema: InvitationDtoSchema,
+      }),
+
+    listPlatformAdmins: () =>
+      client.get(prefixed('/admin/platform-admins'), {
+        schema: z.array(PlatformAdminDtoSchema),
+      }),
+
+    invitePlatformAdmin: (body: { fullName: string; email: string; reason: string }) =>
+      client.post(prefixed('/admin/platform-admins'), body, {
+        schema: PlatformAdminDtoSchema,
       }),
 
     createBatch: (body: { name: string; code?: string }) =>
