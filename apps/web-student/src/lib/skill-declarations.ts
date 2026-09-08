@@ -4,6 +4,7 @@ import {
   focusProgressFor,
   retryAvailableAtForFocus,
   type SkillFocusProgress,
+  type SkillProficiency,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
