@@ -20,6 +20,14 @@ const EnvSchema = z.object({
     .string()
     .min(1)
     .default('postgresql://smart:smart@127.0.0.1:5432/smart?schema=public'),
+  /**
+   * Transaction-mode PgBouncer endpoint for the app's own runtime pool.
+   * `prisma migrate deploy`/the CLI always use DATABASE_URL (direct to
+   * postgres) — transaction pooling doesn't support the session-level
+   * features migrations need. Falls back to DATABASE_URL when unset, so
+   * laptop dev (no pgbouncer container) needs no extra config.
+   */
+  POOLED_DATABASE_URL: z.string().min(1).optional(),
   // Host 6380 matches infra/docker (Windows often already binds 6379).
   REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6380'),
   KAFKA_BROKERS: z.string().default('127.0.0.1:19092'),
