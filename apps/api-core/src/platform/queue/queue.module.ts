@@ -7,10 +7,12 @@ import {
   PdfGenerationProcessor,
   SandboxExecutionProcessor,
 } from './async-job.processor.js';
+import { AuditLogPurgeProcessor } from './audit-log-purge.processor.js';
 import { EmailProcessor } from './email.processor.js';
 import {
   AUDIO_EVALUATION_DLQ,
   AUDIO_EVALUATION_QUEUE,
+  AUDIT_LOG_PURGE_QUEUE,
   DEFAULT_JOB_OPTIONS,
   PDF_GENERATION_DLQ,
   PDF_GENERATION_QUEUE,
@@ -23,6 +25,7 @@ const queues = [
   { name: SANDBOX_EXECUTION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: AUDIO_EVALUATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: PDF_GENERATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: AUDIT_LOG_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: SANDBOX_EXECUTION_DLQ },
   { name: AUDIO_EVALUATION_DLQ },
   { name: PDF_GENERATION_DLQ },
@@ -41,6 +44,7 @@ const queues = [
     SandboxExecutionProcessor,
     AudioEvaluationProcessor,
     PdfGenerationProcessor,
+    AuditLogPurgeProcessor,
   ],
   exports: [BullModule],
 })
