@@ -156,7 +156,7 @@ export function LoginForm() {
               try {
                 const res = await api.auth.ssoStart({
                   provider: 'google',
-                  redirectUri: `${window.location.origin}/auth/sso/callback`,
+                  redirectUri: `${window.location.origin}/auth/callback`,
                 });
                 window.location.href = res.authorizationUrl;
               } catch {
@@ -174,7 +174,7 @@ export function LoginForm() {
               try {
                 const res = await api.auth.ssoStart({
                   provider: 'microsoft',
-                  redirectUri: `${window.location.origin}/auth/sso/callback`,
+                  redirectUri: `${window.location.origin}/auth/callback`,
                 });
                 window.location.href = res.authorizationUrl;
               } catch {

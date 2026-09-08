@@ -208,10 +208,21 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   }
 
   if (url.includes('/auth/sso/start') && method === 'POST') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     return new Response(
       JSON.stringify({
-        authorizationUrl: 'http://localhost:3001/auth/callback?code=mock_code&state=mock_state',
+        authorizationUrl: `${origin}/auth/callback?code=mock_code&state=mock_state`,
         state: 'mock_state',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/onboarding/linkedin/oauth-url') && method === 'GET') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    return new Response(
+      JSON.stringify({
+        url: `${origin}/onboarding?linkedinVerified=1`,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
