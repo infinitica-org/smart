@@ -3,6 +3,8 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import { describe, expect, it, vi } from 'vitest';
 import { InstitutionsService } from './institutions.service.js';
 
+const noopRedis = { get: vi.fn(), setex: vi.fn(), del: vi.fn() };
+
 describe('InstitutionsService Batch Operations', () => {
   const institutionId = randomUUID();
   const invitedById = randomUUID();
@@ -23,7 +25,12 @@ describe('InstitutionsService Batch Operations', () => {
         create: vi.fn().mockResolvedValue(fakeBatch),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const dto = await service.createBatch(
       institutionId,
       { name: 'Class of 2026', code: 'CS-2026' },
@@ -40,7 +47,12 @@ describe('InstitutionsService Batch Operations', () => {
         create: vi.fn().mockRejectedValue(new Error('Unique constraint failed')),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     await expect(
       service.createBatch(institutionId, { name: 'Class of 2026' }, invitedById),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -58,7 +70,12 @@ describe('InstitutionsService Batch Operations', () => {
         count: vi.fn().mockResolvedValue(2),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const list = await service.listBatches(institutionId);
     expect(list).toHaveLength(1);
     expect(list[0]?.memberCount).toBe(5);
@@ -77,7 +94,12 @@ describe('InstitutionsService Batch Operations', () => {
         count: vi.fn().mockResolvedValue(2),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const batch = await service.getBatch(batchId, institutionId);
     expect(batch.batchId).toBe(batchId);
     expect(batch.name).toBe('Class of 2026');
@@ -89,7 +111,12 @@ describe('InstitutionsService Batch Operations', () => {
         findFirst: vi.fn().mockResolvedValue(null),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     await expect(service.getBatch(batchId, 'different-institution-id')).rejects.toBeInstanceOf(
       NotFoundException,
     );
@@ -112,7 +139,12 @@ describe('InstitutionsService Batch Operations', () => {
         count: vi.fn().mockResolvedValue(3),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const updated = await service.updateBatch(batchId, institutionId, {
       name: 'Updated Batch',
       code: 'CS-NEW',
@@ -161,7 +193,12 @@ describe('InstitutionsService Batch Operations', () => {
         update: vi.fn().mockResolvedValue({}),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const result = await service.addBatchMember(
       batchId,
       institutionId,
@@ -197,7 +234,12 @@ describe('InstitutionsService Batch Operations', () => {
         findUnique: vi.fn().mockResolvedValue(studentUser),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     await expect(
       service.addBatchMember(
         batchId,
@@ -227,7 +269,12 @@ describe('InstitutionsService Batch Operations', () => {
         findUnique: vi.fn().mockResolvedValue(adminUser),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     await expect(
       service.addBatchMember(
         batchId,
@@ -264,19 +311,38 @@ describe('InstitutionsService Batch Operations', () => {
     };
 
     const prisma = {
+      institution: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: institutionId,
+          name: 'Test Institution',
+          domain: 'test.edu',
+          verificationStatus: 'APPROVED',
+          planId: 'plan-1',
+          plan: { code: 'PRO', candidateCapacity: null },
+        }),
+      },
+      featureFlag: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       batch: {
         findFirst: vi.fn().mockResolvedValue(fakeBatch),
       },
       user: {
         findUnique: vi.fn().mockResolvedValue(null),
         findFirstOrThrow: vi.fn().mockResolvedValue(createdUser),
+        count: vi.fn().mockResolvedValue(0),
       },
     };
     const invitations = {
       createAndEnqueue: vi.fn().mockResolvedValue({ invitation: mockInvite }),
     };
 
-    const service = new InstitutionsService(prisma as never, invitations as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      invitations as never,
+      {} as never,
+      noopRedis as never,
+    );
     const result = await service.addBatchMember(
       batchId,
       institutionId,
@@ -323,7 +389,12 @@ describe('InstitutionsService Batch Operations', () => {
         findFirst: vi.fn().mockResolvedValue(null),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     await service.addBatchMember(
       batchId,
       institutionId,
@@ -360,7 +431,12 @@ describe('InstitutionsService Batch Operations', () => {
         findFirst: vi.fn().mockResolvedValue(null),
       },
     };
-    const service = new InstitutionsService(prisma as never, {} as never, {} as never);
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
     const members = await service.listBatchMembers(batchId, institutionId);
     expect(members).toHaveLength(1);
     expect(members[0]?.fullName).toBe('John Doe');

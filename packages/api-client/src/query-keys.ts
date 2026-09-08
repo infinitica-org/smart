@@ -17,6 +17,7 @@ export const queryKeys = {
   me: () => ['me'] as const,
   myTracks: () => ['me', 'tracks'] as const,
   myNotifications: () => ['me', 'notifications'] as const,
+  entitlements: () => ['me', 'entitlements'] as const,
 
   /* -------------------------------- catalog ------------------------------- */
   catalog: () => ['catalog'] as const,

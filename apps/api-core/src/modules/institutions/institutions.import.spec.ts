@@ -3,6 +3,8 @@ import ExcelJS from 'exceljs';
 import { describe, expect, it, vi } from 'vitest';
 import { InstitutionsService } from './institutions.service.js';
 
+const noopRedis = { get: vi.fn(), setex: vi.fn(), del: vi.fn() };
+
 const institutionId = randomUUID();
 const batchId = randomUUID();
 const actorId = randomUUID();
@@ -12,6 +14,17 @@ function setup() {
     record: vi.fn().mockResolvedValue(undefined),
   };
   const prisma = {
+    institution: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: institutionId,
+        name: 'Test Institution',
+        domain: 'test.edu',
+        verificationStatus: 'APPROVED',
+        planId: 'plan-1',
+        plan: { code: 'PRO', candidateCapacity: null },
+      }),
+    },
+    featureFlag: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
     user: {
@@ -24,16 +37,16 @@ function setup() {
         institutionId,
         batchId,
       }),
+      count: vi.fn().mockResolvedValue(0),
     },
     invitation: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
   };
   return {
     service: new InstitutionsService(
       prisma as never,
-      {
-        createAndEnqueue: vi.fn().mockResolvedValue({ invitation: {} }),
-      } as never,
+      { createAndEnqueue: vi.fn().mockResolvedValue({ invitation: {} }) } as never,
       auditPublisher as never,
+      noopRedis as never,
     ),
   };
 }

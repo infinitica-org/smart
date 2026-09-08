@@ -44,6 +44,11 @@ async function main(): Promise<void> {
     adapter: new PrismaPg({ connectionString: DATABASE_URL }),
   });
 
+  const PLAN_CANDIDATE_CAPACITY: Record<'FREE' | 'BASIC' | 'PRO', number | null> = {
+    FREE: 100,
+    BASIC: 500,
+    PRO: null,
+  };
   const plans = await Promise.all(
     (
       [
@@ -54,19 +59,20 @@ async function main(): Promise<void> {
     ).map(([code, name]) =>
       prisma.subscriptionPlan.upsert({
         where: { code },
-        update: { name },
-        create: { code, name },
+        update: { name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
+        create: { code, name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
       }),
     ),
   );
   const proPlan = plans.find((plan) => plan.code === 'PRO')!;
 
-  const flagKeys = [
+  // Legacy flags: enabled for every non-FREE plan.
+  const legacyFlagKeys = [
     ['ats_kanban', 'ATS Kanban'],
     ['public_profile', 'Public verified profile'],
     ['project_verification', 'Project verification'],
   ] as const;
-  for (const [key, name] of flagKeys) {
+  for (const [key, name] of legacyFlagKeys) {
     const flag = await prisma.featureFlag.upsert({
       where: { key },
       update: { name },
@@ -77,6 +83,49 @@ async function main(): Promise<void> {
         where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
         update: { enabled: plan.code !== 'FREE' },
         create: { planId: plan.id, featureFlagId: flag.id, enabled: plan.code !== 'FREE' },
+      });
+    }
+  }
+
+  // Tier-specific flags, each with an explicit per-plan-code entitlement set.
+  const tieredFlags: Array<{
+    key: string;
+    name: string;
+    enabledFor: ReadonlySet<'FREE' | 'BASIC' | 'PRO'>;
+  }> = [
+    {
+      key: 'bulk_batch_import',
+      name: 'Bulk spreadsheet batch import',
+      enabledFor: new Set(['BASIC', 'PRO']),
+    },
+    {
+      key: 'skill_verification',
+      name: 'Skill verification',
+      enabledFor: new Set(['BASIC', 'PRO']),
+    },
+    {
+      key: 'webhooks_outbound',
+      name: 'Outbound webhooks',
+      enabledFor: new Set(['PRO']),
+    },
+    {
+      key: 'proctoring_advanced',
+      name: 'Advanced proctoring',
+      enabledFor: new Set(['PRO']),
+    },
+  ];
+  for (const { key, name, enabledFor } of tieredFlags) {
+    const flag = await prisma.featureFlag.upsert({
+      where: { key },
+      update: { name },
+      create: { key, name },
+    });
+    for (const plan of plans) {
+      const enabled = enabledFor.has(plan.code);
+      await prisma.planEntitlement.upsert({
+        where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
+        update: { enabled },
+        create: { planId: plan.id, featureFlagId: flag.id, enabled },
       });
     }
   }

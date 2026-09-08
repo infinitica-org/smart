@@ -20,18 +20,16 @@ export default function SettingsPage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      api.onboarding.tpoEntitlements(),
-      api.onboarding.listTpoStudents().catch(() => []),
-    ])
-      .then(([entitlements, students]) => {
+    api.onboarding
+      .tpoEntitlements()
+      .then((entitlements) => {
         if (!active) return;
         setDomain(entitlements.domain ?? null);
         setInstitutionName(entitlements.institutionName ?? null);
         setVerificationStatus(entitlements.verificationStatus ?? 'APPROVED');
         setCapacity(entitlements.candidateCapacity);
         setTier(entitlements.planCode);
-        setStudentCount(students.length);
+        setStudentCount(entitlements.candidateUsage ?? 0);
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -155,9 +153,17 @@ export default function SettingsPage() {
                 </span>
                 <div className="text-base font-extrabold text-white">
                   {capacity !== undefined && capacity !== null
-                    ? `${capacity} Candidates`
-                    : 'Unlimited Candidates'}
+                    ? `${studentCount} / ${capacity} Candidates`
+                    : `${studentCount} Candidates (Unlimited)`}
                 </div>
+                {capacity !== undefined && capacity !== null ? (
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${studentCount >= capacity ? 'bg-rose-400' : 'bg-emerald-400'}`}
+                      style={{ width: `${Math.min(100, (studentCount / capacity) * 100)}%` }}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">

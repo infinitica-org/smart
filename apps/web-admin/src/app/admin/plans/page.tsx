@@ -8,15 +8,22 @@ import { CreditCard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 import { Switch } from '@smart/ui/switch';
 import { PageHeader } from '@/components/page-header';
-import { InlineAlert, PageStack } from '@/components/admin-ui';
+import { AdminInput, InlineAlert, PageStack } from '@/components/admin-ui';
 import { api } from '@/lib/api';
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [capacityDrafts, setCapacityDrafts] = useState<Record<string, string>>({});
 
   async function load() {
-    setPlans(await api.onboarding.listPlans());
+    const loaded = await api.onboarding.listPlans();
+    setPlans(loaded);
+    setCapacityDrafts(
+      Object.fromEntries(
+        loaded.map((plan) => [plan.planId, plan.candidateCapacity?.toString() ?? '']),
+      ),
+    );
   }
 
   useEffect(() => {
@@ -31,6 +38,24 @@ export default function PlansPage() {
       await load();
     } catch (err) {
       setError(isSmartApiError(err) ? err.message : 'Could not update flag.');
+    }
+  }
+
+  async function saveCapacity(plan: SubscriptionPlanDto) {
+    const raw = capacityDrafts[plan.planId] ?? '';
+    const candidateCapacity = raw.trim() === '' ? null : Number(raw);
+    if (
+      candidateCapacity !== null &&
+      (!Number.isInteger(candidateCapacity) || candidateCapacity < 1)
+    ) {
+      setError('Candidate capacity must be a positive whole number, or blank for unlimited.');
+      return;
+    }
+    try {
+      await api.onboarding.updatePlanCapacity(plan.planId, { candidateCapacity });
+      await load();
+    } catch (err) {
+      setError(isSmartApiError(err) ? err.message : 'Could not update capacity.');
     }
   }
 
@@ -52,6 +77,27 @@ export default function PlansPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 flex items-end gap-2">
+                <label className="flex-1 text-sm">
+                  <span className="mb-1 block text-muted-foreground">
+                    Candidate capacity (blank = unlimited)
+                  </span>
+                  <AdminInput
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    placeholder="Unlimited"
+                    value={capacityDrafts[plan.planId] ?? ''}
+                    onChange={(event) =>
+                      setCapacityDrafts((prev) => ({
+                        ...prev,
+                        [plan.planId]: event.target.value,
+                      }))
+                    }
+                    onBlur={() => void saveCapacity(plan)}
+                  />
+                </label>
+              </div>
               <ul className="space-y-3 text-sm">
                 {plan.entitlements.length === 0 ? (
                   <li className="text-muted-foreground">No feature flags seeded yet.</li>

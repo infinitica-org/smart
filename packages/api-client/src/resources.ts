@@ -22,6 +22,7 @@ import type {
   UpdateCertificateLearningRequest,
   UpdateCompanyRequest,
   UpdateInstitutionRequest,
+  UpdatePlanCapacityRequest,
   UpdatePlanEntitlementsRequest,
   ViewCandidateRequest,
   ResolveVerificationRequest,
@@ -382,6 +383,11 @@ export function onboardingApi(client: SmartApiClient) {
         schema: SubscriptionPlanDtoSchema,
       }),
 
+    updatePlanCapacity: (planId: string, body: UpdatePlanCapacityRequest) =>
+      client.patch(prefixed(`/admin/plans/${planId}/capacity`), body, {
+        schema: SubscriptionPlanDtoSchema,
+      }),
+
     institutionEntitlements: (institutionId: string) =>
       client.get(prefixed(`/admin/institutions/${institutionId}/entitlements`), {
         schema: TenantEntitlementsDtoSchema,
@@ -395,8 +401,24 @@ export function onboardingApi(client: SmartApiClient) {
         schema: TenantEntitlementsDtoSchema,
       }),
 
+    companyEntitlements: (companyId: string) =>
+      client.get(prefixed(`/admin/companies/${companyId}/entitlements`), {
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
+    setCompanyFlag: (companyId: string, body: SetFeatureFlagOverrideRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/admin/companies/${companyId}/feature-flags`),
+        body,
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
     tpoEntitlements: () =>
       client.get(prefixed('/tpo/entitlements'), { schema: TenantEntitlementsDtoSchema }),
+
+    studentEntitlements: () =>
+      client.get(prefixed('/student/entitlements'), { schema: TenantEntitlementsDtoSchema }),
 
     dashboard: () => client.get(prefixed('/admin/dashboard'), { schema: AdminDashboardDtoSchema }),
 
