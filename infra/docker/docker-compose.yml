@@ -3,6 +3,7 @@ name: smart
 x-app-env: &app-env
   NODE_ENV: ${NODE_ENV:-development}
   DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart?schema=public
+  POOLED_DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@pgbouncer:6432/smart?schema=public
   REDIS_URL: redis://redis:6379
   KAFKA_BROKERS: redpanda:9092
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
@@ -47,6 +48,42 @@ services:
       timeout: 5s
       retries: 10
 
+  # Transaction-mode connection pooler in front of postgres. The `api`
+  # container's runtime pool (PrismaPg, one `pg.Pool` per process) talks to
+  # this instead of postgres directly once POOLED_DATABASE_URL is set —
+  # `prisma migrate deploy` keeps using DATABASE_URL (direct to postgres),
+  # since transaction pooling doesn't support the session-level features
+  # migrations need. See docs/delivery/DATABASE.md.
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://smart:${POSTGRES_PASSWORD:-smart}@postgres:5432/smart
+      LISTEN_PORT: "6432"
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-200}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+    ports:
+      - "127.0.0.1:${PGBOUNCER_PORT:-6432}:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=${POSTGRES_PASSWORD:-smart} psql -h 127.0.0.1 -p 6432 -U smart -d smart -c 'SELECT 1' >/dev/null 2>&1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # AOF (fsync every second) instead of relying on RDB snapshot intervals —
+  # candidate assessment session state (session:assessment:{attempt_id})
+  # changes continuously; without this, a crash between snapshots could lose
+  # several minutes of an in-progress attempt instead of at most ~1s.
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -54,9 +91,13 @@ services:
       [
         "redis-server",
         "--maxmemory",
-        "512mb",
+        "${REDIS_MAXMEMORY:-512mb}",
         "--maxmemory-policy",
         "volatile-lru",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
         "--bind",
         "0.0.0.0",
         "--protected-mode",
@@ -85,6 +126,13 @@ services:
       - internal://redpanda:9092,external://localhost:19092
       - --mode
       - dev-container
+      # --mode dev-container bundles --unsafe-bypass-fsync=true (acks writes
+      # before they hit disk) along with the auto-topic-creation/low-memory
+      # properties we still want. Override just the fsync bypass — a later
+      # explicit flag wins over the bundle — so a crash/power-loss can't
+      # silently drop "committed" Kafka messages. Verified: this still starts
+      # cleanly with auto_create_topics_enabled intact.
+      - --unsafe-bypass-fsync=false
     ports:
       - "127.0.0.1:${REDPANDA_PORT:-19092}:19092"
     volumes:
@@ -181,6 +229,8 @@ services:
       PORT: "3000"
     depends_on:
       postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy

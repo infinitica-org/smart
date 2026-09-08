@@ -28,10 +28,10 @@ break-glass / first-time setup.
 Both hosts run Ubuntu 24.04, hardened the same way: Docker CE, `deploy` (docker
 group, key-only SSH, no sudo needed for deploys), `ufw` (22/80/443 only),
 `fail2ban` on sshd, `PasswordAuthentication no` / `PermitRootLogin
-prohibit-password`. Postgres/Redis/Redpanda/MinIO/Prisma Studio/Grafana/
-Prometheus/Loki are all bound to `127.0.0.1` in `docker-compose.yml` — reach
-them only via an SSH tunnel (`ssh -L 5432:127.0.0.1:5432 deploy@<ip>`), never
-directly from the internet.
+prohibit-password`. Postgres/PgBouncer/Redis/Redpanda/MinIO/Prisma Studio/
+Grafana/Prometheus/Loki are all bound to `127.0.0.1` in `docker-compose.yml` —
+reach them only via an SSH tunnel (`ssh -L 5432:127.0.0.1:5432 deploy@<ip>`),
+never directly from the internet.
 
 ```bash
 git clone https://github.com/infinitica-org/smart.git ~/smart

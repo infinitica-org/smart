@@ -46,6 +46,18 @@ export class EvaluationController {
     return this.service.gradeSkillForm(body, user.sub);
   }
 
+  @Post('skill-form/run-code')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Simulate compiling and running coding-item source against visible examples.',
+  })
+  @ApiResponse({ status: 200, description: 'Per-example pass/fail and optional compileError.' })
+  @ApiResponse({ status: 502, description: 'Gateway or model output failed closed.' })
+  runSkillFormCode(@Body() body: unknown) {
+    return this.service.runSkillFormCode(body);
+  }
+
   @Post('skill-interview/questions')
   @Roles('STUDENT')
   @ApiBearerAuth()

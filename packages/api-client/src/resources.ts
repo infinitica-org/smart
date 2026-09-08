@@ -1,5 +1,6 @@
 import type {
   AddCertificateSkillsRequest,
+  AuditLogSection,
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
@@ -32,6 +33,7 @@ import type {
   CompleteSkillVerifyRequest,
   SaveSkillVerifyRequest,
   StartSkillVerifyRequest,
+  RunSdeSkillFormCodeRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -57,6 +59,7 @@ import {
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
+  PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
   InvitationDtoSchema,
@@ -99,6 +102,7 @@ import {
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
   SaveDraftResponseSchema,
+  RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   ValidateWorkExperienceProofResponseSchema,
@@ -427,6 +431,7 @@ export function onboardingApi(client: SmartApiClient) {
       action?: string;
       resourceType?: string;
       resourceId?: string;
+      section?: AuditLogSection;
     }) =>
       client.get(prefixed('/admin/audit-logs'), {
         schema: z.array(AuditLogDtoSchema),
@@ -540,6 +545,16 @@ export function onboardingApi(client: SmartApiClient) {
     resendAdminInvitation: (invitationId: string) =>
       client.post(prefixed(`/admin/invitations/${invitationId}/resend`), undefined, {
         schema: InvitationDtoSchema,
+      }),
+
+    listPlatformAdmins: () =>
+      client.get(prefixed('/admin/platform-admins'), {
+        schema: z.array(PlatformAdminDtoSchema),
+      }),
+
+    invitePlatformAdmin: (body: { fullName: string; email: string; reason: string }) =>
+      client.post(prefixed('/admin/platform-admins'), body, {
+        schema: PlatformAdminDtoSchema,
       }),
 
     createBatch: (body: { name: string; code?: string }) =>
@@ -905,12 +920,23 @@ export function systemApi(client: SmartApiClient) {
   };
 }
 
+export function evaluationApi(client: SmartApiClient) {
+  return {
+    runSkillFormCode: (body: RunSdeSkillFormCodeRequest) =>
+      client.post(prefixed('/evaluation/skill-form/run-code'), body, {
+        schema: RunSdeSkillFormCodeResponseSchema,
+        timeoutMs: 60_000,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
     users: usersApi(client),
     catalog: catalogApi(client),
     assessment: assessmentApi(client),
+    evaluation: evaluationApi(client),
     proctoring: proctoringApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),

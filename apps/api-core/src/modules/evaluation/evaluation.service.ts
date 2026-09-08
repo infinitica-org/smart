@@ -15,6 +15,8 @@ import {
   GenerateSkillInterviewResponseSchema,
   GradeSkillInterviewRequestSchema,
   GradeSkillInterviewResponseSchema,
+  RunSdeSkillFormCodeRequestSchema,
+  RunSdeSkillFormCodeResponseSchema,
   SKILL_INTERVIEW_ANSWER_MAX_CHARS,
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
   SKILL_INTERVIEW_QUESTION_COUNT,
@@ -23,13 +25,16 @@ import {
   type GenerateSkillInterviewResponse,
   type GradeSdeSkillFormResponse,
   type GradeSkillInterviewResponse,
+  type RunSdeSkillFormCodeResponse,
 } from '@smart/contracts';
 import {
+  SDE_SKILL_CODE_RUNNER_PROMPT_REF,
   SDE_SKILL_FORM_CLOSED_PROMPT_REF,
   SDE_SKILL_FORM_OPEN_PROMPT_REF,
   SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
   SDE_V4_PROFICIENCIES,
   SDE_V4_SKILL_BY_CODE,
+  SdeCodeRunnerOutputSchema,
   SdeOpenBatchGradeSchema,
   SdeSkillFormClosedOutputSchema,
   SdeSkillFormOpenOutputSchema,
@@ -85,7 +90,7 @@ const GraderOutputSchema = z.object({
 export class EvaluationService {
   readonly owner = 'Ramansh';
   readonly purpose =
-    'BARS grading, L4 defense, SE-T02 skill interview, and SDE v4 skill-form generate/grade.';
+    'BARS grading, L4 defense, SE-T02 skill interview, and SDE v4 skill-form generate/grade/run.';
   private readonly logger = new Logger(EvaluationService.name);
 
   constructor(@Inject(AiGatewayService) private readonly gateway: AiGatewayService) {}
@@ -454,6 +459,40 @@ export class EvaluationService {
       });
     } catch (err) {
       this.failClosed(err, 'skill_form_unavailable', 'Skill form could not be graded.');
+    }
+  }
+
+  async runSkillFormCode(body: unknown): Promise<RunSdeSkillFormCodeResponse> {
+    const request = RunSdeSkillFormCodeRequestSchema.parse(body);
+    try {
+      const completion = await this.gateway.complete({
+        promptRef: SDE_SKILL_CODE_RUNNER_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          prompt: request.prompt,
+          constraints: request.constraints ?? '',
+          source: request.source,
+          tests: request.examples.map((example) => ({
+            input: example.input,
+            expected: example.output,
+          })),
+        },
+        correlation: {},
+        maxOutputTokens: 1_536,
+        temperature: 0,
+      });
+      const parsed = SdeCodeRunnerOutputSchema.parse(completion.output);
+      const testsPassed = parsed.tests.filter((test) => test.passed).length;
+      return RunSdeSkillFormCodeResponseSchema.parse({
+        compileError: parsed.compileError,
+        testsPassed,
+        testsTotal: parsed.tests.length,
+        tests: parsed.tests,
+        promptRef: SDE_SKILL_CODE_RUNNER_PROMPT_REF,
+      });
+    } catch (err) {
+      this.failClosed(err, 'skill_form_run_unavailable', 'Code could not be run.');
     }
   }
 

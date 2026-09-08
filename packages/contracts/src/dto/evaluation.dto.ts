@@ -354,6 +354,31 @@ export const GradeSdeSkillFormResponseSchema = z.object({
 });
 export type GradeSdeSkillFormResponse = z.infer<typeof GradeSdeSkillFormResponseSchema>;
 
+export const RunSdeSkillFormCodeRequestSchema = z.object({
+  prompt: z.string().min(1).max(4_000),
+  constraints: z.string().max(2_000).optional(),
+  source: z.string().min(1).max(8_000),
+  examples: z.array(SdeSkillFormExampleSchema).max(4).default([]),
+});
+export type RunSdeSkillFormCodeRequest = z.infer<typeof RunSdeSkillFormCodeRequestSchema>;
+
+export const SdeSkillFormRunTestSchema = z.object({
+  input: z.string().max(800),
+  expected: z.string().max(800),
+  actual: z.string().max(800),
+  passed: z.boolean(),
+});
+export type SdeSkillFormRunTest = z.infer<typeof SdeSkillFormRunTestSchema>;
+
+export const RunSdeSkillFormCodeResponseSchema = z.object({
+  compileError: z.string().max(1_200).nullable(),
+  testsPassed: z.number().int().min(0).max(8),
+  testsTotal: z.number().int().min(0).max(8),
+  tests: z.array(SdeSkillFormRunTestSchema).max(8),
+  promptRef: z.string().regex(/^[a-z0-9-]+@\d+$/),
+});
+export type RunSdeSkillFormCodeResponse = z.infer<typeof RunSdeSkillFormCodeResponseSchema>;
+
 /* ------------------------ inter-rater reliability ------------------------- */
 
 /**

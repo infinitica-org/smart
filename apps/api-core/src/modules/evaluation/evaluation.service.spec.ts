@@ -410,6 +410,56 @@ describe('EvaluationService SDE v4 skill form', () => {
     expect(complete.mock.calls[2]?.[0]?.variables.items[0]?.hiddenTests).toHaveLength(3);
   });
 
+  it('runs coding source against visible examples without awarding marks', async () => {
+    const complete = vi.fn().mockResolvedValue({
+      output: {
+        compileError: null,
+        tests: [
+          {
+            input: 'nums = [2,7,11,15], target = 9',
+            expected: '[0,1]',
+            actual: '[0,1]',
+            passed: true,
+          },
+          {
+            input: 'nums = [3,2,4], target = 6',
+            expected: '[1,2]',
+            actual: '[0,1]',
+            passed: false,
+          },
+        ],
+      },
+    });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.runSkillFormCode({
+      prompt: 'Two Sum',
+      source: 'function twoSum() { return [0, 1]; }',
+      examples: [
+        { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' },
+        { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
+      ],
+    });
+    expect(result.testsPassed).toBe(1);
+    expect(result.testsTotal).toBe(2);
+    expect(result.compileError).toBeNull();
+    expect(result.promptRef).toBe('sde-skill-code-runner@1');
+    expect(complete.mock.calls[0]?.[0]?.promptRef).toBe('sde-skill-code-runner@1');
+    expect(complete.mock.calls[0]?.[0]?.variables.tests).toHaveLength(2);
+    expect(result).not.toHaveProperty('marksEarned');
+  });
+
+  it('fails closed when the code runner gateway throws', async () => {
+    const complete = vi.fn().mockRejectedValue(new Error('provider down'));
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    await expect(
+      service.runSkillFormCode({
+        prompt: 'Two Sum',
+        source: 'function twoSum() {}',
+        examples: [],
+      }),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
   it('keeps answer keys out of the opaque scoring token', () => {
     const payload = { answer: 'A', exp: Date.now() + 60_000 };
     const token = sealSdeFormPayload(payload);

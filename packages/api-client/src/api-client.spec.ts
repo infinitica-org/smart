@@ -545,3 +545,34 @@ describe('assessmentApi contracts', () => {
     expect(result.scorePercent).toBe(1);
   });
 });
+
+describe('evaluationApi contracts', () => {
+  it('posts coding source to skill-form/run-code', async () => {
+    const { fetchImpl, calls } = stubFetch([
+      {
+        body: {
+          compileError: null,
+          testsPassed: 1,
+          testsTotal: 1,
+          tests: [{ input: '1', expected: '1', actual: '1', passed: true }],
+          promptRef: 'sde-skill-code-runner@1',
+        },
+      },
+    ]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.evaluation.runSkillFormCode({
+      prompt: 'Two Sum',
+      source: 'return 1',
+      examples: [{ input: '1', output: '1' }],
+    });
+    expect(calls[0]?.url).toBe('https://api.smart.test/api/v1/evaluation/skill-form/run-code');
+    expect(result.testsPassed).toBe(1);
+    expect(result.promptRef).toBe('sde-skill-code-runner@1');
+  });
+});

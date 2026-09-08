@@ -74,7 +74,7 @@ describe('SkillVerificationService', () => {
       skillClaim: {
         findUnique: vi.fn().mockResolvedValue({
           ...declaredClaim(),
-          skill: { code: 'UNKNOWN_SKILL_CODE', name: 'Nope' },
+          skill: { code: '', name: 'Nope' },
         }),
       },
     };

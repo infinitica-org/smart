@@ -37,6 +37,9 @@ import type {
   CandidateBriefDto,
   AdminDashboardDto,
   AuditLogDto,
+  AuditLogSection,
+  InvitePlatformAdminRequest,
+  PlatformAdminDto,
   PlanCode,
   SetFeatureFlagOverrideRequest,
   ResolveVerificationRequest,
@@ -44,7 +47,7 @@ import type {
   VerificationQueueItemDto,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
-import type { Prisma } from '../../generated/prisma/index.js';
+import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -55,6 +58,13 @@ import { InvitationsService, toInvitationDto } from '../invitations/invitations.
 const MAX_BATCH_IMPORT_ROWS = 10_000;
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
   `entitlements:institution:${institutionId}`;
+
+/** Groups the raw UserRole enum into the three audit-log tabs the superadmin UI shows. */
+const AUDIT_LOG_SECTION_ROLES: Record<AuditLogSection, PrismaUserRole[]> = {
+  STUDENT: ['STUDENT'],
+  TPO: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+  SUPER_ADMIN: ['SUPER_ADMIN'],
+};
 
 interface ParsedBatchImport {
   rows: BatchImportPreviewRowDto[];
@@ -615,7 +625,7 @@ export class InstitutionsService {
         include: { _count: { select: { institutions: true } } },
       }),
       this.prisma.auditLog.findMany({
-        include: { actor: { select: { email: true } } },
+        include: { actor: { select: { email: true, role: true } } },
         orderBy: { createdAt: 'desc' },
         take: 8,
       }),
@@ -642,6 +652,9 @@ export class InstitutionsService {
     if (query.resourceType) where.resourceType = query.resourceType;
     if (query.resourceId) where.resourceId = query.resourceId;
     if (query.actorId) where.actorId = query.actorId;
+    if (query.section) {
+      where.actor = { is: { role: { in: AUDIT_LOG_SECTION_ROLES[query.section] } } };
+    }
     if (query.q) {
       where.OR = [
         { action: { contains: query.q, mode: 'insensitive' } },
@@ -651,7 +664,7 @@ export class InstitutionsService {
     }
     const rows = await this.prisma.auditLog.findMany({
       where,
-      include: { actor: { select: { email: true } } },
+      include: { actor: { select: { email: true, role: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -798,7 +811,7 @@ export class InstitutionsService {
   private toAuditDto(row: {
     id: string;
     actorId: string | null;
-    actor?: { email: string } | null;
+    actor?: { email: string; role?: AuditLogDto['actorRole'] } | null;
     action: string;
     resourceType: string;
     resourceId: string | null;
@@ -810,6 +823,7 @@ export class InstitutionsService {
       auditLogId: row.id,
       actorId: row.actorId,
       actorEmail: row.actor?.email ?? null,
+      actorRole: row.actor?.role ?? null,
       action: row.action,
       resourceType: row.resourceType,
       resourceId: row.resourceId,
@@ -980,6 +994,56 @@ export class InstitutionsService {
     invitationId: string,
   ): Promise<ReturnType<InvitationsService['resend']>> {
     return this.invitations.resend(invitationId, null);
+  }
+
+  /* ------------------------------ platform admins ---------------------------- */
+
+  async listPlatformAdmins(): Promise<PlatformAdminDto[]> {
+    const users = await this.prisma.user.findMany({
+      where: { role: 'SUPER_ADMIN' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const result: PlatformAdminDto[] = [];
+    for (const user of users) {
+      const invitation = await this.prisma.invitation.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      result.push({
+        userId: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        emailVerified: user.emailVerified,
+        invitation: invitation ? toInvitationDto(invitation) : null,
+      });
+    }
+    return result;
+  }
+
+  async invitePlatformAdmin(
+    body: InvitePlatformAdminRequest,
+    invitedById: string,
+  ): Promise<PlatformAdminDto> {
+    const { invitation } = await this.invitations.createAndEnqueue({
+      email: body.email,
+      fullName: body.fullName,
+      role: 'SUPER_ADMIN',
+      institutionId: null,
+      invitedById,
+    });
+    const dbUser = await this.prisma.user.findFirstOrThrow({
+      where: { email: body.email.toLowerCase() },
+    });
+    await this.writeAudit(invitedById, 'platform_admin.invited', 'user', dbUser.id, body.reason, {
+      email: dbUser.email,
+    });
+    return {
+      userId: dbUser.id,
+      email: dbUser.email,
+      fullName: dbUser.fullName,
+      emailVerified: dbUser.emailVerified,
+      invitation,
+    };
   }
 
   /* ----------------------------------- TPO ---------------------------------- */

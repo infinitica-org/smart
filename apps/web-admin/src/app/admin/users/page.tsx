@@ -41,8 +41,14 @@ export default function Page() {
   async function onSearch(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    const query = q.trim();
+    if (query.length < 3) {
+      setHits(null);
+      setError('Enter at least 3 characters to search.');
+      return;
+    }
     try {
-      setHits(await api.onboarding.searchStudents(q.trim()));
+      setHits(await api.onboarding.searchStudents(query));
     } catch (err) {
       setHits(null);
       setError(isSmartApiError(err) ? err.message : 'Search failed. Use at least 3 characters.');

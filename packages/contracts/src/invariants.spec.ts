@@ -418,6 +418,11 @@ describe('SE-T02 skill interview contracts', () => {
       owner: 'Ramansh',
       rateLimit: 'evaluation.skillInterview',
     });
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/skill-form/run-code')).toMatchObject({
+      method: 'POST',
+      owner: 'Ramansh',
+      rateLimit: 'evaluation.skillInterview',
+    });
   });
 });
 
@@ -449,7 +454,8 @@ describe('SDE v4 skill-verify assessment routes', () => {
     expect(sdeV4FormCodeForCatalogSkill('LANGUAGE_PROFICIENCY')).toBe(
       'SDE_PROGRAMMING_FUNDAMENTALS',
     );
-    expect(sdeV4FormCodeForCatalogSkill('UNKNOWN_SKILL_CODE')).toBeNull();
+    expect(sdeV4FormCodeForCatalogSkill('UNKNOWN_SKILL_CODE')).toBe('SDE_PROGRAMMING_FUNDAMENTALS');
+    expect(sdeV4FormCodeForCatalogSkill('')).toBeNull();
   });
 
   it('lists language/framework foci for catalog skills including Language proficiency', () => {

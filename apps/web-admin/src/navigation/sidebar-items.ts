@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ScrollText,
   ShieldAlert,
+  UserCog,
   Users,
   Webhook,
   Gauge,
@@ -60,6 +61,12 @@ export const sidebarItems: NavGroup[] = [
     id: 'platform',
     label: 'Platform',
     items: [
+      {
+        id: 'platform-admins',
+        title: 'Platform admins',
+        url: '/admin/platform-admins',
+        icon: UserCog,
+      },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
       { id: 'rate-limits', title: 'Rate limits', url: '/admin/rate-limits', icon: Gauge },
       { id: 'webhooks', title: 'Webhooks', url: '/admin/webhooks', icon: Webhook },

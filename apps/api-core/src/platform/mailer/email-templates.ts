@@ -70,6 +70,8 @@ export function renderEmailTemplate(
   switch (template) {
     case 'institution-admin-invite':
       return buildInstitutionAdminInvite(data as InviteEmailData);
+    case 'platform-admin-invite':
+      return buildPlatformAdminInvite(data as InviteEmailData);
     case 'student-invite':
       return buildStudentInvite(data as InviteEmailData);
     case 'invite-reminder':
@@ -125,6 +127,42 @@ function buildInstitutionAdminInvite(invite: InviteEmailData): RenderedEmail {
       bodyHtml,
       cta: { label: 'Set up my account', url: invite.inviteUrl },
       footerNote: `This link is valid for ${env.INVITATION_TTL_DAYS} days, so it's worth doing now rather than later.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- platform-admin-invite (SUPER_ADMIN) ---------------- */
+
+function buildPlatformAdminInvite(invite: InviteEmailData): RenderedEmail {
+  const subject = "You're invited to become a SMART platform admin";
+  const bodyHtml = [
+    paragraph(
+      `Hello ${strong(invite.fullName)}, you've been granted ${strong('platform admin')} access on SMART — full administrative control across every institution and company on the platform.`,
+    ),
+    paragraph(
+      `As a platform admin, you can manage tenants, resolve verification decisions, review integrity flags, and — like this invitation — grant platform-admin access to others. Every sensitive action you take is recorded in the audit log with your name and reason.`,
+    ),
+    paragraph(
+      `Setting up your account takes less than two minutes — just confirm a password and you're in.`,
+    ),
+  ].join('');
+  const text = [
+    `Hello ${invite.fullName}, you've been granted platform admin access on SMART — full administrative control across every institution and company on the platform.`,
+    `As a platform admin, you can manage tenants, resolve verification decisions, review integrity flags, and grant platform-admin access to others. Every sensitive action is recorded in the audit log with your name and reason.`,
+    `Set up my account: ${invite.inviteUrl}`,
+    `This link is valid for ${env.INVITATION_TTL_DAYS} days.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Set up your platform admin account',
+      illustration: ADMIN_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Set up my account', url: invite.inviteUrl },
+      footerNote: `This link is valid for ${env.INVITATION_TTL_DAYS} days, so it's worth doing now rather than later. If you weren't expecting this, contact an existing platform admin before continuing.`,
       signoff: SIGNOFF_TEAM,
     }),
   };
