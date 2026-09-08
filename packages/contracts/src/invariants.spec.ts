@@ -530,6 +530,29 @@ describe('SE-T04 cognitive profile contracts', () => {
   });
 });
 
+describe('SE-T04 cognitive profile contracts', () => {
+  it('registers student GET and refresh with an LLM spend cap on refresh only', () => {
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/cognitive-profile')).toMatchObject({
+      method: 'GET',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'role.student',
+    });
+    expect(
+      ROUTES.find((entry) => entry.path === '/evaluation/cognitive-profile/refresh'),
+    ).toMatchObject({
+      method: 'POST',
+      module: 'evaluation',
+      owner: 'Ramansh',
+      roles: ['STUDENT'],
+      rateLimit: 'evaluation.cognitiveProfile',
+      execution: 'ASYNC',
+    });
+    expect(getRateLimitPolicy('evaluation.cognitiveProfile').limit).toBe(8);
+  });
+});
+
 describe('CN-T06 my applications route', () => {
   it('exposes a student-only poll route with no studentId parameter', () => {
     const route = ROUTES.find((entry) => entry.path === '/me/applications');
