@@ -18,11 +18,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           aria-label="SMART admin"
           className="flex h-12 items-center rounded-2xl px-2 text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <SmartLogo
-            kind="wordmark"
-            className="h-8 w-[7.5rem] group-data-[collapsible=icon]:hidden"
-          />
-          <SmartLogo kind="mark" className="hidden size-8 group-data-[collapsible=icon]:flex" />
+          <SmartLogo kind="mark" className="size-8" />
         </Link>
       </SidebarHeader>
       <SidebarContent className="px-3">
