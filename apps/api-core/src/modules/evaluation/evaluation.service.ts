@@ -2,11 +2,19 @@ import { randomUUID } from 'node:crypto';
 import {
   BadGatewayException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  CERT_AGENDA_PROMPT_REF,
+  CERT_AGENDA_REGEN_MAX,
+  GenerateCertAgendaRequestSchema,
+  GenerateCertAgendaResponseSchema,
   GenerateSdeSkillFormRequestSchema,
   GenerateSdeSkillFormResponseSchema,
   GradeSdeSkillFormRequestSchema,
@@ -15,12 +23,15 @@ import {
   GenerateSkillInterviewResponseSchema,
   GradeSkillInterviewRequestSchema,
   GradeSkillInterviewResponseSchema,
+  REDIS_TTL_SECONDS,
   RunSdeSkillFormCodeRequestSchema,
   RunSdeSkillFormCodeResponseSchema,
   SKILL_INTERVIEW_ANSWER_MAX_CHARS,
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
   SKILL_INTERVIEW_QUESTION_COUNT,
   SkillInterviewQuestionSchema,
+  certAgendaTaxonomySnapshot,
+  type GenerateCertAgendaResponse,
   type GenerateSdeSkillFormResponse,
   type GenerateSkillInterviewResponse,
   type GradeSdeSkillFormResponse,
@@ -38,7 +49,11 @@ import {
   SdeOpenBatchGradeSchema,
   SdeSkillFormClosedOutputSchema,
   SdeSkillFormOpenOutputSchema,
+  agendaGuardFailure,
+  alignAgendaToSyllabus,
   assertSdeV4FormShape,
+  CertAgendaGenerateOutputSchema,
+  publisherSyllabus,
   type SdeV4Format,
 } from '@smart/prompts';
 import { computeSdeV4FormScore, SDE_V4_MARKS, scoreClosedChoice } from '@smart/scoring-engine';
@@ -46,6 +61,7 @@ import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { sealSdeFormPayload, unsealSdeFormPayload } from './sde-form-seal.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 
 export const SKILL_INTERVIEW_EXAMINER_PROMPT_REF = 'skill-interview-examiner@1' as const;
 export const SKILL_INTERVIEW_GRADER_PROMPT_REF = 'skill-interview-grader@1' as const;
@@ -90,10 +106,67 @@ const GraderOutputSchema = z.object({
 export class EvaluationService {
   readonly owner = 'Ramansh';
   readonly purpose =
-    'BARS grading, L4 defense, SE-T02 skill interview, and SDE v4 skill-form generate/grade/run.';
+    'BARS grading, L4 defense, skill interview, SDE v4 skill-form, and cert-agenda generate.';
   private readonly logger = new Logger(EvaluationService.name);
 
-  constructor(@Inject(AiGatewayService) private readonly gateway: AiGatewayService) {}
+  constructor(
+    @Inject(AiGatewayService) private readonly gateway: AiGatewayService,
+    @Inject(RedisService) private readonly redis?: RedisService,
+  ) {}
+
+  async generateCertAgenda(body: unknown, userId: string): Promise<GenerateCertAgendaResponse> {
+    const request = GenerateCertAgendaRequestSchema.parse(body);
+    const syllabus = publisherSyllabus(request.trackCode);
+    const alignment = alignAgendaToSyllabus(request.agendaLines, syllabus);
+    const guard = agendaGuardFailure(alignment);
+    if (guard === 'sparse_agenda') {
+      throw new UnprocessableEntityException({
+        error: 'sparse_agenda',
+        message: 'Agenda is too sparse to generate a certification paper.',
+        statusCode: 422,
+      });
+    }
+    if (guard === 'agenda_drift') {
+      throw new UnprocessableEntityException({
+        error: 'agenda_drift',
+        message: 'Agenda drifts from the publisher syllabus for this track.',
+        statusCode: 422,
+      });
+    }
+
+    await this.consumeCertAgendaRegen(userId);
+
+    try {
+      const result = await this.gateway.complete({
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P3_BATCH',
+        variables: {
+          trackCode: syllabus.trackCode,
+          trackName: syllabus.trackName,
+          syllabusTopics: [...syllabus.topics],
+          agendaLines: request.agendaLines,
+        },
+        correlation: {},
+        maxOutputTokens: 4_096,
+        temperature: 0,
+      });
+      const parsed = CertAgendaGenerateOutputSchema.parse(result.output);
+      return GenerateCertAgendaResponseSchema.parse({
+        trackCode: request.trackCode,
+        items: parsed.items,
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        taxonomyVersionSnapshot: certAgendaTaxonomySnapshot(),
+        auditId: result.auditId ?? null,
+      });
+    } catch (err) {
+      this.failClosed(
+        err,
+        'cert_agenda_unavailable',
+        'Certification paper could not be generated.',
+      );
+    }
+  }
 
   async generateSkillInterview(body: unknown): Promise<GenerateSkillInterviewResponse> {
     const request = GenerateSkillInterviewRequestSchema.parse(body);
@@ -538,8 +611,42 @@ export class EvaluationService {
     }
   }
 
+  private async consumeCertAgendaRegen(userId: string): Promise<void> {
+    if (!this.redis) {
+      throw new ServiceUnavailableException({
+        error: 'service_unavailable',
+        message: 'Certification paper regeneration cap could not be checked.',
+        statusCode: 503,
+      });
+    }
+    const key = `rl:cert_agenda_regen:${userId}`;
+    const count = await this.redis.incr(key);
+    if (count === 1) {
+      await this.redis.expire(key, REDIS_TTL_SECONDS.certAgendaRegen);
+    }
+    if (count > CERT_AGENDA_REGEN_MAX) {
+      throw new HttpException(
+        {
+          error: 'rate_limit_exceeded',
+          message: 'Certification paper regeneration cap reached. Try again after 24 hours.',
+          statusCode: 429,
+          retryAfterSeconds: REDIS_TTL_SECONDS.certAgendaRegen,
+          limit: CERT_AGENDA_REGEN_MAX,
+          window: '24 hours',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   private failClosed(err: unknown, error: string, message: string): never {
-    if (err instanceof BadGatewayException) throw err;
+    if (
+      err instanceof BadGatewayException ||
+      err instanceof UnprocessableEntityException ||
+      err instanceof HttpException
+    ) {
+      throw err;
+    }
     const detail = err instanceof Error ? err.message : String(err);
     this.logger.error(`Evaluation failed closed: ${detail}`);
     throw new BadGatewayException({ error, message });

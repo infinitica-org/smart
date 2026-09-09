@@ -73,6 +73,8 @@ export const API_ERROR_CODES = [
   'integrity_hold',
   'cut_scores_unpublished',
   'ai_provider_unavailable',
+  'sparse_agenda',
+  'agenda_drift',
   'scoring_paused_low_agreement',
   'sandbox_timeout',
   'internal_error',

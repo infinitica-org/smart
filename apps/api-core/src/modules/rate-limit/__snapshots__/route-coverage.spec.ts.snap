@@ -148,6 +148,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /certificates/issue": "certificate.issue",
   "POST /defense/reply": "assessment.evaluateL3L4",
   "POST /defense/start": "assessment.evaluateL3L4",
+  "POST /evaluation/cert-agenda/generate": "evaluation.certAgenda",
   "POST /evaluation/cognitive-profile/refresh": "evaluation.cognitiveProfile",
   "POST /evaluation/skill-form/grade": "evaluation.skillInterview",
   "POST /evaluation/skill-form/questions": "evaluation.skillInterview",

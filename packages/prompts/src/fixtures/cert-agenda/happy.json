@@ -1,0 +1,13 @@
+{
+  "trackCode": "TECH_FULLSTACK",
+  "agendaLines": [
+    "React",
+    "Next.js",
+    "State management",
+    "REST API design",
+    "Async Node/NestJS",
+    "PostgreSQL queries",
+    "Indexing",
+    "Git workflows"
+  ]
+}

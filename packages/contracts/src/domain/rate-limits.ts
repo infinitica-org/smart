@@ -368,6 +368,15 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     redisKey: 'rl:admin_action:user:{id}',
     rationale: 'CV-T01 admin approve/void action limit.',
   },
+  {
+    key: 'evaluation.certAgenda',
+    scope: 'USER',
+    limit: 3,
+    windowSeconds: 60,
+    burst: 1,
+    redisKey: 'rl:cert_agenda:{id}',
+    rationale: 'Agenda-to-paper LLM generation; per-candidate cap so regen cannot blow cost.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
@@ -418,4 +427,5 @@ export const REDIS_TTL_SECONDS = {
   proctoringHmac: 2 * 60 * 60,
   proctoringBlob: 60,
   entitlementsResolve: 60,
+  certAgendaRegen: 24 * 60 * 60,
 } as const;
