@@ -12,11 +12,13 @@ import {
   SKILL_DEFINITIONS,
   skillsClaimedSnapshotWhenVerified,
   type AddCertificateSkillsRequest,
+  type AdminCertificateReviewRequest,
   type CandidateCertificateDto,
   type CertificateVerificationEventDto,
   type CreateCandidateCertificateRequest,
   type GetCertificateEndorsementResponse,
   type ListCertificateVerificationEventsResponse,
+  type ListCertificateVerificationQueueResponse,
   type ListMyCandidateCertificatesResponse,
   type SubmitCertificateEndorsementDecisionRequest,
   type SubmitCertificateEndorsementDecisionResponse,
@@ -30,6 +32,7 @@ import type { EmailJobPayload, EmailQueueJobData } from '../../platform/mailer/m
 import { EMAIL_QUEUE } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { CertificateSourceVerificationService } from './verification/certificate-source-verification.service.js';
 import { generateInviteToken, hashInviteToken } from '../invitations/invite-token.util.js';
 import type {
   CandidateCertificate,
@@ -50,6 +53,8 @@ export class CandidateCertificatesService {
     @Inject(StorageService) private readonly storage: StorageService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
+    @Inject(CertificateSourceVerificationService)
+    private readonly verificationService: CertificateSourceVerificationService,
   ) {}
 
   /**
@@ -99,10 +104,23 @@ export class CandidateCertificatesService {
     body: CreateCandidateCertificateRequest,
   ): Promise<CandidateCertificateDto> {
     const row = await this.prisma.candidateCertificate.create({
-      data: { candidateId, title: body.title, issuer: body.issuer },
+      data: {
+        candidateId,
+        title: body.title,
+        issuer: body.issuer,
+        certificateNumber: body.certificateNumber,
+        verificationUrl: body.verificationUrl,
+      },
       include: { skills: true },
     });
-    return this.toDto(row);
+
+    await this.verificationService.runVerification(row.id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id: row.id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
   }
 
   async listMine(candidateId: string): Promise<ListMyCandidateCertificatesResponse> {
@@ -148,7 +166,7 @@ export class CandidateCertificatesService {
       contentType: file.mimeType,
     });
 
-    const updated = await this.prisma.candidateCertificate.update({
+    await this.prisma.candidateCertificate.update({
       where: { id },
       data: {
         certificateFileUrl: objectKey,
@@ -160,6 +178,12 @@ export class CandidateCertificatesService {
       include: { skills: true },
     });
     await this.addEvent(id, 'UPLOADED', 'Certificate file uploaded.');
+    await this.verificationService.runVerification(id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
     return this.toDto(updated);
   }
 
@@ -210,14 +234,22 @@ export class CandidateCertificatesService {
     body: UpdateCertificateLearningRequest,
   ): Promise<CandidateCertificateDto> {
     await this.findOwnedOrThrow(candidateId, id);
-    const updated = await this.prisma.candidateCertificate.update({
+    await this.prisma.candidateCertificate.update({
       where: { id },
       data: {
         learningDescription: body.learningDescription,
         tools: body.tools,
         practicalApplied: body.practicalApplied,
         practicalDescription: body.practicalDescription,
+        certificateNumber: body.certificateNumber,
+        verificationUrl: body.verificationUrl,
       },
+      include: { skills: true },
+    });
+    await this.verificationService.runVerification(id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
       include: { skills: true },
     });
     return this.toDto(updated);
@@ -433,6 +465,66 @@ export class CandidateCertificatesService {
     return row;
   }
 
+  async listVerificationQueue(): Promise<ListCertificateVerificationQueueResponse> {
+    const rows = await this.prisma.candidateCertificate.findMany({
+      where: { sourceStatus: { in: ['pending', 'source_failed'] } },
+      include: { skills: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const certificates = await Promise.all(rows.map((row) => this.toDto(row)));
+    return { certificates };
+  }
+
+  async adminApprove(
+    id: string,
+    body: AdminCertificateReviewRequest,
+  ): Promise<CandidateCertificateDto> {
+    await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        sourceStatus: 'source_verified',
+        status: 'VERIFIED',
+      },
+    });
+    await this.addEvent(
+      id,
+      'VERIFIED',
+      body.reason
+        ? `Super Admin approved: ${body.reason}`
+        : 'Super Admin approved certificate source verification.',
+    );
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
+  }
+
+  async adminVoid(
+    id: string,
+    body: AdminCertificateReviewRequest,
+  ): Promise<CandidateCertificateDto> {
+    await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        sourceStatus: 'voided',
+        status: 'REJECTED',
+      },
+    });
+    await this.addEvent(
+      id,
+      'REJECTED',
+      body.reason
+        ? `Super Admin voided: ${body.reason}`
+        : 'Super Admin voided certificate source verification.',
+    );
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
+  }
+
   private async addEvent(
     candidateCertificateId: string,
     status: CertificateRow['status'],
@@ -450,6 +542,9 @@ export class CandidateCertificatesService {
       title: row.title,
       issuer: row.issuer,
       status: row.status,
+      sourceStatus: (row.sourceStatus as CandidateCertificateDto['sourceStatus']) ?? 'pending',
+      certificateNumber: row.certificateNumber ?? null,
+      verificationUrl: row.verificationUrl ?? null,
       verificationMethod: row.verificationMethod,
       certificateFileUrl: row.certificateFileUrl
         ? await this.storage.getSignedDownloadUrl(row.certificateFileUrl)

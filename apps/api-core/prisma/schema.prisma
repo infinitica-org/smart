@@ -1211,6 +1211,13 @@ enum CandidateCertificateStatus {
   VOIDED
 }
 
+enum CertificateSourceStatus {
+  pending
+  source_verified
+  source_failed
+  voided
+}
+
 enum CertificateVerificationMethod {
   LLM
   ENDORSEMENT
@@ -1237,6 +1244,9 @@ model CandidateCertificate {
   title                String
   issuer               String
   status               CandidateCertificateStatus     @default(DECLARED)
+  sourceStatus         CertificateSourceStatus        @default(pending) @map("source_status")
+  certificateNumber    String?                        @map("certificate_number")
+  verificationUrl      String?                        @map("verification_url")
   verificationMethod   CertificateVerificationMethod? @map("verification_method")
   certificateFileUrl   String?                        @map("certificate_file_url")
   certificateFileName  String?                        @map("certificate_file_name")
