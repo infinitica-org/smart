@@ -495,7 +495,7 @@ export const CERTIFICATE_SOURCE_STATUSES = [
 export const CertificateSourceStatusSchema = z.enum(CERTIFICATE_SOURCE_STATUSES);
 export type CertificateSourceStatus = z.infer<typeof CertificateSourceStatusSchema>;
 
-export const CERTIFICATE_VERIFICATION_METHODS = ['LLM', 'ENDORSEMENT'] as const;
+export const CERTIFICATE_VERIFICATION_METHODS = ['LLM', 'ENDORSEMENT', 'ASSESSMENT'] as const;
 export const CertificateVerificationMethodSchema = z.enum(CERTIFICATE_VERIFICATION_METHODS);
 export type CertificateVerificationMethod = z.infer<typeof CertificateVerificationMethodSchema>;
 

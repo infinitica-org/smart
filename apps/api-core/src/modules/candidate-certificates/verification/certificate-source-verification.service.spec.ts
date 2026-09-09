@@ -216,10 +216,10 @@ describe('CertificateSourceVerificationService Orchestrator', () => {
 
     const res = await service.runVerification('cert-1');
     expect(res.sourceStatus).toBe('source_verified');
-    expect(res.status).toBe('VERIFIED');
+    expect(res.status).toBe('IN_VERIFICATION');
     expect(mockPrisma.candidateCertificate.update).toHaveBeenCalledWith({
       where: { id: 'cert-1' },
-      data: { sourceStatus: 'source_verified', status: 'VERIFIED' },
+      data: { sourceStatus: 'source_verified', status: 'IN_VERIFICATION' },
     });
   });
 });

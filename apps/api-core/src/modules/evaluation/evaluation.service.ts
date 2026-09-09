@@ -13,8 +13,12 @@ import {
 import {
   CERT_AGENDA_PROMPT_REF,
   CERT_AGENDA_REGEN_MAX,
+  CERT_VERIFY_PASS_MARK_PERCENT,
+  CERT_VERIFY_TIME_MINUTES,
   GenerateCertAgendaRequestSchema,
   GenerateCertAgendaResponseSchema,
+  GradeCertAgendaRequestSchema,
+  GradeCertAgendaResponseSchema,
   GenerateSdeSkillFormRequestSchema,
   GenerateSdeSkillFormResponseSchema,
   GradeSdeSkillFormRequestSchema,
@@ -32,6 +36,7 @@ import {
   SkillInterviewQuestionSchema,
   certAgendaTaxonomySnapshot,
   type GenerateCertAgendaResponse,
+  type GradeCertAgendaResponse,
   type GenerateSdeSkillFormResponse,
   type GenerateSkillInterviewResponse,
   type GradeSdeSkillFormResponse,
@@ -52,8 +57,9 @@ import {
   agendaGuardFailure,
   alignAgendaToSyllabus,
   assertSdeV4FormShape,
-  CertAgendaGenerateOutputSchema,
+  CertAgendaScorableGenerateOutputSchema,
   publisherSyllabus,
+  toStudentPaperFromScorable,
   type SdeV4Format,
 } from '@smart/prompts';
 import { computeSdeV4FormScore, SDE_V4_MARKS, scoreClosedChoice } from '@smart/scoring-engine';
@@ -151,10 +157,10 @@ export class EvaluationService {
         maxOutputTokens: 4_096,
         temperature: 0,
       });
-      const parsed = CertAgendaGenerateOutputSchema.parse(result.output);
+      const parsed = CertAgendaScorableGenerateOutputSchema.parse(result.output);
       return GenerateCertAgendaResponseSchema.parse({
         trackCode: request.trackCode,
-        items: parsed.items,
+        items: toStudentPaperFromScorable(parsed.items),
         promptRef: CERT_AGENDA_PROMPT_REF,
         taxonomyVersionSnapshot: certAgendaTaxonomySnapshot(),
         auditId: result.auditId ?? null,
@@ -166,6 +172,162 @@ export class EvaluationService {
         'Certification paper could not be generated.',
       );
     }
+  }
+
+  /**
+   * CV-T02 — cert verify session paper with sealed scoring token (correctKey never exposed).
+   */
+  async generateCertAgendaVerifyPaper(
+    body: unknown,
+    userId: string,
+    certificateId: string,
+  ): Promise<{
+    items: GenerateCertAgendaResponse['items'];
+    scoringToken: string;
+    taxonomyVersionSnapshot: string;
+    timeMinutes: number;
+    passMarkPercent: number;
+  }> {
+    const request = GenerateCertAgendaRequestSchema.parse(body);
+    const syllabus = publisherSyllabus(request.trackCode);
+    const alignment = alignAgendaToSyllabus(request.agendaLines, syllabus);
+    const guard = agendaGuardFailure(alignment);
+    if (guard === 'sparse_agenda') {
+      throw new UnprocessableEntityException({
+        error: 'sparse_agenda',
+        message: 'Agenda is too sparse to generate a certification paper.',
+        statusCode: 422,
+      });
+    }
+    if (guard === 'agenda_drift') {
+      throw new UnprocessableEntityException({
+        error: 'agenda_drift',
+        message: 'Agenda drifts from the publisher syllabus for this track.',
+        statusCode: 422,
+      });
+    }
+
+    await this.consumeCertAgendaRegen(userId);
+
+    try {
+      const result = await this.gateway.complete({
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P3_BATCH',
+        variables: {
+          trackCode: syllabus.trackCode,
+          trackName: syllabus.trackName,
+          syllabusTopics: [...syllabus.topics],
+          agendaLines: request.agendaLines,
+        },
+        correlation: {},
+        maxOutputTokens: 4_096,
+        temperature: 0,
+      });
+      const parsed = CertAgendaScorableGenerateOutputSchema.parse(result.output);
+      const expiresAt = Date.now() + CERT_VERIFY_TIME_MINUTES * 60_000;
+      const scoringToken = sealSdeFormPayload({
+        certificateId,
+        userId,
+        exp: expiresAt,
+        items: parsed.items.map((item) => ({
+          index: item.index,
+          correctKey: item.correctKey,
+        })),
+      });
+      return {
+        items: toStudentPaperFromScorable(parsed.items),
+        scoringToken,
+        taxonomyVersionSnapshot: certAgendaTaxonomySnapshot(),
+        timeMinutes: CERT_VERIFY_TIME_MINUTES,
+        passMarkPercent: CERT_VERIFY_PASS_MARK_PERCENT,
+      };
+    } catch (err) {
+      this.failClosed(
+        err,
+        'cert_agenda_unavailable',
+        'Certification paper could not be generated.',
+      );
+    }
+  }
+
+  async gradeCertAgendaPaper(body: unknown, ownerUserId: string): Promise<GradeCertAgendaResponse> {
+    const request = GradeCertAgendaRequestSchema.parse(body);
+    const SealedCertAgendaSchema = z.object({
+      certificateId: z.string().uuid(),
+      userId: z.string().uuid(),
+      exp: z.number(),
+      items: z.array(
+        z.object({
+          index: z.number().int().min(1),
+          correctKey: z.enum(['A', 'B', 'C', 'D']),
+        }),
+      ),
+    });
+
+    let bundle: z.infer<typeof SealedCertAgendaSchema>;
+    try {
+      bundle = SealedCertAgendaSchema.parse(unsealSdeFormPayload(request.scoringToken));
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Invalid scoring token.',
+      });
+    }
+    if (bundle.exp < Date.now()) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token expired.',
+      });
+    }
+    if (bundle.userId !== ownerUserId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this student.',
+      });
+    }
+    if (bundle.certificateId !== request.certificateId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this certificate.',
+      });
+    }
+
+    const byIndex = new Map(request.responses.map((row) => [row.index, row]));
+    const itemResults: GradeCertAgendaResponse['itemResults'] = [];
+    let marksEarned = 0;
+    let marksTotal = 0;
+
+    for (const key of bundle.items) {
+      const response = byIndex.get(key.index);
+      const earned = scoreClosedChoice(response?.selectedKey ?? null, key.correctKey);
+      const max = 1;
+      marksEarned += earned;
+      marksTotal += max;
+      const correct = earned === max;
+      itemResults.push({
+        index: key.index,
+        marksEarned: earned,
+        marksMax: max,
+        correct,
+        selectedKey: response?.selectedKey,
+        correctKey: key.correctKey,
+        feedback: correct ? 'Correct.' : `Incorrect. The correct option was ${key.correctKey}.`,
+      });
+    }
+
+    const scorePercent = marksTotal === 0 ? 0 : (marksEarned / marksTotal) * 100;
+    const passed = scorePercent >= CERT_VERIFY_PASS_MARK_PERCENT;
+
+    return GradeCertAgendaResponseSchema.parse({
+      certificateId: request.certificateId,
+      marksEarned,
+      marksTotal,
+      scorePercent,
+      passed,
+      promptRef: CERT_AGENDA_PROMPT_REF,
+      itemResults,
+    });
   }
 
   async generateSkillInterview(body: unknown): Promise<GenerateSkillInterviewResponse> {

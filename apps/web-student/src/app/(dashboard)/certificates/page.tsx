@@ -112,14 +112,30 @@ export default function CertificatesPage() {
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
                 <CertificateStatusBadge status={certificate.status} />
+                {certificate.sourceStatus === 'source_verified' &&
+                certificate.agendaLines &&
+                certificate.agendaLines.length > 0 &&
+                certificate.status !== 'VERIFIED' ? (
+                  <Link
+                    href={`/certificates/${certificate.certificateId}/verify`}
+                    className="text-sm text-[#00fad0] hover:underline"
+                  >
+                    Take assessment
+                  </Link>
+                ) : null}
                 <Link
                   href={`/certificates/add?id=${certificate.certificateId}`}
                   className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition-colors"
                 >
                   {IN_PROGRESS_STATUSES.has(certificate.status) ? 'Continue' : 'View Details'}
                 </Link>
+                {certificate.expiryDate ? (
+                  <span className="text-xs text-white/35">
+                    Expires {new Date(certificate.expiryDate).toLocaleDateString()}
+                  </span>
+                ) : null}
               </div>
             </Surface>
           ))}

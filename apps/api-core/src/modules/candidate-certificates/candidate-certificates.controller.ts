@@ -17,6 +17,7 @@ import {
   AddCertificateSkillsRequestSchema,
   CreateCandidateCertificateRequestSchema,
   CreateCertificateEndorsementRequestSchema,
+  SubmitCertificateAgendaRequestSchema,
   UpdateCertificateLearningRequestSchema,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -118,6 +119,14 @@ export class CandidateCertificatesController {
   updateLearning(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
     const parsed = UpdateCertificateLearningRequestSchema.parse(body);
     return this.service.updateLearning(user.sub, id, parsed);
+  }
+
+  @Post(':id/agenda')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit syllabus/agenda for agenda-based cert assessment (CV-T02).' })
+  submitAgenda(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = SubmitCertificateAgendaRequestSchema.parse(body);
+    return this.service.submitAgenda(user.sub, id, parsed);
   }
 
   @Post(':id/endorsement')

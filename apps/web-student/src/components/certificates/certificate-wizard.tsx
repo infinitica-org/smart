@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, Button } from '@smart/ui';
-import type { CandidateCertificateDto } from '@smart/contracts';
+import type { CandidateCertificateDto, TrackCode } from '@smart/contracts';
 import { ArrowLeft, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { CertificateGuidelinesBanner } from './certificate-guidelines-banner';
@@ -13,6 +13,7 @@ import { CertificateDetailsForm, type CertificateDetailsPayload } from './certif
 import { CertificateUpload } from './certificate-upload';
 import { CertificatePreview } from './certificate-preview';
 import { SkillsLearningForm } from './skills-learning-form';
+import { CertificateAgendaForm } from './certificate-agenda-form';
 import { EndorsementRequestForm } from './endorsement-request-form';
 import { CertificateStatusBadge } from './certificate-status-badge';
 import type { CertificateSkillSelection } from './skill-picker';
@@ -33,6 +34,8 @@ export function CertificateWizard() {
   const [savingLearning, setSavingLearning] = useState(false);
   const [requestingEndorsement, setRequestingEndorsement] = useState(false);
   const [endorsementError, setEndorsementError] = useState<string | null>(null);
+  const [savingAgenda, setSavingAgenda] = useState(false);
+  const [agendaError, setAgendaError] = useState<string | null>(null);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
 
   useEffect(() => {
@@ -64,7 +67,6 @@ export function CertificateWizard() {
     setCreateError(null);
     try {
       if (certificateId && certificate) {
-        // Updating existing certificate details
         const updated = await api.candidateCertificates.updateLearning(certificateId, {
           certificateNumber: details.certificateNumber,
           verificationUrl: details.verificationUrl,
@@ -74,7 +76,6 @@ export function CertificateWizard() {
         setCertificate(updated);
         setIsEditingDetails(false);
       } else {
-        // Creating new certificate entry
         const created = await api.candidateCertificates.create(details);
         setCertificate(created);
         setCertificateId(created.certificateId);
@@ -162,6 +163,24 @@ export function CertificateWizard() {
     }
   };
 
+  const handleSubmitAgenda = async (body: {
+    trackCode: TrackCode;
+    agendaLines: string[];
+    expiryDate?: string;
+  }) => {
+    if (!certificateId) return;
+    setSavingAgenda(true);
+    setAgendaError(null);
+    try {
+      const updated = await api.candidateCertificates.submitAgenda(certificateId, body);
+      setCertificate(updated);
+    } catch (err) {
+      setAgendaError(err instanceof Error ? err.message : 'Could not save agenda.');
+    } finally {
+      setSavingAgenda(false);
+    }
+  };
+
   if (loadingExisting) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -170,7 +189,6 @@ export function CertificateWizard() {
     );
   }
 
-  // Header navigation bar for all wizard states
   const WizardHeader = () => (
     <div className="mb-6 flex items-center justify-between">
       <Link
@@ -185,7 +203,6 @@ export function CertificateWizard() {
     </div>
   );
 
-  // Step 1: Initial Entry Form (No Certificate Created Yet)
   if (!certificate || isEditingDetails) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -217,7 +234,6 @@ export function CertificateWizard() {
   const hasSkills = certificate.skills.length > 0;
   const hasLearning = Boolean(certificate.learningDescription);
 
-  // Step 2: Terminal / Voided / Rejected / Verified View
   const isVoided = certificate.status === 'VOIDED' || certificate.sourceStatus === 'voided';
   const isRejected =
     certificate.status === 'REJECTED' || certificate.sourceStatus === 'source_failed';
@@ -285,7 +301,6 @@ export function CertificateWizard() {
           </div>
         )}
 
-        {/* Verification History Logs */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
           <h3 className="mb-4 text-sm font-semibold text-white">
             Verification History &amp; Audit Log
@@ -386,7 +401,17 @@ export function CertificateWizard() {
         </div>
       </div>
 
-      {readyForVerification ? (
+      {readyForVerification && certificate.sourceStatus === 'source_verified' ? (
+        <CertificateAgendaForm
+          certificateId={certificate.certificateId}
+          initialLines={certificate.agendaLines}
+          initialTrack={certificate.trackCode ?? null}
+          initialExpiry={certificate.expiryDate ?? null}
+          onSubmit={handleSubmitAgenda}
+          isPending={savingAgenda}
+          error={agendaError}
+        />
+      ) : readyForVerification ? (
         <EndorsementRequestForm
           onSubmit={handleRequestEndorsement}
           isPending={requestingEndorsement}

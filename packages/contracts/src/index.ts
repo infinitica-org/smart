@@ -33,6 +33,8 @@ export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';
 export * from './dto/evaluation.dto.js';
 export * from './dto/cert-agenda.dto.js';
+export * from './dto/candidate-certificate.dto.js';
+export * from './dto/cert-verify.dto.js';
 export * from './dto/cognitive-profile.dto.js';
 export * from './dto/calibration.dto.js';
 export * from './dto/certificate.dto.js';
@@ -41,7 +43,6 @@ export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/candidate-social.dto.js';
-export * from './dto/candidate-certificate.dto.js';
 export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
@@ -60,4 +61,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.2.3' as const;
+export const CONTRACTS_VERSION = '0.2.4' as const;

@@ -1221,6 +1221,7 @@ enum CertificateSourceStatus {
 enum CertificateVerificationMethod {
   LLM
   ENDORSEMENT
+  ASSESSMENT
 }
 
 enum CertificateProficiency {
@@ -1258,15 +1259,38 @@ model CandidateCertificate {
   tools                String[]                       @default([])
   practicalApplied     Boolean?                       @map("practical_applied")
   practicalDescription String?                        @map("practical_description") @db.Text
+  trackCode            String?                        @map("track_code")
+  agendaLines          String[]                       @default([]) @map("agenda_lines")
+  assessmentStrikes    Int                            @default(0) @map("assessment_strikes")
+  assessmentLockedUntil DateTime?                     @map("assessment_locked_until") @db.Timestamptz(6)
+  lastGenuineFailureAt DateTime?                      @map("last_genuine_failure_at") @db.Timestamptz(6)
+  taxonomyVersionSnapshot String?                     @map("taxonomy_version_snapshot")
   createdAt            DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   skills       CandidateCertificateSkill[]
   events       CertificateVerificationEvent[]
   endorsements CertificateEndorsement[]
+  verificationAttempts CandidateCertificateVerificationAttempt[]
 
   @@index([candidateId, status])
   @@map("candidate_certificates")
+}
+
+model CandidateCertificateVerificationAttempt {
+  id                     String               @id @default(uuid()) @db.Uuid
+  candidateCertificateId String               @map("candidate_certificate_id") @db.Uuid
+  candidateCertificate   CandidateCertificate @relation(fields: [candidateCertificateId], references: [id], onDelete: Cascade)
+  technicalFailure       Boolean              @default(false) @map("technical_failure")
+  passed                 Boolean?
+  explanation            String               @db.Text
+  marksEarned            Float?               @map("marks_earned")
+  marksTotal             Float?               @map("marks_total")
+  scorePercent           Float?               @map("score_percent")
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([candidateCertificateId, createdAt])
+  @@map("candidate_certificate_verification_attempts")
 }
 
 model CandidateCertificateSkill {

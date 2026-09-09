@@ -3,8 +3,10 @@ import {
   CERT_AGENDA_ITEM_COUNT,
   CERT_AGENDA_PROMPT_REF,
   CertAgendaPublicItemSchema,
+  CertAgendaScorableItemSchema,
   type CertAgendaInternalItem,
   type CertAgendaPublicItem,
+  type CertAgendaScorableItem,
 } from '@smart/contracts';
 import type { PromptTemplate } from '../types.js';
 import { INJECTION_GUARD, jsonOnly } from '../shared.js';
@@ -27,12 +29,21 @@ export const CertAgendaGenerateOutputSchema = z.object({
 });
 export type CertAgendaGenerateOutput = z.infer<typeof CertAgendaGenerateOutputSchema>;
 
+/** Session scoring — includes correctKey; never returned to students. */
+export const CertAgendaScorableGenerateOutputSchema = z.object({
+  items: z.array(CertAgendaScorableItemSchema).length(CERT_AGENDA_ITEM_COUNT),
+});
+export type CertAgendaScorableGenerateOutput = z.infer<
+  typeof CertAgendaScorableGenerateOutputSchema
+>;
+
 const OUTPUT_SHAPE = `{
   "items": [{
     "index": 1-5,
     "stem": string,
     "itemType": "MCQ",
-    "options": [{ "label": "A"|"B"|"C"|"D", "text": string }]
+    "options": [{ "label": "A"|"B"|"C"|"D", "text": string }],
+    "correctKey": "A"|"B"|"C"|"D"
   }]
 }`;
 
@@ -55,6 +66,7 @@ export const certAgendaGenerateTemplate: PromptTemplate<CertAgendaGenerateVariab
       `- Return exactly ${String(CERT_AGENDA_ITEM_COUNT)} items, indexes 1 through 5.`,
       '- Cover distinct agenda topics. Do not invent off-syllabus content.',
       '- Four options A-D. One clearly correct option; distractors are plausible mistakes.',
+      '- Include correctKey for each item (server-side scoring only).',
       '- Do not mention the agenda, syllabus, line numbers, or source topics in stems or options.',
       '- Do not award tiers or scores.',
       '',
@@ -78,6 +90,14 @@ export const CERT_AGENDA_GENERATE_PROMPT_REF = CERT_AGENDA_PROMPT_REF;
 
 export function toStudentPaper(items: readonly CertAgendaInternalItem[]): CertAgendaPublicItem[] {
   return items.map(({ sourceAgendaLine: _source, competencyTopic: _topic, ...publicItem }) =>
+    CertAgendaPublicItemSchema.parse(publicItem),
+  );
+}
+
+export function toStudentPaperFromScorable(
+  items: readonly CertAgendaScorableItem[],
+): CertAgendaPublicItem[] {
+  return items.map(({ correctKey: _key, ...publicItem }) =>
     CertAgendaPublicItemSchema.parse(publicItem),
   );
 }

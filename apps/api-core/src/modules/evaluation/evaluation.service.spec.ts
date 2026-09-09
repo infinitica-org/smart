@@ -494,6 +494,7 @@ const paperItems = Array.from({ length: 5 }, (_, i) => ({
     { label: 'C' as const, text: 'Another distractor' },
     { label: 'D' as const, text: 'Unrelated trivia' },
   ],
+  correctKey: 'A' as const,
 }));
 
 function redisWithCount(count: number) {
