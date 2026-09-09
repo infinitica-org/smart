@@ -2304,6 +2304,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Reserve a case-insensitive username. Reservation is not the same as activation.',
   },
   {
+    method: 'GET',
+    path: '/users/me/visibility',
+    module: 'username',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 50,
+    summary: 'Get the current public-profile visibility state.',
+  },
+  {
     method: 'PUT',
     path: '/users/me/visibility',
     module: 'username',

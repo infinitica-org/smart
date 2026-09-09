@@ -109,6 +109,19 @@ describe('UsernameService (CN-T09)', () => {
     });
   });
 
+  describe('getVisibility', () => {
+    it('returns the current visibility state', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        profileVisible: true,
+        showInProgressItems: false,
+      });
+
+      const result = await service.getVisibility(userId);
+
+      expect(result).toEqual({ profileVisible: true, showInProgressItems: false });
+    });
+  });
+
   describe('updateVisibility', () => {
     it('activates a RESERVED username exactly when visibility is first turned on', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue({

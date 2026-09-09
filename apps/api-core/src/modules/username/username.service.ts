@@ -128,6 +128,17 @@ export class UsernameService {
     };
   }
 
+  async getVisibility(userId: string): Promise<ProfileVisibilityResponse> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { profileVisible: true, showInProgressItems: true },
+    });
+    return {
+      profileVisible: user.profileVisible,
+      showInProgressItems: user.showInProgressItems,
+    };
+  }
+
   async updateVisibility(
     userId: string,
     body: UpdateProfileVisibilityRequest,

@@ -33,6 +33,13 @@ export class UsernameController {
     return this.service.reserve(user.sub, parsed);
   }
 
+  @Get('visibility')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the current public-profile visibility state.' })
+  getVisibility(@CurrentUser() user: RequestUser) {
+    return this.service.getVisibility(user.sub);
+  }
+
   @Put('visibility')
   @ApiBearerAuth()
   @ApiOperation({

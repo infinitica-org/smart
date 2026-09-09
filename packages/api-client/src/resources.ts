@@ -267,6 +267,11 @@ export function usersApi(client: SmartApiClient) {
         schema: UsernameStatusResponseSchema,
       }),
 
+    getProfileVisibility: () =>
+      client.get(prefixed('/users/me/visibility'), {
+        schema: ProfileVisibilityResponseSchema,
+      }),
+
     updateProfileVisibility: (body: UpdateProfileVisibilityRequest) =>
       client.request({
         method: 'PUT',
