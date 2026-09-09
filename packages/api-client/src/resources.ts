@@ -34,6 +34,10 @@ import type {
   SaveSkillVerifyRequest,
   StartSkillVerifyRequest,
   RunSdeSkillFormCodeRequest,
+  ReserveUsernameRequest,
+  UpdateProfileVisibilityRequest,
+  CreateBlockedWordRequest,
+  VoidRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -114,6 +118,12 @@ import {
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
   type SubmitWorkExperienceVerificationDto,
+  UsernameStatusResponseSchema,
+  ProfileVisibilityResponseSchema,
+  ListBlockedWordsResponseSchema,
+  BlockedWordDtoSchema,
+  VoidWorkExperienceResponseSchema,
+  VoidCandidateCertificateResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -241,6 +251,33 @@ export function usersApi(client: SmartApiClient) {
     getMyPublicProfile: () =>
       client.get(prefixed('/users/me/public-profile'), {
         schema: PublicCandidateProfileDtoSchema,
+      }),
+
+    /** CN-T09 — reservation status only; never carries cooldown/failed-attempt state. */
+    getUsernameStatus: () =>
+      client.get(prefixed('/users/me/username'), {
+        schema: UsernameStatusResponseSchema,
+      }),
+
+    reserveUsername: (body: ReserveUsernameRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/username'),
+        body,
+        schema: UsernameStatusResponseSchema,
+      }),
+
+    getProfileVisibility: () =>
+      client.get(prefixed('/users/me/visibility'), {
+        schema: ProfileVisibilityResponseSchema,
+      }),
+
+    updateProfileVisibility: (body: UpdateProfileVisibilityRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/visibility'),
+        body,
+        schema: ProfileVisibilityResponseSchema,
       }),
 
     listWorkExperiences: () =>
@@ -496,6 +533,30 @@ export function onboardingApi(client: SmartApiClient) {
     resolveIntegrity: (attemptId: string, body: ResolveIntegrityRequest) =>
       client.post(prefixed(`/admin/integrity-queue/${attemptId}/resolve`), body, {
         schema: IntegrityQueueItemDtoSchema,
+      }),
+
+    /** CN-T09 — super-admin-curated blocked-word list. */
+    listBlockedWords: () =>
+      client.get(prefixed('/admin/blocked-words'), {
+        schema: ListBlockedWordsResponseSchema,
+      }),
+
+    createBlockedWord: (body: CreateBlockedWordRequest) =>
+      client.post(prefixed('/admin/blocked-words'), body, {
+        schema: BlockedWordDtoSchema,
+      }),
+
+    removeBlockedWord: (id: string) => client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
+
+    /** SA-T08 — one-directional; there is no "un-void". */
+    voidCandidateCertificate: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/candidate-certificates/${id}/void`), body, {
+        schema: VoidCandidateCertificateResponseSchema,
+      }),
+
+    voidWorkExperience: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/work-experience/${id}/void`), body, {
+        schema: VoidWorkExperienceResponseSchema,
       }),
 
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),

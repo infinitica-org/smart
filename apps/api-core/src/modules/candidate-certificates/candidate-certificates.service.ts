@@ -22,8 +22,11 @@ import {
   type SubmitCertificateEndorsementDecisionRequest,
   type SubmitCertificateEndorsementDecisionResponse,
   type UpdateCertificateLearningRequest,
+  type VoidCandidateCertificateResponse,
+  type VoidRequest,
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import type { EmailJobPayload, EmailQueueJobData } from '../../platform/mailer/mailer.types.js';
 import { EMAIL_QUEUE } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -47,10 +50,53 @@ export class CandidateCertificatesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(CertificateSourceVerificationService)
     private readonly verificationService: CertificateSourceVerificationService,
   ) {}
+
+  /**
+   * SA-T08 — extends the v0.9 fraud/void action (previously assessment-attempt only, see
+   * `AssessmentService.resolveIntegrity`) to a self-declared/external certificate. One-directional:
+   * there is no "un-void". The status flip alone is enough to drop it from the public profile —
+   * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
+   * never VOIDED) rows.
+   */
+  async voidCertificate(
+    actorId: string,
+    id: string,
+    body: VoidRequest,
+  ): Promise<VoidCandidateCertificateResponse> {
+    const existing = await this.prisma.candidateCertificate.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Certificate not found.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: { status: 'VOIDED' },
+    });
+    await this.addEvent(id, 'VOIDED', body.reason);
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'candidate_certificate.voided',
+      resourceType: 'candidate_certificate',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return {
+      id: updated.id,
+      status: updated.status,
+      voidedAt: updated.updatedAt.toISOString(),
+    };
+  }
 
   async create(
     candidateId: string,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CandidateCertificateVoidAdminController } from './candidate-certificate-void-admin.controller.js';
 import { CandidateCertificatesController } from './candidate-certificates.controller.js';
 import { PublicCertificateEndorsementController } from './public-certificate-endorsement.controller.js';
 import { CandidateCertificatesAdminController } from './candidate-certificates-admin.controller.js';
@@ -19,6 +20,7 @@ import { Tier3OcrVerifier } from './verification/tier3-ocr-verifier.js';
     CandidateCertificatesController,
     PublicCertificateEndorsementController,
     CandidateCertificatesAdminController,
+    CandidateCertificateVoidAdminController,
   ],
   providers: [
     CandidateCertificatesService,

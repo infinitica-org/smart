@@ -68,6 +68,7 @@ function setup() {
     upload: vi.fn().mockResolvedValue('candidate-certificates/x/file.pdf'),
     getSignedDownloadUrl: vi.fn().mockResolvedValue('https://signed.example.com/file.pdf'),
   };
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
   const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
   const verificationService = {
     runVerification: vi.fn().mockResolvedValue({
@@ -81,10 +82,11 @@ function setup() {
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
+    auditPublisher as never,
     emailQueue as never,
     verificationService as never,
   );
-  return { prisma, storage, emailQueue, verificationService, service };
+  return { prisma, storage, auditPublisher, emailQueue, verificationService, service };
 }
 
 describe('CandidateCertificatesService', () => {
@@ -285,5 +287,51 @@ describe('CandidateCertificatesService', () => {
       }),
     );
     expect(result.status).toBe('REJECTED');
+  });
+
+  describe('voidCertificate (SA-T08)', () => {
+    it('voids a certificate, writes an audit row, and records a verification event', async () => {
+      const { prisma, auditPublisher, service } = setup();
+      const actorId = randomUUID();
+      prisma.candidateCertificate.findUnique.mockResolvedValue(baseCertificateRow());
+      prisma.candidateCertificate.update.mockResolvedValue(
+        baseCertificateRow({ status: 'VOIDED', updatedAt: new Date('2026-09-09T00:00:00.000Z') }),
+      );
+
+      const result = await service.voidCertificate(actorId, certificateId, {
+        reason: 'Fraudulent submission confirmed by employer.',
+      });
+
+      expect(prisma.candidateCertificate.update).toHaveBeenCalledWith({
+        where: { id: certificateId },
+        data: { status: 'VOIDED' },
+      });
+      expect(prisma.certificateVerificationEvent.create).toHaveBeenCalledWith({
+        data: {
+          candidateCertificateId: certificateId,
+          status: 'VOIDED',
+          message: 'Fraudulent submission confirmed by employer.',
+        },
+      });
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId,
+          action: 'candidate_certificate.voided',
+          resourceType: 'candidate_certificate',
+          resourceId: certificateId,
+          reasonCode: 'Fraudulent submission confirmed by employer.',
+        }),
+      );
+      expect(result.status).toBe('VOIDED');
+      expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+    });
+
+    it('404s when voiding a certificate that does not exist', async () => {
+      const { prisma, service } = setup();
+      prisma.candidateCertificate.findUnique.mockResolvedValue(null);
+      await expect(
+        service.voidCertificate(randomUUID(), randomUUID(), { reason: 'Does not matter here.' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

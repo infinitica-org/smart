@@ -48,6 +48,8 @@ export * from './dto/project-verify.dto.js';
 export * from './dto/work-experience.dto.js';
 export * from './dto/work-experience-proof.dto.js';
 export * from './dto/organization.dto.js';
+export * from './dto/username.dto.js';
+export * from './dto/void.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

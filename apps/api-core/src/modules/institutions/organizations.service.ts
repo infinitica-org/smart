@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { TenantVerificationStatus } from '@smart/contracts';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { extractDomain, normalizeCompanyName } from '../work-experience/work-experience.service.js';
+import { extractDomain, normalizeCompanyName } from '../work-experience/company-name.util.js';
 
 @Injectable()
 export class OrganizationsService {

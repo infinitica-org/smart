@@ -132,6 +132,11 @@ export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] 
 export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
 export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
 
+/** CN-T09 — reservation claims the username; activation happens separately (first visibility opt-in). */
+export const USERNAME_STATUSES = ['RESERVED', 'ACTIVE'] as const;
+export const UsernameStatusSchema = z.enum(USERNAME_STATUSES);
+export type UsernameStatus = z.infer<typeof UsernameStatusSchema>;
+
 export const INSTITUTION_LIST_STATUSES = ['ACTIVE', 'HELD', 'DEACTIVATED'] as const;
 export const InstitutionListStatusSchema = z.enum(INSTITUTION_LIST_STATUSES);
 export type InstitutionListStatus = z.infer<typeof InstitutionListStatusSchema>;
@@ -391,6 +396,8 @@ export const WORK_EXPERIENCE_VERIFICATION_STATUSES = [
   'VERIFIED',
   'REJECTED',
   'EXPIRED',
+  /** SA-T08 — immutable terminal state set only by the admin void action. */
+  'VOIDED',
 ] as const;
 export const WorkExperienceVerificationStatusSchema = z.enum(WORK_EXPERIENCE_VERIFICATION_STATUSES);
 export type WorkExperienceVerificationStatus = z.infer<
@@ -473,6 +480,8 @@ export const CANDIDATE_CERTIFICATE_STATUSES = [
   'IN_VERIFICATION',
   'VERIFIED',
   'REJECTED',
+  /** SA-T08 — immutable terminal state set only by the admin void action. */
+  'VOIDED',
 ] as const;
 export const CandidateCertificateStatusSchema = z.enum(CANDIDATE_CERTIFICATE_STATUSES);
 export type CandidateCertificateStatus = z.infer<typeof CandidateCertificateStatusSchema>;

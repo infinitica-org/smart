@@ -116,6 +116,7 @@ export const WIZARD_STEP_META = [
   { id: 'languages', label: 'Languages' },
   { id: 'social', label: 'Social' },
   { id: 'preferences', label: 'Preferences' },
+  { id: 'username', label: 'Handle' },
 ] as const;
 
 export type WizardStepId = (typeof WIZARD_STEP_META)[number]['id'];
