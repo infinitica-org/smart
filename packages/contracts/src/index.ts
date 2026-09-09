@@ -51,6 +51,7 @@ export * from './dto/work-experience-proof.dto.js';
 export * from './dto/organization.dto.js';
 export * from './dto/username.dto.js';
 export * from './dto/void.dto.js';
+export * from './dto/candidate-profile.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
