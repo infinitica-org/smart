@@ -33,7 +33,8 @@ export class PublicProfileController {
   @Get('public/candidates/:slug')
   @Public()
   @ApiOperation({
-    summary: "Look up a candidate's public profile by share slug. No auth required.",
+    summary:
+      "Look up a candidate's public profile by share slug or claimed username. No auth required.",
   })
   getPublicProfile(@Param('slug') slug: string) {
     return this.service.getBySlug(slug);

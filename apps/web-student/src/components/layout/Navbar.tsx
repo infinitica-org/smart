@@ -1,8 +1,17 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { cn, SmartLogo, SignOutButton } from '@smart/ui';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { cn, SmartLogo } from '@smart/ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@smart/ui/dropdown-menu';
 import { initialsOf, useCurrentUser } from '@/lib/candidate-identity';
 import { signOut } from '@/lib/auth';
 
@@ -13,6 +22,7 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: user } = useCurrentUser();
   const initials = initialsOf(user?.fullName);
 
@@ -48,10 +58,47 @@ export function Navbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <SignOutButton onSignOut={signOut} />
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800/90 text-xs font-bold text-[#00fad0] border border-[#00fad0]/30 shadow-inner">
-          {initials}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-full border border-transparent py-1 pr-2 pl-1 transition-colors hover:border-zinc-800 hover:bg-zinc-900/60 data-[state=open]:border-zinc-800 data-[state=open]:bg-zinc-900/60"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#00fad0]/30 bg-zinc-800/90 text-xs font-bold text-[#00fad0] shadow-inner">
+                {initials}
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="w-56 rounded-2xl border border-zinc-800 bg-zinc-900 p-1 text-zinc-200 shadow-xl shadow-black/40"
+          >
+            <DropdownMenuLabel className="px-2.5 py-2 font-normal">
+              <div className="truncate text-sm font-semibold text-white">
+                {user?.fullName ?? 'Candidate'}
+              </div>
+              <div className="truncate text-xs text-zinc-500">{user?.email ?? ''}</div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem
+              onSelect={() => router.push('/public-profile')}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-zinc-200 focus:bg-zinc-800 focus:text-white"
+            >
+              <UserRound className="h-4 w-4" />
+              Public profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem
+              onSelect={() => void signOut()}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

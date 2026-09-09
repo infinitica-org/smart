@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@smart/ui';
+import { useQuery, useQueryClient } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
 import { AtSign, CheckCircle2, Eye, Loader2, Lock } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -42,6 +42,7 @@ function ToggleSwitch({
 type UsernameFieldState = 'idle' | 'saving' | 'saved' | 'error';
 
 export function VisibilitySettingsCard() {
+  const queryClient = useQueryClient();
   const {
     data: visibility,
     isLoading: visibilityLoading,
@@ -54,6 +55,16 @@ export function VisibilitySettingsCard() {
     queryKey: ['me', 'username'] as const,
     queryFn: () => api.users.getUsernameStatus(),
   });
+
+  // Visibility and username changes can change what the "Copy Link"/"Share Profile"
+  // buttons on the parent page point to (the share link switches to the username once
+  // it activates) and what the live preview below shows — both queries live in the
+  // parent, so they're invalidated here rather than refetched directly.
+  const invalidateShareLinkAndPreview = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['me', 'public-profile-link'] }),
+      queryClient.invalidateQueries({ queryKey: ['me', 'public-profile'] }),
+    ]);
 
   const [visibilityBusy, setVisibilityBusy] = useState<'profile' | 'inProgress' | null>(null);
   const [visibilityError, setVisibilityError] = useState<string | null>(null);
@@ -73,7 +84,7 @@ export function VisibilitySettingsCard() {
     setVisibilityError(null);
     try {
       await api.users.updateProfileVisibility({ profileVisible: next });
-      await Promise.all([refetchVisibility(), refetchUsername()]);
+      await Promise.all([refetchVisibility(), refetchUsername(), invalidateShareLinkAndPreview()]);
     } catch (err) {
       setVisibilityError(isSmartApiError(err) ? err.message : 'Could not update visibility.');
     } finally {
@@ -89,7 +100,10 @@ export function VisibilitySettingsCard() {
         profileVisible: visibility?.profileVisible ?? false,
         showInProgressItems: next,
       });
-      await refetchVisibility();
+      await Promise.all([
+        refetchVisibility(),
+        queryClient.invalidateQueries({ queryKey: ['me', 'public-profile'] }),
+      ]);
     } catch (err) {
       setVisibilityError(isSmartApiError(err) ? err.message : 'Could not update this setting.');
     } finally {
@@ -109,7 +123,8 @@ export function VisibilitySettingsCard() {
     try {
       await api.users.reserveUsername({ username });
       setUsernameState('saved');
-      await refetchUsername();
+      // A re-reservation while already ACTIVE (changing handle) changes the share link too.
+      await Promise.all([refetchUsername(), invalidateShareLinkAndPreview()]);
       setTimeout(() => setUsernameState('idle'), 2000);
     } catch (err) {
       setUsernameState('error');

@@ -23,6 +23,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       user: {
         findUnique: vi.fn(),
         findUniqueOrThrow: vi.fn().mockResolvedValue(baseOwner()),
+        update: vi.fn(),
       },
       skillClaim: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -52,6 +53,70 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       prisma.user.findUnique.mockResolvedValue({ id: userId, profileVisible: true });
       const result = await service.getBySlug('some-slug');
       expect(result.fullName).toBe('Ada Lovelace');
+    });
+
+    it('falls back to an active claimed username when the slug does not match', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null) // slug lookup misses
+        .mockResolvedValueOnce({ id: userId, profileVisible: true, usernameStatus: 'ACTIVE' });
+
+      const result = await service.getBySlug('priya_s');
+
+      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
+        where: { usernameNormalized: 'priya_s' },
+        select: { id: true, profileVisible: true, usernameStatus: true },
+      });
+      expect(result.fullName).toBe('Ada Lovelace');
+    });
+
+    it('normalizes the identifier (case/whitespace) before the username fallback lookup', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: userId, profileVisible: true, usernameStatus: 'ACTIVE' });
+
+      await service.getBySlug('  Priya_S  ');
+
+      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
+        where: { usernameNormalized: 'priya_s' },
+        select: { id: true, profileVisible: true, usernameStatus: true },
+      });
+    });
+
+    it('404s a merely-reserved (not yet active) username even if visibility happens to be on', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: userId, profileVisible: true, usernameStatus: 'RESERVED' });
+
+      await expect(service.getBySlug('priya_s')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('getOrCreateShareLink', () => {
+    it('prefers the active claimed username over the random slug', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'abc123',
+        username: 'priya_s',
+        usernameStatus: 'ACTIVE',
+      });
+
+      const result = await service.getOrCreateShareLink(userId);
+
+      expect(result.slug).toBe('priya_s');
+      expect(result.url).toContain('/candidate/priya_s');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the random slug when there is no active username', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'abc123',
+        username: 'priya_s',
+        usernameStatus: 'RESERVED',
+      });
+
+      const result = await service.getOrCreateShareLink(userId);
+
+      expect(result.slug).toBe('abc123');
+      expect(result.url).toContain('/candidate/abc123');
     });
   });
 

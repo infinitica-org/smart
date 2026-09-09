@@ -27,11 +27,22 @@ const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, trac
 export class PublicProfileService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  /**
+   * CN-T09 — once a candidate has claimed an active username, their share link uses
+   * it (`/candidate/<username>`) instead of the opaque slug: easier to read, easier to
+   * remember, and it's the identity they picked. The random slug is still lazily minted
+   * as a fallback for anyone who skipped claiming a username.
+   */
   async getOrCreateShareLink(userId: string): Promise<PublicProfileLinkResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { publicProfileSlug: true },
+      select: { publicProfileSlug: true, username: true, usernameStatus: true },
     });
+
+    if (user.username && user.usernameStatus === 'ACTIVE') {
+      return { slug: user.username, url: `${env.VERIFY_APP_URL}/candidate/${user.username}` };
+    }
+
     const slug =
       user.publicProfileSlug ??
       (
@@ -44,14 +55,31 @@ export class PublicProfileService {
     return { slug: slug ?? '', url: `${env.VERIFY_APP_URL}/candidate/${slug ?? ''}` };
   }
 
-  async getBySlug(slug: string): Promise<PublicCandidateProfileDto> {
-    const user = await this.prisma.user.findUnique({
-      where: { publicProfileSlug: slug },
+  /**
+   * Resolves either the opaque share slug or an active claimed username — one public
+   * lookup, so the frontend (and anyone with an old link) never needs to know which
+   * kind of identifier they're holding.
+   */
+  async getBySlug(identifier: string): Promise<PublicCandidateProfileDto> {
+    const bySlug = await this.prisma.user.findUnique({
+      where: { publicProfileSlug: identifier },
       select: { id: true, profileVisible: true },
     });
-    // CN-T09 — a real slug with visibility off must 404 exactly like a slug that
-    // doesn't exist at all; never confirm to an outside caller that the link is real.
-    if (!user || !user.profileVisible) {
+    const user =
+      bySlug ??
+      (await this.prisma.user.findUnique({
+        where: { usernameNormalized: identifier.trim().toLowerCase() },
+        select: { id: true, profileVisible: true, usernameStatus: true },
+      }));
+
+    // CN-T09 — a real identifier with visibility off (or a reserved-but-not-yet-active
+    // username) must 404 exactly like one that doesn't exist; never confirm to an
+    // outside caller that the link is real.
+    const resolvable =
+      user &&
+      user.profileVisible &&
+      (!('usernameStatus' in user) || user.usernameStatus === 'ACTIVE');
+    if (!resolvable) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'No public profile at this link.',

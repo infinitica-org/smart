@@ -13,6 +13,7 @@ import SkillsStep from './steps/SkillsStep';
 import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
+import UsernameStep from './steps/UsernameStep';
 import DoneStep from './steps/DoneStep';
 import {
   applyResumeDraft,
@@ -151,7 +152,7 @@ export default function OnboardingWizard() {
     try {
       await api.users.completeOnboarding(payload);
       clearOnboardingDraft();
-      setCurrentStep('done');
+      setCurrentStep('username');
     } catch {
       setCompleteError(
         'Could not save your profile to the server. Check your connection and try again.',
@@ -232,6 +233,8 @@ export default function OnboardingWizard() {
             error={completeError}
           />
         )}
+
+        {currentStep === 'username' && <UsernameStep onContinue={() => setCurrentStep('done')} />}
 
         {currentStep === 'done' && <DoneStep onGoToDashboard={() => router.push('/dashboard')} />}
       </motion.div>
