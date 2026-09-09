@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@smart/ui';
+import Link from 'next/link';
+import { useQuery, Button } from '@smart/ui';
 import type { CandidateCertificateDto } from '@smart/contracts';
+import { ArrowLeft, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
-import { CertificateDetailsForm } from './certificate-details-form';
+import { CertificateGuidelinesBanner } from './certificate-guidelines-banner';
+import { CertificateStatusStepper } from './certificate-status-stepper';
+import { CertificateDetailsForm, type CertificateDetailsPayload } from './certificate-details-form';
 import { CertificateUpload } from './certificate-upload';
 import { CertificatePreview } from './certificate-preview';
 import { SkillsLearningForm } from './skills-learning-form';
 import { EndorsementRequestForm } from './endorsement-request-form';
 import { CertificateStatusBadge } from './certificate-status-badge';
 import type { CertificateSkillSelection } from './skill-picker';
-
-const TERMINAL_STATUSES = new Set(['IN_VERIFICATION', 'VERIFIED', 'REJECTED']);
 
 export function CertificateWizard() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export function CertificateWizard() {
   const [savingLearning, setSavingLearning] = useState(false);
   const [requestingEndorsement, setRequestingEndorsement] = useState(false);
   const [endorsementError, setEndorsementError] = useState<string | null>(null);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
 
   useEffect(() => {
     if (!existingId) return;
@@ -53,18 +56,30 @@ export function CertificateWizard() {
   const { data: eventsRes } = useQuery({
     queryKey: ['candidate-certificate-events', certificateId] as const,
     queryFn: () => api.candidateCertificates.listEvents(certificateId as string),
-    enabled:
-      Boolean(certificateId) && certificate !== null && TERMINAL_STATUSES.has(certificate.status),
+    enabled: Boolean(certificateId) && certificate !== null,
   });
 
-  const handleCreateDetails = async (details: { title: string; issuer: string }) => {
+  const handleCreateDetails = async (details: CertificateDetailsPayload) => {
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await api.candidateCertificates.create(details);
-      setCertificate(created);
-      setCertificateId(created.certificateId);
-      router.replace(`/certificates/add?id=${created.certificateId}`);
+      if (certificateId && certificate) {
+        // Updating existing certificate details
+        const updated = await api.candidateCertificates.updateLearning(certificateId, {
+          certificateNumber: details.certificateNumber,
+          verificationUrl: details.verificationUrl,
+          issueDate: details.issueDate,
+          expiryDate: details.expiryDate,
+        });
+        setCertificate(updated);
+        setIsEditingDetails(false);
+      } else {
+        // Creating new certificate entry
+        const created = await api.candidateCertificates.create(details);
+        setCertificate(created);
+        setCertificateId(created.certificateId);
+        router.replace(`/certificates/add?id=${created.certificateId}`);
+      }
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to save certificate details.');
     } finally {
@@ -81,6 +96,22 @@ export function CertificateWizard() {
       setCertificate(updated);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Failed to upload the certificate.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSourceUrlSubmit = async (url: string) => {
+    if (!certificateId) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const updated = await api.candidateCertificates.updateLearning(certificateId, {
+        verificationUrl: url,
+      });
+      setCertificate(updated);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to save verification URL.');
     } finally {
       setUploading(false);
     }
@@ -132,41 +163,143 @@ export function CertificateWizard() {
   };
 
   if (loadingExisting) {
-    return <p className="text-sm text-white/40">Loading…</p>;
-  }
-
-  if (!certificate) {
     return (
-      <CertificateDetailsForm
-        onSubmit={handleCreateDetails}
-        isPending={creating}
-        error={createError}
-      />
+      <div className="flex h-64 items-center justify-center">
+        <p className="animate-pulse text-sm text-white/40">Loading certificate data…</p>
+      </div>
     );
   }
 
-  if (TERMINAL_STATUSES.has(certificate.status)) {
+  // Header navigation bar for all wizard states
+  const WizardHeader = () => (
+    <div className="mb-6 flex items-center justify-between">
+      <Link
+        href="/certificates"
+        className="inline-flex items-center gap-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to My Certificates
+      </Link>
+      <Link href="/dashboard" className="text-xs font-medium text-[#00fad0] hover:underline">
+        Skip to Dashboard &rarr;
+      </Link>
+    </div>
+  );
+
+  // Step 1: Initial Entry Form (No Certificate Created Yet)
+  if (!certificate || isEditingDetails) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <WizardHeader />
+        <CertificateGuidelinesBanner />
+        <CertificateDetailsForm
+          initialValues={
+            certificate
+              ? {
+                  title: certificate.title,
+                  issuer: certificate.issuer,
+                  certificateNumber: certificate.certificateNumber ?? undefined,
+                  issueDate: certificate.issueDate ?? undefined,
+                  expiryDate: certificate.expiryDate ?? undefined,
+                  verificationUrl: certificate.verificationUrl ?? undefined,
+                }
+              : undefined
+          }
+          onSubmit={handleCreateDetails}
+          isPending={creating}
+          error={createError}
+          submitLabel={certificate ? 'Update Details & Recheck' : 'Save & Continue'}
+        />
+      </div>
+    );
+  }
+
+  const hasFileOrUrl = Boolean(certificate.certificateFileUrl || certificate.verificationUrl);
+  const hasSkills = certificate.skills.length > 0;
+  const hasLearning = Boolean(certificate.learningDescription);
+
+  // Step 2: Terminal / Voided / Rejected / Verified View
+  const isVoided = certificate.status === 'VOIDED' || certificate.sourceStatus === 'voided';
+  const isRejected =
+    certificate.status === 'REJECTED' || certificate.sourceStatus === 'source_failed';
+
+  if (isVoided || isRejected) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <WizardHeader />
+
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-medium text-white">{certificate.title}</h2>
-            <p className="text-sm text-white/45">{certificate.issuer}</p>
+            <h2 className="text-xl font-bold text-white">{certificate.title}</h2>
+            <p className="text-sm text-white/50">{certificate.issuer}</p>
           </div>
           <CertificateStatusBadge status={certificate.status} />
         </div>
+
+        <CertificateStatusStepper
+          status={certificate.status}
+          sourceStatus={certificate.sourceStatus}
+          hasFileOrUrl={hasFileOrUrl}
+          hasSkills={hasSkills}
+          hasLearning={hasLearning}
+        />
+
+        {isVoided && (
+          <div className="rounded-2xl border border-danger/30 bg-danger/10 p-6 text-sm text-danger-foreground">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="h-6 w-6 shrink-0 text-danger" />
+              <div>
+                <h4 className="font-semibold text-danger">Certificate Voided</h4>
+                <p className="mt-1 text-xs text-white/80 leading-relaxed">
+                  This certificate has been voided by a platform administrator due to an integrity
+                  policy violation or invalid credentials. Voided entries cannot be re-verified or
+                  edited.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRejected && (
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-6 text-sm text-white">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 shrink-0 text-warning" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-warning">Source Verification Failed</h4>
+                <p className="mt-1 text-xs text-white/80 leading-relaxed">
+                  Automated or manual check could not confirm this certificate against the issuer
+                  database or verification URL. Please double-check your Certificate Number, direct
+                  Verification URL, or re-upload a clear PDF document.
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="inline-flex items-center gap-2 text-xs"
+                    onClick={() => setIsEditingDetails(true)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Edit Details &amp; Retry
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Verification History Logs */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <h3 className="mb-4 text-sm font-semibold text-white">Verification history</h3>
+          <h3 className="mb-4 text-sm font-semibold text-white">
+            Verification History &amp; Audit Log
+          </h3>
           {(eventsRes?.events.length ?? 0) === 0 ? (
-            <p className="text-sm text-white/40">No events yet.</p>
+            <p className="text-xs text-white/40">No verification events recorded yet.</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {eventsRes?.events.map((event) => (
-                <li key={event.eventId} className="flex items-start gap-3 text-sm">
+                <li key={event.eventId} className="flex items-start gap-3 text-xs">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00fad0]" />
                   <div>
-                    <p className="text-white/80">{event.message}</p>
-                    <p className="text-xs text-white/30">
+                    <p className="text-white/80 font-mono">{event.message}</p>
+                    <p className="text-[11px] text-white/40">
                       {new Date(event.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -180,18 +313,47 @@ export function CertificateWizard() {
   }
 
   const readyForVerification =
-    Boolean(certificate.certificateFileUrl) &&
-    certificate.skills.length > 0 &&
-    Boolean(certificate.learningDescription) &&
+    hasFileOrUrl &&
+    hasSkills &&
+    hasLearning &&
     certificate.practicalApplied !== null &&
     (!certificate.practicalApplied || Boolean(certificate.practicalDescription));
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-      <div>
-        <h2 className="text-lg font-medium text-white">{certificate.title}</h2>
-        <p className="text-sm text-white/45">{certificate.issuer}</p>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <WizardHeader />
+      <CertificateGuidelinesBanner />
+
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">{certificate.title}</h2>
+          <p className="text-sm text-white/50">{certificate.issuer}</p>
+          {certificate.certificateNumber && (
+            <p className="text-xs text-white/40 font-mono mt-0.5">
+              Cert #: {certificate.certificateNumber}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-xs text-white/60 hover:text-white"
+            onClick={() => setIsEditingDetails(true)}
+          >
+            Edit Details
+          </Button>
+          <CertificateStatusBadge status={certificate.status} />
+        </div>
       </div>
+
+      <CertificateStatusStepper
+        status={certificate.status}
+        sourceStatus={certificate.sourceStatus}
+        hasFileOrUrl={hasFileOrUrl}
+        hasSkills={hasSkills}
+        hasLearning={hasLearning}
+      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div>
@@ -205,8 +367,11 @@ export function CertificateWizard() {
           ) : (
             <CertificateUpload
               onUpload={handleUpload}
+              onSourceUrlSubmit={handleSourceUrlSubmit}
               isUploading={uploading}
               error={uploadError}
+              currentFileName={certificate.certificateFileName}
+              currentSourceUrl={certificate.verificationUrl}
             />
           )}
         </div>
@@ -228,10 +393,10 @@ export function CertificateWizard() {
           error={endorsementError}
         />
       ) : (
-        <p className="text-center text-sm text-white/30">
-          Add a certificate file, at least one skill, and your learning details to continue to
-          verification.
-        </p>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center text-xs text-white/40">
+          Add a certificate file or verification URL, at least one skill, and your practical
+          learning details to complete submission.
+        </div>
       )}
     </div>
   );
