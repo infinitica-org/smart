@@ -92,11 +92,14 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
   });
 
   describe('getOrCreateShareLink', () => {
-    it('prefers the active claimed username over the random slug', async () => {
+    it('prefers a claimed username over the random slug — stable from the moment it is reserved, not only once ACTIVE', async () => {
+      // Reserving alone doesn't make the profile visible (getBySlug still 404s until
+      // ACTIVE), but the *link itself* must be stable from the moment it's claimed, so
+      // a candidate who copies it before turning visibility on never gets a dead link
+      // silently swapped for a different one later.
       prisma.user.findUniqueOrThrow.mockResolvedValue({
         publicProfileSlug: 'abc123',
         username: 'priya_s',
-        usernameStatus: 'ACTIVE',
       });
 
       const result = await service.getOrCreateShareLink(userId);
@@ -106,11 +109,10 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
-    it('falls back to the random slug when there is no active username', async () => {
+    it('falls back to the random slug when no username has been claimed', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue({
         publicProfileSlug: 'abc123',
-        username: 'priya_s',
-        usernameStatus: 'RESERVED',
+        username: null,
       });
 
       const result = await service.getOrCreateShareLink(userId);

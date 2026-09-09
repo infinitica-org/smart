@@ -28,18 +28,23 @@ export class PublicProfileService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /**
-   * CN-T09 — once a candidate has claimed an active username, their share link uses
-   * it (`/candidate/<username>`) instead of the opaque slug: easier to read, easier to
-   * remember, and it's the identity they picked. The random slug is still lazily minted
-   * as a fallback for anyone who skipped claiming a username.
+   * CN-T09 — once a candidate has claimed a username, their share link uses it
+   * (`/candidate/<username>`) instead of the opaque slug: easier to read, easier to
+   * remember, and it's the identity they picked. This holds from the moment it's
+   * *reserved*, not only once it activates — the link is shown (and can be copied)
+   * before the profile ever goes public, and it must never change underneath someone
+   * who already copied it the moment they flip visibility on. Until then it 404s the
+   * same as any other identifier for a profile that isn't visible yet (see `getBySlug`).
+   * The random slug is still lazily minted as a fallback for anyone who skipped
+   * claiming a username.
    */
   async getOrCreateShareLink(userId: string): Promise<PublicProfileLinkResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { publicProfileSlug: true, username: true, usernameStatus: true },
+      select: { publicProfileSlug: true, username: true },
     });
 
-    if (user.username && user.usernameStatus === 'ACTIVE') {
+    if (user.username) {
       return { slug: user.username, url: `${env.VERIFY_APP_URL}/candidate/${user.username}` };
     }
 

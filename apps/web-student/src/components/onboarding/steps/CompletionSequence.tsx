@@ -2,18 +2,41 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Lightbulb, Sparkles } from 'lucide-react';
 import { PrimaryButton } from '../wizard-ui';
 
-const LOADING_MESSAGES = [
-  'Creating your profile…',
-  'Curating your experience…',
-  'Mapping your skills…',
-  'Almost there…',
+interface LoadingBeat {
+  text: string;
+  kind: 'status' | 'fact';
+}
+
+/**
+ * A short status line reads as "working"; a fact reads as "here's something worth
+ * knowing" — mixing them turns the theatrical pause into something with a little
+ * value instead of just dead air. Facts get more screen time since they're meant
+ * to actually be read, not skimmed.
+ */
+const LOADING_BEATS: LoadingBeat[] = [
+  { text: 'Creating your profile…', kind: 'status' },
+  { text: 'Curating your experience…', kind: 'status' },
+  {
+    text: 'Verified skills get noticed first — employers filter for the checkmark, not the claim.',
+    kind: 'fact',
+  },
+  { text: 'Mapping your skills to your track…', kind: 'status' },
+  {
+    text: 'Your public profile updates itself the moment something new gets verified — no need to resend your link.',
+    kind: 'fact',
+  },
+  {
+    text: 'A username is a one-time claim, so the handle you picked is yours for good.',
+    kind: 'fact',
+  },
+  { text: 'Almost there…', kind: 'status' },
 ];
 
-const MESSAGE_INTERVAL_MS = 850;
-const MIN_LOADING_MS = LOADING_MESSAGES.length * MESSAGE_INTERVAL_MS;
+const STATUS_DURATION_MS = 750;
+const FACT_DURATION_MS = 2100;
 
 type Phase = 'loading' | 'welcome' | 'exiting';
 
@@ -21,8 +44,9 @@ type Phase = 'loading' | 'welcome' | 'exiting';
  * The finale of onboarding: a short, theatrical "setting things up" beat
  * (nothing is actually loading at this point — the server call already
  * succeeded — but a beat of anticipation reads as more finished than an
- * instant jump-cut to the dashboard), a welcome moment, then the whole
- * wizard slides up and away to reveal the dashboard underneath.
+ * instant jump-cut to the dashboard) that doubles as a few quick tips, a
+ * welcome moment, then the whole wizard slides up and away to reveal the
+ * dashboard underneath.
  */
 export default function CompletionSequence({
   firstName,
@@ -32,20 +56,39 @@ export default function CompletionSequence({
   onFinished: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>('loading');
-  const [messageIndex, setMessageIndex] = useState(0);
+  const [beatIndex, setBeatIndex] = useState(0);
 
   useEffect(() => {
-    const tick = setInterval(() => {
-      setMessageIndex((i) => Math.min(i + 1, LOADING_MESSAGES.length - 1));
-    }, MESSAGE_INTERVAL_MS);
-    const advance = setTimeout(() => setPhase('welcome'), MIN_LOADING_MS);
+    let cancelled = false;
+    let index = 0;
+
+    const scheduleNext = () => {
+      const beat = LOADING_BEATS[index];
+      if (!beat) return;
+      const duration = beat.kind === 'fact' ? FACT_DURATION_MS : STATUS_DURATION_MS;
+      const timer = setTimeout(() => {
+        if (cancelled) return;
+        if (index < LOADING_BEATS.length - 1) {
+          index += 1;
+          setBeatIndex(index);
+          scheduleNext();
+        } else {
+          setPhase('welcome');
+        }
+      }, duration);
+      timers.push(timer);
+    };
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    scheduleNext();
     return () => {
-      clearInterval(tick);
-      clearTimeout(advance);
+      cancelled = true;
+      timers.forEach(clearTimeout);
     };
   }, []);
 
   const handleContinue = () => setPhase('exiting');
+  const beat = LOADING_BEATS[beatIndex];
 
   return (
     <motion.div
@@ -65,23 +108,53 @@ export default function CompletionSequence({
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
             className="flex flex-col items-center"
           >
-            <div className="relative mb-8 h-14 w-14">
+            <div className="relative mb-8 h-14 w-14 flex-none">
               <span className="absolute inset-0 animate-ping rounded-full bg-[#00fad0]/20" />
               <span className="absolute inset-0 rounded-full border-2 border-zinc-800" />
               <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#00fad0]" />
             </div>
+
             <AnimatePresence mode="wait">
-              <motion.p
-                key={messageIndex}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
-                className="text-lg font-medium text-zinc-300"
-              >
-                {LOADING_MESSAGES[messageIndex]}
-              </motion.p>
+              {beat?.kind === 'fact' ? (
+                <motion.div
+                  key={beatIndex}
+                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex max-w-sm items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 px-5 py-4 text-left"
+                >
+                  <Lightbulb className="h-5 w-5 flex-none text-[#00fad0]" />
+                  <p className="text-sm leading-relaxed text-zinc-300">{beat.text}</p>
+                </motion.div>
+              ) : (
+                <motion.p
+                  key={beatIndex}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-lg font-medium text-zinc-300"
+                >
+                  {beat?.text}
+                </motion.p>
+              )}
             </AnimatePresence>
+
+            <div className="mt-8 flex items-center gap-1.5">
+              {LOADING_BEATS.map((item, idx) => (
+                <span
+                  key={item.text}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === beatIndex
+                      ? 'w-5 bg-[#00fad0]'
+                      : idx < beatIndex
+                        ? 'w-1.5 bg-[#00fad0]/40'
+                        : 'w-1.5 bg-zinc-800'
+                  }`}
+                />
+              ))}
+            </div>
           </motion.div>
         ) : (
           <motion.div
