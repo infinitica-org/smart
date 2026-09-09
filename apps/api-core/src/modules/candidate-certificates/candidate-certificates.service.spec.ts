@@ -94,14 +94,37 @@ describe('CandidateCertificatesService', () => {
     vi.clearAllMocks();
   });
 
-  it('creates a certificate declared by title and issuer', async () => {
+  it('creates a certificate declared by title, issuer, credential number, dates, and verification URL', async () => {
     const { prisma, service } = setup();
     prisma.candidateCertificate.create.mockResolvedValue(
-      baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
+      baseCertificateRow({
+        status: 'DECLARED',
+        certificateNumber: 'AWS-123456',
+        issueDate: '2024-01-15',
+        expiryDate: '2027-01-15',
+        verificationUrl: 'https://www.credly.com/org/aws/badge/123',
+        certificateFileUrl: null,
+        skills: [],
+      }),
+    );
+    prisma.candidateCertificate.findUniqueOrThrow.mockResolvedValue(
+      baseCertificateRow({
+        status: 'DECLARED',
+        certificateNumber: 'AWS-123456',
+        issueDate: '2024-01-15',
+        expiryDate: '2027-01-15',
+        verificationUrl: 'https://www.credly.com/org/aws/badge/123',
+        certificateFileUrl: null,
+        skills: [],
+      }),
     );
     const dto = await service.create(candidateId, {
       title: 'AWS Certified Cloud Practitioner',
       issuer: 'Amazon Web Services',
+      certificateNumber: 'AWS-123456',
+      issueDate: '2024-01-15',
+      expiryDate: '2027-01-15',
+      verificationUrl: 'https://www.credly.com/org/aws/badge/123',
     });
     expect(prisma.candidateCertificate.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -109,11 +132,16 @@ describe('CandidateCertificatesService', () => {
           candidateId,
           title: 'AWS Certified Cloud Practitioner',
           issuer: 'Amazon Web Services',
+          certificateNumber: 'AWS-123456',
+          issueDate: '2024-01-15',
+          expiryDate: '2027-01-15',
+          verificationUrl: 'https://www.credly.com/org/aws/badge/123',
         },
       }),
     );
     expect(dto.status).toBe('DECLARED');
-    expect(dto.certificateFileUrl).toBeNull();
+    expect(dto.certificateNumber).toBe('AWS-123456');
+    expect(dto.verificationUrl).toBe('https://www.credly.com/org/aws/badge/123');
   });
 
   it('rejects an upload with a disallowed mime type', async () => {

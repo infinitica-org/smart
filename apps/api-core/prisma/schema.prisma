@@ -1246,6 +1246,8 @@ model CandidateCertificate {
   status               CandidateCertificateStatus     @default(DECLARED)
   sourceStatus         CertificateSourceStatus        @default(pending) @map("source_status")
   certificateNumber    String?                        @map("certificate_number")
+  issueDate            String?                        @map("issue_date")
+  expiryDate           String?                        @map("expiry_date")
   verificationUrl      String?                        @map("verification_url")
   verificationMethod   CertificateVerificationMethod? @map("verification_method")
   certificateFileUrl   String?                        @map("certificate_file_url")

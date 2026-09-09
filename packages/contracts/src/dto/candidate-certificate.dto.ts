@@ -24,6 +24,8 @@ export const CreateCandidateCertificateRequestSchema = z.object({
   title: z.string().min(3).max(200),
   issuer: z.string().min(2).max(200),
   certificateNumber: z.string().max(100).optional(),
+  issueDate: z.string().max(100).optional(),
+  expiryDate: z.string().max(100).optional(),
   verificationUrl: z.string().url().max(500).optional(),
 });
 export type CreateCandidateCertificateRequest = z.infer<
@@ -56,6 +58,8 @@ export const UpdateCertificateLearningRequestSchema = z.object({
   practicalApplied: z.boolean().optional(),
   practicalDescription: z.string().max(4_000).optional(),
   certificateNumber: z.string().max(100).optional(),
+  issueDate: z.string().max(100).optional(),
+  expiryDate: z.string().max(100).optional(),
   verificationUrl: z.string().url().max(500).optional(),
 });
 export type UpdateCertificateLearningRequest = z.infer<
@@ -70,6 +74,8 @@ export const CandidateCertificateDtoSchema = z.object({
   status: CandidateCertificateStatusSchema,
   sourceStatus: CertificateSourceStatusSchema,
   certificateNumber: z.string().nullable(),
+  issueDate: z.string().nullable().optional(),
+  expiryDate: z.string().nullable().optional(),
   verificationUrl: z.string().nullable(),
   verificationMethod: CertificateVerificationMethodSchema.nullable(),
   certificateFileUrl: z.string().nullable(),
