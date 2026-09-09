@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { CandidateCertificateStatusSchema, WorkExperienceVerificationStatusSchema } from '../domain/enums.js';
+import {
+  CandidateCertificateStatusSchema,
+  WorkExperienceVerificationStatusSchema,
+} from '../domain/enums.js';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
 
 /**
@@ -24,4 +27,6 @@ export const VoidCandidateCertificateResponseSchema = z.object({
   status: CandidateCertificateStatusSchema,
   voidedAt: IsoDateTimeSchema,
 });
-export type VoidCandidateCertificateResponse = z.infer<typeof VoidCandidateCertificateResponseSchema>;
+export type VoidCandidateCertificateResponse = z.infer<
+  typeof VoidCandidateCertificateResponseSchema
+>;

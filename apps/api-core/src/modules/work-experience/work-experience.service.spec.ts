@@ -1019,7 +1019,10 @@ describe('WorkExperienceService', () => {
 
       expect(prisma.workExperience.update).toHaveBeenCalledWith({
         where: { id: experienceId },
-        data: { status: 'VOIDED', rejectionReason: 'Employer confirmed candidate never worked there.' },
+        data: {
+          status: 'VOIDED',
+          rejectionReason: 'Employer confirmed candidate never worked there.',
+        },
       });
       expect(auditPublisher.record).toHaveBeenCalledWith(
         expect.objectContaining({

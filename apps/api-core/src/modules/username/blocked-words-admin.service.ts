@@ -17,7 +17,13 @@ export class BlockedWordsAdminService {
 
   async list(): Promise<ListBlockedWordsResponse> {
     const rows = await this.prisma.blockedWord.findMany({ orderBy: { word: 'asc' } });
-    return { words: rows.map((row) => ({ id: row.id, word: row.word, createdAt: row.createdAt.toISOString() })) };
+    return {
+      words: rows.map((row) => ({
+        id: row.id,
+        word: row.word,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    };
   }
 
   async create(actorId: string, body: CreateBlockedWordRequest) {

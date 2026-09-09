@@ -33,7 +33,12 @@ export class UsernameService {
   async getStatus(userId: string): Promise<UsernameStatusResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { username: true, usernameStatus: true, usernameReservedAt: true, usernameActivatedAt: true },
+      select: {
+        username: true,
+        usernameStatus: true,
+        usernameReservedAt: true,
+        usernameActivatedAt: true,
+      },
     });
     return {
       username: user.username,
@@ -134,7 +139,8 @@ export class UsernameService {
 
     // Turning visibility on for the first time is exactly the "activation" moment for a
     // previously-reserved-only username; going back off never de-activates it.
-    const activating = body.profileVisible && !user.profileVisible && user.usernameStatus === 'RESERVED';
+    const activating =
+      body.profileVisible && !user.profileVisible && user.usernameStatus === 'RESERVED';
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -153,7 +159,10 @@ export class UsernameService {
       resourceType: 'user',
       resourceId: userId,
       reasonCode: null,
-      metadata: { profileVisible: updated.profileVisible, showInProgressItems: updated.showInProgressItems },
+      metadata: {
+        profileVisible: updated.profileVisible,
+        showInProgressItems: updated.showInProgressItems,
+      },
     });
 
     return {
@@ -169,7 +178,10 @@ export class UsernameService {
     return blockedWords.some((entry) => normalizedUsername.includes(entry.word));
   }
 
-  private async registerFailedAttempt(userId: string, currentFailedAttempts: number): Promise<void> {
+  private async registerFailedAttempt(
+    userId: string,
+    currentFailedAttempts: number,
+  ): Promise<void> {
     const nextFailedAttempts = currentFailedAttempts + 1;
     const shouldCooldown = nextFailedAttempts >= MAX_FAILED_ATTEMPTS_BEFORE_COOLDOWN;
     await this.prisma.user.update({

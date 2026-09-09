@@ -17,7 +17,8 @@ export class CandidateCertificateVoidAdminController {
   @Post(':id/void')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'SA-T08 — void a certificate for fraud/integrity reasons. One-directional; fully audited.',
+    summary:
+      'SA-T08 — void a certificate for fraud/integrity reasons. One-directional; fully audited.',
   })
   void(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
     const parsed = VoidRequestSchema.parse(body);

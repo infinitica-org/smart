@@ -76,41 +76,47 @@ export class PublicProfileService {
     });
     const showInProgress = owner.showInProgressItems;
 
-    const [skillClaims, declaredCount, projects, workExperience, certificate, externalCertificates] =
-      await Promise.all([
-        this.prisma.skillClaim.findMany({
-          where: { studentId: userId, status: 'VERIFIED' },
-          include: { skill: { select: { code: true } } },
-        }),
-        this.prisma.skillClaim.count({ where: { studentId: userId } }),
-        this.prisma.project.findMany({
-          // A reviewer-rejected project (possible plagiarism/integrity flag) is never
-          // portfolio material — everything else the student put up stays visible.
-          where: { studentId: userId, status: { not: 'REJECTED' } },
-          orderBy: { createdAt: 'desc' },
-          include: { report: { select: { score: true } } },
-        }),
-        this.prisma.workExperience.findMany({
-          // CN-T09 — verified-only by default; showInProgress additionally admits anything
-          // not yet decided, but a VOIDED (SA-T08) or REJECTED/EXPIRED entry never appears
-          // here regardless of that toggle.
-          where: showInProgress
-            ? { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } }
-            : { studentId: userId, status: 'VERIFIED' },
-          orderBy: { startDate: 'desc' },
-        }),
-        this.prisma.certificate.findFirst({
-          where: { userId, status: 'ISSUED', isPublic: true },
-          include: { track: { select: { name: true } } },
-        }),
-        this.prisma.candidateCertificate.findMany({
-          where: showInProgress
-            ? { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } }
-            : { candidateId: userId, status: 'VERIFIED' },
-          orderBy: { createdAt: 'desc' },
-          include: { skills: true },
-        }),
-      ]);
+    const [
+      skillClaims,
+      declaredCount,
+      projects,
+      workExperience,
+      certificate,
+      externalCertificates,
+    ] = await Promise.all([
+      this.prisma.skillClaim.findMany({
+        where: { studentId: userId, status: 'VERIFIED' },
+        include: { skill: { select: { code: true } } },
+      }),
+      this.prisma.skillClaim.count({ where: { studentId: userId } }),
+      this.prisma.project.findMany({
+        // A reviewer-rejected project (possible plagiarism/integrity flag) is never
+        // portfolio material — everything else the student put up stays visible.
+        where: { studentId: userId, status: { not: 'REJECTED' } },
+        orderBy: { createdAt: 'desc' },
+        include: { report: { select: { score: true } } },
+      }),
+      this.prisma.workExperience.findMany({
+        // CN-T09 — verified-only by default; showInProgress additionally admits anything
+        // not yet decided, but a VOIDED (SA-T08) or REJECTED/EXPIRED entry never appears
+        // here regardless of that toggle.
+        where: showInProgress
+          ? { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } }
+          : { studentId: userId, status: 'VERIFIED' },
+        orderBy: { startDate: 'desc' },
+      }),
+      this.prisma.certificate.findFirst({
+        where: { userId, status: 'ISSUED', isPublic: true },
+        include: { track: { select: { name: true } } },
+      }),
+      this.prisma.candidateCertificate.findMany({
+        where: showInProgress
+          ? { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } }
+          : { candidateId: userId, status: 'VERIFIED' },
+        orderBy: { createdAt: 'desc' },
+        include: { skills: true },
+      }),
+    ]);
 
     const track = owner.primaryTrack
       ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)

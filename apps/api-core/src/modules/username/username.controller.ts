@@ -18,7 +18,7 @@ export class UsernameController {
 
   @Get('username')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get the caller\'s username reservation status (CN-T09).' })
+  @ApiOperation({ summary: "Get the caller's username reservation status (CN-T09)." })
   getStatus(@CurrentUser() user: RequestUser) {
     return this.service.getStatus(user.sub);
   }

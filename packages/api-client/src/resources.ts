@@ -541,8 +541,7 @@ export function onboardingApi(client: SmartApiClient) {
         schema: BlockedWordDtoSchema,
       }),
 
-    removeBlockedWord: (id: string) =>
-      client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
+    removeBlockedWord: (id: string) => client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
 
     /** SA-T08 — one-directional; there is no "un-void". */
     voidCandidateCertificate: (id: string, body: VoidRequest) =>

@@ -2236,7 +2236,8 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 200,
-    summary: 'Void a work-experience entry for fraud/integrity reasons. One-directional; fully audited.',
+    summary:
+      'Void a work-experience entry for fraud/integrity reasons. One-directional; fully audited.',
   },
 
   /* -------------------------- public candidate profile ---------------------- */

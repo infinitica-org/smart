@@ -24,7 +24,11 @@ describe('BlockedWordsAdminService (CN-T09)', () => {
   });
 
   it('normalizes and creates a new blocked word, and audits the action', async () => {
-    const created = { id: randomUUID(), word: 'admin', createdAt: new Date('2026-09-01T00:00:00.000Z') };
+    const created = {
+      id: randomUUID(),
+      word: 'admin',
+      createdAt: new Date('2026-09-01T00:00:00.000Z'),
+    };
     prisma.blockedWord.create.mockResolvedValue(created);
 
     const result = await service.create(actorId, { word: '  Admin  ' });

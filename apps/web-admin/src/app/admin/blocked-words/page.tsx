@@ -74,7 +74,9 @@ export default function BlockedWordsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Add a word</CardTitle>
-          <CardDescription>Stored lowercased; matched as a substring of the username.</CardDescription>
+          <CardDescription>
+            Stored lowercased; matched as a substring of the username.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex items-end gap-4">
           <Field label="Word" className="max-w-xs flex-1">
