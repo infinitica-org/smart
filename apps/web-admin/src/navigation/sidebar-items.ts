@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ScrollText,
   ShieldAlert,
+  ShieldBan,
   UserCog,
   Users,
   Webhook,
@@ -55,6 +56,12 @@ export const sidebarItems: NavGroup[] = [
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
+      {
+        id: 'blocked-words',
+        title: 'Blocked words',
+        url: '/admin/blocked-words',
+        icon: ShieldBan,
+      },
     ],
   },
   {

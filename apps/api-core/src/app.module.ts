@@ -27,6 +27,7 @@ import { ProjectsModule } from './modules/projects/projects.module.js';
 import { PublicProfileModule } from './modules/public-profile/public-profile.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
+import { UsernameModule } from './modules/username/username.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
@@ -64,6 +65,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    UsernameModule,
     WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,

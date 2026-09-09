@@ -46,6 +46,8 @@ export function mapCandidateCertificateToSharedVerificationStatus(
       return 'verified';
     case 'REJECTED':
       return 'rejected';
+    case 'VOIDED':
+      return 'voided';
   }
 }
 

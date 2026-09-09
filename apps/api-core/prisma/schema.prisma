@@ -328,6 +328,21 @@ model User {
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
+  /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
+  username             String?        @map("username")
+  /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
+  usernameNormalized   String?        @unique @map("username_normalized")
+  /// CN-T09 — reservation claims the name; activation (flipped on first visibility opt-in) is a separate step.
+  usernameStatus       UsernameStatus? @map("username_status")
+  usernameReservedAt   DateTime?      @map("username_reserved_at") @db.Timestamptz(6)
+  usernameActivatedAt  DateTime?      @map("username_activated_at") @db.Timestamptz(6)
+  /// CN-T09 — internal-only rate-limit state for reservation attempts; never serialized in any API response.
+  usernameFailedAttempts Int          @default(0) @map("username_failed_attempts")
+  usernameCooldownUntil  DateTime?    @map("username_cooldown_until") @db.Timestamptz(6)
+  /// CN-T09 — global on/off switch for the public profile page (`publicProfileSlug` already existed; this gates whether it resolves).
+  profileVisible       Boolean        @default(false) @map("profile_visible")
+  /// CN-T09 — opt-in only; default keeps the public page verified-items-only.
+  showInProgressItems  Boolean        @default(false) @map("show_in_progress_items")
   createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens         RefreshToken[]
@@ -728,6 +743,20 @@ model KafkaOutbox {
   @@map("kafka_outbox")
 }
 
+enum UsernameStatus {
+  RESERVED
+  ACTIVE
+}
+
+/// CN-T09 — super-admin-curated list; a candidate's normalized username may not contain any entry here.
+model BlockedWord {
+  id        String   @id @default(uuid()) @db.Uuid
+  word      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("blocked_words")
+}
+
 model Organization {
   id                 String                   @id @default(uuid()) @db.Uuid
   name               String
@@ -1076,6 +1105,8 @@ enum WorkExperienceVerificationStatus {
   VERIFIED
   REJECTED
   EXPIRED
+  /// SA-T08 — immutable terminal state set only by the admin void action; never reachable any other way.
+  VOIDED
 }
 
 enum ExperienceDocumentType {
@@ -1176,6 +1207,8 @@ enum CandidateCertificateStatus {
   IN_VERIFICATION
   VERIFIED
   REJECTED
+  /// SA-T08 — immutable terminal state set only by the admin void action; never reachable any other way.
+  VOIDED
 }
 
 enum CertificateVerificationMethod {

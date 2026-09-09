@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -13,6 +14,9 @@ import {
   useTracks,
 } from '@/lib/candidate-identity';
 import { claimToBadgeStatus, skillNameForCode } from '@/lib/skill-declarations';
+import { ProductTour } from '@/components/tour/ProductTour';
+import { DASHBOARD_TOUR_STEPS } from '@/lib/tour-steps';
+import { consumeTourAutostart } from '@/lib/tour';
 
 export default function DashboardPage() {
   const { data: user } = useCurrentUser();
@@ -21,6 +25,8 @@ export default function DashboardPage() {
     queryKey: ['me', 'skill-claims'] as const,
     queryFn: () => api.assessment.listSkillClaims(),
   });
+  // Lazy init — a one-shot read that clears the flag, so it must run exactly once per mount.
+  const [autoStartTour] = useState(consumeTourAutostart);
 
   const verifiedCount = (claims ?? []).filter((claim) => claim.status === 'VERIFIED').length;
   const declaredCount = claims?.length ?? 0;
@@ -51,7 +57,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Candidate Profile Hero */}
           <div className="lg:col-span-1">
-            <div className="relative flex min-h-[220px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br from-[#004c63] to-[#0a0a0a] p-6 shadow-2xl">
+            <div
+              data-tour="candidate-card"
+              className="relative flex min-h-[220px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br from-[#004c63] to-[#0a0a0a] p-6 shadow-2xl"
+            >
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
                   {initials}
@@ -68,10 +77,14 @@ export default function DashboardPage() {
 
           {/* Skills Section */}
           <div className="lg:col-span-2">
-            <div className="rounded-[28px] bg-[#1a1a1a] p-7">
+            <div data-tour="skills-panel" className="rounded-[28px] bg-[#1a1a1a] p-7">
               <div className="mb-6 flex items-start justify-between">
                 <h3 className="text-lg font-medium text-white">Your skills</h3>
-                <Link href="/skills" className="text-[13px] text-[#00fad0] hover:underline">
+                <Link
+                  href="/skills"
+                  data-tour="manage-skills-link"
+                  className="text-[13px] text-[#00fad0] hover:underline"
+                >
                   Manage
                 </Link>
               </div>
@@ -98,6 +111,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <ProductTour steps={DASHBOARD_TOUR_STEPS} autoStart={autoStartTour} />
     </div>
   );
 }

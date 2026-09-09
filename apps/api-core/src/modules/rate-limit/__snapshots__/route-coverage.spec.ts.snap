@@ -2,10 +2,12 @@
 
 exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → policy so a silent matrix drift fails CI 1`] = `
 {
+  "DELETE /admin/blocked-words/:id": "role.superAdmin",
   "DELETE /users/me/work-experiences/:id": "role.student",
   "DELETE /users/me/work-experiences/:id/documents/:documentId": "role.student",
   "GET /admin/ai-health": "role.superAdmin",
   "GET /admin/audit-logs": "role.superAdmin",
+  "GET /admin/blocked-words": "role.superAdmin",
   "GET /admin/companies": "role.superAdmin",
   "GET /admin/companies/:companyId": "role.superAdmin",
   "GET /admin/companies/:companyId/entitlements": "role.superAdmin",
@@ -73,6 +75,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /users/me/onboarding/linkedin/oauth-url": "role.student",
   "GET /users/me/public-profile": "role.student",
   "GET /users/me/public-profile-link": "role.student",
+  "GET /users/me/username": "role.student",
+  "GET /users/me/visibility": "role.student",
   "GET /users/me/work-experiences": "role.student",
   "GET /users/me/work-experiences/:id": "role.student",
   "GET /users/me/work-experiences/ops-dashboard": "role.student",
@@ -89,6 +93,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PATCH /placement/applications/:applicationId/stage": "placement.application",
   "PATCH /tpo/batches/:batchId": "role.institutionAdmin",
   "POST /admin/api-keys": "role.superAdmin",
+  "POST /admin/blocked-words": "role.superAdmin",
+  "POST /admin/candidate-certificates/:id/void": "role.superAdmin",
   "POST /admin/companies": "role.superAdmin",
   "POST /admin/companies/:companyId/deactivate": "role.superAdmin",
   "POST /admin/companies/:companyId/hold": "role.superAdmin",
@@ -109,6 +115,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /admin/students/:userId/release-hold": "role.superAdmin",
   "POST /admin/verification-queue/:tenantId/resolve": "role.superAdmin",
   "POST /admin/webhooks": "role.institutionAdmin",
+  "POST /admin/work-experience/:id/void": "role.superAdmin",
   "POST /ai-gateway/complete": "role.superAdmin",
   "POST /assessment/compile-l2": "assessment.compileL2",
   "POST /assessment/complete": "role.student",
@@ -188,6 +195,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PUT /admin/rate-limits/:policyKey": "role.superAdmin",
   "PUT /users/me/onboarding": "role.student",
   "PUT /users/me/track": "role.student",
+  "PUT /users/me/username": "role.student",
+  "PUT /users/me/visibility": "role.student",
   "PUT /users/me/work-experiences/:id": "role.student",
 }
 `;

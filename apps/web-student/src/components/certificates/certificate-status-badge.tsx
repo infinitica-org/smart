@@ -15,6 +15,10 @@ const STATUS_COPY: Record<CandidateCertificateStatus, { label: string; className
     label: 'Not verified',
     className: 'border-danger/40 bg-danger/10 text-danger',
   },
+  VOIDED: {
+    label: 'Voided',
+    className: 'border-danger/40 bg-danger/10 text-danger',
+  },
 };
 
 export function CertificateStatusBadge({ status }: { status: CandidateCertificateStatus }) {
