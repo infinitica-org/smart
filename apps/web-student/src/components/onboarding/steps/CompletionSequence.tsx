@@ -97,7 +97,7 @@ export default function CompletionSequence({
       onAnimationComplete={() => {
         if (phase === 'exiting') onFinished();
       }}
-      className="flex min-h-[60vh] flex-col items-center justify-center text-center"
+      className="flex min-h-[80vh] flex-col items-center justify-center text-center"
     >
       <AnimatePresence mode="wait">
         {phase === 'loading' ? (
@@ -118,14 +118,14 @@ export default function CompletionSequence({
               {beat?.kind === 'fact' ? (
                 <motion.div
                   key={beatIndex}
-                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.3 }}
-                  className="flex max-w-sm items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 px-5 py-4 text-left"
+                  className="flex max-w-md items-center justify-center gap-2.5"
                 >
                   <Lightbulb className="h-5 w-5 flex-none text-[#00fad0]" />
-                  <p className="text-sm leading-relaxed text-zinc-300">{beat.text}</p>
+                  <p className="text-lg leading-relaxed font-medium text-zinc-300">{beat.text}</p>
                 </motion.div>
               ) : (
                 <motion.p
@@ -161,19 +161,20 @@ export default function CompletionSequence({
             key="welcome"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
             className="flex flex-col items-center"
           >
             <motion.div
               initial={{ scale: 0.4, opacity: 0, rotate: -8 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
+              transition={{ type: 'spring', stiffness: 140, damping: 16, delay: 0.2 }}
               className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10"
             >
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.35, type: 'spring', stiffness: 300, damping: 14 }}
+                transition={{ delay: 0.8, type: 'spring', stiffness: 180, damping: 14 }}
                 className="absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#00fad0] text-zinc-950 shadow-lg shadow-[#00fad0]/30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -183,7 +184,7 @@ export default function CompletionSequence({
             <motion.h1
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
               className="mb-2 text-3xl font-bold text-white md:text-4xl"
             >
               Welcome{firstName ? `, ${firstName}` : ''}!
@@ -191,7 +192,7 @@ export default function CompletionSequence({
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
               className="mb-8 max-w-sm text-zinc-400"
             >
               Your profile is ready and we&apos;re already matching you with opportunities.
@@ -200,7 +201,7 @@ export default function CompletionSequence({
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
+              transition={{ delay: 1.1, duration: 0.6 }}
             >
               <PrimaryButton onClick={handleContinue}>Go to dashboard</PrimaryButton>
             </motion.div>
