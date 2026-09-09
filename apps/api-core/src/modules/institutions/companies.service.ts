@@ -35,6 +35,25 @@ export class CompaniesService {
       });
     }
     const slug = await this.uniqueSlug(body.name);
+
+    let org = await this.prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: { equals: body.name, mode: 'insensitive' } },
+          ...(body.website ? [{ domain: body.website }] : []),
+        ],
+      },
+    });
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: body.name,
+          domain: body.website ?? null,
+          verificationStatus: 'APPROVED',
+        },
+      });
+    }
+
     const company = await this.prisma.company.create({
       data: {
         name: body.name,
@@ -47,6 +66,7 @@ export class CompaniesService {
         location: body.location,
         planId: freePlan.id,
         verificationStatus: 'APPROVED',
+        organizationId: org.id,
       },
     });
     await this.writeAudit(actorId, 'company.created', company.id, 'created by super admin', {});
@@ -280,6 +300,7 @@ export class CompaniesService {
   private toDto(
     row: {
       id: string;
+      organizationId?: string | null;
       name: string;
       domain: string;
       taxonomyDomain: string | null;
@@ -300,6 +321,7 @@ export class CompaniesService {
   ): CompanyDto {
     return {
       companyId: row.id,
+      organizationId: row.organizationId ?? null,
       name: row.name,
       domain: row.taxonomyDomain,
       website: row.website,

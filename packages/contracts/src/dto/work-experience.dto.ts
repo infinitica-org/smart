@@ -27,6 +27,7 @@ export const CreateWorkExperienceDocumentSchema = z.object({
 export type CreateWorkExperienceDocumentDto = z.infer<typeof CreateWorkExperienceDocumentSchema>;
 
 export const CreateWorkExperienceBaseSchema = z.object({
+  organizationId: z.string().uuid().optional().nullable(),
   companyId: z.string().uuid().optional().nullable(),
   companyName: z.string().min(1, 'Company name is required').max(200),
   companyWebsite: z
@@ -89,8 +90,10 @@ export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>
 export const WorkExperienceSchema = z.object({
   id: z.string().uuid(),
   studentId: z.string().uuid(),
+  organizationId: z.string().uuid().nullable().optional(),
   companyId: z.string().uuid().nullable(),
   companyName: z.string(),
+  companyNameRaw: z.string().nullable().optional(),
   companyWebsite: z.string().nullable(),
   companyLinkedinUrl: z.string().nullable(),
   role: z.string(),

@@ -40,6 +40,12 @@ describe('WorkExperienceService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      organization: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
       company: {
         findFirst: vi.fn(),
       },
@@ -105,7 +111,14 @@ describe('WorkExperienceService', () => {
         documents: [],
       };
 
-      prisma.company.findFirst.mockResolvedValueOnce(null);
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({
+        id: 'org-uuid-1',
+        name: 'Acme Corp',
+        domain: 'acme.com',
+        verificationStatus: 'PENDING',
+      });
+      prisma.company.findFirst.mockResolvedValue(null);
       prisma.workExperience.create.mockResolvedValueOnce(mockCreated);
 
       const result = await service.create(mockStudentId, payload);

@@ -728,8 +728,25 @@ model KafkaOutbox {
   @@map("kafka_outbox")
 }
 
+model Organization {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  name               String
+  domain             String?                  @unique
+  verificationStatus TenantVerificationStatus @default(PENDING) @map("verification_status")
+  verificationReason String?                  @map("verification_reason")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  companies       Company[]
+  workExperiences WorkExperience[]
+
+  @@map("organizations")
+}
+
 model Company {
   id                 String                   @id @default(uuid()) @db.Uuid
+  organizationId     String?                  @map("organization_id") @db.Uuid
+  organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   name               String
   domain             String                   @unique
   gstin              String?
@@ -753,6 +770,7 @@ model Company {
   featureFlagOverrides FeatureFlagOverride[]
   workExperiences      WorkExperience[]
 
+  @@index([organizationId])
   @@map("companies")
 }
 
@@ -1073,9 +1091,12 @@ model WorkExperience {
   id                  String                           @id @default(uuid()) @db.Uuid
   studentId           String                           @map("student_id") @db.Uuid
   student             User                             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  organizationId      String?                          @map("organization_id") @db.Uuid
+  organization        Organization?                    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   companyId           String?                          @map("company_id") @db.Uuid
   company             Company?                         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyName         String                           @map("company_name")
+  companyNameRaw      String?                          @map("company_name_raw")
   companyWebsite      String?                          @map("company_website")
   companyLinkedinUrl  String?                          @map("company_linkedin_url")
   role                String
@@ -1104,6 +1125,7 @@ model WorkExperience {
 
   @@index([studentId, status])
   @@index([companyId])
+  @@index([organizationId])
   @@map("work_experiences")
 }
 
