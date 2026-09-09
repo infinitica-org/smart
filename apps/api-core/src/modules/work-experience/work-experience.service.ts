@@ -26,6 +26,7 @@ import {
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import { OrganizationsService } from '../institutions/organizations.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -39,8 +40,10 @@ import type { Prisma } from '../../generated/prisma/index.js';
 interface RawWorkExperience {
   id: string;
   studentId: string;
+  organizationId?: string | null;
   companyId?: string | null;
   companyName: string;
+  companyNameRaw?: string | null;
   companyWebsite?: string | null;
   companyLinkedinUrl?: string | null;
   role: string;
@@ -88,7 +91,7 @@ function normalizeText(text: string | null | undefined): string {
     .trim();
 }
 
-function normalizeCompanyName(name: string | null | undefined): string {
+export function normalizeCompanyName(name: string | null | undefined): string {
   if (!name) return '';
   return normalizeText(name)
     .replace(/\b(pvt|private|ltd|limited|inc|incorporated|llp|corp|corporation|co|company)\b/g, '')
@@ -161,14 +164,69 @@ export class WorkExperienceService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
+    @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
   ) {}
+
+  private async resolveOrganization(params: {
+    name: string;
+    website?: string | null;
+    verifierEmail?: string | null;
+  }) {
+    if (this.organizationsService) {
+      return this.organizationsService.resolveOrCreateOrganization(params);
+    }
+    const rawName = params.name.trim();
+    const normalizedName = normalizeCompanyName(rawName);
+    let extractedDomain: string | null = null;
+    if (params.website) {
+      extractedDomain = extractDomain(params.website);
+    }
+    if (!extractedDomain && params.verifierEmail) {
+      extractedDomain = extractDomain(params.verifierEmail);
+    }
+
+    if (extractedDomain) {
+      const orgByDomain = await this.prisma.organization.findFirst({
+        where: { domain: extractedDomain },
+      });
+      if (orgByDomain) return orgByDomain;
+    }
+
+    const orgByName = await this.prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: { equals: rawName, mode: 'insensitive' } },
+          { name: { equals: normalizedName, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (orgByName) return orgByName;
+
+    let domainToUse: string | null = extractedDomain;
+    if (domainToUse) {
+      const domainExists = await this.prisma.organization.findFirst({
+        where: { domain: domainToUse },
+      });
+      if (domainExists) domainToUse = null;
+    }
+
+    return this.prisma.organization.create({
+      data: {
+        name: rawName,
+        domain: domainToUse,
+        verificationStatus: 'PENDING',
+      },
+    });
+  }
 
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
     return WorkExperienceSchema.parse({
       id: exp.id,
       studentId: exp.studentId,
+      organizationId: exp.organizationId ?? null,
       companyId: exp.companyId ?? null,
       companyName: exp.companyName,
+      companyNameRaw: exp.companyNameRaw ?? exp.companyName,
       companyWebsite: exp.companyWebsite ?? null,
       companyLinkedinUrl: exp.companyLinkedinUrl ?? null,
       role: exp.role,
@@ -242,9 +300,23 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+    const rawName = data.companyName.trim();
+    const org = await this.resolveOrganization({
+      name: rawName,
+      website: data.companyWebsite,
+      verifierEmail: data.verifierEmail,
+    });
 
     // Optional company lookup to associate companyId if company matches catalog
     let matchedCompanyId: string | null = data.companyId ?? null;
+    if (!matchedCompanyId) {
+      const linkedCompany = await this.prisma.company.findFirst({
+        where: { organizationId: org.id },
+      });
+      if (linkedCompany) {
+        matchedCompanyId = linkedCompany.id;
+      }
+    }
     if (!matchedCompanyId && data.companyWebsite) {
       try {
         const urlObj = new URL(data.companyWebsite);
@@ -263,6 +335,8 @@ export class WorkExperienceService {
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
+        organizationId: org.id,
+        companyNameRaw: rawName,
         companyId: matchedCompanyId,
         companyName: data.companyName,
         companyWebsite: data.companyWebsite || null,
@@ -324,9 +398,34 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
+    let updatedOrgId: string | undefined = undefined;
+    let updatedCompanyNameRaw: string | undefined = undefined;
+
+    if (
+      data.companyName !== undefined ||
+      data.companyWebsite !== undefined ||
+      data.verifierEmail !== undefined
+    ) {
+      const nameToUse = data.companyName ?? existing.companyName;
+      const websiteToUse =
+        data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
+      const verifierEmailToUse =
+        data.verifierEmail !== undefined ? data.verifierEmail : existing.verifierEmail;
+
+      const org = await this.resolveOrganization({
+        name: nameToUse,
+        website: websiteToUse,
+        verifierEmail: verifierEmailToUse,
+      });
+      updatedOrgId = org.id;
+      updatedCompanyNameRaw = nameToUse.trim();
+    }
+
     const updated = await this.prisma.workExperience.update({
       where: { id },
       data: {
+        ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
+        ...(updatedCompanyNameRaw !== undefined ? { companyNameRaw: updatedCompanyNameRaw } : {}),
         ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
         ...(data.companyWebsite !== undefined
           ? { companyWebsite: data.companyWebsite || null }
@@ -843,7 +942,7 @@ export class WorkExperienceService {
   ): Promise<SendWorkExperienceVerificationResponseDto> {
     const exp = await this.prisma.workExperience.findUnique({
       where: { id: experienceId },
-      include: { student: true },
+      include: { student: true, organization: true },
     });
 
     if (!exp) {
@@ -864,10 +963,13 @@ export class WorkExperienceService {
       );
     }
 
-    const domainValidation = validateEmployerDomain(exp.verifierEmail, exp.companyWebsite);
-    if (exp.companyWebsite && !domainValidation.domainMatch) {
+    const targetDomain =
+      exp.companyWebsite ||
+      (exp.organization?.domain ? `https://${exp.organization.domain}` : null);
+    const domainValidation = validateEmployerDomain(exp.verifierEmail, targetDomain);
+    if (targetDomain && !domainValidation.domainMatch) {
       throw new BadRequestException(
-        `Verifier email domain does not match company website domain (${exp.companyWebsite}).`,
+        `Verifier email domain does not match company website domain (${targetDomain}).`,
       );
     }
 

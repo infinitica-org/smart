@@ -444,6 +444,7 @@ export type UpdateCompanyRequest = z.infer<typeof UpdateCompanyRequestSchema>;
 
 export const CompanyDtoSchema = z.object({
   companyId: UuidSchema,
+  organizationId: UuidSchema.nullable().optional(),
   name: z.string(),
   /** Industry taxonomy domain (SA-09), not an email hostname. */
   domain: z.string().nullable(),

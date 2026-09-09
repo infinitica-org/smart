@@ -6,8 +6,10 @@ import { WorkExperienceController } from './work-experience.controller.js';
 import { PublicWorkExperienceVerificationController } from './public-work-experience-verification.controller.js';
 import { WorkExperienceService } from './work-experience.service.js';
 
+import { InstitutionsModule } from '../institutions/institutions.module.js';
+
 @Module({
-  imports: [PrismaModule, AuditModule, AiGatewayModule],
+  imports: [PrismaModule, AuditModule, AiGatewayModule, InstitutionsModule],
   controllers: [WorkExperienceController, PublicWorkExperienceVerificationController],
   providers: [WorkExperienceService],
   exports: [WorkExperienceService],

@@ -47,6 +47,7 @@ export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';
 export * from './dto/work-experience.dto.js';
 export * from './dto/work-experience-proof.dto.js';
+export * from './dto/organization.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
