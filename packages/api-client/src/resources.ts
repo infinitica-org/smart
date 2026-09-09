@@ -40,6 +40,10 @@ import type {
   RunSdeSkillFormCodeRequest,
   ReserveUsernameRequest,
   UpdateProfileVisibilityRequest,
+  CreateCandidateEducationDto,
+  UpdateCandidateEducationDto,
+  CreateCandidateLanguageDto,
+  UpdateCandidateLanguageDto,
   CreateBlockedWordRequest,
   VoidRequest,
 } from '@smart/contracts';
@@ -61,6 +65,8 @@ import {
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
   CandidateCertificateDtoSchema,
+  CandidateEducationSchema,
+  CandidateLanguageSchema,
   CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
@@ -292,6 +298,56 @@ export function usersApi(client: SmartApiClient) {
       client.get(prefixed('/users/me/work-experiences'), {
         schema: z.array(WorkExperienceSchema),
       }),
+
+    listEducation: () =>
+      client.get(prefixed('/users/me/education'), {
+        schema: z.array(CandidateEducationSchema),
+      }),
+
+    getEducation: (id: string) =>
+      client.get(prefixed(`/users/me/education/${id}`), {
+        schema: CandidateEducationSchema,
+      }),
+
+    createEducation: (body: CreateCandidateEducationDto) =>
+      client.post(prefixed('/users/me/education'), body, {
+        schema: CandidateEducationSchema,
+      }),
+
+    updateEducation: (id: string, body: UpdateCandidateEducationDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/education/${id}`),
+        body,
+        schema: CandidateEducationSchema,
+      }),
+
+    deleteEducation: (id: string) => client.delete<void>(prefixed(`/users/me/education/${id}`)),
+
+    listLanguages: () =>
+      client.get(prefixed('/users/me/languages'), {
+        schema: z.array(CandidateLanguageSchema),
+      }),
+
+    getLanguage: (id: string) =>
+      client.get(prefixed(`/users/me/languages/${id}`), {
+        schema: CandidateLanguageSchema,
+      }),
+
+    createLanguage: (body: CreateCandidateLanguageDto) =>
+      client.post(prefixed('/users/me/languages'), body, {
+        schema: CandidateLanguageSchema,
+      }),
+
+    updateLanguage: (id: string, body: UpdateCandidateLanguageDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/languages/${id}`),
+        body,
+        schema: CandidateLanguageSchema,
+      }),
+
+    deleteLanguage: (id: string) => client.delete<void>(prefixed(`/users/me/languages/${id}`)),
 
     getWorkExperience: (id: string) =>
       client.get(prefixed(`/users/me/work-experiences/${id}`), {

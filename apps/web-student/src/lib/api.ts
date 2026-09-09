@@ -70,6 +70,41 @@ let mockSkillClaims: Array<{
 }> = [];
 const mockProjects = new Map<string, Record<string, unknown>>();
 
+let mockEducations: Record<string, unknown>[] = [
+  {
+    id: 'edu-mock-1',
+    studentId: MOCK_USER_ID,
+    institutionName: 'Stanford University',
+    degree: 'Bachelor of Science',
+    fieldOfStudy: 'Computer Science',
+    startDate: '2020-09-01',
+    endDate: '2024-06-01',
+    current: false,
+    grade: '3.9 GPA',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+let mockLanguages: Record<string, unknown>[] = [
+  {
+    id: 'lang-mock-1',
+    studentId: MOCK_USER_ID,
+    language: 'English',
+    proficiency: 'Full Professional',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'lang-mock-2',
+    studentId: MOCK_USER_ID,
+    language: 'Spanish',
+    proficiency: 'Professional Working',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 const MOCK_L1_ITEMS = [
   {
     itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
@@ -721,6 +756,135 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (url.includes('/users/me/education') || url.includes('/me/education')) {
+    if (method === 'GET') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      if (match && match[1] && match[1] !== 'education') {
+        const item = mockEducations.find((e) => e.id === match[1]);
+        if (!item) {
+          return new Response(
+            JSON.stringify({ error: 'not_found', message: 'Education not found' }),
+            { status: 404 },
+          );
+        }
+        return new Response(JSON.stringify(item), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(mockEducations), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const newEntry = {
+        id: crypto.randomUUID(),
+        studentId: MOCK_USER_ID,
+        institutionName: body.institutionName,
+        degree: body.degree || null,
+        fieldOfStudy: body.fieldOfStudy || null,
+        startDate: body.startDate || null,
+        endDate: body.endDate || null,
+        current: Boolean(body.current),
+        grade: body.grade || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockEducations.unshift(newEntry);
+      return new Response(JSON.stringify(newEntry), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'PUT') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const idx = mockEducations.findIndex((e) => e.id === id);
+      if (idx !== -1) {
+        mockEducations[idx] = {
+          ...mockEducations[idx],
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        return new Response(JSON.stringify(mockEducations[idx]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (method === 'DELETE') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      mockEducations = mockEducations.filter((e) => e.id !== id);
+      return new Response(null, { status: 204 });
+    }
+  }
+
+  if (url.includes('/users/me/languages') || url.includes('/me/languages')) {
+    if (method === 'GET') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      if (match && match[1] && match[1] !== 'languages') {
+        const item = mockLanguages.find((l) => l.id === match[1]);
+        if (!item) {
+          return new Response(
+            JSON.stringify({ error: 'not_found', message: 'Language not found' }),
+            { status: 404 },
+          );
+        }
+        return new Response(JSON.stringify(item), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(mockLanguages), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const newEntry = {
+        id: crypto.randomUUID(),
+        studentId: MOCK_USER_ID,
+        language: body.language,
+        proficiency: body.proficiency,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockLanguages.unshift(newEntry);
+      return new Response(JSON.stringify(newEntry), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'PUT') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const idx = mockLanguages.findIndex((l) => l.id === id);
+      if (idx !== -1) {
+        mockLanguages[idx] = {
+          ...mockLanguages[idx],
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        return new Response(JSON.stringify(mockLanguages[idx]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (method === 'DELETE') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      mockLanguages = mockLanguages.filter((l) => l.id !== id);
+      return new Response(null, { status: 204 });
+    }
   }
 
   if (url.includes('/me/applications') && method === 'GET') {

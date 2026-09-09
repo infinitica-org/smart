@@ -364,6 +364,8 @@ model User {
   notifications         Notification[]
   workExperiences       WorkExperience[]
   candidateCertificates CandidateCertificate[]
+  candidateEducations   CandidateEducation[]
+  candidateLanguages    CandidateLanguage[]
 
   @@index([institutionId])
   @@index([batchId])
@@ -1335,3 +1337,35 @@ model CertificateEndorsement {
   @@index([candidateCertificateId])
   @@map("certificate_endorsements")
 }
+
+model CandidateEducation {
+  id              String   @id @default(uuid()) @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institutionName String   @map("institution_name")
+  degree          String?
+  fieldOfStudy    String?  @map("field_of_study")
+  startDate       String?  @map("start_date")
+  endDate         String?  @map("end_date")
+  current         Boolean  @default(false)
+  grade           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@map("candidate_educations")
+}
+
+model CandidateLanguage {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  language    String
+  proficiency String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@map("candidate_languages")
+}
+
