@@ -145,6 +145,18 @@ describe('CandidateCertificatesService', () => {
     );
   });
 
+  it('blocks skill edits while the certificate is in verification', async () => {
+    const { prisma, service } = setup();
+    prisma.candidateCertificate.findUnique.mockResolvedValue(
+      baseCertificateRow({ status: 'IN_VERIFICATION' }),
+    );
+    await expect(
+      service.replaceSkills(candidateId, certificateId, {
+        skills: [{ skillCode: 'GIT_VERSION_CONTROL', selfAssessedProficiency: 'BEGINNER' }],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('rejects replacing skills with a code outside the catalog', async () => {
     const { prisma, service } = setup();
     prisma.candidateCertificate.findUnique.mockResolvedValue(baseCertificateRow());
@@ -227,6 +239,18 @@ describe('CandidateCertificatesService', () => {
     await expect(
       service.submitEndorsementDecision('some-token', { approved: true }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns skillsClaimedSnapshot once the certificate is verified', async () => {
+    const { prisma, service } = setup();
+    prisma.candidateCertificate.findUnique.mockResolvedValue(
+      baseCertificateRow({ status: 'VERIFIED' }),
+    );
+    const dto = await service.getOwned(candidateId, certificateId);
+    expect(dto.skillsClaimedSnapshot).toEqual({
+      taxonomyVersion: '0.9',
+      skillCodes: ['GIT_VERSION_CONTROL'],
+    });
   });
 
   it('approving an endorsement verifies the certificate via ENDORSEMENT', async () => {

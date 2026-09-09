@@ -25,6 +25,7 @@ import {
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
+  skillsClaimedSnapshotWhenVerified,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -163,6 +164,7 @@ export class WorkExperienceService {
   }
 
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
+    const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
       id: exp.id,
       studentId: exp.studentId,
@@ -181,7 +183,8 @@ export class WorkExperienceService {
       endDate: exp.endDate ? exp.endDate.toISOString() : null,
       isCurrent: exp.isCurrent,
       responsibilities: exp.responsibilities ?? null,
-      skills: exp.skills ?? [],
+      skillsClaimed,
+      skillsClaimedSnapshot: skillsClaimedSnapshotWhenVerified(exp.status, skillsClaimed),
       projects: exp.projects ?? null,
       candidateLinkedin: exp.candidateLinkedin ?? null,
       verifierName: exp.verifierName ?? null,
@@ -293,7 +296,7 @@ export class WorkExperienceService {
         endDate: data.endDate ? new Date(data.endDate) : null,
         isCurrent: data.isCurrent,
         responsibilities: data.responsibilities || null,
-        skills: data.skills,
+        skills: data.skillsClaimed,
         projects: (data.projects as Prisma.InputJsonValue) ?? null,
         candidateLinkedin: data.candidateLinkedin || null,
         verifierName: data.verifierName || null,
@@ -340,6 +343,18 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+
+    if (
+      existing.status === 'VERIFIED' &&
+      data.skillsClaimed !== undefined &&
+      JSON.stringify(data.skillsClaimed) !== JSON.stringify(existing.skills ?? [])
+    ) {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Skills cannot be changed on a verified work experience entry.',
+        statusCode: 400,
+      });
+    }
 
     let updatedOrgId: string | undefined = undefined;
     let updatedCompanyNameRaw: string | undefined = undefined;
@@ -389,7 +404,7 @@ export class WorkExperienceService {
         ...(data.responsibilities !== undefined
           ? { responsibilities: data.responsibilities || null }
           : {}),
-        ...(data.skills !== undefined ? { skills: data.skills } : {}),
+        ...(data.skillsClaimed !== undefined ? { skills: data.skillsClaimed } : {}),
         ...(data.projects !== undefined
           ? { projects: (data.projects as Prisma.InputJsonValue) ?? null }
           : {}),

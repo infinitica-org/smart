@@ -2,8 +2,12 @@ import { Buffer } from 'node:buffer';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
+  SKILL_DEFINITIONS,
+  SKILL_TAXONOMY_VERSION,
+  SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
+  type SkillLibraryResponse,
   type TrackDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -37,6 +41,19 @@ export class CatalogService {
       // frontend work is not blocked on migrations.
     }
     return TRACK_DEFINITIONS.map(fromContract);
+  }
+
+  /** SK-T01 — queryable v0.9 skill-set library; sourced from frozen INF-05 contracts. */
+  listSkillLibrary(): SkillLibraryResponse {
+    return SkillLibraryResponseSchema.parse({
+      taxonomyVersion: SKILL_TAXONOMY_VERSION,
+      skills: SKILL_DEFINITIONS.map((skill) => ({
+        code: skill.code,
+        name: skill.name,
+        domain: skill.domain,
+        stream: skill.stream,
+      })),
+    });
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

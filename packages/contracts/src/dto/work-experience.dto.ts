@@ -4,6 +4,7 @@ import {
   ExperienceDocumentTypeSchema,
   WorkExperienceVerificationStatusSchema,
 } from '../domain/enums.js';
+import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 export const WorkExperienceDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -51,7 +52,8 @@ export const CreateWorkExperienceBaseSchema = z.object({
   endDate: z.string().optional().nullable().or(z.literal('')),
   isCurrent: z.boolean().default(false),
   responsibilities: z.string().max(4000).optional().nullable().or(z.literal('')),
-  skills: z.array(z.string()).default([]),
+  /** Taxonomy skill codes from GET /catalog/skills — never free text (SK-T01). */
+  skillsClaimed: z.array(TaxonomySkillCodeSchema).max(20).default([]),
   projects: z.unknown().optional().nullable(),
   candidateLinkedin: z
     .string()
@@ -105,7 +107,9 @@ export const WorkExperienceSchema = z.object({
   endDate: z.string().nullable(),
   isCurrent: z.boolean(),
   responsibilities: z.string().nullable(),
-  skills: z.array(z.string()),
+  skillsClaimed: z.array(TaxonomySkillCodeSchema),
+  /** Frozen at employer verification — codes + taxonomy version at verify time. */
+  skillsClaimedSnapshot: SkillsClaimedSnapshotSchema.nullable().optional(),
   projects: z.unknown().nullable(),
   candidateLinkedin: z.string().nullable(),
   verifierName: z.string().nullable(),

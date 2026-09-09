@@ -86,6 +86,7 @@ import {
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
+  SkillLibraryResponseSchema,
   SkillVerifyPrepareDtoSchema,
   SkillVerifySessionDtoSchema,
   SsoStartResponseSchema,
@@ -670,6 +671,12 @@ export function catalogApi(client: SmartApiClient) {
     track: (trackCode: string) =>
       client.get(prefixed(`/catalog/tracks/${trackCode}`), {
         schema: TrackDtoSchema,
+        anonymous: true,
+      }),
+
+    skillLibrary: () =>
+      client.get(prefixed('/catalog/skills'), {
+        schema: SkillLibraryResponseSchema,
         anonymous: true,
       }),
   };
