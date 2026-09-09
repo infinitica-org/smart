@@ -39,7 +39,7 @@ function setup() {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
-      findUniqueOrThrow: vi.fn().mockImplementation((args?: { where?: { id?: string } }) => {
+      findUniqueOrThrow: vi.fn().mockImplementation((_args?: { where?: { id?: string } }) => {
         return Promise.resolve(
           baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
         );
