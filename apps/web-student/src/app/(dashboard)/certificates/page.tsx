@@ -60,8 +60,19 @@ export default function CertificatesPage() {
                   </p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
                 <CertificateStatusBadge status={certificate.status} />
+                {certificate.sourceStatus === 'source_verified' &&
+                certificate.agendaLines &&
+                certificate.agendaLines.length > 0 &&
+                certificate.status !== 'VERIFIED' ? (
+                  <Link
+                    href={`/certificates/${certificate.certificateId}/verify`}
+                    className="text-sm text-[#00fad0] hover:underline"
+                  >
+                    Take assessment
+                  </Link>
+                ) : null}
                 {IN_PROGRESS_STATUSES.has(certificate.status) ? (
                   <Link
                     href={`/certificates/add?id=${certificate.certificateId}`}
@@ -69,6 +80,11 @@ export default function CertificatesPage() {
                   >
                     Continue
                   </Link>
+                ) : null}
+                {certificate.expiryDate ? (
+                  <span className="text-xs text-white/35">
+                    Expires {new Date(certificate.expiryDate).toLocaleDateString()}
+                  </span>
                 ) : null}
               </div>
             </Surface>

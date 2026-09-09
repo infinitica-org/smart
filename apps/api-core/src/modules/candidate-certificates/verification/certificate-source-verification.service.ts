@@ -110,7 +110,8 @@ export class CertificateSourceVerificationService {
 
     if (result.status === 'VERIFIED') {
       sourceStatus = 'source_verified';
-      status = 'VERIFIED';
+      // CV-T02: final VERIFIED requires agenda assessment pass — not source alone.
+      status = 'IN_VERIFICATION';
     } else if (result.status === 'FAILED') {
       sourceStatus = 'source_failed';
       status = 'REJECTED';

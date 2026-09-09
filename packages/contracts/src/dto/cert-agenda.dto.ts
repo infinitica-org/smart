@@ -39,6 +39,12 @@ export const CertAgendaPublicItemSchema = z
   .strict();
 export type CertAgendaPublicItem = z.infer<typeof CertAgendaPublicItemSchema>;
 
+/** Server-only scoring shape — correctKey never exposed to students. */
+export const CertAgendaScorableItemSchema = CertAgendaPublicItemSchema.extend({
+  correctKey: z.enum(['A', 'B', 'C', 'D']),
+});
+export type CertAgendaScorableItem = z.infer<typeof CertAgendaScorableItemSchema>;
+
 /** Server-only. Never returned on the student generate response. */
 export const CertAgendaInternalItemSchema = CertAgendaPublicItemSchema.extend({
   sourceAgendaLine: z.string().min(1).max(240),

@@ -7,8 +7,10 @@ import {
   CertificateVerificationMethodSchema,
 } from '../domain/enums.js';
 import { isDisallowedEndorserEmailDomain } from '../domain/disallowed-email-domains.js';
+import { TrackCodeSchema } from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
 import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
+import { CERT_AGENDA_LINE_MAX, CertAgendaLineSchema } from './cert-agenda.dto.js';
 
 /**
  * Candidate certificate verification (externally-issued certs) — a standalone
@@ -83,6 +85,13 @@ export const CandidateCertificateDtoSchema = z.object({
   skills: z.array(CandidateCertificateSkillDtoSchema),
   /** Frozen when status becomes VERIFIED — codes + taxonomy version at endorsement. */
   skillsClaimedSnapshot: SkillsClaimedSnapshotSchema.nullable().optional(),
+  trackCode: TrackCodeSchema.nullable().optional(),
+  agendaLines: z.array(CertAgendaLineSchema).max(CERT_AGENDA_LINE_MAX).optional(),
+  /** Display-only in v1.0 — never flips verification status. */
+  expiryDate: IsoDateTimeSchema.nullable().optional(),
+  retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+  lockedUntil: IsoDateTimeSchema.nullable().optional(),
+  taxonomyVersionSnapshot: z.string().nullable().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
 });

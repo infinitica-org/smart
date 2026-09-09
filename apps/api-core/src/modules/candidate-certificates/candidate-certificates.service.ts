@@ -22,10 +22,14 @@ import {
   type ListMyCandidateCertificatesResponse,
   type SubmitCertificateEndorsementDecisionRequest,
   type SubmitCertificateEndorsementDecisionResponse,
+  SubmitCertificateAgendaRequestSchema,
+  type SubmitCertificateAgendaRequest,
+  type TrackCode,
   type UpdateCertificateLearningRequest,
   type VoidCandidateCertificateResponse,
   type VoidRequest,
 } from '@smart/contracts';
+import { certRetryAvailableAt } from '../assessment/cert-assessment-state-machine.js';
 import { env } from '../../platform/config/env.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import type { EmailJobPayload, EmailQueueJobData } from '../../platform/mailer/mailer.types.js';
@@ -97,6 +101,41 @@ export class CandidateCertificatesService {
       status: updated.status,
       voidedAt: updated.updatedAt.toISOString(),
     };
+  }
+
+  async submitAgenda(
+    candidateId: string,
+    id: string,
+    body: SubmitCertificateAgendaRequest,
+  ): Promise<CandidateCertificateDto> {
+    const row = await this.findOwnedOrThrow(candidateId, id);
+    const parsed = SubmitCertificateAgendaRequestSchema.parse(body);
+    if (row.status === 'VERIFIED' || row.status === 'VOIDED') {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Agenda cannot be changed for a verified or voided certificate.',
+        statusCode: 400,
+      });
+    }
+    if (row.sourceStatus !== 'source_verified') {
+      throw new BadRequestException({
+        error: 'source_not_verified',
+        message: 'Certificate source must be verified before submitting an agenda.',
+        statusCode: 400,
+      });
+    }
+
+    const updated = await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        trackCode: parsed.trackCode,
+        agendaLines: parsed.agendaLines,
+        expiryDate: parsed.expiryDate ? new Date(parsed.expiryDate) : row.expiryDate,
+      },
+      include: { skills: true },
+    });
+    await this.addEvent(id, updated.status, 'Agenda submitted for certification assessment.');
+    return this.toDto(updated);
   }
 
   async create(
@@ -565,6 +604,19 @@ export class CandidateCertificatesService {
         row.status,
         row.skills.map((skill) => skill.skillCode),
       ),
+      trackCode: (row.trackCode as TrackCode | null) ?? null,
+      agendaLines: row.agendaLines ?? [],
+      expiryDate: row.expiryDate?.toISOString() ?? null,
+      retryAvailableAt:
+        certRetryAvailableAt({
+          strikes: row.assessmentStrikes,
+          lockedUntil: row.assessmentLockedUntil,
+          lastGenuineFailureAt: row.lastGenuineFailureAt,
+          verified: row.status === 'VERIFIED',
+          rejected: row.status === 'REJECTED',
+        })?.toISOString() ?? null,
+      lockedUntil: row.assessmentLockedUntil?.toISOString() ?? null,
+      taxonomyVersionSnapshot: row.taxonomyVersionSnapshot,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

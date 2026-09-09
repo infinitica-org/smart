@@ -32,6 +32,7 @@ export * from './templates/work-experience-proof-parsing.js';
 export * from './sde-skill-matrix-v4.js';
 export * from './templates/sde-skill-form.js';
 export * from './templates/cert-agenda.js';
+export { toStudentPaperFromScorable } from './templates/cert-agenda.js';
 export * from './cert-agenda-guardrails.js';
 
 export const PROMPTS_VERSION = '0.1.0';

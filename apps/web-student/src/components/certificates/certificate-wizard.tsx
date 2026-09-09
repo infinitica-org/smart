@@ -9,6 +9,7 @@ import { CertificateDetailsForm } from './certificate-details-form';
 import { CertificateUpload } from './certificate-upload';
 import { CertificatePreview } from './certificate-preview';
 import { SkillsLearningForm } from './skills-learning-form';
+import { CertificateAgendaForm } from './certificate-agenda-form';
 import { EndorsementRequestForm } from './endorsement-request-form';
 import { CertificateStatusBadge } from './certificate-status-badge';
 import type { CertificateSkillSelection } from './skill-picker';
@@ -31,6 +32,8 @@ export function CertificateWizard() {
   const [savingLearning, setSavingLearning] = useState(false);
   const [requestingEndorsement, setRequestingEndorsement] = useState(false);
   const [endorsementError, setEndorsementError] = useState<string | null>(null);
+  const [savingAgenda, setSavingAgenda] = useState(false);
+  const [agendaError, setAgendaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!existingId) return;
@@ -145,6 +148,24 @@ export function CertificateWizard() {
     );
   }
 
+  const handleSubmitAgenda = async (body: {
+    trackCode: import('@smart/contracts').TrackCode;
+    agendaLines: string[];
+    expiryDate?: string;
+  }) => {
+    if (!certificateId) return;
+    setSavingAgenda(true);
+    setAgendaError(null);
+    try {
+      const updated = await api.candidateCertificates.submitAgenda(certificateId, body);
+      setCertificate(updated);
+    } catch (err) {
+      setAgendaError(err instanceof Error ? err.message : 'Could not save agenda.');
+    } finally {
+      setSavingAgenda(false);
+    }
+  };
+
   if (TERMINAL_STATUSES.has(certificate.status)) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -221,7 +242,17 @@ export function CertificateWizard() {
         </div>
       </div>
 
-      {readyForVerification ? (
+      {readyForVerification && certificate.sourceStatus === 'source_verified' ? (
+        <CertificateAgendaForm
+          certificateId={certificate.certificateId}
+          initialLines={certificate.agendaLines}
+          initialTrack={certificate.trackCode ?? null}
+          initialExpiry={certificate.expiryDate ?? null}
+          onSubmit={handleSubmitAgenda}
+          isPending={savingAgenda}
+          error={agendaError}
+        />
+      ) : readyForVerification ? (
         <EndorsementRequestForm
           onSubmit={handleRequestEndorsement}
           isPending={requestingEndorsement}

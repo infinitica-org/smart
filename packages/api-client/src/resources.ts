@@ -30,9 +30,13 @@ import type {
   ResolveIntegrityRequest,
   SaveDraftRequest,
   StartAttemptRequest,
+  CompleteCertVerifyRequest,
   CompleteSkillVerifyRequest,
+  SaveCertVerifyRequest,
   SaveSkillVerifyRequest,
+  StartCertVerifyRequest,
   StartSkillVerifyRequest,
+  SubmitCertificateAgendaRequest,
   RunSdeSkillFormCodeRequest,
   ReserveUsernameRequest,
   UpdateProfileVisibilityRequest,
@@ -46,7 +50,10 @@ import {
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
+  CompleteCertVerifyResponseSchema,
   CompleteSkillVerifyResponseSchema,
+  CertVerifyPrepareDtoSchema,
+  CertVerifySessionDtoSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -726,6 +733,36 @@ export function assessmentApi(client: SmartApiClient) {
         schema: CompleteSkillVerifyResponseSchema,
       }),
 
+    prepareCertVerify: (certificateId: string) =>
+      client.post(
+        prefixed(`/assessment/candidate-certificates/${certificateId}/verify/start`),
+        { prepareOnly: true } satisfies StartCertVerifyRequest,
+        { schema: CertVerifyPrepareDtoSchema },
+      ),
+
+    startCertVerify: (certificateId: string, body?: StartCertVerifyRequest) =>
+      client.post(
+        prefixed(`/assessment/candidate-certificates/${certificateId}/verify/start`),
+        body ?? {},
+        { schema: CertVerifySessionDtoSchema, timeoutMs: 180_000 },
+      ),
+
+    certVerifySession: (sessionId: string) =>
+      client.get(prefixed(`/assessment/cert-verify/${sessionId}`), {
+        schema: CertVerifySessionDtoSchema,
+      }),
+
+    saveCertVerify: (sessionId: string, body: SaveCertVerifyRequest) =>
+      client.post(prefixed(`/assessment/cert-verify/${sessionId}/save`), body, {
+        schema: CertVerifySessionDtoSchema,
+        timeoutMs: 5_000,
+      }),
+
+    completeCertVerify: (sessionId: string, body: CompleteCertVerifyRequest) =>
+      client.post(prefixed(`/assessment/cert-verify/${sessionId}/complete`), body, {
+        schema: CompleteCertVerifyResponseSchema,
+      }),
+
     /** Resume after a refresh, a dropped connection, or a closed laptop. */
     session: (attemptId: string) =>
       client.get(prefixed(`/assessment/${attemptId}/session`), {
@@ -927,6 +964,11 @@ export function candidateCertificatesApi(client: SmartApiClient) {
 
     updateLearning: (id: string, body: UpdateCertificateLearningRequest) =>
       client.patch(prefixed(`/candidate-certificates/${id}`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
+    submitAgenda: (id: string, body: SubmitCertificateAgendaRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/agenda`), body, {
         schema: CandidateCertificateDtoSchema,
       }),
 

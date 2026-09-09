@@ -13,14 +13,20 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nes
 import {
   API_PREFIX,
   CompleteAttemptRequestSchema,
+  CompleteCertVerifyRequestSchema,
   CompleteSkillVerifyRequestSchema,
   DeclareSkillClaimRequestSchema,
+  SaveCertVerifyRequestSchema,
+  StartCertVerifyRequestSchema,
   SaveDraftRequestSchema,
   SaveSkillVerifyRequestSchema,
   StartAttemptRequestSchema,
   UuidSchema,
   type AttemptSessionDto,
   type CompleteAttemptResponse,
+  type CertVerifyPrepareDto,
+  type CertVerifySessionDto,
+  type CompleteCertVerifyResponse,
   type CompleteSkillVerifyResponse,
   type NextItemDto,
   type SaveDraftResponse,
@@ -35,6 +41,7 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { NextFormRequestDto } from './dto/next-form-request.dto.js';
 import { AssessmentService } from './assessment.service.js';
 import { ItemRotationService } from './item-rotation.service.js';
+import { CertVerificationAssessmentService } from './cert-verification-assessment.service.js';
 import { SkillVerificationService } from './skill-verification.service.js';
 
 @ApiTags('assessment')
@@ -44,6 +51,8 @@ export class AssessmentController {
     @Inject(AssessmentService) private readonly service: AssessmentService,
     @Inject(ItemRotationService) private readonly rotation: ItemRotationService,
     @Inject(SkillVerificationService) private readonly skillVerify: SkillVerificationService,
+    @Inject(CertVerificationAssessmentService)
+    private readonly certVerify: CertVerificationAssessmentService,
   ) {}
 
   @Get('_meta')
@@ -147,6 +156,56 @@ export class AssessmentController {
   ): Promise<CompleteSkillVerifyResponse> {
     CompleteSkillVerifyRequestSchema.parse(body ?? {});
     return this.skillVerify.complete(user, UuidSchema.parse(sessionId), body ?? {});
+  }
+
+  @Post('candidate-certificates/:certificateId/verify/start')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Prepare or start agenda-based certificate assessment (CV-T02).' })
+  startCertVerify(
+    @CurrentUser() user: RequestUser,
+    @Param('certificateId') certificateId: string,
+    @Body() body: unknown,
+  ): Promise<CertVerifySessionDto | CertVerifyPrepareDto> {
+    StartCertVerifyRequestSchema.parse(body ?? {});
+    return this.certVerify.start(user, UuidSchema.parse(certificateId), body);
+  }
+
+  @Get('cert-verify/:sessionId')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resume a cert-verify session. Server is the clock.' })
+  getCertVerifySession(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+  ): Promise<CertVerifySessionDto> {
+    return this.certVerify.getSession(user, UuidSchema.parse(sessionId));
+  }
+
+  @Post('cert-verify/:sessionId/save')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Save cert-verify answers to Redis.' })
+  saveCertVerify(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
+  ): Promise<CertVerifySessionDto> {
+    SaveCertVerifyRequestSchema.parse(body);
+    return this.certVerify.save(user, UuidSchema.parse(sessionId), body);
+  }
+
+  @Post('cert-verify/:sessionId/complete')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Grade cert agenda paper; verified only if source + pass.' })
+  completeCertVerify(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
+  ): Promise<CompleteCertVerifyResponse> {
+    CompleteCertVerifyRequestSchema.parse(body ?? {});
+    return this.certVerify.complete(user, UuidSchema.parse(sessionId), body ?? {});
   }
 
   @Post('start')
