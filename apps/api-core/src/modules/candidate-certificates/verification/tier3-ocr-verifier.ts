@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { StorageService } from '../../../platform/storage/storage.service.js';
+import { StorageService } from '../../../platform/storage/storage.service.js';
 import type { TierVerificationResult } from './tier1-issuer-adapter.js';
 
 export interface Tier3Input {
