@@ -28,6 +28,10 @@ x-app-env: &app-env
   AI_MONTHLY_CEILING_USD: ${AI_MONTHLY_CEILING_USD:-500}
   PROCTORING_FULL: ${PROCTORING_FULL:-true}
   PROCTORING_CV_URL: ${PROCTORING_CV_URL:-http://proctoring-cv:8091}
+  # Opt-in: unset by default. Set to http://tempo:4318 (only meaningful with
+  # the `obs` profile also up) to export traces; see infra/observability/README.md.
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_TRACES_SAMPLER_RATIO: ${OTEL_TRACES_SAMPLER_RATIO:-1}
 
 services:
   postgres:
@@ -371,6 +375,14 @@ services:
   prometheus:
     image: prom/prometheus:v3.5.0
     restart: unless-stopped
+    # --web.enable-remote-write-receiver: lets k6's Prometheus remote-write
+    # output (tools/load-tests) push live VU/RPS/latency metrics during a run —
+    # see tools/load-tests/README.md. Loopback-only exposure (127.0.0.1 below)
+    # keeps this an acceptable local/CI trade-off.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
     volumes:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus

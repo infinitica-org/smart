@@ -100,6 +100,16 @@ const EnvSchema = z.object({
 
   ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 
+  /**
+   * OTLP/HTTP collector endpoint (e.g. `http://localhost:4318` locally, or
+   * `http://tempo:4318` inside the `obs` compose profile). Unset by default —
+   * OpenTelemetry is entirely opt-in; nothing in `tracing.ts` runs without it,
+   * so a deployment that never sets this is byte-for-byte unaffected.
+   */
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+  /** Fraction of requests traced, 0-1. Lower this under sustained load tests to bound overhead. */
+  OTEL_TRACES_SAMPLER_RATIO: z.coerce.number().min(0).max(1).default(1),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_PRETTY: z
     .enum(['true', 'false'])

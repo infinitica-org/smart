@@ -68,7 +68,13 @@
         "textMode": "auto"
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "editorMode": "code", "expr": "minio_cluster_capacity_usable_free_bytes", "legendFormat": "free", "refId": "A" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "minio_cluster_capacity_usable_free_bytes",
+          "legendFormat": "free",
+          "refId": "A"
+        }
       ],
       "title": "Usable capacity free",
       "type": "stat"
@@ -78,7 +84,10 @@
       "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "id": 3,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -87,7 +96,13 @@
           "legendFormat": "used",
           "refId": "A"
         },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "editorMode": "code", "expr": "minio_cluster_capacity_usable_total_bytes", "legendFormat": "total", "refId": "B" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "minio_cluster_capacity_usable_total_bytes",
+          "legendFormat": "total",
+          "refId": "B"
+        }
       ],
       "title": "Capacity used vs total",
       "type": "timeseries"
@@ -97,10 +112,25 @@
       "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
       "id": 4,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "editorMode": "code", "expr": "rate(minio_s3_traffic_sent_bytes[5m])", "legendFormat": "sent", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "editorMode": "code", "expr": "rate(minio_s3_traffic_received_bytes[5m])", "legendFormat": "received", "refId": "B" }
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "rate(minio_s3_traffic_sent_bytes[5m])",
+          "legendFormat": "sent",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "rate(minio_s3_traffic_received_bytes[5m])",
+          "legendFormat": "received",
+          "refId": "B"
+        }
       ],
       "title": "S3 traffic",
       "type": "timeseries"

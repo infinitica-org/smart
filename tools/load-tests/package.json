@@ -1,12 +1,15 @@
 {
   "name": "@smart/load-tests",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "k6 load tests for candidate-critical paths. Owner: Vishal V.",
+  "description": "k6 performance/stress-testing suite for the whole SMART stack (k6 CLI required, or use the Docker fallback — see README). Owner: Vishal V.",
   "scripts": {
-    "test": "echo 'Run with: k6 run src/assessment.js (requires k6 CLI)'",
+    "test": "bash scripts/require-k6.sh && k6 run src/tests/smoke.js",
     "typecheck": "echo skip",
     "lint": "echo skip",
-    "clean": "echo skip"
+    "clean": "rimraf summary-*.json"
+  },
+  "devDependencies": {
+    "rimraf": "6.0.1"
   }
 }
