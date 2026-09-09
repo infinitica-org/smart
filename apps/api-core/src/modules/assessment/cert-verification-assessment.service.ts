@@ -509,7 +509,7 @@ export class CertVerificationAssessmentService {
       ),
       trackCode: row.trackCode,
       agendaLines: row.agendaLines,
-      expiryDate: row.expiryDate?.toISOString() ?? null,
+      expiryDate: row.expiryDate ?? null,
       retryAvailableAt: retryAvailableAt?.toISOString() ?? null,
       lockedUntil: row.assessmentLockedUntil?.toISOString() ?? null,
       taxonomyVersionSnapshot: row.taxonomyVersionSnapshot,

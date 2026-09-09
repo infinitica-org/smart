@@ -5,7 +5,6 @@ ALTER TYPE "CertificateVerificationMethod" ADD VALUE 'ASSESSMENT';
 ALTER TABLE "candidate_certificates"
   ADD COLUMN "track_code" TEXT,
   ADD COLUMN "agenda_lines" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-  ADD COLUMN "expiry_date" TIMESTAMPTZ,
   ADD COLUMN "assessment_strikes" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "assessment_locked_until" TIMESTAMPTZ,
   ADD COLUMN "last_genuine_failure_at" TIMESTAMPTZ,

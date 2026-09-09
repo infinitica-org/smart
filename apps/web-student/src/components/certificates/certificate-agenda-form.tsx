@@ -41,7 +41,7 @@ export function CertificateAgendaForm({
     await onSubmit({
       trackCode,
       agendaLines,
-      expiryDate: expiryDate ? `${expiryDate}T00:00:00.000Z` : undefined,
+      expiryDate: expiryDate || undefined,
     });
   };
 

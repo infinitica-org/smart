@@ -1247,6 +1247,8 @@ model CandidateCertificate {
   status               CandidateCertificateStatus     @default(DECLARED)
   sourceStatus         CertificateSourceStatus        @default(pending) @map("source_status")
   certificateNumber    String?                        @map("certificate_number")
+  issueDate            String?                        @map("issue_date")
+  expiryDate           String?                        @map("expiry_date")
   verificationUrl      String?                        @map("verification_url")
   verificationMethod   CertificateVerificationMethod? @map("verification_method")
   certificateFileUrl   String?                        @map("certificate_file_url")
@@ -1259,7 +1261,6 @@ model CandidateCertificate {
   practicalDescription String?                        @map("practical_description") @db.Text
   trackCode            String?                        @map("track_code")
   agendaLines          String[]                       @default([]) @map("agenda_lines")
-  expiryDate           DateTime?                      @map("expiry_date") @db.Timestamptz(6)
   assessmentStrikes    Int                            @default(0) @map("assessment_strikes")
   assessmentLockedUntil DateTime?                     @map("assessment_locked_until") @db.Timestamptz(6)
   lastGenuineFailureAt DateTime?                      @map("last_genuine_failure_at") @db.Timestamptz(6)

@@ -21,7 +21,7 @@ export const SubmitCertificateAgendaRequestSchema = z.object({
   trackCode: TrackCodeSchema,
   agendaLines: z.array(CertAgendaLineSchema).min(1).max(CERT_AGENDA_LINE_MAX),
   /** Display-only in v1.0 — does not flip status or force retake. */
-  expiryDate: IsoDateTimeSchema.optional(),
+  expiryDate: z.string().max(100).optional(),
 });
 export type SubmitCertificateAgendaRequest = z.infer<typeof SubmitCertificateAgendaRequestSchema>;
 

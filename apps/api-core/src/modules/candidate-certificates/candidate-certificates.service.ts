@@ -130,7 +130,7 @@ export class CandidateCertificatesService {
       data: {
         trackCode: parsed.trackCode,
         agendaLines: parsed.agendaLines,
-        expiryDate: parsed.expiryDate ? new Date(parsed.expiryDate) : row.expiryDate,
+        expiryDate: parsed.expiryDate ?? row.expiryDate,
       },
       include: { skills: true },
     });
@@ -148,6 +148,8 @@ export class CandidateCertificatesService {
         title: body.title,
         issuer: body.issuer,
         certificateNumber: body.certificateNumber,
+        issueDate: body.issueDate,
+        expiryDate: body.expiryDate,
         verificationUrl: body.verificationUrl,
       },
       include: { skills: true },
@@ -583,6 +585,8 @@ export class CandidateCertificatesService {
       status: row.status,
       sourceStatus: (row.sourceStatus as CandidateCertificateDto['sourceStatus']) ?? 'pending',
       certificateNumber: row.certificateNumber ?? null,
+      issueDate: row.issueDate ?? null,
+      expiryDate: row.expiryDate ?? null,
       verificationUrl: row.verificationUrl ?? null,
       verificationMethod: row.verificationMethod,
       certificateFileUrl: row.certificateFileUrl
@@ -606,7 +610,6 @@ export class CandidateCertificatesService {
       ),
       trackCode: (row.trackCode as TrackCode | null) ?? null,
       agendaLines: row.agendaLines ?? [],
-      expiryDate: row.expiryDate?.toISOString() ?? null,
       retryAvailableAt:
         certRetryAvailableAt({
           strikes: row.assessmentStrikes,
