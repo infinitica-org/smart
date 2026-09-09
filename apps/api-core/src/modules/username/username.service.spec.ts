@@ -14,6 +14,7 @@ describe('UsernameService (CN-T09)', () => {
     prisma = {
       user: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
+          username: null,
           usernameCooldownUntil: null,
           usernameFailedAttempts: 0,
           usernameStatus: null,
@@ -48,6 +49,21 @@ describe('UsernameService (CN-T09)', () => {
         expect.objectContaining({ actorId: userId, action: 'username.reserved' }),
       );
       expect(result.status).toBe('RESERVED');
+    });
+
+    it('rejects re-reservation once a username is already set — a claim is permanent', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        username: 'existing_handle',
+        usernameCooldownUntil: null,
+        usernameFailedAttempts: 0,
+        usernameStatus: 'RESERVED',
+        profileVisible: false,
+      });
+
+      await expect(service.reserve(userId, { username: 'new_handle' })).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('fails clearly, as username_taken, when another user already holds it', async () => {

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
-import { AtSign, CheckCircle2, Eye, Loader2, Lock } from 'lucide-react';
+import { AtSign, Eye, Loader2, Lock } from 'lucide-react';
 import { api } from '@/lib/api';
 
 /** A small animated on/off pill switch — no shared `@smart/ui` primitive for this yet. */
@@ -73,12 +73,6 @@ export function VisibilitySettingsCard() {
   const [usernameState, setUsernameState] = useState<UsernameFieldState>('idle');
   const [usernameError, setUsernameError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (usernameStatus?.username && usernameState === 'idle') {
-      setUsernameInput(usernameStatus.username);
-    }
-  }, [usernameStatus?.username, usernameState]);
-
   async function toggleProfileVisible(next: boolean) {
     setVisibilityBusy('profile');
     setVisibilityError(null);
@@ -140,8 +134,6 @@ export function VisibilitySettingsCard() {
       }
     }
   }
-
-  const isDirty = usernameInput.trim() !== (usernameStatus?.username ?? '');
 
   return (
     <div className="overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-[0_12px_40px_rgb(0,0,0,0.06)] dark:border-white/5 dark:bg-[#1c1c1e] dark:shadow-[0_12px_40px_rgb(0,0,0,0.15)]">
@@ -217,61 +209,73 @@ export function VisibilitySettingsCard() {
             <AtSign className="h-4 w-4 text-gray-500" />
             Username
           </p>
-          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            Reserve a username to hold your handle. Reserving it doesn&apos;t make your profile
-            public by itself — that&apos;s the toggle above.
-          </p>
 
-          <div className="mt-3 flex items-center gap-2">
-            <div className="relative flex-1">
-              <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sm text-gray-400">
-                @
-              </span>
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={(e) => {
-                  setUsernameInput(e.target.value);
-                  setUsernameState('idle');
-                  setUsernameError(null);
-                }}
-                placeholder="your-handle"
-                className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-8 text-sm text-gray-900 outline-none focus:border-[#00fad0] focus:ring-2 focus:ring-[#00fad0]/30 dark:border-white/10 dark:bg-white/5 dark:text-white"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => void reserveUsername()}
-              disabled={usernameState === 'saving' || !isDirty}
-              className="flex flex-none items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black shadow-sm hover:bg-[#7dffe6] disabled:opacity-50"
-            >
-              {usernameState === 'saving' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : usernameState === 'saved' ? (
-                <CheckCircle2 className="h-4 w-4" />
+          {usernameStatus?.username ? (
+            <>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                Your handle — one-time claim, it can&apos;t be changed.
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-full border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-4 dark:border-white/10 dark:bg-white/5">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  @{usernameStatus.username}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+                    usernameStatus.status === 'ACTIVE'
+                      ? 'bg-[#00fad0]/10 text-[#00967c] dark:text-[#00fad0]'
+                      : 'bg-gray-200 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                  }`}
+                >
+                  {usernameStatus.status === 'ACTIVE' ? 'Active' : 'Reserved'}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {usernameStatus.status === 'RESERVED'
+                  ? 'Held for you — turn on your public profile to activate it.'
+                  : 'Live on your public profile.'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                Claim a username to hold your handle — a one-time choice, so pick carefully.
+                Claiming it doesn&apos;t make your profile public by itself — that&apos;s the toggle
+                above.
+              </p>
+
+              <div className="mt-3 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sm text-gray-400">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => {
+                      setUsernameInput(e.target.value);
+                      setUsernameState('idle');
+                      setUsernameError(null);
+                    }}
+                    placeholder="your-handle"
+                    className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-8 text-sm text-gray-900 outline-none focus:border-[#00fad0] focus:ring-2 focus:ring-[#00fad0]/30 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void reserveUsername()}
+                  disabled={usernameState === 'saving' || usernameInput.trim().length === 0}
+                  className="flex flex-none items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black shadow-sm hover:bg-[#7dffe6] disabled:opacity-50"
+                >
+                  {usernameState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Claim it
+                </button>
+              </div>
+
+              {usernameError ? (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{usernameError}</p>
               ) : null}
-              {usernameState === 'saved' ? 'Saved' : 'Reserve'}
-            </button>
-          </div>
-
-          {usernameError ? (
-            <p className="mt-2 text-xs text-red-600 dark:text-red-400">{usernameError}</p>
-          ) : usernameStatus?.status ? (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
-                  usernameStatus.status === 'ACTIVE'
-                    ? 'bg-[#00fad0]/10 text-[#00967c] dark:text-[#00fad0]'
-                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400'
-                }`}
-              >
-                {usernameStatus.status === 'ACTIVE' ? 'Active' : 'Reserved'}
-              </span>
-              {usernameStatus.status === 'RESERVED'
-                ? 'Held for you — turn on your public profile to activate it.'
-                : 'Live on your public profile.'}
-            </p>
-          ) : null}
+            </>
+          )}
         </div>
       </div>
     </div>

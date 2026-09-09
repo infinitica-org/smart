@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, Compass, LogOut, UserRound } from 'lucide-react';
 import { cn, SmartLogo } from '@smart/ui';
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
 } from '@smart/ui/dropdown-menu';
 import { initialsOf, useCurrentUser } from '@/lib/candidate-identity';
 import { signOut } from '@/lib/auth';
+import { markTourAutostart, requestTourStart } from '@/lib/tour';
 
 const navItems = [
   { name: 'Home', href: '/dashboard' },
@@ -34,6 +35,7 @@ export function Navbar() {
 
       <div className="flex min-w-0 flex-1 justify-center">
         <nav
+          data-tour="nav-links"
           aria-label="Candidate console"
           className="scrollbar-none flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-zinc-800/80 bg-zinc-900/60 p-1"
         >
@@ -62,6 +64,7 @@ export function Navbar() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              data-tour="profile-menu"
               className="flex items-center gap-2 rounded-full border border-transparent py-1 pr-2 pl-1 transition-colors hover:border-zinc-800 hover:bg-zinc-900/60 data-[state=open]:border-zinc-800 data-[state=open]:bg-zinc-900/60"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#00fad0]/30 bg-zinc-800/90 text-xs font-bold text-[#00fad0] shadow-inner">
@@ -88,6 +91,23 @@ export function Navbar() {
             >
               <UserRound className="h-4 w-4" />
               Public profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                // The tour's targets only exist on the dashboard: if we're already
+                // there, start it directly; otherwise flag it to auto-start once the
+                // dashboard has actually mounted.
+                if (pathname === '/dashboard') {
+                  requestTourStart();
+                } else {
+                  markTourAutostart();
+                  router.push('/dashboard');
+                }
+              }}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-zinc-200 focus:bg-zinc-800 focus:text-white"
+            >
+              <Compass className="h-4 w-4" />
+              Take a tour
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-zinc-800" />
             <DropdownMenuItem

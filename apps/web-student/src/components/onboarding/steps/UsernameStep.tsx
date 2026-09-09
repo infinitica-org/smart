@@ -55,7 +55,7 @@ export default function UsernameStep({ onContinue }: UsernameStepProps) {
     <div>
       <StepHeading
         title="Claim your handle"
-        subtitle="Grab a username for your public profile link before someone else does. You can always change it, and this doesn't make your profile public — that's a separate step."
+        subtitle="Grab a username for your public profile link before someone else does. It's a one-time choice — pick carefully — and claiming it doesn't make your profile public, that's a separate step."
       />
 
       <AnimatePresence>{error ? <ErrorBanner>{error}</ErrorBanner> : null}</AnimatePresence>

@@ -51,8 +51,19 @@ export class UsernameService {
   async reserve(userId: string, body: ReserveUsernameRequest): Promise<UsernameStatusResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { usernameCooldownUntil: true, usernameFailedAttempts: true },
+      select: { username: true, usernameCooldownUntil: true, usernameFailedAttempts: true },
     });
+
+    // A username is a one-time claim, not an editable field — once set (reserved or
+    // active), it's permanent. This is enforced here, not just hidden in the UI, so a
+    // direct API call can't bypass the "locked" state the profile page shows.
+    if (user.username) {
+      throw new ConflictException({
+        error: 'username_already_claimed',
+        message: 'You already have a username and it cannot be changed.',
+        statusCode: 409,
+      });
+    }
 
     const now = new Date();
     if (user.usernameCooldownUntil && user.usernameCooldownUntil > now) {

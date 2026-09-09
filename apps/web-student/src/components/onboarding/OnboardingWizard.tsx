@@ -14,7 +14,7 @@ import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
 import UsernameStep from './steps/UsernameStep';
-import DoneStep from './steps/DoneStep';
+import CompletionSequence from './steps/CompletionSequence';
 import {
   applyResumeDraft,
   applyServerDraft,
@@ -25,6 +25,7 @@ import {
   saveOnboardingDraft,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
+import { markTourAutostart } from '@/lib/tour';
 import {
   ProgressDots,
   WIZARD_STEP_META,
@@ -236,7 +237,15 @@ export default function OnboardingWizard() {
 
         {currentStep === 'username' && <UsernameStep onContinue={() => setCurrentStep('done')} />}
 
-        {currentStep === 'done' && <DoneStep onGoToDashboard={() => router.push('/dashboard')} />}
+        {currentStep === 'done' && (
+          <CompletionSequence
+            firstName={formData.firstName}
+            onFinished={() => {
+              markTourAutostart();
+              router.push('/dashboard');
+            }}
+          />
+        )}
       </motion.div>
     </WizardPage>
   );
