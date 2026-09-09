@@ -78,7 +78,7 @@ describe('WorkExperienceService', () => {
         employmentType: 'FULL_TIME',
         startDate: '2022-01-01T00:00:00.000Z',
         isCurrent: true,
-        skills: ['TypeScript', 'Node.js'],
+        skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
       };
 
       const mockCreated = {
@@ -97,7 +97,7 @@ describe('WorkExperienceService', () => {
         endDate: null,
         isCurrent: true,
         responsibilities: null,
-        skills: payload.skills,
+        skills: payload.skillsClaimed,
         projects: null,
         candidateLinkedin: null,
         verifierName: null,
@@ -125,6 +125,8 @@ describe('WorkExperienceService', () => {
 
       expect(result.companyName).toBe('Acme Corp');
       expect(result.status).toBe('SUBMITTED');
+      expect(result.skillsClaimed).toEqual(['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS']);
+      expect(result.skillsClaimedSnapshot).toBeNull();
       expect(auditPublisher.record).toHaveBeenCalledWith(
         expect.objectContaining({
           actorId: mockStudentId,
@@ -133,6 +135,18 @@ describe('WorkExperienceService', () => {
           resourceId: mockCreated.id,
         }),
       );
+    });
+
+    it('rejects free-text skillsClaimed values outside the taxonomy', async () => {
+      await expect(
+        service.create(mockStudentId, {
+          companyName: 'Acme Corp',
+          role: 'Developer',
+          startDate: '2022-01-01T00:00:00.000Z',
+          isCurrent: true,
+          skillsClaimed: ['TypeScript'],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('rejects invalid payload without start date or end date when not current', async () => {
@@ -147,6 +161,44 @@ describe('WorkExperienceService', () => {
       await expect(service.create(mockStudentId, payload)).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+  });
+
+  describe('update', () => {
+    it('rejects skillsClaimed edits on a verified entry', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValueOnce({
+        id: expId,
+        studentId: mockStudentId,
+        companyName: 'Acme Corp',
+        companyWebsite: null,
+        companyLinkedinUrl: null,
+        role: 'Developer',
+        employmentType: 'FULL_TIME',
+        department: null,
+        domain: null,
+        workLocation: null,
+        startDate: new Date('2022-01-01'),
+        endDate: null,
+        isCurrent: true,
+        responsibilities: null,
+        skills: ['GIT_VERSION_CONTROL'],
+        projects: null,
+        candidateLinkedin: null,
+        verifierName: null,
+        verifierEmail: null,
+        verifierDesignation: null,
+        verifierPhone: null,
+        status: 'VERIFIED',
+        rejectionReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [],
+      });
+
+      await expect(
+        service.update(mockStudentId, expId, { skillsClaimed: ['DATABASE_FUNDAMENTALS'] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 
@@ -188,6 +240,47 @@ describe('WorkExperienceService', () => {
       const result = await service.listForStudent(mockStudentId);
       expect(result).toHaveLength(1);
       expect(result[0].role).toBe('Backend Engineer');
+    });
+
+    it('includes skillsClaimedSnapshot on verified entries', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findMany.mockResolvedValueOnce([
+        {
+          id: expId,
+          studentId: mockStudentId,
+          companyId: null,
+          companyName: 'Tech Corp',
+          companyWebsite: null,
+          companyLinkedinUrl: null,
+          role: 'Backend Engineer',
+          employmentType: 'FULL_TIME',
+          department: null,
+          domain: null,
+          workLocation: null,
+          startDate: new Date('2021-01-01'),
+          endDate: new Date('2022-01-01'),
+          isCurrent: false,
+          responsibilities: null,
+          skills: ['GIT_VERSION_CONTROL'],
+          projects: null,
+          candidateLinkedin: null,
+          verifierName: null,
+          verifierEmail: null,
+          verifierDesignation: null,
+          verifierPhone: null,
+          status: 'VERIFIED',
+          rejectionReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          documents: [],
+        },
+      ]);
+
+      const result = await service.listForStudent(mockStudentId);
+      expect(result[0]?.skillsClaimedSnapshot).toEqual({
+        taxonomyVersion: '0.9',
+        skillCodes: ['GIT_VERSION_CONTROL'],
+      });
     });
   });
 

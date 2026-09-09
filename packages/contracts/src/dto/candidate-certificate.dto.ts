@@ -7,6 +7,7 @@ import {
 } from '../domain/enums.js';
 import { isDisallowedEndorserEmailDomain } from '../domain/disallowed-email-domains.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
+import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
  * Candidate certificate verification (externally-issued certs) — a standalone
@@ -27,7 +28,7 @@ export type CreateCandidateCertificateRequest = z.infer<
 >;
 
 export const CandidateCertificateSkillDtoSchema = z.object({
-  skillCode: z.string().min(2).max(64),
+  skillCode: TaxonomySkillCodeSchema,
   skillName: z.string(),
   selfAssessedProficiency: CertificateProficiencySchema,
 });
@@ -37,7 +38,7 @@ export const AddCertificateSkillsRequestSchema = z.object({
   skills: z
     .array(
       z.object({
-        skillCode: z.string().min(2).max(64),
+        skillCode: TaxonomySkillCodeSchema,
         selfAssessedProficiency: CertificateProficiencySchema,
       }),
     )
@@ -72,6 +73,8 @@ export const CandidateCertificateDtoSchema = z.object({
   practicalApplied: z.boolean().nullable(),
   practicalDescription: z.string().nullable(),
   skills: z.array(CandidateCertificateSkillDtoSchema),
+  /** Frozen when status becomes VERIFIED — codes + taxonomy version at endorsement. */
+  skillsClaimedSnapshot: SkillsClaimedSnapshotSchema.nullable().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
 });

@@ -1154,6 +1154,19 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/catalog/skills',
+    module: 'catalog',
+    owner: 'Ramansh',
+    roles: ['PUBLIC'],
+    rateLimit: 'role.public',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 80,
+    summary:
+      'INF-05 / v0.9 skill-set library for profile tags (certs, work-ex, JD pickers). SK-T01.',
+  },
+  {
+    method: 'GET',
     path: '/catalog/readiness',
     module: 'catalog',
     owner: 'Vedika G',

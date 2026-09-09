@@ -501,6 +501,13 @@ export const SKILL_STREAMS = [
 export const SKILL_CODES = SKILL_DEFINITIONS.map((skill) => skill.code);
 export const SKILL_CODE_SET: ReadonlySet<string> = new Set(SKILL_CODES);
 
+/**
+ * Frozen INF-05 / v0.9 skill-set library version. Profile tags (certs, work-ex)
+ * snapshot this string at verification so later taxonomy edits cannot rewrite
+ * a verified row's codes.
+ */
+export const SKILL_TAXONOMY_VERSION = '0.9';
+
 /** Assert question-count pattern and verification-method gates are correct for a skill. */
 export function assertSkillQuestionCounts(skill: SkillDefinition): void {
   for (const [level, threshold] of Object.entries(skill.levels) as [

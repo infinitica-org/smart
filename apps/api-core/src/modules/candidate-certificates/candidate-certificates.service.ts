@@ -8,8 +8,9 @@ import {
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import {
-  SKILL_CODE_SET,
+  AddCertificateSkillsRequestSchema,
   SKILL_DEFINITIONS,
+  skillsClaimedSnapshotWhenVerified,
   type AddCertificateSkillsRequest,
   type CandidateCertificateDto,
   type CertificateVerificationEventDto,
@@ -167,22 +168,28 @@ export class CandidateCertificatesService {
     id: string,
     body: AddCertificateSkillsRequest,
   ): Promise<CandidateCertificateDto> {
-    await this.findOwnedOrThrow(candidateId, id);
-
-    for (const skill of body.skills) {
-      if (!SKILL_CODE_SET.has(skill.skillCode)) {
-        throw new BadRequestException({
-          error: 'validation_failed',
-          message: `Unknown skill code: ${skill.skillCode}`,
-          statusCode: 400,
-        });
-      }
+    const row = await this.findOwnedOrThrow(candidateId, id);
+    const parsedSkills = AddCertificateSkillsRequestSchema.safeParse(body);
+    if (!parsedSkills.success) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Every skill must be a known taxonomy code from GET /catalog/skills.',
+        statusCode: 400,
+        details: parsedSkills.error.flatten(),
+      });
+    }
+    if (row.status === 'VERIFIED' || row.status === 'IN_VERIFICATION') {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Skills cannot be changed while the certificate is verified or in verification.',
+        statusCode: 400,
+      });
     }
 
     await this.prisma.$transaction([
       this.prisma.candidateCertificateSkill.deleteMany({ where: { candidateCertificateId: id } }),
       this.prisma.candidateCertificateSkill.createMany({
-        data: body.skills.map((skill) => ({
+        data: parsedSkills.data.skills.map((skill) => ({
           candidateCertificateId: id,
           skillCode: skill.skillCode,
           selfAssessedProficiency: skill.selfAssessedProficiency,
@@ -459,6 +466,10 @@ export class CandidateCertificatesService {
         skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
         selfAssessedProficiency: skill.selfAssessedProficiency,
       })),
+      skillsClaimedSnapshot: skillsClaimedSnapshotWhenVerified(
+        row.status,
+        row.skills.map((skill) => skill.skillCode),
+      ),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

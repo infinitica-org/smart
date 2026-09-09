@@ -16,6 +16,24 @@ describe('CatalogController', () => {
     expect(tracks[0]?.code).toBe('TECH_FULLSTACK');
   });
 
+  it('listSkills() returns the skill-set library from CatalogService', () => {
+    const listSkillLibrary = vi.fn().mockReturnValue({
+      taxonomyVersion: '0.9',
+      skills: [
+        {
+          code: 'GIT_VERSION_CONTROL',
+          name: 'Git & Version Control',
+          domain: 'SOFTWARE_IT',
+          stream: 'UNIVERSAL',
+        },
+      ],
+    });
+    const controller = new CatalogController({ listSkillLibrary } as unknown as CatalogService);
+    const library = controller.listSkills();
+    expect(listSkillLibrary).toHaveBeenCalledOnce();
+    expect(library.skills[0]?.code).toBe('GIT_VERSION_CONTROL');
+  });
+
   it('get() returns one track by code', async () => {
     const getTrack = vi.fn().mockResolvedValue({
       code: 'TECH_FULLSTACK',
