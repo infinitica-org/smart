@@ -12,6 +12,8 @@ import type {
   SubmitWorkExperienceVerificationResponseDto,
   WorkExperienceOpsDashboardItemDto,
   WorkExperienceVerificationStatus,
+  VoidRequest,
+  VoidWorkExperienceResponse,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -1310,5 +1312,46 @@ export class WorkExperienceService {
         createdAt: exp.createdAt.toISOString(),
       };
     });
+  }
+
+  /**
+   * SA-T08 — extends the v0.9 fraud/void action (previously assessment-attempt only, see
+   * `AssessmentService.resolveIntegrity`) to a work-experience row. One-directional: there is
+   * no "un-void". The status flip alone is enough to drop it from the public profile —
+   * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
+   * never VOIDED) rows.
+   */
+  async voidWorkExperience(
+    actorId: string,
+    id: string,
+    body: VoidRequest,
+  ): Promise<VoidWorkExperienceResponse> {
+    const existing = await this.prisma.workExperience.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Work experience entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.prisma.workExperience.update({
+      where: { id },
+      data: { status: 'VOIDED', rejectionReason: body.reason },
+    });
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'work_experience.voided',
+      resourceType: 'WorkExperience',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return {
+      id: updated.id,
+      status: updated.status as WorkExperienceVerificationStatus,
+      voidedAt: updated.updatedAt.toISOString(),
+    };
   }
 }

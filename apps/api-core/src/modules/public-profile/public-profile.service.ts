@@ -47,9 +47,11 @@ export class PublicProfileService {
   async getBySlug(slug: string): Promise<PublicCandidateProfileDto> {
     const user = await this.prisma.user.findUnique({
       where: { publicProfileSlug: slug },
-      select: { id: true },
+      select: { id: true, profileVisible: true },
     });
-    if (!user) {
+    // CN-T09 — a real slug with visibility off must 404 exactly like a slug that
+    // doesn't exist at all; never confirm to an outside caller that the link is real.
+    if (!user || !user.profileVisible) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'No public profile at this link.',
@@ -64,52 +66,58 @@ export class PublicProfileService {
   }
 
   private async build(userId: string): Promise<PublicCandidateProfileDto> {
-    const [
-      user,
-      skillClaims,
-      declaredCount,
-      projects,
-      workExperience,
-      certificate,
-      externalCertificates,
-    ] = await Promise.all([
-      this.prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { fullName: true, primaryTrack: { select: { code: true } } },
-      }),
-      this.prisma.skillClaim.findMany({
-        where: { studentId: userId, status: 'VERIFIED' },
-        include: { skill: { select: { code: true } } },
-      }),
-      this.prisma.skillClaim.count({ where: { studentId: userId } }),
-      this.prisma.project.findMany({
-        // A reviewer-rejected project (possible plagiarism/integrity flag) is never
-        // portfolio material — everything else the student put up stays visible.
-        where: { studentId: userId, status: { not: 'REJECTED' } },
-        orderBy: { createdAt: 'desc' },
-        include: { report: { select: { score: true } } },
-      }),
-      this.prisma.workExperience.findMany({
-        where: { studentId: userId, status: 'VERIFIED' },
-        orderBy: { startDate: 'desc' },
-      }),
-      this.prisma.certificate.findFirst({
-        where: { userId, status: 'ISSUED', isPublic: true },
-        include: { track: { select: { name: true } } },
-      }),
-      this.prisma.candidateCertificate.findMany({
-        where: { candidateId: userId, status: 'VERIFIED' },
-        orderBy: { createdAt: 'desc' },
-        include: { skills: true },
-      }),
-    ]);
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        fullName: true,
+        primaryTrack: { select: { code: true } },
+        showInProgressItems: true,
+      },
+    });
+    const showInProgress = owner.showInProgressItems;
 
-    const track = user.primaryTrack
-      ? TRACK_BY_CODE.get(user.primaryTrack.code as TrackCode)
+    const [skillClaims, declaredCount, projects, workExperience, certificate, externalCertificates] =
+      await Promise.all([
+        this.prisma.skillClaim.findMany({
+          where: { studentId: userId, status: 'VERIFIED' },
+          include: { skill: { select: { code: true } } },
+        }),
+        this.prisma.skillClaim.count({ where: { studentId: userId } }),
+        this.prisma.project.findMany({
+          // A reviewer-rejected project (possible plagiarism/integrity flag) is never
+          // portfolio material — everything else the student put up stays visible.
+          where: { studentId: userId, status: { not: 'REJECTED' } },
+          orderBy: { createdAt: 'desc' },
+          include: { report: { select: { score: true } } },
+        }),
+        this.prisma.workExperience.findMany({
+          // CN-T09 — verified-only by default; showInProgress additionally admits anything
+          // not yet decided, but a VOIDED (SA-T08) or REJECTED/EXPIRED entry never appears
+          // here regardless of that toggle.
+          where: showInProgress
+            ? { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } }
+            : { studentId: userId, status: 'VERIFIED' },
+          orderBy: { startDate: 'desc' },
+        }),
+        this.prisma.certificate.findFirst({
+          where: { userId, status: 'ISSUED', isPublic: true },
+          include: { track: { select: { name: true } } },
+        }),
+        this.prisma.candidateCertificate.findMany({
+          where: showInProgress
+            ? { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } }
+            : { candidateId: userId, status: 'VERIFIED' },
+          orderBy: { createdAt: 'desc' },
+          include: { skills: true },
+        }),
+      ]);
+
+    const track = owner.primaryTrack
+      ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)
       : undefined;
 
     return {
-      fullName: user.fullName,
+      fullName: owner.fullName,
       trackName: track?.name ?? null,
       trackCategory: track?.category ?? null,
       skills: skillClaims.map((claim) => ({
@@ -135,6 +143,7 @@ export class PublicProfileService {
         startDate: entry.startDate.toISOString(),
         endDate: entry.endDate?.toISOString() ?? null,
         isCurrent: entry.isCurrent,
+        inProgress: entry.status !== 'VERIFIED',
       })),
       certificate: certificate
         ? { trackName: certificate.track.name, tier: certificate.headlineTier }
@@ -147,7 +156,9 @@ export class PublicProfileService {
           skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
           proficiency: skill.selfAssessedProficiency,
         })),
+        inProgress: cert.status !== 'VERIFIED',
       })),
+      showInProgressItems: showInProgress,
     };
   }
 }

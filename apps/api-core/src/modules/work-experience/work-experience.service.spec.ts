@@ -1000,4 +1000,45 @@ describe('WorkExperienceService', () => {
       });
     });
   });
+
+  describe('voidWorkExperience (SA-T08)', () => {
+    const experienceId = randomUUID();
+
+    it('voids a work-experience entry and writes an immutable audit row', async () => {
+      const actorId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValue({ id: experienceId, status: 'VERIFIED' });
+      prisma.workExperience.update.mockResolvedValue({
+        id: experienceId,
+        status: 'VOIDED',
+        updatedAt: new Date('2026-09-09T00:00:00.000Z'),
+      });
+
+      const result = await service.voidWorkExperience(actorId, experienceId, {
+        reason: 'Employer confirmed candidate never worked there.',
+      });
+
+      expect(prisma.workExperience.update).toHaveBeenCalledWith({
+        where: { id: experienceId },
+        data: { status: 'VOIDED', rejectionReason: 'Employer confirmed candidate never worked there.' },
+      });
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId,
+          action: 'work_experience.voided',
+          resourceType: 'WorkExperience',
+          resourceId: experienceId,
+          reasonCode: 'Employer confirmed candidate never worked there.',
+        }),
+      );
+      expect(result.status).toBe('VOIDED');
+      expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+    });
+
+    it('404s when voiding a work-experience entry that does not exist', async () => {
+      prisma.workExperience.findUnique.mockResolvedValue(null);
+      await expect(
+        service.voidWorkExperience(randomUUID(), randomUUID(), { reason: 'Does not matter here.' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });
