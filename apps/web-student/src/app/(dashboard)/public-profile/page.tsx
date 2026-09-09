@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { initialsOf } from '@/lib/candidate-identity';
+import { VisibilitySettingsCard } from '@/components/public-profile/visibility-settings-card';
 
 const VERIFICATION_METHOD_LABELS: Record<string, string> = {
   ENDORSEMENT: 'Endorsed',
@@ -113,6 +114,7 @@ export default function PublicProfilePreviewPage() {
 
       <div className="custom-scrollbar flex-1 overflow-y-auto bg-gray-50/50 p-4 dark:bg-transparent md:p-8">
         <div className="mx-auto max-w-3xl space-y-6">
+          <VisibilitySettingsCard />
           {!profile ? (
             <div className="flex items-center justify-center gap-2 rounded-[40px] border border-gray-100 bg-white py-24 text-sm text-gray-400 dark:border-white/5 dark:bg-[#1c1c1e]">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading your profile…
