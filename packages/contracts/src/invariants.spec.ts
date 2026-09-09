@@ -405,6 +405,19 @@ describe('SE-T02 skill interview contracts', () => {
     expect(getRateLimitPolicy('evaluation.skillInterview').limit).toBe(8);
   });
 
+  it('registers cert-agenda generate with a per-candidate LLM spend cap', () => {
+    expect(ROUTES.find((entry) => entry.path === '/evaluation/cert-agenda/generate')).toMatchObject(
+      {
+        method: 'POST',
+        module: 'evaluation',
+        owner: 'Ramansh',
+        roles: ['STUDENT'],
+        rateLimit: 'evaluation.certAgenda',
+      },
+    );
+    expect(getRateLimitPolicy('evaluation.certAgenda').limit).toBe(3);
+  });
+
   it('registers SDE v4 skill-form routes on the same LLM spend cap', () => {
     expect(ROUTES.find((entry) => entry.path === '/evaluation/skill-form/questions')).toMatchObject(
       {

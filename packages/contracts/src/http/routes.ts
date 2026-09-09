@@ -1554,6 +1554,19 @@ export const ROUTES: readonly RouteSpec[] = [
       'Simulate compiling and running candidate code against visible examples. No marks or hidden tests.',
   },
 
+  {
+    method: 'POST',
+    path: '/evaluation/cert-agenda/generate',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'evaluation.certAgenda',
+    criticality: 'LLM_INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 6000,
+    summary: 'Turn a submitted agenda into a cert paper after sparse/drift guards (gateway LLM).',
+  },
+
   /* -------------- cognitive / communication profile (SE-T04) -------------- */
   {
     method: 'GET',

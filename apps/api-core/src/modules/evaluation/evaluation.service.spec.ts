@@ -1,4 +1,9 @@
-import { BadGatewayException, BadRequestException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
   EvaluationService,
@@ -465,5 +470,119 @@ describe('EvaluationService SDE v4 skill form', () => {
     const token = sealSdeFormPayload(payload);
     expect(token.includes('answer')).toBe(false);
     expect(unsealSdeFormPayload<typeof payload>(token).answer).toBe('A');
+  });
+});
+
+const HAPPY_AGENDA = [
+  'React',
+  'Next.js',
+  'State management',
+  'REST API design',
+  'Async Node/NestJS',
+  'PostgreSQL queries',
+  'Indexing',
+  'Git workflows',
+];
+
+const paperItems = Array.from({ length: 5 }, (_, i) => ({
+  index: i + 1,
+  stem: `Which option matches fullstack topic ${String(i + 1)} in production code?`,
+  itemType: 'MCQ' as const,
+  options: [
+    { label: 'A' as const, text: 'Correct approach' },
+    { label: 'B' as const, text: 'Plausible mistake' },
+    { label: 'C' as const, text: 'Another distractor' },
+    { label: 'D' as const, text: 'Unrelated trivia' },
+  ],
+}));
+
+function redisWithCount(count: number) {
+  return {
+    incr: vi.fn().mockResolvedValue(count),
+    expire: vi.fn().mockResolvedValue(1),
+  } as never;
+}
+
+describe('EvaluationService cert agenda (PR-T01)', () => {
+  it('returns a student paper from a stubbed gateway without agenda mapping', async () => {
+    const complete = vi.fn().mockResolvedValue({
+      output: { items: paperItems },
+      auditId: null,
+    });
+    const service = new EvaluationService(gatewayWithComplete(complete), redisWithCount(1));
+
+    const result = await service.generateCertAgenda(
+      { trackCode: 'TECH_FULLSTACK', agendaLines: HAPPY_AGENDA },
+      OWNER_ID,
+    );
+
+    expect(result.items).toHaveLength(5);
+    expect(result.promptRef).toBe('cert-agenda-generate@1');
+    expect(result.taxonomyVersionSnapshot).toContain('cert-agenda-generate@1');
+    expect(JSON.stringify(result)).not.toContain('sourceAgendaLine');
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete.mock.calls[0]?.[0]).toMatchObject({
+      promptRef: 'cert-agenda-generate@1',
+      modelRole: 'PRIMARY_REASONING',
+    });
+  });
+
+  it('rejects a sparse agenda without calling the gateway', async () => {
+    const complete = vi.fn();
+    const service = new EvaluationService(gatewayWithComplete(complete), redisWithCount(1));
+    const err = await service
+      .generateCertAgenda({ trackCode: 'TECH_FULLSTACK', agendaLines: ['React', 'Git'] }, OWNER_ID)
+      .catch((caught: unknown) => caught);
+    expect(err).toBeInstanceOf(HttpException);
+    expect((err as HttpException).getResponse()).toMatchObject({ error: 'sparse_agenda' });
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('rejects a drifted agenda without calling the gateway', async () => {
+    const complete = vi.fn();
+    const service = new EvaluationService(gatewayWithComplete(complete), redisWithCount(1));
+    const err = await service
+      .generateCertAgenda(
+        {
+          trackCode: 'TECH_FULLSTACK',
+          agendaLines: [
+            'Sourdough starter hydration percentages',
+            'Italian pasta dough lamination',
+            'Wine pairing for aged cheddar',
+            'Wedding cake fondant flowers',
+            'Espresso extraction temperature',
+            'Croissant butter lamination folds',
+            'Chocolate tempering curves',
+            'Knife skills for julienne vegetables',
+          ],
+        },
+        OWNER_ID,
+      )
+      .catch((caught: unknown) => caught);
+    expect(err).toBeInstanceOf(HttpException);
+    expect((err as HttpException).getResponse()).toMatchObject({ error: 'agenda_drift' });
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the stubbed gateway throws', async () => {
+    const complete = vi.fn().mockRejectedValue(new Error('provider down'));
+    const service = new EvaluationService(gatewayWithComplete(complete), redisWithCount(1));
+    await expect(
+      service.generateCertAgenda(
+        { trackCode: 'TECH_FULLSTACK', agendaLines: HAPPY_AGENDA },
+        OWNER_ID,
+      ),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
+  it('rate-limits regen abuse without calling the gateway', async () => {
+    const complete = vi.fn();
+    const service = new EvaluationService(gatewayWithComplete(complete), redisWithCount(4));
+    const err = await service
+      .generateCertAgenda({ trackCode: 'TECH_FULLSTACK', agendaLines: HAPPY_AGENDA }, OWNER_ID)
+      .catch((caught: unknown) => caught);
+    expect(err).toBeInstanceOf(HttpException);
+    expect((err as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+    expect(complete).not.toHaveBeenCalled();
   });
 });

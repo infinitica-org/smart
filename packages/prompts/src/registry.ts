@@ -18,6 +18,7 @@ import {
   proficiencyShortAnswerTemplate,
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
+import { certAgendaGenerateTemplate } from './templates/cert-agenda.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 import {
   sdeSkillFormClosedTemplate,
@@ -61,6 +62,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyCodingDesignRubricTemplate,
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
+  certAgendaGenerateTemplate,
   workExperienceProofParseTemplate,
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
