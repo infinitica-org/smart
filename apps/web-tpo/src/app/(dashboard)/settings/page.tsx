@@ -8,6 +8,7 @@ import { api } from '../../../lib/api';
 export default function SettingsPage() {
   const [domain, setDomain] = useState<string | null>(null);
   const [institutionName, setInstitutionName] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [capacity, setCapacity] = useState<number | null | undefined>(undefined);
   const [tier, setTier] = useState<string | null>(null);
   const [studentCount, setStudentCount] = useState<number>(0);
@@ -19,17 +20,16 @@ export default function SettingsPage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      api.onboarding.tpoEntitlements(),
-      api.onboarding.listTpoStudents().catch(() => []),
-    ])
-      .then(([entitlements, students]) => {
+    api.onboarding
+      .tpoEntitlements()
+      .then((entitlements) => {
         if (!active) return;
         setDomain(entitlements.domain ?? null);
         setInstitutionName(entitlements.institutionName ?? null);
+        setVerificationStatus(entitlements.verificationStatus ?? 'APPROVED');
         setCapacity(entitlements.candidateCapacity);
         setTier(entitlements.planCode);
-        setStudentCount(students.length);
+        setStudentCount(entitlements.candidateUsage ?? 0);
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -67,7 +67,7 @@ export default function SettingsPage() {
         </h2>
 
         <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl space-y-5 shadow-xs">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
               <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                 Institution Name
@@ -85,6 +85,27 @@ export default function SettingsPage() {
               <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono font-bold text-emerald-400 flex items-center gap-2.5">
                 <Lock className="size-4 text-emerald-400" />{' '}
                 {domain ? `@${domain}` : 'Domain Unset'}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                Verification Status
+              </label>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold flex items-center gap-2.5">
+                {verificationStatus === 'APPROVED' || verificationStatus === 'VERIFIED' ? (
+                  <span className="text-emerald-400 flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-400" /> Verified Institution
+                  </span>
+                ) : verificationStatus === 'PENDING' ? (
+                  <span className="text-amber-400 flex items-center gap-2">
+                    <Shield className="size-4 text-amber-400" /> Pending Verification
+                  </span>
+                ) : (
+                  <span className="text-rose-400 flex items-center gap-2">
+                    <Shield className="size-4 text-rose-400" /> {verificationStatus ?? 'Unverified'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -132,9 +153,17 @@ export default function SettingsPage() {
                 </span>
                 <div className="text-base font-extrabold text-white">
                   {capacity !== undefined && capacity !== null
-                    ? `${capacity} Candidates`
-                    : 'Unlimited Candidates'}
+                    ? `${studentCount} / ${capacity} Candidates`
+                    : `${studentCount} Candidates (Unlimited)`}
                 </div>
+                {capacity !== undefined && capacity !== null ? (
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${studentCount >= capacity ? 'bg-rose-400' : 'bg-emerald-400'}`}
+                      style={{ width: `${Math.min(100, (studentCount / capacity) * 100)}%` }}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">

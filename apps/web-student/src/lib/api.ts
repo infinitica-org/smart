@@ -70,6 +70,41 @@ let mockSkillClaims: Array<{
 }> = [];
 const mockProjects = new Map<string, Record<string, unknown>>();
 
+let mockEducations: Record<string, unknown>[] = [
+  {
+    id: 'edu-mock-1',
+    studentId: MOCK_USER_ID,
+    institutionName: 'Stanford University',
+    degree: 'Bachelor of Science',
+    fieldOfStudy: 'Computer Science',
+    startDate: '2020-09-01',
+    endDate: '2024-06-01',
+    current: false,
+    grade: '3.9 GPA',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+let mockLanguages: Record<string, unknown>[] = [
+  {
+    id: 'lang-mock-1',
+    studentId: MOCK_USER_ID,
+    language: 'English',
+    proficiency: 'Full Professional',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'lang-mock-2',
+    studentId: MOCK_USER_ID,
+    language: 'Spanish',
+    proficiency: 'Professional Working',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 const MOCK_L1_ITEMS = [
   {
     itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
@@ -135,7 +170,7 @@ function mockStudentUser(overrides: Record<string, unknown> = {}) {
     role: 'STUDENT',
     institutionId: '223e4567-e89b-12d3-a456-426614174000',
     institutionName: 'Mock Institution',
-    primaryTrack: mockPrimaryTrack,
+    primaryTrack: mockPrimaryTrack ?? 'TECH_FULLSTACK',
     secondaryTrack: null,
     provider: 'GOOGLE',
     emailVerified: true,
@@ -208,10 +243,21 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
   }
 
   if (url.includes('/auth/sso/start') && method === 'POST') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     return new Response(
       JSON.stringify({
-        authorizationUrl: 'http://localhost:3001/auth/callback?code=mock_code&state=mock_state',
+        authorizationUrl: `${origin}/auth/callback?code=mock_code&state=mock_state`,
         state: 'mock_state',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/onboarding/linkedin/oauth-url') && method === 'GET') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    return new Response(
+      JSON.stringify({
+        url: `${origin}/onboarding?linkedinVerified=1`,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -422,6 +468,31 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           levels: [],
           capstoneBrief: 'Data Analyst capstone.',
         },
+        {
+          trackId: '44444444-4444-4444-8444-444444444444',
+          code: 'TECH_FULLSTACK',
+          name: 'Software Engineering / SDE',
+          description:
+            'Core CS fundamentals, full-stack development, algorithms, system design, and testing.',
+          category: 'TECH',
+          launchStatus: 'AVAILABLE_NEW',
+          calibrationStatus: 'NOT_CALIBRATED',
+          foundationWeight: 0.2,
+          competencies: [],
+          levels: [
+            {
+              levelId: '55555555-5555-4555-8555-555555555555',
+              trackCode: 'TECH_FULLSTACK',
+              levelNumber: 1,
+              name: 'Foundation',
+              format: 'MCQ',
+              durationMinutes: 60,
+              itemCount: 40,
+              cutScoresPublished: false,
+            },
+          ],
+          capstoneBrief: 'Software Engineering capstone.',
+        },
       ]),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -585,6 +656,69 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     });
   }
 
+  if (url.includes('/assessment/verify/claims/') && url.includes('/prepare') && method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        claimId: url.split('/claims/')[1]?.split('/')[0] ?? 'mock-claim',
+        sessionId: 'mock-verify-session-id',
+        status: 'READY',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 1800000).toISOString(),
+      }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/assessment/verify/claims/') && url.includes('/start') && method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        sessionId: 'mock-verify-session-id',
+        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        proficiency: 'INTERMEDIATE',
+        answers: [],
+        remainingSeconds: 1800,
+        completedAt: null,
+      }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (
+    url.includes('/assessment/verify/sessions/') &&
+    url.includes('/complete') &&
+    method === 'POST'
+  ) {
+    const body = JSON.parse(String(init?.body ?? '{}')) as {
+      integrityTerminated?: boolean;
+      technicalFailure?: boolean;
+    };
+    const isTerminated = Boolean(body.integrityTerminated);
+    const lockedUntil = new Date(Date.now() + 86400000).toISOString();
+    return new Response(
+      JSON.stringify({
+        claim: {
+          claimId: crypto.randomUUID(),
+          studentId: MOCK_USER_ID,
+          skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+          proficiency: 'INTERMEDIATE',
+          status: isTerminated ? 'LOCKED' : 'VERIFIED',
+          strikes: isTerminated ? 1 : 0,
+          lockedUntil: isTerminated ? lockedUntil : null,
+          lastAttemptId: 'mock-verify-session-id',
+        },
+        technicalFailure: Boolean(body.technicalFailure),
+        grade: isTerminated
+          ? null
+          : {
+              overallBand: 'INTERMEDIATE',
+              scorePercentage: 85,
+              passed: true,
+            },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   if (url.includes('/projects') && method === 'POST' && !url.includes('github')) {
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     const projectId = crypto.randomUUID();
@@ -622,6 +756,135 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (url.includes('/users/me/education') || url.includes('/me/education')) {
+    if (method === 'GET') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      if (match && match[1] && match[1] !== 'education') {
+        const item = mockEducations.find((e) => e.id === match[1]);
+        if (!item) {
+          return new Response(
+            JSON.stringify({ error: 'not_found', message: 'Education not found' }),
+            { status: 404 },
+          );
+        }
+        return new Response(JSON.stringify(item), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(mockEducations), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const newEntry = {
+        id: crypto.randomUUID(),
+        studentId: MOCK_USER_ID,
+        institutionName: body.institutionName,
+        degree: body.degree || null,
+        fieldOfStudy: body.fieldOfStudy || null,
+        startDate: body.startDate || null,
+        endDate: body.endDate || null,
+        current: Boolean(body.current),
+        grade: body.grade || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockEducations.unshift(newEntry);
+      return new Response(JSON.stringify(newEntry), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'PUT') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const idx = mockEducations.findIndex((e) => e.id === id);
+      if (idx !== -1) {
+        mockEducations[idx] = {
+          ...mockEducations[idx],
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        return new Response(JSON.stringify(mockEducations[idx]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (method === 'DELETE') {
+      const match = url.match(/\/education\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      mockEducations = mockEducations.filter((e) => e.id !== id);
+      return new Response(null, { status: 204 });
+    }
+  }
+
+  if (url.includes('/users/me/languages') || url.includes('/me/languages')) {
+    if (method === 'GET') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      if (match && match[1] && match[1] !== 'languages') {
+        const item = mockLanguages.find((l) => l.id === match[1]);
+        if (!item) {
+          return new Response(
+            JSON.stringify({ error: 'not_found', message: 'Language not found' }),
+            { status: 404 },
+          );
+        }
+        return new Response(JSON.stringify(item), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(mockLanguages), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const newEntry = {
+        id: crypto.randomUUID(),
+        studentId: MOCK_USER_ID,
+        language: body.language,
+        proficiency: body.proficiency,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockLanguages.unshift(newEntry);
+      return new Response(JSON.stringify(newEntry), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'PUT') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const idx = mockLanguages.findIndex((l) => l.id === id);
+      if (idx !== -1) {
+        mockLanguages[idx] = {
+          ...mockLanguages[idx],
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        return new Response(JSON.stringify(mockLanguages[idx]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (method === 'DELETE') {
+      const match = url.match(/\/languages\/([0-9a-f-]{36}|[a-z0-9-]+)/i);
+      const id = match ? match[1] : null;
+      mockLanguages = mockLanguages.filter((l) => l.id !== id);
+      return new Response(null, { status: 204 });
+    }
   }
 
   if (url.includes('/me/applications') && method === 'GET') {

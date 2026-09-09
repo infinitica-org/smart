@@ -12,6 +12,8 @@ import type {
   SubmitWorkExperienceVerificationResponseDto,
   WorkExperienceOpsDashboardItemDto,
   WorkExperienceVerificationStatus,
+  VoidRequest,
+  VoidWorkExperienceResponse,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -23,9 +25,11 @@ import {
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
+  skillsClaimedSnapshotWhenVerified,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import { OrganizationsService } from '../institutions/organizations.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -39,8 +43,10 @@ import type { Prisma } from '../../generated/prisma/index.js';
 interface RawWorkExperience {
   id: string;
   studentId: string;
+  organizationId?: string | null;
   companyId?: string | null;
   companyName: string;
+  companyNameRaw?: string | null;
   companyWebsite?: string | null;
   companyLinkedinUrl?: string | null;
   role: string;
@@ -79,76 +85,17 @@ interface RawWorkExperienceDocument {
   createdAt: Date;
 }
 
-function normalizeText(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function normalizeCompanyName(name: string | null | undefined): string {
-  if (!name) return '';
-  return normalizeText(name)
-    .replace(/\b(pvt|private|ltd|limited|inc|incorporated|llp|corp|corporation|co|company)\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-export function extractDomain(urlOrEmail: string | null | undefined): string | null {
-  if (!urlOrEmail || typeof urlOrEmail !== 'string') return null;
-  const trimmed = urlOrEmail.trim().toLowerCase();
-  if (!trimmed) return null;
-
-  let hostname = '';
-  if (trimmed.includes('@')) {
-    hostname = trimmed.split('@').pop() || '';
-  } else {
-    try {
-      const withProtocol = trimmed.match(/^https?:\/\//i) ? trimmed : `https://${trimmed}`;
-      const url = new URL(withProtocol);
-      hostname = url.hostname;
-    } catch {
-      const firstPart = trimmed.split('/')[0] || '';
-      hostname = firstPart.split(':')[0] || '';
-    }
-  }
-
-  hostname = hostname.replace(/^www\./, '').trim();
-  return hostname || null;
-}
-
-export function validateEmployerDomain(
-  verifierEmail: string | null | undefined,
-  companyWebsite: string | null | undefined,
-): {
-  verifierDomain: string | null;
-  companyDomain: string | null;
-  domainMatch: boolean;
-} {
-  const verifierDomain = extractDomain(verifierEmail);
-  const companyDomain = extractDomain(companyWebsite);
-
-  if (!verifierDomain || !companyDomain) {
-    return {
-      verifierDomain,
-      companyDomain,
-      domainMatch: false,
-    };
-  }
-
-  const domainMatch =
-    verifierDomain === companyDomain ||
-    verifierDomain.endsWith(`.${companyDomain}`) ||
-    companyDomain.endsWith(`.${verifierDomain}`);
-
-  return {
-    verifierDomain,
-    companyDomain,
-    domainMatch,
-  };
-}
+export {
+  normalizeCompanyName,
+  extractDomain,
+  validateEmployerDomain,
+} from './company-name.util.js';
+import {
+  normalizeText,
+  normalizeCompanyName,
+  extractDomain,
+  validateEmployerDomain,
+} from './company-name.util.js';
 
 @Injectable()
 export class WorkExperienceService {
@@ -161,14 +108,70 @@ export class WorkExperienceService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
+    @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
   ) {}
 
+  private async resolveOrganization(params: {
+    name: string;
+    website?: string | null;
+    verifierEmail?: string | null;
+  }) {
+    if (this.organizationsService) {
+      return this.organizationsService.resolveOrCreateOrganization(params);
+    }
+    const rawName = params.name.trim();
+    const normalizedName = normalizeCompanyName(rawName);
+    let extractedDomain: string | null = null;
+    if (params.website) {
+      extractedDomain = extractDomain(params.website);
+    }
+    if (!extractedDomain && params.verifierEmail) {
+      extractedDomain = extractDomain(params.verifierEmail);
+    }
+
+    if (extractedDomain) {
+      const orgByDomain = await this.prisma.organization.findFirst({
+        where: { domain: extractedDomain },
+      });
+      if (orgByDomain) return orgByDomain;
+    }
+
+    const orgByName = await this.prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: { equals: rawName, mode: 'insensitive' } },
+          { name: { equals: normalizedName, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (orgByName) return orgByName;
+
+    let domainToUse: string | null = extractedDomain;
+    if (domainToUse) {
+      const domainExists = await this.prisma.organization.findFirst({
+        where: { domain: domainToUse },
+      });
+      if (domainExists) domainToUse = null;
+    }
+
+    return this.prisma.organization.create({
+      data: {
+        name: rawName,
+        domain: domainToUse,
+        verificationStatus: 'PENDING',
+      },
+    });
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
+    const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
       id: exp.id,
       studentId: exp.studentId,
+      organizationId: exp.organizationId ?? null,
       companyId: exp.companyId ?? null,
       companyName: exp.companyName,
+      companyNameRaw: exp.companyNameRaw ?? exp.companyName,
       companyWebsite: exp.companyWebsite ?? null,
       companyLinkedinUrl: exp.companyLinkedinUrl ?? null,
       role: exp.role,
@@ -180,7 +183,8 @@ export class WorkExperienceService {
       endDate: exp.endDate ? exp.endDate.toISOString() : null,
       isCurrent: exp.isCurrent,
       responsibilities: exp.responsibilities ?? null,
-      skills: exp.skills ?? [],
+      skillsClaimed,
+      skillsClaimedSnapshot: skillsClaimedSnapshotWhenVerified(exp.status, skillsClaimed),
       projects: exp.projects ?? null,
       candidateLinkedin: exp.candidateLinkedin ?? null,
       verifierName: exp.verifierName ?? null,
@@ -242,9 +246,23 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+    const rawName = data.companyName.trim();
+    const org = await this.resolveOrganization({
+      name: rawName,
+      website: data.companyWebsite,
+      verifierEmail: data.verifierEmail,
+    });
 
     // Optional company lookup to associate companyId if company matches catalog
     let matchedCompanyId: string | null = data.companyId ?? null;
+    if (!matchedCompanyId) {
+      const linkedCompany = await this.prisma.company.findFirst({
+        where: { organizationId: org.id },
+      });
+      if (linkedCompany) {
+        matchedCompanyId = linkedCompany.id;
+      }
+    }
     if (!matchedCompanyId && data.companyWebsite) {
       try {
         const urlObj = new URL(data.companyWebsite);
@@ -263,6 +281,8 @@ export class WorkExperienceService {
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
+        organizationId: org.id,
+        companyNameRaw: rawName,
         companyId: matchedCompanyId,
         companyName: data.companyName,
         companyWebsite: data.companyWebsite || null,
@@ -276,7 +296,7 @@ export class WorkExperienceService {
         endDate: data.endDate ? new Date(data.endDate) : null,
         isCurrent: data.isCurrent,
         responsibilities: data.responsibilities || null,
-        skills: data.skills,
+        skills: data.skillsClaimed,
         projects: (data.projects as Prisma.InputJsonValue) ?? null,
         candidateLinkedin: data.candidateLinkedin || null,
         verifierName: data.verifierName || null,
@@ -324,9 +344,46 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
+    if (
+      existing.status === 'VERIFIED' &&
+      data.skillsClaimed !== undefined &&
+      JSON.stringify(data.skillsClaimed) !== JSON.stringify(existing.skills ?? [])
+    ) {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Skills cannot be changed on a verified work experience entry.',
+        statusCode: 400,
+      });
+    }
+
+    let updatedOrgId: string | undefined = undefined;
+    let updatedCompanyNameRaw: string | undefined = undefined;
+
+    if (
+      data.companyName !== undefined ||
+      data.companyWebsite !== undefined ||
+      data.verifierEmail !== undefined
+    ) {
+      const nameToUse = data.companyName ?? existing.companyName;
+      const websiteToUse =
+        data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
+      const verifierEmailToUse =
+        data.verifierEmail !== undefined ? data.verifierEmail : existing.verifierEmail;
+
+      const org = await this.resolveOrganization({
+        name: nameToUse,
+        website: websiteToUse,
+        verifierEmail: verifierEmailToUse,
+      });
+      updatedOrgId = org.id;
+      updatedCompanyNameRaw = nameToUse.trim();
+    }
+
     const updated = await this.prisma.workExperience.update({
       where: { id },
       data: {
+        ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
+        ...(updatedCompanyNameRaw !== undefined ? { companyNameRaw: updatedCompanyNameRaw } : {}),
         ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
         ...(data.companyWebsite !== undefined
           ? { companyWebsite: data.companyWebsite || null }
@@ -347,7 +404,7 @@ export class WorkExperienceService {
         ...(data.responsibilities !== undefined
           ? { responsibilities: data.responsibilities || null }
           : {}),
-        ...(data.skills !== undefined ? { skills: data.skills } : {}),
+        ...(data.skillsClaimed !== undefined ? { skills: data.skillsClaimed } : {}),
         ...(data.projects !== undefined
           ? { projects: (data.projects as Prisma.InputJsonValue) ?? null }
           : {}),
@@ -843,7 +900,7 @@ export class WorkExperienceService {
   ): Promise<SendWorkExperienceVerificationResponseDto> {
     const exp = await this.prisma.workExperience.findUnique({
       where: { id: experienceId },
-      include: { student: true },
+      include: { student: true, organization: true },
     });
 
     if (!exp) {
@@ -864,10 +921,13 @@ export class WorkExperienceService {
       );
     }
 
-    const domainValidation = validateEmployerDomain(exp.verifierEmail, exp.companyWebsite);
-    if (exp.companyWebsite && !domainValidation.domainMatch) {
+    const targetDomain =
+      exp.companyWebsite ||
+      (exp.organization?.domain ? `https://${exp.organization.domain}` : null);
+    const domainValidation = validateEmployerDomain(exp.verifierEmail, targetDomain);
+    if (targetDomain && !domainValidation.domainMatch) {
       throw new BadRequestException(
-        `Verifier email domain does not match company website domain (${exp.companyWebsite}).`,
+        `Verifier email domain does not match company website domain (${targetDomain}).`,
       );
     }
 
@@ -1208,5 +1268,46 @@ export class WorkExperienceService {
         createdAt: exp.createdAt.toISOString(),
       };
     });
+  }
+
+  /**
+   * SA-T08 — extends the v0.9 fraud/void action (previously assessment-attempt only, see
+   * `AssessmentService.resolveIntegrity`) to a work-experience row. One-directional: there is
+   * no "un-void". The status flip alone is enough to drop it from the public profile —
+   * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
+   * never VOIDED) rows.
+   */
+  async voidWorkExperience(
+    actorId: string,
+    id: string,
+    body: VoidRequest,
+  ): Promise<VoidWorkExperienceResponse> {
+    const existing = await this.prisma.workExperience.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Work experience entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.prisma.workExperience.update({
+      where: { id },
+      data: { status: 'VOIDED', rejectionReason: body.reason },
+    });
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'work_experience.voided',
+      resourceType: 'WorkExperience',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return {
+      id: updated.id,
+      status: updated.status as WorkExperienceVerificationStatus,
+      voidedAt: updated.updatedAt.toISOString(),
+    };
   }
 }

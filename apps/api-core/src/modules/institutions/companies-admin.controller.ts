@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import {
   API_PREFIX,
   CreateCompanyRequestSchema,
   ListCompaniesQuerySchema,
+  SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
   UpdateCompanyRequestSchema,
 } from '@smart/contracts';
@@ -37,6 +38,24 @@ export class CompaniesAdminController {
   @Get(':companyId')
   get(@Param('companyId') companyId: string) {
     return this.companies.getCompany(companyId);
+  }
+
+  @Get(':companyId/entitlements')
+  entitlements(@Param('companyId') companyId: string) {
+    return this.companies.resolveCompanyEntitlements(companyId);
+  }
+
+  @Put(':companyId/feature-flags')
+  setFlag(
+    @Param('companyId') companyId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.companies.setCompanyFlagOverride(
+      companyId,
+      SetFeatureFlagOverrideRequestSchema.parse(body),
+      user.sub,
+    );
   }
 
   @Patch(':companyId')

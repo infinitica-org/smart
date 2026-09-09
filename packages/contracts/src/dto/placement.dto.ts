@@ -13,8 +13,9 @@ import {
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
-import { SKILL_CODE_SET, SKILL_STREAMS, SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
+import { SKILL_STREAMS, SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
+import { TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
  * Placement overlay contracts.
@@ -168,12 +169,7 @@ export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
 export const SkillStreamSchema = z.enum(SKILL_STREAMS);
 
-/** INF-05 skill code only — never free-text names. */
-export const TaxonomySkillCodeSchema = z
-  .string()
-  .min(2)
-  .max(64)
-  .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
+export { TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 export const SkillRequirementSchema = z.object({
   skillCode: TaxonomySkillCodeSchema,

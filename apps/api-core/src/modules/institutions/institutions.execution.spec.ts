@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { InstitutionsService } from './institutions.service.js';
 
+const noopRedis = { get: vi.fn(), setex: vi.fn(), del: vi.fn() };
+
 const institutionId = randomUUID();
 const batchId = randomUUID();
 const actorId = randomUUID();
@@ -20,6 +22,17 @@ function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
     record: vi.fn().mockResolvedValue(undefined),
   };
   const prisma = {
+    institution: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: institutionId,
+        name: 'Test Institution',
+        domain: 'test.edu',
+        verificationStatus: 'APPROVED',
+        planId: 'plan-1',
+        plan: { code: 'PRO', candidateCapacity: null },
+      }),
+    },
+    featureFlag: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     batch: { findFirst: vi.fn().mockResolvedValue({ id: batchId, institutionId }) },
     user: {
@@ -41,6 +54,7 @@ function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
         institutionId,
         batchId,
       }),
+      count: vi.fn().mockResolvedValue(existingUsers.length),
     },
     invitation: {
       count: vi.fn().mockResolvedValue(pendingInvitationCount),
@@ -59,6 +73,7 @@ function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
       prisma as never,
       invitations as never,
       auditPublisher as never,
+      noopRedis as never,
     ),
   };
 }

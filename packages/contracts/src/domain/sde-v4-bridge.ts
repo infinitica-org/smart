@@ -24,7 +24,8 @@ export const INF05_TO_SDE_V4_FORM_CODE: Readonly<Record<string, string>> = {
 };
 
 export function sdeV4FormCodeForCatalogSkill(skillCode: string): string | null {
-  return INF05_TO_SDE_V4_FORM_CODE[skillCode] ?? null;
+  if (!skillCode || typeof skillCode !== 'string') return null;
+  return INF05_TO_SDE_V4_FORM_CODE[skillCode] ?? 'SDE_PROGRAMMING_FUNDAMENTALS';
 }
 
 /** Per-skill focus the candidate picks; stems must stay inside this slice. */

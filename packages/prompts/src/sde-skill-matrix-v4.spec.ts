@@ -8,6 +8,7 @@ import {
 } from './sde-skill-matrix-v4.js';
 import {
   SdeSkillFormClosedOutputSchema,
+  sdeSkillCodeRunnerTemplate,
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
 } from './templates/sde-skill-form.js';
@@ -125,5 +126,18 @@ describe('SDE v4 matrix', () => {
     expect(rendered.system).toContain('LeetCode');
     expect(rendered.system).toContain('hiddenTests');
     expect(rendered.promptRef).toBe('sde-skill-form-open@2');
+  });
+
+  it('renders a compile-only runner prompt with no marks language', () => {
+    const rendered = renderPrompt(sdeSkillCodeRunnerTemplate, {
+      prompt: 'Two Sum',
+      constraints: '',
+      source: 'function twoSum() { return [0,1]; }',
+      tests: [{ input: 'nums = [2,7], target = 9', expected: '[0,1]' }],
+    });
+    expect(rendered.promptRef).toBe('sde-skill-code-runner@1');
+    expect(rendered.system).toContain('not a grader');
+    expect(rendered.system).not.toContain('Award');
+    expect(rendered.user).toContain('nums = [2,7]');
   });
 });

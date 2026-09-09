@@ -140,6 +140,7 @@ export const SubscriptionPlanDtoSchema = z.object({
   planId: UuidSchema,
   code: PlanCodeSchema,
   name: z.string(),
+  candidateCapacity: z.number().int().positive().nullable(),
   entitlements: z.array(PlanEntitlementDtoSchema),
   institutionCount: z.number().int().nonnegative(),
 });
@@ -192,6 +193,24 @@ export const InstitutionAdminDtoSchema = z.object({
   invitation: InvitationDtoSchema.nullable(),
 });
 export type InstitutionAdminDto = z.infer<typeof InstitutionAdminDtoSchema>;
+
+/* ----------------------------- platform admins ----------------------------- */
+
+export const PlatformAdminDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  emailVerified: z.boolean(),
+  invitation: InvitationDtoSchema.nullable(),
+});
+export type PlatformAdminDto = z.infer<typeof PlatformAdminDtoSchema>;
+
+export const InvitePlatformAdminRequestSchema = z.object({
+  fullName: z.string().min(2).max(200),
+  email: EmailSchema,
+  reason: z.string().trim().min(8).max(500),
+});
+export type InvitePlatformAdminRequest = z.infer<typeof InvitePlatformAdminRequestSchema>;
 
 /* -------------------------------- batches --------------------------------- */
 
@@ -299,6 +318,7 @@ export const AuditLogDtoSchema = z.object({
   auditLogId: UuidSchema,
   actorId: UuidSchema.nullable(),
   actorEmail: EmailSchema.nullable(),
+  actorRole: UserRoleSchema.nullable(),
   action: z.string(),
   resourceType: z.string(),
   resourceId: z.string().nullable(),
@@ -308,12 +328,17 @@ export const AuditLogDtoSchema = z.object({
 });
 export type AuditLogDto = z.infer<typeof AuditLogDtoSchema>;
 
+/** Groups the generic UserRole enum into the three tabs the audit log UI shows. */
+export const AuditLogSectionSchema = z.enum(['STUDENT', 'TPO', 'SUPER_ADMIN']);
+export type AuditLogSection = z.infer<typeof AuditLogSectionSchema>;
+
 export const ListAuditLogsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   action: z.string().trim().max(80).optional(),
   resourceType: z.string().trim().max(40).optional(),
   resourceId: z.string().trim().max(80).optional(),
   actorId: UuidSchema.optional(),
+  section: AuditLogSectionSchema.optional(),
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
@@ -371,6 +396,11 @@ export const UpdatePlanEntitlementsRequestSchema = z.object({
 });
 export type UpdatePlanEntitlementsRequest = z.infer<typeof UpdatePlanEntitlementsRequestSchema>;
 
+export const UpdatePlanCapacityRequestSchema = z.object({
+  candidateCapacity: z.number().int().positive().nullable(),
+});
+export type UpdatePlanCapacityRequest = z.infer<typeof UpdatePlanCapacityRequestSchema>;
+
 export const SetFeatureFlagOverrideRequestSchema = z.object({
   key: z.string().min(2).max(80),
   enabled: z.boolean(),
@@ -382,7 +412,9 @@ export const TenantEntitlementsDtoSchema = z.object({
   flags: z.array(PlanEntitlementDtoSchema),
   institutionName: z.string().optional(),
   domain: z.string().optional(),
-  candidateCapacity: z.number().optional(),
+  verificationStatus: TenantVerificationStatusSchema.optional(),
+  candidateCapacity: z.number().nullable().optional(),
+  candidateUsage: z.number().int().nonnegative().optional(),
 });
 export type TenantEntitlementsDto = z.infer<typeof TenantEntitlementsDtoSchema>;
 
@@ -412,6 +444,7 @@ export type UpdateCompanyRequest = z.infer<typeof UpdateCompanyRequestSchema>;
 
 export const CompanyDtoSchema = z.object({
   companyId: UuidSchema,
+  organizationId: UuidSchema.nullable().optional(),
   name: z.string(),
   /** Industry taxonomy domain (SA-09), not an email hostname. */
   domain: z.string().nullable(),

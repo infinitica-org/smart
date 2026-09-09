@@ -4,11 +4,11 @@ import {
   focusProgressFor,
   retryAvailableAtForFocus,
   type SkillFocusProgress,
+  type SkillProficiency,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
-  type SkillProficiency,
   type SkillStream,
 } from '@smart/contracts';
 
@@ -201,7 +201,7 @@ export function viewForFocus(
     canStart,
     cooling,
     retryAt: cooling ? retryAt : null,
-    canEditProficiency: !row || status === 'DECLARED',
+    canEditProficiency: false,
     hasForm,
     blockMessage: synthetic ? skillVerifyBlockMessage(synthetic) : null,
   };

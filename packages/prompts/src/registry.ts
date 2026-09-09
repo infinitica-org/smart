@@ -18,10 +18,12 @@ import {
   proficiencyShortAnswerTemplate,
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
+import { certAgendaGenerateTemplate } from './templates/cert-agenda.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 import {
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
+  sdeSkillCodeRunnerTemplate,
   sdeSkillOpenBatchGraderTemplate,
   sdeSkillOpenGraderTemplate,
 } from './templates/sde-skill-form.js';
@@ -60,11 +62,13 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyCodingDesignRubricTemplate,
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
+  certAgendaGenerateTemplate,
   workExperienceProofParseTemplate,
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
   sdeSkillOpenBatchGraderTemplate,
   sdeSkillOpenGraderTemplate,
+  sdeSkillCodeRunnerTemplate,
 ];
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

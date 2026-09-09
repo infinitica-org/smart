@@ -132,6 +132,11 @@ export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] 
 export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
 export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
 
+/** CN-T09 — reservation claims the username; activation happens separately (first visibility opt-in). */
+export const USERNAME_STATUSES = ['RESERVED', 'ACTIVE'] as const;
+export const UsernameStatusSchema = z.enum(USERNAME_STATUSES);
+export type UsernameStatus = z.infer<typeof UsernameStatusSchema>;
+
 export const INSTITUTION_LIST_STATUSES = ['ACTIVE', 'HELD', 'DEACTIVATED'] as const;
 export const InstitutionListStatusSchema = z.enum(INSTITUTION_LIST_STATUSES);
 export type InstitutionListStatus = z.infer<typeof InstitutionListStatusSchema>;
@@ -391,6 +396,8 @@ export const WORK_EXPERIENCE_VERIFICATION_STATUSES = [
   'VERIFIED',
   'REJECTED',
   'EXPIRED',
+  /** SA-T08 — immutable terminal state set only by the admin void action. */
+  'VOIDED',
 ] as const;
 export const WorkExperienceVerificationStatusSchema = z.enum(WORK_EXPERIENCE_VERIFICATION_STATUSES);
 export type WorkExperienceVerificationStatus = z.infer<
@@ -473,11 +480,22 @@ export const CANDIDATE_CERTIFICATE_STATUSES = [
   'IN_VERIFICATION',
   'VERIFIED',
   'REJECTED',
+  /** SA-T08 — immutable terminal state set only by the admin void action. */
+  'VOIDED',
 ] as const;
 export const CandidateCertificateStatusSchema = z.enum(CANDIDATE_CERTIFICATE_STATUSES);
 export type CandidateCertificateStatus = z.infer<typeof CandidateCertificateStatusSchema>;
 
-export const CERTIFICATE_VERIFICATION_METHODS = ['LLM', 'ENDORSEMENT'] as const;
+export const CERTIFICATE_SOURCE_STATUSES = [
+  'pending',
+  'source_verified',
+  'source_failed',
+  'voided',
+] as const;
+export const CertificateSourceStatusSchema = z.enum(CERTIFICATE_SOURCE_STATUSES);
+export type CertificateSourceStatus = z.infer<typeof CertificateSourceStatusSchema>;
+
+export const CERTIFICATE_VERIFICATION_METHODS = ['LLM', 'ENDORSEMENT', 'ASSESSMENT'] as const;
 export const CertificateVerificationMethodSchema = z.enum(CERTIFICATE_VERIFICATION_METHODS);
 export type CertificateVerificationMethod = z.infer<typeof CertificateVerificationMethodSchema>;
 
@@ -526,3 +544,27 @@ export const GITHUB_SNAPSHOT_UNAVAILABLE_REASONS = [
 ] as const;
 export const GithubSnapshotUnavailableReasonSchema = z.enum(GITHUB_SNAPSHOT_UNAVAILABLE_REASONS);
 export type GithubSnapshotUnavailableReason = z.infer<typeof GithubSnapshotUnavailableReasonSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                     Polymorphic Assessment & Verification                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * SE-T10 — Assessable target discriminator for polymorphic assessment sessions.
+ */
+export const ASSESSABLE_TYPES = ['SKILL', 'CERTIFICATION'] as const;
+export const AssessableTypeSchema = z.enum(ASSESSABLE_TYPES);
+export type AssessableType = z.infer<typeof AssessableTypeSchema>;
+
+/**
+ * SE-T10 — Canonical shared verification status vocabulary.
+ */
+export const SHARED_VERIFICATION_STATUSES = [
+  'unverified',
+  'in_progress',
+  'verified',
+  'rejected',
+  'voided',
+] as const;
+export const SharedVerificationStatusSchema = z.enum(SHARED_VERIFICATION_STATUSES);
+export type SharedVerificationStatus = z.infer<typeof SharedVerificationStatusSchema>;

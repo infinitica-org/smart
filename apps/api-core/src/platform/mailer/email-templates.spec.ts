@@ -24,6 +24,19 @@ describe('renderEmailTemplate', () => {
     expect(invite.html).not.toEqual(opportunity.html);
   });
 
+  it('renders platform-admin-invite with platform-wide wording, not TPO copy', () => {
+    const platformAdmin = renderEmailTemplate('platform-admin-invite', {
+      fullName: 'Backup Admin',
+      institutionName: 'SMART Platform',
+      inviteUrl: 'http://localhost:3005/invite/token',
+    });
+
+    expect(platformAdmin.subject).toContain('platform admin');
+    expect(platformAdmin.text).not.toContain('placement officer');
+    expect(platformAdmin.html).not.toContain('placement officer');
+    expect(platformAdmin.text).toContain('platform admin access');
+  });
+
   it('renders verification templates with a status-specific badge color', () => {
     const passed = renderEmailTemplate('verification-passed', {
       fullName: 'Alex Student',

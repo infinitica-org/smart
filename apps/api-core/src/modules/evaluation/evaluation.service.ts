@@ -2,11 +2,23 @@ import { randomUUID } from 'node:crypto';
 import {
   BadGatewayException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  CERT_AGENDA_PROMPT_REF,
+  CERT_AGENDA_REGEN_MAX,
+  CERT_VERIFY_PASS_MARK_PERCENT,
+  CERT_VERIFY_TIME_MINUTES,
+  GenerateCertAgendaRequestSchema,
+  GenerateCertAgendaResponseSchema,
+  GradeCertAgendaRequestSchema,
+  GradeCertAgendaResponseSchema,
   GenerateSdeSkillFormRequestSchema,
   GenerateSdeSkillFormResponseSchema,
   GradeSdeSkillFormRequestSchema,
@@ -15,25 +27,39 @@ import {
   GenerateSkillInterviewResponseSchema,
   GradeSkillInterviewRequestSchema,
   GradeSkillInterviewResponseSchema,
+  REDIS_TTL_SECONDS,
+  RunSdeSkillFormCodeRequestSchema,
+  RunSdeSkillFormCodeResponseSchema,
   SKILL_INTERVIEW_ANSWER_MAX_CHARS,
   SKILL_INTERVIEW_EXPLANATION_MAX_CHARS,
   SKILL_INTERVIEW_QUESTION_COUNT,
   SkillInterviewQuestionSchema,
+  certAgendaTaxonomySnapshot,
+  type GenerateCertAgendaResponse,
+  type GradeCertAgendaResponse,
   type GenerateSdeSkillFormResponse,
   type GenerateSkillInterviewResponse,
   type GradeSdeSkillFormResponse,
   type GradeSkillInterviewResponse,
+  type RunSdeSkillFormCodeResponse,
 } from '@smart/contracts';
 import {
+  SDE_SKILL_CODE_RUNNER_PROMPT_REF,
   SDE_SKILL_FORM_CLOSED_PROMPT_REF,
   SDE_SKILL_FORM_OPEN_PROMPT_REF,
   SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
   SDE_V4_PROFICIENCIES,
   SDE_V4_SKILL_BY_CODE,
+  SdeCodeRunnerOutputSchema,
   SdeOpenBatchGradeSchema,
   SdeSkillFormClosedOutputSchema,
   SdeSkillFormOpenOutputSchema,
+  agendaGuardFailure,
+  alignAgendaToSyllabus,
   assertSdeV4FormShape,
+  CertAgendaScorableGenerateOutputSchema,
+  publisherSyllabus,
+  toStudentPaperFromScorable,
   type SdeV4Format,
 } from '@smart/prompts';
 import { computeSdeV4FormScore, SDE_V4_MARKS, scoreClosedChoice } from '@smart/scoring-engine';
@@ -41,6 +67,7 @@ import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { sealSdeFormPayload, unsealSdeFormPayload } from './sde-form-seal.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 
 export const SKILL_INTERVIEW_EXAMINER_PROMPT_REF = 'skill-interview-examiner@1' as const;
 export const SKILL_INTERVIEW_GRADER_PROMPT_REF = 'skill-interview-grader@1' as const;
@@ -85,10 +112,223 @@ const GraderOutputSchema = z.object({
 export class EvaluationService {
   readonly owner = 'Ramansh';
   readonly purpose =
-    'BARS grading, L4 defense, SE-T02 skill interview, and SDE v4 skill-form generate/grade.';
+    'BARS grading, L4 defense, skill interview, SDE v4 skill-form, and cert-agenda generate.';
   private readonly logger = new Logger(EvaluationService.name);
 
-  constructor(@Inject(AiGatewayService) private readonly gateway: AiGatewayService) {}
+  constructor(
+    @Inject(AiGatewayService) private readonly gateway: AiGatewayService,
+    @Inject(RedisService) private readonly redis?: RedisService,
+  ) {}
+
+  async generateCertAgenda(body: unknown, userId: string): Promise<GenerateCertAgendaResponse> {
+    const request = GenerateCertAgendaRequestSchema.parse(body);
+    const syllabus = publisherSyllabus(request.trackCode);
+    const alignment = alignAgendaToSyllabus(request.agendaLines, syllabus);
+    const guard = agendaGuardFailure(alignment);
+    if (guard === 'sparse_agenda') {
+      throw new UnprocessableEntityException({
+        error: 'sparse_agenda',
+        message: 'Agenda is too sparse to generate a certification paper.',
+        statusCode: 422,
+      });
+    }
+    if (guard === 'agenda_drift') {
+      throw new UnprocessableEntityException({
+        error: 'agenda_drift',
+        message: 'Agenda drifts from the publisher syllabus for this track.',
+        statusCode: 422,
+      });
+    }
+
+    await this.consumeCertAgendaRegen(userId);
+
+    try {
+      const result = await this.gateway.complete({
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P3_BATCH',
+        variables: {
+          trackCode: syllabus.trackCode,
+          trackName: syllabus.trackName,
+          syllabusTopics: [...syllabus.topics],
+          agendaLines: request.agendaLines,
+        },
+        correlation: {},
+        maxOutputTokens: 4_096,
+        temperature: 0,
+      });
+      const parsed = CertAgendaScorableGenerateOutputSchema.parse(result.output);
+      return GenerateCertAgendaResponseSchema.parse({
+        trackCode: request.trackCode,
+        items: toStudentPaperFromScorable(parsed.items),
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        taxonomyVersionSnapshot: certAgendaTaxonomySnapshot(),
+        auditId: result.auditId ?? null,
+      });
+    } catch (err) {
+      this.failClosed(
+        err,
+        'cert_agenda_unavailable',
+        'Certification paper could not be generated.',
+      );
+    }
+  }
+
+  /**
+   * CV-T02 — cert verify session paper with sealed scoring token (correctKey never exposed).
+   */
+  async generateCertAgendaVerifyPaper(
+    body: unknown,
+    userId: string,
+    certificateId: string,
+  ): Promise<{
+    items: GenerateCertAgendaResponse['items'];
+    scoringToken: string;
+    taxonomyVersionSnapshot: string;
+    timeMinutes: number;
+    passMarkPercent: number;
+  }> {
+    const request = GenerateCertAgendaRequestSchema.parse(body);
+    const syllabus = publisherSyllabus(request.trackCode);
+    const alignment = alignAgendaToSyllabus(request.agendaLines, syllabus);
+    const guard = agendaGuardFailure(alignment);
+    if (guard === 'sparse_agenda') {
+      throw new UnprocessableEntityException({
+        error: 'sparse_agenda',
+        message: 'Agenda is too sparse to generate a certification paper.',
+        statusCode: 422,
+      });
+    }
+    if (guard === 'agenda_drift') {
+      throw new UnprocessableEntityException({
+        error: 'agenda_drift',
+        message: 'Agenda drifts from the publisher syllabus for this track.',
+        statusCode: 422,
+      });
+    }
+
+    await this.consumeCertAgendaRegen(userId);
+
+    try {
+      const result = await this.gateway.complete({
+        promptRef: CERT_AGENDA_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P3_BATCH',
+        variables: {
+          trackCode: syllabus.trackCode,
+          trackName: syllabus.trackName,
+          syllabusTopics: [...syllabus.topics],
+          agendaLines: request.agendaLines,
+        },
+        correlation: {},
+        maxOutputTokens: 4_096,
+        temperature: 0,
+      });
+      const parsed = CertAgendaScorableGenerateOutputSchema.parse(result.output);
+      const expiresAt = Date.now() + CERT_VERIFY_TIME_MINUTES * 60_000;
+      const scoringToken = sealSdeFormPayload({
+        certificateId,
+        userId,
+        exp: expiresAt,
+        items: parsed.items.map((item) => ({
+          index: item.index,
+          correctKey: item.correctKey,
+        })),
+      });
+      return {
+        items: toStudentPaperFromScorable(parsed.items),
+        scoringToken,
+        taxonomyVersionSnapshot: certAgendaTaxonomySnapshot(),
+        timeMinutes: CERT_VERIFY_TIME_MINUTES,
+        passMarkPercent: CERT_VERIFY_PASS_MARK_PERCENT,
+      };
+    } catch (err) {
+      this.failClosed(
+        err,
+        'cert_agenda_unavailable',
+        'Certification paper could not be generated.',
+      );
+    }
+  }
+
+  async gradeCertAgendaPaper(body: unknown, ownerUserId: string): Promise<GradeCertAgendaResponse> {
+    const request = GradeCertAgendaRequestSchema.parse(body);
+    const SealedCertAgendaSchema = z.object({
+      certificateId: z.string().uuid(),
+      userId: z.string().uuid(),
+      exp: z.number(),
+      items: z.array(
+        z.object({
+          index: z.number().int().min(1),
+          correctKey: z.enum(['A', 'B', 'C', 'D']),
+        }),
+      ),
+    });
+
+    let bundle: z.infer<typeof SealedCertAgendaSchema>;
+    try {
+      bundle = SealedCertAgendaSchema.parse(unsealSdeFormPayload(request.scoringToken));
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Invalid scoring token.',
+      });
+    }
+    if (bundle.exp < Date.now()) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token expired.',
+      });
+    }
+    if (bundle.userId !== ownerUserId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this student.',
+      });
+    }
+    if (bundle.certificateId !== request.certificateId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Scoring token does not match this certificate.',
+      });
+    }
+
+    const byIndex = new Map(request.responses.map((row) => [row.index, row]));
+    const itemResults: GradeCertAgendaResponse['itemResults'] = [];
+    let marksEarned = 0;
+    let marksTotal = 0;
+
+    for (const key of bundle.items) {
+      const response = byIndex.get(key.index);
+      const earned = scoreClosedChoice(response?.selectedKey ?? null, key.correctKey);
+      const max = 1;
+      marksEarned += earned;
+      marksTotal += max;
+      const correct = earned === max;
+      itemResults.push({
+        index: key.index,
+        marksEarned: earned,
+        marksMax: max,
+        correct,
+        selectedKey: response?.selectedKey,
+        correctKey: key.correctKey,
+        feedback: correct ? 'Correct.' : `Incorrect. The correct option was ${key.correctKey}.`,
+      });
+    }
+
+    const scorePercent = marksTotal === 0 ? 0 : (marksEarned / marksTotal) * 100;
+    const passed = scorePercent >= CERT_VERIFY_PASS_MARK_PERCENT;
+
+    return GradeCertAgendaResponseSchema.parse({
+      certificateId: request.certificateId,
+      marksEarned,
+      marksTotal,
+      scorePercent,
+      passed,
+      promptRef: CERT_AGENDA_PROMPT_REF,
+      itemResults,
+    });
+  }
 
   async generateSkillInterview(body: unknown): Promise<GenerateSkillInterviewResponse> {
     const request = GenerateSkillInterviewRequestSchema.parse(body);
@@ -457,6 +697,40 @@ export class EvaluationService {
     }
   }
 
+  async runSkillFormCode(body: unknown): Promise<RunSdeSkillFormCodeResponse> {
+    const request = RunSdeSkillFormCodeRequestSchema.parse(body);
+    try {
+      const completion = await this.gateway.complete({
+        promptRef: SDE_SKILL_CODE_RUNNER_PROMPT_REF,
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          prompt: request.prompt,
+          constraints: request.constraints ?? '',
+          source: request.source,
+          tests: request.examples.map((example) => ({
+            input: example.input,
+            expected: example.output,
+          })),
+        },
+        correlation: {},
+        maxOutputTokens: 1_536,
+        temperature: 0,
+      });
+      const parsed = SdeCodeRunnerOutputSchema.parse(completion.output);
+      const testsPassed = parsed.tests.filter((test) => test.passed).length;
+      return RunSdeSkillFormCodeResponseSchema.parse({
+        compileError: parsed.compileError,
+        testsPassed,
+        testsTotal: parsed.tests.length,
+        tests: parsed.tests,
+        promptRef: SDE_SKILL_CODE_RUNNER_PROMPT_REF,
+      });
+    } catch (err) {
+      this.failClosed(err, 'skill_form_run_unavailable', 'Code could not be run.');
+    }
+  }
+
   private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(
     items: readonly T[],
     mcqCount: number,
@@ -499,8 +773,42 @@ export class EvaluationService {
     }
   }
 
+  private async consumeCertAgendaRegen(userId: string): Promise<void> {
+    if (!this.redis) {
+      throw new ServiceUnavailableException({
+        error: 'service_unavailable',
+        message: 'Certification paper regeneration cap could not be checked.',
+        statusCode: 503,
+      });
+    }
+    const key = `rl:cert_agenda_regen:${userId}`;
+    const count = await this.redis.incr(key);
+    if (count === 1) {
+      await this.redis.expire(key, REDIS_TTL_SECONDS.certAgendaRegen);
+    }
+    if (count > CERT_AGENDA_REGEN_MAX) {
+      throw new HttpException(
+        {
+          error: 'rate_limit_exceeded',
+          message: 'Certification paper regeneration cap reached. Try again after 24 hours.',
+          statusCode: 429,
+          retryAfterSeconds: REDIS_TTL_SECONDS.certAgendaRegen,
+          limit: CERT_AGENDA_REGEN_MAX,
+          window: '24 hours',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   private failClosed(err: unknown, error: string, message: string): never {
-    if (err instanceof BadGatewayException) throw err;
+    if (
+      err instanceof BadGatewayException ||
+      err instanceof UnprocessableEntityException ||
+      err instanceof HttpException
+    ) {
+      throw err;
+    }
     const detail = err instanceof Error ? err.message : String(err);
     this.logger.error(`Evaluation failed closed: ${detail}`);
     throw new BadGatewayException({ error, message });

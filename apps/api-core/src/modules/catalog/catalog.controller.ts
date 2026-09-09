@@ -18,4 +18,10 @@ export class CatalogController {
   get(@Param('trackCode') trackCode: string) {
     return this.catalog.getTrack(trackCode);
   }
+
+  @Public()
+  @Get('skills')
+  listSkills() {
+    return this.catalog.listSkillLibrary();
+  }
 }

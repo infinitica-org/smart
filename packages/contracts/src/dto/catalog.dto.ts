@@ -10,7 +10,56 @@ import {
   TrackLaunchStatusSchema,
 } from '../domain/enums.js';
 import { LevelNumberSchema } from '../domain/enums.js';
+import {
+  SKILL_CODE_SET,
+  SKILL_STREAMS,
+  SKILL_TAXONOMY_DOMAINS,
+  SKILL_TAXONOMY_VERSION,
+} from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './common.js';
+
+/** INF-05 skill code only — never free-text names (SK-T01 / JD pickers). */
+export const TaxonomySkillCodeSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
+
+export const SkillLibraryItemDtoSchema = z.object({
+  code: TaxonomySkillCodeSchema,
+  name: z.string().min(1),
+  domain: z.enum(SKILL_TAXONOMY_DOMAINS),
+  stream: z.enum(SKILL_STREAMS),
+});
+export type SkillLibraryItemDto = z.infer<typeof SkillLibraryItemDtoSchema>;
+
+export const SkillLibraryResponseSchema = z.object({
+  taxonomyVersion: z.string().min(1).max(32),
+  skills: z.array(SkillLibraryItemDtoSchema),
+});
+export type SkillLibraryResponse = z.infer<typeof SkillLibraryResponseSchema>;
+
+export const SkillsClaimedSnapshotSchema = z.object({
+  taxonomyVersion: z.string().min(1).max(32),
+  skillCodes: z.array(z.string().min(2).max(64)),
+});
+export type SkillsClaimedSnapshot = z.infer<typeof SkillsClaimedSnapshotSchema>;
+
+export function snapshotSkillsClaimed(skillCodes: readonly string[]): SkillsClaimedSnapshot {
+  return SkillsClaimedSnapshotSchema.parse({
+    taxonomyVersion: SKILL_TAXONOMY_VERSION,
+    skillCodes: [...skillCodes],
+  });
+}
+
+/** Returns a frozen snapshot for verified rows; null while still editable. */
+export function skillsClaimedSnapshotWhenVerified(
+  status: string,
+  skillCodes: readonly string[],
+): SkillsClaimedSnapshot | null {
+  if (status !== 'VERIFIED') return null;
+  return snapshotSkillsClaimed(skillCodes);
+}
 
 /**
  * Catalog contracts — tracks, competencies, levels and item delivery.

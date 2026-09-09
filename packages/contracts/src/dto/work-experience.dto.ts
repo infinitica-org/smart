@@ -4,6 +4,7 @@ import {
   ExperienceDocumentTypeSchema,
   WorkExperienceVerificationStatusSchema,
 } from '../domain/enums.js';
+import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 export const WorkExperienceDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -27,6 +28,7 @@ export const CreateWorkExperienceDocumentSchema = z.object({
 export type CreateWorkExperienceDocumentDto = z.infer<typeof CreateWorkExperienceDocumentSchema>;
 
 export const CreateWorkExperienceBaseSchema = z.object({
+  organizationId: z.string().uuid().optional().nullable(),
   companyId: z.string().uuid().optional().nullable(),
   companyName: z.string().min(1, 'Company name is required').max(200),
   companyWebsite: z
@@ -50,7 +52,8 @@ export const CreateWorkExperienceBaseSchema = z.object({
   endDate: z.string().optional().nullable().or(z.literal('')),
   isCurrent: z.boolean().default(false),
   responsibilities: z.string().max(4000).optional().nullable().or(z.literal('')),
-  skills: z.array(z.string()).default([]),
+  /** Taxonomy skill codes from GET /catalog/skills — never free text (SK-T01). */
+  skillsClaimed: z.array(TaxonomySkillCodeSchema).max(20).default([]),
   projects: z.unknown().optional().nullable(),
   candidateLinkedin: z
     .string()
@@ -89,8 +92,10 @@ export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>
 export const WorkExperienceSchema = z.object({
   id: z.string().uuid(),
   studentId: z.string().uuid(),
+  organizationId: z.string().uuid().nullable().optional(),
   companyId: z.string().uuid().nullable(),
   companyName: z.string(),
+  companyNameRaw: z.string().nullable().optional(),
   companyWebsite: z.string().nullable(),
   companyLinkedinUrl: z.string().nullable(),
   role: z.string(),
@@ -102,7 +107,9 @@ export const WorkExperienceSchema = z.object({
   endDate: z.string().nullable(),
   isCurrent: z.boolean(),
   responsibilities: z.string().nullable(),
-  skills: z.array(z.string()),
+  skillsClaimed: z.array(TaxonomySkillCodeSchema),
+  /** Frozen at employer verification — codes + taxonomy version at verify time. */
+  skillsClaimedSnapshot: SkillsClaimedSnapshotSchema.nullable().optional(),
   projects: z.unknown().nullable(),
   candidateLinkedin: z.string().nullable(),
   verifierName: z.string().nullable(),

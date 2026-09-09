@@ -9,7 +9,7 @@ import type {
   SkillVerifySessionDto,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import { formatRetryAt, formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
@@ -28,6 +28,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [report, setReport] = useState<GradeSdeSkillFormResponse | null>(null);
+  const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
   const generateStarted = useRef(false);
 
   useEffect(() => {
@@ -95,13 +96,20 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   responsesRef.current = responses;
 
   const sessionId = session?.sessionId ?? prepared?.sessionId;
-  const onLockTerminate = useCallback(() => {
+  const onLockTerminate = useCallback(async () => {
     if (!sessionId) return Promise.resolve();
-    return api.assessment.completeSkillVerify(sessionId, {
-      responses: responsesRef.current,
-      technicalFailure: false,
-      integrityTerminated: true,
-    });
+    try {
+      const res = await api.assessment.completeSkillVerify(sessionId, {
+        responses: responsesRef.current,
+        technicalFailure: false,
+        integrityTerminated: true,
+      });
+      const cooldownIso = res?.claim?.lockedUntil ?? new Date(Date.now() + 86400000).toISOString();
+      setTerminationCooldown(cooldownIso);
+      return res;
+    } catch {
+      setTerminationCooldown(new Date(Date.now() + 86400000).toISOString());
+    }
   }, [sessionId]);
 
   const save = () => {
@@ -129,17 +137,48 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             technicalFailure: false,
             integrityTerminated: false,
           });
+          if (settled.claim?.status === 'LOCKED' || settled.claim?.lockedUntil) {
+            setTerminationCooldown(
+              settled.claim.lockedUntil ?? new Date(Date.now() + 86400000).toISOString(),
+            );
+            return;
+          }
           if (settled.grade && !settled.technicalFailure) {
             setReport(settled.grade);
             return;
           }
-          router.push('/assessments');
+          router.push('/skills');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not complete verification.');
         }
       })();
     });
   };
+
+  if (terminationCooldown) {
+    const formatted = formatRetryAt(terminationCooldown);
+    return (
+      <div className="mx-auto max-w-md p-6">
+        <Alert tone="danger" title="Assessment Terminated">
+          <p className="mt-1">
+            This verification attempt was terminated. A cooldown period is active.
+          </p>
+          {formatted ? (
+            <p className="mt-2 text-xs font-semibold">
+              You can re-attempt this verification after {formatted}.
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => router.push('/skills')}
+            className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20"
+          >
+            Back to Skills
+          </button>
+        </Alert>
+      </div>
+    );
+  }
 
   if (error && !prepared) {
     return (
@@ -205,6 +244,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           }
           onExit={() => router.push('/assessments')}
           onSubmit={complete}
+          onRunCode={(item, source) =>
+            api.evaluation.runSkillFormCode({
+              prompt: item.prompt,
+              constraints: item.constraints,
+              source,
+              examples: item.examples ?? [],
+            })
+          }
         />
       )}
     </ProctoringShell>

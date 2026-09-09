@@ -18,8 +18,14 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import type { WorkExperienceDto, WorkExperienceDocumentDto } from '@smart/contracts';
+import {
+  SKILL_DEFINITIONS,
+  type WorkExperienceDto,
+  type WorkExperienceDocumentDto,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
+
+const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
@@ -66,7 +72,8 @@ export function WorkExperienceSection() {
   const [endDate, setEndDate] = useState('');
   const [isCurrent, setIsCurrent] = useState(false);
   const [responsibilities, setResponsibilities] = useState('');
-  const [skillsInput, setSkillsInput] = useState('');
+  const [skillQuery, setSkillQuery] = useState('');
+  const [selectedSkillCodes, setSelectedSkillCodes] = useState<string[]>([]);
   const [verifierName, setVerifierName] = useState('');
   const [verifierEmail, setVerifierEmail] = useState('');
   const [verifierDesignation, setVerifierDesignation] = useState('');
@@ -109,7 +116,8 @@ export function WorkExperienceSection() {
     setEndDate('');
     setIsCurrent(false);
     setResponsibilities('');
-    setSkillsInput('');
+    setSkillQuery('');
+    setSelectedSkillCodes([]);
     setVerifierName('');
     setVerifierEmail('');
     setVerifierDesignation('');
@@ -130,7 +138,8 @@ export function WorkExperienceSection() {
     setEndDate(exp.endDate ? exp.endDate.substring(0, 10) : '');
     setIsCurrent(exp.isCurrent);
     setResponsibilities(exp.responsibilities || '');
-    setSkillsInput((exp.skills || []).join(', '));
+    setSkillQuery('');
+    setSelectedSkillCodes(exp.skillsClaimed ?? []);
     setVerifierName(exp.verifierName || '');
     setVerifierEmail(exp.verifierEmail || '');
     setVerifierDesignation(exp.verifierDesignation || '');
@@ -161,11 +170,6 @@ export function WorkExperienceSection() {
     try {
       setSubmitting(true);
       setError(null);
-      const skillsArray = skillsInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,
@@ -179,7 +183,7 @@ export function WorkExperienceSection() {
         endDate: !isCurrent && endDate ? new Date(endDate).toISOString() : null,
         isCurrent,
         responsibilities: responsibilities || null,
-        skills: skillsArray,
+        skillsClaimed: selectedSkillCodes,
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
@@ -452,14 +456,14 @@ export function WorkExperienceSection() {
               )}
 
               {/* Skills Tags */}
-              {exp.skills && exp.skills.length > 0 && (
+              {exp.skillsClaimed.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {exp.skills.map((skill, idx) => (
+                  {exp.skillsClaimed.map((skillCode) => (
                     <span
-                      key={idx}
+                      key={skillCode}
                       className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
                     >
-                      {skill}
+                      {SKILL_NAME_BY_CODE.get(skillCode) ?? skillCode}
                     </span>
                   ))}
                 </div>
@@ -806,15 +810,64 @@ export function WorkExperienceSection() {
 
               <div>
                 <label className="block text-xs font-medium text-white/70">
-                  Skills Used (comma separated)
+                  Skills used (from catalog)
                 </label>
+                <p className="mt-0.5 text-[11px] text-white/45">
+                  Pick skills from the v0.9 taxonomy — free-text tags are not accepted.
+                </p>
+                {selectedSkillCodes.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedSkillCodes.map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() =>
+                          setSelectedSkillCodes((current) =>
+                            current.filter((item) => item !== code),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/80"
+                      >
+                        {SKILL_NAME_BY_CODE.get(code) ?? code}
+                        <X className="h-3 w-3" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <input
                   type="text"
-                  value={skillsInput}
-                  onChange={(e) => setSkillsInput(e.target.value)}
-                  placeholder="TypeScript, Node.js, React, PostgreSQL"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  value={skillQuery}
+                  onChange={(e) => setSkillQuery(e.target.value)}
+                  placeholder="Search skills…"
+                  className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
                 />
+                {skillQuery.trim().length >= 2 ? (
+                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-[#0b1220]">
+                    {SKILL_DEFINITIONS.filter((skill) => {
+                      const q = skillQuery.trim().toLowerCase();
+                      return (
+                        (skill.name.toLowerCase().includes(q) ||
+                          skill.code.toLowerCase().includes(q)) &&
+                        !selectedSkillCodes.includes(skill.code)
+                      );
+                    })
+                      .slice(0, 6)
+                      .map((skill) => (
+                        <li key={skill.code}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSkillCodes((current) => [...current, skill.code]);
+                              setSkillQuery('');
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
+                          >
+                            {skill.name}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
               </div>
 
               <div className="border-t border-white/10 pt-4">

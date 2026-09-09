@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   CreateInstitutionRequestSchema,
   GlobalStudentSearchQuerySchema,
+  InvitePlatformAdminRequestSchema,
   InviteUserRequestSchema,
   ListAuditLogsQuerySchema,
   ListInstitutionStudentsQuerySchema,
@@ -11,6 +12,7 @@ import {
   SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
   UpdateInstitutionRequestSchema,
+  UpdatePlanCapacityRequestSchema,
   UpdatePlanEntitlementsRequestSchema,
   ViewCandidateRequestSchema,
 } from '@smart/contracts';
@@ -89,6 +91,19 @@ export class InstitutionsAdminController {
     return this.institutions.updatePlanEntitlements(
       planId,
       UpdatePlanEntitlementsRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Patch('plans/:planId/capacity')
+  updatePlanCapacity(
+    @Param('planId') planId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.updatePlanCapacity(
+      planId,
+      UpdatePlanCapacityRequestSchema.parse(body),
       user.sub,
     );
   }
@@ -257,5 +272,18 @@ export class InstitutionsAdminController {
   @Post('invitations/:invitationId/resend')
   resendInvitation(@Param('invitationId') invitationId: string) {
     return this.institutions.resendAdminInvitation(invitationId);
+  }
+
+  @Get('platform-admins')
+  listPlatformAdmins() {
+    return this.institutions.listPlatformAdmins();
+  }
+
+  @Post('platform-admins')
+  invitePlatformAdmin(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.invitePlatformAdmin(
+      InvitePlatformAdminRequestSchema.parse(body),
+      user.sub,
+    );
   }
 }

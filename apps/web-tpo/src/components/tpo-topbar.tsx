@@ -179,7 +179,7 @@ export function TpoTopbar() {
                 href={item.href}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
+                    ? 'bg-[#00fad0]/20 text-[#00fad0] border border-[#00fad0]/40 shadow-[0_0_12px_rgba(0,250,208,0.15)]'
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                 }`}
               >
@@ -200,7 +200,10 @@ export function TpoTopbar() {
         {/* Working Search Form */}
         <div ref={searchBoxRef} className="hidden md:flex relative group">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400 group-focus-within:text-white transition-colors pointer-events-none" />
+            <Search
+              strokeWidth={1.75}
+              className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400 group-focus-within:text-white transition-colors pointer-events-none"
+            />
             <input
               ref={searchInputRef}
               type="text"
@@ -310,7 +313,7 @@ export function TpoTopbar() {
                 onClick={() => void signOut()}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-400 hover:bg-rose-950/40 transition-colors mt-1"
               >
-                <LogOut className="size-3.5" /> Sign out
+                <LogOut strokeWidth={1.75} className="size-3.5" /> Sign out
               </button>
             </div>
           )}
@@ -323,7 +326,11 @@ export function TpoTopbar() {
           aria-label="Toggle navigation"
           className="xl:hidden p-2 text-zinc-400 hover:text-white transition-colors rounded-lg bg-zinc-900 border border-zinc-800"
         >
-          {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          {mobileMenuOpen ? (
+            <X strokeWidth={1.75} className="size-5" />
+          ) : (
+            <Menu strokeWidth={1.75} className="size-5" />
+          )}
         </button>
       </div>
 
@@ -343,12 +350,15 @@ export function TpoTopbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-zinc-800 text-white font-semibold border border-zinc-700'
+                    ? 'bg-[#00fad0]/20 text-[#00fad0] font-semibold border border-[#00fad0]/40'
                     : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon className="size-4 text-zinc-400" />
+                  <item.icon
+                    strokeWidth={1.75}
+                    className={isActive ? 'size-4 text-[#00fad0]' : 'size-4 text-zinc-400'}
+                  />
                   <span>{item.name}</span>
                 </div>
                 {item.isNew && (

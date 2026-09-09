@@ -13,7 +13,8 @@ import SkillsStep from './steps/SkillsStep';
 import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
-import DoneStep from './steps/DoneStep';
+import UsernameStep from './steps/UsernameStep';
+import CompletionSequence from './steps/CompletionSequence';
 import {
   applyResumeDraft,
   applyServerDraft,
@@ -24,6 +25,7 @@ import {
   saveOnboardingDraft,
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
+import { markTourAutostart } from '@/lib/tour';
 import {
   ProgressDots,
   WIZARD_STEP_META,
@@ -52,6 +54,12 @@ function previousStepBefore(step: WizardStepId): WizardStepId | null {
  * this mirrors (and extends) the single `firstName` heuristic the old wizard used.
  */
 function furthestStep(form: OnboardingProfileForm): WizardStepId {
+  if (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('linkedinVerified') !== null
+  ) {
+    return 'social';
+  }
   const hasPreferences = Boolean(form.jobPreferences.expectedCtcLakhs.trim());
   if (hasPreferences) return 'preferences';
   const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
@@ -145,7 +153,7 @@ export default function OnboardingWizard() {
     try {
       await api.users.completeOnboarding(payload);
       clearOnboardingDraft();
-      setCurrentStep('done');
+      setCurrentStep('username');
     } catch {
       setCompleteError(
         'Could not save your profile to the server. Check your connection and try again.',
@@ -227,7 +235,17 @@ export default function OnboardingWizard() {
           />
         )}
 
-        {currentStep === 'done' && <DoneStep onGoToDashboard={() => router.push('/dashboard')} />}
+        {currentStep === 'username' && <UsernameStep onContinue={() => setCurrentStep('done')} />}
+
+        {currentStep === 'done' && (
+          <CompletionSequence
+            firstName={formData.firstName}
+            onFinished={() => {
+              markTourAutostart();
+              router.push('/dashboard');
+            }}
+          />
+        )}
       </motion.div>
     </WizardPage>
   );
