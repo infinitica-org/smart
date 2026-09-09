@@ -39,6 +39,11 @@ export const CertificateDtoSchema = z.object({
   issuedAt: IsoDateTimeSchema.nullable(),
   /** Student-controlled: the student decides whether the link resolves publicly. */
   publiclyVisible: z.boolean(),
+  /**
+   * Prompt + publisher-syllabus pack used when the paper was generated.
+   * Persistence on `certificates.taxonomy_version_snapshot` is a VV migration.
+   */
+  taxonomyVersionSnapshot: z.string().min(1).nullable().optional(),
 });
 export type CertificateDto = z.infer<typeof CertificateDtoSchema>;
 
