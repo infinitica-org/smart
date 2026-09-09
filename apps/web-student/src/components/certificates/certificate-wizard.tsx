@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, Button } from '@smart/ui';
-import type { CandidateCertificateDto } from '@smart/contracts';
+import type { CandidateCertificateDto, TrackCode } from '@smart/contracts';
 import { ArrowLeft, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { CertificateGuidelinesBanner } from './certificate-guidelines-banner';
@@ -164,7 +164,7 @@ export function CertificateWizard() {
   };
 
   const handleSubmitAgenda = async (body: {
-    trackCode: import('@smart/contracts').TrackCode;
+    trackCode: TrackCode;
     agendaLines: string[];
     expiryDate?: string;
   }) => {
