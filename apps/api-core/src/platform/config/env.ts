@@ -102,6 +102,12 @@ const EnvSchema = z.object({
   AI_PRIMARY_PROVIDER: z.enum(['ANTHROPIC', 'GOOGLE', 'OPENROUTER']).optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
+  CREDLY_API_KEY: z.string().optional(),
+  ACCREDIBLE_API_KEY: z.string().optional(),
+  AWS_CERT_API_KEY: z.string().optional(),
+  GOOGLE_CERT_API_KEY: z.string().optional(),
+  MICROSOFT_CERT_API_KEY: z.string().optional(),
+
   PROCTORING_FULL: z
     .enum(['true', 'false'])
     .default('true')

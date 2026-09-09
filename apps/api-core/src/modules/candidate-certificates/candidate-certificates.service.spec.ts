@@ -14,6 +14,9 @@ function baseCertificateRow(overrides: Record<string, unknown> = {}) {
     title: 'AWS Certified Cloud Practitioner',
     issuer: 'Amazon Web Services',
     status: 'UPLOADED',
+    sourceStatus: 'pending',
+    certificateNumber: null,
+    verificationUrl: null,
     verificationMethod: null,
     certificateFileUrl: 'candidate-certificates/x/file.pdf',
     certificateFileName: 'cert.pdf',
@@ -36,7 +39,11 @@ function setup() {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
-      findUniqueOrThrow: vi.fn(),
+      findUniqueOrThrow: vi.fn().mockImplementation((args?: { where?: { id?: string } }) => {
+        return Promise.resolve(
+          baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
+        );
+      }),
       update: vi.fn(),
     },
     candidateCertificateSkill: {
@@ -62,12 +69,22 @@ function setup() {
     getSignedDownloadUrl: vi.fn().mockResolvedValue('https://signed.example.com/file.pdf'),
   };
   const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const verificationService = {
+    runVerification: vi.fn().mockResolvedValue({
+      certificateId: 'test-id',
+      sourceStatus: 'source_verified',
+      status: 'VERIFIED',
+      tierUsed: 'TIER_1_ISSUER_API',
+      result: { status: 'VERIFIED', tier: 'TIER_1_ISSUER_API', confidence: 0.95, reason: 'OK' },
+    }),
+  };
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
     emailQueue as never,
+    verificationService as never,
   );
-  return { prisma, storage, emailQueue, service };
+  return { prisma, storage, emailQueue, verificationService, service };
 }
 
 describe('CandidateCertificatesService', () => {
