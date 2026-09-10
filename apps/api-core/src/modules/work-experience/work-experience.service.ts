@@ -14,6 +14,8 @@ import type {
   WorkExperienceVerificationStatus,
   VoidRequest,
   VoidWorkExperienceResponse,
+  AdminWorkExperienceReviewRequest,
+  ApproveWorkExperienceAuthenticityResponse,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -22,10 +24,14 @@ import {
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
+  WorkExperienceLetterAuthenticityExtractSchema,
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
+  ApproveWorkExperienceAuthenticityResponseSchema,
+  toWorkExperienceDocumentPublicDto,
+  type WorkExperienceDocumentPublicDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -96,6 +102,11 @@ import {
   extractDomain,
   validateEmployerDomain,
 } from './company-name.util.js';
+import {
+  evaluateLetterAuthenticity,
+  mergeAuthenticityIntoValidationResult,
+  parseStoredDocumentAuthenticity,
+} from './work-experience-document-authenticity.util.js';
 
 @Injectable()
 export class WorkExperienceService {
@@ -163,6 +174,22 @@ export class WorkExperienceService {
     });
   }
 
+  private mapDocumentToDto(doc: RawWorkExperienceDocument): WorkExperienceDocumentDto {
+    const authenticity = parseStoredDocumentAuthenticity(doc.validationResult);
+    return WorkExperienceDocumentSchema.parse({
+      id: doc.id,
+      experienceId: doc.experienceId,
+      documentType: doc.documentType,
+      fileUrl: doc.fileUrl,
+      fileName: doc.fileName,
+      fileSizeBytes: doc.fileSizeBytes,
+      mimeType: doc.mimeType,
+      authenticityStatus: authenticity.status,
+      authenticityResult: authenticity.result,
+      createdAt: doc.createdAt.toISOString(),
+    });
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
     const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
@@ -195,19 +222,19 @@ export class WorkExperienceService {
       rejectionReason: exp.rejectionReason ?? null,
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
-      documents: (exp.documents || []).map((doc: RawWorkExperienceDocument) =>
-        WorkExperienceDocumentSchema.parse({
-          id: doc.id,
-          experienceId: doc.experienceId,
-          documentType: doc.documentType,
-          fileUrl: doc.fileUrl,
-          fileName: doc.fileName,
-          fileSizeBytes: doc.fileSizeBytes,
-          mimeType: doc.mimeType,
-          createdAt: doc.createdAt.toISOString(),
-        }),
-      ),
+      documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
     });
+  }
+
+  /** WE-T02 — company-lite / B2B surfaces must never receive raw letter file URLs. */
+  mapToCompanyLiteDto(exp: RawWorkExperience): Omit<WorkExperienceDto, 'documents'> & {
+    documents: WorkExperienceDocumentPublicDto[];
+  } {
+    const dto = this.mapToDto(exp);
+    return {
+      ...dto,
+      documents: dto.documents.map((doc) => toWorkExperienceDocumentPublicDto(doc)),
+    };
   }
 
   async listForStudent(studentId: string): Promise<WorkExperienceDto[]> {
@@ -502,16 +529,158 @@ export class WorkExperienceService {
       reasonCode: null,
     });
 
-    return WorkExperienceDocumentSchema.parse({
-      id: doc.id,
-      experienceId: doc.experienceId,
-      documentType: doc.documentType,
-      fileUrl: doc.fileUrl,
-      fileName: doc.fileName,
-      fileSizeBytes: doc.fileSizeBytes,
-      mimeType: doc.mimeType,
-      createdAt: doc.createdAt.toISOString(),
+    const checked = await this.runDocumentAuthenticityCheck(existing, doc.id);
+    return this.mapDocumentToDto(checked);
+  }
+
+  /**
+   * WE-T02 — OCR + heuristics after upload. Anomaly flags only; never auto-fraud.
+   */
+  async runDocumentAuthenticityCheck(
+    experience: Pick<RawWorkExperience, 'id' | 'companyName' | 'companyWebsite' | 'studentId'>,
+    documentId: string,
+    rawTextOverride?: string,
+  ): Promise<RawWorkExperienceDocument> {
+    const doc = await this.prisma.workExperienceDocument.findUnique({
+      where: { id: documentId },
     });
+    if (!doc || doc.experienceId !== experience.id) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Document attachment not found.',
+        statusCode: 404,
+      });
+    }
+
+    const checkedAt = new Date().toISOString();
+    let rawText = '';
+    let rawTextLength = 0;
+
+    try {
+      if (rawTextOverride && env.NODE_ENV === 'test') {
+        rawText = rawTextOverride.trim();
+      } else {
+        const buffer = await this.retrieveFileBuffer(doc.fileUrl);
+        rawText = this.extractDocumentContent(buffer, doc.mimeType, doc.fileName);
+      }
+      rawTextLength = rawText.length;
+    } catch {
+      const authenticity = {
+        status: 'doc_flagged' as const,
+        result: {
+          companyNameMatch: false,
+          domainMatch: false,
+          hasLetterhead: false,
+          hasSignatureBlock: false,
+          ocrConfidence: 0,
+          flagReasons: ['ILLEGIBLE: document text could not be extracted'],
+        },
+        checkedAt,
+      };
+      const updated = await this.prisma.workExperienceDocument.update({
+        where: { id: documentId },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(
+            doc.validationResult,
+            authenticity,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      await this.auditPublisher.record({
+        actorId: experience.studentId,
+        action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+        resourceType: 'WorkExperienceDocument',
+        resourceId: documentId,
+        reasonCode: 'doc_flagged',
+      });
+      return updated as RawWorkExperienceDocument;
+    }
+
+    let extracted;
+    try {
+      const aiCompletion = await this.aiGateway.complete({
+        promptRef: 'work-experience-letter-authenticity@1',
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          rawText,
+          fileName: doc.fileName,
+          mimeType: doc.mimeType,
+          claimedCompanyName: experience.companyName,
+        },
+        correlation: {},
+        maxOutputTokens: 2_048,
+        temperature: 0,
+      });
+      const parsed = WorkExperienceLetterAuthenticityExtractSchema.safeParse(aiCompletion.output);
+      if (!parsed.success) {
+        throw new Error('Malformed AI authenticity response');
+      }
+      extracted = parsed.data;
+    } catch {
+      const authenticity = {
+        status: 'doc_flagged' as const,
+        result: {
+          companyNameMatch: false,
+          domainMatch: false,
+          hasLetterhead: false,
+          hasSignatureBlock: false,
+          ocrConfidence: 0,
+          flagReasons: ['ILLEGIBLE: authenticity extraction unavailable'],
+        },
+        checkedAt,
+      };
+      const updated = await this.prisma.workExperienceDocument.update({
+        where: { id: documentId },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(
+            doc.validationResult,
+            authenticity,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      await this.auditPublisher.record({
+        actorId: experience.studentId,
+        action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+        resourceType: 'WorkExperienceDocument',
+        resourceId: documentId,
+        reasonCode: 'doc_flagged',
+      });
+      return updated as RawWorkExperienceDocument;
+    }
+
+    const evaluation = evaluateLetterAuthenticity({
+      claimedCompanyName: experience.companyName,
+      claimedCompanyWebsite: experience.companyWebsite ?? null,
+      extracted,
+      rawTextLength,
+    });
+
+    const authenticity = {
+      status: evaluation.status,
+      result: evaluation.result,
+      checkedAt,
+    };
+
+    const updated = await this.prisma.workExperienceDocument.update({
+      where: { id: documentId },
+      data: {
+        validationResult: mergeAuthenticityIntoValidationResult(
+          doc.validationResult,
+          authenticity,
+        ) as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditPublisher.record({
+      actorId: experience.studentId,
+      action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+      resourceType: 'WorkExperienceDocument',
+      resourceId: documentId,
+      reasonCode: evaluation.status,
+    });
+
+    return updated as RawWorkExperienceDocument;
   }
 
   async removeDocument(studentId: string, id: string, documentId: string): Promise<void> {
@@ -1208,6 +1377,7 @@ export class WorkExperienceService {
     const experiences = await this.prisma.workExperience.findMany({
       include: {
         student: true,
+        documents: true,
         verificationAttempts: {
           orderBy: { createdAt: 'desc' },
         },
@@ -1253,6 +1423,11 @@ export class WorkExperienceService {
         );
       }
 
+      const flaggedDocumentCount = (exp.documents ?? []).filter(
+        (document) =>
+          parseStoredDocumentAuthenticity(document.validationResult).status === 'doc_flagged',
+      ).length;
+
       return {
         experienceId: exp.id,
         candidateId: exp.studentId,
@@ -1265,6 +1440,8 @@ export class WorkExperienceService {
         currentStep,
         emailState,
         timeRemainingHours,
+        flaggedDocumentCount,
+        hasFlaggedDocuments: flaggedDocumentCount > 0,
         createdAt: exp.createdAt.toISOString(),
       };
     });
@@ -1282,12 +1459,30 @@ export class WorkExperienceService {
     id: string,
     body: VoidRequest,
   ): Promise<VoidWorkExperienceResponse> {
-    const existing = await this.prisma.workExperience.findUnique({ where: { id } });
+    const existing = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
     if (!existing) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'Work experience entry not found.',
         statusCode: 404,
+      });
+    }
+
+    const voidedAt = new Date().toISOString();
+    for (const document of existing.documents) {
+      const prior = parseStoredDocumentAuthenticity(document.validationResult);
+      await this.prisma.workExperienceDocument.update({
+        where: { id: document.id },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(document.validationResult, {
+            status: 'voided',
+            result: prior.result,
+            checkedAt: voidedAt,
+          }) as Prisma.InputJsonValue,
+        },
       });
     }
 
@@ -1309,5 +1504,57 @@ export class WorkExperienceService {
       status: updated.status as WorkExperienceVerificationStatus,
       voidedAt: updated.updatedAt.toISOString(),
     };
+  }
+
+  async approveWorkExperienceAuthenticity(
+    actorId: string,
+    id: string,
+    body: AdminWorkExperienceReviewRequest,
+  ): Promise<ApproveWorkExperienceAuthenticityResponse> {
+    const existing = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Work experience entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    let cleared = 0;
+    const approvedAt = new Date().toISOString();
+
+    for (const document of existing.documents) {
+      const prior = parseStoredDocumentAuthenticity(document.validationResult);
+      if (prior.status !== 'doc_flagged') continue;
+
+      await this.prisma.workExperienceDocument.update({
+        where: { id: document.id },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(document.validationResult, {
+            status: 'doc_ok',
+            result: prior.result,
+            checkedAt: approvedAt,
+          }) as Prisma.InputJsonValue,
+        },
+      });
+      cleared += 1;
+    }
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'work_experience.authenticity_approved',
+      resourceType: 'WorkExperience',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return ApproveWorkExperienceAuthenticityResponseSchema.parse({
+      id,
+      flaggedDocumentsCleared: cleared,
+      approvedAt,
+    });
   }
 }

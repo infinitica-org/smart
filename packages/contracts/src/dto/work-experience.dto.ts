@@ -2,9 +2,11 @@ import { z } from 'zod';
 import {
   EmploymentTypeSchema,
   ExperienceDocumentTypeSchema,
+  WorkExperienceDocumentAuthenticityStatusSchema,
   WorkExperienceVerificationStatusSchema,
 } from '../domain/enums.js';
 import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
+import { WorkExperienceLetterAuthenticityResultSchema } from './work-experience-letter-authenticity.dto.js';
 
 export const WorkExperienceDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -14,6 +16,8 @@ export const WorkExperienceDocumentSchema = z.object({
   fileName: z.string().min(1),
   fileSizeBytes: z.number().int().positive(),
   mimeType: z.string().min(1),
+  authenticityStatus: WorkExperienceDocumentAuthenticityStatusSchema.default('pending'),
+  authenticityResult: WorkExperienceLetterAuthenticityResultSchema.nullable().optional(),
   createdAt: z.string().datetime(),
 });
 export type WorkExperienceDocumentDto = z.infer<typeof WorkExperienceDocumentSchema>;
@@ -195,6 +199,8 @@ export const WorkExperienceOpsDashboardItemSchema = z.object({
   currentStep: z.string(),
   emailState: z.string(),
   timeRemainingHours: z.number(),
+  flaggedDocumentCount: z.number().int().nonnegative(),
+  hasFlaggedDocuments: z.boolean(),
   createdAt: z.string(),
 });
 export type WorkExperienceOpsDashboardItemDto = z.infer<

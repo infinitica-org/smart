@@ -137,6 +137,7 @@ import {
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
   VoidWorkExperienceResponseSchema,
+  ApproveWorkExperienceAuthenticityResponseSchema,
   VoidCandidateCertificateResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
@@ -621,6 +622,11 @@ export function onboardingApi(client: SmartApiClient) {
     voidWorkExperience: (id: string, body: VoidRequest) =>
       client.post(prefixed(`/admin/work-experience/${id}/void`), body, {
         schema: VoidWorkExperienceResponseSchema,
+      }),
+
+    approveWorkExperienceAuthenticity: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/work-experience/${id}/approve`), body, {
+        schema: ApproveWorkExperienceAuthenticityResponseSchema,
       }),
 
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),

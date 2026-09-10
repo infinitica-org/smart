@@ -125,6 +125,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /admin/students/:userId/release-hold": "role.superAdmin",
   "POST /admin/verification-queue/:tenantId/resolve": "role.superAdmin",
   "POST /admin/webhooks": "role.institutionAdmin",
+  "POST /admin/work-experience/:id/approve": "role.superAdmin",
   "POST /admin/work-experience/:id/void": "role.superAdmin",
   "POST /ai-gateway/complete": "role.superAdmin",
   "POST /assessment/candidate-certificates/:certificateId/verify/start": "evaluation.certAgenda",
