@@ -70,7 +70,61 @@ export const CreateWorkExperienceBaseSchema = z.object({
     .or(z.literal('')),
   verifierDesignation: z.string().max(120).optional().nullable().or(z.literal('')),
   verifierPhone: z.string().max(32).optional().nullable().or(z.literal('')),
+  documents: z.array(CreateWorkExperienceDocumentSchema).optional().default([]),
 });
+
+export interface WorkExperienceLetterValidationResult {
+  valid: boolean;
+  hasOfferLetter: boolean;
+  hasCompletionLetter: boolean;
+  missingDocuments: ('OFFER_LETTER' | 'COMPLETION_LETTER')[];
+  message?: string;
+}
+
+export function validateWorkExperienceLetterRules(params: {
+  isCurrent: boolean;
+  endDate?: string | null;
+  documents?: Array<{ documentType: string }>;
+}): WorkExperienceLetterValidationResult {
+  const docs = params.documents ?? [];
+  const hasOfferLetter = docs.some((d) => d.documentType === 'OFFER_LETTER');
+  const hasCompletionLetter = docs.some(
+    (d) => d.documentType === 'RELIEVING_LETTER' || d.documentType === 'EXPERIENCE_LETTER',
+  );
+  const isEnded = !params.isCurrent && Boolean(params.endDate);
+
+  const missingDocuments: ('OFFER_LETTER' | 'COMPLETION_LETTER')[] = [];
+  if (!hasOfferLetter) {
+    missingDocuments.push('OFFER_LETTER');
+  }
+  if (isEnded && !hasCompletionLetter) {
+    missingDocuments.push('COMPLETION_LETTER');
+  }
+
+  const valid = missingDocuments.length === 0;
+  let message: string | undefined;
+  if (!valid) {
+    if (
+      missingDocuments.includes('OFFER_LETTER') &&
+      missingDocuments.includes('COMPLETION_LETTER')
+    ) {
+      message =
+        'An offer letter and a completion/relieving letter are both required for ended roles.';
+    } else if (missingDocuments.includes('OFFER_LETTER')) {
+      message = 'An offer letter is required for all work experience claims.';
+    } else if (missingDocuments.includes('COMPLETION_LETTER')) {
+      message = 'A completion or relieving letter is required when a role has ended.';
+    }
+  }
+
+  return {
+    valid,
+    hasOfferLetter,
+    hasCompletionLetter,
+    missingDocuments,
+    message,
+  };
+}
 
 export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.refine(
   (data) => {
