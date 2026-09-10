@@ -96,8 +96,9 @@ describe('WorkExperienceService', () => {
         ],
       };
 
+      const experienceId = randomUUID();
       const mockCreated = {
-        id: randomUUID(),
+        id: experienceId,
         studentId: mockStudentId,
         companyId: null,
         companyName: payload.companyName,
@@ -123,7 +124,12 @@ describe('WorkExperienceService', () => {
         rejectionReason: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        documents: payload.documents,
+        documents: payload.documents.map((doc) => ({
+          ...doc,
+          id: randomUUID(),
+          experienceId,
+          createdAt: new Date(),
+        })),
       };
 
       prisma.organization.findFirst.mockResolvedValue(null);
@@ -180,8 +186,9 @@ describe('WorkExperienceService', () => {
       prisma.organization.findFirst.mockResolvedValue(null);
       prisma.organization.create.mockResolvedValue({ id: 'org-2', name: 'Beta Corp' });
       prisma.company.findFirst.mockResolvedValue(null);
+      const experienceId = randomUUID();
       prisma.workExperience.create.mockResolvedValueOnce({
-        id: randomUUID(),
+        id: experienceId,
         studentId: mockStudentId,
         companyName: 'Beta Corp',
         role: 'Developer',
@@ -190,7 +197,14 @@ describe('WorkExperienceService', () => {
         isCurrent: false,
         status: 'SUBMITTED',
         skills: [],
-        documents: payload.documents,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: payload.documents.map((doc) => ({
+          ...doc,
+          id: randomUUID(),
+          experienceId,
+          createdAt: new Date(),
+        })),
       });
 
       const result = await service.create(mockStudentId, payload);
