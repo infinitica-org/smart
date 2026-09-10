@@ -1165,8 +1165,29 @@ describe('WorkExperienceService', () => {
           data: expect.objectContaining({
             experienceId: expId,
             verifierEmail: 'manager@acme.com',
+            tokenHash: expect.any(String),
           }),
         });
+      });
+
+      it('restartEmployerVerification throws NotFoundException if experience does not exist or belongs to another student', async () => {
+        prisma.workExperience.findUnique.mockResolvedValueOnce(null);
+        await expect(
+          service.restartEmployerVerification(mockStudentId, randomUUID()),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('restartEmployerVerification throws BadRequestException if verifierEmail is missing', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: null,
+        });
+
+        await expect(service.restartEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
       });
 
       it('getOpsDashboard returns candidate verification items with step and emailState', async () => {
