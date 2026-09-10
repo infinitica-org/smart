@@ -68,6 +68,6 @@ describe('SkillsPage', () => {
     const detailsButtons = await screen.findAllByRole('button', { name: /View Details/i });
     if (!detailsButtons[0]) throw new Error('Button not found');
     fireEvent.click(detailsButtons[0]);
-    expect(await screen.findByText('Database Claim ID:')).toBeDefined();
+    expect(await screen.findByText('Verification Status:')).toBeDefined();
   });
 });
