@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -19,8 +19,8 @@ export const API_PREFIX = '/api/v1' as const;
 /**
  * How tight the latency budget is, and why.
  *
- * ARCHITECTURE.md §3.2 sets < 200 ms for "the active test player and the
- * verification lookup" — not for every endpoint. A cohort analytics report that
+ * ARCHITECTURE.md Â§3.2 sets < 200 ms for "the active test player and the
+ * verification lookup" â€” not for every endpoint. A cohort analytics report that
  * takes 300 ms is fine; a 300 ms `next-item` call during a timed exam is not.
  * Making the distinction explicit stops the budget from being either violated
  * silently or applied so broadly that it becomes meaningless.
@@ -31,7 +31,7 @@ export type RouteCriticality =
   /**
    * A live LLM turn (the L4 interactive defense). Latency is bounded by the
    * model, not by our code, so it gets its own budget and the P1 priority lane
-   * that reserves 40 % of AI quota — a candidate mid-defense must never queue
+   * that reserves 40 % of AI quota â€” a candidate mid-defense must never queue
    * behind a batch JD parse.
    */
   | 'LLM_INTERACTIVE'
@@ -50,7 +50,7 @@ export interface RouteSpec {
   readonly rateLimit: string;
   readonly execution: 'SYNC' | 'ASYNC';
   readonly criticality: RouteCriticality;
-  /** Latency budget for SYNC routes (ARCHITECTURE.md §3.2). */
+  /** Latency budget for SYNC routes (ARCHITECTURE.md Â§3.2). */
   readonly slaMs?: number;
   readonly summary: string;
 }
@@ -235,7 +235,7 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 300,
     summary:
-      'LinkedIn OIDC redirect landing — exchanges the code and redirects back to onboarding.',
+      'LinkedIn OIDC redirect landing â€” exchanges the code and redirects back to onboarding.',
   },
   {
     method: 'POST',
@@ -561,6 +561,46 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary:
       'Public endpoint for employer verifier to approve or reject candidate work experience claim.',
+  },
+  /* ---- WE-T03: Manager endorsement ---- */
+  {
+    method: 'POST',
+    path: '/users/me/work-experiences/:id/send-manager-endorsement',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'WE-T03: Send a 5-day tokenised magic-link to the named manager for work-experience endorsement. Domain must match offer-letter or Organization domain.',
+  },
+  {
+    method: 'GET',
+    path: '/users/work-experiences/manager-survey/:token',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'verify.workExperience',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary:
+      'WE-T03: Public - manager opens magic link to view candidate work experience and claimed skills survey.',
+  },
+  {
+    method: 'POST',
+    path: '/users/work-experiences/manager-survey/:token',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'verify.workExperience',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'WE-T03: Public - manager submits endorsement (confirm/dispute + optional skill ratings). Single-use; recalculates overall_verified.',
   },
   {
     method: 'POST',
@@ -1845,7 +1885,7 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 300,
-    summary: 'Derive mu±sigma and publish; emits smart.track.updated.',
+    summary: 'Derive muÂ±sigma and publish; emits smart.track.updated.',
   },
   {
     method: 'GET',
@@ -2695,7 +2735,7 @@ export function routesForModule(module: string): readonly RouteSpec[] {
 
 /**
  * Synchronous routes whose declared SLA exceeds the budget for their
- * criticality class. Asserted empty in CI — a route that cannot meet its budget
+ * criticality class. Asserted empty in CI â€” a route that cannot meet its budget
  * must either be optimised or reclassified deliberately, never left to drift.
  */
 export function routesExceedingLatencyBudget(): readonly RouteSpec[] {

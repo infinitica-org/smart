@@ -576,3 +576,75 @@ describe('evaluationApi contracts', () => {
     expect(result.promptRef).toBe('sde-skill-code-runner@1');
   });
 });
+
+describe('WE-T03 manager endorsement contracts', () => {
+  it('GETs manager endorsement survey by raw token', async () => {
+    const surveyPayload = {
+      endorsementId: '00000000-0000-4000-8000-000000000001',
+      candidateName: 'Jane Doe',
+      companyName: 'Acme Corp',
+      role: 'Senior Software Engineer',
+      employmentType: 'FULL_TIME',
+      startDate: '2022-01-01',
+      endDate: null,
+      isCurrent: true,
+      responsibilities: 'Led frontend platform architecture.',
+      skillsClaimed: ['PROGRAMMING_FUNDAMENTALS_LOGIC', 'LANGUAGE_PROFICIENCY'],
+      managerEmail: 'boss@acme.com',
+      managerName: 'John Boss',
+      status: 'PENDING',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      isExpired: false,
+      isAlreadyResponded: false,
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: surveyPayload }]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    const result =
+      await api.users.getWorkExperienceManagerEndorsementByToken('raw-magic-token-123');
+
+    expect(calls[0]?.url).toBe(
+      'https://api.smart.test/api/v1/users/work-experiences/manager-survey/raw-magic-token-123',
+    );
+    expect(result.candidateName).toBe('Jane Doe');
+    expect(result.skillsClaimed).toEqual([
+      'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      'LANGUAGE_PROFICIENCY',
+    ]);
+    expect(result.isExpired).toBe(false);
+  });
+
+  it('POSTs manager endorsement survey response with skill ratings', async () => {
+    const submitResponse = {
+      success: true,
+      status: 'CONFIRMED',
+      message: 'Thank you for confirming this work experience.',
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: submitResponse }]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    const result = await api.users.submitWorkExperienceManagerEndorsementByToken(
+      'raw-magic-token-123',
+      {
+        confirmed: true,
+        skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+        comments: 'Great engineer!',
+      },
+    );
+
+    expect(calls[0]?.url).toBe(
+      'https://api.smart.test/api/v1/users/work-experiences/manager-survey/raw-magic-token-123',
+    );
+    expect(calls[0]?.init.method).toBe('POST');
+    expect(JSON.parse(calls[0]?.init.body as string)).toEqual({
+      confirmed: true,
+      skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+      comments: 'Great engineer!',
+    });
+    expect(result.status).toBe('CONFIRMED');
+  });
+});

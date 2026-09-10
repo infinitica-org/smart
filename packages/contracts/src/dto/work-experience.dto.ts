@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   EmploymentTypeSchema,
   ExperienceDocumentTypeSchema,
+  ManagerEndorsementStatusSchema,
   WorkExperienceVerificationStatusSchema,
 } from '../domain/enums.js';
 import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
@@ -199,4 +200,87 @@ export const WorkExperienceOpsDashboardItemSchema = z.object({
 });
 export type WorkExperienceOpsDashboardItemDto = z.infer<
   typeof WorkExperienceOpsDashboardItemSchema
+>;
+
+/* -------------------- WE-T03: Manager Endorsement -------------------- */
+
+/**
+ * Per-skill rating the manager provides in the endorsement survey.
+ * Rating 1–5 (1 = not demonstrated, 5 = exceptional).
+ */
+export const ManagerSkillRatingSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  rating: z.number().int().min(1).max(5),
+});
+export type ManagerSkillRatingDto = z.infer<typeof ManagerSkillRatingSchema>;
+
+/**
+ * Request body: candidate asks SMART to send a manager endorsement email.
+ * manager_email must be a corporate address; server-side domain matching
+ * against the offer-letter domain or Organization.domain is also performed.
+ */
+export const SendManagerEndorsementSchema = z.object({
+  managerEmail: z.string().email('Invalid manager email').min(1, 'Manager email is required'),
+  managerName: z.string().min(1).max(120).optional().nullable(),
+});
+export type SendManagerEndorsementDto = z.infer<typeof SendManagerEndorsementSchema>;
+
+/** Response returned after successfully dispatching the endorsement email. */
+export const SendManagerEndorsementResponseSchema = z.object({
+  success: z.boolean(),
+  endorsementId: z.string().uuid(),
+  managerEmail: z.string(),
+  expiresAt: z.string().datetime(),
+  message: z.string(),
+});
+export type SendManagerEndorsementResponseDto = z.infer<
+  typeof SendManagerEndorsementResponseSchema
+>;
+
+/**
+ * The payload returned when the manager opens their magic link.
+ * Only exposes fields the manager needs to make an informed decision;
+ * no student PII beyond name + role + company + claimed skills.
+ */
+export const GetManagerEndorsementSurveySchema = z.object({
+  endorsementId: z.string().uuid(),
+  candidateName: z.string(),
+  companyName: z.string(),
+  role: z.string(),
+  employmentType: EmploymentTypeSchema,
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  isCurrent: z.boolean(),
+  responsibilities: z.string().nullable(),
+  /** Skills the candidate has claimed — manager rates them 1–5. */
+  skillsClaimed: z.array(TaxonomySkillCodeSchema),
+  managerEmail: z.string(),
+  managerName: z.string().nullable(),
+  status: ManagerEndorsementStatusSchema,
+  expiresAt: z.string(),
+  isExpired: z.boolean(),
+  isAlreadyResponded: z.boolean(),
+});
+export type GetManagerEndorsementSurveyDto = z.infer<typeof GetManagerEndorsementSurveySchema>;
+
+/**
+ * Manager submits their endorsement decision.
+ * `confirmed: true` → CONFIRMED  |  `confirmed: false` → DISPUTED
+ * skillRatings are optional — manager may confirm holistically without
+ * per-skill ratings.
+ */
+export const SubmitManagerEndorsementSchema = z.object({
+  confirmed: z.boolean(),
+  skillRatings: z.array(ManagerSkillRatingSchema).max(20).optional(),
+  comments: z.string().max(2000).optional().nullable().or(z.literal('')),
+});
+export type SubmitManagerEndorsementDto = z.infer<typeof SubmitManagerEndorsementSchema>;
+
+export const SubmitManagerEndorsementResponseSchema = z.object({
+  success: z.boolean(),
+  status: ManagerEndorsementStatusSchema,
+  message: z.string(),
+});
+export type SubmitManagerEndorsementResponseDto = z.infer<
+  typeof SubmitManagerEndorsementResponseSchema
 >;

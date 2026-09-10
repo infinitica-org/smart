@@ -14,6 +14,11 @@ import type {
   WorkExperienceVerificationStatus,
   VoidRequest,
   VoidWorkExperienceResponse,
+  SendManagerEndorsementDto,
+  SendManagerEndorsementResponseDto,
+  GetManagerEndorsementSurveyDto,
+  SubmitManagerEndorsementDto,
+  SubmitManagerEndorsementResponseDto,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -36,9 +41,10 @@ import {
   type EmailQueueJobData,
   type WorkExperienceReminderJobPayload,
   type WorkExperienceExpireJobPayload,
+  type WorkExperienceManagerReminderJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
-import type { Prisma } from '../../generated/prisma/index.js';
+import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
   id: string;
@@ -1276,6 +1282,328 @@ export class WorkExperienceService {
    * no "un-void". The status flip alone is enough to drop it from the public profile —
    * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
    * never VOIDED) rows.
+   */
+
+  /* ---- WE-T03: Manager endorsement ---- */
+
+  /**
+   * WE-T03: Extract a domain from the offer-letter (the document with documentType='OFFER_LETTER')
+   * validationResult JSON field.  Falls back to Organization.domain or companyWebsite.
+   */
+  private extractOfferLetterDomain(exp: {
+    companyWebsite?: string | null;
+    organization?: { domain?: string | null } | null;
+    documents?: Array<{
+      documentType: string;
+      validationResult?: unknown;
+    }> | null;
+  }): string | null {
+    // 1. Try offer-letter extraction result
+    if (exp.documents) {
+      for (const doc of exp.documents) {
+        if (doc.documentType === 'OFFER_LETTER' && doc.validationResult) {
+          const r = doc.validationResult as Record<string, unknown>;
+          const extracted = r['extractedData'] as Record<string, unknown> | undefined;
+          const explicitDomain = extracted?.['domain'] || extracted?.['companyWebsite'];
+          if (explicitDomain) {
+            const d = extractDomain(String(explicitDomain));
+            if (d) return d;
+          }
+          const company = String(extracted?.['companyName'] ?? '');
+          if (company && (company.includes('.') || company.includes('http'))) {
+            const d = extractDomain(company);
+            if (d) return d;
+          }
+        }
+      }
+    }
+    // 2. Organization.domain
+    if (exp.organization?.domain) return exp.organization.domain;
+    // 3. Company website
+    if (exp.companyWebsite) return extractDomain(exp.companyWebsite);
+    return null;
+  }
+
+  /**
+   * WE-T03: Student triggers a manager endorsement email.
+   * - Validates manager email is a corporate domain (not gmail/yahoo etc.)
+   * - Validates domain matches offer-letter domain or Organization.domain
+   * - Generates 32-byte secure token, stores SHA-256 hash
+   * - 5-day (120h) TTL; schedules 3-day (72h) reminder + 5-day expiry job
+   */
+  async sendManagerEndorsement(
+    studentId: string,
+    experienceId: string,
+    payload: SendManagerEndorsementDto,
+  ): Promise<SendManagerEndorsementResponseDto> {
+    const exp = await this.prisma.workExperience.findUnique({
+      where: { id: experienceId },
+      include: {
+        student: true,
+        organization: true,
+        documents: {
+          select: { documentType: true, validationResult: true },
+        },
+      },
+    });
+
+    if (!exp || exp.studentId !== studentId) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+
+    const managerEmail = payload.managerEmail.toLowerCase().trim();
+
+    // 1. Reject personal / free email providers
+    if (isDisallowedEndorserEmailDomain(managerEmail)) {
+      throw new BadRequestException(
+        `Manager email (${managerEmail}) uses a free or personal email provider. A corporate email is required for endorsement.`,
+      );
+    }
+
+    // 2. Domain matching: extract authoritative employer domain
+    const resolvedDomain = this.extractOfferLetterDomain(exp);
+    if (resolvedDomain) {
+      const domainValidation = validateEmployerDomain(managerEmail, `https://${resolvedDomain}`);
+      if (!domainValidation.domainMatch) {
+        throw new BadRequestException(
+          `Manager email domain (${domainValidation.verifierDomain}) does not match employer domain (${resolvedDomain}). Please use your official company email.`,
+        );
+      }
+    }
+
+    // 3. Generate single-use token (hash stored; raw sent in email)
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const TTL_120H = 120 * 60 * 60 * 1000; // 5 days
+    const expiresAt = new Date(Date.now() + TTL_120H);
+
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.create({
+      data: {
+        experienceId,
+        tokenHash,
+        managerEmail,
+        managerName: payload.managerName ?? null,
+        resolvedDomain: resolvedDomain ?? null,
+        expiresAt,
+        status: 'PENDING',
+      },
+    });
+
+    const surveyUrl = `${env.VERIFY_APP_URL}/work-experience/manager-survey/${rawToken}`;
+    const emailData = {
+      managerName: payload.managerName ?? 'Hiring Manager',
+      candidateName: exp.student?.fullName ?? 'Candidate',
+      companyName: exp.companyName,
+      roleTitle: exp.role,
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.isCurrent
+        ? 'Present'
+        : exp.endDate
+          ? exp.endDate.toISOString().substring(0, 10)
+          : 'N/A',
+      surveyUrl,
+      expiresAtFormatted: '5 days',
+    };
+
+    if (this.emailQueue) {
+      // Initial invite
+      await this.emailQueue.add('send', {
+        to: managerEmail,
+        template: 'work-experience-manager-invite',
+        data: emailData,
+      });
+
+      // Day-3 (72h) reminder
+      await this.emailQueue.add(
+        'send-manager-reminder',
+        {
+          endorsementId: endorsement.id,
+          to: managerEmail,
+          template: 'work-experience-manager-reminder',
+          data: { ...emailData, expiresAtFormatted: '2 days' },
+        } as WorkExperienceManagerReminderJobPayload,
+        { delay: 72 * 60 * 60 * 1000 },
+      );
+
+      // Day-5 (120h) expiry marker
+      await this.emailQueue.add(
+        'expire-manager-endorsement',
+        { endorsementId: endorsement.id, experienceId },
+        { delay: TTL_120H },
+      );
+    }
+
+    await this.auditPublisher.record({
+      actorId: studentId,
+      action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_SENT',
+      resourceType: 'WorkExperience',
+      resourceId: experienceId,
+      reasonCode: 'manager_endorsement_sent',
+      metadata: {
+        endorsementId: endorsement.id,
+        managerEmail,
+        resolvedDomain,
+      },
+    });
+
+    return {
+      success: true,
+      endorsementId: endorsement.id,
+      managerEmail,
+      expiresAt: expiresAt.toISOString(),
+      message: `Manager endorsement request dispatched to ${managerEmail}. Valid for 5 days.`,
+    };
+  }
+
+  /**
+   * WE-T03: Public — manager opens magic link to view the survey.
+   * Returns minimal candidate info; no excess PII.
+   */
+  async getManagerEndorsementByToken(rawToken: string): Promise<GetManagerEndorsementSurveyDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
+
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+      where: { tokenHash },
+      include: {
+        experience: {
+          include: { student: { select: { fullName: true } } },
+        },
+      },
+    });
+
+    if (!endorsement || !endorsement.experience) {
+      throw new NotFoundException('Invalid or expired endorsement link.');
+    }
+
+    const exp = endorsement.experience;
+    const now = new Date();
+    const isExpired = endorsement.expiresAt < now;
+    const isAlreadyResponded = endorsement.respondedAt !== null;
+
+    return {
+      endorsementId: endorsement.id,
+      candidateName: exp.student?.fullName ?? 'Candidate',
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType as GetManagerEndorsementSurveyDto['employmentType'],
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.endDate ? exp.endDate.toISOString().substring(0, 10) : null,
+      isCurrent: exp.isCurrent,
+      responsibilities: exp.responsibilities ?? null,
+      skillsClaimed: (exp.skills ?? []) as string[],
+      managerEmail: endorsement.managerEmail,
+      managerName: endorsement.managerName ?? null,
+      status: endorsement.status as GetManagerEndorsementSurveyDto['status'],
+      expiresAt: endorsement.expiresAt.toISOString(),
+      isExpired,
+      isAlreadyResponded,
+    };
+  }
+
+  /**
+   * WE-T03: Public — manager submits their endorsement decision.
+   * Single-use (enforced via respondedAt). Recalculates overall_verified.
+   *
+   * overall_verified = docOk && completedConfirmed
+   * completedConfirmed is set to true only when confirmed === true.
+   * Disputed endorsement keeps completedConfirmed = false; overall_verified stays false.
+   * Expiry does NOT auto-set any field.
+   */
+  async submitManagerEndorsement(
+    rawToken: string,
+    payload: SubmitManagerEndorsementDto,
+    meta?: { ip?: string; userAgent?: string },
+  ): Promise<SubmitManagerEndorsementResponseDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
+
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+      where: { tokenHash },
+      include: { experience: true },
+    });
+
+    if (!endorsement || !endorsement.experience) {
+      throw new NotFoundException('Invalid or expired endorsement link.');
+    }
+
+    if (endorsement.respondedAt !== null) {
+      throw new BadRequestException('This endorsement link has already been used.');
+    }
+
+    if (endorsement.expiresAt < new Date()) {
+      throw new BadRequestException('This endorsement link has expired.');
+    }
+
+    const exp = endorsement.experience;
+    const now = new Date();
+    const newStatus = payload.confirmed ? 'CONFIRMED' : 'DISPUTED';
+
+    // Update endorsement record
+    await this.prisma.workExperienceManagerEndorsement.update({
+      where: { id: endorsement.id },
+      data: {
+        respondedAt: now,
+        status: newStatus,
+        confirmed: payload.confirmed,
+        skillRatings: payload.skillRatings
+          ? (payload.skillRatings as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        comments: payload.comments ?? null,
+        ipAddress: meta?.ip ?? null,
+        userAgent: meta?.userAgent ?? null,
+      },
+    });
+
+    // Recalculate overall_verified
+    const completedConfirmed = payload.confirmed === true;
+    // docOk: check if experience already has doc_ok set, or if at least one doc is VALIDATED
+    const currentExp = await this.prisma.workExperience.findUnique({
+      where: { id: exp.id },
+      select: { docOk: true },
+    });
+    const docOk = currentExp?.docOk === true;
+    const overallVerified = docOk && completedConfirmed;
+
+    await this.prisma.workExperience.update({
+      where: { id: exp.id },
+      data: {
+        completedConfirmed,
+        overallVerified,
+      },
+    });
+
+    await this.auditPublisher.record({
+      actorId: null,
+      action: payload.confirmed
+        ? 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED'
+        : 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
+      resourceType: 'WorkExperience',
+      resourceId: exp.id,
+      reasonCode: payload.confirmed ? 'manager_confirmed' : 'manager_disputed',
+      metadata: {
+        endorsementId: endorsement.id,
+        overallVerified,
+        skillRatings: payload.skillRatings ?? null,
+      },
+    });
+
+    return {
+      success: true,
+      status: newStatus as SubmitManagerEndorsementResponseDto['status'],
+      message: payload.confirmed
+        ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
+        : 'Your response has been recorded. The candidate has been notified.',
+    };
+  }
+
+  /**
+   * SA-T08 - extends the v0.9 fraud/void action to a work-experience row.
+   * One-directional: there is no "un-void".
    */
   async voidWorkExperience(
     actorId: string,

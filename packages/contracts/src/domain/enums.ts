@@ -404,6 +404,22 @@ export type WorkExperienceVerificationStatus = z.infer<
   typeof WorkExperienceVerificationStatusSchema
 >;
 
+/**
+ * WE-T03 — Manager endorsement token lifecycle.
+ * PENDING: magic link sent, awaiting manager action.
+ * CONFIRMED: manager confirmed candidate's employment and skills.
+ * DISPUTED: manager disputed the claim.
+ * EXPIRED: 5-day TTL elapsed without response — record kept, never auto-verified.
+ */
+export const MANAGER_ENDORSEMENT_STATUSES = [
+  'PENDING',
+  'CONFIRMED',
+  'DISPUTED',
+  'EXPIRED',
+] as const;
+export const ManagerEndorsementStatusSchema = z.enum(MANAGER_ENDORSEMENT_STATUSES);
+export type ManagerEndorsementStatus = z.infer<typeof ManagerEndorsementStatusSchema>;
+
 export const EXPERIENCE_DOCUMENT_TYPES = [
   'OFFER_LETTER',
   'EXPERIENCE_LETTER',

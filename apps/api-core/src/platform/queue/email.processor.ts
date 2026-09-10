@@ -9,6 +9,8 @@ import {
   type EmailQueueJobData,
   type WorkExperienceExpireJobPayload,
   type WorkExperienceReminderJobPayload,
+  type WorkExperienceManagerReminderJobPayload,
+  type WorkExperienceManagerExpireJobPayload,
 } from '../mailer/mailer.types.js';
 
 @Processor(EMAIL_QUEUE)
@@ -83,6 +85,41 @@ export class EmailProcessor extends WorkerHost {
               data: { status: 'EXPIRED' },
             });
           }
+        }
+      }
+      return;
+    }
+
+    if (job.name === 'send-manager-reminder') {
+      const payload = job.data as WorkExperienceManagerReminderJobPayload;
+      const { endorsementId, to, template, data } = payload;
+      if (endorsementId) {
+        const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+          where: { id: endorsementId },
+        });
+        if (endorsement && endorsement.respondedAt === null && endorsement.expiresAt > new Date()) {
+          await this.mailer.send({ to, template, data });
+          await this.prisma.workExperienceManagerEndorsement.update({
+            where: { id: endorsementId },
+            data: { reminderSentAt: new Date() },
+          });
+        }
+      }
+      return;
+    }
+
+    if (job.name === 'expire-manager-endorsement') {
+      const payload = job.data as WorkExperienceManagerExpireJobPayload;
+      const { endorsementId } = payload;
+      if (endorsementId) {
+        const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+          where: { id: endorsementId },
+        });
+        if (endorsement && endorsement.respondedAt === null) {
+          await this.prisma.workExperienceManagerEndorsement.update({
+            where: { id: endorsementId },
+            data: { status: 'EXPIRED' },
+          });
         }
       }
       return;
