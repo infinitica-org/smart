@@ -9,13 +9,23 @@ import type { CandidateEducationDto } from '@smart/contracts';
 import {
   CandidateEducationSchema,
   CreateCandidateEducationSchema,
+  RejectCandidateEducationSchema,
   UpdateCandidateEducationSchema,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+
+export function isEducationEligible(education: { status: string }): boolean {
+  return education.status === 'verified';
+}
 
 @Injectable()
 export class CandidateEducationService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  isEducationEligible(education: { status: string }): boolean {
+    return isEducationEligible(education);
+  }
 
   async listForStudent(userId: string): Promise<CandidateEducationDto[]> {
     const records = await this.prisma.candidateEducation.findMany({
@@ -52,6 +62,8 @@ export class CandidateEducationService {
           endDate: typeof item.endDate === 'string' ? item.endDate : null,
           current: Boolean(item.current),
           grade: typeof item.grade === 'string' ? item.grade : null,
+          status: 'unverified',
+          rejectionReason: null,
         },
       });
       created.push(this.mapToDto(newRow));
@@ -100,6 +112,8 @@ export class CandidateEducationService {
         endDate: parsed.data.endDate || null,
         current: parsed.data.current ?? false,
         grade: parsed.data.grade || null,
+        status: 'unverified',
+        rejectionReason: null,
       },
     });
 
@@ -134,6 +148,8 @@ export class CandidateEducationService {
         ...(parsed.data.endDate !== undefined ? { endDate: parsed.data.endDate || null } : {}),
         ...(parsed.data.current !== undefined ? { current: parsed.data.current } : {}),
         ...(parsed.data.grade !== undefined ? { grade: parsed.data.grade || null } : {}),
+        status: 'unverified',
+        rejectionReason: null,
       },
     });
 
@@ -143,6 +159,102 @@ export class CandidateEducationService {
   async delete(userId: string, id: string): Promise<void> {
     await this.getForStudent(userId, id);
     await this.prisma.candidateEducation.delete({ where: { id } });
+  }
+
+  async confirmByHomeCollege(id: string, user: RequestUser): Promise<CandidateEducationDto> {
+    const record = await this.prisma.candidateEducation.findUnique({ where: { id } });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Education entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    await this.assertHomeCollegeOwnership(record.studentId, user);
+
+    const updated = await this.prisma.candidateEducation.update({
+      where: { id },
+      data: {
+        status: 'verified',
+        rejectionReason: null,
+      },
+    });
+
+    return this.mapToDto(updated);
+  }
+
+  async rejectByHomeCollege(
+    id: string,
+    body: unknown,
+    user: RequestUser,
+  ): Promise<CandidateEducationDto> {
+    const parsed = RejectCandidateEducationSchema.safeParse(body);
+    if (!parsed.success || !parsed.data.reason || parsed.data.reason.trim().length === 0) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Rejection reason is required.',
+        statusCode: 400,
+        details: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+
+    const record = await this.prisma.candidateEducation.findUnique({ where: { id } });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Education entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    await this.assertHomeCollegeOwnership(record.studentId, user);
+
+    const updated = await this.prisma.candidateEducation.update({
+      where: { id },
+      data: {
+        status: 'rejected',
+        rejectionReason: parsed.data.reason.trim(),
+      },
+    });
+
+    return this.mapToDto(updated);
+  }
+
+  private async assertHomeCollegeOwnership(studentId: string, user: RequestUser): Promise<void> {
+    if (user.role === 'SUPER_ADMIN') {
+      return;
+    }
+
+    if (user.role === 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Student-facing API cannot perform institution verification.',
+        statusCode: 403,
+      });
+    }
+
+    if (!user.inst) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Institution admin must belong to an institution.',
+        statusCode: 403,
+      });
+    }
+
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { institutionId: true },
+    });
+
+    if (!student || student.institutionId !== user.inst) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message:
+          'Institution admin can only verify education claims for students of their home college.',
+        statusCode: 403,
+      });
+    }
   }
 
   private mapToDto(r: {
@@ -155,6 +267,8 @@ export class CandidateEducationService {
     endDate: string | null;
     current: boolean;
     grade: string | null;
+    status: string;
+    rejectionReason: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): CandidateEducationDto {
@@ -168,6 +282,8 @@ export class CandidateEducationService {
       endDate: r.endDate,
       current: r.current,
       grade: r.grade,
+      status: r.status,
+      rejectionReason: r.rejectionReason,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     });

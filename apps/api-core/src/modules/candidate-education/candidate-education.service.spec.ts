@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { CandidateEducationService } from './candidate-education.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { CandidateEducationService, isEducationEligible } from './candidate-education.service.js';
 
 describe('CandidateEducationService', () => {
   let service: CandidateEducationService;
@@ -10,6 +11,32 @@ describe('CandidateEducationService', () => {
   const studentId = '11111111-1111-4111-8111-111111111111';
   const otherStudentId = '22222222-2222-4222-8222-222222222222';
   const eduId = '33333333-3333-4333-8333-333333333333';
+  const instId = '44444444-4444-4444-8444-444444444444';
+  const otherInstId = '55555555-5555-4555-8555-555555555555';
+
+  const homeTpoUser: RequestUser = {
+    sub: 'admin-1',
+    role: 'INSTITUTION_ADMIN',
+    inst: instId,
+  };
+
+  const crossTpoUser: RequestUser = {
+    sub: 'admin-2',
+    role: 'INSTITUTION_ADMIN',
+    inst: otherInstId,
+  };
+
+  const superAdminUser: RequestUser = {
+    sub: 'super-1',
+    role: 'SUPER_ADMIN',
+    inst: null,
+  };
+
+  const studentUser: RequestUser = {
+    sub: studentId,
+    role: 'STUDENT',
+    inst: instId,
+  };
 
   beforeEach(() => {
     prismaMock = {
@@ -28,7 +55,7 @@ describe('CandidateEducationService', () => {
   });
 
   describe('listForStudent', () => {
-    it('returns existing candidate education rows', async () => {
+    it('returns existing candidate education rows with status and rejectionReason', async () => {
       const now = new Date();
       prismaMock.candidateEducation.findMany.mockResolvedValue([
         {
@@ -41,6 +68,8 @@ describe('CandidateEducationService', () => {
           endDate: '2024-05-01',
           current: false,
           grade: '4.0',
+          status: 'unverified',
+          rejectionReason: null,
           createdAt: now,
           updatedAt: now,
         },
@@ -49,6 +78,7 @@ describe('CandidateEducationService', () => {
       const result = await service.listForStudent(studentId);
       expect(result).toHaveLength(1);
       expect(result[0].institutionName).toBe('Harvard University');
+      expect(result[0].status).toBe('unverified');
       expect(prismaMock.candidateEducation.findMany).toHaveBeenCalledWith({
         where: { studentId },
         orderBy: { createdAt: 'desc' },
@@ -80,6 +110,8 @@ describe('CandidateEducationService', () => {
         endDate: null,
         current: false,
         grade: null,
+        status: 'unverified',
+        rejectionReason: null,
         createdAt: now,
         updatedAt: now,
       });
@@ -87,6 +119,7 @@ describe('CandidateEducationService', () => {
       const result = await service.listForStudent(studentId);
       expect(result).toHaveLength(1);
       expect(result[0].institutionName).toBe('Oxford');
+      expect(result[0].status).toBe('unverified');
       expect(prismaMock.candidateEducation.create).toHaveBeenCalled();
     });
   });
@@ -104,12 +137,15 @@ describe('CandidateEducationService', () => {
         endDate: null,
         current: true,
         grade: null,
+        status: 'unverified',
+        rejectionReason: null,
         createdAt: now,
         updatedAt: now,
       });
 
       const result = await service.getForStudent(studentId, eduId);
       expect(result.institutionName).toBe('MIT');
+      expect(result.status).toBe('unverified');
     });
 
     it('throws NotFoundException if education entry does not exist', async () => {
@@ -129,6 +165,8 @@ describe('CandidateEducationService', () => {
         endDate: null,
         current: true,
         grade: null,
+        status: 'unverified',
+        rejectionReason: null,
         createdAt: now,
         updatedAt: now,
       });
@@ -137,8 +175,8 @@ describe('CandidateEducationService', () => {
     });
   });
 
-  describe('create', () => {
-    it('creates an education entry when payload is valid', async () => {
+  describe('create & update student self-verification prevention', () => {
+    it('creates an education entry with default unverified status', async () => {
       const now = new Date();
       prismaMock.candidateEducation.create.mockResolvedValue({
         id: eduId,
@@ -150,6 +188,8 @@ describe('CandidateEducationService', () => {
         endDate: null,
         current: true,
         grade: null,
+        status: 'unverified',
+        rejectionReason: null,
         createdAt: now,
         updatedAt: now,
       });
@@ -160,39 +200,335 @@ describe('CandidateEducationService', () => {
         fieldOfStudy: 'EECS',
         startDate: '2021-08-01',
         current: true,
+        status: 'verified', // Student tries to self-verify via body
       });
 
-      expect(result.institutionName).toBe('UC Berkeley');
-      expect(prismaMock.candidateEducation.create).toHaveBeenCalled();
+      expect(result.status).toBe('unverified');
+      expect(prismaMock.candidateEducation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          status: 'unverified',
+          rejectionReason: null,
+        }),
+      });
     });
 
-    it('rejects invalid payload', async () => {
-      await expect(service.create(studentId, { institutionName: '' })).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
-
-  describe('delete', () => {
-    it('deletes entry when owned by student', async () => {
+    it('resets status to unverified when student updates an existing record', async () => {
       const now = new Date();
       prismaMock.candidateEducation.findUnique.mockResolvedValue({
         id: eduId,
         studentId,
-        institutionName: 'MIT',
+        institutionName: 'Stanford',
         degree: 'B.S.',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: false,
+        grade: null,
+        status: 'verified', // Was previously verified
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      prismaMock.candidateEducation.update.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'Stanford University',
+        degree: 'B.S.',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: false,
+        grade: null,
+        status: 'unverified', // Reset to unverified after edit
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await service.update(studentId, eduId, {
+        institutionName: 'Stanford University',
+      });
+
+      expect(result.status).toBe('unverified');
+      expect(prismaMock.candidateEducation.update).toHaveBeenCalledWith({
+        where: { id: eduId },
+        data: expect.objectContaining({
+          status: 'unverified',
+          rejectionReason: null,
+        }),
+      });
+    });
+  });
+
+  describe('confirmByHomeCollege', () => {
+    it('allows authorized home college TPO to confirm student education claim', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
         fieldOfStudy: 'CS',
         startDate: null,
         endDate: null,
         current: true,
         grade: null,
+        status: 'unverified',
+        rejectionReason: null,
         createdAt: now,
         updatedAt: now,
       });
-      prismaMock.candidateEducation.delete.mockResolvedValue({});
 
-      await service.delete(studentId, eduId);
-      expect(prismaMock.candidateEducation.delete).toHaveBeenCalledWith({ where: { id: eduId } });
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: studentId,
+        institutionId: instId,
+      });
+
+      prismaMock.candidateEducation.update.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'verified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await service.confirmByHomeCollege(eduId, homeTpoUser);
+      expect(result.status).toBe('verified');
+      expect(result.rejectionReason).toBeNull();
+    });
+
+    it('rejects confirmation by cross-institution TPO', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: studentId,
+        institutionId: instId, // Student belongs to instId, but crossTpoUser belongs to otherInstId
+      });
+
+      await expect(service.confirmByHomeCollege(eduId, crossTpoUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('allows SUPER_ADMIN to confirm any student education claim', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      prismaMock.candidateEducation.update.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'verified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await service.confirmByHomeCollege(eduId, superAdminUser);
+      expect(result.status).toBe('verified');
+    });
+  });
+
+  describe('rejectByHomeCollege', () => {
+    it('allows authorized home college TPO to reject with a mandatory reason', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: studentId,
+        institutionId: instId,
+      });
+
+      prismaMock.candidateEducation.update.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'rejected',
+        rejectionReason: 'Invalid degree credentials provided.',
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await service.rejectByHomeCollege(
+        eduId,
+        { reason: 'Invalid degree credentials provided.' },
+        homeTpoUser,
+      );
+
+      expect(result.status).toBe('rejected');
+      expect(result.rejectionReason).toBe('Invalid degree credentials provided.');
+    });
+
+    it('fails when rejection reason is missing or empty', async () => {
+      await expect(
+        service.rejectByHomeCollege(eduId, { reason: '   ' }, homeTpoUser),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(service.rejectByHomeCollege(eduId, {}, homeTpoUser)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects rejection attempt by cross-institution TPO', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: studentId,
+        institutionId: instId,
+      });
+
+      await expect(
+        service.rejectByHomeCollege(eduId, { reason: 'Incorrect data' }, crossTpoUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('isEducationEligible', () => {
+    it('returns true ONLY when status is verified', () => {
+      expect(isEducationEligible({ status: 'verified' })).toBe(true);
+      expect(service.isEducationEligible({ status: 'verified' })).toBe(true);
+    });
+
+    it('returns false when status is unverified', () => {
+      expect(isEducationEligible({ status: 'unverified' })).toBe(false);
+      expect(service.isEducationEligible({ status: 'unverified' })).toBe(false);
+    });
+
+    it('returns false when status is rejected', () => {
+      expect(isEducationEligible({ status: 'rejected' })).toBe(false);
+      expect(service.isEducationEligible({ status: 'rejected' })).toBe(false);
+    });
+
+    it('returns false for any other status', () => {
+      expect(isEducationEligible({ status: 'in_progress' })).toBe(false);
+      expect(isEducationEligible({ status: 'voided' })).toBe(false);
+    });
+  });
+
+  describe('Student-facing API isolation', () => {
+    it('prevents student role from confirming education claims', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await expect(service.confirmByHomeCollege(eduId, studentUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('prevents student role from rejecting education claims', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await expect(
+        service.rejectByHomeCollege(eduId, { reason: 'Student self-rejection' }, studentUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

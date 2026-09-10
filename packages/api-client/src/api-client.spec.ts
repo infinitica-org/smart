@@ -576,3 +576,52 @@ describe('evaluationApi contracts', () => {
     expect(result.promptRef).toBe('sde-skill-code-runner@1');
   });
 });
+
+describe('onboardingApi education verification contracts', () => {
+  const eduBody = {
+    id: '33333333-3333-4333-8333-333333333333',
+    studentId: '11111111-1111-4111-8111-111111111111',
+    institutionName: 'Stanford University',
+    degree: 'B.S.',
+    fieldOfStudy: 'CS',
+    startDate: '2020-09-01',
+    endDate: '2024-05-01',
+    current: false,
+    grade: '3.9',
+    status: 'verified',
+    rejectionReason: null,
+    createdAt: '2026-09-10T10:00:00.000Z',
+    updatedAt: '2026-09-10T10:00:00.000Z',
+  };
+
+  it('posts /tpo/education/:id/confirm', async () => {
+    const { fetchImpl, calls } = stubFetch([{ status: 200, body: eduBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.onboarding.confirmEducation(eduBody.id);
+    expect(calls[0]?.url).toBe(`https://api.smart.test/api/v1/tpo/education/${eduBody.id}/confirm`);
+    expect(result.status).toBe('verified');
+  });
+
+  it('posts /tpo/education/:id/reject with mandatory reason', async () => {
+    const rejectedBody = { ...eduBody, status: 'rejected', rejectionReason: 'Invalid degree' };
+    const { fetchImpl, calls } = stubFetch([{ status: 200, body: rejectedBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.onboarding.rejectEducation(eduBody.id, { reason: 'Invalid degree' });
+    expect(calls[0]?.url).toBe(`https://api.smart.test/api/v1/tpo/education/${eduBody.id}/reject`);
+    expect(calls[0]?.init.body).toBe(JSON.stringify({ reason: 'Invalid degree' }));
+    expect(result.status).toBe('rejected');
+    expect(result.rejectionReason).toBe('Invalid degree');
+  });
+});

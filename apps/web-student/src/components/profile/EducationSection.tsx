@@ -176,11 +176,26 @@ export function EducationSection() {
                   <GraduationCap className="h-6 w-6" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-white">{edu.institutionName}</h3>
                     {edu.current && (
                       <span className="rounded-full bg-[#00fad0]/15 px-2 py-0.5 text-[10px] font-semibold text-[#00fad0]">
                         Current
+                      </span>
+                    )}
+                    {edu.status === 'verified' && (
+                      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                        Verified
+                      </span>
+                    )}
+                    {edu.status === 'rejected' && (
+                      <span className="rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+                        Rejected
+                      </span>
+                    )}
+                    {(!edu.status || edu.status === 'unverified') && (
+                      <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                        Unverified
                       </span>
                     )}
                   </div>
@@ -197,6 +212,11 @@ export function EducationSection() {
                     )}
                     {edu.grade && <span>Grade / Score: {edu.grade}</span>}
                   </div>
+                  {edu.status === 'rejected' && edu.rejectionReason && (
+                    <p className="mt-1.5 text-xs text-red-400/90">
+                      Rejection Reason: {edu.rejectionReason}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 self-end sm:self-center">

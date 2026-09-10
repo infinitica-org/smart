@@ -42,6 +42,7 @@ import type {
   UpdateProfileVisibilityRequest,
   CreateCandidateEducationDto,
   UpdateCandidateEducationDto,
+  RejectCandidateEducationDto,
   CreateCandidateLanguageDto,
   UpdateCandidateLanguageDto,
   CreateBlockedWordRequest,
@@ -719,6 +720,16 @@ export function onboardingApi(client: SmartApiClient) {
     revokeStudentInvitation: (invitationId: string) =>
       client.post(prefixed(`/tpo/invitations/${invitationId}/revoke`), undefined, {
         schema: InvitationDtoSchema,
+      }),
+
+    confirmEducation: (id: string) =>
+      client.post(prefixed(`/tpo/education/${id}/confirm`), undefined, {
+        schema: CandidateEducationSchema,
+      }),
+
+    rejectEducation: (id: string, body: RejectCandidateEducationDto) =>
+      client.post(prefixed(`/tpo/education/${id}/reject`), body, {
+        schema: CandidateEducationSchema,
       }),
   };
 }

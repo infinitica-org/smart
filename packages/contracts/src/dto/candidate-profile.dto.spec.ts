@@ -4,6 +4,7 @@ import {
   CandidateLanguageSchema,
   CreateCandidateEducationSchema,
   CreateCandidateLanguageSchema,
+  RejectCandidateEducationSchema,
 } from './candidate-profile.dto.js';
 
 describe('Candidate Education & Language DTO Schemas', () => {
@@ -30,7 +31,7 @@ describe('Candidate Education & Language DTO Schemas', () => {
     expect(parsed.success).toBe(false);
   });
 
-  it('validates a full CandidateEducation item schema', () => {
+  it('validates a full CandidateEducation item schema with status', () => {
     const fullItem = {
       id: '123e4567-e89b-12d3-a456-426614174000',
       studentId: '123e4567-e89b-12d3-a456-426614174001',
@@ -41,11 +42,24 @@ describe('Candidate Education & Language DTO Schemas', () => {
       endDate: null,
       current: true,
       grade: 'A',
+      status: 'verified',
+      rejectionReason: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     const parsed = CandidateEducationSchema.safeParse(fullItem);
     expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.status).toBe('verified');
+    }
+  });
+
+  it('validates RejectCandidateEducationSchema with mandatory non-empty reason', () => {
+    const valid = { reason: 'Incorrect degree documents uploaded.' };
+    expect(RejectCandidateEducationSchema.safeParse(valid).success).toBe(true);
+
+    const invalidEmpty = { reason: '' };
+    expect(RejectCandidateEducationSchema.safeParse(invalidEmpty).success).toBe(false);
   });
 
   it('validates CreateCandidateLanguage schema', () => {
