@@ -16,6 +16,14 @@ onlyBuiltDependencies:
   - sharp
   - msgpackr-extract
 
+# Forces every transitive dependency onto the catalog's @types/react(-dom)
+# instead of letting an unpinned peer (e.g. @prisma/studio-core) resolve its
+# own copy — two copies of the same version still produce structurally
+# unrelated JSX.Element/Ref types and break tsc across app boundaries.
+overrides:
+  "@types/react": 19.2.7
+  "@types/react-dom": 19.2.4
+
 # Single source of truth for versions shared across every workspace. Individual
 # package.json files reference these with "catalog:" instead of a literal range,
 # so an upgrade is a one-line change reviewed by the architect.
