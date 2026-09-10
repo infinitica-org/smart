@@ -62,4 +62,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.2.4' as const;
+export const CONTRACTS_VERSION = '0.2.5' as const;

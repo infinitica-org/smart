@@ -127,11 +127,16 @@ import {
   SendWorkExperienceVerificationResponseSchema,
   GetWorkExperienceVerificationResponseSchema,
   SubmitWorkExperienceVerificationResponseSchema,
+  GetManagerEndorsementSurveySchema,
+  SubmitManagerEndorsementResponseSchema,
+  SendManagerEndorsementResponseSchema,
   WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
   type SubmitWorkExperienceVerificationDto,
+  type SendManagerEndorsementDto,
+  type SubmitManagerEndorsementDto,
   UsernameStatusResponseSchema,
   ProfileVisibilityResponseSchema,
   ListBlockedWordsResponseSchema,
@@ -422,6 +427,26 @@ export function usersApi(client: SmartApiClient) {
     ) =>
       client.post(prefixed(`/users/work-experiences/verify-token/${token}`), body, {
         schema: SubmitWorkExperienceVerificationResponseSchema,
+        anonymous: true,
+      }),
+
+    sendWorkExperienceManagerEndorsement: (id: string, body: SendManagerEndorsementDto) =>
+      client.post(prefixed(`/users/me/work-experiences/${id}/send-manager-endorsement`), body, {
+        schema: SendManagerEndorsementResponseSchema,
+      }),
+
+    getWorkExperienceManagerEndorsementByToken: (token: string) =>
+      client.get(prefixed(`/users/work-experiences/manager-survey/${token}`), {
+        schema: GetManagerEndorsementSurveySchema,
+        anonymous: true,
+      }),
+
+    submitWorkExperienceManagerEndorsementByToken: (
+      token: string,
+      body: SubmitManagerEndorsementDto,
+    ) =>
+      client.post(prefixed(`/users/work-experiences/manager-survey/${token}`), body, {
+        schema: SubmitManagerEndorsementResponseSchema,
         anonymous: true,
       }),
   };

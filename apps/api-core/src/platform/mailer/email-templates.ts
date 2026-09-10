@@ -24,6 +24,7 @@ import type {
   VerificationEmailData,
   WorkExperienceVerifierInviteEmailData,
   WorkExperienceVerifierReminderEmailData,
+  WorkExperienceManagerEndorsementEmailData,
 } from './mailer.types.js';
 
 export interface RenderedEmail {
@@ -92,6 +93,10 @@ export function renderEmailTemplate(
       return buildWorkExperienceVerifierReminder(data as WorkExperienceVerifierReminderEmailData);
     case 'certificate-endorsement-request':
       return buildCertificateEndorsementRequest(data as CertificateEndorsementRequestEmailData);
+    case 'work-experience-manager-invite':
+      return buildWorkExperienceManagerInvite(data as WorkExperienceManagerEndorsementEmailData);
+    case 'work-experience-manager-reminder':
+      return buildWorkExperienceManagerReminder(data as WorkExperienceManagerEndorsementEmailData);
   }
 }
 
@@ -515,6 +520,84 @@ function buildCertificateEndorsementRequest(
       bodyHtml,
       cta: { label: 'Review this request', url: payload.endorsementUrl },
       footerNote: `This endorsement link expires in ${payload.expiresAtFormatted}.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- work-experience-manager-invite (WE-T03) ---------------- */
+
+function buildWorkExperienceManagerInvite(
+  payload: WorkExperienceManagerEndorsementEmailData,
+): RenderedEmail {
+  const subject = `Endorsement Request: Confirm work experience & skills for ${payload.candidateName}`;
+  const bodyHtml = [
+    paragraph(
+      `Hello ${strong(payload.managerName)}, ${strong(payload.candidateName)} has listed you as their manager for their role as ${strong(payload.roleTitle)} at ${strong(payload.companyName)} on SMART, a verified skills platform.`,
+    ),
+    paragraph(
+      'Please confirm their employment dates and optionally rate the skills they demonstrated. This endorsement helps validate their professional profile.',
+    ),
+    detailRows([
+      ['Candidate', payload.candidateName],
+      ['Company', payload.companyName],
+      ['Role Title', payload.roleTitle],
+      ['Start Date', payload.startDate],
+      ['End Date', payload.endDate],
+    ]),
+  ].join('');
+  const text = [
+    `Hello ${payload.managerName}, ${payload.candidateName} has listed you as their manager for their role as ${payload.roleTitle} at ${payload.companyName} on SMART.`,
+    `Please confirm their employment and skills using the secure survey link: ${payload.surveyUrl}`,
+    `This link is valid for ${payload.expiresAtFormatted}.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: `Work Experience Endorsement for ${payload.candidateName}`,
+      illustration: WORK_EXPERIENCE_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Complete Endorsement Survey', url: payload.surveyUrl },
+      footerNote: `This magic link expires in ${payload.expiresAtFormatted}.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- work-experience-manager-reminder (WE-T03) ---------------- */
+
+function buildWorkExperienceManagerReminder(
+  payload: WorkExperienceManagerEndorsementEmailData,
+): RenderedEmail {
+  const subject = `Reminder: Endorsement request for ${payload.candidateName} expires soon`;
+  const bodyHtml = [
+    paragraph(
+      `Hello ${strong(payload.managerName)}, this is a friendly reminder to review and endorse ${strong(payload.candidateName)}'s work experience as ${strong(payload.roleTitle)} at ${strong(payload.companyName)}.`,
+    ),
+    paragraph('It takes under 2 minutes to confirm their role and rate their key skills.'),
+    detailRows([
+      ['Candidate', payload.candidateName],
+      ['Company', payload.companyName],
+      ['Role Title', payload.roleTitle],
+    ]),
+  ].join('');
+  const text = [
+    `Hello ${payload.managerName}, friendly reminder to endorse ${payload.candidateName}'s work experience at ${payload.companyName}.`,
+    `Survey link: ${payload.surveyUrl}`,
+    `This link expires in ${payload.expiresAtFormatted}.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: `Reminder: Manager Endorsement for ${payload.candidateName}`,
+      illustration: WORK_EXPERIENCE_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Complete Endorsement Survey', url: payload.surveyUrl },
+      footerNote: `This link expires in ${payload.expiresAtFormatted}.`,
       signoff: SIGNOFF_TEAM,
     }),
   };

@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX } from '@smart/contracts';
+import { API_PREFIX, type SendManagerEndorsementDto } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -102,6 +102,21 @@ export class WorkExperienceController {
   @ApiResponse({ status: 200, description: 'Employer verification request dispatched.' })
   sendVerification(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.service.sendEmployerVerification(user.sub, id);
+  }
+
+  @Post(':id/send-manager-endorsement')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'WE-T03: Send a 5-day magic link to candidate manager for endorsement.',
+  })
+  @ApiResponse({ status: 200, description: 'Manager endorsement request dispatched.' })
+  sendManagerEndorsement(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() body: SendManagerEndorsementDto,
+  ) {
+    return this.service.sendManagerEndorsement(user.sub, id, body);
   }
 
   @Post(':id/restart-verification')
