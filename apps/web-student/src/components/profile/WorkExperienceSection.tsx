@@ -171,7 +171,6 @@ export function WorkExperienceSection() {
     try {
       setSubmitting(true);
       setError(null);
-
       const existingDocs = editingId
         ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
         : [];
@@ -187,7 +186,6 @@ export function WorkExperienceSection() {
         setSubmitting(false);
         return;
       }
-
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,

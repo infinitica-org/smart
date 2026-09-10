@@ -244,7 +244,6 @@ describe('WorkExperienceService', () => {
 
       await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
     });
-
     it('rejects free-text skillsClaimed values outside the taxonomy', async () => {
       await expect(
         service.create(mockStudentId, {
