@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../platform/prisma/prisma.service.js';
 import { Tier1IssuerRegistry } from './tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from './tier2-public-url-verifier.js';
@@ -22,10 +22,10 @@ export class CertificateSourceVerificationService {
   private readonly logger = new Logger(CertificateSourceVerificationService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly tier1Registry: Tier1IssuerRegistry,
-    private readonly tier2Verifier: Tier2PublicUrlVerifier,
-    private readonly tier3Verifier: Tier3OcrVerifier,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(Tier1IssuerRegistry) private readonly tier1Registry: Tier1IssuerRegistry,
+    @Inject(Tier2PublicUrlVerifier) private readonly tier2Verifier: Tier2PublicUrlVerifier,
+    @Inject(Tier3OcrVerifier) private readonly tier3Verifier: Tier3OcrVerifier,
   ) {}
 
   async runVerification(certificateId: string): Promise<VerificationRunOutput> {

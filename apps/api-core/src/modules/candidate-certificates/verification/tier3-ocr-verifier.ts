@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { StorageService } from '../../../platform/storage/storage.service.js';
 import type { TierVerificationResult } from './tier1-issuer-adapter.js';
 
@@ -14,7 +14,9 @@ export interface Tier3Input {
 
 @Injectable()
 export class Tier3OcrVerifier {
-  constructor(private readonly storageService?: StorageService) {}
+  constructor(
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
+  ) {}
 
   async verify(input: Tier3Input): Promise<TierVerificationResult> {
     const fileUrl = input.certificateFileUrl?.trim();
