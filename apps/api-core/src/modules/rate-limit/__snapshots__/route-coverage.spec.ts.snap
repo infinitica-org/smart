@@ -187,6 +187,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /tpo/batches/:batchId/invites/send": "role.institutionAdmin",
   "POST /tpo/batches/:batchId/members": "role.institutionAdmin",
   "POST /tpo/batches/:batchId/members/import": "tpo.import",
+  "POST /tpo/education/:id/confirm": "role.institutionAdmin",
+  "POST /tpo/education/:id/reject": "role.institutionAdmin",
   "POST /tpo/invitations/:invitationId/resend": "role.institutionAdmin",
   "POST /tpo/invitations/:invitationId/revoke": "role.institutionAdmin",
   "POST /tpo/students/:userId/hold": "role.institutionAdmin",

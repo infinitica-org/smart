@@ -41,6 +41,7 @@ import type {
   ReserveUsernameRequest,
   UpdateProfileVisibilityRequest,
   CreateCandidateEducationDto,
+  UpdateCandidateEducationDto,
   RejectCandidateEducationDto,
   CreateCandidateLanguageDto,
   UpdateCandidateLanguageDto,
