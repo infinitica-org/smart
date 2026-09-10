@@ -1283,7 +1283,6 @@ export class WorkExperienceService {
    * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
    * never VOIDED) rows.
    */
-
   /* ---- WE-T03: Manager endorsement ---- */
 
   /**

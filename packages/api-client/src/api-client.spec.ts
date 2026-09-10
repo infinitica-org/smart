@@ -576,7 +576,6 @@ describe('evaluationApi contracts', () => {
     expect(result.promptRef).toBe('sde-skill-code-runner@1');
   });
 });
-
 describe('WE-T03 manager endorsement contracts', () => {
   it('GETs manager endorsement survey by raw token', async () => {
     const surveyPayload = {

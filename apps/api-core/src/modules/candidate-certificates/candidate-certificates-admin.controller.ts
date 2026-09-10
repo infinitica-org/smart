@@ -21,4 +21,9 @@ export class CandidateCertificatesAdminController {
     const parsed = AdminCertificateReviewRequestSchema.parse(body ?? {});
     return this.candidateCertificatesService.adminApprove(id, parsed);
   }
+  @Post(':id/void')
+  void(@Param('id') id: string, @Body() body: unknown) {
+    const parsed = AdminCertificateReviewRequestSchema.parse(body ?? {});
+    return this.candidateCertificatesService.adminVoid(id, parsed);
+  }
 }
