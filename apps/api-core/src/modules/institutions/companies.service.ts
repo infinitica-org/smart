@@ -14,6 +14,7 @@ import { cacheOperations } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
+import { extractDomain } from '../work-experience/company-name.util.js';
 
 const ENTITLEMENTS_CACHE_KEY = (companyId: string): string => `entitlements:company:${companyId}`;
 
@@ -36,11 +37,17 @@ export class CompaniesService {
     }
     const slug = await this.uniqueSlug(body.name);
 
+    // INF-07: `Organization.domain` is always a bare hostname (see extractDomain /
+    // OrganizationsService.resolveOrCreateOrganization) — never the raw `website`
+    // URL, or `https://${org.domain}` reconstruction downstream (e.g. WE-T03
+    // manager-endorsement domain matching) double-prefixes the scheme and breaks.
+    const websiteDomain = extractDomain(body.website);
+
     let org = await this.prisma.organization.findFirst({
       where: {
         OR: [
           { name: { equals: body.name, mode: 'insensitive' } },
-          ...(body.website ? [{ domain: body.website }] : []),
+          ...(websiteDomain ? [{ domain: websiteDomain }] : []),
         ],
       },
     });
@@ -48,7 +55,7 @@ export class CompaniesService {
       org = await this.prisma.organization.create({
         data: {
           name: body.name,
-          domain: body.website ?? null,
+          domain: websiteDomain,
           verificationStatus: 'APPROVED',
         },
       });
