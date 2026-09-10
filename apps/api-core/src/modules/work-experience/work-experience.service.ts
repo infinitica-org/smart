@@ -204,21 +204,35 @@ export class WorkExperienceService {
           ? exp.updatedAt.toISOString()
           : new Date(exp.updatedAt).toISOString()
         : new Date().toISOString(),
-      documents: (exp.documents || []).map((doc: Record<string, unknown>) =>
-        WorkExperienceDocumentSchema.parse({
-          id: doc.id || randomUUID(),
-          experienceId: doc.experienceId || exp.id,
-          documentType: doc.documentType,
-          fileUrl: doc.fileUrl,
-          fileName: doc.fileName,
-          fileSizeBytes: doc.fileSizeBytes,
-          mimeType: doc.mimeType,
-          createdAt: doc.createdAt
-            ? doc.createdAt instanceof Date
+      documents: (exp.documents || []).map(
+        (doc: {
+          id?: string;
+          experienceId?: string;
+          documentType?: unknown;
+          fileUrl?: unknown;
+          fileName?: unknown;
+          fileSizeBytes?: unknown;
+          mimeType?: unknown;
+          createdAt?: string | Date | unknown;
+        }) => {
+          const createdAtVal =
+            doc.createdAt instanceof Date
               ? doc.createdAt.toISOString()
-              : new Date(doc.createdAt).toISOString()
-            : new Date().toISOString(),
-        }),
+              : typeof doc.createdAt === 'string' || typeof doc.createdAt === 'number'
+                ? new Date(doc.createdAt).toISOString()
+                : new Date().toISOString();
+
+          return WorkExperienceDocumentSchema.parse({
+            id: doc.id || randomUUID(),
+            experienceId: doc.experienceId || exp.id,
+            documentType: doc.documentType,
+            fileUrl: doc.fileUrl,
+            fileName: doc.fileName,
+            fileSizeBytes: doc.fileSizeBytes,
+            mimeType: doc.mimeType,
+            createdAt: createdAtVal,
+          });
+        },
       ),
     });
   }
