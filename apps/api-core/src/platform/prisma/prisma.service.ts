@@ -11,12 +11,23 @@ function sqlOperation(query: string): string {
   return match?.[1]?.toUpperCase() ?? 'UNKNOWN';
 }
 
+/** Table name touched by the query, used as a low-cardinality Prometheus label. */
+function sqlModel(query: string): string {
+  const match = /\b(?:from|into|update|table)\s+"[^"]+"\.?"?(\w+)"?/i.exec(query);
+  return match?.[1] ?? 'unknown';
+}
+
 /**
  * Prisma client with the Prisma 7 pg adapter.
  * Owner: Vishal V.
  */
+type PrismaLogOptions = { adapter: PrismaPg; log: [{ emit: 'event'; level: 'query' }] };
+
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient<PrismaLogOptions>
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
@@ -29,6 +40,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         connectionString: env.POOLED_DATABASE_URL ?? env.DATABASE_URL,
         max: 20,
       }),
+      log: [{ level: 'query', emit: 'event' }],
+    });
+
+    this.$on('query', (event) => {
+      dbQueryDuration.observe(
+        { operation: sqlOperation(event.query), model: sqlModel(event.query) },
+        event.duration / 1000,
+      );
     });
   }
 
