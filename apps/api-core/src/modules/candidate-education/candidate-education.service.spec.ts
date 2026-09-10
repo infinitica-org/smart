@@ -212,6 +212,12 @@ describe('CandidateEducationService', () => {
       });
     });
 
+    it('rejects invalid payload', async () => {
+      await expect(service.create(studentId, { institutionName: '' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
     it('resets status to unverified when student updates an existing record', async () => {
       const now = new Date();
       prismaMock.candidateEducation.findUnique.mockResolvedValue({
@@ -258,6 +264,31 @@ describe('CandidateEducationService', () => {
           rejectionReason: null,
         }),
       });
+    });
+  });
+
+  describe('delete', () => {
+    it('deletes entry when owned by student', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      prismaMock.candidateEducation.delete.mockResolvedValue({});
+
+      await service.delete(studentId, eduId);
+      expect(prismaMock.candidateEducation.delete).toHaveBeenCalledWith({ where: { id: eduId } });
     });
   });
 
@@ -326,7 +357,7 @@ describe('CandidateEducationService', () => {
 
       prismaMock.user.findUnique.mockResolvedValue({
         id: studentId,
-        institutionId: instId, // Student belongs to instId, but crossTpoUser belongs to otherInstId
+        institutionId: instId,
       });
 
       await expect(service.confirmByHomeCollege(eduId, crossTpoUser)).rejects.toThrow(
