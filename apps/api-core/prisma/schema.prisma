@@ -204,8 +204,10 @@ enum JobOpeningStatus {
 enum AtsStage {
   APPLIED
   SHORTLISTED
+  AI_VERIFIED
   INTERVIEW
   OFFER
+  HIRED
   REJECTED
   WITHDRAWN
 }
@@ -277,8 +279,9 @@ model Invitation {
   email         String
   fullName      String           @map("full_name")
   role          UserRole
-  institutionId String           @map("institution_id") @db.Uuid
-  institution   Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  /// Null for platform-admin invites (SUPER_ADMIN), which have no owning tenant.
+  institutionId String?          @map("institution_id") @db.Uuid
+  institution   Institution?     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   batchId       String?          @map("batch_id") @db.Uuid
   batch         Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
   groupLabel    String?          @map("group_label")
@@ -325,6 +328,21 @@ model User {
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
+  /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
+  username             String?        @map("username")
+  /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
+  usernameNormalized   String?        @unique @map("username_normalized")
+  /// CN-T09 — reservation claims the name; activation (flipped on first visibility opt-in) is a separate step.
+  usernameStatus       UsernameStatus? @map("username_status")
+  usernameReservedAt   DateTime?      @map("username_reserved_at") @db.Timestamptz(6)
+  usernameActivatedAt  DateTime?      @map("username_activated_at") @db.Timestamptz(6)
+  /// CN-T09 — internal-only rate-limit state for reservation attempts; never serialized in any API response.
+  usernameFailedAttempts Int          @default(0) @map("username_failed_attempts")
+  usernameCooldownUntil  DateTime?    @map("username_cooldown_until") @db.Timestamptz(6)
+  /// CN-T09 — global on/off switch for the public profile page (`publicProfileSlug` already existed; this gates whether it resolves).
+  profileVisible       Boolean        @default(false) @map("profile_visible")
+  /// CN-T09 — opt-in only; default keeps the public page verified-items-only.
+  showInProgressItems  Boolean        @default(false) @map("show_in_progress_items")
   createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens         RefreshToken[]
@@ -346,6 +364,8 @@ model User {
   notifications         Notification[]
   workExperiences       WorkExperience[]
   candidateCertificates CandidateCertificate[]
+  candidateEducations   CandidateEducation[]
+  candidateLanguages    CandidateLanguage[]
 
   @@index([institutionId])
   @@index([batchId])
@@ -463,6 +483,7 @@ model Item {
   responses Response[]
 
   @@index([levelId, active, formCode])
+  @@index([competencyId])
   @@map("items")
 }
 
@@ -501,6 +522,7 @@ model Panelist {
 
   estimates AngoffEstimate[]
 
+  @@index([panelId])
   @@map("panelists")
 }
 
@@ -514,6 +536,7 @@ model AngoffEstimate {
   estimate   Decimal          @db.Decimal(5, 2)
 
   @@unique([panelistId, tier])
+  @@index([panelId])
   @@map("angoff_estimates")
 }
 
@@ -569,6 +592,7 @@ model Response {
   audits AiEvaluationAudit[]
 
   @@unique([attemptId, itemId])
+  @@index([itemId])
   @@map("responses")
 }
 
@@ -603,6 +627,7 @@ model Certificate {
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, trackId])
+  @@index([trackId])
   @@map("certificates")
 }
 
@@ -624,6 +649,7 @@ model JobDescription {
 
   placements PlacementRecord[]
 
+  @@index([trackId])
   @@map("job_descriptions")
 }
 
@@ -642,6 +668,7 @@ model PlacementRecord {
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([trackId, cycle])
+  @@index([jdId])
   @@map("placement_records")
 }
 
@@ -653,6 +680,7 @@ model IntegrityEvent {
   detail    Json?
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  @@index([attemptId])
   @@map("integrity_events")
 }
 
@@ -684,6 +712,7 @@ model AiEvaluationAudit {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([createdAt])
+  @@index([responseId])
   @@map("ai_evaluation_audits")
 }
 
@@ -716,8 +745,39 @@ model KafkaOutbox {
   @@map("kafka_outbox")
 }
 
+enum UsernameStatus {
+  RESERVED
+  ACTIVE
+}
+
+/// CN-T09 — super-admin-curated list; a candidate's normalized username may not contain any entry here.
+model BlockedWord {
+  id        String   @id @default(uuid()) @db.Uuid
+  word      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("blocked_words")
+}
+
+model Organization {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  name               String
+  domain             String?                  @unique
+  verificationStatus TenantVerificationStatus @default(PENDING) @map("verification_status")
+  verificationReason String?                  @map("verification_reason")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  companies       Company[]
+  workExperiences WorkExperience[]
+
+  @@map("organizations")
+}
+
 model Company {
   id                 String                   @id @default(uuid()) @db.Uuid
+  organizationId     String?                  @map("organization_id") @db.Uuid
+  organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   name               String
   domain             String                   @unique
   gstin              String?
@@ -741,6 +801,7 @@ model Company {
   featureFlagOverrides FeatureFlagOverride[]
   workExperiences      WorkExperience[]
 
+  @@index([organizationId])
   @@map("companies")
 }
 
@@ -977,10 +1038,11 @@ model AuditLog {
 }
 
 model SubscriptionPlan {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      PlanCode @unique
-  name      String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  code              PlanCode @unique
+  name              String
+  candidateCapacity Int?     @map("candidate_capacity")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   institutions Institution[]
   companies    Company[]
@@ -1045,6 +1107,8 @@ enum WorkExperienceVerificationStatus {
   VERIFIED
   REJECTED
   EXPIRED
+  /// SA-T08 — immutable terminal state set only by the admin void action; never reachable any other way.
+  VOIDED
 }
 
 enum ExperienceDocumentType {
@@ -1060,9 +1124,12 @@ model WorkExperience {
   id                  String                           @id @default(uuid()) @db.Uuid
   studentId           String                           @map("student_id") @db.Uuid
   student             User                             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  organizationId      String?                          @map("organization_id") @db.Uuid
+  organization        Organization?                    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   companyId           String?                          @map("company_id") @db.Uuid
   company             Company?                         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyName         String                           @map("company_name")
+  companyNameRaw      String?                          @map("company_name_raw")
   companyWebsite      String?                          @map("company_website")
   companyLinkedinUrl  String?                          @map("company_linkedin_url")
   role                String
@@ -1091,6 +1158,7 @@ model WorkExperience {
 
   @@index([studentId, status])
   @@index([companyId])
+  @@index([organizationId])
   @@map("work_experiences")
 }
 
@@ -1141,11 +1209,21 @@ enum CandidateCertificateStatus {
   IN_VERIFICATION
   VERIFIED
   REJECTED
+  /// SA-T08 — immutable terminal state set only by the admin void action; never reachable any other way.
+  VOIDED
+}
+
+enum CertificateSourceStatus {
+  pending
+  source_verified
+  source_failed
+  voided
 }
 
 enum CertificateVerificationMethod {
   LLM
   ENDORSEMENT
+  ASSESSMENT
 }
 
 enum CertificateProficiency {
@@ -1169,6 +1247,11 @@ model CandidateCertificate {
   title                String
   issuer               String
   status               CandidateCertificateStatus     @default(DECLARED)
+  sourceStatus         CertificateSourceStatus        @default(pending) @map("source_status")
+  certificateNumber    String?                        @map("certificate_number")
+  issueDate            String?                        @map("issue_date")
+  expiryDate           String?                        @map("expiry_date")
+  verificationUrl      String?                        @map("verification_url")
   verificationMethod   CertificateVerificationMethod? @map("verification_method")
   certificateFileUrl   String?                        @map("certificate_file_url")
   certificateFileName  String?                        @map("certificate_file_name")
@@ -1178,15 +1261,38 @@ model CandidateCertificate {
   tools                String[]                       @default([])
   practicalApplied     Boolean?                       @map("practical_applied")
   practicalDescription String?                        @map("practical_description") @db.Text
+  trackCode            String?                        @map("track_code")
+  agendaLines          String[]                       @default([]) @map("agenda_lines")
+  assessmentStrikes    Int                            @default(0) @map("assessment_strikes")
+  assessmentLockedUntil DateTime?                     @map("assessment_locked_until") @db.Timestamptz(6)
+  lastGenuineFailureAt DateTime?                      @map("last_genuine_failure_at") @db.Timestamptz(6)
+  taxonomyVersionSnapshot String?                     @map("taxonomy_version_snapshot")
   createdAt            DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   skills       CandidateCertificateSkill[]
   events       CertificateVerificationEvent[]
   endorsements CertificateEndorsement[]
+  verificationAttempts CandidateCertificateVerificationAttempt[]
 
   @@index([candidateId, status])
   @@map("candidate_certificates")
+}
+
+model CandidateCertificateVerificationAttempt {
+  id                     String               @id @default(uuid()) @db.Uuid
+  candidateCertificateId String               @map("candidate_certificate_id") @db.Uuid
+  candidateCertificate   CandidateCertificate @relation(fields: [candidateCertificateId], references: [id], onDelete: Cascade)
+  technicalFailure       Boolean              @default(false) @map("technical_failure")
+  passed                 Boolean?
+  explanation            String               @db.Text
+  marksEarned            Float?               @map("marks_earned")
+  marksTotal             Float?               @map("marks_total")
+  scorePercent           Float?               @map("score_percent")
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([candidateCertificateId, createdAt])
+  @@map("candidate_certificate_verification_attempts")
 }
 
 model CandidateCertificateSkill {
@@ -1231,3 +1337,35 @@ model CertificateEndorsement {
   @@index([candidateCertificateId])
   @@map("certificate_endorsements")
 }
+
+model CandidateEducation {
+  id              String   @id @default(uuid()) @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institutionName String   @map("institution_name")
+  degree          String?
+  fieldOfStudy    String?  @map("field_of_study")
+  startDate       String?  @map("start_date")
+  endDate         String?  @map("end_date")
+  current         Boolean  @default(false)
+  grade           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@map("candidate_educations")
+}
+
+model CandidateLanguage {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  language    String
+  proficiency String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@map("candidate_languages")
+}
+

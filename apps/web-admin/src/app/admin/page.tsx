@@ -92,19 +92,19 @@ export default function AdminHomePage() {
               id: 'active',
               label: 'Active',
               value: data.institutions.active,
-              color: 'var(--brand-turquoise)',
+              color: 'var(--brand-teal)',
             },
             {
               id: 'held',
               label: 'On hold',
               value: data.institutions.held,
-              color: 'var(--brand-white)',
+              color: '#ffffff',
             },
             {
               id: 'off',
               label: 'Deactivated',
               value: data.institutions.deactivated,
-              color: 'var(--brand-black)',
+              color: 'var(--brand-ink)',
             },
           ]}
         />

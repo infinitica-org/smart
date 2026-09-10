@@ -1,15 +1,23 @@
 import { z } from 'zod';
 import {
+  AssessableTypeSchema,
   AttemptStatusSchema,
   IntegrityFlagSchema,
   ItemTypeSchema,
   LevelFormatSchema,
   LevelNumberSchema,
+  SharedVerificationStatusSchema,
+  SkillProficiencySchema,
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
 import { DeliverableItemDtoSchema } from './catalog.dto.js';
 import { SkillClaimDtoSchema } from './placement.dto.js';
+import {
+  GradeSdeSkillFormResponseSchema,
+  SdeSkillFormPublicItemSchema,
+  SdeSkillFormResponseItemSchema,
+} from './evaluation.dto.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 import {
   ProctoringEventClassSchema,
@@ -272,3 +280,72 @@ export const LevelResultDtoSchema = z.object({
   humanReviewed: z.boolean(),
 });
 export type LevelResultDto = z.infer<typeof LevelResultDtoSchema>;
+
+/* ---------------- SDE v4 skill verify session (additive; not L1) ---------- */
+
+/**
+ * Timed skill-form session. Redis key `session:skill-verify:{sessionId}`.
+ * Does not touch `startAttempt` / `completeAttempt` / item rotation.
+ * HTTP owner: assessment (VB). Form generate/grade: evaluation (RM).
+ */
+export const StartSkillVerifyRequestSchema = z.object({
+  prepareOnly: z.boolean().optional(),
+  sessionId: UuidSchema.optional(),
+});
+export type StartSkillVerifyRequest = z.infer<typeof StartSkillVerifyRequestSchema>;
+
+export const SkillVerifyPrepareDtoSchema = z.object({
+  sessionId: UuidSchema,
+  claimId: UuidSchema,
+  expiresAt: IsoDateTimeSchema,
+});
+export type SkillVerifyPrepareDto = z.infer<typeof SkillVerifyPrepareDtoSchema>;
+
+export const SkillVerifySessionDtoSchema = z.object({
+  sessionId: UuidSchema,
+  claimId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  proficiency: SkillProficiencySchema,
+  timeMinutes: z.number().int().positive(),
+  passMarkPercent: z.number().int().min(1).max(100),
+  expiresAt: IsoDateTimeSchema,
+  serverRemainingSeconds: z.number().int().nonnegative(),
+  items: z.array(SdeSkillFormPublicItemSchema).min(1),
+  answers: z.array(SdeSkillFormResponseItemSchema),
+});
+export type SkillVerifySessionDto = z.infer<typeof SkillVerifySessionDtoSchema>;
+
+export const SaveSkillVerifyRequestSchema = z.object({
+  responses: z.array(SdeSkillFormResponseItemSchema),
+});
+export type SaveSkillVerifyRequest = z.infer<typeof SaveSkillVerifyRequestSchema>;
+
+export const CompleteSkillVerifyRequestSchema = z.object({
+  responses: z.array(SdeSkillFormResponseItemSchema).optional(),
+  technicalFailure: z.boolean().optional().default(false),
+  /** Proctor warning-cap lock — recorded as a genuine fail, not a technical abort. */
+  integrityTerminated: z.boolean().optional().default(false),
+  explanation: z.string().max(2_000).optional(),
+});
+export type CompleteSkillVerifyRequest = z.infer<typeof CompleteSkillVerifyRequestSchema>;
+
+export const CompleteSkillVerifyResponseSchema = z.object({
+  claim: SkillClaimDtoSchema,
+  technicalFailure: z.boolean(),
+  grade: GradeSdeSkillFormResponseSchema.nullable(),
+});
+export type CompleteSkillVerifyResponse = z.infer<typeof CompleteSkillVerifyResponseSchema>;
+
+/* ---------------- polymorphic assessment session (SE-T10) ---------------- */
+
+export const PolymorphicAssessmentSessionDtoSchema = z.object({
+  sessionId: UuidSchema,
+  assessableType: AssessableTypeSchema,
+  assessableId: UuidSchema,
+  status: SharedVerificationStatusSchema,
+  retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+  lockedUntil: IsoDateTimeSchema.nullable().optional(),
+  expiresAt: IsoDateTimeSchema.nullable().optional(),
+  serverRemainingSeconds: z.number().int().nonnegative().optional(),
+});
+export type PolymorphicAssessmentSessionDto = z.infer<typeof PolymorphicAssessmentSessionDtoSchema>;

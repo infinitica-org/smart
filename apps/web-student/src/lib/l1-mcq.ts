@@ -68,6 +68,11 @@ export function isInProgressSession(session: AttemptSessionDto): boolean {
   return session.status === 'IN_PROGRESS';
 }
 
+/** Open clock only — expired IN_PROGRESS must not be treated as a live resume. */
+export function isResumableSession(session: AttemptSessionDto): boolean {
+  return isInProgressSession(session) && !session.locked && session.serverRemainingSeconds > 0;
+}
+
 /** Expired or server-locked, but the attempt is still closable via POST /complete. */
 export function canSubmitLockedAttempt(session: AttemptSessionDto): boolean {
   return (

@@ -1,11 +1,18 @@
 import type {
   CandidateOnboardingDraft,
+  CandidateOnboardingJobPreferences,
   CompleteCandidateOnboardingRequest,
   ResumeParseDraft,
   SaveCandidateOnboardingDraftRequest,
   SkillDiscovery,
   SocialVerification,
+  WorkMode,
 } from '@smart/contracts';
+import { SKILL_CODE_TO_NAME } from './skills-catalog';
+
+const NAME_TO_SKILL_CODE = new Map(
+  Array.from(SKILL_CODE_TO_NAME.entries()).map(([code, name]) => [name.toLowerCase(), code]),
+);
 
 export interface OnboardingProfileForm {
   firstName: string;
@@ -19,14 +26,25 @@ export interface OnboardingProfileForm {
   linkedinUrl: string;
   githubUrl: string;
   languages: { id: string; language: string; proficiency: string }[];
-  preferences: string[];
+  /** Mandatory Core + straightforward Niche catalog skills, one proficiency each. Keyed by catalog skill code. */
+  catalogSkills: Record<string, string>;
+  /** Programming languages with proficiency. */
   codingProficiencies: { id: string; language: string; proficiency: string }[];
+  /** Frontend frameworks with proficiency. */
+  frontendFrameworks: { id: string; framework: string; proficiency: string }[];
+  /** Backend frameworks with proficiency. */
+  backendFrameworks: { id: string; framework: string; proficiency: string }[];
+  /** Legacy alias for backward compatibility. */
+  frameworkProficiencies: { id: string; framework: string; proficiency: string }[];
   education: CompleteCandidateOnboardingRequest['education'];
   experiences: CompleteCandidateOnboardingRequest['experiences'];
-  /** LinkedIn/GitHub identity confirmation — a trust signal, never a completion gate. */
   socialVerification: SocialVerification;
-  /** GitHub-derived skill suggestions plus whatever the candidate picked/typed. */
   skillDiscovery: SkillDiscovery;
+  jobPreferences: {
+    expectedCtcLakhs: string;
+    currentLocation: string;
+    preferredLocations: string[];
+  };
   dpdpConsent: boolean;
 }
 
@@ -38,7 +56,12 @@ export const emptySkillDiscovery = (): SkillDiscovery => ({
   customSkillNames: [],
 });
 
-/** Draft-only UI cache while the wizard is open — never the source of truth for completion. */
+export const emptyJobPreferences = (): OnboardingProfileForm['jobPreferences'] => ({
+  expectedCtcLakhs: '',
+  currentLocation: '',
+  preferredLocations: [],
+});
+
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
 
 export function emptyOnboardingForm(): OnboardingProfileForm {
@@ -54,12 +77,16 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     linkedinUrl: '',
     githubUrl: '',
     languages: [],
-    preferences: [],
+    catalogSkills: {},
     codingProficiencies: [],
+    frontendFrameworks: [],
+    backendFrameworks: [],
+    frameworkProficiencies: [],
     education: [],
     experiences: [],
     socialVerification: emptySocialVerification(),
     skillDiscovery: emptySkillDiscovery(),
+    jobPreferences: emptyJobPreferences(),
     dpdpConsent: false,
   };
 }
@@ -97,6 +124,8 @@ export function applyResumeDraft(
       language: s.name,
       proficiency: s.proficiency,
     }));
+  // Resume-parsed technical skills seed the Skills step's "programming
+  // languages" picker — a starting point the candidate reviews and edits there.
   const codingProficiencies = draft.skills
     .filter((s) => s.type === 'technical')
     .map((s) => ({
@@ -138,9 +167,29 @@ export function applyServerDraft(
   const languages = validSkills
     .filter((s) => s.type === 'language')
     .map((s) => ({ id: crypto.randomUUID(), language: s.name, proficiency: s.proficiency }));
-  const codingProficiencies = validSkills
-    .filter((s) => s.type === 'technical')
-    .map((s) => ({ id: crypto.randomUUID(), language: s.name, proficiency: s.proficiency }));
+
+  // Split technical entries back into the mandatory catalog-skill map (exact
+  // name match) vs. the free-form language/framework picks bucket. The two
+  // multi-item skill families can't be told apart once flattened server-side,
+  // so both land in `codingProficiencies` on reload — the candidate can freely
+  // re-sort them in the Skills step, which isn't a data-loss risk.
+  const technical = validSkills.filter((s) => s.type === 'technical');
+  const catalogSkills: Record<string, string> = {};
+  const codingProficiencies: { id: string; language: string; proficiency: string }[] = [];
+  for (const entry of technical) {
+    const code = NAME_TO_SKILL_CODE.get(entry.name.toLowerCase());
+    if (code) {
+      catalogSkills[code] = entry.proficiency;
+    } else {
+      codingProficiencies.push({
+        id: crypto.randomUUID(),
+        language: entry.name,
+        proficiency: entry.proficiency,
+      });
+    }
+  }
+
+  const jobPreferences = draft.jobPreferences;
 
   return {
     ...form,
@@ -152,9 +201,18 @@ export function applyServerDraft(
     linkedinUrl: draft.linkedinUrl ?? form.linkedinUrl,
     githubUrl: draft.githubUrl ?? form.githubUrl,
     languages: languages.length > 0 ? languages : form.languages,
+    catalogSkills: technical.length > 0 ? catalogSkills : form.catalogSkills,
     codingProficiencies:
       codingProficiencies.length > 0 ? codingProficiencies : form.codingProficiencies,
-    preferences: draft.preferences ?? form.preferences,
+    jobPreferences: jobPreferences
+      ? {
+          expectedCtcLakhs:
+            jobPreferences.expectedCtcLakhs?.toString() ?? form.jobPreferences.expectedCtcLakhs,
+          currentLocation: jobPreferences.currentLocation ?? form.jobPreferences.currentLocation,
+          preferredLocations:
+            jobPreferences.preferredLocations ?? form.jobPreferences.preferredLocations,
+        }
+      : form.jobPreferences,
     socialVerification: draft.socialVerification
       ? { ...emptySocialVerification(), ...draft.socialVerification }
       : form.socialVerification,
@@ -162,30 +220,71 @@ export function applyServerDraft(
       ? { ...emptySkillDiscovery(), ...draft.skillDiscovery }
       : form.skillDiscovery,
     dpdpConsent: draft.dpdpConsent ?? form.dpdpConsent,
-    education:
-      draft.education && draft.education.length > 0
-        ? draft.education.map((item) => ({
-            institutionName: item.institutionName ?? '',
-            degree: item.degree ?? '',
-            fieldOfStudy: item.fieldOfStudy ?? '',
-            startDate: item.startDate ?? '',
-            endDate: item.endDate ?? '',
-            current: item.current ?? false,
-            grade: item.grade ?? '',
-          }))
-        : form.education,
-    experiences:
-      draft.experiences && draft.experiences.length > 0
-        ? draft.experiences.map((item) => ({
-            role: item.role ?? '',
-            company: item.company ?? '',
-            location: item.location ?? '',
-            startDate: item.startDate ?? '',
-            endDate: item.endDate ?? '',
-            description: item.description ?? '',
-            tags: item.tags ?? [],
-          }))
-        : form.experiences,
+    education: [],
+    experiences: [],
+  };
+}
+
+/** Builds the flat `skills[]` array sent to the server from every skill source in the form. */
+function buildSkillsPayload(
+  form: OnboardingProfileForm,
+): CompleteCandidateOnboardingRequest['skills'] {
+  return [
+    ...form.languages
+      .filter((l) => l.language.trim() && l.proficiency.trim())
+      .map((l) => ({
+        type: 'language' as const,
+        name: l.language.trim(),
+        proficiency: l.proficiency.trim(),
+      })),
+    ...Object.entries(form.catalogSkills)
+      .filter(([, proficiency]) => proficiency.trim())
+      .map(([code, proficiency]) => ({
+        type: 'technical' as const,
+        name: SKILL_CODE_TO_NAME.get(code) ?? code,
+        proficiency: proficiency.trim(),
+      })),
+    ...form.codingProficiencies
+      .filter((l) => l.language.trim() && l.proficiency.trim())
+      .map((l) => ({
+        type: 'technical' as const,
+        name: l.language.trim(),
+        proficiency: l.proficiency.trim(),
+      })),
+    ...form.frontendFrameworks
+      .filter((f) => f.framework.trim() && f.proficiency.trim())
+      .map((f) => ({
+        type: 'technical' as const,
+        name: f.framework.trim(),
+        proficiency: f.proficiency.trim(),
+      })),
+    ...form.backendFrameworks
+      .filter((f) => f.framework.trim() && f.proficiency.trim())
+      .map((f) => ({
+        type: 'technical' as const,
+        name: f.framework.trim(),
+        proficiency: f.proficiency.trim(),
+      })),
+    ...form.frameworkProficiencies
+      .filter((f) => f.framework.trim() && f.proficiency.trim())
+      .map((f) => ({
+        type: 'technical' as const,
+        name: f.framework.trim(),
+        proficiency: f.proficiency.trim(),
+      })),
+  ];
+}
+
+function buildJobPreferencesPayload(
+  form: OnboardingProfileForm,
+): CandidateOnboardingJobPreferences | undefined {
+  const expected = Number(form.jobPreferences.expectedCtcLakhs);
+  if (!form.jobPreferences.expectedCtcLakhs.trim() || Number.isNaN(expected)) return undefined;
+  return {
+    expectedCtcLakhs: expected,
+    currentLocation: form.jobPreferences.currentLocation.trim(),
+    preferredLocations: form.jobPreferences.preferredLocations,
+    preferredWorkModes: ['FULL_TIME', 'HYBRID'],
   };
 }
 
@@ -198,23 +297,6 @@ export function buildOnboardingDraftPayload(
       ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
       : undefined;
 
-  const skills = [
-    ...form.languages
-      .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({
-        type: 'language' as const,
-        name: l.language.trim(),
-        proficiency: l.proficiency.trim(),
-      })),
-    ...form.codingProficiencies
-      .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({
-        type: 'technical' as const,
-        name: l.language.trim(),
-        proficiency: l.proficiency.trim(),
-      })),
-  ];
-
   return {
     firstName: form.firstName.trim() || undefined,
     lastName: form.lastName.trim() || undefined,
@@ -224,40 +306,21 @@ export function buildOnboardingDraftPayload(
     phoneNumber: form.phoneNumber.trim() || undefined,
     linkedinUrl: form.linkedinUrl.trim() || undefined,
     githubUrl: form.githubUrl.trim() || undefined,
-    education: form.education,
-    experiences: form.experiences,
-    skills,
-    preferences: form.preferences,
+    education: [],
+    experiences: [],
+    skills: buildSkillsPayload(form),
+    jobPreferences: buildJobPreferencesPayload(form),
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: form.dpdpConsent,
   };
 }
 
-export function validateEducationItems(
-  education: CompleteCandidateOnboardingRequest['education'],
-): string | null {
-  for (let i = 0; i < education.length; i++) {
-    const item = education[i];
-    if (!item?.institutionName?.trim()) {
-      return `Institution name is required for education entry #${i + 1}.`;
-    }
-  }
+export function validateEducationItems(): string | null {
   return null;
 }
 
-export function validateExperienceItems(
-  experiences: CompleteCandidateOnboardingRequest['experiences'],
-): string | null {
-  for (let i = 0; i < experiences.length; i++) {
-    const item = experiences[i];
-    if (!item?.role?.trim()) {
-      return `Role / Job Title is required for experience entry #${i + 1}.`;
-    }
-    if (!item?.company?.trim()) {
-      return `Company name is required for experience entry #${i + 1}.`;
-    }
-  }
+export function validateExperienceItems(): string | null {
   return null;
 }
 
@@ -285,21 +348,16 @@ export function buildCompleteOnboardingRequest(
   if (!form.phoneNumber.trim()) {
     return { error: 'Phone number is required.' };
   }
-  if (!form.linkedinUrl.trim()) {
-    return { error: 'LinkedIn profile is required.' };
+
+  const jobPreferences = buildJobPreferencesPayload(form);
+  if (!jobPreferences) {
+    return { error: 'Expected CTC is required.' };
   }
-  if (!form.languages.some((l) => l.language.trim() && l.proficiency.trim())) {
-    return { error: 'At least one language is required.' };
+  if (!jobPreferences.currentLocation) {
+    return { error: 'Current location is required.' };
   }
-
-  const eduError = validateEducationItems(form.education);
-  if (eduError) return { error: eduError };
-
-  const expError = validateExperienceItems(form.experiences);
-  if (expError) return { error: expError };
-
-  if (form.preferences.length === 0) {
-    return { error: 'Please select at least one project preference.' };
+  if (jobPreferences.preferredLocations.length === 0) {
+    return { error: 'Pick at least one preferred location.' };
   }
   if (!form.dpdpConsent) {
     return { error: 'You must agree to the DPDP consent terms to complete your profile.' };
@@ -309,23 +367,6 @@ export function buildCompleteOnboardingRequest(
     form.dobYear && form.dobMonth && form.dobDay
       ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
       : undefined;
-
-  const skills = [
-    ...form.languages
-      .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({
-        type: 'language' as const,
-        name: l.language.trim(),
-        proficiency: l.proficiency.trim(),
-      })),
-    ...form.codingProficiencies
-      .filter((l) => l.language.trim() && l.proficiency.trim())
-      .map((l) => ({
-        type: 'technical' as const,
-        name: l.language.trim(),
-        proficiency: l.proficiency.trim(),
-      })),
-  ];
 
   let linkedinUrl = form.linkedinUrl.trim();
   if (linkedinUrl && !/^https?:\/\//i.test(linkedinUrl)) {
@@ -346,10 +387,10 @@ export function buildCompleteOnboardingRequest(
     phoneNumber: form.phoneNumber.trim(),
     linkedinUrl,
     githubUrl: githubUrl || undefined,
-    education: form.education,
-    experiences: form.experiences,
-    skills,
-    preferences: form.preferences,
+    education: [],
+    experiences: [],
+    skills: buildSkillsPayload(form),
+    jobPreferences,
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: true,
@@ -374,4 +415,24 @@ export const LANGUAGE_OPTIONS = [
   'Russian',
 ];
 
-export const FLUENCY_OPTIONS = ['Native or Bilingual', 'Fluent', 'Conversational', 'Elementary'];
+export const FLUENCY_OPTIONS = ['Native', 'Fluent', 'Conversational', 'Beginner'];
+
+export const CITY_OPTIONS = [
+  'Bengaluru',
+  'Hyderabad',
+  'Pune',
+  'Chennai',
+  'Mumbai',
+  'Delhi NCR',
+  'Kolkata',
+  'Ahmedabad',
+  'Kochi',
+  'Remote / Anywhere',
+];
+
+export const WORK_MODE_LABELS: Record<WorkMode, string> = {
+  FULL_TIME: 'Full-Time',
+  PART_TIME: 'Part-Time',
+  REMOTE: 'Remote',
+  HYBRID: 'Hybrid',
+};

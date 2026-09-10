@@ -6,6 +6,11 @@ import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
+import {
+  resolveSeedEmailDomain,
+  resolveSeedPassword,
+  seedAccountEmails,
+} from '../src/platform/prisma/seed-accounts.js';
 
 const DATA_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -39,6 +44,11 @@ async function main(): Promise<void> {
     adapter: new PrismaPg({ connectionString: DATABASE_URL }),
   });
 
+  const PLAN_CANDIDATE_CAPACITY: Record<'FREE' | 'BASIC' | 'PRO', number | null> = {
+    FREE: 100,
+    BASIC: 500,
+    PRO: null,
+  };
   const plans = await Promise.all(
     (
       [
@@ -49,19 +59,20 @@ async function main(): Promise<void> {
     ).map(([code, name]) =>
       prisma.subscriptionPlan.upsert({
         where: { code },
-        update: { name },
-        create: { code, name },
+        update: { name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
+        create: { code, name, candidateCapacity: PLAN_CANDIDATE_CAPACITY[code] },
       }),
     ),
   );
   const proPlan = plans.find((plan) => plan.code === 'PRO')!;
 
-  const flagKeys = [
+  // Legacy flags: enabled for every non-FREE plan.
+  const legacyFlagKeys = [
     ['ats_kanban', 'ATS Kanban'],
     ['public_profile', 'Public verified profile'],
     ['project_verification', 'Project verification'],
   ] as const;
-  for (const [key, name] of flagKeys) {
+  for (const [key, name] of legacyFlagKeys) {
     const flag = await prisma.featureFlag.upsert({
       where: { key },
       update: { name },
@@ -72,6 +83,49 @@ async function main(): Promise<void> {
         where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
         update: { enabled: plan.code !== 'FREE' },
         create: { planId: plan.id, featureFlagId: flag.id, enabled: plan.code !== 'FREE' },
+      });
+    }
+  }
+
+  // Tier-specific flags, each with an explicit per-plan-code entitlement set.
+  const tieredFlags: Array<{
+    key: string;
+    name: string;
+    enabledFor: ReadonlySet<'FREE' | 'BASIC' | 'PRO'>;
+  }> = [
+    {
+      key: 'bulk_batch_import',
+      name: 'Bulk spreadsheet batch import',
+      enabledFor: new Set(['BASIC', 'PRO']),
+    },
+    {
+      key: 'skill_verification',
+      name: 'Skill verification',
+      enabledFor: new Set(['BASIC', 'PRO']),
+    },
+    {
+      key: 'webhooks_outbound',
+      name: 'Outbound webhooks',
+      enabledFor: new Set(['PRO']),
+    },
+    {
+      key: 'proctoring_advanced',
+      name: 'Advanced proctoring',
+      enabledFor: new Set(['PRO']),
+    },
+  ];
+  for (const { key, name, enabledFor } of tieredFlags) {
+    const flag = await prisma.featureFlag.upsert({
+      where: { key },
+      update: { name },
+      create: { key, name },
+    });
+    for (const plan of plans) {
+      const enabled = enabledFor.has(plan.code);
+      await prisma.planEntitlement.upsert({
+        where: { planId_featureFlagId: { planId: plan.id, featureFlagId: flag.id } },
+        update: { enabled },
+        create: { planId: plan.id, featureFlagId: flag.id, enabled },
       });
     }
   }
@@ -87,12 +141,16 @@ async function main(): Promise<void> {
     create: { code: 'sql', name: 'SQL', domain: 'SOFTWARE_IT' },
   });
 
+  const seedDomain = resolveSeedEmailDomain();
+  const seedPassword = resolveSeedPassword();
+  const seedEmails = seedAccountEmails(seedDomain);
+
   const institution = await prisma.institution.upsert({
-    where: { domain: 'smart.local' },
+    where: { domain: seedDomain },
     update: {},
     create: {
       name: 'SMART Pilot Institute',
-      domain: 'smart.local',
+      domain: seedDomain,
       planId: proPlan.id,
     },
   });
@@ -168,7 +226,7 @@ async function main(): Promise<void> {
   }
 
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
-  const passwordHash = await hashPassword('ChangeMe!Dev');
+  const passwordHash = await hashPassword(seedPassword);
 
   const accounts: Array<{
     email: string;
@@ -177,19 +235,19 @@ async function main(): Promise<void> {
     primaryTrackId: string | null;
   }> = [
     {
-      email: 'admin@smart.local',
+      email: seedEmails.admin,
       fullName: 'SMART Super Admin',
       role: 'SUPER_ADMIN',
       primaryTrackId: null,
     },
     {
-      email: 'tpo@smart.local',
+      email: seedEmails.tpo,
       fullName: 'Pilot TPO',
       role: 'INSTITUTION_ADMIN',
       primaryTrackId: null,
     },
     {
-      email: 'student@smart.local',
+      email: seedEmails.student,
       fullName: 'Pilot Student',
       role: 'STUDENT',
       primaryTrackId: fullstack.id,
@@ -214,7 +272,7 @@ async function main(): Promise<void> {
     usersByEmail.set(account.email, user);
   }
 
-  const tpo = usersByEmail.get('tpo@smart.local');
+  const tpo = usersByEmail.get(seedEmails.tpo);
   if (!tpo) throw new Error('Seed failed: tpo user missing');
 
   const pilotBatch = await prisma.batch.upsert({
@@ -234,7 +292,7 @@ async function main(): Promise<void> {
   });
 
   await prisma.user.update({
-    where: { email: 'student@smart.local' },
+    where: { email: seedEmails.student },
     data: {
       batchId: pilotBatch.id,
       groupLabel: 'Section A',
@@ -242,7 +300,7 @@ async function main(): Promise<void> {
   });
 
   console.log(
-    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as student@smart.local / ChangeMe!Dev`,
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as ${seedEmails.student} (password from SEED_PASSWORD or dest default)`,
   );
   await prisma.$disconnect();
 }

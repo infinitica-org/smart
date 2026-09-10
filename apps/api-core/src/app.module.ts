@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { buildPinoHttpOptions } from '@smart/observability';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
+import { FeatureFlagGuard } from './common/guards/feature-flag.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { SessionHoldGuard } from './common/guards/session-hold.guard.js';
@@ -26,6 +27,7 @@ import { ProjectsModule } from './modules/projects/projects.module.js';
 import { PublicProfileModule } from './modules/public-profile/public-profile.module.js';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module.js';
 import { SandboxModule } from './modules/sandbox/sandbox.module.js';
+import { UsernameModule } from './modules/username/username.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
@@ -63,6 +65,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     RateLimitModule,
     AuthModule,
     UsersModule,
+    UsernameModule,
     WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,
@@ -86,6 +89,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: SessionHoldGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: FeatureFlagGuard },
     { provide: APP_INTERCEPTOR, useClass: ObservabilityInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },
     { provide: APP_FILTER, useClass: ApiExceptionFilter },

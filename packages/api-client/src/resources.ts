@@ -1,5 +1,6 @@
 import type {
   AddCertificateSkillsRequest,
+  AuditLogSection,
   CreateCompanyRequest,
   CreateInstitutionRequestSchema,
   CompleteCandidateOnboardingRequest,
@@ -22,12 +23,29 @@ import type {
   UpdateCertificateLearningRequest,
   UpdateCompanyRequest,
   UpdateInstitutionRequest,
+  UpdatePlanCapacityRequest,
   UpdatePlanEntitlementsRequest,
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
   SaveDraftRequest,
   StartAttemptRequest,
+  CompleteCertVerifyRequest,
+  CompleteSkillVerifyRequest,
+  SaveCertVerifyRequest,
+  SaveSkillVerifyRequest,
+  StartCertVerifyRequest,
+  StartSkillVerifyRequest,
+  SubmitCertificateAgendaRequest,
+  RunSdeSkillFormCodeRequest,
+  ReserveUsernameRequest,
+  UpdateProfileVisibilityRequest,
+  CreateCandidateEducationDto,
+  UpdateCandidateEducationDto,
+  CreateCandidateLanguageDto,
+  UpdateCandidateLanguageDto,
+  CreateBlockedWordRequest,
+  VoidRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -36,6 +54,10 @@ import {
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
+  CompleteCertVerifyResponseSchema,
+  CompleteSkillVerifyResponseSchema,
+  CertVerifyPrepareDtoSchema,
+  CertVerifySessionDtoSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -43,6 +65,8 @@ import {
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
   CandidateCertificateDtoSchema,
+  CandidateEducationSchema,
+  CandidateLanguageSchema,
   CandidateOnboardingProfileResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
@@ -52,6 +76,7 @@ import {
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
+  PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
   InvitationDtoSchema,
@@ -74,6 +99,9 @@ import {
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
+  SkillLibraryResponseSchema,
+  SkillVerifyPrepareDtoSchema,
+  SkillVerifySessionDtoSchema,
   SsoStartResponseSchema,
   StudentInviteLinkResponseSchema,
   SubscriptionPlanDtoSchema,
@@ -92,16 +120,24 @@ import {
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
   SaveDraftResponseSchema,
+  RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   ValidateWorkExperienceProofResponseSchema,
   SendWorkExperienceVerificationResponseSchema,
   GetWorkExperienceVerificationResponseSchema,
   SubmitWorkExperienceVerificationResponseSchema,
+  WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
   type SubmitWorkExperienceVerificationDto,
+  UsernameStatusResponseSchema,
+  ProfileVisibilityResponseSchema,
+  ListBlockedWordsResponseSchema,
+  BlockedWordDtoSchema,
+  VoidWorkExperienceResponseSchema,
+  VoidCandidateCertificateResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
 import type { SmartApiClient } from './client.js';
@@ -231,10 +267,87 @@ export function usersApi(client: SmartApiClient) {
         schema: PublicCandidateProfileDtoSchema,
       }),
 
+    /** CN-T09 — reservation status only; never carries cooldown/failed-attempt state. */
+    getUsernameStatus: () =>
+      client.get(prefixed('/users/me/username'), {
+        schema: UsernameStatusResponseSchema,
+      }),
+
+    reserveUsername: (body: ReserveUsernameRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/username'),
+        body,
+        schema: UsernameStatusResponseSchema,
+      }),
+
+    getProfileVisibility: () =>
+      client.get(prefixed('/users/me/visibility'), {
+        schema: ProfileVisibilityResponseSchema,
+      }),
+
+    updateProfileVisibility: (body: UpdateProfileVisibilityRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/visibility'),
+        body,
+        schema: ProfileVisibilityResponseSchema,
+      }),
+
     listWorkExperiences: () =>
       client.get(prefixed('/users/me/work-experiences'), {
         schema: z.array(WorkExperienceSchema),
       }),
+
+    listEducation: () =>
+      client.get(prefixed('/users/me/education'), {
+        schema: z.array(CandidateEducationSchema),
+      }),
+
+    getEducation: (id: string) =>
+      client.get(prefixed(`/users/me/education/${id}`), {
+        schema: CandidateEducationSchema,
+      }),
+
+    createEducation: (body: CreateCandidateEducationDto) =>
+      client.post(prefixed('/users/me/education'), body, {
+        schema: CandidateEducationSchema,
+      }),
+
+    updateEducation: (id: string, body: UpdateCandidateEducationDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/education/${id}`),
+        body,
+        schema: CandidateEducationSchema,
+      }),
+
+    deleteEducation: (id: string) => client.delete<void>(prefixed(`/users/me/education/${id}`)),
+
+    listLanguages: () =>
+      client.get(prefixed('/users/me/languages'), {
+        schema: z.array(CandidateLanguageSchema),
+      }),
+
+    getLanguage: (id: string) =>
+      client.get(prefixed(`/users/me/languages/${id}`), {
+        schema: CandidateLanguageSchema,
+      }),
+
+    createLanguage: (body: CreateCandidateLanguageDto) =>
+      client.post(prefixed('/users/me/languages'), body, {
+        schema: CandidateLanguageSchema,
+      }),
+
+    updateLanguage: (id: string, body: UpdateCandidateLanguageDto) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/users/me/languages/${id}`),
+        body,
+        schema: CandidateLanguageSchema,
+      }),
+
+    deleteLanguage: (id: string) => client.delete<void>(prefixed(`/users/me/languages/${id}`)),
 
     getWorkExperience: (id: string) =>
       client.get(prefixed(`/users/me/work-experiences/${id}`), {
@@ -282,6 +395,20 @@ export function usersApi(client: SmartApiClient) {
           schema: SendWorkExperienceVerificationResponseSchema,
         },
       ),
+
+    restartWorkExperienceVerification: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/restart-verification`),
+        {},
+        {
+          schema: SendWorkExperienceVerificationResponseSchema,
+        },
+      ),
+
+    getWorkExperienceOpsDashboard: () =>
+      client.get(prefixed('/users/me/work-experiences/ops-dashboard'), {
+        schema: z.array(WorkExperienceOpsDashboardItemSchema),
+      }),
 
     getWorkExperienceVerificationByToken: (token: string) =>
       client.get(prefixed(`/users/work-experiences/verify-token/${token}`), {
@@ -361,6 +488,11 @@ export function onboardingApi(client: SmartApiClient) {
         schema: SubscriptionPlanDtoSchema,
       }),
 
+    updatePlanCapacity: (planId: string, body: UpdatePlanCapacityRequest) =>
+      client.patch(prefixed(`/admin/plans/${planId}/capacity`), body, {
+        schema: SubscriptionPlanDtoSchema,
+      }),
+
     institutionEntitlements: (institutionId: string) =>
       client.get(prefixed(`/admin/institutions/${institutionId}/entitlements`), {
         schema: TenantEntitlementsDtoSchema,
@@ -374,8 +506,24 @@ export function onboardingApi(client: SmartApiClient) {
         schema: TenantEntitlementsDtoSchema,
       }),
 
+    companyEntitlements: (companyId: string) =>
+      client.get(prefixed(`/admin/companies/${companyId}/entitlements`), {
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
+    setCompanyFlag: (companyId: string, body: SetFeatureFlagOverrideRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/admin/companies/${companyId}/feature-flags`),
+        body,
+        schema: TenantEntitlementsDtoSchema,
+      }),
+
     tpoEntitlements: () =>
       client.get(prefixed('/tpo/entitlements'), { schema: TenantEntitlementsDtoSchema }),
+
+    studentEntitlements: () =>
+      client.get(prefixed('/student/entitlements'), { schema: TenantEntitlementsDtoSchema }),
 
     dashboard: () => client.get(prefixed('/admin/dashboard'), { schema: AdminDashboardDtoSchema }),
 
@@ -384,6 +532,7 @@ export function onboardingApi(client: SmartApiClient) {
       action?: string;
       resourceType?: string;
       resourceId?: string;
+      section?: AuditLogSection;
     }) =>
       client.get(prefixed('/admin/audit-logs'), {
         schema: z.array(AuditLogDtoSchema),
@@ -450,6 +599,30 @@ export function onboardingApi(client: SmartApiClient) {
         schema: IntegrityQueueItemDtoSchema,
       }),
 
+    /** CN-T09 — super-admin-curated blocked-word list. */
+    listBlockedWords: () =>
+      client.get(prefixed('/admin/blocked-words'), {
+        schema: ListBlockedWordsResponseSchema,
+      }),
+
+    createBlockedWord: (body: CreateBlockedWordRequest) =>
+      client.post(prefixed('/admin/blocked-words'), body, {
+        schema: BlockedWordDtoSchema,
+      }),
+
+    removeBlockedWord: (id: string) => client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
+
+    /** SA-T08 — one-directional; there is no "un-void". */
+    voidCandidateCertificate: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/candidate-certificates/${id}/void`), body, {
+        schema: VoidCandidateCertificateResponseSchema,
+      }),
+
+    voidWorkExperience: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/work-experience/${id}/void`), body, {
+        schema: VoidWorkExperienceResponseSchema,
+      }),
+
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),
 
     holdStudent: (userId: string, body: TenantActionReason) =>
@@ -499,6 +672,16 @@ export function onboardingApi(client: SmartApiClient) {
         schema: InvitationDtoSchema,
       }),
 
+    listPlatformAdmins: () =>
+      client.get(prefixed('/admin/platform-admins'), {
+        schema: z.array(PlatformAdminDtoSchema),
+      }),
+
+    invitePlatformAdmin: (body: { fullName: string; email: string; reason: string }) =>
+      client.post(prefixed('/admin/platform-admins'), body, {
+        schema: PlatformAdminDtoSchema,
+      }),
+
     createBatch: (body: { name: string; code?: string }) =>
       client.post(prefixed('/tpo/batches'), body, { schema: BatchDtoSchema }),
 
@@ -532,6 +715,11 @@ export function onboardingApi(client: SmartApiClient) {
       client.post(prefixed(`/tpo/invitations/${invitationId}/resend`), undefined, {
         schema: InvitationDtoSchema,
       }),
+
+    revokeStudentInvitation: (invitationId: string) =>
+      client.post(prefixed(`/tpo/invitations/${invitationId}/revoke`), undefined, {
+        schema: InvitationDtoSchema,
+      }),
   };
 }
 
@@ -546,6 +734,12 @@ export function catalogApi(client: SmartApiClient) {
     track: (trackCode: string) =>
       client.get(prefixed(`/catalog/tracks/${trackCode}`), {
         schema: TrackDtoSchema,
+        anonymous: true,
+      }),
+
+    skillLibrary: () =>
+      client.get(prefixed('/catalog/skills'), {
+        schema: SkillLibraryResponseSchema,
         anonymous: true,
       }),
   };
@@ -564,6 +758,65 @@ export function assessmentApi(client: SmartApiClient) {
     declareSkillClaim: (body: DeclareSkillClaimRequest) =>
       client.post(prefixed('/assessment/skill-claims'), body, {
         schema: SkillClaimDtoSchema,
+      }),
+
+    prepareSkillVerify: (claimId: string) =>
+      client.post(
+        prefixed(`/assessment/skill-claims/${claimId}/verify/start`),
+        { prepareOnly: true } satisfies StartSkillVerifyRequest,
+        { schema: SkillVerifyPrepareDtoSchema },
+      ),
+
+    startSkillVerify: (claimId: string, body?: StartSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-claims/${claimId}/verify/start`), body ?? {}, {
+        schema: SkillVerifySessionDtoSchema,
+        timeoutMs: 180_000,
+      }),
+
+    skillVerifySession: (sessionId: string) =>
+      client.get(prefixed(`/assessment/skill-verify/${sessionId}`), {
+        schema: SkillVerifySessionDtoSchema,
+      }),
+
+    saveSkillVerify: (sessionId: string, body: SaveSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-verify/${sessionId}/save`), body, {
+        schema: SkillVerifySessionDtoSchema,
+        timeoutMs: 5_000,
+      }),
+
+    completeSkillVerify: (sessionId: string, body: CompleteSkillVerifyRequest) =>
+      client.post(prefixed(`/assessment/skill-verify/${sessionId}/complete`), body, {
+        schema: CompleteSkillVerifyResponseSchema,
+      }),
+
+    prepareCertVerify: (certificateId: string) =>
+      client.post(
+        prefixed(`/assessment/candidate-certificates/${certificateId}/verify/start`),
+        { prepareOnly: true } satisfies StartCertVerifyRequest,
+        { schema: CertVerifyPrepareDtoSchema },
+      ),
+
+    startCertVerify: (certificateId: string, body?: StartCertVerifyRequest) =>
+      client.post(
+        prefixed(`/assessment/candidate-certificates/${certificateId}/verify/start`),
+        body ?? {},
+        { schema: CertVerifySessionDtoSchema, timeoutMs: 180_000 },
+      ),
+
+    certVerifySession: (sessionId: string) =>
+      client.get(prefixed(`/assessment/cert-verify/${sessionId}`), {
+        schema: CertVerifySessionDtoSchema,
+      }),
+
+    saveCertVerify: (sessionId: string, body: SaveCertVerifyRequest) =>
+      client.post(prefixed(`/assessment/cert-verify/${sessionId}/save`), body, {
+        schema: CertVerifySessionDtoSchema,
+        timeoutMs: 5_000,
+      }),
+
+    completeCertVerify: (sessionId: string, body: CompleteCertVerifyRequest) =>
+      client.post(prefixed(`/assessment/cert-verify/${sessionId}/complete`), body, {
+        schema: CompleteCertVerifyResponseSchema,
       }),
 
     /** Resume after a refresh, a dropped connection, or a closed laptop. */
@@ -770,6 +1023,11 @@ export function candidateCertificatesApi(client: SmartApiClient) {
         schema: CandidateCertificateDtoSchema,
       }),
 
+    submitAgenda: (id: string, body: SubmitCertificateAgendaRequest) =>
+      client.post(prefixed(`/candidate-certificates/${id}/agenda`), body, {
+        schema: CandidateCertificateDtoSchema,
+      }),
+
     requestEndorsement: (id: string, body: CreateCertificateEndorsementRequest) =>
       client.post(prefixed(`/candidate-certificates/${id}/endorsement`), body, {
         schema: CandidateCertificateDtoSchema,
@@ -828,12 +1086,23 @@ export function systemApi(client: SmartApiClient) {
   };
 }
 
+export function evaluationApi(client: SmartApiClient) {
+  return {
+    runSkillFormCode: (body: RunSdeSkillFormCodeRequest) =>
+      client.post(prefixed('/evaluation/skill-form/run-code'), body, {
+        schema: RunSdeSkillFormCodeResponseSchema,
+        timeoutMs: 60_000,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
     users: usersApi(client),
     catalog: catalogApi(client),
     assessment: assessmentApi(client),
+    evaluation: evaluationApi(client),
     proctoring: proctoringApi(client),
     certificates: certificateApi(client),
     placement: placementApi(client),

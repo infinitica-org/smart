@@ -21,6 +21,8 @@ export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
 export * from './domain/skills.js';
+export * from './domain/sde-v4-bridge.js';
+export * from './domain/skill-focus-progress.js';
 export * from './domain/question.js';
 
 /* --------------------------------- dto ------------------------------------ */
@@ -30,6 +32,9 @@ export * from './dto/catalog.dto.js';
 export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';
 export * from './dto/evaluation.dto.js';
+export * from './dto/cert-agenda.dto.js';
+export * from './dto/candidate-certificate.dto.js';
+export * from './dto/cert-verify.dto.js';
 export * from './dto/cognitive-profile.dto.js';
 export * from './dto/calibration.dto.js';
 export * from './dto/certificate.dto.js';
@@ -38,13 +43,16 @@ export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/candidate-social.dto.js';
-export * from './dto/candidate-certificate.dto.js';
 export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';
 export * from './dto/work-experience.dto.js';
 export * from './dto/work-experience-proof.dto.js';
+export * from './dto/organization.dto.js';
+export * from './dto/username.dto.js';
+export * from './dto/void.dto.js';
+export * from './dto/candidate-profile.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
@@ -54,4 +62,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.2.3' as const;
+export const CONTRACTS_VERSION = '0.2.4' as const;

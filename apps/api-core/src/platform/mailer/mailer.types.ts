@@ -2,6 +2,7 @@ export const EMAIL_QUEUE = 'email_send' as const;
 
 export type EmailTemplateName =
   | 'institution-admin-invite'
+  | 'platform-admin-invite'
   | 'student-invite'
   | 'invite-reminder'
   | 'opportunity-shortlisted'

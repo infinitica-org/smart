@@ -115,9 +115,9 @@ export function portalHomeForRole(role: UserRole, origins: PortalOrigins): strin
       return `${origins.student.replace(/\/$/u, '')}/dashboard`;
     case 'INSTITUTION_ADMIN':
     case 'PLACEMENT_STAFF':
-      return `${origins.tpo.replace(/\/$/u, '')}/batches`;
+      return `${origins.tpo.replace(/\/$/u, '')}/dashboard`;
     case 'SUPER_ADMIN':
-      return `${origins.admin.replace(/\/$/u, '')}/admin/health`;
+      return `${origins.admin.replace(/\/$/u, '')}/admin`;
     default:
       return null;
   }

@@ -20,24 +20,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
+    // Runtime queries go through PgBouncer (transaction pooling) when
+    // configured; `prisma migrate deploy` always uses DATABASE_URL directly
+    // (see env.ts) since transaction-mode pooling can't support the
+    // session-level features migrations need.
     super({
-      adapter: new PrismaPg({ connectionString: env.DATABASE_URL, max: 20 }),
-      log: [{ level: 'query', emit: 'event' }],
-    });
-
-    // `model` is intentionally not attributed here (Prisma's query event does not
-    // carry it reliably across driver adapters); this is a load-test/soak signal
-    // for overall Postgres latency, not a per-model breakdown — postgres_exporter
-    // covers DB-side saturation, this covers what the app itself observed.
-    this.$on('query' as never, (event: { duration: number; query: string }) => {
-      try {
-        dbQueryDuration.observe(
-          { operation: sqlOperation(event.query), model: 'all' },
-          event.duration / 1000,
-        );
-      } catch {
-        // Never let a metrics observation take down a query path.
-      }
+      adapter: new PrismaPg({
+        connectionString: env.POOLED_DATABASE_URL ?? env.DATABASE_URL,
+        max: 20,
+      }),
     });
   }
 

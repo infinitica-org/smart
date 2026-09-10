@@ -1,92 +1,135 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { cn } from '@smart/ui';
-import type { TenantEntitlementsDto } from '@smart/contracts';
-import { LayoutDashboard, Users, Briefcase, Target, Layers, Settings } from 'lucide-react';
-import { api } from '../lib/api';
+import { cn, UI_VERSION } from '@smart/ui';
+import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
+import {
+  LayoutDashboard,
+  Users,
+  UserPlus,
+  BarChart3,
+  Settings,
+  GraduationCap,
+  type LucideIcon,
+} from 'lucide-react';
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  isNew?: boolean;
+  subItems?: { name: string; href: string }[];
+}
+
+const mainNav: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Candidates', href: '/students', icon: Users },
-  { name: 'Placements', href: '/placements', icon: Briefcase },
-  { name: 'Opportunities', href: '/opportunities', icon: Target },
-  { name: 'Batches', href: '/batches', icon: Layers },
+  { name: 'Provisioning', href: '/provisioning', icon: UserPlus },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-const PLAN_NAMES: Record<string, string> = {
-  FREE: 'Free plan',
-  BASIC: 'Basic plan',
-  PRO: 'Pro member',
-};
-
 export function TpoSidebar() {
   const pathname = usePathname();
-  const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
-
-  useEffect(() => {
-    api.onboarding
-      .tpoEntitlements()
-      .then(setEntitlements)
-      .catch(() => {
-        /* footer just shows nothing plan-specific if this fails */
-      });
-  }, []);
 
   return (
-    <aside className="hidden lg:flex w-64 border-r border-white/5 bg-[#131313] flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans">
-      {/* Brand / Logo Area */}
-      <div className="h-16 flex items-center px-6 border-b border-white/5 shrink-0">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/wordmark-white.svg" alt="SMART" className="w-32 h-8" />
+    <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200/80 flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans select-none">
+      {/* Brand Header: Black Logo + Version on Right */}
+      <div className="h-16 px-5 flex items-center justify-between shrink-0 border-b border-slate-200/80 bg-white">
+        <Link href="/" className="flex items-center">
+          <Image
+            src={BlackLogo}
+            alt="SMART Logo"
+            width={140}
+            height={36}
+            className="h-8 w-auto object-contain"
+            priority
+          />
         </Link>
+        <span className="text-xs font-semibold text-slate-400">v{UI_VERSION}</span>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}`));
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-medium transition-all group',
-                isActive
-                  ? 'bg-[#004c63]/40 text-[#00fad0] shadow-sm'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white',
-              )}
-            >
-              <item.icon
-                className={cn(
-                  'w-4 h-4',
-                  isActive ? 'text-[#00fad0]' : 'text-gray-500 group-hover:text-gray-300',
+      {/* Main Navigation */}
+      <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <ul className="space-y-1">
+          {mainNav.map((item) => {
+            const isActive =
+              pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            const Icon = item.icon;
+
+            return (
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group',
+                    isActive
+                      ? 'bg-[#F0FDFA] text-[#004C63] font-bold border border-[#CCFBF1]/80 shadow-[0_1px_2px_rgba(0,76,99,0.05)]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80',
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'size-4.5 shrink-0 transition-colors',
+                      isActive
+                        ? 'text-[#004C63] stroke-[2.2]'
+                        : 'text-slate-400 group-hover:text-slate-600',
+                    )}
+                  />
+                  <span className="truncate">{item.name}</span>
+                  {item.isNew ? (
+                    <span className="ml-auto bg-emerald-100 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      New
+                    </span>
+                  ) : null}
+                </Link>
+
+                {/* Sub-items (Tree View) if Active */}
+                {item.subItems && isActive && (
+                  <div className="ml-5 pl-4 border-l border-[#004C63]/20 space-y-1.5 pt-2 pb-1">
+                    {item.subItems.map((sub) => (
+                      <Link
+                        key={sub.name}
+                        href={sub.href}
+                        className="block text-xs font-semibold text-slate-500 hover:text-[#004C63] transition-colors py-1"
+                      >
+                        {sub.name}
+                      </Link>
+                    ))}
+                  </div>
                 )}
-              />
-              {item.name}
-            </Link>
-          );
-        })}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
-      {/* Footer Area - Plan / User */}
-      <Link href="/settings" className="p-4 border-t border-white/5 shrink-0 block">
-        <div className="bg-[#161616] rounded-xl p-4 border border-white/5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-[#00fad0]/10 blur-xl -mr-8 -mt-8" />
-          <div className="text-xs font-semibold text-white mb-1 relative z-10">
-            Institution Plan
+      {/* Sidebar Bottom Card */}
+      <div className="px-4 py-3 shrink-0">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-[#F0FDFA]/50 to-emerald-50/30 p-4 border border-slate-200/80 shadow-xs">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-white border border-[#CCFBF1] text-[#004C63] shadow-2xs mb-2.5">
+            <GraduationCap className="size-5" />
           </div>
-          <div className="text-[11px] text-[#00fad0] mb-1 relative z-10 font-medium">
-            {entitlements?.planCode
-              ? (PLAN_NAMES[entitlements.planCode] ?? entitlements.planCode)
-              : 'No plan assigned'}
-          </div>
+          <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
+            Empowering Better Futures
+          </h4>
+          <p className="text-[11px] font-medium text-slate-500 mt-1 leading-snug">
+            Connect Talent. Create Opportunities.
+          </p>
         </div>
-      </Link>
+      </div>
+
+      {/* Bottom Footer Section */}
+      <div className="px-5 py-3 border-t border-slate-100 shrink-0">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+          <span className="hover:text-slate-600 transition-colors cursor-pointer">
+            Privacy Policy | Terms
+          </span>
+          <span className="font-semibold text-slate-400">v{UI_VERSION}</span>
+        </div>
+      </div>
     </aside>
   );
 }

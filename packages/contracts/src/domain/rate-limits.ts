@@ -350,6 +350,33 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale:
       'SE-T04 narrative spend is P3_BATCH; cap refreshes so one student cannot drain the batch lane.',
   },
+  {
+    key: 'read.adminQueue',
+    scope: 'USER',
+    limit: 60,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:admin_queue:user:{id}',
+    rationale: 'CV-T01 admin queue lookup limit.',
+  },
+  {
+    key: 'write.adminAction',
+    scope: 'USER',
+    limit: 30,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:admin_action:user:{id}',
+    rationale: 'CV-T01 admin approve/void action limit.',
+  },
+  {
+    key: 'evaluation.certAgenda',
+    scope: 'USER',
+    limit: 3,
+    windowSeconds: 60,
+    burst: 1,
+    redisKey: 'rl:cert_agenda:{id}',
+    rationale: 'Agenda-to-paper LLM generation; per-candidate cap so regen cannot blow cost.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
@@ -399,4 +426,6 @@ export const REDIS_TTL_SECONDS = {
   proctoringWarning: 2 * 60 * 60,
   proctoringHmac: 2 * 60 * 60,
   proctoringBlob: 60,
+  entitlementsResolve: 60,
+  certAgendaRegen: 24 * 60 * 60,
 } as const;

@@ -16,24 +16,32 @@ describe('CN-T06 ATS timeline mapping', () => {
   it('uses only canonical AtsStage values from the contract', () => {
     expect(ATS_PIPELINE_STAGES.every((stage) => ATS_STAGES.includes(stage))).toBe(true);
     expect(Object.keys(ATS_STAGE_LABELS)).toEqual([...ATS_STAGES]);
-    expect(isCanonicalAtsStage('AI_VERIFIED')).toBe(false);
+    expect(isCanonicalAtsStage('AI_VERIFIED')).toBe(true);
+    expect(isCanonicalAtsStage('HIRED')).toBe(true);
     expect(isCanonicalAtsStage('INTERVIEW')).toBe(true);
+    expect(isCanonicalAtsStage('SENT_TO_COMPANY')).toBe(false);
   });
 
   it('progresses the pipeline up to the current CO-T02 stage', () => {
     expect(pipelineProgressIndex('APPLIED')).toBe(0);
     expect(pipelineProgressIndex('SHORTLISTED')).toBe(1);
-    expect(pipelineProgressIndex('INTERVIEW')).toBe(2);
-    expect(pipelineProgressIndex('OFFER')).toBe(3);
+    expect(pipelineProgressIndex('AI_VERIFIED')).toBe(2);
+    expect(pipelineProgressIndex('INTERVIEW')).toBe(3);
+    expect(pipelineProgressIndex('OFFER')).toBe(4);
+    expect(pipelineProgressIndex('HIRED')).toBe(5);
     expect(stageReached('INTERVIEW', 'APPLIED')).toBe(true);
     expect(stageReached('INTERVIEW', 'SHORTLISTED')).toBe(true);
+    expect(stageReached('INTERVIEW', 'AI_VERIFIED')).toBe(true);
     expect(stageReached('INTERVIEW', 'INTERVIEW')).toBe(true);
     expect(stageReached('INTERVIEW', 'OFFER')).toBe(false);
+    expect(stageReached('HIRED', 'OFFER')).toBe(true);
+    expect(stageReached('HIRED', 'HIRED')).toBe(true);
   });
 
-  it('treats REJECTED and WITHDRAWN as terminal rather than past Offer', () => {
+  it('treats REJECTED and WITHDRAWN as terminal rather than past Hired', () => {
     expect(isTerminalAtsStage('REJECTED')).toBe(true);
     expect(isTerminalAtsStage('WITHDRAWN')).toBe(true);
+    expect(isTerminalAtsStage('HIRED')).toBe(false);
     expect(pipelineProgressIndex('REJECTED')).toBe(-1);
     expect(stageReached('REJECTED', 'OFFER')).toBe(false);
     expect(ATS_STAGE_LABELS.REJECTED).toBe('Rejected');

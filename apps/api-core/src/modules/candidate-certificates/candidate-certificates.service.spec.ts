@@ -14,6 +14,9 @@ function baseCertificateRow(overrides: Record<string, unknown> = {}) {
     title: 'AWS Certified Cloud Practitioner',
     issuer: 'Amazon Web Services',
     status: 'UPLOADED',
+    sourceStatus: 'pending',
+    certificateNumber: null,
+    verificationUrl: null,
     verificationMethod: null,
     certificateFileUrl: 'candidate-certificates/x/file.pdf',
     certificateFileName: 'cert.pdf',
@@ -36,7 +39,11 @@ function setup() {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
-      findUniqueOrThrow: vi.fn(),
+      findUniqueOrThrow: vi.fn().mockImplementation((_args?: { where?: { id?: string } }) => {
+        return Promise.resolve(
+          baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
+        );
+      }),
       update: vi.fn(),
     },
     candidateCertificateSkill: {
@@ -61,13 +68,25 @@ function setup() {
     upload: vi.fn().mockResolvedValue('candidate-certificates/x/file.pdf'),
     getSignedDownloadUrl: vi.fn().mockResolvedValue('https://signed.example.com/file.pdf'),
   };
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
   const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const verificationService = {
+    runVerification: vi.fn().mockResolvedValue({
+      certificateId: 'test-id',
+      sourceStatus: 'source_verified',
+      status: 'VERIFIED',
+      tierUsed: 'TIER_1_ISSUER_API',
+      result: { status: 'VERIFIED', tier: 'TIER_1_ISSUER_API', confidence: 0.95, reason: 'OK' },
+    }),
+  };
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
+    auditPublisher as never,
     emailQueue as never,
+    verificationService as never,
   );
-  return { prisma, storage, emailQueue, service };
+  return { prisma, storage, auditPublisher, emailQueue, verificationService, service };
 }
 
 describe('CandidateCertificatesService', () => {
@@ -75,14 +94,37 @@ describe('CandidateCertificatesService', () => {
     vi.clearAllMocks();
   });
 
-  it('creates a certificate declared by title and issuer', async () => {
+  it('creates a certificate declared by title, issuer, credential number, dates, and verification URL', async () => {
     const { prisma, service } = setup();
     prisma.candidateCertificate.create.mockResolvedValue(
-      baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
+      baseCertificateRow({
+        status: 'DECLARED',
+        certificateNumber: 'AWS-123456',
+        issueDate: '2024-01-15',
+        expiryDate: '2027-01-15',
+        verificationUrl: 'https://www.credly.com/org/aws/badge/123',
+        certificateFileUrl: null,
+        skills: [],
+      }),
+    );
+    prisma.candidateCertificate.findUniqueOrThrow.mockResolvedValue(
+      baseCertificateRow({
+        status: 'DECLARED',
+        certificateNumber: 'AWS-123456',
+        issueDate: '2024-01-15',
+        expiryDate: '2027-01-15',
+        verificationUrl: 'https://www.credly.com/org/aws/badge/123',
+        certificateFileUrl: null,
+        skills: [],
+      }),
     );
     const dto = await service.create(candidateId, {
       title: 'AWS Certified Cloud Practitioner',
       issuer: 'Amazon Web Services',
+      certificateNumber: 'AWS-123456',
+      issueDate: '2024-01-15',
+      expiryDate: '2027-01-15',
+      verificationUrl: 'https://www.credly.com/org/aws/badge/123',
     });
     expect(prisma.candidateCertificate.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -90,11 +132,16 @@ describe('CandidateCertificatesService', () => {
           candidateId,
           title: 'AWS Certified Cloud Practitioner',
           issuer: 'Amazon Web Services',
+          certificateNumber: 'AWS-123456',
+          issueDate: '2024-01-15',
+          expiryDate: '2027-01-15',
+          verificationUrl: 'https://www.credly.com/org/aws/badge/123',
         },
       }),
     );
     expect(dto.status).toBe('DECLARED');
-    expect(dto.certificateFileUrl).toBeNull();
+    expect(dto.certificateNumber).toBe('AWS-123456');
+    expect(dto.verificationUrl).toBe('https://www.credly.com/org/aws/badge/123');
   });
 
   it('rejects an upload with a disallowed mime type', async () => {
@@ -141,6 +188,18 @@ describe('CandidateCertificatesService', () => {
     await expect(service.getOwned(candidateId, certificateId)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('blocks skill edits while the certificate is in verification', async () => {
+    const { prisma, service } = setup();
+    prisma.candidateCertificate.findUnique.mockResolvedValue(
+      baseCertificateRow({ status: 'IN_VERIFICATION' }),
+    );
+    await expect(
+      service.replaceSkills(candidateId, certificateId, {
+        skills: [{ skillCode: 'GIT_VERSION_CONTROL', selfAssessedProficiency: 'BEGINNER' }],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects replacing skills with a code outside the catalog', async () => {
@@ -227,6 +286,18 @@ describe('CandidateCertificatesService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('returns skillsClaimedSnapshot once the certificate is verified', async () => {
+    const { prisma, service } = setup();
+    prisma.candidateCertificate.findUnique.mockResolvedValue(
+      baseCertificateRow({ status: 'VERIFIED' }),
+    );
+    const dto = await service.getOwned(candidateId, certificateId);
+    expect(dto.skillsClaimedSnapshot).toEqual({
+      taxonomyVersion: '0.9',
+      skillCodes: ['GIT_VERSION_CONTROL'],
+    });
+  });
+
   it('approving an endorsement verifies the certificate via ENDORSEMENT', async () => {
     const { prisma, service } = setup();
     prisma.certificateEndorsement.findUnique.mockResolvedValue({
@@ -268,5 +339,51 @@ describe('CandidateCertificatesService', () => {
       }),
     );
     expect(result.status).toBe('REJECTED');
+  });
+
+  describe('voidCertificate (SA-T08)', () => {
+    it('voids a certificate, writes an audit row, and records a verification event', async () => {
+      const { prisma, auditPublisher, service } = setup();
+      const actorId = randomUUID();
+      prisma.candidateCertificate.findUnique.mockResolvedValue(baseCertificateRow());
+      prisma.candidateCertificate.update.mockResolvedValue(
+        baseCertificateRow({ status: 'VOIDED', updatedAt: new Date('2026-09-09T00:00:00.000Z') }),
+      );
+
+      const result = await service.voidCertificate(actorId, certificateId, {
+        reason: 'Fraudulent submission confirmed by employer.',
+      });
+
+      expect(prisma.candidateCertificate.update).toHaveBeenCalledWith({
+        where: { id: certificateId },
+        data: { status: 'VOIDED' },
+      });
+      expect(prisma.certificateVerificationEvent.create).toHaveBeenCalledWith({
+        data: {
+          candidateCertificateId: certificateId,
+          status: 'VOIDED',
+          message: 'Fraudulent submission confirmed by employer.',
+        },
+      });
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId,
+          action: 'candidate_certificate.voided',
+          resourceType: 'candidate_certificate',
+          resourceId: certificateId,
+          reasonCode: 'Fraudulent submission confirmed by employer.',
+        }),
+      );
+      expect(result.status).toBe('VOIDED');
+      expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+    });
+
+    it('404s when voiding a certificate that does not exist', async () => {
+      const { prisma, service } = setup();
+      prisma.candidateCertificate.findUnique.mockResolvedValue(null);
+      await expect(
+        service.voidCertificate(randomUUID(), randomUUID(), { reason: 'Does not matter here.' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

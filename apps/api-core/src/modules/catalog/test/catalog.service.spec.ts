@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import { TRACK_DEFINITIONS } from '@smart/contracts';
+import { SKILL_DEFINITIONS, SKILL_TAXONOMY_VERSION, TRACK_DEFINITIONS } from '@smart/contracts';
 import { CatalogService } from '../catalog.service.js';
 
 /**
@@ -18,6 +18,18 @@ const dbDownStub = {
 
 describe('CatalogService', () => {
   const service = new CatalogService(dbDownStub);
+
+  it('listSkillLibrary() returns the frozen v0.9 INF-05 skill-set (SK-T01)', () => {
+    const library = service.listSkillLibrary();
+    expect(library.taxonomyVersion).toBe(SKILL_TAXONOMY_VERSION);
+    expect(library.skills).toHaveLength(SKILL_DEFINITIONS.length);
+    expect(library.skills[0]).toMatchObject({
+      code: expect.any(String),
+      name: expect.any(String),
+      domain: 'SOFTWARE_IT',
+      stream: expect.any(String),
+    });
+  });
 
   it('listTracks() returns all 10 tracks from contract fallback when DB is unavailable', async () => {
     const tracks = await service.listTracks();

@@ -5,7 +5,18 @@ import Link from 'next/link';
 import { isSmartApiError } from '@smart/api-client';
 import type { ApplicationDto, AtsStage } from '@smart/contracts';
 import { Alert, Card, Button } from '@smart/ui';
-import { Search, Filter, Shield, Clock, Video, Building2, Ban, XCircle } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Shield,
+  Clock,
+  Video,
+  Building2,
+  Ban,
+  XCircle,
+  BadgeCheck,
+  Trophy,
+} from 'lucide-react';
 import { applicationsApi, openingsApi } from '../../../lib/api';
 
 function errorMessage(caught: unknown, fallback: string): string {
@@ -23,8 +34,10 @@ const STAGE_FILTERS: readonly (AtsStage | 'ALL')[] = [
   'ALL',
   'APPLIED',
   'SHORTLISTED',
+  'AI_VERIFIED',
   'INTERVIEW',
   'OFFER',
+  'HIRED',
   'REJECTED',
   'WITHDRAWN',
 ];
@@ -33,38 +46,50 @@ function stageBadge(stage: AtsStage) {
   switch (stage) {
     case 'APPLIED':
       return (
-        <span className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-          <Clock className="w-3.5 h-3.5" /> Applied
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <Clock className="w-3.5 h-3.5 text-slate-500" /> Applied
         </span>
       );
     case 'SHORTLISTED':
       return (
-        <span className="flex items-center gap-1.5 text-blue-400 text-xs font-medium">
-          <Shield className="w-3.5 h-3.5" /> Shortlisted
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+          <Shield className="w-3.5 h-3.5 text-sky-600" /> Shortlisted
+        </span>
+      );
+    case 'AI_VERIFIED':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+          <BadgeCheck className="w-3.5 h-3.5 text-teal-600" /> AI-Verified
         </span>
       );
     case 'INTERVIEW':
       return (
-        <span className="flex items-center gap-1.5 text-[#00fad0] text-xs font-medium">
-          <Video className="w-3.5 h-3.5" /> Interview
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <Video className="w-3.5 h-3.5 text-indigo-600" /> Interview
         </span>
       );
     case 'OFFER':
       return (
-        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-          <Shield className="w-3.5 h-3.5" /> Offer
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <Shield className="w-3.5 h-3.5 text-emerald-600" /> Offer
+        </span>
+      );
+    case 'HIRED':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+          <Trophy className="w-3.5 h-3.5 text-green-600" /> Hired
         </span>
       );
     case 'REJECTED':
       return (
-        <span className="flex items-center gap-1.5 text-red-400 text-xs font-medium">
-          <Ban className="w-3.5 h-3.5" /> Rejected
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <Ban className="w-3.5 h-3.5 text-rose-600" /> Rejected
         </span>
       );
     case 'WITHDRAWN':
       return (
-        <span className="flex items-center gap-1.5 text-gray-500 text-xs font-medium">
-          <XCircle className="w-3.5 h-3.5" /> Withdrawn
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+          <XCircle className="w-3.5 h-3.5 text-slate-400" /> Withdrawn
         </span>
       );
   }
@@ -123,32 +148,36 @@ export default function OpportunitiesPage() {
   });
 
   return (
-    <main className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-6 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <main className="max-w-[1400px] mx-auto space-y-6 font-sans select-none pb-12">
+      {/* Header Bar */}
+      <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white">Opportunity Tracking</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Monitor candidate progress across every opening and stage.
+          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">
+            Opportunity Tracking
+          </h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-1 font-medium">
+            Monitor candidate progress across every active opening and ATS recruitment stage.
           </p>
         </div>
       </div>
 
-      <Card className="bg-[#131313] border-white/5 p-4 flex flex-col md:flex-row gap-4">
+      {/* Filter Bar */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs p-4 flex flex-col md:flex-row gap-3 rounded-2xl">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search candidate, role, or company..."
-            className="w-full bg-[#1a1a1a] text-white text-sm rounded-lg py-2 pl-10 pr-4 border border-white/5 focus:outline-none focus:border-[#00fad0]/50 transition-all"
+            className="w-full bg-slate-50 text-slate-900 text-xs rounded-xl py-2.5 pl-10 pr-4 border border-slate-200/90 focus:outline-none focus:border-[#004C63] focus:bg-white focus:ring-2 focus:ring-[#004C63]/15 transition-all placeholder:text-slate-400 font-medium shadow-xs"
           />
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <select
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value as AtsStage | 'ALL')}
-            className="bg-[#1a1a1a] text-gray-300 text-sm rounded-lg border border-white/5 px-4 focus:outline-none focus:border-[#00fad0]/50"
+            className="bg-slate-50 text-slate-700 text-xs rounded-xl border border-slate-200/90 px-4 py-2.5 focus:outline-none focus:border-[#004C63] focus:bg-white font-semibold cursor-pointer shadow-xs transition-all"
           >
             {STAGE_FILTERS.map((stage) => (
               <option key={stage} value={stage}>
@@ -158,16 +187,16 @@ export default function OpportunitiesPage() {
           </select>
           <Button
             type="button"
-            variant="secondary"
-            className="bg-[#1a1a1a] border-white/10 text-white hover:bg-white/5 flex items-center gap-2"
+            className="bg-[#004C63] hover:bg-[#0A4D5C] text-white flex items-center gap-2 font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs transition-all"
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-3.5 h-3.5 text-white" />
             Apply Filters
           </Button>
         </div>
       </Card>
 
-      <Card className="bg-[#131313] border-white/5 overflow-hidden">
+      {/* Applications Table */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs overflow-hidden rounded-2xl">
         {error ? (
           <div className="p-6">
             <Alert tone="danger" title="Applications unavailable">
@@ -175,36 +204,36 @@ export default function OpportunitiesPage() {
             </Alert>
           </div>
         ) : loading ? (
-          <p role="status" className="p-6 text-sm text-gray-400">
+          <p role="status" className="p-8 text-sm font-medium text-slate-500">
             Loading candidate pipeline…
           </p>
         ) : filtered.length === 0 ? (
-          <p className="p-8 text-center text-sm text-gray-400">
+          <p className="p-12 text-center text-sm font-medium text-slate-500">
             No applications match this view yet.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="bg-[#161616] border-b border-white/5 text-gray-400">
+              <thead className="bg-slate-50/90 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Candidate</th>
-                  <th className="px-6 py-4 font-medium">Opportunity</th>
-                  <th className="px-6 py-4 font-medium">Pipeline Status</th>
-                  <th className="px-6 py-4 font-medium">Match Score</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+                  <th className="px-6 py-4">Candidate</th>
+                  <th className="px-6 py-4">Opportunity</th>
+                  <th className="px-6 py-4">Pipeline Status</th>
+                  <th className="px-6 py-4">Match Score</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {filtered.map(({ application, companyName, roleTitle }) => (
                   <tr
                     key={application.applicationId}
-                    className="hover:bg-white/[0.02] transition-colors"
+                    className="hover:bg-[#F0FDFA]/40 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div className="font-medium text-white">
+                      <div className="font-bold text-slate-900">
                         {application.studentName ?? 'Candidate'}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-0.5 font-medium">
                         Updated{' '}
                         {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(
                           new Date(application.updatedAt),
@@ -212,19 +241,19 @@ export default function OpportunitiesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-300">{roleTitle}</div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                        <Building2 className="w-3.5 h-3.5" /> {companyName}
+                      <div className="font-bold text-slate-900">{roleTitle}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
+                        <Building2 className="w-3.5 h-3.5 text-[#004C63]" /> {companyName}
                       </div>
                     </td>
                     <td className="px-6 py-4">{stageBadge(application.stage)}</td>
                     <td className="px-6 py-4">
                       {application.matchScore !== null ? (
-                        <span className="flex items-center justify-center w-10 h-8 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-xs">
+                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
                           {Math.round(application.matchScore * 100)}%
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-500">Not scored yet</span>
+                        <span className="text-xs font-medium text-slate-400">Not scored yet</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -232,7 +261,7 @@ export default function OpportunitiesPage() {
                         <Link href="/review">
                           <Button
                             variant="primary"
-                            className="bg-[#00fad0] hover:bg-[#00fad0]/90 text-white text-xs h-8 px-4 rounded-full"
+                            className="bg-[#004C63] hover:bg-[#0A4D5C] text-white text-xs h-8 px-4 rounded-xl font-bold shadow-xs transition-all"
                           >
                             Review & Send
                           </Button>
@@ -241,7 +270,7 @@ export default function OpportunitiesPage() {
                         <Link href={`/ats?applicationId=${application.applicationId}`}>
                           <Button
                             variant="outline"
-                            className="border-white/10 text-gray-400 hover:text-white hover:bg-white/5 text-xs h-8 px-4 rounded-full"
+                            className="border-slate-200 text-slate-700 hover:bg-slate-50 text-xs h-8 px-4 rounded-xl font-semibold transition-all"
                           >
                             View Details
                           </Button>

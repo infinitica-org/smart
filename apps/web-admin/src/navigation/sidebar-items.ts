@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   ScrollText,
   ShieldAlert,
+  ShieldBan,
+  UserCog,
   Users,
   Webhook,
   Gauge,
@@ -54,12 +56,24 @@ export const sidebarItems: NavGroup[] = [
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
+      {
+        id: 'blocked-words',
+        title: 'Blocked words',
+        url: '/admin/blocked-words',
+        icon: ShieldBan,
+      },
     ],
   },
   {
     id: 'platform',
     label: 'Platform',
     items: [
+      {
+        id: 'platform-admins',
+        title: 'Platform admins',
+        url: '/admin/platform-admins',
+        icon: UserCog,
+      },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
       { id: 'rate-limits', title: 'Rate limits', url: '/admin/rate-limits', icon: Gauge },
       { id: 'webhooks', title: 'Webhooks', url: '/admin/webhooks', icon: Webhook },

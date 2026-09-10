@@ -34,7 +34,9 @@ function application(overrides: Partial<CandidateApplicationDto> = {}): Candidat
 
 function renderTracker(pollIntervalMs = 60_000): ReturnType<typeof render> {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, refetchIntervalInBackground: true },
+    },
   });
   return render(
     <QueryClientProvider client={client}>
@@ -79,8 +81,30 @@ describe('MyApplicationsTracker', () => {
       'true',
       'true',
       'true',
+      'true',
+      'false',
       'false',
     ]);
+  });
+
+  it('renders the AI-Verified stage introduced alongside CO-T02', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [application({ stage: 'AI_VERIFIED' })],
+    });
+
+    renderTracker();
+
+    await waitFor(() => expect(screen.getAllByText('AI-Verified').length).toBeGreaterThan(0));
+  });
+
+  it('renders the Hired stage as the final, non-terminal pipeline step', async () => {
+    listMyApplications.mockResolvedValue({
+      applications: [application({ stage: 'HIRED' })],
+    });
+
+    renderTracker();
+
+    await waitFor(() => expect(screen.getAllByText('Hired').length).toBeGreaterThan(0));
   });
 
   it('shows the updated stage after a poll cycle without a manual refresh', async () => {
@@ -98,10 +122,15 @@ describe('MyApplicationsTracker', () => {
     renderTracker(25);
 
     await waitFor(() => expect(screen.getAllByText('Shortlisted').length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0), {
-      timeout: 1500,
-    });
-    expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
+    await waitFor(
+      () => {
+        expect(listMyApplications.mock.calls.length).toBeGreaterThan(1);
+        expect(screen.getAllByTestId('ats-timeline')[0]?.getAttribute('data-stage')).toBe(
+          'INTERVIEW',
+        );
+      },
+      { timeout: 1500 },
+    );
   });
 
   it('stops polling after unmount', async () => {

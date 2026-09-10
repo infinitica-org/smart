@@ -8,24 +8,35 @@ import {
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import {
-  SKILL_CODE_SET,
+  AddCertificateSkillsRequestSchema,
   SKILL_DEFINITIONS,
+  skillsClaimedSnapshotWhenVerified,
   type AddCertificateSkillsRequest,
+  type AdminCertificateReviewRequest,
   type CandidateCertificateDto,
   type CertificateVerificationEventDto,
   type CreateCandidateCertificateRequest,
   type GetCertificateEndorsementResponse,
   type ListCertificateVerificationEventsResponse,
+  type ListCertificateVerificationQueueResponse,
   type ListMyCandidateCertificatesResponse,
   type SubmitCertificateEndorsementDecisionRequest,
   type SubmitCertificateEndorsementDecisionResponse,
+  SubmitCertificateAgendaRequestSchema,
+  type SubmitCertificateAgendaRequest,
+  type TrackCode,
   type UpdateCertificateLearningRequest,
+  type VoidCandidateCertificateResponse,
+  type VoidRequest,
 } from '@smart/contracts';
+import { certRetryAvailableAt } from '../assessment/cert-assessment-state-machine.js';
 import { env } from '../../platform/config/env.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import type { EmailJobPayload, EmailQueueJobData } from '../../platform/mailer/mailer.types.js';
 import { EMAIL_QUEUE } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { CertificateSourceVerificationService } from './verification/certificate-source-verification.service.js';
 import { generateInviteToken, hashInviteToken } from '../invitations/invite-token.util.js';
 import type {
   CandidateCertificate,
@@ -44,18 +55,113 @@ export class CandidateCertificatesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
+    @Inject(CertificateSourceVerificationService)
+    private readonly verificationService: CertificateSourceVerificationService,
   ) {}
+
+  /**
+   * SA-T08 — extends the v0.9 fraud/void action (previously assessment-attempt only, see
+   * `AssessmentService.resolveIntegrity`) to a self-declared/external certificate. One-directional:
+   * there is no "un-void". The status flip alone is enough to drop it from the public profile —
+   * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
+   * never VOIDED) rows.
+   */
+  async voidCertificate(
+    actorId: string,
+    id: string,
+    body: VoidRequest,
+  ): Promise<VoidCandidateCertificateResponse> {
+    const existing = await this.prisma.candidateCertificate.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Certificate not found.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: { status: 'VOIDED' },
+    });
+    await this.addEvent(id, 'VOIDED', body.reason);
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'candidate_certificate.voided',
+      resourceType: 'candidate_certificate',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return {
+      id: updated.id,
+      status: updated.status,
+      voidedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async submitAgenda(
+    candidateId: string,
+    id: string,
+    body: SubmitCertificateAgendaRequest,
+  ): Promise<CandidateCertificateDto> {
+    const row = await this.findOwnedOrThrow(candidateId, id);
+    const parsed = SubmitCertificateAgendaRequestSchema.parse(body);
+    if (row.status === 'VERIFIED' || row.status === 'VOIDED') {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Agenda cannot be changed for a verified or voided certificate.',
+        statusCode: 400,
+      });
+    }
+    if (row.sourceStatus !== 'source_verified') {
+      throw new BadRequestException({
+        error: 'source_not_verified',
+        message: 'Certificate source must be verified before submitting an agenda.',
+        statusCode: 400,
+      });
+    }
+
+    const updated = await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        trackCode: parsed.trackCode,
+        agendaLines: parsed.agendaLines,
+        expiryDate: parsed.expiryDate ?? row.expiryDate,
+      },
+      include: { skills: true },
+    });
+    await this.addEvent(id, updated.status, 'Agenda submitted for certification assessment.');
+    return this.toDto(updated);
+  }
 
   async create(
     candidateId: string,
     body: CreateCandidateCertificateRequest,
   ): Promise<CandidateCertificateDto> {
     const row = await this.prisma.candidateCertificate.create({
-      data: { candidateId, title: body.title, issuer: body.issuer },
+      data: {
+        candidateId,
+        title: body.title,
+        issuer: body.issuer,
+        certificateNumber: body.certificateNumber,
+        issueDate: body.issueDate,
+        expiryDate: body.expiryDate,
+        verificationUrl: body.verificationUrl,
+      },
       include: { skills: true },
     });
-    return this.toDto(row);
+
+    await this.verificationService.runVerification(row.id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id: row.id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
   }
 
   async listMine(candidateId: string): Promise<ListMyCandidateCertificatesResponse> {
@@ -101,7 +207,7 @@ export class CandidateCertificatesService {
       contentType: file.mimeType,
     });
 
-    const updated = await this.prisma.candidateCertificate.update({
+    await this.prisma.candidateCertificate.update({
       where: { id },
       data: {
         certificateFileUrl: objectKey,
@@ -113,6 +219,12 @@ export class CandidateCertificatesService {
       include: { skills: true },
     });
     await this.addEvent(id, 'UPLOADED', 'Certificate file uploaded.');
+    await this.verificationService.runVerification(id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
     return this.toDto(updated);
   }
 
@@ -121,22 +233,28 @@ export class CandidateCertificatesService {
     id: string,
     body: AddCertificateSkillsRequest,
   ): Promise<CandidateCertificateDto> {
-    await this.findOwnedOrThrow(candidateId, id);
-
-    for (const skill of body.skills) {
-      if (!SKILL_CODE_SET.has(skill.skillCode)) {
-        throw new BadRequestException({
-          error: 'validation_failed',
-          message: `Unknown skill code: ${skill.skillCode}`,
-          statusCode: 400,
-        });
-      }
+    const row = await this.findOwnedOrThrow(candidateId, id);
+    const parsedSkills = AddCertificateSkillsRequestSchema.safeParse(body);
+    if (!parsedSkills.success) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Every skill must be a known taxonomy code from GET /catalog/skills.',
+        statusCode: 400,
+        details: parsedSkills.error.flatten(),
+      });
+    }
+    if (row.status === 'VERIFIED' || row.status === 'IN_VERIFICATION') {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Skills cannot be changed while the certificate is verified or in verification.',
+        statusCode: 400,
+      });
     }
 
     await this.prisma.$transaction([
       this.prisma.candidateCertificateSkill.deleteMany({ where: { candidateCertificateId: id } }),
       this.prisma.candidateCertificateSkill.createMany({
-        data: body.skills.map((skill) => ({
+        data: parsedSkills.data.skills.map((skill) => ({
           candidateCertificateId: id,
           skillCode: skill.skillCode,
           selfAssessedProficiency: skill.selfAssessedProficiency,
@@ -157,14 +275,22 @@ export class CandidateCertificatesService {
     body: UpdateCertificateLearningRequest,
   ): Promise<CandidateCertificateDto> {
     await this.findOwnedOrThrow(candidateId, id);
-    const updated = await this.prisma.candidateCertificate.update({
+    await this.prisma.candidateCertificate.update({
       where: { id },
       data: {
         learningDescription: body.learningDescription,
         tools: body.tools,
         practicalApplied: body.practicalApplied,
         practicalDescription: body.practicalDescription,
+        certificateNumber: body.certificateNumber,
+        verificationUrl: body.verificationUrl,
       },
+      include: { skills: true },
+    });
+    await this.verificationService.runVerification(id);
+
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
       include: { skills: true },
     });
     return this.toDto(updated);
@@ -380,6 +506,66 @@ export class CandidateCertificatesService {
     return row;
   }
 
+  async listVerificationQueue(): Promise<ListCertificateVerificationQueueResponse> {
+    const rows = await this.prisma.candidateCertificate.findMany({
+      where: { sourceStatus: { in: ['pending', 'source_failed'] } },
+      include: { skills: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const certificates = await Promise.all(rows.map((row) => this.toDto(row)));
+    return { certificates };
+  }
+
+  async adminApprove(
+    id: string,
+    body: AdminCertificateReviewRequest,
+  ): Promise<CandidateCertificateDto> {
+    await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        sourceStatus: 'source_verified',
+        status: 'VERIFIED',
+      },
+    });
+    await this.addEvent(
+      id,
+      'VERIFIED',
+      body.reason
+        ? `Super Admin approved: ${body.reason}`
+        : 'Super Admin approved certificate source verification.',
+    );
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
+  }
+
+  async adminVoid(
+    id: string,
+    body: AdminCertificateReviewRequest,
+  ): Promise<CandidateCertificateDto> {
+    await this.prisma.candidateCertificate.update({
+      where: { id },
+      data: {
+        sourceStatus: 'voided',
+        status: 'REJECTED',
+      },
+    });
+    await this.addEvent(
+      id,
+      'REJECTED',
+      body.reason
+        ? `Super Admin voided: ${body.reason}`
+        : 'Super Admin voided certificate source verification.',
+    );
+    const updated = await this.prisma.candidateCertificate.findUniqueOrThrow({
+      where: { id },
+      include: { skills: true },
+    });
+    return this.toDto(updated);
+  }
+
   private async addEvent(
     candidateCertificateId: string,
     status: CertificateRow['status'],
@@ -397,6 +583,11 @@ export class CandidateCertificatesService {
       title: row.title,
       issuer: row.issuer,
       status: row.status,
+      sourceStatus: (row.sourceStatus as CandidateCertificateDto['sourceStatus']) ?? 'pending',
+      certificateNumber: row.certificateNumber ?? null,
+      issueDate: row.issueDate ?? null,
+      expiryDate: row.expiryDate ?? null,
+      verificationUrl: row.verificationUrl ?? null,
       verificationMethod: row.verificationMethod,
       certificateFileUrl: row.certificateFileUrl
         ? await this.storage.getSignedDownloadUrl(row.certificateFileUrl)
@@ -413,6 +604,22 @@ export class CandidateCertificatesService {
         skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
         selfAssessedProficiency: skill.selfAssessedProficiency,
       })),
+      skillsClaimedSnapshot: skillsClaimedSnapshotWhenVerified(
+        row.status,
+        row.skills.map((skill) => skill.skillCode),
+      ),
+      trackCode: (row.trackCode as TrackCode | null) ?? null,
+      agendaLines: row.agendaLines ?? [],
+      retryAvailableAt:
+        certRetryAvailableAt({
+          strikes: row.assessmentStrikes,
+          lockedUntil: row.assessmentLockedUntil,
+          lastGenuineFailureAt: row.lastGenuineFailureAt,
+          verified: row.status === 'VERIFIED',
+          rejected: row.status === 'REJECTED',
+        })?.toISOString() ?? null,
+      lockedUntil: row.assessmentLockedUntil?.toISOString() ?? null,
+      taxonomyVersionSnapshot: row.taxonomyVersionSnapshot,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

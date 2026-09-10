@@ -27,11 +27,27 @@ const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, trac
 export class PublicProfileService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  /**
+   * CN-T09 — once a candidate has claimed a username, their share link uses it
+   * (`/candidate/<username>`) instead of the opaque slug: easier to read, easier to
+   * remember, and it's the identity they picked. This holds from the moment it's
+   * *reserved*, not only once it activates — the link is shown (and can be copied)
+   * before the profile ever goes public, and it must never change underneath someone
+   * who already copied it the moment they flip visibility on. Until then it 404s the
+   * same as any other identifier for a profile that isn't visible yet (see `getBySlug`).
+   * The random slug is still lazily minted as a fallback for anyone who skipped
+   * claiming a username.
+   */
   async getOrCreateShareLink(userId: string): Promise<PublicProfileLinkResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { publicProfileSlug: true },
+      select: { publicProfileSlug: true, username: true },
     });
+
+    if (user.username) {
+      return { slug: user.username, url: `${env.VERIFY_APP_URL}/candidate/${user.username}` };
+    }
+
     const slug =
       user.publicProfileSlug ??
       (
@@ -44,12 +60,31 @@ export class PublicProfileService {
     return { slug: slug ?? '', url: `${env.VERIFY_APP_URL}/candidate/${slug ?? ''}` };
   }
 
-  async getBySlug(slug: string): Promise<PublicCandidateProfileDto> {
-    const user = await this.prisma.user.findUnique({
-      where: { publicProfileSlug: slug },
-      select: { id: true },
+  /**
+   * Resolves either the opaque share slug or an active claimed username — one public
+   * lookup, so the frontend (and anyone with an old link) never needs to know which
+   * kind of identifier they're holding.
+   */
+  async getBySlug(identifier: string): Promise<PublicCandidateProfileDto> {
+    const bySlug = await this.prisma.user.findUnique({
+      where: { publicProfileSlug: identifier },
+      select: { id: true, profileVisible: true },
     });
-    if (!user) {
+    const user =
+      bySlug ??
+      (await this.prisma.user.findUnique({
+        where: { usernameNormalized: identifier.trim().toLowerCase() },
+        select: { id: true, profileVisible: true, usernameStatus: true },
+      }));
+
+    // CN-T09 — a real identifier with visibility off (or a reserved-but-not-yet-active
+    // username) must 404 exactly like one that doesn't exist; never confirm to an
+    // outside caller that the link is real.
+    const resolvable =
+      user &&
+      user.profileVisible &&
+      (!('usernameStatus' in user) || user.usernameStatus === 'ACTIVE');
+    if (!resolvable) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'No public profile at this link.',
@@ -64,8 +99,17 @@ export class PublicProfileService {
   }
 
   private async build(userId: string): Promise<PublicCandidateProfileDto> {
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        fullName: true,
+        primaryTrack: { select: { code: true } },
+        showInProgressItems: true,
+      },
+    });
+    const showInProgress = owner.showInProgressItems;
+
     const [
-      user,
       skillClaims,
       declaredCount,
       projects,
@@ -73,10 +117,6 @@ export class PublicProfileService {
       certificate,
       externalCertificates,
     ] = await Promise.all([
-      this.prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { fullName: true, primaryTrack: { select: { code: true } } },
-      }),
       this.prisma.skillClaim.findMany({
         where: { studentId: userId, status: 'VERIFIED' },
         include: { skill: { select: { code: true } } },
@@ -90,7 +130,12 @@ export class PublicProfileService {
         include: { report: { select: { score: true } } },
       }),
       this.prisma.workExperience.findMany({
-        where: { studentId: userId, status: 'VERIFIED' },
+        // CN-T09 — verified-only by default; showInProgress additionally admits anything
+        // not yet decided, but a VOIDED (SA-T08) or REJECTED/EXPIRED entry never appears
+        // here regardless of that toggle.
+        where: showInProgress
+          ? { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } }
+          : { studentId: userId, status: 'VERIFIED' },
         orderBy: { startDate: 'desc' },
       }),
       this.prisma.certificate.findFirst({
@@ -98,18 +143,20 @@ export class PublicProfileService {
         include: { track: { select: { name: true } } },
       }),
       this.prisma.candidateCertificate.findMany({
-        where: { candidateId: userId, status: 'VERIFIED' },
+        where: showInProgress
+          ? { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } }
+          : { candidateId: userId, status: 'VERIFIED' },
         orderBy: { createdAt: 'desc' },
         include: { skills: true },
       }),
     ]);
 
-    const track = user.primaryTrack
-      ? TRACK_BY_CODE.get(user.primaryTrack.code as TrackCode)
+    const track = owner.primaryTrack
+      ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)
       : undefined;
 
     return {
-      fullName: user.fullName,
+      fullName: owner.fullName,
       trackName: track?.name ?? null,
       trackCategory: track?.category ?? null,
       skills: skillClaims.map((claim) => ({
@@ -135,6 +182,7 @@ export class PublicProfileService {
         startDate: entry.startDate.toISOString(),
         endDate: entry.endDate?.toISOString() ?? null,
         isCurrent: entry.isCurrent,
+        inProgress: entry.status !== 'VERIFIED',
       })),
       certificate: certificate
         ? { trackName: certificate.track.name, tier: certificate.headlineTier }
@@ -147,7 +195,9 @@ export class PublicProfileService {
           skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
           proficiency: skill.selfAssessedProficiency,
         })),
+        inProgress: cert.status !== 'VERIFIED',
       })),
+      showInProgressItems: showInProgress,
     };
   }
 }

@@ -1,99 +1,43 @@
 'use client';
 
-import { Bell } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useState } from 'react';
-import { queryKeys } from '@smart/api-client';
-import type { NotificationDto } from '@smart/contracts';
-import { cn, useMutation, useQuery, useQueryClient } from '@smart/ui';
+import { ChevronDown, Compass, LogOut, UserRound } from 'lucide-react';
+import { cn, SmartLogo } from '@smart/ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@smart/ui/dropdown-menu';
 import { initialsOf, useCurrentUser } from '@/lib/candidate-identity';
-import { api } from '@/lib/api';
+import { signOut } from '@/lib/auth';
+import { markTourAutostart, requestTourStart } from '@/lib/tour';
 
 const navItems = [
-  { name: 'Dashboard', href: '/dashboard' },
-  { name: 'Applications', href: '/applications' },
-  { name: 'Assessments', href: '/assessments' },
-  { name: 'Interviews', href: '/interviews' },
-  { name: 'Certificates', href: '/certificates' },
-  { name: 'Profile', href: '/profile' },
+  { name: 'Home', href: '/dashboard' },
+  { name: 'Skills', href: '/assessments' },
 ];
-
-const POLL_MS = 30_000;
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${String(minutes)}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${String(days)}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: user } = useCurrentUser();
   const initials = initialsOf(user?.fullName);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const queryClient = useQueryClient();
-
-  const { data } = useQuery({
-    queryKey: queryKeys.myNotifications(),
-    queryFn: () => api.notifications.list(),
-    refetchInterval: POLL_MS,
-  });
-  const notifications = data?.notifications ?? [];
-  const unreadCount = data?.unreadCount ?? 0;
-
-  const markRead = useMutation({
-    mutationFn: (notificationId: string) => api.notifications.markRead(notificationId),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(
-        queryKeys.myNotifications(),
-        (prev: { notifications: NotificationDto[]; unreadCount: number } | undefined) => {
-          if (!prev) return prev;
-          return {
-            notifications: prev.notifications.map((n) =>
-              n.notificationId === updated.notificationId ? updated : n,
-            ),
-            unreadCount: Math.max(0, prev.unreadCount - (updated.readAt ? 1 : 0)),
-          };
-        },
-      );
-    },
-  });
-
-  const openNotification = (notification: NotificationDto) => {
-    if (!notification.readAt) markRead.mutate(notification.notificationId);
-    setNotificationsOpen(false);
-    if (notification.linkUrl) {
-      const url = new URL(notification.linkUrl);
-      router.push(url.pathname + url.search);
-    }
-  };
 
   return (
-    <header className="relative z-40 flex h-[72px] shrink-0 items-center gap-4 border-b border-white/[0.06] bg-[#0f0f0f] px-4 md:h-24 md:px-8">
-      <Link href="/dashboard" className="relative h-10 w-24 shrink-0 md:w-28" aria-label="SMART">
-        <Image
-          src="/img/Logo/white-logo.png"
-          alt="SMART"
-          fill
-          sizes="112px"
-          className="object-contain object-left"
-          priority
-        />
+    <header className="relative z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-zinc-800/80 bg-[#0e0e10]/90 px-4 md:px-8 backdrop-blur">
+      <Link href="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="SMART">
+        <SmartLogo tone="on-dark" className="h-6 w-auto" />
       </Link>
 
       <div className="flex min-w-0 flex-1 justify-center">
         <nav
+          data-tour="nav-links"
           aria-label="Candidate console"
-          className="scrollbar-none flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-white/[0.06] bg-white/[0.03] p-1"
+          className="scrollbar-none flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-zinc-800/80 bg-zinc-900/60 p-1"
         >
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -102,10 +46,10 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'shrink-0 rounded-full px-3.5 py-2 text-[14px] font-medium whitespace-nowrap transition-colors md:px-4',
+                  'shrink-0 rounded-full px-5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all duration-200',
                   active
-                    ? 'bg-[#1f1f1f] text-white shadow-sm'
-                    : 'text-white/40 hover:text-white/80',
+                    ? 'bg-[#00fad0]/20 text-[#00fad0] border border-[#00fad0]/40 font-bold shadow-[0_0_12px_rgba(0,250,208,0.15)]'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50',
                 )}
               >
                 {item.name}
@@ -115,69 +59,66 @@ export function Navbar() {
         </nav>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setNotificationsOpen((v) => !v)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white"
-            aria-label={
-              unreadCount > 0 ? `Notifications, ${String(unreadCount)} unread` : 'Notifications'
-            }
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 ? (
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#00fad0]" />
-            ) : null}
-          </button>
-          {notificationsOpen ? (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-40 cursor-default"
-                aria-label="Close notifications"
-                onClick={() => setNotificationsOpen(false)}
-              />
-              <div className="absolute right-0 z-50 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#161616] p-2 shadow-xl">
-                <p className="px-2 py-2 text-sm font-medium text-white">Notifications</p>
-                {notifications.length === 0 ? (
-                  <p className="px-2 pb-2 text-xs text-white/40">No notifications yet.</p>
-                ) : (
-                  <ul className="flex flex-col gap-0.5">
-                    {notifications.map((notification) => (
-                      <li key={notification.notificationId}>
-                        <button
-                          type="button"
-                          onClick={() => openNotification(notification)}
-                          className={cn(
-                            'flex w-full flex-col gap-0.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-white/5',
-                            !notification.readAt && 'bg-[#00fad0]/[0.06]',
-                          )}
-                        >
-                          <span className="flex items-start justify-between gap-2">
-                            <span className="text-[13px] font-medium text-white">
-                              {notification.title}
-                            </span>
-                            {!notification.readAt ? (
-                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00fad0]" />
-                            ) : null}
-                          </span>
-                          <span className="text-xs text-white/50">{notification.body}</span>
-                          <span className="text-[11px] text-white/30">
-                            {timeAgo(notification.createdAt)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+      <div className="flex shrink-0 items-center gap-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-tour="profile-menu"
+              className="flex items-center gap-2 rounded-full border border-transparent py-1 pr-2 pl-1 transition-colors hover:border-zinc-800 hover:bg-zinc-900/60 data-[state=open]:border-zinc-800 data-[state=open]:bg-zinc-900/60"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#00fad0]/30 bg-zinc-800/90 text-xs font-bold text-[#00fad0] shadow-inner">
+                {initials}
               </div>
-            </>
-          ) : null}
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
-          {initials}
-        </div>
+              <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="w-56 rounded-2xl border border-zinc-800 bg-zinc-900 p-1 text-zinc-200 shadow-xl shadow-black/40"
+          >
+            <DropdownMenuLabel className="px-2.5 py-2 font-normal">
+              <div className="truncate text-sm font-semibold text-white">
+                {user?.fullName ?? 'Candidate'}
+              </div>
+              <div className="truncate text-xs text-zinc-500">{user?.email ?? ''}</div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem
+              onSelect={() => router.push('/public-profile')}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-zinc-200 focus:bg-zinc-800 focus:text-white"
+            >
+              <UserRound className="h-4 w-4" />
+              Public profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                // The tour's targets only exist on the dashboard: if we're already
+                // there, start it directly; otherwise flag it to auto-start once the
+                // dashboard has actually mounted.
+                if (pathname === '/dashboard') {
+                  requestTourStart();
+                } else {
+                  markTourAutostart();
+                  router.push('/dashboard');
+                }
+              }}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-zinc-200 focus:bg-zinc-800 focus:text-white"
+            >
+              <Compass className="h-4 w-4" />
+              Take a tour
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem
+              onSelect={() => void signOut()}
+              className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

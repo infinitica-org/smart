@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export const controlClassName =
   'h-10 w-full min-w-0 rounded-xl bg-muted px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:bg-muted/80 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:bg-destructive/10';
 
-export const controlButtonClassName = 'h-10';
+/** Primary form-submit buttons (Save/Create/Invite/Filter) — pill shape + press feedback, matching the onboarding wizard's PrimaryButton. */
+export const controlButtonClassName = 'h-10 rounded-full transition-all active:scale-[0.98]';
 
 export function AdminInput({ className, ...props }: ComponentProps<typeof Input>) {
   return <Input className={cn('h-10', className)} {...props} />;

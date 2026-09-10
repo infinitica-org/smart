@@ -6,8 +6,6 @@ import {
   buildCompleteOnboardingRequest,
   buildOnboardingDraftPayload,
   emptyOnboardingForm,
-  validateEducationItems,
-  validateExperienceItems,
 } from './onboarding-form';
 
 describe('onboarding-form', () => {
@@ -23,52 +21,29 @@ describe('onboarding-form', () => {
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'https://www.linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
-    form.preferences = ['Coding'];
+    form.jobPreferences = {
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+    };
     form.dpdpConsent = false;
     expect(buildCompleteOnboardingRequest(form)).toEqual({
       error: 'You must agree to the DPDP consent terms to complete your profile.',
     });
   });
 
-  it('validates education entry institutionName is required', () => {
-    const invalidEdu = [{ institutionName: '' }];
-    expect(validateEducationItems(invalidEdu)).toBe(
-      'Institution name is required for education entry #1.',
-    );
-
-    const validEdu = [{ institutionName: 'MIT', degree: 'B.Sc' }];
-    expect(validateEducationItems(validEdu)).toBeNull();
-  });
-
-  it('validates experience entry role and company are required', () => {
-    const invalidExpNoRole = [{ role: '', company: 'Acme Corp', tags: [] }];
-    expect(validateExperienceItems(invalidExpNoRole)).toBe(
-      'Role / Job Title is required for experience entry #1.',
-    );
-
-    const invalidExpNoCompany = [{ role: 'Engineer', company: '', tags: [] }];
-    expect(validateExperienceItems(invalidExpNoCompany)).toBe(
-      'Company name is required for experience entry #1.',
-    );
-
-    const validExp = [{ role: 'Developer', company: 'Acme', tags: [] }];
-    expect(validateExperienceItems(validExp)).toBeNull();
-  });
-
-  it('builds a complete payload with education, experience, language skills, and consent', () => {
+  it('builds a complete payload with language skills and consent', () => {
     const form = emptyOnboardingForm();
     form.firstName = 'Ada';
     form.lastName = 'Lovelace';
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Native or Bilingual' }];
-    form.education = [
-      { institutionName: 'University of Cambridge', degree: 'B.A.', fieldOfStudy: 'Mathematics' },
-    ];
-    form.experiences = [
-      { role: 'Researcher', company: 'Analytical Engine Lab', location: 'London', tags: [] },
-    ];
-    form.preferences = ['Mathematics'];
+    form.jobPreferences = {
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+    };
     form.dpdpConsent = true;
 
     const result = buildCompleteOnboardingRequest(form);
@@ -76,13 +51,18 @@ describe('onboarding-form', () => {
     if ('error' in result) return;
     expect(result.dpdpConsent).toBe(true);
     expect(result.linkedinUrl).toBe('https://linkedin.com/in/ada');
-    expect(result.education).toHaveLength(1);
-    expect(result.education[0]?.institutionName).toBe('University of Cambridge');
-    expect(result.experiences).toHaveLength(1);
-    expect(result.experiences[0]?.company).toBe('Analytical Engine Lab');
+    expect(result.education).toEqual([]);
+    expect(result.experiences).toEqual([]);
     expect(result.skills).toEqual([
       { type: 'language', name: 'English', proficiency: 'Native or Bilingual' },
     ]);
+    expect(result.jobPreferences).toEqual({
+      expectedCtcLakhs: 8,
+      currentCtcLakhs: undefined,
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+      preferredWorkModes: ['FULL_TIME', 'HYBRID'],
+    });
   });
 
   it('leaves githubUrl optional and normalizes it like linkedinUrl when present', () => {
@@ -92,7 +72,11 @@ describe('onboarding-form', () => {
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'https://www.linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
-    form.preferences = ['Coding'];
+    form.jobPreferences = {
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+    };
     form.dpdpConsent = true;
 
     const withoutGithub = buildCompleteOnboardingRequest(form);
@@ -112,13 +96,11 @@ describe('onboarding-form', () => {
       linkedinUrl: 'https://www.linkedin.com/in/grace',
       githubUrl: 'https://github.com/grace',
       skills: [{ type: 'language', name: 'English', proficiency: 'Native' }],
-      education: [{ institutionName: 'Yale' }],
     });
     expect(form.firstName).toBe('Grace');
     expect(form.lastName).toBe('Hopper');
     expect(form.githubUrl).toBe('https://github.com/grace');
     expect(form.languages[0]?.language).toBe('English');
-    expect(form.education[0]?.institutionName).toBe('Yale');
   });
 
   it('round-trips a draft payload through buildOnboardingDraftPayload', () => {
@@ -139,8 +121,8 @@ describe('onboarding-form', () => {
         phoneNumber: '1112223333',
         linkedinUrl: 'https://www.linkedin.com/in/grace',
       },
-      education: [{ institutionName: 'Yale' }],
-      experiences: [{ role: 'Admiral', company: 'USN', tags: [] }],
+      education: [],
+      experiences: [],
       skills: [
         { type: 'technical', name: 'COBOL', proficiency: 'ADVANCED' },
         { type: 'language', name: 'English', proficiency: 'NATIVE' },
@@ -155,6 +137,61 @@ describe('onboarding-form', () => {
     expect(form.phoneNumber).toBe('1112223333');
     expect(form.languages[0]?.language).toBe('English');
     expect(form.codingProficiencies[0]?.language).toBe('COBOL');
-    expect(form.education[0]?.institutionName).toBe('Yale');
+  });
+
+  it('requires job preferences (expected CTC, location, preferred locations)', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.dpdpConsent = true;
+
+    expect(buildCompleteOnboardingRequest(form)).toEqual({ error: 'Expected CTC is required.' });
+
+    form.jobPreferences.expectedCtcLakhs = '8';
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'Current location is required.',
+    });
+
+    form.jobPreferences.currentLocation = 'Bengaluru';
+    expect(buildCompleteOnboardingRequest(form)).toEqual({
+      error: 'Pick at least one preferred location.',
+    });
+
+    form.jobPreferences.preferredLocations = ['Bengaluru'];
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+  });
+
+  it('merges catalog skills and framework picks into the flat skills payload', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.catalogSkills = { GIT_VERSION_CONTROL: 'INTERMEDIATE' };
+    form.codingProficiencies = [{ id: 'a', language: 'Python', proficiency: 'ADVANCED' }];
+    form.frameworkProficiencies = [{ id: 'b', framework: 'React', proficiency: 'BEGINNER' }];
+    form.jobPreferences = {
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+    };
+    form.dpdpConsent = true;
+
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.skills).toEqual(
+      expect.arrayContaining([
+        { type: 'language', name: 'English', proficiency: 'Fluent' },
+        { type: 'technical', name: 'Git & version control', proficiency: 'INTERMEDIATE' },
+        { type: 'technical', name: 'Python', proficiency: 'ADVANCED' },
+        { type: 'technical', name: 'React', proficiency: 'BEGINNER' },
+      ]),
+    );
   });
 });

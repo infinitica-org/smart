@@ -16,8 +16,10 @@ export const RECENT_MATCHES_LIMIT = 8;
 export const PIPELINE_LABELS: Record<AtsStage, string> = {
   APPLIED: 'Applied / New Matches',
   SHORTLISTED: 'Shortlisted',
+  AI_VERIFIED: 'AI-Verified',
   INTERVIEW: 'Interviewing',
   OFFER: 'Offer',
+  HIRED: 'Hired',
   REJECTED: 'Rejected',
   WITHDRAWN: 'Withdrawn',
 };
@@ -42,8 +44,10 @@ export function emptyStageCounts(): Record<AtsStage, number> {
   return {
     APPLIED: 0,
     SHORTLISTED: 0,
+    AI_VERIFIED: 0,
     INTERVIEW: 0,
     OFFER: 0,
+    HIRED: 0,
     REJECTED: 0,
     WITHDRAWN: 0,
   };

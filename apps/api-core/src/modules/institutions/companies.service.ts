@@ -4,17 +4,25 @@ import type {
   CompanyDto,
   CreateCompanyRequest,
   ListCompaniesQuery,
+  SetFeatureFlagOverrideRequest,
   TenantActionReason,
+  TenantEntitlementsDto,
   UpdateCompanyRequest,
 } from '@smart/contracts';
+import { REDIS_TTL_SECONDS } from '@smart/contracts';
+import { cacheOperations } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
+
+const ENTITLEMENTS_CACHE_KEY = (companyId: string): string => `entitlements:company:${companyId}`;
 
 @Injectable()
 export class CompaniesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   async createCompany(body: CreateCompanyRequest, actorId: string): Promise<CompanyDto> {
@@ -27,6 +35,25 @@ export class CompaniesService {
       });
     }
     const slug = await this.uniqueSlug(body.name);
+
+    let org = await this.prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: { equals: body.name, mode: 'insensitive' } },
+          ...(body.website ? [{ domain: body.website }] : []),
+        ],
+      },
+    });
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: body.name,
+          domain: body.website ?? null,
+          verificationStatus: 'APPROVED',
+        },
+      });
+    }
+
     const company = await this.prisma.company.create({
       data: {
         name: body.name,
@@ -39,6 +66,7 @@ export class CompaniesService {
         location: body.location,
         planId: freePlan.id,
         verificationStatus: 'APPROVED',
+        organizationId: org.id,
       },
     });
     await this.writeAudit(actorId, 'company.created', company.id, 'created by super admin', {});
@@ -109,6 +137,7 @@ export class CompaniesService {
     }
     await this.prisma.company.update({ where: { id: companyId }, data });
     if (body.planCode) {
+      await this.redis.del(ENTITLEMENTS_CACHE_KEY(companyId));
       await this.writeAudit(actorId, 'company.plan_changed', companyId, body.planCode, {
         planCode: body.planCode,
       });
@@ -166,6 +195,77 @@ export class CompaniesService {
     return this.getCompany(companyId);
   }
 
+  async setCompanyFlagOverride(
+    companyId: string,
+    body: SetFeatureFlagOverrideRequest,
+    actorId: string,
+  ): Promise<TenantEntitlementsDto> {
+    await this.requireCompany(companyId);
+    const flag = await this.prisma.featureFlag.findUnique({ where: { key: body.key } });
+    if (!flag) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Feature flag not found.',
+        statusCode: 404,
+      });
+    }
+    const existing = await this.prisma.featureFlagOverride.findFirst({
+      where: { companyId, featureFlagId: flag.id },
+    });
+    if (existing) {
+      await this.prisma.featureFlagOverride.update({
+        where: { id: existing.id },
+        data: { enabled: body.enabled },
+      });
+    } else {
+      await this.prisma.featureFlagOverride.create({
+        data: { companyId, featureFlagId: flag.id, enabled: body.enabled },
+      });
+    }
+    await this.writeAudit(actorId, 'company.flag_override', companyId, body.key, {
+      key: body.key,
+      enabled: body.enabled,
+    });
+    await this.redis.del(ENTITLEMENTS_CACHE_KEY(companyId));
+    return this.resolveCompanyEntitlements(companyId);
+  }
+
+  async resolveCompanyEntitlements(companyId: string): Promise<TenantEntitlementsDto> {
+    const cacheKey = ENTITLEMENTS_CACHE_KEY(companyId);
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      cacheOperations.inc({ namespace: 'entitlements', result: 'hit' });
+      return JSON.parse(cached) as TenantEntitlementsDto;
+    }
+    cacheOperations.inc({ namespace: 'entitlements', result: 'miss' });
+
+    const company = await this.requireCompany(companyId);
+    const flags = await this.prisma.featureFlag.findMany({
+      include: { entitlements: true, overrides: true },
+      orderBy: { key: 'asc' },
+    });
+    const resolved: TenantEntitlementsDto = {
+      planCode: company.plan.code,
+      domain: company.taxonomyDomain ?? undefined,
+      verificationStatus: company.verificationStatus,
+      flags: flags.map((flag) => {
+        const override = flag.overrides.find((row) => row.companyId === companyId);
+        const entitlement = flag.entitlements.find((row) => row.planId === company.planId);
+        return {
+          key: flag.key,
+          name: flag.name,
+          enabled: override ? override.enabled : (entitlement?.enabled ?? false),
+        };
+      }),
+    };
+    await this.redis.setex(
+      cacheKey,
+      REDIS_TTL_SECONDS.entitlementsResolve,
+      JSON.stringify(resolved),
+    );
+    return resolved;
+  }
+
   private async requireCompany(companyId: string) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
@@ -200,6 +300,7 @@ export class CompaniesService {
   private toDto(
     row: {
       id: string;
+      organizationId?: string | null;
       name: string;
       domain: string;
       taxonomyDomain: string | null;
@@ -220,6 +321,7 @@ export class CompaniesService {
   ): CompanyDto {
     return {
       companyId: row.id,
+      organizationId: row.organizationId ?? null,
       name: row.name,
       domain: row.taxonomyDomain,
       website: row.website,

@@ -50,6 +50,16 @@ function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function extractLinkedinUsername(input: string): string {
+  if (!input) return '';
+  let cleaned = input.trim();
+  cleaned = cleaned.replace(/^https?:\/\//i, '');
+  cleaned = cleaned.replace(/^www\./i, '');
+  cleaned = cleaned.replace(/^linkedin\.com\/in\//i, '');
+  cleaned = cleaned.replace(/\/+$|^[/\s]+/g, '');
+  return cleaned;
+}
+
 export default function SocialVerification({ formData, updateField }: SocialVerificationProps) {
   const [linkedinLoading, setLinkedinLoading] = useState(false);
   const [linkedinError, setLinkedinError] = useState<string | null>(null);
@@ -60,6 +70,8 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
 
   const linkedin = formData.socialVerification.linkedin;
   const github = formData.socialVerification.github;
+
+  const linkedinUsername = extractLinkedinUsername(formData.linkedinUrl);
 
   const handleVerifyLinkedin = async () => {
     if (!formData.linkedinUrl.trim()) return;
@@ -121,230 +133,219 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
   };
 
   return (
-    <div key="social">
-      <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-[#00fad0]/20 text-[#00967c] dark:text-[#00fad0] flex items-center justify-center text-xs font-bold">
-          5
-        </span>
-        LinkedIn &amp; GitHub
-      </h3>
-      <p className="text-sm text-gray-400 mb-6 ml-8">
-        LinkedIn is required. Verifying it (and GitHub, if you have one) builds trust with employers
-        — it takes one click.
-      </p>
-
-      <div className="flex flex-col gap-6 max-w-lg ml-8">
-        {/* LinkedIn */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-white/70 flex items-center gap-2">
-            <LinkedinIcon className="w-4 h-4 text-[#0a66c2]" />
-            LinkedIn Profile <span className="text-[#00fad0]">*</span>
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="text-gray-500 text-sm">https://</span>
-            </div>
-            <input
-              type="text"
-              value={formData.linkedinUrl}
-              onChange={(e) => updateField('linkedinUrl', e.target.value)}
-              autoComplete="url"
-              placeholder="linkedin.com/in/you"
-              className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner"
-            />
+    <div key="social" className="flex flex-col gap-6">
+      {/* LinkedIn */}
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+          <LinkedinIcon className="w-4 h-4 text-[#0a66c2]" />
+          LinkedIn Profile <span className="text-emerald-400">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <span className="text-zinc-500 text-sm font-medium select-none">linkedin.com/in/</span>
           </div>
-
-          <AnimatePresence mode="wait">
-            {linkedin?.verified ? (
-              <motion.div
-                key="linkedin-verified"
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
-                className="mt-1 flex items-center gap-3 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/[0.06] p-3"
-              >
-                {linkedin.pictureUrl ? (
-                  <img
-                    src={linkedin.pictureUrl}
-                    alt=""
-                    className="w-9 h-9 rounded-full object-cover border border-white/10"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-white/10" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {linkedin.name ?? 'LinkedIn verified'}
-                  </p>
-                  <p className="text-xs text-[#00fad0] flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Verified via LinkedIn sign-in
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleVerifyLinkedin()}
-                  className="text-xs text-white/40 hover:text-white/70 shrink-0"
-                >
-                  Re-verify
-                </button>
-              </motion.div>
-            ) : (
-              <motion.button
-                key="linkedin-cta"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                type="button"
-                disabled={!formData.linkedinUrl.trim() || linkedinLoading}
-                onClick={() => void handleVerifyLinkedin()}
-                className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-[#0a66c2]/40 bg-[#0a66c2]/10 text-sm font-medium text-[#5b9bd9] hover:bg-[#0a66c2]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
-              >
-                {linkedinLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <LinkedinIcon className="w-4 h-4" />
-                )}
-                Verify with LinkedIn
-              </motion.button>
-            )}
-          </AnimatePresence>
-          {linkedinError ? (
-            <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
-              <AlertCircle className="w-3.5 h-3.5" /> {linkedinError}
-            </p>
-          ) : null}
+          <input
+            type="text"
+            value={linkedinUsername}
+            onChange={(e) => {
+              const uname = extractLinkedinUsername(e.target.value);
+              updateField('linkedinUrl', uname ? `https://linkedin.com/in/${uname}` : '');
+            }}
+            placeholder="username"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-[128px] pr-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+          />
         </div>
 
-        {/* GitHub */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-white/70 flex items-center gap-2">
-            <GithubIcon className="w-4 h-4" />
-            GitHub Profile <span className="text-gray-500 font-normal">(Optional)</span>
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="text-gray-500 text-sm">https://</span>
-            </div>
-            <input
-              type="text"
-              value={formData.githubUrl}
-              onChange={(e) => {
-                updateField('githubUrl', e.target.value);
-                setGithubPreview(null);
-                setGithubError(null);
-              }}
-              autoComplete="url"
-              placeholder="github.com/you"
-              disabled={Boolean(github?.verified)}
-              className="w-full bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-gray-300 dark:border-white/10 rounded-xl pl-16 pr-4 py-3.5 text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#00fad0]/50 focus:ring-1 focus:ring-[#00fad0]/50 transition-all shadow-inner disabled:opacity-60"
-            />
-          </div>
-
-          {!github?.verified && (
-            <button
-              type="button"
-              disabled={!formData.githubUrl.trim() || githubLoading}
-              onClick={() => void handlePreviewGithub()}
-              className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-white/15 bg-white/5 text-sm font-medium text-white/80 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
+        <AnimatePresence mode="wait">
+          {linkedin?.verified ? (
+            <motion.div
+              key="linkedin-verified"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="mt-1 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3"
             >
-              {githubLoading ? (
+              {linkedin.pictureUrl ? (
+                <img
+                  src={linkedin.pictureUrl}
+                  alt=""
+                  className="w-9 h-9 rounded-full object-cover border border-zinc-800"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-zinc-800" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {linkedin.name ?? 'LinkedIn verified'}
+                </p>
+                <p className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Verified via LinkedIn sign-in
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleVerifyLinkedin()}
+                className="text-xs text-zinc-400 hover:text-white shrink-0"
+              >
+                Re-verify
+              </button>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="linkedin-cta"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              type="button"
+              disabled={!formData.linkedinUrl.trim() || linkedinLoading}
+              onClick={() => void handleVerifyLinkedin()}
+              className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-[#0a66c2]/40 bg-[#0a66c2]/10 text-sm font-medium text-[#5b9bd9] hover:bg-[#0a66c2]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
+            >
+              {linkedinLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <GithubIcon className="w-4 h-4" />
+                <LinkedinIcon className="w-4 h-4" />
               )}
-              Fetch profile
-            </button>
+              Verify with LinkedIn
+            </motion.button>
           )}
-
-          <AnimatePresence>
-            {githubPreview ? (
-              <motion.div
-                key="github-preview"
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
-                className="mt-1 flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
-              >
-                <img
-                  src={githubPreview.avatarUrl}
-                  alt=""
-                  className="w-10 h-10 rounded-full object-cover border border-white/10"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">
-                    {githubPreview.name ?? githubPreview.login}{' '}
-                    <span className="text-white/40 font-normal">@{githubPreview.login}</span>
-                  </p>
-                  {githubPreview.bio ? (
-                    <p className="text-xs text-white/50 mt-0.5 line-clamp-2">{githubPreview.bio}</p>
-                  ) : null}
-                  <p className="text-xs text-white/35 mt-1">
-                    {githubPreview.publicRepoCount} public repositories
-                  </p>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={confirmGithub}
-                      className="h-8 px-3 rounded-lg bg-[#00fad0] text-[#0a0a0a] text-xs font-semibold"
-                    >
-                      Yes, that&apos;s me
-                    </button>
-                    <button
-                      type="button"
-                      onClick={rejectGithub}
-                      className="h-8 px-3 rounded-lg border border-white/15 text-white/60 text-xs"
-                    >
-                      Not me
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ) : null}
-
-            {github?.verified ? (
-              <motion.div
-                key="github-verified"
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
-                className="mt-1 flex items-center gap-3 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/[0.06] p-3"
-              >
-                <img
-                  src={github.avatarUrl}
-                  alt=""
-                  className="w-9 h-9 rounded-full object-cover border border-white/10"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {github.name ?? github.login}
-                  </p>
-                  <p className="text-xs text-[#00fad0] flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Confirmed — pick your top repos next
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={disconnectGithub}
-                  className="text-xs text-white/40 hover:text-white/70 shrink-0"
-                >
-                  Disconnect
-                </button>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-          {githubError ? (
-            <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
-              <AlertCircle className="w-3.5 h-3.5" /> {githubError}
-            </p>
-          ) : null}
-          <p className="text-[11px] text-white/30 mt-0.5">
-            We only read public repository metadata and language stats — nothing private, no write
-            access.
+        </AnimatePresence>
+        {linkedinError ? (
+          <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
+            <AlertCircle className="w-3.5 h-3.5" /> {linkedinError}
           </p>
+        ) : null}
+      </div>
+
+      {/* GitHub */}
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+          <GithubIcon className="w-4 h-4" />
+          GitHub Profile <span className="text-zinc-500 font-normal">(Optional)</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <span className="text-zinc-500 text-sm">https://</span>
+          </div>
+          <input
+            type="text"
+            value={formData.githubUrl}
+            onChange={(e) => {
+              updateField('githubUrl', e.target.value);
+              setGithubPreview(null);
+              setGithubError(null);
+            }}
+            autoComplete="url"
+            placeholder="github.com/you"
+            disabled={Boolean(github?.verified)}
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-16 pr-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all disabled:opacity-60"
+          />
         </div>
+
+        {!github?.verified && (
+          <button
+            type="button"
+            disabled={!formData.githubUrl.trim() || githubLoading}
+            onClick={() => void handlePreviewGithub()}
+            className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
+          >
+            {githubLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <GithubIcon className="w-4 h-4" />
+            )}
+            Fetch profile
+          </button>
+        )}
+
+        <AnimatePresence>
+          {githubPreview ? (
+            <motion.div
+              key="github-preview"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="mt-1 flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3"
+            >
+              <img
+                src={githubPreview.avatarUrl}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border border-zinc-800"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white">
+                  {githubPreview.name ?? githubPreview.login}{' '}
+                  <span className="text-zinc-400 font-normal">@{githubPreview.login}</span>
+                </p>
+                {githubPreview.bio ? (
+                  <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{githubPreview.bio}</p>
+                ) : null}
+                <p className="text-xs text-zinc-500 mt-1">
+                  {githubPreview.publicRepoCount} public repositories
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={confirmGithub}
+                    className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                  >
+                    Yes, that&apos;s me
+                  </button>
+                  <button
+                    type="button"
+                    onClick={rejectGithub}
+                    className="h-8 px-3 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white text-xs"
+                  >
+                    Not me
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+
+          {github?.verified ? (
+            <motion.div
+              key="github-verified"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="mt-1 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3"
+            >
+              <img
+                src={github.avatarUrl}
+                alt=""
+                className="w-9 h-9 rounded-full object-cover border border-zinc-800"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {github.name ?? github.login}
+                </p>
+                <p className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Confirmed — pick your best repo below
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={disconnectGithub}
+                className="text-xs text-zinc-400 hover:text-white shrink-0"
+              >
+                Disconnect
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        {githubError ? (
+          <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
+            <AlertCircle className="w-3.5 h-3.5" /> {githubError}
+          </p>
+        ) : null}
+        <p className="text-[11px] text-zinc-500 mt-0.5">
+          We only read public repository metadata and language stats — nothing private, no write
+          access.
+        </p>
       </div>
     </div>
   );

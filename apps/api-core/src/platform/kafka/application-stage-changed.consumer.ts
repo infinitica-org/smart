@@ -27,50 +27,7 @@ export class ApplicationStageChangedConsumer implements OnModuleInit {
         topic: SMART_TOPICS.applicationStageChanged,
         module: 'notifications',
         handler: async (payload, headers) => {
-          await runKafkaHandler(headers, async () => {
-            const parsed = ApplicationStageChangedEventSchema.safeParse(payload);
-            if (!parsed.success) {
-              this.logger.warn('Ignored malformed application.stage_changed payload');
-              return;
-            }
-
-            const event = parsed.data.data;
-            const application = await this.prisma.application.findUnique({
-              where: { id: event.applicationId },
-              include: { student: true, opening: true },
-            });
-            if (!application) {
-              this.logger.warn(`Application ${event.applicationId} not found for notification`);
-              return;
-            }
-
-            const fromStage = event.fromStage;
-            const toStage = event.toStage;
-            if (fromStage === toStage) return;
-
-            const base = {
-              userId: application.student.id,
-              email: application.student.email,
-              fullName: application.student.fullName,
-              companyName: application.opening.companyName,
-              roleTitle: application.opening.roleTitle,
-              applicationId: application.id,
-            };
-
-            if (toStage === 'SHORTLISTED' && fromStage !== 'SHORTLISTED') {
-              await this.notifications.notifyOpportunityShortlisted({
-                ...base,
-                openingId: application.openingId,
-              });
-              return;
-            }
-
-            await this.notifications.notifyStageChange({
-              ...base,
-              fromStage,
-              toStage,
-            });
-          });
+          await runKafkaHandler(headers, () => this.handleStageChanged(payload));
         },
       });
     } catch (error) {
@@ -78,5 +35,57 @@ export class ApplicationStageChangedConsumer implements OnModuleInit {
         `application.stage_changed consumer not started: ${error instanceof Error ? error.message : 'unknown'}`,
       );
     }
+  }
+
+  /**
+   * CO-T05: one notification per kanban movement, with content that matches
+   * the actual target column (see `NotificationsService`) rather than a
+   * generic "your application changed" message for every kind of move.
+   * Split out from `onModuleInit` so tests can drive it directly without a
+   * live Kafka subscription (the module skips subscribing in `NODE_ENV=test`).
+   */
+  async handleStageChanged(payload: unknown): Promise<void> {
+    const parsed = ApplicationStageChangedEventSchema.safeParse(payload);
+    if (!parsed.success) {
+      this.logger.warn('Ignored malformed application.stage_changed payload');
+      return;
+    }
+
+    const event = parsed.data.data;
+    const application = await this.prisma.application.findUnique({
+      where: { id: event.applicationId },
+      include: { student: true, opening: true },
+    });
+    if (!application) {
+      this.logger.warn(`Application ${event.applicationId} not found for notification`);
+      return;
+    }
+
+    const fromStage = event.fromStage;
+    const toStage = event.toStage;
+    if (fromStage === toStage) return;
+
+    const base = {
+      userId: application.student.id,
+      email: application.student.email,
+      fullName: application.student.fullName,
+      companyName: application.opening.companyName,
+      roleTitle: application.opening.roleTitle,
+      applicationId: application.id,
+    };
+
+    if (toStage === 'SHORTLISTED' && fromStage !== 'SHORTLISTED') {
+      await this.notifications.notifyOpportunityShortlisted({
+        ...base,
+        openingId: application.openingId,
+      });
+      return;
+    }
+
+    await this.notifications.notifyStageChange({
+      ...base,
+      fromStage,
+      toStage,
+    });
   }
 }

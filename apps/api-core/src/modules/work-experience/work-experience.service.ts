@@ -10,7 +10,10 @@ import type {
   GetWorkExperienceVerificationResponseDto,
   SubmitWorkExperienceVerificationDto,
   SubmitWorkExperienceVerificationResponseDto,
+  WorkExperienceOpsDashboardItemDto,
   WorkExperienceVerificationStatus,
+  VoidRequest,
+  VoidWorkExperienceResponse,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -21,9 +24,12 @@ import {
   WorkExperienceProofExtractedDataSchema,
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
+  isDisallowedEndorserEmailDomain,
+  skillsClaimedSnapshotWhenVerified,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import { OrganizationsService } from '../institutions/organizations.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -37,8 +43,10 @@ import type { Prisma } from '../../generated/prisma/index.js';
 interface RawWorkExperience {
   id: string;
   studentId: string;
+  organizationId?: string | null;
   companyId?: string | null;
   companyName: string;
+  companyNameRaw?: string | null;
   companyWebsite?: string | null;
   companyLinkedinUrl?: string | null;
   role: string;
@@ -77,22 +85,17 @@ interface RawWorkExperienceDocument {
   createdAt: Date;
 }
 
-function normalizeText(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function normalizeCompanyName(name: string | null | undefined): string {
-  if (!name) return '';
-  return normalizeText(name)
-    .replace(/\b(pvt|private|ltd|limited|inc|incorporated|llp|corp|corporation|co|company)\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export {
+  normalizeCompanyName,
+  extractDomain,
+  validateEmployerDomain,
+} from './company-name.util.js';
+import {
+  normalizeText,
+  normalizeCompanyName,
+  extractDomain,
+  validateEmployerDomain,
+} from './company-name.util.js';
 
 @Injectable()
 export class WorkExperienceService {
@@ -105,14 +108,70 @@ export class WorkExperienceService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
+    @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
   ) {}
 
+  private async resolveOrganization(params: {
+    name: string;
+    website?: string | null;
+    verifierEmail?: string | null;
+  }) {
+    if (this.organizationsService) {
+      return this.organizationsService.resolveOrCreateOrganization(params);
+    }
+    const rawName = params.name.trim();
+    const normalizedName = normalizeCompanyName(rawName);
+    let extractedDomain: string | null = null;
+    if (params.website) {
+      extractedDomain = extractDomain(params.website);
+    }
+    if (!extractedDomain && params.verifierEmail) {
+      extractedDomain = extractDomain(params.verifierEmail);
+    }
+
+    if (extractedDomain) {
+      const orgByDomain = await this.prisma.organization.findFirst({
+        where: { domain: extractedDomain },
+      });
+      if (orgByDomain) return orgByDomain;
+    }
+
+    const orgByName = await this.prisma.organization.findFirst({
+      where: {
+        OR: [
+          { name: { equals: rawName, mode: 'insensitive' } },
+          { name: { equals: normalizedName, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (orgByName) return orgByName;
+
+    let domainToUse: string | null = extractedDomain;
+    if (domainToUse) {
+      const domainExists = await this.prisma.organization.findFirst({
+        where: { domain: domainToUse },
+      });
+      if (domainExists) domainToUse = null;
+    }
+
+    return this.prisma.organization.create({
+      data: {
+        name: rawName,
+        domain: domainToUse,
+        verificationStatus: 'PENDING',
+      },
+    });
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
+    const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
       id: exp.id,
       studentId: exp.studentId,
+      organizationId: exp.organizationId ?? null,
       companyId: exp.companyId ?? null,
       companyName: exp.companyName,
+      companyNameRaw: exp.companyNameRaw ?? exp.companyName,
       companyWebsite: exp.companyWebsite ?? null,
       companyLinkedinUrl: exp.companyLinkedinUrl ?? null,
       role: exp.role,
@@ -124,7 +183,8 @@ export class WorkExperienceService {
       endDate: exp.endDate ? exp.endDate.toISOString() : null,
       isCurrent: exp.isCurrent,
       responsibilities: exp.responsibilities ?? null,
-      skills: exp.skills ?? [],
+      skillsClaimed,
+      skillsClaimedSnapshot: skillsClaimedSnapshotWhenVerified(exp.status, skillsClaimed),
       projects: exp.projects ?? null,
       candidateLinkedin: exp.candidateLinkedin ?? null,
       verifierName: exp.verifierName ?? null,
@@ -186,9 +246,23 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+    const rawName = data.companyName.trim();
+    const org = await this.resolveOrganization({
+      name: rawName,
+      website: data.companyWebsite,
+      verifierEmail: data.verifierEmail,
+    });
 
     // Optional company lookup to associate companyId if company matches catalog
     let matchedCompanyId: string | null = data.companyId ?? null;
+    if (!matchedCompanyId) {
+      const linkedCompany = await this.prisma.company.findFirst({
+        where: { organizationId: org.id },
+      });
+      if (linkedCompany) {
+        matchedCompanyId = linkedCompany.id;
+      }
+    }
     if (!matchedCompanyId && data.companyWebsite) {
       try {
         const urlObj = new URL(data.companyWebsite);
@@ -207,6 +281,8 @@ export class WorkExperienceService {
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
+        organizationId: org.id,
+        companyNameRaw: rawName,
         companyId: matchedCompanyId,
         companyName: data.companyName,
         companyWebsite: data.companyWebsite || null,
@@ -220,7 +296,7 @@ export class WorkExperienceService {
         endDate: data.endDate ? new Date(data.endDate) : null,
         isCurrent: data.isCurrent,
         responsibilities: data.responsibilities || null,
-        skills: data.skills,
+        skills: data.skillsClaimed,
         projects: (data.projects as Prisma.InputJsonValue) ?? null,
         candidateLinkedin: data.candidateLinkedin || null,
         verifierName: data.verifierName || null,
@@ -268,9 +344,46 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
+    if (
+      existing.status === 'VERIFIED' &&
+      data.skillsClaimed !== undefined &&
+      JSON.stringify(data.skillsClaimed) !== JSON.stringify(existing.skills ?? [])
+    ) {
+      throw new BadRequestException({
+        error: 'conflict',
+        message: 'Skills cannot be changed on a verified work experience entry.',
+        statusCode: 400,
+      });
+    }
+
+    let updatedOrgId: string | undefined = undefined;
+    let updatedCompanyNameRaw: string | undefined = undefined;
+
+    if (
+      data.companyName !== undefined ||
+      data.companyWebsite !== undefined ||
+      data.verifierEmail !== undefined
+    ) {
+      const nameToUse = data.companyName ?? existing.companyName;
+      const websiteToUse =
+        data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
+      const verifierEmailToUse =
+        data.verifierEmail !== undefined ? data.verifierEmail : existing.verifierEmail;
+
+      const org = await this.resolveOrganization({
+        name: nameToUse,
+        website: websiteToUse,
+        verifierEmail: verifierEmailToUse,
+      });
+      updatedOrgId = org.id;
+      updatedCompanyNameRaw = nameToUse.trim();
+    }
+
     const updated = await this.prisma.workExperience.update({
       where: { id },
       data: {
+        ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
+        ...(updatedCompanyNameRaw !== undefined ? { companyNameRaw: updatedCompanyNameRaw } : {}),
         ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
         ...(data.companyWebsite !== undefined
           ? { companyWebsite: data.companyWebsite || null }
@@ -291,7 +404,7 @@ export class WorkExperienceService {
         ...(data.responsibilities !== undefined
           ? { responsibilities: data.responsibilities || null }
           : {}),
-        ...(data.skills !== undefined ? { skills: data.skills } : {}),
+        ...(data.skillsClaimed !== undefined ? { skills: data.skillsClaimed } : {}),
         ...(data.projects !== undefined
           ? { projects: (data.projects as Prisma.InputJsonValue) ?? null }
           : {}),
@@ -544,30 +657,38 @@ export class WorkExperienceService {
       dateMatch,
     };
 
-    let validationStatus: 'VALIDATED' | 'REJECTED' = 'VALIDATED';
+    let validationStatus: 'VALIDATED' | 'REJECTED' | 'NEEDS_MANUAL_REVIEW' = 'VALIDATED';
     let rejectionReason: string | null = null;
+    let reasonCode = 'PROOF_VALIDATED';
 
     if (isOfferLetter) {
       validationStatus = 'REJECTED';
       rejectionReason =
-        'Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
+        'INVALID_DOCUMENT_TYPE: Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
+      reasonCode = 'INVALID_DOCUMENT_TYPE';
     } else if (!isActualEmploymentProof) {
       validationStatus = 'REJECTED';
       rejectionReason =
         'Uploaded document does not establish proof of actual or completed employment.';
+      reasonCode = 'PROOF_REJECTED';
     } else if (!companyNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document company name (${extracted.companyName ?? 'Unknown'}) does not match submitted company (${experience.companyName}).`;
+      reasonCode = 'PROOF_REJECTED';
     } else if (!candidateNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document candidate name (${extracted.candidateName ?? 'Unknown'}) does not match student name (${user?.fullName ?? 'Student'}).`;
-    } else if (!roleMatch) {
-      validationStatus = 'REJECTED';
-      rejectionReason = `Document role (${extracted.role ?? 'Unknown'}) does not match submitted role (${experience.role}).`;
-    } else if (!dateMatch) {
-      validationStatus = 'REJECTED';
-      rejectionReason =
-        'Document employment dates could not be verified against submitted experience dates.';
+      reasonCode = 'PROOF_REJECTED';
+    } else if (!roleMatch || !dateMatch || extracted.confidence < 0.75) {
+      validationStatus = 'NEEDS_MANUAL_REVIEW';
+      const variances: string[] = [];
+      if (!roleMatch)
+        variances.push(`Role variance (${extracted.role ?? 'Unknown'} vs ${experience.role})`);
+      if (!dateMatch) variances.push('Employment dates variance');
+      if (extracted.confidence < 0.75)
+        variances.push(`Low OCR confidence (${extracted.confidence})`);
+      rejectionReason = `NEEDS_MANUAL_REVIEW: ${variances.join('; ')}. Flagged for manual review.`;
+      reasonCode = 'NEEDS_MANUAL_REVIEW';
     }
 
     const validatedAt = new Date().toISOString();
@@ -609,7 +730,7 @@ export class WorkExperienceService {
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperienceDocument',
       resourceId: documentId,
-      reasonCode: validationStatus === 'REJECTED' ? 'PROOF_REJECTED' : 'PROOF_VALIDATED',
+      reasonCode,
     });
 
     return ValidateWorkExperienceProofResponseSchema.parse({
@@ -779,7 +900,7 @@ export class WorkExperienceService {
   ): Promise<SendWorkExperienceVerificationResponseDto> {
     const exp = await this.prisma.workExperience.findUnique({
       where: { id: experienceId },
-      include: { student: true },
+      include: { student: true, organization: true },
     });
 
     if (!exp) {
@@ -791,6 +912,22 @@ export class WorkExperienceService {
     if (!exp.verifierEmail) {
       throw new BadRequestException(
         'Verifier email is required to send verification. Please update work experience entry with verifier details.',
+      );
+    }
+
+    if (isDisallowedEndorserEmailDomain(exp.verifierEmail)) {
+      throw new BadRequestException(
+        `Verifier email (${exp.verifierEmail}) uses a free or personal email provider. An official corporate email domain is required for employer verification.`,
+      );
+    }
+
+    const targetDomain =
+      exp.companyWebsite ||
+      (exp.organization?.domain ? `https://${exp.organization.domain}` : null);
+    const domainValidation = validateEmployerDomain(exp.verifierEmail, targetDomain);
+    if (targetDomain && !domainValidation.domainMatch) {
+      throw new BadRequestException(
+        `Verifier email domain does not match company website domain (${targetDomain}).`,
       );
     }
 
@@ -874,6 +1011,9 @@ export class WorkExperienceService {
       metadata: {
         attemptId: attempt.id,
         verifierEmail: exp.verifierEmail,
+        verifierDomain: domainValidation.verifierDomain,
+        companyDomain: domainValidation.companyDomain,
+        domainMatch: domainValidation.domainMatch,
       },
     });
 
@@ -972,14 +1112,34 @@ export class WorkExperienceService {
 
     const exp = attempt.experience;
     const now = new Date();
-    const newStatus = parsed.approved ? 'VERIFIED' : 'REJECTED';
+    const decision = parsed.decision || (parsed.approved ? 'YES' : 'NO');
+    let newStatus: WorkExperienceVerificationStatus = 'REJECTED';
+    let rejectionReason: string | null = null;
+    let approved = false;
+
+    if (decision === 'YES') {
+      approved = true;
+      newStatus = 'VERIFIED';
+    } else if (decision === 'PARTIAL') {
+      approved = true;
+      newStatus = 'VERIFIED';
+      rejectionReason = parsed.comments || 'Verified with partial notes';
+    } else if (decision === 'NEED_CLARIFICATION') {
+      approved = false;
+      newStatus = 'SUBMITTED';
+      rejectionReason = parsed.comments || 'Employer requested clarification';
+    } else {
+      approved = false;
+      newStatus = 'REJECTED';
+      rejectionReason = parsed.comments || 'Rejected by employer verifier';
+    }
 
     await this.prisma.$transaction([
       this.prisma.workExperienceVerificationAttempt.update({
         where: { id: attempt.id },
         data: {
           respondedAt: now,
-          approved: parsed.approved,
+          approved,
           comments: parsed.comments || null,
           ipAddress: meta?.ip || null,
           userAgent: meta?.userAgent || null,
@@ -989,9 +1149,7 @@ export class WorkExperienceService {
         where: { id: exp.id },
         data: {
           status: newStatus,
-          rejectionReason: parsed.approved
-            ? null
-            : parsed.comments || 'Rejected by employer verifier',
+          rejectionReason,
         },
       }),
     ]);
@@ -1017,6 +1175,139 @@ export class WorkExperienceService {
       message: parsed.approved
         ? 'Work experience successfully verified.'
         : 'Work experience rejected.',
+    };
+  }
+
+  /**
+   * Restarts employer verification by invalidating prior attempts and creating a brand new attempt row.
+   */
+  async restartEmployerVerification(
+    studentId: string,
+    experienceId: string,
+  ): Promise<SendWorkExperienceVerificationResponseDto> {
+    const exp = await this.prisma.workExperience.findUnique({
+      where: { id: experienceId },
+      include: { student: true },
+    });
+
+    if (!exp || exp.studentId !== studentId) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+
+    if (!exp.verifierEmail) {
+      throw new BadRequestException('Verifier email is required to restart verification.');
+    }
+
+    return this.sendEmployerVerification(studentId, experienceId);
+  }
+
+  /**
+   * Fetches Ops Dashboard items for tracking candidate work experience verifications.
+   */
+  async getOpsDashboard(): Promise<WorkExperienceOpsDashboardItemDto[]> {
+    const experiences = await this.prisma.workExperience.findMany({
+      include: {
+        student: true,
+        verificationAttempts: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+
+    return experiences.map((exp) => {
+      const attempts = exp.verificationAttempts || [];
+      const latestAttempt = attempts[0] || null;
+
+      let currentStep = 'SUBMITTED';
+      if (exp.status === 'VERIFIED') {
+        currentStep = 'VERIFIED';
+      } else if (exp.status === 'REJECTED') {
+        currentStep = 'REJECTED';
+      } else if (exp.status === 'EXPIRED') {
+        currentStep = 'EXPIRED';
+      } else if (exp.status === 'PENDING_EMPLOYER') {
+        currentStep = latestAttempt?.reminderSentAt ? 'REMINDER_SENT' : 'EMPLOYER_DISPATCHED';
+      }
+
+      let emailState = 'NOT_SENT';
+      if (latestAttempt) {
+        if (latestAttempt.respondedAt) {
+          emailState = 'RESPONDED';
+        } else if (latestAttempt.expiresAt < now) {
+          emailState = 'EXPIRED';
+        } else if (latestAttempt.reminderSentAt) {
+          emailState = 'REMINDER_SENT';
+        } else {
+          emailState = 'SENT';
+        }
+      }
+
+      let timeRemainingHours = 0;
+      if (latestAttempt && !latestAttempt.respondedAt && latestAttempt.expiresAt > now) {
+        timeRemainingHours = Math.max(
+          0,
+          Math.round((latestAttempt.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60)),
+        );
+      }
+
+      return {
+        experienceId: exp.id,
+        candidateId: exp.studentId,
+        candidateName: exp.student?.fullName || 'Candidate',
+        candidateEmail: exp.student?.email || '',
+        companyName: exp.companyName,
+        companyWebsite: exp.companyWebsite ?? null,
+        role: exp.role,
+        status: exp.status as WorkExperienceVerificationStatus,
+        currentStep,
+        emailState,
+        timeRemainingHours,
+        createdAt: exp.createdAt.toISOString(),
+      };
+    });
+  }
+
+  /**
+   * SA-T08 — extends the v0.9 fraud/void action (previously assessment-attempt only, see
+   * `AssessmentService.resolveIntegrity`) to a work-experience row. One-directional: there is
+   * no "un-void". The status flip alone is enough to drop it from the public profile —
+   * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
+   * never VOIDED) rows.
+   */
+  async voidWorkExperience(
+    actorId: string,
+    id: string,
+    body: VoidRequest,
+  ): Promise<VoidWorkExperienceResponse> {
+    const existing = await this.prisma.workExperience.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Work experience entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.prisma.workExperience.update({
+      where: { id },
+      data: { status: 'VOIDED', rejectionReason: body.reason },
+    });
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'work_experience.voided',
+      resourceType: 'WorkExperience',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return {
+      id: updated.id,
+      status: updated.status as WorkExperienceVerificationStatus,
+      voidedAt: updated.updatedAt.toISOString(),
     };
   }
 }

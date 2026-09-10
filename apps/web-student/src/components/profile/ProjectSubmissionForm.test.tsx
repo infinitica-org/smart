@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectSubmissionForm } from './ProjectSubmissionForm';
@@ -8,6 +9,7 @@ const listMine = vi.fn();
 const getOnboarding = vi.fn();
 const listGithubRepos = vi.fn();
 const githubRepoReadme = vi.fn();
+const studentEntitlements = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -21,8 +23,22 @@ vi.mock('@/lib/api', () => ({
       listGithubRepos: (...args: unknown[]) => listGithubRepos(...args),
       githubRepoReadme: (...args: unknown[]) => githubRepoReadme(...args),
     },
+    onboarding: {
+      studentEntitlements: (...args: unknown[]) => studentEntitlements(...args),
+    },
   },
 }));
+
+function renderForm(): ReturnType<typeof render> {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <ProjectSubmissionForm />
+    </QueryClientProvider>,
+  );
+}
 
 const busTracker = {
   projectId: '123e4567-e89b-12d3-a456-426614174000',
@@ -65,10 +81,15 @@ describe('ProjectSubmissionForm', () => {
     getOnboarding.mockReset().mockResolvedValue({ profile: { socialVerification: null } });
     listGithubRepos.mockReset();
     githubRepoReadme.mockReset();
+    studentEntitlements.mockReset().mockResolvedValue({
+      planCode: 'PRO',
+      flags: [{ key: 'project_verification', name: 'Project verification', enabled: true }],
+    });
   });
 
-  it('blocks submit when the problem is too short', () => {
-    render(<ProjectSubmissionForm />);
+  it('blocks submit when the problem is too short', async () => {
+    renderForm();
+    await screen.findByRole('button', { name: /Submit project/i });
     fireEvent.change(screen.getByLabelText(/^Title$/i), { target: { value: 'App' } });
     fireEvent.change(screen.getByLabelText(/^Problem$/i), { target: { value: 'too short' } });
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
@@ -79,7 +100,8 @@ describe('ProjectSubmissionForm', () => {
   it('queues create, shows an explicit Processing state, and offers to submit another', async () => {
     create.mockResolvedValueOnce(busTracker);
 
-    render(<ProjectSubmissionForm />);
+    renderForm();
+    await screen.findByRole('button', { name: /Submit project/i });
     validFill();
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
 
@@ -117,7 +139,7 @@ describe('ProjectSubmissionForm', () => {
       ],
     });
 
-    render(<ProjectSubmissionForm />);
+    renderForm();
 
     expect(await screen.findByText('Campus bus tracker')).toBeTruthy();
     expect(screen.getByText('Portfolio site')).toBeTruthy();
@@ -130,7 +152,8 @@ describe('ProjectSubmissionForm', () => {
   it('sends an optional live link when filled in', async () => {
     create.mockResolvedValueOnce({ ...busTracker, liveUrl: 'https://bus-tracker.example.com' });
 
-    render(<ProjectSubmissionForm />);
+    renderForm();
+    await screen.findByRole('button', { name: /Submit project/i });
     validFill();
     fireEvent.change(screen.getByLabelText(/Live link/i), {
       target: { value: 'https://bus-tracker.example.com' },
@@ -161,10 +184,10 @@ describe('ProjectSubmissionForm', () => {
     });
     githubRepoReadme.mockResolvedValueOnce({ readme: '# Bus tracker\n\nTracks buses live.' });
 
-    render(<ProjectSubmissionForm />);
+    renderForm();
     await waitFor(() => expect(getOnboarding).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole('button', { name: /Import from GitHub/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Import from GitHub/i }));
     await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
 
     fireEvent.click(await screen.findByText('octocat/bus-tracker'));
@@ -182,5 +205,20 @@ describe('ProjectSubmissionForm', () => {
     expect((screen.getByLabelText(/^Approach$/i) as HTMLTextAreaElement).value).toBe(
       '# Bus tracker\n\nTracks buses live.',
     );
+  });
+
+  it("hides the submission form when the institution's plan lacks project_verification", async () => {
+    studentEntitlements.mockReset().mockResolvedValue({
+      planCode: 'FREE',
+      flags: [{ key: 'project_verification', name: 'Project verification', enabled: false }],
+    });
+
+    renderForm();
+
+    expect(
+      await screen.findByText(/Project verification isn't on your institution's plan/i),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Submit project/i })).toBeNull();
+    expect(screen.queryByLabelText(/^Title$/i)).toBeNull();
   });
 });

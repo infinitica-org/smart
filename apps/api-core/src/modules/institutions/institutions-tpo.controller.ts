@@ -23,6 +23,7 @@ import {
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Multipart, MultipartFile } from '@fastify/multipart';
+import { RequireFlag } from '../../common/guards/feature-flag.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -148,6 +149,7 @@ export class InstitutionsTpoController {
   }
 
   @Post('batches/:batchId/members/import')
+  @RequireFlag('bulk_batch_import')
   async importMembers(
     @Param('batchId') batchId: string,
     @Query('dryRun') dryRun: string | undefined,
@@ -244,5 +246,10 @@ export class InstitutionsTpoController {
   @Post('invitations/:invitationId/resend')
   resendInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
     return this.institutions.resendStudentInvitation(invitationId, requireInstitutionId(user));
+  }
+
+  @Post('invitations/:invitationId/revoke')
+  revokeInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
+    return this.institutions.revokeStudentInvitation(invitationId, requireInstitutionId(user));
   }
 }

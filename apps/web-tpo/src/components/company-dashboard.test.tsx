@@ -86,11 +86,17 @@ afterEach(() => {
 
 describe('CO-T04 company dashboard', () => {
   it('shows a loading state before live data arrives', () => {
-    vi.mocked(openingsApi.list).mockReturnValue(new Promise(() => undefined));
+    let resolveOpenings: (value: { openings: [] }) => void = () => undefined;
+    vi.mocked(openingsApi.list).mockReturnValue(
+      new Promise((resolve) => {
+        resolveOpenings = resolve;
+      }),
+    );
 
     render(<CompanyDashboard />);
 
     expect(screen.getByText('Loading company dashboard…')).toBeDefined();
+    resolveOpenings({ openings: [] });
   });
 
   it('maps live CO-T01 openings and CO-T02 applications onto dashboard sections', async () => {
@@ -112,8 +118,8 @@ describe('CO-T04 company dashboard', () => {
     ).toBeDefined();
     expect(screen.getByText('Bhavna Patel')).toBeDefined();
     expect(screen.getByText('Chirag Iyer')).toBeDefined();
-    expect(screen.queryByText('AI-Verified')).toBeNull();
-    expect(screen.queryByText('Hired')).toBeNull();
+    expect(screen.getByText('AI-Verified')).toBeDefined();
+    expect(screen.getByText('Hired')).toBeDefined();
     expect(screen.queryByText('SENT_TO_COMPANY')).toBeNull();
   });
 

@@ -44,6 +44,8 @@ export const PublicWorkExperienceSchema = z.object({
   startDate: z.string(),
   endDate: z.string().nullable(),
   isCurrent: z.boolean(),
+  /** CN-T09 — true for a not-yet-VERIFIED entry, only ever present when `showInProgressItems` is on. */
+  inProgress: z.boolean().default(false),
 });
 export type PublicWorkExperience = z.infer<typeof PublicWorkExperienceSchema>;
 
@@ -64,6 +66,8 @@ export const PublicExternalCertificateSchema = z.object({
       proficiency: CertificateProficiencySchema,
     }),
   ),
+  /** CN-T09 — true for a not-yet-VERIFIED certificate, only ever present when `showInProgressItems` is on. */
+  inProgress: z.boolean().default(false),
 });
 export type PublicExternalCertificate = z.infer<typeof PublicExternalCertificateSchema>;
 
@@ -80,6 +84,8 @@ export const PublicCandidateProfileDtoSchema = z.object({
   certificate: PublicCertificateSchema.nullable(),
   /** Only VERIFIED externally-issued certificates — same proof-not-declaration rule as everything else here. */
   externalCertificates: z.array(PublicExternalCertificateSchema),
+  /** CN-T09 — echoes the owner's opt-in state so the frontend can label in-progress entries. */
+  showInProgressItems: z.boolean().default(false),
 });
 export type PublicCandidateProfileDto = z.infer<typeof PublicCandidateProfileDtoSchema>;
 

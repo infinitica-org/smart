@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WorkExperienceService } from './work-experience.service.js';
+import {
+  WorkExperienceService,
+  extractDomain,
+  validateEmployerDomain,
+} from './work-experience.service.js';
 
 describe('WorkExperienceService', () => {
   let prisma: any;
@@ -36,6 +40,12 @@ describe('WorkExperienceService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      organization: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
       company: {
         findFirst: vi.fn(),
       },
@@ -68,7 +78,7 @@ describe('WorkExperienceService', () => {
         employmentType: 'FULL_TIME',
         startDate: '2022-01-01T00:00:00.000Z',
         isCurrent: true,
-        skills: ['TypeScript', 'Node.js'],
+        skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
       };
 
       const mockCreated = {
@@ -87,7 +97,7 @@ describe('WorkExperienceService', () => {
         endDate: null,
         isCurrent: true,
         responsibilities: null,
-        skills: payload.skills,
+        skills: payload.skillsClaimed,
         projects: null,
         candidateLinkedin: null,
         verifierName: null,
@@ -101,13 +111,22 @@ describe('WorkExperienceService', () => {
         documents: [],
       };
 
-      prisma.company.findFirst.mockResolvedValueOnce(null);
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({
+        id: 'org-uuid-1',
+        name: 'Acme Corp',
+        domain: 'acme.com',
+        verificationStatus: 'PENDING',
+      });
+      prisma.company.findFirst.mockResolvedValue(null);
       prisma.workExperience.create.mockResolvedValueOnce(mockCreated);
 
       const result = await service.create(mockStudentId, payload);
 
       expect(result.companyName).toBe('Acme Corp');
       expect(result.status).toBe('SUBMITTED');
+      expect(result.skillsClaimed).toEqual(['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS']);
+      expect(result.skillsClaimedSnapshot).toBeNull();
       expect(auditPublisher.record).toHaveBeenCalledWith(
         expect.objectContaining({
           actorId: mockStudentId,
@@ -116,6 +135,18 @@ describe('WorkExperienceService', () => {
           resourceId: mockCreated.id,
         }),
       );
+    });
+
+    it('rejects free-text skillsClaimed values outside the taxonomy', async () => {
+      await expect(
+        service.create(mockStudentId, {
+          companyName: 'Acme Corp',
+          role: 'Developer',
+          startDate: '2022-01-01T00:00:00.000Z',
+          isCurrent: true,
+          skillsClaimed: ['TypeScript'],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('rejects invalid payload without start date or end date when not current', async () => {
@@ -130,6 +161,44 @@ describe('WorkExperienceService', () => {
       await expect(service.create(mockStudentId, payload)).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+  });
+
+  describe('update', () => {
+    it('rejects skillsClaimed edits on a verified entry', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValueOnce({
+        id: expId,
+        studentId: mockStudentId,
+        companyName: 'Acme Corp',
+        companyWebsite: null,
+        companyLinkedinUrl: null,
+        role: 'Developer',
+        employmentType: 'FULL_TIME',
+        department: null,
+        domain: null,
+        workLocation: null,
+        startDate: new Date('2022-01-01'),
+        endDate: null,
+        isCurrent: true,
+        responsibilities: null,
+        skills: ['GIT_VERSION_CONTROL'],
+        projects: null,
+        candidateLinkedin: null,
+        verifierName: null,
+        verifierEmail: null,
+        verifierDesignation: null,
+        verifierPhone: null,
+        status: 'VERIFIED',
+        rejectionReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [],
+      });
+
+      await expect(
+        service.update(mockStudentId, expId, { skillsClaimed: ['DATABASE_FUNDAMENTALS'] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 
@@ -171,6 +240,47 @@ describe('WorkExperienceService', () => {
       const result = await service.listForStudent(mockStudentId);
       expect(result).toHaveLength(1);
       expect(result[0].role).toBe('Backend Engineer');
+    });
+
+    it('includes skillsClaimedSnapshot on verified entries', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findMany.mockResolvedValueOnce([
+        {
+          id: expId,
+          studentId: mockStudentId,
+          companyId: null,
+          companyName: 'Tech Corp',
+          companyWebsite: null,
+          companyLinkedinUrl: null,
+          role: 'Backend Engineer',
+          employmentType: 'FULL_TIME',
+          department: null,
+          domain: null,
+          workLocation: null,
+          startDate: new Date('2021-01-01'),
+          endDate: new Date('2022-01-01'),
+          isCurrent: false,
+          responsibilities: null,
+          skills: ['GIT_VERSION_CONTROL'],
+          projects: null,
+          candidateLinkedin: null,
+          verifierName: null,
+          verifierEmail: null,
+          verifierDesignation: null,
+          verifierPhone: null,
+          status: 'VERIFIED',
+          rejectionReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          documents: [],
+        },
+      ]);
+
+      const result = await service.listForStudent(mockStudentId);
+      expect(result[0]?.skillsClaimedSnapshot).toEqual({
+        taxonomyVersion: '0.9',
+        skillCodes: ['GIT_VERSION_CONTROL'],
+      });
     });
   });
 
@@ -378,13 +488,9 @@ describe('WorkExperienceService', () => {
       expect(result.validationResult.rejectionReason).toContain('Alice Smith');
     });
 
-    it('rejects validation when document role does not match submitted role', async () => {
+    it('flags NEEDS_MANUAL_REVIEW when document role does not match submitted role without auto-rejecting experience', async () => {
       prisma.workExperience.findUnique.mockResolvedValueOnce(mockExpRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
-      prisma.workExperience.update.mockResolvedValueOnce({
-        ...mockExpRecord,
-        status: 'REJECTED',
-      });
 
       aiGateway.complete.mockResolvedValueOnce({
         output: {
@@ -401,18 +507,15 @@ describe('WorkExperienceService', () => {
 
       const result = await service.validateProofDocument(mockStudentId, expId, docId);
 
-      expect(result.validationResult.validationStatus).toBe('REJECTED');
+      expect(result.validationResult.validationStatus).toBe('NEEDS_MANUAL_REVIEW');
       expect(result.validationResult.matchResult.roleMatch).toBe(false);
-      expect(result.validationResult.rejectionReason).toContain('Graphic Designer');
+      expect(result.validationResult.rejectionReason).toContain('Role variance');
+      expect(prisma.workExperience.update).not.toHaveBeenCalled();
     });
 
-    it('rejects validation when employment dates are missing or invalid', async () => {
+    it('flags NEEDS_MANUAL_REVIEW when employment dates have variance without auto-rejecting experience', async () => {
       prisma.workExperience.findUnique.mockResolvedValueOnce(mockExpRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
-      prisma.workExperience.update.mockResolvedValueOnce({
-        ...mockExpRecord,
-        status: 'REJECTED',
-      });
 
       aiGateway.complete.mockResolvedValueOnce({
         output: {
@@ -429,9 +532,10 @@ describe('WorkExperienceService', () => {
 
       const result = await service.validateProofDocument(mockStudentId, expId, docId);
 
-      expect(result.validationResult.validationStatus).toBe('REJECTED');
+      expect(result.validationResult.validationStatus).toBe('NEEDS_MANUAL_REVIEW');
       expect(result.validationResult.matchResult.dateMatch).toBe(false);
-      expect(result.validationResult.rejectionReason).toContain('employment dates');
+      expect(result.validationResult.rejectionReason).toContain('Employment dates variance');
+      expect(prisma.workExperience.update).not.toHaveBeenCalled();
     });
 
     it('reads actual document content from Data URI in production flow', async () => {
@@ -812,6 +916,225 @@ describe('WorkExperienceService', () => {
           }),
         );
       });
+    });
+
+    describe('S6 Gap 1 & 2 & 3: Domain Validation, INVALID_DOCUMENT_TYPE & EXPIRED Restart', () => {
+      it('extractDomain correctly parses emails, URLs, and normalizes www.', () => {
+        expect(extractDomain('jane@acme.com')).toBe('acme.com');
+        expect(extractDomain('https://www.acme.com/about')).toBe('acme.com');
+        expect(extractDomain('http://sub.acme.com')).toBe('sub.acme.com');
+        expect(extractDomain(null)).toBeNull();
+        expect(extractDomain('')).toBeNull();
+      });
+
+      it('validateEmployerDomain correctly checks official domain matching', () => {
+        expect(validateEmployerDomain('jane@acme.com', 'https://www.acme.com')).toEqual({
+          verifierDomain: 'acme.com',
+          companyDomain: 'acme.com',
+          domainMatch: true,
+        });
+
+        expect(validateEmployerDomain('jane@gmail.com', 'https://www.acme.com')).toEqual({
+          verifierDomain: 'gmail.com',
+          companyDomain: 'acme.com',
+          domainMatch: false,
+        });
+
+        expect(validateEmployerDomain('jane@sub.acme.com', 'https://acme.com')).toEqual({
+          verifierDomain: 'sub.acme.com',
+          companyDomain: 'acme.com',
+          domainMatch: true,
+        });
+
+        expect(validateEmployerDomain('jane@acmescam.com', 'https://acme.com')).toEqual({
+          verifierDomain: 'acmescam.com',
+          companyDomain: 'acme.com',
+          domainMatch: false,
+        });
+      });
+
+      it('sendEmployerVerification logs domain match metadata in audit publisher', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@acme.com',
+          companyWebsite: 'https://www.acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          student: { fullName: 'Alice Student' },
+        });
+
+        prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({ id: 'att-1' });
+        prisma.workExperience.update.mockResolvedValueOnce({
+          id: expId,
+          status: 'PENDING_EMPLOYER',
+        });
+
+        const res = await service.sendEmployerVerification(mockStudentId, expId);
+        expect(res.success).toBe(true);
+        expect(auditPublisher.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_SENT',
+            resourceId: expId,
+            metadata: expect.objectContaining({
+              verifierDomain: 'acme.com',
+              companyDomain: 'acme.com',
+              domainMatch: true,
+            }),
+          }),
+        );
+      });
+
+      it('blocks sendEmployerVerification if verifier email is a personal domain', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@gmail.com',
+          companyWebsite: 'https://acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          student: { fullName: 'Alice Student' },
+        });
+
+        await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it('blocks sendEmployerVerification if verifier domain does not match company domain', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findUnique.mockResolvedValueOnce({
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@differentdomain.com',
+          companyWebsite: 'https://acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          student: { fullName: 'Alice Student' },
+        });
+
+        await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it('restarts verification from EXPIRED state creating a new attempt row and token', async () => {
+        const expId = randomUUID();
+        const expMock = {
+          id: expId,
+          studentId: mockStudentId,
+          verifierEmail: 'manager@acme.com',
+          companyWebsite: 'https://acme.com',
+          companyName: 'Acme Corp',
+          role: 'Engineer',
+          startDate: new Date('2023-01-01'),
+          isCurrent: true,
+          status: 'EXPIRED',
+          student: { fullName: 'Alice Student' },
+        };
+        prisma.workExperience.findUnique
+          .mockResolvedValueOnce(expMock)
+          .mockResolvedValueOnce(expMock);
+
+        prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({ id: 'att-new' });
+        prisma.workExperience.update.mockResolvedValueOnce({
+          id: expId,
+          status: 'PENDING_EMPLOYER',
+        });
+
+        const res = await service.restartEmployerVerification(mockStudentId, expId);
+        expect(res.success).toBe(true);
+        expect(res.status).toBe('PENDING_EMPLOYER');
+        expect(prisma.workExperienceVerificationAttempt.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            experienceId: expId,
+            verifierEmail: 'manager@acme.com',
+          }),
+        });
+      });
+
+      it('getOpsDashboard returns candidate verification items with step and emailState', async () => {
+        const expId = randomUUID();
+        prisma.workExperience.findMany.mockResolvedValueOnce([
+          {
+            id: expId,
+            studentId: mockStudentId,
+            companyName: 'Acme Corp',
+            companyWebsite: 'https://acme.com',
+            role: 'Senior Developer',
+            status: 'PENDING_EMPLOYER',
+            createdAt: new Date(),
+            student: { fullName: 'John Doe', email: 'john@student.edu' },
+            verificationAttempts: [
+              {
+                id: 'att-1',
+                expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+                respondedAt: null,
+                reminderSentAt: null,
+              },
+            ],
+          },
+        ]);
+
+        const items = await service.getOpsDashboard();
+        expect(items).toHaveLength(1);
+        expect(items[0].candidateName).toBe('John Doe');
+        expect(items[0].companyName).toBe('Acme Corp');
+        expect(items[0].currentStep).toBe('EMPLOYER_DISPATCHED');
+        expect(items[0].emailState).toBe('SENT');
+      });
+    });
+  });
+
+  describe('voidWorkExperience (SA-T08)', () => {
+    const experienceId = randomUUID();
+
+    it('voids a work-experience entry and writes an immutable audit row', async () => {
+      const actorId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValue({ id: experienceId, status: 'VERIFIED' });
+      prisma.workExperience.update.mockResolvedValue({
+        id: experienceId,
+        status: 'VOIDED',
+        updatedAt: new Date('2026-09-09T00:00:00.000Z'),
+      });
+
+      const result = await service.voidWorkExperience(actorId, experienceId, {
+        reason: 'Employer confirmed candidate never worked there.',
+      });
+
+      expect(prisma.workExperience.update).toHaveBeenCalledWith({
+        where: { id: experienceId },
+        data: {
+          status: 'VOIDED',
+          rejectionReason: 'Employer confirmed candidate never worked there.',
+        },
+      });
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId,
+          action: 'work_experience.voided',
+          resourceType: 'WorkExperience',
+          resourceId: experienceId,
+          reasonCode: 'Employer confirmed candidate never worked there.',
+        }),
+      );
+      expect(result.status).toBe('VOIDED');
+      expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+    });
+
+    it('404s when voiding a work-experience entry that does not exist', async () => {
+      prisma.workExperience.findUnique.mockResolvedValue(null);
+      await expect(
+        service.voidWorkExperience(randomUUID(), randomUUID(), { reason: 'Does not matter here.' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

@@ -13,6 +13,29 @@ SMART talks to **PostgreSQL 16+ with `pgvector`**, self-hosted via Docker on eve
 
 Prisma stays the only write path — no separate data-access SDK.
 
+## Connection pooling (PgBouncer)
+
+The `api` container's own runtime queries go through **PgBouncer** (transaction
+pooling mode, `infra/docker/docker-compose.yml` service `pgbouncer`,
+`edoburu/pgbouncer`) instead of connecting to `postgres` directly — the CLI
+(`prisma migrate deploy`, `prisma db seed`, etc.) always keeps using
+`DATABASE_URL` straight to `postgres:5432`, since transaction-mode pooling
+doesn't support the session-level behavior migrations need.
+
+| Var                   | Used by                         | Points at                              |
+| --------------------- | ------------------------------- | -------------------------------------- |
+| `DATABASE_URL`        | Prisma CLI, migrations, seeding | `postgres:5432` directly               |
+| `POOLED_DATABASE_URL` | `api`'s own `PrismaPg` pool     | `pgbouncer:6432` (transaction pooling) |
+
+`POOLED_DATABASE_URL` is optional — `PrismaService` falls back to
+`DATABASE_URL` when it's unset (e.g. `pnpm dev:api` outside Docker on a
+laptop). This exists because Postgres has a fixed `max_connections`; once
+`api` runs as more than one instance/container, each instance's own `pg.Pool`
+(currently `max: 20`) would otherwise multiply directly against that ceiling.
+Add a second `api` replica only after confirming PgBouncer's
+`default_pool_size`/`max_client_conn` (env `PGBOUNCER_DEFAULT_POOL_SIZE`,
+`PGBOUNCER_MAX_CLIENT_CONN`) still fit inside Postgres's `max_connections`.
+
 ## Environment isolation (mandatory)
 
 Never point `dev`, `qa`, and `prod` at the same database.

@@ -37,6 +37,23 @@ export const CandidateOnboardingSkillSchema = z.object({
 });
 export type CandidateOnboardingSkill = z.infer<typeof CandidateOnboardingSkillSchema>;
 
+export const WORK_MODES = ['FULL_TIME', 'PART_TIME', 'REMOTE', 'HYBRID'] as const;
+export const WorkModeSchema = z.enum(WORK_MODES);
+export type WorkMode = z.infer<typeof WorkModeSchema>;
+
+/** CN-T01 — job-matching preferences captured at the end of onboarding. */
+export const CandidateOnboardingJobPreferencesSchema = z.object({
+  /** Lakhs per annum. Optional — not every candidate has a current job. */
+  currentCtcLakhs: z.number().positive().max(1000).optional(),
+  expectedCtcLakhs: z.number().positive().max(1000),
+  currentLocation: z.string().min(1).max(100),
+  preferredLocations: z.array(z.string().min(1).max(100)).min(1).max(3),
+  preferredWorkModes: z.array(WorkModeSchema).default(['FULL_TIME', 'HYBRID']),
+});
+export type CandidateOnboardingJobPreferences = z.infer<
+  typeof CandidateOnboardingJobPreferencesSchema
+>;
+
 export const CompleteCandidateOnboardingRequestSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
@@ -50,7 +67,7 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   education: z.array(CandidateOnboardingEducationSchema).max(20).default([]),
   experiences: z.array(CandidateOnboardingExperienceSchema).max(30).default([]),
   skills: z.array(CandidateOnboardingSkillSchema).max(40).default([]),
-  preferences: z.array(z.string().min(1).max(80)).min(1).max(50),
+  jobPreferences: CandidateOnboardingJobPreferencesSchema,
   /**
    * LinkedIn/GitHub identity confirmation + GitHub-derived skill suggestions.
    * Purely a trust/UX signal — optional even on completion, since GitHub
@@ -89,7 +106,7 @@ export const CandidateOnboardingDraftSchema = z.object({
   education: z.array(CandidateOnboardingEducationSchema.partial()).max(20).optional(),
   experiences: z.array(CandidateOnboardingExperienceSchema.partial()).max(30).optional(),
   skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
-  preferences: z.array(z.string().max(80)).max(50).optional(),
+  jobPreferences: CandidateOnboardingJobPreferencesSchema.partial().optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   dpdpConsent: z.boolean().optional(),

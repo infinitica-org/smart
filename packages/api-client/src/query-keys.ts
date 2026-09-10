@@ -17,6 +17,7 @@ export const queryKeys = {
   me: () => ['me'] as const,
   myTracks: () => ['me', 'tracks'] as const,
   myNotifications: () => ['me', 'notifications'] as const,
+  entitlements: () => ['me', 'entitlements'] as const,
 
   /* -------------------------------- catalog ------------------------------- */
   catalog: () => ['catalog'] as const,
@@ -35,6 +36,7 @@ export const queryKeys = {
   nextItem: (attemptId: string) => ['attempt', attemptId, 'next-item'] as const,
   sandboxJob: (jobId: string) => ['sandbox', jobId] as const,
   results: (attemptId: string) => ['results', attemptId] as const,
+  skillVerifySession: (sessionId: string) => ['skill-verify', sessionId] as const,
 
   /* ------------------------------- defense -------------------------------- */
   defenseSession: (sessionId: string) => ['defense', sessionId] as const,

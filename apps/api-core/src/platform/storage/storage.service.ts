@@ -81,6 +81,16 @@ export class StorageService implements OnModuleInit {
       { expiresIn: SIGNED_URL_TTL_SECONDS },
     );
   }
+
+  /** Downloads an object buffer by key. */
+  async getObjectBuffer(objectKey: string): Promise<Buffer> {
+    const response = await this.client.send(
+      new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }),
+    );
+    const byteArray = await response.Body?.transformToByteArray();
+    if (!byteArray) throw new Error(`Empty or missing object for key ${objectKey}`);
+    return Buffer.from(byteArray);
+  }
 }
 
 function sanitizeFileName(fileName: string): string {

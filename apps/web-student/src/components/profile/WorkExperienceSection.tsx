@@ -18,8 +18,15 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import type { WorkExperienceDto, WorkExperienceDocumentDto } from '@smart/contracts';
+import {
+  SKILL_DEFINITIONS,
+  type WorkExperienceDto,
+  type WorkExperienceDocumentDto,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
+
+const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
+import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   FULL_TIME: 'Full-time',
@@ -65,7 +72,8 @@ export function WorkExperienceSection() {
   const [endDate, setEndDate] = useState('');
   const [isCurrent, setIsCurrent] = useState(false);
   const [responsibilities, setResponsibilities] = useState('');
-  const [skillsInput, setSkillsInput] = useState('');
+  const [skillQuery, setSkillQuery] = useState('');
+  const [selectedSkillCodes, setSelectedSkillCodes] = useState<string[]>([]);
   const [verifierName, setVerifierName] = useState('');
   const [verifierEmail, setVerifierEmail] = useState('');
   const [verifierDesignation, setVerifierDesignation] = useState('');
@@ -108,7 +116,8 @@ export function WorkExperienceSection() {
     setEndDate('');
     setIsCurrent(false);
     setResponsibilities('');
-    setSkillsInput('');
+    setSkillQuery('');
+    setSelectedSkillCodes([]);
     setVerifierName('');
     setVerifierEmail('');
     setVerifierDesignation('');
@@ -129,19 +138,23 @@ export function WorkExperienceSection() {
     setEndDate(exp.endDate ? exp.endDate.substring(0, 10) : '');
     setIsCurrent(exp.isCurrent);
     setResponsibilities(exp.responsibilities || '');
-    setSkillsInput((exp.skills || []).join(', '));
+    setSkillQuery('');
+    setSelectedSkillCodes(exp.skillsClaimed ?? []);
     setVerifierName(exp.verifierName || '');
     setVerifierEmail(exp.verifierEmail || '');
     setVerifierDesignation(exp.verifierDesignation || '');
     setIsModalOpen(true);
   };
 
-  const handleSendVerification = async (experienceId: string) => {
+  const handleSendVerification = async (experienceId: string, status?: string) => {
     try {
       setSendingVerificationId(experienceId);
       setError(null);
       setVerificationSuccess(null);
-      const res = await api.users.sendWorkExperienceVerification(experienceId);
+      const res =
+        status === 'EXPIRED'
+          ? await api.users.restartWorkExperienceVerification(experienceId)
+          : await api.users.sendWorkExperienceVerification(experienceId);
       setVerificationSuccess(res.message);
       await fetchExperiences();
     } catch (err: unknown) {
@@ -157,11 +170,6 @@ export function WorkExperienceSection() {
     try {
       setSubmitting(true);
       setError(null);
-      const skillsArray = skillsInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,
@@ -175,7 +183,7 @@ export function WorkExperienceSection() {
         endDate: !isCurrent && endDate ? new Date(endDate).toISOString() : null,
         isCurrent,
         responsibilities: responsibilities || null,
-        skills: skillsArray,
+        skillsClaimed: selectedSkillCodes,
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
@@ -348,14 +356,20 @@ export function WorkExperienceSection() {
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                           : exp.status === 'PENDING_EMPLOYER'
                             ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                            : exp.status === 'SUBMITTED'
-                              ? 'bg-[#00fad0]/15 text-[#00fad0]'
-                              : exp.status === 'REJECTED'
-                                ? 'bg-red-500/15 text-red-400'
-                                : 'bg-white/10 text-white/50'
+                            : exp.status === 'EXPIRED'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : exp.status === 'SUBMITTED'
+                                ? 'bg-[#00fad0]/15 text-[#00fad0]'
+                                : exp.status === 'REJECTED'
+                                  ? 'bg-red-500/15 text-red-400'
+                                  : 'bg-white/10 text-white/50'
                       }`}
                     >
-                      {exp.status === 'PENDING_EMPLOYER' ? 'PENDING EMPLOYER' : exp.status}
+                      {exp.status === 'PENDING_EMPLOYER'
+                        ? 'PENDING EMPLOYER'
+                        : exp.status === 'EXPIRED'
+                          ? 'VERIFICATION EXPIRED'
+                          : exp.status}
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/60">
@@ -442,14 +456,14 @@ export function WorkExperienceSection() {
               )}
 
               {/* Skills Tags */}
-              {exp.skills && exp.skills.length > 0 && (
+              {exp.skillsClaimed.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {exp.skills.map((skill, idx) => (
+                  {exp.skillsClaimed.map((skillCode) => (
                     <span
-                      key={idx}
+                      key={skillCode}
                       className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
                     >
-                      {skill}
+                      {SKILL_NAME_BY_CODE.get(skillCode) ?? skillCode}
                     </span>
                   ))}
                 </div>
@@ -457,32 +471,60 @@ export function WorkExperienceSection() {
 
               {/* Verifier Contact & Verification Action */}
               {exp.verifierEmail ? (
-                <div className="mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
-                    <span>
-                      Employer Verifier:{' '}
-                      <strong className="text-white/80">{exp.verifierName || 'HR/Manager'}</strong>{' '}
-                      ({exp.verifierEmail})
-                    </span>
+                <div className="mt-1 flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
+                      <span>
+                        Employer Verifier:{' '}
+                        <strong className="text-white/80">
+                          {exp.verifierName || 'HR/Manager'}
+                        </strong>{' '}
+                        ({exp.verifierEmail})
+                      </span>
+                    </div>
+                    {exp.status !== 'VERIFIED' && (
+                      <button
+                        onClick={() => handleSendVerification(exp.id, exp.status)}
+                        disabled={sendingVerificationId === exp.id}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors shrink-0 ${
+                          exp.status === 'EXPIRED'
+                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
+                            : 'bg-[#00fad0]/10 border-[#00fad0]/30 text-[#00fad0] hover:bg-[#00fad0]/20'
+                        }`}
+                      >
+                        {sendingVerificationId === exp.id ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Sending...
+                          </>
+                        ) : exp.status === 'EXPIRED' ? (
+                          'Restart Verification'
+                        ) : exp.status === 'PENDING_EMPLOYER' ? (
+                          'Resend Verification Link'
+                        ) : (
+                          'Send Verification Link'
+                        )}
+                      </button>
+                    )}
                   </div>
-                  {exp.status !== 'VERIFIED' && (
-                    <button
-                      onClick={() => handleSendVerification(exp.id)}
-                      disabled={sendingVerificationId === exp.id}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#00fad0]/10 border border-[#00fad0]/30 px-3 py-1.5 text-xs font-semibold text-[#00fad0] hover:bg-[#00fad0]/20 disabled:opacity-50 transition-colors shrink-0"
-                    >
-                      {sendingVerificationId === exp.id ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Sending...
-                        </>
-                      ) : exp.status === 'PENDING_EMPLOYER' ? (
-                        'Resend Verification Link'
-                      ) : (
-                        'Send Verification Link'
-                      )}
-                    </button>
+                  {exp.status === 'PENDING_EMPLOYER' && (
+                    <div className="text-[11px] text-blue-300/80 flex items-center gap-1 mt-0.5">
+                      <AlertCircle className="h-3 w-3 text-blue-400 shrink-0" />
+                      <span>
+                        Verification request is active. Automated reminders sent every 6h (expires
+                        at 48h).
+                      </span>
+                    </div>
+                  )}
+                  {exp.status === 'EXPIRED' && (
+                    <div className="text-[11px] text-amber-300 flex items-center gap-1 mt-0.5">
+                      <AlertCircle className="h-3 w-3 text-amber-400 shrink-0" />
+                      <span>
+                        Verification link expired after 48h without response. Click &quot;Restart
+                        Verification&quot; to send a new link.
+                      </span>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -549,6 +591,12 @@ export function WorkExperienceSection() {
                               {valState.validationStatus === 'VALIDATED' && (
                                 <span className="inline-flex items-center gap-1 text-[11px] text-[#00fad0] font-medium mt-0.5">
                                   <CheckCircle2 className="h-3 w-3" /> ✓ Proof Validated
+                                </span>
+                              )}
+                              {valState.validationStatus === 'NEEDS_MANUAL_REVIEW' && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-amber-300 font-medium mt-0.5">
+                                  <AlertCircle className="h-3 w-3" /> Manual Review Flagged:{' '}
+                                  {valState.rejectionReason || 'Role or date variance detected'}
                                 </span>
                               )}
                               {valState.validationStatus === 'REJECTED' && (
@@ -652,13 +700,23 @@ export function WorkExperienceSection() {
                   <select
                     value={employmentType}
                     onChange={(e) => setEmploymentType(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className={`${nativeSelectClass} mt-1 h-10 py-2 text-sm`}
                   >
-                    <option value="FULL_TIME">Full-time</option>
-                    <option value="PART_TIME">Part-time</option>
-                    <option value="CONTRACT">Contract</option>
-                    <option value="INTERNSHIP">Internship</option>
-                    <option value="FREELANCE">Freelance</option>
+                    <option value="FULL_TIME" className={nativeOptionClass}>
+                      Full-time
+                    </option>
+                    <option value="PART_TIME" className={nativeOptionClass}>
+                      Part-time
+                    </option>
+                    <option value="CONTRACT" className={nativeOptionClass}>
+                      Contract
+                    </option>
+                    <option value="INTERNSHIP" className={nativeOptionClass}>
+                      Internship
+                    </option>
+                    <option value="FREELANCE" className={nativeOptionClass}>
+                      Freelance
+                    </option>
                   </select>
                 </div>
 
@@ -752,15 +810,64 @@ export function WorkExperienceSection() {
 
               <div>
                 <label className="block text-xs font-medium text-white/70">
-                  Skills Used (comma separated)
+                  Skills used (from catalog)
                 </label>
+                <p className="mt-0.5 text-[11px] text-white/45">
+                  Pick skills from the v0.9 taxonomy — free-text tags are not accepted.
+                </p>
+                {selectedSkillCodes.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedSkillCodes.map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() =>
+                          setSelectedSkillCodes((current) =>
+                            current.filter((item) => item !== code),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/80"
+                      >
+                        {SKILL_NAME_BY_CODE.get(code) ?? code}
+                        <X className="h-3 w-3" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <input
                   type="text"
-                  value={skillsInput}
-                  onChange={(e) => setSkillsInput(e.target.value)}
-                  placeholder="TypeScript, Node.js, React, PostgreSQL"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  value={skillQuery}
+                  onChange={(e) => setSkillQuery(e.target.value)}
+                  placeholder="Search skills…"
+                  className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
                 />
+                {skillQuery.trim().length >= 2 ? (
+                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-[#0b1220]">
+                    {SKILL_DEFINITIONS.filter((skill) => {
+                      const q = skillQuery.trim().toLowerCase();
+                      return (
+                        (skill.name.toLowerCase().includes(q) ||
+                          skill.code.toLowerCase().includes(q)) &&
+                        !selectedSkillCodes.includes(skill.code)
+                      );
+                    })
+                      .slice(0, 6)
+                      .map((skill) => (
+                        <li key={skill.code}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSkillCodes((current) => [...current, skill.code]);
+                              setSkillQuery('');
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
+                          >
+                            {skill.name}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
               </div>
 
               <div className="border-t border-white/10 pt-4">
@@ -847,13 +954,23 @@ export function WorkExperienceSection() {
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-[#141b2d] px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className={`${nativeSelectClass} mt-1 h-10 py-2 text-sm`}
                 >
-                  <option value="EXPERIENCE_LETTER">Experience Letter</option>
-                  <option value="OFFER_LETTER">Offer Letter</option>
-                  <option value="PAYSLIP">Payslip</option>
-                  <option value="RELIEVING_LETTER">Relieving Letter</option>
-                  <option value="FORM_16">Form 16</option>
+                  <option value="EXPERIENCE_LETTER" className={nativeOptionClass}>
+                    Experience Letter
+                  </option>
+                  <option value="OFFER_LETTER" className={nativeOptionClass}>
+                    Offer Letter
+                  </option>
+                  <option value="PAYSLIP" className={nativeOptionClass}>
+                    Payslip
+                  </option>
+                  <option value="RELIEVING_LETTER" className={nativeOptionClass}>
+                    Relieving Letter
+                  </option>
+                  <option value="FORM_16" className={nativeOptionClass}>
+                    Form 16
+                  </option>
                   <option value="OTHER">Other Proof Document</option>
                 </select>
               </div>

@@ -3,10 +3,14 @@ import {
   CandidateCertificateStatusSchema,
   CertificateEndorsementStatusSchema,
   CertificateProficiencySchema,
+  CertificateSourceStatusSchema,
   CertificateVerificationMethodSchema,
 } from '../domain/enums.js';
 import { isDisallowedEndorserEmailDomain } from '../domain/disallowed-email-domains.js';
+import { TrackCodeSchema } from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
+import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
+import { CERT_AGENDA_LINE_MAX, CertAgendaLineSchema } from './cert-agenda.dto.js';
 
 /**
  * Candidate certificate verification (externally-issued certs) — a standalone
@@ -21,13 +25,17 @@ import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
 export const CreateCandidateCertificateRequestSchema = z.object({
   title: z.string().min(3).max(200),
   issuer: z.string().min(2).max(200),
+  certificateNumber: z.string().max(100).optional(),
+  issueDate: z.string().max(100).optional(),
+  expiryDate: z.string().max(100).optional(),
+  verificationUrl: z.string().url().max(500).optional(),
 });
 export type CreateCandidateCertificateRequest = z.infer<
   typeof CreateCandidateCertificateRequestSchema
 >;
 
 export const CandidateCertificateSkillDtoSchema = z.object({
-  skillCode: z.string().min(2).max(64),
+  skillCode: TaxonomySkillCodeSchema,
   skillName: z.string(),
   selfAssessedProficiency: CertificateProficiencySchema,
 });
@@ -37,7 +45,7 @@ export const AddCertificateSkillsRequestSchema = z.object({
   skills: z
     .array(
       z.object({
-        skillCode: z.string().min(2).max(64),
+        skillCode: TaxonomySkillCodeSchema,
         selfAssessedProficiency: CertificateProficiencySchema,
       }),
     )
@@ -51,6 +59,10 @@ export const UpdateCertificateLearningRequestSchema = z.object({
   tools: z.array(z.string().min(1).max(60)).max(20).optional(),
   practicalApplied: z.boolean().optional(),
   practicalDescription: z.string().max(4_000).optional(),
+  certificateNumber: z.string().max(100).optional(),
+  issueDate: z.string().max(100).optional(),
+  expiryDate: z.string().max(100).optional(),
+  verificationUrl: z.string().url().max(500).optional(),
 });
 export type UpdateCertificateLearningRequest = z.infer<
   typeof UpdateCertificateLearningRequestSchema
@@ -62,6 +74,11 @@ export const CandidateCertificateDtoSchema = z.object({
   title: z.string(),
   issuer: z.string(),
   status: CandidateCertificateStatusSchema,
+  sourceStatus: CertificateSourceStatusSchema,
+  certificateNumber: z.string().nullable(),
+  issueDate: z.string().nullable().optional(),
+  expiryDate: z.string().nullable().optional(),
+  verificationUrl: z.string().nullable(),
   verificationMethod: CertificateVerificationMethodSchema.nullable(),
   certificateFileUrl: z.string().nullable(),
   certificateFileName: z.string().nullable(),
@@ -72,6 +89,13 @@ export const CandidateCertificateDtoSchema = z.object({
   practicalApplied: z.boolean().nullable(),
   practicalDescription: z.string().nullable(),
   skills: z.array(CandidateCertificateSkillDtoSchema),
+  /** Frozen when status becomes VERIFIED — codes + taxonomy version at endorsement. */
+  skillsClaimedSnapshot: SkillsClaimedSnapshotSchema.nullable().optional(),
+  trackCode: TrackCodeSchema.nullable().optional(),
+  agendaLines: z.array(CertAgendaLineSchema).max(CERT_AGENDA_LINE_MAX).optional(),
+  retryAvailableAt: IsoDateTimeSchema.nullable().optional(),
+  lockedUntil: IsoDateTimeSchema.nullable().optional(),
+  taxonomyVersionSnapshot: z.string().nullable().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
 });
@@ -103,6 +127,18 @@ export const ListCertificateVerificationEventsResponseSchema = z.object({
 export type ListCertificateVerificationEventsResponse = z.infer<
   typeof ListCertificateVerificationEventsResponseSchema
 >;
+
+export const ListCertificateVerificationQueueResponseSchema = z.object({
+  certificates: z.array(CandidateCertificateDtoSchema),
+});
+export type ListCertificateVerificationQueueResponse = z.infer<
+  typeof ListCertificateVerificationQueueResponseSchema
+>;
+
+export const AdminCertificateReviewRequestSchema = z.object({
+  reason: z.string().max(1_000).optional(),
+});
+export type AdminCertificateReviewRequest = z.infer<typeof AdminCertificateReviewRequestSchema>;
 
 /** A work email only — a free/personal address is too easy for a candidate to control. */
 export const CreateCertificateEndorsementRequestSchema = z.object({
