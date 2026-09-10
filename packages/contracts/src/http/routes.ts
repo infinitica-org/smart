@@ -2473,6 +2473,19 @@ export const ROUTES: readonly RouteSpec[] = [
     summary:
       'Void a work-experience entry for fraud/integrity reasons. One-directional; fully audited.',
   },
+  {
+    method: 'POST',
+    path: '/admin/work-experience/:id/approve',
+    module: 'work-experience',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Approve flagged work-experience letter authenticity. Clears doc_flagged without auto-fraud.',
+  },
 
   /* -------------------------- public candidate profile ---------------------- */
   {

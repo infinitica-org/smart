@@ -20,6 +20,7 @@ import {
 import { projectVerifyTemplate } from './templates/project-verify.js';
 import { certAgendaGenerateTemplate } from './templates/cert-agenda.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
+import { workExperienceLetterAuthenticityTemplate } from './templates/work-experience-letter-authenticity.js';
 import {
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
@@ -64,6 +65,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   projectVerifyTemplate,
   certAgendaGenerateTemplate,
   workExperienceProofParseTemplate,
+  workExperienceLetterAuthenticityTemplate,
   sdeSkillFormClosedTemplate,
   sdeSkillFormOpenTemplate,
   sdeSkillOpenBatchGraderTemplate,

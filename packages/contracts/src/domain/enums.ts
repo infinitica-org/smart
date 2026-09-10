@@ -431,6 +431,20 @@ export const EXPERIENCE_DOCUMENT_TYPES = [
 export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
 export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
 
+/** WE-T02 — letter authenticity outcomes after OCR + heuristics (never auto-fraud). */
+export const WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_STATUSES = [
+  'pending',
+  'doc_ok',
+  'doc_flagged',
+  'voided',
+] as const;
+export const WorkExperienceDocumentAuthenticityStatusSchema = z.enum(
+  WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_STATUSES,
+);
+export type WorkExperienceDocumentAuthenticityStatus = z.infer<
+  typeof WorkExperienceDocumentAuthenticityStatusSchema
+>;
+
 /**
  * Company ATS columns (CO-T02 kanban). V1 is TPO-mediated; candidate job feed
  * is V2. Order matches the kanban left-to-right: New Matches -> Shortlisted ->

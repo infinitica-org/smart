@@ -6,6 +6,7 @@ import {
   extractDomain,
   validateEmployerDomain,
 } from './work-experience.service.js';
+import { parseStoredDocumentAuthenticity } from './work-experience-document-authenticity.util.js';
 
 describe('WorkExperienceService', () => {
   let prisma: any;
@@ -406,36 +407,90 @@ describe('WorkExperienceService', () => {
   });
 
   describe('attachDocument', () => {
-    it('attaches proof document to an experience entry', async () => {
+    it('attaches proof document and runs letter authenticity check', async () => {
       const expId = randomUUID();
       const docId = randomUUID();
+      const letterText =
+        'Acme Corporation letterhead. Jane Doe served as Engineer. Signed by HR Manager.';
+      const dataUri = `data:text/plain;base64,${Buffer.from(letterText).toString('base64')}`;
 
       prisma.workExperience.findUnique.mockResolvedValueOnce({
         id: expId,
         studentId: mockStudentId,
+        companyName: 'Acme Corporation',
+        companyWebsite: 'https://acme.com',
       });
 
       prisma.workExperienceDocument.create.mockResolvedValueOnce({
         id: docId,
         experienceId: expId,
         documentType: 'EXPERIENCE_LETTER',
-        fileUrl: 'storage/proofs/letter.pdf',
+        fileUrl: dataUri,
         fileName: 'letter.pdf',
         fileSizeBytes: 2048,
         mimeType: 'application/pdf',
+        validationResult: null,
+        createdAt: new Date(),
+      });
+
+      prisma.workExperienceDocument.findUnique.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'EXPERIENCE_LETTER',
+        fileUrl: dataUri,
+        fileName: 'letter.pdf',
+        fileSizeBytes: 2048,
+        mimeType: 'application/pdf',
+        validationResult: null,
+        createdAt: new Date(),
+      });
+
+      aiGateway.complete.mockResolvedValueOnce({
+        output: {
+          candidateName: 'Jane Doe',
+          companyName: 'Acme Corporation',
+          companyDomain: 'acme.com',
+          hasLetterhead: true,
+          hasSignatureBlock: true,
+          confidence: 0.93,
+        },
+      });
+
+      prisma.workExperienceDocument.update.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'EXPERIENCE_LETTER',
+        fileUrl: dataUri,
+        fileName: 'letter.pdf',
+        fileSizeBytes: 2048,
+        mimeType: 'application/pdf',
+        validationResult: {
+          authenticity: {
+            status: 'doc_ok',
+            result: {
+              companyNameMatch: true,
+              domainMatch: true,
+              hasLetterhead: true,
+              hasSignatureBlock: true,
+              ocrConfidence: 0.93,
+              flagReasons: [],
+            },
+            checkedAt: '2026-09-10T00:00:00.000Z',
+          },
+        },
         createdAt: new Date(),
       });
 
       const result = await service.attachDocument(mockStudentId, expId, {
         documentType: 'EXPERIENCE_LETTER',
-        fileUrl: 'storage/proofs/letter.pdf',
+        fileUrl: dataUri,
         fileName: 'letter.pdf',
         fileSizeBytes: 2048,
         mimeType: 'application/pdf',
       });
 
       expect(result.id).toBe(docId);
-      expect(result.documentType).toBe('EXPERIENCE_LETTER');
+      expect(result.authenticityStatus).toBe('doc_ok');
       expect(auditPublisher.record).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'WORK_EXPERIENCE_DOCUMENT_ATTACHED',
@@ -1181,6 +1236,7 @@ describe('WorkExperienceService', () => {
             status: 'PENDING_EMPLOYER',
             createdAt: new Date(),
             student: { fullName: 'John Doe', email: 'john@student.edu' },
+            documents: [],
             verificationAttempts: [
               {
                 id: 'att-1',
@@ -1198,7 +1254,135 @@ describe('WorkExperienceService', () => {
         expect(items[0].companyName).toBe('Acme Corp');
         expect(items[0].currentStep).toBe('EMPLOYER_DISPATCHED');
         expect(items[0].emailState).toBe('SENT');
+        expect(items[0].flaggedDocumentCount).toBe(0);
+        expect(items[0].hasFlaggedDocuments).toBe(false);
       });
+    });
+  });
+
+  describe('letter authenticity (WE-T02)', () => {
+    const expId = randomUUID();
+    const docId = randomUUID();
+
+    it('flags company mismatch without changing experience status', async () => {
+      prisma.workExperienceDocument.findUnique.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        fileUrl:
+          'data:text/plain;base64,' +
+          Buffer.from('Globex letter content long enough').toString('base64'),
+        fileName: 'letter.pdf',
+        mimeType: 'text/plain',
+        validationResult: null,
+      });
+      aiGateway.complete.mockResolvedValueOnce({
+        output: {
+          candidateName: 'Jane',
+          companyName: 'Globex Industries',
+          companyDomain: 'globex.com',
+          hasLetterhead: true,
+          hasSignatureBlock: true,
+          confidence: 0.9,
+        },
+      });
+      prisma.workExperienceDocument.update.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'EXPERIENCE_LETTER',
+        fileUrl: 'data:text/plain;base64,abc',
+        fileName: 'letter.pdf',
+        fileSizeBytes: 100,
+        mimeType: 'text/plain',
+        validationResult: {
+          authenticity: {
+            status: 'doc_flagged',
+            result: { flagReasons: ['COMPANY_MISMATCH'] },
+            checkedAt: '2026-09-10T00:00:00.000Z',
+          },
+        },
+        createdAt: new Date(),
+      });
+
+      const updated = await service.runDocumentAuthenticityCheck(
+        {
+          id: expId,
+          studentId: mockStudentId,
+          companyName: 'Acme Corporation',
+          companyWebsite: 'https://acme.com',
+        },
+        docId,
+      );
+
+      expect(parseStoredDocumentAuthenticity(updated.validationResult).status).toBe('doc_flagged');
+      expect(prisma.workExperience.update).not.toHaveBeenCalled();
+    });
+
+    it('approves flagged documents and audit-logs the admin action', async () => {
+      const actorId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValueOnce({
+        id: expId,
+        documents: [
+          {
+            id: docId,
+            validationResult: {
+              authenticity: {
+                status: 'doc_flagged',
+                result: { flagReasons: ['MISSING_SIGNATURE_BLOCK'] },
+                checkedAt: '2026-09-10T00:00:00.000Z',
+              },
+            },
+          },
+        ],
+      });
+      prisma.workExperienceDocument.update.mockResolvedValueOnce({});
+
+      const result = await service.approveWorkExperienceAuthenticity(actorId, expId, {
+        reason: 'Manual review confirmed letter is genuine.',
+      });
+
+      expect(result.flaggedDocumentsCleared).toBe(1);
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId,
+          action: 'work_experience.authenticity_approved',
+          resourceId: expId,
+        }),
+      );
+    });
+
+    it('strips fileUrl for company-lite document mapping', () => {
+      const redacted = service.mapToCompanyLiteDto({
+        id: expId,
+        studentId: mockStudentId,
+        companyId: null,
+        companyName: 'Acme',
+        role: 'Engineer',
+        employmentType: 'FULL_TIME',
+        startDate: new Date(),
+        endDate: null,
+        isCurrent: true,
+        status: 'SUBMITTED',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [
+          {
+            id: docId,
+            experienceId: expId,
+            documentType: 'EXPERIENCE_LETTER',
+            fileUrl: 'storage/secret-letter.pdf',
+            fileName: 'letter.pdf',
+            fileSizeBytes: 100,
+            mimeType: 'application/pdf',
+            validationResult: {
+              authenticity: { status: 'doc_ok', result: null, checkedAt: '2026-09-10' },
+            },
+            createdAt: new Date(),
+          },
+        ],
+      });
+
+      expect(redacted.documents[0]).not.toHaveProperty('fileUrl');
+      expect(redacted.documents[0]?.authenticityStatus).toBe('doc_ok');
     });
   });
 
@@ -1207,7 +1391,19 @@ describe('WorkExperienceService', () => {
 
     it('voids a work-experience entry and writes an immutable audit row', async () => {
       const actorId = randomUUID();
-      prisma.workExperience.findUnique.mockResolvedValue({ id: experienceId, status: 'VERIFIED' });
+      prisma.workExperience.findUnique.mockResolvedValue({
+        id: experienceId,
+        status: 'VERIFIED',
+        documents: [
+          {
+            id: randomUUID(),
+            validationResult: {
+              authenticity: { status: 'doc_flagged', result: null, checkedAt: '2026-09-10' },
+            },
+          },
+        ],
+      });
+      prisma.workExperienceDocument.update.mockResolvedValue({});
       prisma.workExperience.update.mockResolvedValue({
         id: experienceId,
         status: 'VOIDED',
