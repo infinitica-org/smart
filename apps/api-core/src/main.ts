@@ -1,3 +1,7 @@
+// Must be the first import: registers OpenTelemetry auto-instrumentation
+// before fastify/pg/ioredis/kafkajs are required anywhere else. No-op unless
+// OTEL_EXPORTER_OTLP_ENDPOINT is set — see tracing.ts.
+import './tracing.js';
 import 'reflect-metadata';
 import './platform/config/load-dotenv.bootstrap.js';
 import cookie from '@fastify/cookie';

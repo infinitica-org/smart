@@ -42,7 +42,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { attemptsStarted, draftsSaved, getContext } from '@smart/observability';
+import { attemptsStarted, cacheOperations, draftsSaved, getContext } from '@smart/observability';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import {
@@ -1257,12 +1257,14 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       const cachedItemsJson = await this.redis.get(itemBankKey);
       if (cachedItemsJson) {
         items = JSON.parse(cachedItemsJson) as DeliverableItemDto[];
+        cacheOperations.inc({ namespace: 'items_form', result: 'hit' });
       }
     } catch {
       // Fail open to DB query if Redis throws
     }
 
     if (items.length === 0) {
+      cacheOperations.inc({ namespace: 'items_form', result: 'miss' });
       const dbItems = await this.prisma.item.findMany({
         where: {
           level: {

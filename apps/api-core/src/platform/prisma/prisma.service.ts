@@ -1,9 +1,15 @@
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { LOG_EVENTS, logEvent } from '@smart/observability';
+import { dbQueryDuration, LOG_EVENTS, logEvent } from '@smart/observability';
 import { PrismaClient } from '../../generated/prisma/index.js';
 import { env } from '../config/env.js';
+
+/** First SQL keyword, used as a low-cardinality Prometheus label (never the raw statement). */
+function sqlOperation(query: string): string {
+  const match = /^\s*(\w+)/.exec(query);
+  return match?.[1]?.toUpperCase() ?? 'UNKNOWN';
+}
 
 /**
  * Prisma client with the Prisma 7 pg adapter.

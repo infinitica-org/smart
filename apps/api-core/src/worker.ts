@@ -1,3 +1,6 @@
+// Must be the first import — see tracing.ts. No-op unless
+// OTEL_EXPORTER_OTLP_ENDPOINT is set.
+import './tracing.js';
 import 'reflect-metadata';
 import './platform/config/load-dotenv.bootstrap.js';
 import { Logger } from '@nestjs/common';

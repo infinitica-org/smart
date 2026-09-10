@@ -1,0 +1,69 @@
+name: Performance
+
+# Manual-trigger by default. ci.yml already documents the self-hosted runner
+# (`kvm2`, 2 vCPU / 8 GB) as also running the live dev stack — an automatic
+# load/stress/spike/soak run on every PR would contend with that. Smoke is
+# cheap enough (15 VUs, 3 min) to also run on `workflow_dispatch` for a PR,
+# but nothing here fires on `pull_request`/`push` by default. Flip that on
+# deliberately (see the commented triggers below) once the runner has
+# capacity, or point RUNS_ON at a dedicated runner.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Which stress:<profile> script to run"
+        required: true
+        default: smoke
+        type: choice
+        options: [smoke, baseline, load, stress, spike, soak]
+  # schedule:
+  #   - cron: '0 3 * * *'   # nightly soak, opt in explicitly when ready
+
+concurrency:
+  group: perf-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf:
+    name: perf (${{ github.event.inputs.profile || 'smoke' }})
+    runs-on: [self-hosted, dev-runner]
+    # soak's default is 4h; keep this above the longest profile you intend to
+    # run via workflow_dispatch, well below the runner's other obligations.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: install k6
+        run: |
+          set -euo pipefail
+          if command -v k6 >/dev/null 2>&1; then exit 0; fi
+          curl -fsSL https://github.com/grafana/k6/releases/latest/download/k6-linux-amd64.tar.gz \
+            | tar -xz --strip-components=1 -C /usr/local/bin '*/k6'
+
+      - name: stress:up (apps + obs profiles)
+        run: pnpm stress:up
+
+      - name: wait for services
+        run: pnpm stress:wait
+
+      - name: seed test data
+        run: pnpm stress:seed
+        env:
+          TEST_DATA_USERS: 50
+
+      - name: run profile
+        run: pnpm "stress:${{ github.event.inputs.profile || 'smoke' }}"
+
+      - name: upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary-${{ github.event.inputs.profile || 'smoke' }}
+          path: tools/load-tests/summary-*.json
+          if-no-files-found: warn
+
+      - name: stress:down
+        if: always()
+        run: pnpm stress:down
