@@ -12,6 +12,7 @@ import {
   GoogleAdapter,
   MicrosoftAdapter,
 } from './verification/tier1-issuer-adapter.js';
+import { Tier1IssuerRegistry } from './verification/tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from './verification/tier2-public-url-verifier.js';
 import { Tier3OcrVerifier } from './verification/tier3-ocr-verifier.js';
 
@@ -25,6 +26,7 @@ import { Tier3OcrVerifier } from './verification/tier3-ocr-verifier.js';
   providers: [
     CandidateCertificatesService,
     CertificateSourceVerificationService,
+    Tier1IssuerRegistry,
     CredlyAdapter,
     AccredibleAdapter,
     AwsAdapter,

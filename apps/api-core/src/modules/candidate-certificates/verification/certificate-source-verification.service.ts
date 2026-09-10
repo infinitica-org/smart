@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { PrismaService } from '../../../platform/prisma/prisma.service.js';
-import type { Tier1IssuerRegistry } from './tier1-issuer-registry.js';
-import type { Tier2PublicUrlVerifier } from './tier2-public-url-verifier.js';
-import type { Tier3OcrVerifier } from './tier3-ocr-verifier.js';
+import { PrismaService } from '../../../platform/prisma/prisma.service.js';
+import { Tier1IssuerRegistry } from './tier1-issuer-registry.js';
+import { Tier2PublicUrlVerifier } from './tier2-public-url-verifier.js';
+import { Tier3OcrVerifier } from './tier3-ocr-verifier.js';
 import type { TierVerificationResult } from './tier1-issuer-adapter.js';
 import type {
   CandidateCertificateStatus,
