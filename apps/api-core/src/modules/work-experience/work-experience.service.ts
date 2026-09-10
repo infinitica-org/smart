@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
@@ -26,6 +26,7 @@ import {
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
+  validateWorkExperienceLetterRules,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -175,7 +176,7 @@ export class WorkExperienceService {
       companyWebsite: exp.companyWebsite ?? null,
       companyLinkedinUrl: exp.companyLinkedinUrl ?? null,
       role: exp.role,
-      employmentType: exp.employmentType,
+      employmentType: exp.employmentType ?? 'FULL_TIME',
       department: exp.department ?? null,
       domain: exp.domain ?? null,
       workLocation: exp.workLocation ?? null,
@@ -193,18 +194,30 @@ export class WorkExperienceService {
       verifierPhone: exp.verifierPhone ?? null,
       status: exp.status,
       rejectionReason: exp.rejectionReason ?? null,
-      createdAt: exp.createdAt.toISOString(),
-      updatedAt: exp.updatedAt.toISOString(),
-      documents: (exp.documents || []).map((doc: RawWorkExperienceDocument) =>
+      createdAt: exp.createdAt
+        ? exp.createdAt instanceof Date
+          ? exp.createdAt.toISOString()
+          : new Date(exp.createdAt).toISOString()
+        : new Date().toISOString(),
+      updatedAt: exp.updatedAt
+        ? exp.updatedAt instanceof Date
+          ? exp.updatedAt.toISOString()
+          : new Date(exp.updatedAt).toISOString()
+        : new Date().toISOString(),
+      documents: (exp.documents || []).map((doc: Record<string, unknown>) =>
         WorkExperienceDocumentSchema.parse({
-          id: doc.id,
-          experienceId: doc.experienceId,
+          id: doc.id || randomUUID(),
+          experienceId: doc.experienceId || exp.id,
           documentType: doc.documentType,
           fileUrl: doc.fileUrl,
           fileName: doc.fileName,
           fileSizeBytes: doc.fileSizeBytes,
           mimeType: doc.mimeType,
-          createdAt: doc.createdAt.toISOString(),
+          createdAt: doc.createdAt
+            ? doc.createdAt instanceof Date
+              ? doc.createdAt.toISOString()
+              : new Date(doc.createdAt).toISOString()
+            : new Date().toISOString(),
         }),
       ),
     });
@@ -246,6 +259,21 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+
+    const letterValidation = validateWorkExperienceLetterRules({
+      isCurrent: data.isCurrent,
+      endDate: data.endDate,
+      documents: data.documents,
+    });
+    if (!letterValidation.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: letterValidation.message || 'Required proof documents are missing.',
+        statusCode: 400,
+        details: { missingDocuments: letterValidation.missingDocuments },
+      });
+    }
+
     const rawName = data.companyName.trim();
     const org = await this.resolveOrganization({
       name: rawName,
@@ -304,6 +332,19 @@ export class WorkExperienceService {
         verifierDesignation: data.verifierDesignation || null,
         verifierPhone: data.verifierPhone || null,
         status: 'SUBMITTED',
+        ...(data.documents && data.documents.length > 0
+          ? {
+              documents: {
+                create: data.documents.map((doc) => ({
+                  documentType: doc.documentType,
+                  fileUrl: doc.fileUrl,
+                  fileName: doc.fileName,
+                  fileSizeBytes: doc.fileSizeBytes,
+                  mimeType: doc.mimeType,
+                })),
+              },
+            }
+          : {}),
       },
       include: { documents: true },
     });
@@ -343,6 +384,30 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+
+    const effectiveIsCurrent = data.isCurrent !== undefined ? data.isCurrent : existing.isCurrent;
+    const effectiveEndDate =
+      data.endDate !== undefined
+        ? data.endDate
+        : existing.endDate
+          ? existing.endDate.toISOString()
+          : null;
+    const effectiveDocs =
+      data.documents && data.documents.length > 0 ? data.documents : existing.documents;
+
+    const letterValidation = validateWorkExperienceLetterRules({
+      isCurrent: effectiveIsCurrent,
+      endDate: effectiveEndDate,
+      documents: effectiveDocs,
+    });
+    if (!letterValidation.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: letterValidation.message || 'Required proof documents are missing.',
+        statusCode: 400,
+        details: { missingDocuments: letterValidation.missingDocuments },
+      });
+    }
 
     if (
       existing.status === 'VERIFIED' &&
@@ -661,15 +726,10 @@ export class WorkExperienceService {
     let rejectionReason: string | null = null;
     let reasonCode = 'PROOF_VALIDATED';
 
-    if (isOfferLetter) {
+    if (!isOfferLetter && !isActualEmploymentProof) {
       validationStatus = 'REJECTED';
       rejectionReason =
-        'INVALID_DOCUMENT_TYPE: Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
-      reasonCode = 'INVALID_DOCUMENT_TYPE';
-    } else if (!isActualEmploymentProof) {
-      validationStatus = 'REJECTED';
-      rejectionReason =
-        'Uploaded document does not establish proof of actual or completed employment.';
+        'Uploaded document does not establish proof of actual or ongoing employment.';
       reasonCode = 'PROOF_REJECTED';
     } else if (!companyNameMatch) {
       validationStatus = 'REJECTED';

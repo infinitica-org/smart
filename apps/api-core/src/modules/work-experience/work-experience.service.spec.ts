@@ -70,7 +70,7 @@ describe('WorkExperienceService', () => {
   });
 
   describe('create', () => {
-    it('creates a work experience record and publishes audit event', async () => {
+    it('creates an ongoing work experience record with offer letter and publishes audit event', async () => {
       const payload = {
         companyName: 'Acme Corp',
         companyWebsite: 'https://acme.com',
@@ -79,6 +79,15 @@ describe('WorkExperienceService', () => {
         startDate: '2022-01-01T00:00:00.000Z',
         isCurrent: true,
         skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
+        documents: [
+          {
+            documentType: 'OFFER_LETTER',
+            fileUrl: 'storage/proofs/offer.pdf',
+            fileName: 'offer.pdf',
+            fileSizeBytes: 1024,
+            mimeType: 'application/pdf',
+          },
+        ],
       };
 
       const mockCreated = {
@@ -108,7 +117,7 @@ describe('WorkExperienceService', () => {
         rejectionReason: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        documents: [],
+        documents: payload.documents,
       };
 
       prisma.organization.findFirst.mockResolvedValue(null);
@@ -137,6 +146,105 @@ describe('WorkExperienceService', () => {
       );
     });
 
+    it('creates an ended work experience record when both offer letter and completion/relieving letter are provided', async () => {
+      const payload = {
+        companyName: 'Beta Corp',
+        role: 'Developer',
+        startDate: '2021-01-01T00:00:00.000Z',
+        endDate: '2022-01-01T00:00:00.000Z',
+        isCurrent: false,
+        documents: [
+          {
+            documentType: 'OFFER_LETTER',
+            fileUrl: 'storage/offer.pdf',
+            fileName: 'offer.pdf',
+            fileSizeBytes: 1024,
+            mimeType: 'application/pdf',
+          },
+          {
+            documentType: 'RELIEVING_LETTER',
+            fileUrl: 'storage/relieving.pdf',
+            fileName: 'relieving.pdf',
+            fileSizeBytes: 1024,
+            mimeType: 'application/pdf',
+          },
+        ],
+      };
+
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({ id: 'org-2', name: 'Beta Corp' });
+      prisma.company.findFirst.mockResolvedValue(null);
+      prisma.workExperience.create.mockResolvedValueOnce({
+        id: randomUUID(),
+        studentId: mockStudentId,
+        companyName: 'Beta Corp',
+        role: 'Developer',
+        startDate: new Date('2021-01-01'),
+        endDate: new Date('2022-01-01'),
+        isCurrent: false,
+        status: 'SUBMITTED',
+        skills: [],
+        documents: payload.documents,
+      });
+
+      const result = await service.create(mockStudentId, payload);
+      expect(result.companyName).toBe('Beta Corp');
+    });
+
+    it('rejects creating ongoing role without offer letter', async () => {
+      const payload = {
+        companyName: 'Acme Corp',
+        role: 'Developer',
+        startDate: '2022-01-01T00:00:00.000Z',
+        isCurrent: true,
+        documents: [],
+      };
+
+      await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects creating ended role without offer letter', async () => {
+      const payload = {
+        companyName: 'Acme Corp',
+        role: 'Developer',
+        startDate: '2022-01-01T00:00:00.000Z',
+        endDate: '2023-01-01T00:00:00.000Z',
+        isCurrent: false,
+        documents: [
+          {
+            documentType: 'RELIEVING_LETTER',
+            fileUrl: 'url',
+            fileName: 'file.pdf',
+            fileSizeBytes: 100,
+            mimeType: 'application/pdf',
+          },
+        ],
+      };
+
+      await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects creating ended role without completion/relieving letter', async () => {
+      const payload = {
+        companyName: 'Acme Corp',
+        role: 'Developer',
+        startDate: '2022-01-01T00:00:00.000Z',
+        endDate: '2023-01-01T00:00:00.000Z',
+        isCurrent: false,
+        documents: [
+          {
+            documentType: 'OFFER_LETTER',
+            fileUrl: 'url',
+            fileName: 'file.pdf',
+            fileSizeBytes: 100,
+            mimeType: 'application/pdf',
+          },
+        ],
+      };
+
+      await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
+    });
+
     it('rejects free-text skillsClaimed values outside the taxonomy', async () => {
       await expect(
         service.create(mockStudentId, {
@@ -145,6 +253,15 @@ describe('WorkExperienceService', () => {
           startDate: '2022-01-01T00:00:00.000Z',
           isCurrent: true,
           skillsClaimed: ['TypeScript'],
+          documents: [
+            {
+              documentType: 'OFFER_LETTER',
+              fileUrl: 'url',
+              fileName: 'file.pdf',
+              fileSizeBytes: 100,
+              mimeType: 'application/pdf',
+            },
+          ],
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
@@ -396,19 +513,14 @@ describe('WorkExperienceService', () => {
       expect(prisma.workExperience.update).not.toHaveBeenCalled();
     });
 
-    it('rejects an OFFER_LETTER proof document and marks experience as REJECTED', async () => {
+    it('accepts an OFFER_LETTER proof document for WE-T01', async () => {
       prisma.workExperience.findUnique.mockResolvedValueOnce(mockExpRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
-      prisma.workExperience.update.mockResolvedValueOnce({
-        ...mockExpRecord,
-        status: 'REJECTED',
-        rejectionReason: 'Uploaded document is an offer letter or appointment agreement',
-      });
 
       aiGateway.complete.mockResolvedValueOnce({
         output: {
           documentType: 'OFFER_LETTER',
-          isActualEmploymentProof: false,
+          isActualEmploymentProof: true,
           candidateName: 'John Doe',
           companyName: 'Acme Corporation',
           role: 'Senior Software Engineer',
@@ -420,16 +532,8 @@ describe('WorkExperienceService', () => {
 
       const result = await service.validateProofDocument(mockStudentId, expId, docId);
 
-      expect(result.validationResult.validationStatus).toBe('REJECTED');
-      expect(result.experienceStatus).toBe('REJECTED');
+      expect(result.validationResult.validationStatus).toBe('VALIDATED');
       expect(result.validationResult.isOfferLetter).toBe(true);
-      expect(result.validationResult.rejectionReason).toContain('offer letter');
-      expect(prisma.workExperience.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: expId },
-          data: expect.objectContaining({ status: 'REJECTED' }),
-        }),
-      );
     });
 
     it('rejects validation when document company name does not match submitted claim', async () => {

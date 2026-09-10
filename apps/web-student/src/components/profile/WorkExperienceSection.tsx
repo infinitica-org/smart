@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
+  validateWorkExperienceLetterRules,
   type WorkExperienceDto,
   type WorkExperienceDocumentDto,
 } from '@smart/contracts';
@@ -170,6 +171,23 @@ export function WorkExperienceSection() {
     try {
       setSubmitting(true);
       setError(null);
+
+      const existingDocs = editingId
+        ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
+        : [];
+
+      const letterValidation = validateWorkExperienceLetterRules({
+        isCurrent,
+        endDate: !isCurrent && endDate ? endDate : null,
+        documents: existingDocs,
+      });
+
+      if (!letterValidation.valid) {
+        setError(letterValidation.message || 'Required proof documents are missing.');
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,
@@ -187,6 +205,13 @@ export function WorkExperienceSection() {
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
+        documents: existingDocs.map((doc) => ({
+          documentType: doc.documentType,
+          fileUrl: doc.fileUrl,
+          fileName: doc.fileName,
+          fileSizeBytes: doc.fileSizeBytes,
+          mimeType: doc.mimeType,
+        })),
       };
 
       if (editingId) {
@@ -399,6 +424,11 @@ export function WorkExperienceSection() {
                             })
                           : 'N/A'}
                     </span>
+                    {(exp.isCurrent || !exp.endDate) && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-0.5 text-[10px] font-medium text-[#00fad0]">
+                        Active — pending final documentation
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -662,6 +692,40 @@ export function WorkExperienceSection() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {/* Rule Explanation Banner (WE-T01) */}
+            <div className="mt-3 rounded-2xl border border-[#00fad0]/25 bg-[#00fad0]/5 p-3.5 text-xs text-white/90">
+              <div className="flex items-center gap-2 font-semibold text-[#00fad0]">
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>Document Requirement Rules</span>
+              </div>
+              <p className="mt-1 text-white/75 leading-relaxed">
+                {isCurrent ? (
+                  <>
+                    <strong className="text-[#00fad0]">Ongoing Role: Offer letter required.</strong>{' '}
+                    Status will display as{' '}
+                    <span className="font-semibold text-white">
+                      Active — pending final documentation
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-amber-300">
+                      Ended Role: Offer Letter + Completion/Relieving Letter required.
+                    </strong>{' '}
+                    Both an Offer Letter and a Completion/Relieving Letter are required before
+                    submission.
+                  </>
+                )}
+              </p>
+            </div>
+
+            {error && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
