@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'motion/react';
+import { Loader2, MapPin } from 'lucide-react';
+import { isSmartApiError } from '@smart/api-client';
 import { LightSelect } from '../../ui/LightSelect';
 import { CITY_OPTIONS, type OnboardingProfileForm } from '@/lib/onboarding-form';
+import { api } from '@/lib/api';
 import {
   BackButton,
   ErrorBanner,
@@ -39,6 +42,8 @@ export default function JobPreferencesStep({
 }: JobPreferencesStepProps) {
   const [attempted, setAttempted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const prefs = formData.jobPreferences;
   const updatePrefs = <K extends keyof OnboardingProfileForm['jobPreferences']>(
@@ -62,6 +67,53 @@ export default function JobPreferencesStep({
   const currentLocationInvalid = attempted && !prefs.currentLocation.trim();
   const preferredLocationsInvalid = attempted && prefs.preferredLocations.length === 0;
   const consentInvalid = attempted && !formData.dpdpConsent;
+
+  const resolveCityLabel = (city: string): string => {
+    const exact = CITY_OPTIONS.find((option) => option === city);
+    if (exact) return exact;
+    const lower = city.toLowerCase();
+    const match = CITY_OPTIONS.find(
+      (option) =>
+        option.toLowerCase() === lower ||
+        lower.includes(option.toLowerCase()) ||
+        option.toLowerCase().includes(lower),
+    );
+    return match ?? city;
+  };
+
+  const handleUseMyLocation = () => {
+    setLocationError(null);
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationError('Location is not supported in this browser. Please pick a city manually.');
+      return;
+    }
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void (async () => {
+          try {
+            const { city } = await api.users.reverseGeocode({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            updatePrefs('currentLocation', resolveCityLabel(city));
+          } catch (error) {
+            const message = isSmartApiError(error)
+              ? error.message
+              : 'Could not detect your city. Please pick one manually.';
+            setLocationError(message);
+          } finally {
+            setLocationLoading(false);
+          }
+        })();
+      },
+      () => {
+        setLocationLoading(false);
+        setLocationError('Location permission denied. Please pick a city manually.');
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+    );
+  };
 
   const handleFinish = () => {
     setAttempted(true);
@@ -119,13 +171,29 @@ export default function JobPreferencesStep({
       </div>
 
       <div className="mb-5">
-        <FieldLabel required>Current location</FieldLabel>
+        <div className="flex items-center justify-between gap-3 mb-1.5">
+          <FieldLabel required>Current location</FieldLabel>
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={locationLoading}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#00fad0] hover:text-[#7dffe6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {locationLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <MapPin className="w-3.5 h-3.5" />
+            )}
+            Use my location
+          </button>
+        </div>
         <LightSelect
           value={prefs.currentLocation}
           onChange={(val) => updatePrefs('currentLocation', val)}
           placeholder="Select your current city"
           options={CITY_OPTIONS.map((c) => ({ label: c, value: c }))}
         />
+        {locationError ? <p className="mt-1 text-xs text-amber-400">{locationError}</p> : null}
         {currentLocationInvalid && (
           <p className="mt-1 text-xs text-rose-400">Current location is required.</p>
         )}

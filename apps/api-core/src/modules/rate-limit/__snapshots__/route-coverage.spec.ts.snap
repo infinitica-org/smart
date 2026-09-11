@@ -203,6 +203,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /users/me/onboarding/github/fetch-profile": "projects.github",
   "POST /users/me/onboarding/github/list-repos": "projects.github",
   "POST /users/me/onboarding/github/repo-languages": "projects.github",
+  "POST /users/me/onboarding/reverse-geocode": "onboarding.geocode",
   "POST /users/me/password": "role.student",
   "POST /users/me/resume/parse": "users.resumeParse",
   "POST /users/me/work-experiences": "role.student",

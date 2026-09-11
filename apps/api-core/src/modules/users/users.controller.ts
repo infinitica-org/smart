@@ -8,6 +8,7 @@ import {
   GithubRepoReadmeRequestSchema,
   ListGithubReposRequestSchema,
   RepoLanguagesRequestSchema,
+  ReverseGeocodeRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply } from 'fastify';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -17,6 +18,7 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { env } from '../../platform/config/env.js';
 import { ResumeParseService } from '../ai-gateway/resume-parse.service.js';
 import { LinkedinOauthService } from '../auth/linkedin-oauth.service.js';
+import { GeocodingOnboardingService } from '../integrations/geocoding/geocoding-onboarding.service.js';
 import { GithubOnboardingService } from '../integrations/github/github-onboarding.service.js';
 import { UsersService } from './users.service.js';
 
@@ -28,6 +30,8 @@ export class UsersController {
     @Inject(ResumeParseService) private readonly resumeParse: ResumeParseService,
     @Inject(LinkedinOauthService) private readonly linkedinOauth: LinkedinOauthService,
     @Inject(GithubOnboardingService) private readonly githubOnboarding: GithubOnboardingService,
+    @Inject(GeocodingOnboardingService)
+    private readonly geocodingOnboarding: GeocodingOnboardingService,
   ) {}
 
   @Get('me')
@@ -151,6 +155,15 @@ export class UsersController {
   fetchGithubProfile(@Body() body: unknown) {
     const parsed = FetchGithubProfileRequestSchema.parse(body);
     return this.githubOnboarding.fetchProfile(parsed.githubUrl);
+  }
+
+  @Post('me/onboarding/reverse-geocode')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resolve browser coordinates to a city name for current location.' })
+  reverseGeocode(@Body() body: unknown) {
+    const parsed = ReverseGeocodeRequestSchema.parse(body);
+    return this.geocodingOnboarding.reverseGeocode(parsed.lat, parsed.lng);
   }
 
   @Post('me/onboarding/github/list-repos')

@@ -170,6 +170,8 @@ export function CandidateDetailDrawer({
             skills={candidateSkills}
             contactInfo={{
               email: candidate.email,
+              linkedIn: candidate.linkedinUrl ?? undefined,
+              github: candidate.githubUrl ?? undefined,
             }}
             academicDetails={{
               batchName: candidate.batchName ?? undefined,
