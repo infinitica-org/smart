@@ -7,6 +7,8 @@ import {
   SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
+  buildSeSkillLibraryResponse,
+  type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type TrackDto,
 } from '@smart/contracts';
@@ -21,6 +23,9 @@ const competencySelect = {
   realWorldWeight: true,
   assessedAtLevels: true,
 } as const;
+
+/** Frozen at boot — inf-se-v1 taxonomy is immutable for this release. */
+const SE_SKILL_LIBRARY: SeSkillLibraryResponse = buildSeSkillLibraryResponse();
 
 @Injectable()
 export class CatalogService {
@@ -54,6 +59,11 @@ export class CatalogService {
         stream: skill.stream,
       })),
     });
+  }
+
+  /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */
+  listSeSkillLibrary(): SeSkillLibraryResponse {
+    return SE_SKILL_LIBRARY;
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

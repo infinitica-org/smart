@@ -16,6 +16,17 @@ describe('CatalogController', () => {
     expect(tracks[0]?.code).toBe('TECH_FULLSTACK');
   });
 
+  it('listSeSkills() returns the inf-se-v1 library from CatalogService', () => {
+    const listSeSkillLibrary = vi.fn().mockReturnValue({
+      taxonomyVersion: 'inf-se-v1@1',
+      categories: [{ id: 'A', name: 'Programming & Software Development', skills: [] }],
+    });
+    const controller = new CatalogController({ listSeSkillLibrary } as unknown as CatalogService);
+    const library = controller.listSeSkills();
+    expect(listSeSkillLibrary).toHaveBeenCalledOnce();
+    expect(library.taxonomyVersion).toBe('inf-se-v1@1');
+  });
+
   it('listSkills() returns the skill-set library from CatalogService', () => {
     const listSkillLibrary = vi.fn().mockReturnValue({
       taxonomyVersion: '0.9',

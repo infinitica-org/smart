@@ -13,8 +13,10 @@ import {
   ResolveReviewFlagResponseSchema,
   SMART_TOPICS,
   StudentCorroborationResponseSchema,
+  isValidConsentScope,
   type AssessmentPerformanceVector,
   type CorroborationReviewFlag,
+  type PassiveSignalSourceId,
   type VectorizedSignal,
 } from '@smart/contracts';
 import {
@@ -55,6 +57,12 @@ export class CorroborationService {
       throw new ForbiddenException({
         error: 'missing_consent',
         message: 'Passive signal rejected: consentScope is required.',
+      });
+    }
+    if (!isValidConsentScope(signal.sourceId as PassiveSignalSourceId, signal.consentScope)) {
+      throw new ForbiddenException({
+        error: 'invalid_consent_scope',
+        message: `Passive signal rejected: consentScope "${signal.consentScope}" is not allowlisted for ${signal.sourceId}.`,
       });
     }
     await this.store.savePassiveSignal(signal);

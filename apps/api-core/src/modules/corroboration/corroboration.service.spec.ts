@@ -121,6 +121,18 @@ describe('CorroborationService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('rejects passive ingest with unknown consentScope for source', async () => {
+    const { service } = createService(createStore());
+    await expect(
+      service.ingestPassiveSignal({
+        ...passiveSignal,
+        consentScope: 'hackerrank.profile.public',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'invalid_consent_scope' }),
+    });
+  });
+
   it('ingests passive signal and persists snapshot', async () => {
     const store = createStore();
     const { service, outbox } = createService(store);
