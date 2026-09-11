@@ -153,12 +153,7 @@ export class PublicProfileService {
       }
     }
 
-    return {
-      eligible,
-      verifiedSkillsCount,
-      verifiedCertsCount,
-      verifiedWorkExpCount,
-    };
+    return { eligible, verifiedSkillsCount, verifiedCertsCount, verifiedWorkExpCount };
   }
 
   /**
