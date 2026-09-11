@@ -26,6 +26,40 @@ export const WorkExperienceProofMatchResultSchema = z.object({
 });
 export type WorkExperienceProofMatchResult = z.infer<typeof WorkExperienceProofMatchResultSchema>;
 
+/** S6-VB-01 — proof validation reason codes (never auto-fraud). */
+export const WORK_EXPERIENCE_PROOF_REASON_CODES = [
+  'INVALID_DOCUMENT_TYPE',
+  'PROOF_VALIDATED',
+  'PROOF_REJECTED',
+  'NEEDS_MANUAL_REVIEW',
+] as const;
+export const WorkExperienceProofReasonCodeSchema = z.enum(WORK_EXPERIENCE_PROOF_REASON_CODES);
+export type WorkExperienceProofReasonCode = z.infer<typeof WorkExperienceProofReasonCodeSchema>;
+
+/** Attachment or AI-classified types that cannot establish completed employment. */
+export const INVALID_EMPLOYMENT_PROOF_ATTACHMENT_TYPES = ['OFFER_LETTER'] as const;
+
+export function isInvalidEmploymentProofAttachmentType(documentType: string): boolean {
+  return (INVALID_EMPLOYMENT_PROOF_ATTACHMENT_TYPES as readonly string[]).includes(documentType);
+}
+
+export function isInvalidEmploymentProofClassification(params: {
+  documentType: string;
+  isActualEmploymentProof: boolean;
+  isOfferLetter?: boolean;
+}): boolean {
+  if (isInvalidEmploymentProofAttachmentType(params.documentType)) {
+    return true;
+  }
+  if (params.isOfferLetter === true) {
+    return true;
+  }
+  return !params.isActualEmploymentProof;
+}
+
+export const INVALID_EMPLOYMENT_PROOF_MESSAGE =
+  'This document type establishes hiring intent, not completed employment. Upload a completion, relieving, service, or experience letter instead.';
+
 export const WorkExperienceProofValidationResultSchema = z.object({
   validationStatus: z.enum(['VALIDATED', 'REJECTED', 'NEEDS_MANUAL_REVIEW']),
   documentType: ExperienceDocumentTypeSchema,
@@ -33,6 +67,7 @@ export const WorkExperienceProofValidationResultSchema = z.object({
   extractedData: WorkExperienceProofExtractedDataSchema,
   matchResult: WorkExperienceProofMatchResultSchema,
   rejectionReason: z.string().nullable(),
+  reasonCode: WorkExperienceProofReasonCodeSchema.nullable().optional(),
   validatedAt: z.string(),
 });
 export type WorkExperienceProofValidationResult = z.infer<

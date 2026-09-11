@@ -4,9 +4,20 @@
   "private": true,
   "description": "Playwright end-to-end tests. Owner: Satheswaran V.",
   "scripts": {
-    "test": "echo 'Playwright specs land in Sprint 2. Placeholder keeps turbo graph green.'",
-    "typecheck": "echo skip",
-    "lint": "echo skip",
-    "clean": "echo skip"
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "clean": "rimraf playwright-report test-results .turbo *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@smart/eslint-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:"
   }
 }

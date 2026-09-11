@@ -20,6 +20,15 @@ export class WorkExperienceController {
     return this.service.listForStudent(user.sub);
   }
 
+  @Get('ops-dashboard')
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Ops Dashboard items for work experience verification monitoring.' })
+  @ApiResponse({ status: 200, description: 'Ops Dashboard items list.' })
+  getOpsDashboard() {
+    return this.service.getOpsDashboard();
+  }
+
   @Get(':id')
   @Roles('STUDENT')
   @ApiBearerAuth()
@@ -126,14 +135,5 @@ export class WorkExperienceController {
   @ApiResponse({ status: 200, description: 'Employer verification request restarted.' })
   restartVerification(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.service.restartEmployerVerification(user.sub, id);
-  }
-
-  @Get('ops-dashboard')
-  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get Ops Dashboard items for work experience verification monitoring.' })
-  @ApiResponse({ status: 200, description: 'Ops Dashboard items list.' })
-  getOpsDashboard() {
-    return this.service.getOpsDashboard();
   }
 }

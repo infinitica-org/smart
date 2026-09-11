@@ -18,6 +18,12 @@ describe('route matching', () => {
     ['GET', '/health', undefined],
     ['POST', '/api/v1/catalog/tracks', undefined],
     ['GET', '/api/v1/catalog/tracks/one/extra', undefined],
+    ['GET', '/api/v1/users/me/work-experiences/ops-dashboard', 'role.placementStaff'],
+    [
+      'GET',
+      '/api/v1/users/me/work-experiences/55555555-5555-4555-8555-555555555555',
+      'role.student',
+    ],
   ])('%s %s resolves to %s', (method, url, policy) => {
     expect(matchContractRoute(method, url)?.rateLimit).toBe(policy);
   });

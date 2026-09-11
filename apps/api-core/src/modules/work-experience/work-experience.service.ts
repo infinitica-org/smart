@@ -38,6 +38,13 @@ import {
   ApproveWorkExperienceAuthenticityResponseSchema,
   toWorkExperienceDocumentPublicDto,
   type WorkExperienceDocumentPublicDto,
+  companyRequiresPublicIdentity,
+  validateCompanyPublicIdentity,
+  isInvalidEmploymentProofAttachmentType,
+  isInvalidEmploymentProofClassification,
+  INVALID_EMPLOYMENT_PROOF_MESSAGE,
+  deriveWorkExperienceNextAction,
+  type WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -330,6 +337,13 @@ export class WorkExperienceService {
       }
     }
 
+    await this.assertCompanyPublicIdentity({
+      companyId: data.companyId,
+      companyWebsite: data.companyWebsite,
+      companyLinkedinUrl: data.companyLinkedinUrl,
+      matchedCompanyId,
+    });
+
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
@@ -467,6 +481,19 @@ export class WorkExperienceService {
       updatedOrgId = org.id;
       updatedCompanyNameRaw = nameToUse.trim();
     }
+
+    const effectiveCompanyWebsite =
+      data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
+    const effectiveCompanyLinkedinUrl =
+      data.companyLinkedinUrl !== undefined ? data.companyLinkedinUrl : existing.companyLinkedinUrl;
+    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
+
+    await this.assertCompanyPublicIdentity({
+      companyId: effectiveCompanyId,
+      companyWebsite: effectiveCompanyWebsite,
+      companyLinkedinUrl: effectiveCompanyLinkedinUrl,
+      matchedCompanyId: effectiveCompanyId,
+    });
 
     const updated = await this.prisma.workExperience.update({
       where: { id },
@@ -812,6 +839,36 @@ export class WorkExperienceService {
       where: { id: studentId },
     });
 
+    if (isInvalidEmploymentProofAttachmentType(doc.documentType)) {
+      return this.persistProofValidationResult({
+        experience,
+        documentId,
+        studentId,
+        validationStatus: 'REJECTED',
+        reasonCode: 'INVALID_DOCUMENT_TYPE',
+        rejectionReason: INVALID_EMPLOYMENT_PROOF_MESSAGE,
+        documentType: doc.documentType,
+        isOfferLetter: true,
+        extractedData: {
+          documentType: doc.documentType as 'OFFER_LETTER',
+          isActualEmploymentProof: false,
+          candidateName: null,
+          companyName: null,
+          role: null,
+          startDate: null,
+          endDate: null,
+          confidence: 0,
+        },
+        matchResult: {
+          candidateNameMatch: false,
+          companyNameMatch: false,
+          roleMatch: false,
+          dateMatch: false,
+        },
+        updateExperienceOnReject: false,
+      });
+    }
+
     let rawText = '';
     if (rawTextOverride && env.NODE_ENV === 'test') {
       rawText = rawTextOverride.trim();
@@ -890,13 +947,20 @@ export class WorkExperienceService {
 
     let validationStatus: 'VALIDATED' | 'REJECTED' | 'NEEDS_MANUAL_REVIEW' = 'VALIDATED';
     let rejectionReason: string | null = null;
-    let reasonCode = 'PROOF_VALIDATED';
+    let reasonCode: WorkExperienceProofReasonCode = 'PROOF_VALIDATED';
+    let updateExperienceOnReject = true;
 
-    if (!isOfferLetter && !isActualEmploymentProof) {
+    if (
+      isInvalidEmploymentProofClassification({
+        documentType: extracted.documentType,
+        isActualEmploymentProof,
+        isOfferLetter,
+      })
+    ) {
       validationStatus = 'REJECTED';
-      rejectionReason =
-        'Uploaded document does not establish proof of actual or ongoing employment.';
-      reasonCode = 'PROOF_REJECTED';
+      rejectionReason = INVALID_EMPLOYMENT_PROOF_MESSAGE;
+      reasonCode = 'INVALID_DOCUMENT_TYPE';
+      updateExperienceOnReject = false;
     } else if (!companyNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document company name (${extracted.companyName ?? 'Unknown'}) does not match submitted company (${experience.companyName}).`;
@@ -917,54 +981,131 @@ export class WorkExperienceService {
       reasonCode = 'NEEDS_MANUAL_REVIEW';
     }
 
-    const validatedAt = new Date().toISOString();
-
-    const validationResult = {
+    return this.persistProofValidationResult({
+      experience,
+      documentId,
+      studentId,
       validationStatus,
+      reasonCode,
+      rejectionReason,
       documentType: extracted.documentType,
       isOfferLetter,
       extractedData: extracted,
       matchResult,
-      rejectionReason,
+      updateExperienceOnReject,
+    });
+  }
+
+  private async persistProofValidationResult(params: {
+    experience: RawWorkExperience;
+    documentId: string;
+    studentId: string;
+    validationStatus: 'VALIDATED' | 'REJECTED' | 'NEEDS_MANUAL_REVIEW';
+    reasonCode: WorkExperienceProofReasonCode;
+    rejectionReason: string | null;
+    documentType: string;
+    isOfferLetter: boolean;
+    extractedData: {
+      documentType: string;
+      isActualEmploymentProof: boolean;
+      candidateName: string | null;
+      companyName: string | null;
+      role: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      confidence: number;
+    };
+    matchResult: {
+      candidateNameMatch: boolean;
+      companyNameMatch: boolean;
+      roleMatch: boolean;
+      dateMatch: boolean;
+    };
+    updateExperienceOnReject: boolean;
+  }): Promise<ValidateWorkExperienceProofResponse> {
+    const validatedAt = new Date().toISOString();
+    const validationResult = {
+      validationStatus: params.validationStatus,
+      documentType: params.documentType,
+      isOfferLetter: params.isOfferLetter,
+      extractedData: params.extractedData,
+      matchResult: params.matchResult,
+      rejectionReason: params.rejectionReason,
+      reasonCode: params.reasonCode,
       validatedAt,
     };
 
-    // Update document validation status & result
     await this.prisma.workExperienceDocument.update({
-      where: { id: documentId },
+      where: { id: params.documentId },
       data: {
-        validationStatus,
+        validationStatus: params.validationStatus,
         validationResult: validationResult as Prisma.InputJsonValue,
       },
     });
 
-    // Update work experience status if rejected (valid proof keeps experience status SUBMITTED, NEVER VERIFIED)
-    let updatedExperienceStatus = experience.status;
-    if (validationStatus === 'REJECTED') {
+    let updatedExperienceStatus = params.experience.status;
+    if (params.validationStatus === 'REJECTED' && params.updateExperienceOnReject) {
       const updatedExp = await this.prisma.workExperience.update({
-        where: { id },
+        where: { id: params.experience.id },
         data: {
           status: 'REJECTED',
-          rejectionReason,
+          rejectionReason: params.rejectionReason,
         },
       });
       updatedExperienceStatus = updatedExp.status;
     }
 
     await this.auditPublisher.record({
-      actorId: studentId,
+      actorId: params.studentId,
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperienceDocument',
-      resourceId: documentId,
-      reasonCode,
+      resourceId: params.documentId,
+      reasonCode: params.reasonCode,
     });
 
     return ValidateWorkExperienceProofResponseSchema.parse({
-      experienceId: id,
-      documentId,
+      experienceId: params.experience.id,
+      documentId: params.documentId,
       experienceStatus: updatedExperienceStatus,
       validationResult,
     });
+  }
+
+  private async assertCompanyPublicIdentity(params: {
+    companyId?: string | null;
+    companyWebsite?: string | null;
+    companyLinkedinUrl?: string | null;
+    matchedCompanyId?: string | null;
+  }): Promise<void> {
+    let catalogWebsite: string | null = null;
+    let catalogLinkedin: string | null = null;
+    const resolvedCompanyId = params.matchedCompanyId ?? params.companyId ?? null;
+    if (resolvedCompanyId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: resolvedCompanyId },
+      });
+      catalogWebsite = company?.website ?? null;
+      catalogLinkedin = company?.linkedinUrl ?? null;
+    }
+
+    const required = companyRequiresPublicIdentity({
+      companyId: resolvedCompanyId,
+      companyWebsite: params.companyWebsite,
+      catalogCompanyWebsite: catalogWebsite,
+      catalogCompanyLinkedinUrl: catalogLinkedin,
+    });
+    const result = validateCompanyPublicIdentity({
+      companyWebsite: params.companyWebsite,
+      companyLinkedinUrl: params.companyLinkedinUrl,
+      required,
+    });
+    if (!result.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: result.message,
+        statusCode: 400,
+      });
+    }
   }
 
   /**
@@ -1382,25 +1523,31 @@ export class WorkExperienceService {
 
     await this.auditPublisher.record({
       actorId: null,
-      action: parsed.approved
+      action: approved
         ? 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_APPROVED'
         : 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_REJECTED',
       resourceType: 'WorkExperience',
       resourceId: exp.id,
-      reasonCode: parsed.approved ? 'employer_verified' : 'employer_rejected',
+      reasonCode: approved ? 'employer_verified' : 'employer_rejected',
       metadata: {
         attemptId: attempt.id,
-        approved: parsed.approved,
+        approved,
+        decision,
         comments: parsed.comments ?? null,
       },
     });
 
+    const message =
+      newStatus === 'VERIFIED'
+        ? 'Work experience successfully verified.'
+        : newStatus === 'SUBMITTED'
+          ? 'Clarification requested from candidate.'
+          : 'Work experience rejected.';
+
     return {
       success: true,
       status: newStatus,
-      message: parsed.approved
-        ? 'Work experience successfully verified.'
-        : 'Work experience rejected.',
+      message,
     };
   }
 
@@ -1484,6 +1631,19 @@ export class WorkExperienceService {
         (document) =>
           parseStoredDocumentAuthenticity(document.validationResult).status === 'doc_flagged',
       ).length;
+      const hasValidatedProof = (exp.documents ?? []).some(
+        (document) => document.validationStatus === 'VALIDATED',
+      );
+
+      const nextAction = deriveWorkExperienceNextAction({
+        status: exp.status as WorkExperienceVerificationStatus,
+        currentStep,
+        emailState,
+        timeRemainingHours,
+        hasFlaggedDocuments: flaggedDocumentCount > 0,
+        hasValidatedProof,
+        hasVerifierEmail: Boolean(exp.verifierEmail),
+      });
 
       return {
         experienceId: exp.id,
@@ -1499,6 +1659,7 @@ export class WorkExperienceService {
         timeRemainingHours,
         flaggedDocumentCount,
         hasFlaggedDocuments: flaggedDocumentCount > 0,
+        nextAction,
         createdAt: exp.createdAt.toISOString(),
       };
     });

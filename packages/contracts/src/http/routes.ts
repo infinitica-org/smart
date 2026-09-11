@@ -567,7 +567,7 @@ export const ROUTES: readonly RouteSpec[] = [
     module: 'users',
     owner: 'Vishal V',
     roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT'],
-    rateLimit: 'role.student',
+    rateLimit: 'role.placementStaff',
     criticality: 'REPORTING',
     execution: 'SYNC',
     slaMs: 300,
