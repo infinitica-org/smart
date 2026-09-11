@@ -1115,6 +1115,27 @@ describe('WorkExperienceService', () => {
         );
       });
 
+      it('returns verified message when decision is YES without legacy approved flag', async () => {
+        const expId = randomUUID();
+        prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
+          id: randomUUID(),
+          tokenHash: 'hash',
+          verifierEmail: 'jane@acme.com',
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+          respondedAt: null,
+          experience: { id: expId, status: 'PENDING_EMPLOYER' },
+        });
+        prisma.workExperienceVerificationAttempt.update.mockResolvedValueOnce({});
+        prisma.workExperience.update.mockResolvedValueOnce({ id: expId, status: 'VERIFIED' });
+
+        const res = await service.submitEmployerVerification('valid-raw-token', {
+          decision: 'YES',
+        });
+
+        expect(res.status).toBe('VERIFIED');
+        expect(res.message).toBe('Work experience successfully verified.');
+      });
+
       it('marks PARTIAL employer decision as VERIFIED with notes', async () => {
         const expId = randomUUID();
         prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({

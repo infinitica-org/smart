@@ -1520,25 +1520,31 @@ export class WorkExperienceService {
 
     await this.auditPublisher.record({
       actorId: null,
-      action: parsed.approved
+      action: approved
         ? 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_APPROVED'
         : 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_REJECTED',
       resourceType: 'WorkExperience',
       resourceId: exp.id,
-      reasonCode: parsed.approved ? 'employer_verified' : 'employer_rejected',
+      reasonCode: approved ? 'employer_verified' : 'employer_rejected',
       metadata: {
         attemptId: attempt.id,
-        approved: parsed.approved,
+        approved,
+        decision,
         comments: parsed.comments ?? null,
       },
     });
 
+    const message =
+      newStatus === 'VERIFIED'
+        ? 'Work experience successfully verified.'
+        : newStatus === 'SUBMITTED'
+          ? 'Clarification requested from candidate.'
+          : 'Work experience rejected.';
+
     return {
       success: true,
       status: newStatus,
-      message: parsed.approved
-        ? 'Work experience successfully verified.'
-        : 'Work experience rejected.',
+      message,
     };
   }
 
