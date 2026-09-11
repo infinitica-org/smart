@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import {
+  INF_SE_V1_TAXONOMY_VERSION,
+  SE_SKILL_DEFINITIONS,
+  groupSeSkillsByCategory,
+} from '../domain/se-skills.js';
 import { SKILL_DEFINITIONS, SKILL_TAXONOMY_VERSION } from '../domain/skills.js';
 import {
+  assertInfSeV1MatchesCanonical,
+  buildSeSkillLibraryResponse,
   CompetencyDtoSchema,
+  SeSkillLibraryResponseSchema,
+  SeTaxonomySkillCodeSchema,
   SkillLibraryResponseSchema,
   SkillPassThresholdsDtoSchema,
   SkillsClaimedSnapshotSchema,
@@ -19,6 +28,55 @@ const competencyBase = {
   realWorldWeight: 0.05,
   assessedAtLevels: [1, 2] as const,
 };
+
+describe('inf-se-v1 skill library (catalog.dto)', () => {
+  it('SeTaxonomySkillCodeSchema rejects INF-05-only codes', () => {
+    expect(SeTaxonomySkillCodeSchema.safeParse('GIT_VERSION_CONTROL').success).toBe(false);
+    expect(SeTaxonomySkillCodeSchema.safeParse('SE_JAVA').success).toBe(true);
+  });
+
+  it('buildSeSkillLibraryResponse matches grouped category registry', () => {
+    const built = buildSeSkillLibraryResponse();
+    expect(built.taxonomyVersion).toBe(INF_SE_V1_TAXONOMY_VERSION);
+    expect(built.categories).toHaveLength(9);
+    expect(built.categories.flatMap((category) => category.skills)).toHaveLength(
+      SE_SKILL_DEFINITIONS.length,
+    );
+  });
+
+  it('assertInfSeV1MatchesCanonical rejects drifted skill metadata', () => {
+    const built = buildSeSkillLibraryResponse();
+    const tampered = structuredClone(built);
+    tampered.categories[0].skills[0].name = 'Tampered skill name';
+    expect(() => assertInfSeV1MatchesCanonical(tampered)).toThrow(/drifts from contracts/);
+  });
+
+  it('SeSkillLibraryResponseSchema lists 33 skills in 9 categories', () => {
+    const parsed = SeSkillLibraryResponseSchema.parse({
+      taxonomyVersion: INF_SE_V1_TAXONOMY_VERSION,
+      categories: groupSeSkillsByCategory().map((category) => ({
+        id: category.id,
+        name: category.name,
+        skills: category.skills.map((skill) => ({
+          code: skill.code,
+          name: skill.name,
+          categoryId: skill.categoryId,
+          categoryName: category.name,
+          tagType: skill.tagType,
+          competencyBars: skill.competencyBars,
+          toolBars: skill.toolBars,
+          corroborationEligible: skill.corroborationEligible,
+          assessmentRequiredForClaim: skill.assessmentRequiredForClaim,
+        })),
+      })),
+    });
+    expect(parsed.taxonomyVersion).toBe('inf-se-v1@1');
+    expect(parsed.categories).toHaveLength(9);
+    expect(parsed.categories.flatMap((category) => category.skills)).toHaveLength(
+      SE_SKILL_DEFINITIONS.length,
+    );
+  });
+});
 
 describe('SK-T01 skill-set library (catalog.dto)', () => {
   it('TaxonomySkillCodeSchema rejects free-text skill names', () => {

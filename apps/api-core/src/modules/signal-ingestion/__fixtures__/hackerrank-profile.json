@@ -1,0 +1,9 @@
+{
+  "model": {
+    "badges": [{ "badge_name": "Python", "level": "gold" }],
+    "skills": [
+      { "name": "Python", "total_solved": 25 },
+      { "name": "SQL", "total_solved": 10 }
+    ]
+  }
+}

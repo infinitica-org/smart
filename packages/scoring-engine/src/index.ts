@@ -33,3 +33,10 @@ export * from './reliability/agreement.js';
 
 /* ------------------------------ IRT (Phase 2) ----------------------------- */
 export * from './irt/two-parameter.js';
+
+/* ------------------------ Passive signal corroboration -------------------- */
+export * from './corroboration/policy.js';
+export * from './corroboration/default-weights.js';
+export * from './corroboration/fusion.js';
+export * from './corroboration/statistics.js';
+export * from './corroboration/model-integrity.js';

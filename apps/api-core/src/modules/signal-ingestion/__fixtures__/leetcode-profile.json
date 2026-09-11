@@ -1,0 +1,22 @@
+{
+  "data": {
+    "matchedUser": {
+      "submitStats": {
+        "acSubmissionNum": [
+          { "difficulty": "Easy", "count": 50 },
+          { "difficulty": "Medium", "count": 30 },
+          { "difficulty": "Hard", "count": 5 },
+          { "difficulty": "All", "count": 85 }
+        ]
+      },
+      "tagProblemCounts": {
+        "advanced": [{ "tagName": "Dynamic Programming", "problemsSolved": 12 }],
+        "intermediate": [{ "tagName": "Array", "problemsSolved": 20 }],
+        "fundamental": []
+      },
+      "userCalendar": {
+        "submissionCalendar": "{\"1700000000\":\"3\",\"1700086400\":\"1\"}"
+      }
+    }
+  }
+}
