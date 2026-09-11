@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { IsoDateTimeSchema } from './common.js';
-import { SignalSourceIdSchema } from './signals.dto.js';
 
 /**
  * External signal connection HTTP DTOs (S6-VB-01).
