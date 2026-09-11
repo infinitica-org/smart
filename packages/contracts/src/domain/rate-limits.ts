@@ -313,6 +313,15 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
       'Repo picker hits GitHub; cache in Redis with TTL to stay under GitHub secondary limits.',
   },
   {
+    key: 'onboarding.geocode',
+    scope: 'USER',
+    limit: 10,
+    windowSeconds: 60,
+    burst: 3,
+    redisKey: 'rl:onboarding:geocode:{id}',
+    rationale: 'Reverse geocode is proxied to a public API; cache by rounded coords in Redis.',
+  },
+  {
     key: 'evaluation.projectVerify',
     scope: 'USER',
     limit: 8,
@@ -419,6 +428,7 @@ export const REDIS_TTL_SECONDS = {
   githubProfile: 10 * 60,
   githubRepoLanguages: 10 * 60,
   githubReadme: 10 * 60,
+  geocodeReverse: 24 * 60 * 60,
   projectWebSimilarity: 5 * 60,
   projectSnapshotLock: 10 * 60,
   proctoringNonce: 90,

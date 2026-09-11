@@ -834,21 +834,7 @@ export default function ProvisioningPage() {
                         <CheckCircle className="size-3" /> Active
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => void handleCopyInviteLink(m.userId)}
-                        disabled={actionLoadingId === `copy-${m.userId}`}
-                        className="px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold flex items-center gap-1 text-[11px] transition-all ml-auto"
-                        title="Copy Invitation Link"
-                      >
-                        {actionLoadingId === `copy-${m.userId}` ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <Copy className="size-3 text-zinc-400" />
-                        )}
-                        {copiedId === m.userId ? 'Copied!' : 'Copy Link'}
-                      </button>
-                    </td>
+                    <td className="px-5 py-3.5 text-right text-zinc-600 text-xs">—</td>
                   </tr>
                 ))}
                 {/* Pending invitation members */}

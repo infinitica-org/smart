@@ -20,7 +20,27 @@ vi.mock('../../../lib/api', () => ({
           pendingInviteCount: 2,
         },
       ]),
-      listBatchMembers: vi.fn().mockResolvedValue([]),
+      listBatchMembers: vi.fn().mockResolvedValue([
+        {
+          userId: 'active-1',
+          fullName: 'Active Student',
+          email: 'active@psgtech.ac.in',
+          groupLabel: 'CSE-A',
+          emailVerified: true,
+          invitation: null,
+        },
+        {
+          userId: 'pending-1',
+          fullName: 'Pending Student',
+          email: 'pending@psgtech.ac.in',
+          groupLabel: 'CSE-A',
+          emailVerified: false,
+          invitation: { invitationId: 'inv-pending', status: 'PENDING' },
+        },
+      ]),
+      getStudentInviteLink: vi
+        .fn()
+        .mockResolvedValue({ inviteUrl: 'https://auth.example/invite/x' }),
       addBatchMember: vi.fn().mockResolvedValue({
         userId: 'u1',
         fullName: 'Aarav Sharma',
@@ -65,5 +85,17 @@ describe('ProvisioningPage', () => {
         groupLabel: 'CSE-A',
       });
     });
+  });
+
+  it('shows Copy Link only for pending members, not active members', async () => {
+    render(<ProvisioningPage />);
+
+    expect(await screen.findByText('Active Student')).toBeDefined();
+    expect(screen.getByText('Pending Student')).toBeDefined();
+
+    const copyButtons = screen.getAllByRole('button', { name: /Copy Link/i });
+    expect(copyButtons).toHaveLength(1);
+    expect(copyButtons[0]?.closest('tr')?.textContent).toContain('Pending Student');
+    expect(screen.getByText('Active Student').closest('tr')?.textContent).not.toMatch(/Copy Link/);
   });
 });

@@ -251,6 +251,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/users/me/onboarding/reverse-geocode',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'onboarding.geocode',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Resolve browser coordinates to a city name for current-location prefill.',
+  },
+  {
+    method: 'POST',
     path: '/users/me/onboarding/github/list-repos',
     module: 'users',
     owner: 'Vishal V',

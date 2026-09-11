@@ -16,6 +16,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
   SubmitCertificateEndorsementDecisionRequest,
@@ -97,6 +98,7 @@ import {
   PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
   RepoLanguagesResponseSchema,
+  ReverseGeocodeResponseSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
@@ -247,6 +249,11 @@ export function usersApi(client: SmartApiClient) {
     fetchGithubProfile: (body: FetchGithubProfileRequest) =>
       client.post(prefixed('/users/me/onboarding/github/fetch-profile'), body, {
         schema: FetchGithubProfileResponseSchema,
+      }),
+
+    reverseGeocode: (body: ReverseGeocodeRequest) =>
+      client.post(prefixed('/users/me/onboarding/reverse-geocode'), body, {
+        schema: ReverseGeocodeResponseSchema,
       }),
 
     listGithubRepos: (body: ListGithubReposRequest) =>
