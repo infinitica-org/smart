@@ -79,14 +79,26 @@ function setup() {
       result: { status: 'VERIFIED', tier: 'TIER_1_ISSUER_API', confidence: 0.95, reason: 'OK' },
     }),
   };
+  const publicProfileService = {
+    recheckActivationAfterVoid: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
     auditPublisher as never,
     emailQueue as never,
     verificationService as never,
+    publicProfileService as never,
   );
-  return { prisma, storage, auditPublisher, emailQueue, verificationService, service };
+  return {
+    prisma,
+    storage,
+    auditPublisher,
+    emailQueue,
+    verificationService,
+    publicProfileService,
+    service,
+  };
 }
 
 describe('CandidateCertificatesService', () => {
@@ -376,6 +388,21 @@ describe('CandidateCertificatesService', () => {
       );
       expect(result.status).toBe('VOIDED');
       expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+    });
+
+    it('re-checks public profile activation eligibility after void (CN-T07)', async () => {
+      const { prisma, publicProfileService, service } = setup();
+      const actorId = randomUUID();
+      prisma.candidateCertificate.findUnique.mockResolvedValue(baseCertificateRow());
+      prisma.candidateCertificate.update.mockResolvedValue(
+        baseCertificateRow({ status: 'VOIDED', updatedAt: new Date('2026-09-09T00:00:00.000Z') }),
+      );
+
+      await service.voidCertificate(actorId, certificateId, {
+        reason: 'Fraudulent submission confirmed by employer.',
+      });
+
+      expect(publicProfileService.recheckActivationAfterVoid).toHaveBeenCalledWith(candidateId);
     });
 
     it('404s when voiding a certificate that does not exist', async () => {

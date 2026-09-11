@@ -15,6 +15,8 @@ import type {
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
+import { PublicProfileService } from '../public-profile/public-profile.service.js';
+
 /** CN-T09 rate-limit guard on the reservation endpoint itself (separate from the global rate limiter). */
 const MAX_FAILED_ATTEMPTS_BEFORE_COOLDOWN = 5;
 const COOLDOWN_MINUTES = 15;
@@ -28,6 +30,7 @@ export class UsernameService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+    @Inject(PublicProfileService) private readonly publicProfileService: PublicProfileService,
   ) {}
 
   async getStatus(userId: string): Promise<UsernameStatusResponse> {
@@ -158,6 +161,17 @@ export class UsernameService {
       where: { id: userId },
       select: { usernameStatus: true, profileVisible: true },
     });
+
+    if (body.profileVisible && !user.profileVisible) {
+      const { eligible } = await this.publicProfileService.evaluateActivationEligibility(userId);
+      if (!eligible) {
+        throw new BadRequestException({
+          error: 'activation_bar_not_met',
+          message: 'Candidate profile does not meet the minimum verification activation bar.',
+          statusCode: 400,
+        });
+      }
+    }
 
     // Turning visibility on for the first time is exactly the "activation" moment for a
     // previously-reserved-only username; going back off never de-activates it.

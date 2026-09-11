@@ -15,8 +15,10 @@ import {
 import { Tier1IssuerRegistry } from './verification/tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from './verification/tier2-public-url-verifier.js';
 import { Tier3OcrVerifier } from './verification/tier3-ocr-verifier.js';
+import { PublicProfileModule } from '../public-profile/public-profile.module.js';
 
 @Module({
+  imports: [PublicProfileModule],
   controllers: [
     CandidateCertificatesController,
     PublicCertificateEndorsementController,

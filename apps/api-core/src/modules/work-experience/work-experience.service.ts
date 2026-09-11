@@ -115,6 +115,8 @@ import {
   parseStoredDocumentAuthenticity,
 } from './work-experience-document-authenticity.util.js';
 
+import { PublicProfileService } from '../public-profile/public-profile.service.js';
+
 @Injectable()
 export class WorkExperienceService {
   readonly owner = 'Vishal V';
@@ -127,6 +129,7 @@ export class WorkExperienceService {
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
+    @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
   ) {}
 
   private async resolveOrganization(params: {
@@ -1873,6 +1876,8 @@ export class WorkExperienceService {
       resourceId: id,
       reasonCode: body.reason,
     });
+
+    await this.publicProfileService?.recheckActivationAfterVoid(existing.studentId);
 
     return {
       id: updated.id,

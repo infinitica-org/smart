@@ -12,6 +12,7 @@ describe('WorkExperienceService', () => {
   let prisma: any;
   let auditPublisher: any;
   let aiGateway: any;
+  let publicProfileService: any;
   let service: WorkExperienceService;
 
   const mockStudentId = randomUUID();
@@ -72,7 +73,18 @@ describe('WorkExperienceService', () => {
       complete: vi.fn(),
     };
 
-    service = new WorkExperienceService(prisma, auditPublisher, aiGateway, emailQueue);
+    publicProfileService = {
+      recheckActivationAfterVoid: vi.fn().mockResolvedValue(undefined),
+    };
+
+    service = new WorkExperienceService(
+      prisma,
+      auditPublisher,
+      aiGateway,
+      emailQueue,
+      undefined,
+      publicProfileService,
+    );
   });
 
   describe('create', () => {
@@ -1428,6 +1440,7 @@ describe('WorkExperienceService', () => {
       const actorId = randomUUID();
       prisma.workExperience.findUnique.mockResolvedValue({
         id: experienceId,
+        studentId: mockStudentId,
         status: 'VERIFIED',
         documents: [
           {
@@ -1467,6 +1480,7 @@ describe('WorkExperienceService', () => {
       );
       expect(result.status).toBe('VOIDED');
       expect(result.voidedAt).toBe('2026-09-09T00:00:00.000Z');
+      expect(publicProfileService.recheckActivationAfterVoid).toHaveBeenCalledWith(mockStudentId);
     });
 
     it('404s when voiding a work-experience entry that does not exist', async () => {

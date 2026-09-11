@@ -71,6 +71,17 @@ export const PublicExternalCertificateSchema = z.object({
 });
 export type PublicExternalCertificate = z.infer<typeof PublicExternalCertificateSchema>;
 
+export const PublicEducationSchema = z.object({
+  institutionName: z.string(),
+  degree: z.string().nullable(),
+  fieldOfStudy: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  current: z.boolean(),
+  grade: z.string().nullable(),
+});
+export type PublicEducation = z.infer<typeof PublicEducationSchema>;
+
 export const PublicCandidateProfileDtoSchema = z.object({
   fullName: z.string(),
   trackName: z.string().nullable(),
@@ -84,6 +95,8 @@ export const PublicCandidateProfileDtoSchema = z.object({
   certificate: PublicCertificateSchema.nullable(),
   /** Only VERIFIED externally-issued certificates — same proof-not-declaration rule as everything else here. */
   externalCertificates: z.array(PublicExternalCertificateSchema),
+  /** College-confirmed education entries when present. */
+  education: z.array(PublicEducationSchema).default([]),
   /** CN-T09 — echoes the owner's opt-in state so the frontend can label in-progress entries. */
   showInProgressItems: z.boolean().default(false),
 });
@@ -94,3 +107,36 @@ export const PublicProfileLinkResponseSchema = z.object({
   url: z.string(),
 });
 export type PublicProfileLinkResponse = z.infer<typeof PublicProfileLinkResponseSchema>;
+
+/**
+ * CN-T07 — generates LinkedIn "Add certification" deep link URL for eligible certifications.
+ * Pure deep-link helper — no OAuth, account connection, or posting.
+ */
+export function buildLinkedInAddCertificationUrl(params: {
+  name: string;
+  organizationName?: string;
+  issueYear?: number | string;
+  issueMonth?: number | string;
+  certUrl?: string;
+  certId?: string;
+}): string {
+  const url = new URL('https://www.linkedin.com/profile/add');
+  url.searchParams.set('startTask', 'CERTIFICATION_NAME');
+  url.searchParams.set('name', params.name);
+  if (params.organizationName) {
+    url.searchParams.set('organizationName', params.organizationName);
+  }
+  if (params.issueYear) {
+    url.searchParams.set('issueYear', String(params.issueYear));
+  }
+  if (params.issueMonth) {
+    url.searchParams.set('issueMonth', String(params.issueMonth));
+  }
+  if (params.certUrl) {
+    url.searchParams.set('certUrl', params.certUrl);
+  }
+  if (params.certId) {
+    url.searchParams.set('certId', params.certId);
+  }
+  return url.toString();
+}

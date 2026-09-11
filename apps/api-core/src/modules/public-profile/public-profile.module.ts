@@ -5,5 +5,6 @@ import { PublicProfileService } from './public-profile.service.js';
 @Module({
   controllers: [PublicProfileController],
   providers: [PublicProfileService],
+  exports: [PublicProfileService],
 })
 export class PublicProfileModule {}
