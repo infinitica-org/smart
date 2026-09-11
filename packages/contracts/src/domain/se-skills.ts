@@ -6,6 +6,10 @@
  * reference-only and are NOT stored here.
  *
  * Owner: Ramansh (S6-RM-13).
+ *
+ * Security: `buildSeSkillLibraryResponse()` is the canonical registry; committed
+ * JSON must match (content-pipeline drift guard). Consent scope allowlist lives
+ * in `signal-consent-scopes.ts` for the corroboration branch to enforce at ingest.
  */
 
 import type { ProficiencyLevel } from './skills.js';

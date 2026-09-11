@@ -1,16 +1,13 @@
 import { Buffer } from 'node:buffer';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  INF_SE_V1_TAXONOMY_VERSION,
   LEVEL_DEFINITIONS,
-  SE_SKILL_CATEGORIES,
   SKILL_DEFINITIONS,
   SKILL_TAXONOMY_VERSION,
-  SeSkillLibraryResponseSchema,
   SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
-  groupSeSkillsByCategory,
+  buildSeSkillLibraryResponse,
   type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type TrackDto,
@@ -26,6 +23,9 @@ const competencySelect = {
   realWorldWeight: true,
   assessedAtLevels: true,
 } as const;
+
+/** Frozen at boot — inf-se-v1 taxonomy is immutable for this release. */
+const SE_SKILL_LIBRARY: SeSkillLibraryResponse = buildSeSkillLibraryResponse();
 
 @Injectable()
 export class CatalogService {
@@ -63,24 +63,7 @@ export class CatalogService {
 
   /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */
   listSeSkillLibrary(): SeSkillLibraryResponse {
-    return SeSkillLibraryResponseSchema.parse({
-      taxonomyVersion: INF_SE_V1_TAXONOMY_VERSION,
-      categories: groupSeSkillsByCategory().map((category) => ({
-        id: category.id,
-        name: category.name,
-        skills: category.skills.map((skill) => ({
-          code: skill.code,
-          name: skill.name,
-          categoryId: skill.categoryId,
-          categoryName: SE_SKILL_CATEGORIES[skill.categoryId].name,
-          tagType: skill.tagType,
-          competencyBars: { ...skill.competencyBars },
-          toolBars: skill.toolBars ? { ...skill.toolBars } : undefined,
-          corroborationEligible: skill.corroborationEligible,
-          assessmentRequiredForClaim: skill.assessmentRequiredForClaim,
-        })),
-      })),
-    });
+    return SE_SKILL_LIBRARY;
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

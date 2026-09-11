@@ -6,6 +6,8 @@ import {
 } from '../domain/se-skills.js';
 import { SKILL_DEFINITIONS, SKILL_TAXONOMY_VERSION } from '../domain/skills.js';
 import {
+  assertInfSeV1MatchesCanonical,
+  buildSeSkillLibraryResponse,
   CompetencyDtoSchema,
   SeSkillLibraryResponseSchema,
   SeTaxonomySkillCodeSchema,
@@ -31,6 +33,22 @@ describe('inf-se-v1 skill library (catalog.dto)', () => {
   it('SeTaxonomySkillCodeSchema rejects INF-05-only codes', () => {
     expect(SeTaxonomySkillCodeSchema.safeParse('GIT_VERSION_CONTROL').success).toBe(false);
     expect(SeTaxonomySkillCodeSchema.safeParse('SE_JAVA').success).toBe(true);
+  });
+
+  it('buildSeSkillLibraryResponse matches grouped category registry', () => {
+    const built = buildSeSkillLibraryResponse();
+    expect(built.taxonomyVersion).toBe(INF_SE_V1_TAXONOMY_VERSION);
+    expect(built.categories).toHaveLength(9);
+    expect(built.categories.flatMap((category) => category.skills)).toHaveLength(
+      SE_SKILL_DEFINITIONS.length,
+    );
+  });
+
+  it('assertInfSeV1MatchesCanonical rejects drifted skill metadata', () => {
+    const built = buildSeSkillLibraryResponse();
+    const tampered = structuredClone(built);
+    tampered.categories[0].skills[0].name = 'Tampered skill name';
+    expect(() => assertInfSeV1MatchesCanonical(tampered)).toThrow(/drifts from contracts/);
   });
 
   it('SeSkillLibraryResponseSchema lists 33 skills in 9 categories', () => {

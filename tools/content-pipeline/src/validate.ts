@@ -5,6 +5,7 @@ import {
   SeSkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   assertDomainWeightsSumToOne,
+  assertInfSeV1MatchesCanonical,
 } from '@smart/contracts';
 import { ItemAuthoringSchema } from './schema.js';
 
@@ -76,6 +77,13 @@ export function runValidate(files?: string[], cwd: string = process.cwd()): Vali
         for (const issue of result.error.issues) {
           const at = issue.path.length > 0 ? issue.path.join('.') : '(root)';
           messages.push(`${relative}: ${at} — ${issue.message}`);
+        }
+      } else {
+        try {
+          assertInfSeV1MatchesCanonical(result.data);
+        } catch (error) {
+          ok = false;
+          messages.push(`${relative}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
       continue;

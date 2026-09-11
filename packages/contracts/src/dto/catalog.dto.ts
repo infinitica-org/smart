@@ -12,10 +12,12 @@ import {
 import { LevelNumberSchema } from '../domain/enums.js';
 import {
   INF_SE_V1_TAXONOMY_VERSION,
+  SE_SKILL_CATEGORIES,
   SE_SKILL_CATEGORY_IDS,
   SE_SKILL_CODE_SET,
   SKILL_TAG_TYPES,
   TOOL_PROFICIENCY_TIERS,
+  groupSeSkillsByCategory,
 } from '../domain/se-skills.js';
 import {
   SKILL_CODE_SET,
@@ -83,6 +85,37 @@ export const SeSkillLibraryResponseSchema = z.object({
   categories: z.array(SeSkillCategoryGroupDtoSchema).length(SE_SKILL_CATEGORY_IDS.length),
 });
 export type SeSkillLibraryResponse = z.infer<typeof SeSkillLibraryResponseSchema>;
+
+/** Canonical inf-se-v1 library — single source for catalog API and JSON drift checks. */
+export function buildSeSkillLibraryResponse(): SeSkillLibraryResponse {
+  return SeSkillLibraryResponseSchema.parse({
+    taxonomyVersion: INF_SE_V1_TAXONOMY_VERSION,
+    categories: groupSeSkillsByCategory().map((category) => ({
+      id: category.id,
+      name: category.name,
+      skills: category.skills.map((skill) => ({
+        code: skill.code,
+        name: skill.name,
+        categoryId: skill.categoryId,
+        categoryName: SE_SKILL_CATEGORIES[skill.categoryId].name,
+        tagType: skill.tagType,
+        competencyBars: { ...skill.competencyBars },
+        toolBars: skill.toolBars ? { ...skill.toolBars } : undefined,
+        corroborationEligible: skill.corroborationEligible,
+        assessmentRequiredForClaim: skill.assessmentRequiredForClaim,
+      })),
+    })),
+  });
+}
+
+/** Throws when committed JSON diverges from contracts (tamper / drift guard). */
+export function assertInfSeV1MatchesCanonical(candidate: unknown): void {
+  const parsed = SeSkillLibraryResponseSchema.parse(candidate);
+  const canonical = buildSeSkillLibraryResponse();
+  if (JSON.stringify(canonical) !== JSON.stringify(parsed)) {
+    throw new Error('inf-se-v1.json drifts from contracts SE_SKILL_DEFINITIONS');
+  }
+}
 
 export const SkillsClaimedSnapshotSchema = z.object({
   taxonomyVersion: z.string().min(1).max(32),
