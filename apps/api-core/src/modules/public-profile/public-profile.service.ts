@@ -45,7 +45,7 @@ export class PublicProfileService {
     });
 
     if (user.username) {
-      return { slug: user.username, url: `${env.VERIFY_APP_URL}/candidate/${user.username}` };
+      return { slug: user.username, url: `${env.VERIFY_APP_URL}/@${user.username}` };
     }
 
     const slug =
@@ -61,19 +61,20 @@ export class PublicProfileService {
   }
 
   /**
-   * Resolves either the opaque share slug or an active claimed username — one public
+   * Resolves either the opaque share slug, `@username`, or an active claimed username — one public
    * lookup, so the frontend (and anyone with an old link) never needs to know which
    * kind of identifier they're holding.
    */
   async getBySlug(identifier: string): Promise<PublicCandidateProfileDto> {
+    const cleanIdentifier = identifier.trim().replace(/^@/, '');
     const bySlug = await this.prisma.user.findUnique({
-      where: { publicProfileSlug: identifier },
+      where: { publicProfileSlug: cleanIdentifier },
       select: { id: true, profileVisible: true },
     });
     const user =
       bySlug ??
       (await this.prisma.user.findUnique({
-        where: { usernameNormalized: identifier.trim().toLowerCase() },
+        where: { usernameNormalized: cleanIdentifier.toLowerCase() },
         select: { id: true, profileVisible: true, usernameStatus: true },
       }));
 
@@ -98,6 +99,77 @@ export class PublicProfileService {
     return this.build(userId);
   }
 
+  /**
+   * CN-T07 — evaluates profile activation eligibility against PROFILE_ACTIVATION_POLICY.
+   * - SEGMENT_AWARE (default):
+   *     Students: verified skill + verified cert
+   *     Professionals: verified skill + verified cert + verified work experience
+   * - STRICT_ALL_THREE:
+   *     verified skill + verified cert + verified work experience
+   */
+  async evaluateActivationEligibility(userId: string): Promise<{
+    eligible: boolean;
+    verifiedSkillsCount: number;
+    verifiedCertsCount: number;
+    verifiedWorkExpCount: number;
+  }> {
+    const [
+      verifiedSkillsCount,
+      verifiedPlatformCertsCount,
+      verifiedExtCertsCount,
+      verifiedWorkExpCount,
+      workExpCount,
+    ] = await Promise.all([
+      this.prisma.skillClaim.count({
+        where: { studentId: userId, status: 'VERIFIED' },
+      }),
+      this.prisma.certificate.count({
+        where: { userId, status: 'ISSUED', isPublic: true },
+      }),
+      this.prisma.candidateCertificate.count({
+        where: { candidateId: userId, status: 'VERIFIED' },
+      }),
+      this.prisma.workExperience.count({
+        where: { studentId: userId, status: 'VERIFIED' },
+      }),
+      this.prisma.workExperience.count({
+        where: { studentId: userId },
+      }),
+    ]);
+
+    const verifiedCertsCount = verifiedPlatformCertsCount + verifiedExtCertsCount;
+    const policy =
+      (env.PROFILE_ACTIVATION_POLICY as 'SEGMENT_AWARE' | 'STRICT_ALL_THREE') ?? 'SEGMENT_AWARE';
+
+    let eligible = false;
+    if (policy === 'STRICT_ALL_THREE') {
+      eligible = verifiedSkillsCount > 0 && verifiedCertsCount > 0 && verifiedWorkExpCount > 0;
+    } else {
+      const isProfessional = verifiedWorkExpCount > 0 || workExpCount > 0;
+      if (isProfessional) {
+        eligible = verifiedSkillsCount > 0 && verifiedCertsCount > 0 && verifiedWorkExpCount > 0;
+      } else {
+        eligible = verifiedSkillsCount > 0 && verifiedCertsCount > 0;
+      }
+    }
+
+    return { eligible, verifiedSkillsCount, verifiedCertsCount, verifiedWorkExpCount };
+  }
+
+  /**
+   * CN-T07 — re-checks activation eligibility on admin void.
+   * Deactivates the profile ONLY if remaining items no longer satisfy the policy.
+   */
+  async recheckActivationAfterVoid(userId: string): Promise<void> {
+    const { eligible } = await this.evaluateActivationEligibility(userId);
+    if (!eligible) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { profileVisible: false },
+      });
+    }
+  }
+
   private async build(userId: string): Promise<PublicCandidateProfileDto> {
     const owner = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
@@ -116,6 +188,7 @@ export class PublicProfileService {
       workExperience,
       certificate,
       externalCertificates,
+      educationRecords,
     ] = await Promise.all([
       this.prisma.skillClaim.findMany({
         where: { studentId: userId, status: 'VERIFIED' },
@@ -123,16 +196,11 @@ export class PublicProfileService {
       }),
       this.prisma.skillClaim.count({ where: { studentId: userId } }),
       this.prisma.project.findMany({
-        // A reviewer-rejected project (possible plagiarism/integrity flag) is never
-        // portfolio material — everything else the student put up stays visible.
         where: { studentId: userId, status: { not: 'REJECTED' } },
         orderBy: { createdAt: 'desc' },
         include: { report: { select: { score: true } } },
       }),
       this.prisma.workExperience.findMany({
-        // CN-T09 — verified-only by default; showInProgress additionally admits anything
-        // not yet decided, but a VOIDED (SA-T08) or REJECTED/EXPIRED entry never appears
-        // here regardless of that toggle.
         where: showInProgress
           ? { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } }
           : { studentId: userId, status: 'VERIFIED' },
@@ -148,6 +216,10 @@ export class PublicProfileService {
           : { candidateId: userId, status: 'VERIFIED' },
         orderBy: { createdAt: 'desc' },
         include: { skills: true },
+      }),
+      this.prisma.candidateEducation.findMany({
+        where: { studentId: userId },
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
 
@@ -196,6 +268,15 @@ export class PublicProfileService {
           proficiency: skill.selfAssessedProficiency,
         })),
         inProgress: cert.status !== 'VERIFIED',
+      })),
+      education: educationRecords.map((edu) => ({
+        institutionName: edu.institutionName,
+        degree: edu.degree ?? null,
+        fieldOfStudy: edu.fieldOfStudy ?? null,
+        startDate: edu.startDate ?? null,
+        endDate: edu.endDate ?? null,
+        current: edu.current,
+        grade: edu.grade ?? null,
       })),
       showInProgressItems: showInProgress,
     };

@@ -30,9 +30,19 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
         count: vi.fn().mockResolvedValue(0),
       },
       project: { findMany: vi.fn().mockResolvedValue([]) },
-      workExperience: { findMany: vi.fn().mockResolvedValue([]) },
-      certificate: { findFirst: vi.fn().mockResolvedValue(null) },
-      candidateCertificate: { findMany: vi.fn().mockResolvedValue([]) },
+      workExperience: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      certificate: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      candidateCertificate: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
     };
     service = new PublicProfileService(prisma);
   });
@@ -82,6 +92,19 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       });
     });
 
+    it('strips a leading @ before resolving the identifier', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: userId, profileVisible: true, usernameStatus: 'ACTIVE' });
+
+      await service.getBySlug('@priya_s');
+
+      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
+        where: { usernameNormalized: 'priya_s' },
+        select: { id: true, profileVisible: true, usernameStatus: true },
+      });
+    });
+
     it('404s a merely-reserved (not yet active) username even if visibility happens to be on', async () => {
       prisma.user.findUnique
         .mockResolvedValueOnce(null)
@@ -105,7 +128,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       const result = await service.getOrCreateShareLink(userId);
 
       expect(result.slug).toBe('priya_s');
-      expect(result.url).toContain('/candidate/priya_s');
+      expect(result.url).toContain('/@priya_s');
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
@@ -197,6 +220,91 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       expect(workExperienceCall.where.status.notIn).toContain('VOIDED');
       const certCall = prisma.candidateCertificate.findMany.mock.calls[0][0];
       expect(certCall.where.status.notIn).toContain('VOIDED');
+    });
+  });
+
+  describe('evaluateActivationEligibility (CN-T07)', () => {
+    it('eligible for students with verified skill + verified cert only', async () => {
+      prisma.skillClaim.count.mockResolvedValue(1);
+      prisma.certificate.count.mockResolvedValue(1);
+      prisma.candidateCertificate.count.mockResolvedValue(0);
+      prisma.workExperience.count.mockResolvedValue(0);
+
+      const result = await service.evaluateActivationEligibility(userId);
+
+      expect(result.eligible).toBe(true);
+      expect(result.verifiedSkillsCount).toBe(1);
+      expect(result.verifiedCertsCount).toBe(1);
+    });
+
+    it('requires verified work experience when the candidate has any work-experience rows', async () => {
+      prisma.skillClaim.count.mockResolvedValue(1);
+      prisma.certificate.count.mockResolvedValue(1);
+      prisma.candidateCertificate.count.mockResolvedValue(0);
+      prisma.workExperience.count
+        .mockResolvedValueOnce(0) // verified
+        .mockResolvedValueOnce(1); // total
+
+      const result = await service.evaluateActivationEligibility(userId);
+
+      expect(result.eligible).toBe(false);
+    });
+  });
+
+  describe('recheckActivationAfterVoid (CN-T07)', () => {
+    it('turns profile visibility off when eligibility is no longer met', async () => {
+      prisma.skillClaim.count.mockResolvedValue(0);
+      prisma.certificate.count.mockResolvedValue(0);
+      prisma.candidateCertificate.count.mockResolvedValue(0);
+      prisma.workExperience.count.mockResolvedValue(0);
+
+      await service.recheckActivationAfterVoid(userId);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { profileVisible: false },
+      });
+    });
+
+    it('leaves visibility unchanged when eligibility still holds', async () => {
+      prisma.skillClaim.count.mockResolvedValue(1);
+      prisma.certificate.count.mockResolvedValue(1);
+      prisma.candidateCertificate.count.mockResolvedValue(0);
+      prisma.workExperience.count.mockResolvedValue(0);
+
+      await service.recheckActivationAfterVoid(userId);
+
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('build — education (CN-T07)', () => {
+    it('includes college-confirmed education entries on the public profile', async () => {
+      prisma.candidateEducation.findMany.mockResolvedValue([
+        {
+          institutionName: 'MIT',
+          degree: 'B.S.',
+          fieldOfStudy: 'Computer Science',
+          startDate: '2020-09-01',
+          endDate: '2024-06-01',
+          current: false,
+          grade: '3.9 GPA',
+        },
+      ]);
+
+      const result = await service.getForOwner(userId);
+
+      expect(result.education).toEqual([
+        {
+          institutionName: 'MIT',
+          degree: 'B.S.',
+          fieldOfStudy: 'Computer Science',
+          startDate: '2020-09-01',
+          endDate: '2024-06-01',
+          current: false,
+          grade: '3.9 GPA',
+        },
+      ]);
     });
   });
 });

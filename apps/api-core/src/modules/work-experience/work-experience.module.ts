@@ -9,9 +9,10 @@ import { WorkExperienceAdminController } from './work-experience-admin.controlle
 import { WorkExperienceService } from './work-experience.service.js';
 
 import { InstitutionsModule } from '../institutions/institutions.module.js';
+import { PublicProfileModule } from '../public-profile/public-profile.module.js';
 
 @Module({
-  imports: [PrismaModule, AuditModule, AiGatewayModule, InstitutionsModule],
+  imports: [PrismaModule, AuditModule, AiGatewayModule, InstitutionsModule, PublicProfileModule],
   controllers: [
     WorkExperienceController,
     PublicWorkExperienceVerificationController,
