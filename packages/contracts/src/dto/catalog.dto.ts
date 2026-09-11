@@ -11,6 +11,13 @@ import {
 } from '../domain/enums.js';
 import { LevelNumberSchema } from '../domain/enums.js';
 import {
+  INF_SE_V1_TAXONOMY_VERSION,
+  SE_SKILL_CATEGORY_IDS,
+  SE_SKILL_CODE_SET,
+  SKILL_TAG_TYPES,
+  TOOL_PROFICIENCY_TIERS,
+} from '../domain/se-skills.js';
+import {
   SKILL_CODE_SET,
   SKILL_STREAMS,
   SKILL_TAXONOMY_DOMAINS,
@@ -38,6 +45,44 @@ export const SkillLibraryResponseSchema = z.object({
   skills: z.array(SkillLibraryItemDtoSchema),
 });
 export type SkillLibraryResponse = z.infer<typeof SkillLibraryResponseSchema>;
+
+/** inf-se-v1 skill code only — parallel SE verification framework (S6-RM-13). */
+export const SeTaxonomySkillCodeSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .refine((code) => SE_SKILL_CODE_SET.has(code), { message: 'Unknown inf-se-v1 skill code' });
+
+export const SeSkillLibraryItemDtoSchema = z.object({
+  code: SeTaxonomySkillCodeSchema,
+  name: z.string().min(1),
+  categoryId: z.enum(SE_SKILL_CATEGORY_IDS),
+  categoryName: z.string().min(1),
+  tagType: z.enum(SKILL_TAG_TYPES),
+  competencyBars: z.object({
+    BEGINNER: z.string().min(1),
+    INTERMEDIATE: z.string().min(1),
+    ADVANCED: z.string().min(1),
+    PROFESSIONAL: z.string().min(1),
+  }),
+  toolBars: z.record(z.enum(TOOL_PROFICIENCY_TIERS), z.string().min(1)).optional(),
+  corroborationEligible: z.boolean(),
+  assessmentRequiredForClaim: z.boolean(),
+});
+export type SeSkillLibraryItemDto = z.infer<typeof SeSkillLibraryItemDtoSchema>;
+
+export const SeSkillCategoryGroupDtoSchema = z.object({
+  id: z.enum(SE_SKILL_CATEGORY_IDS),
+  name: z.string().min(1),
+  skills: z.array(SeSkillLibraryItemDtoSchema),
+});
+export type SeSkillCategoryGroupDto = z.infer<typeof SeSkillCategoryGroupDtoSchema>;
+
+export const SeSkillLibraryResponseSchema = z.object({
+  taxonomyVersion: z.literal(INF_SE_V1_TAXONOMY_VERSION),
+  categories: z.array(SeSkillCategoryGroupDtoSchema).length(SE_SKILL_CATEGORY_IDS.length),
+});
+export type SeSkillLibraryResponse = z.infer<typeof SeSkillLibraryResponseSchema>;
 
 export const SkillsClaimedSnapshotSchema = z.object({
   taxonomyVersion: z.string().min(1).max(32),

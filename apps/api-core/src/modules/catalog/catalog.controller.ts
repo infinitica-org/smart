@@ -24,4 +24,10 @@ export class CatalogController {
   listSkills() {
     return this.catalog.listSkillLibrary();
   }
+
+  @Public()
+  @Get('skills/se-v1')
+  listSeSkills() {
+    return this.catalog.listSeSkillLibrary();
+  }
 }

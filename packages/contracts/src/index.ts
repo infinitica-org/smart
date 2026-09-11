@@ -21,6 +21,7 @@ export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
 export * from './domain/skills.js';
+export * from './domain/se-skills.js';
 export * from './domain/sde-v4-bridge.js';
 export * from './domain/skill-focus-progress.js';
 export * from './domain/question.js';

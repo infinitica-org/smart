@@ -1,6 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import { SKILL_DEFINITIONS, SKILL_TAXONOMY_VERSION, TRACK_DEFINITIONS } from '@smart/contracts';
+import {
+  INF_SE_V1_TAXONOMY_VERSION,
+  SE_SKILL_DEFINITIONS,
+  SKILL_DEFINITIONS,
+  SKILL_TAXONOMY_VERSION,
+  TRACK_DEFINITIONS,
+} from '@smart/contracts';
 import { CatalogService } from '../catalog.service.js';
 
 /**
@@ -18,6 +24,20 @@ const dbDownStub = {
 
 describe('CatalogService', () => {
   const service = new CatalogService(dbDownStub);
+
+  it('listSeSkillLibrary() returns inf-se-v1 grouped by category (S6-RM-13)', () => {
+    const library = service.listSeSkillLibrary();
+    expect(library.taxonomyVersion).toBe(INF_SE_V1_TAXONOMY_VERSION);
+    expect(library.categories).toHaveLength(9);
+    expect(library.categories.flatMap((category) => category.skills)).toHaveLength(
+      SE_SKILL_DEFINITIONS.length,
+    );
+    expect(library.categories[0]?.skills[0]).toMatchObject({
+      code: expect.stringMatching(/^SE_|^TOOL_/),
+      categoryId: expect.any(String),
+      tagType: expect.stringMatching(/SKILL|TOOL/),
+    });
+  });
 
   it('listSkillLibrary() returns the frozen v0.9 INF-05 skill-set (SK-T01)', () => {
     const library = service.listSkillLibrary();
