@@ -64,6 +64,7 @@ describe('completeAttempt', () => {
   const findFirstVerificationAttempt = vi.fn();
   const transaction = vi.fn();
   const aiComplete = vi.fn();
+  const redisSmembers = vi.fn().mockResolvedValue([]);
   let service: AssessmentService;
 
   beforeEach(() => {
@@ -73,6 +74,7 @@ describe('completeAttempt', () => {
     findFirstVerificationAttempt.mockReset().mockResolvedValue(null);
     transaction.mockReset().mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops));
     aiComplete.mockReset();
+    redisSmembers.mockReset().mockResolvedValue([]);
 
     const prisma = {
       attempt: { findUnique: findUniqueAttempt, update: updateAttempt },
@@ -101,7 +103,7 @@ describe('completeAttempt', () => {
     const outbox = { enqueueAssessmentSubmitted: vi.fn().mockResolvedValue(undefined) };
     service = new AssessmentService(
       prisma as never,
-      {} as never,
+      { smembers: redisSmembers } as never,
       {} as never,
       outbox as never,
       {} as never,

@@ -130,3 +130,15 @@ export const CandidateOnboardingProfileResponseSchema = z.object({
 export type CandidateOnboardingProfileResponse = z.infer<
   typeof CandidateOnboardingProfileResponseSchema
 >;
+
+/** Browser geolocation coords — ephemeral; only city name is persisted. */
+export const ReverseGeocodeRequestSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+export type ReverseGeocodeRequest = z.infer<typeof ReverseGeocodeRequestSchema>;
+
+export const ReverseGeocodeResponseSchema = z.object({
+  city: z.string().min(1).max(100),
+});
+export type ReverseGeocodeResponse = z.infer<typeof ReverseGeocodeResponseSchema>;

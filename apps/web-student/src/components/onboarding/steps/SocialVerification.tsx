@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { FetchGithubProfileResponse } from '@smart/contracts';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { isSmartApiError } from '@smart/api-client';
 import { api } from '@/lib/api';
 import type { OnboardingProfileForm } from '@/lib/onboarding-form';
 
@@ -96,8 +97,8 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
       setGithubPreview(profile);
     } catch (error) {
       const message =
-        error instanceof Error && error.message.includes('404')
-          ? 'No public GitHub profile found at that URL.'
+        isSmartApiError(error) && error.code === 'github_user_not_found'
+          ? 'No such user found'
           : 'GitHub is unavailable right now. You can skip this and add it later.';
       setGithubError(message);
     } finally {

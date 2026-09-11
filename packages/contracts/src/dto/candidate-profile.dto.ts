@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SharedVerificationStatusSchema } from '../domain/enums.js';
 
 export const CandidateEducationSchema = z.object({
   id: z.string().uuid(),
@@ -10,6 +11,8 @@ export const CandidateEducationSchema = z.object({
   endDate: z.string().max(32).nullable().optional(),
   current: z.boolean().default(false),
   grade: z.string().max(40).nullable().optional(),
+  status: SharedVerificationStatusSchema.default('unverified'),
+  rejectionReason: z.string().max(500).nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -28,6 +31,11 @@ export type CreateCandidateEducationDto = z.infer<typeof CreateCandidateEducatio
 
 export const UpdateCandidateEducationSchema = CreateCandidateEducationSchema.partial();
 export type UpdateCandidateEducationDto = z.infer<typeof UpdateCandidateEducationSchema>;
+
+export const RejectCandidateEducationSchema = z.object({
+  reason: z.string().min(1, 'Rejection reason is required').max(500),
+});
+export type RejectCandidateEducationDto = z.infer<typeof RejectCandidateEducationSchema>;
 
 export const CandidateLanguageSchema = z.object({
   id: z.string().uuid(),

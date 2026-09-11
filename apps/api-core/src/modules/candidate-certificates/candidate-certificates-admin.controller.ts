@@ -22,9 +22,7 @@ export class CandidateCertificatesAdminController {
     return this.candidateCertificatesService.adminApprove(id, parsed);
   }
 
-  @Post(':id/void')
-  void(@Param('id') id: string, @Body() body: unknown) {
-    const parsed = AdminCertificateReviewRequestSchema.parse(body ?? {});
-    return this.candidateCertificatesService.adminVoid(id, parsed);
-  }
+  // POST :id/void lives on CandidateCertificateVoidAdminController (SA-T08) —
+  // audited, actor-tracked. This route collided with it (same path/method)
+  // and crashed Fastify route registration (FST_ERR_DUPLICATED_ROUTE).
 }

@@ -4,7 +4,17 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["smart"],
+      "title": "SMART dashboards",
+      "type": "dashboards"
+    }
+  ],
   "panels": [
     {
       "datasource": { "type": "loki", "uid": "loki" },

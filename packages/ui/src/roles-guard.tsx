@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import {
   bootstrapAccessTokenFromUrl,
   clearAccessToken,
@@ -15,6 +15,7 @@ import {
 } from '@smart/api-client';
 import type { UserRole } from '@smart/contracts';
 import { ForbiddenWall } from './components/status-walls';
+import { SmartLogo } from './components/smart-logo';
 
 export type RolesGuardProps = {
   allowedRoles: readonly UserRole[];
@@ -29,6 +30,29 @@ export type RolesGuardProps = {
 };
 
 type Gate = 'checking' | 'open' | 'forbidden';
+
+/** Rotating splash copy shown while the session/role gate resolves — this is
+ * usually on screen well under a second, so it's playful filler rather than
+ * literal status reporting. */
+const SESSION_CHECK_MESSAGES = [
+  'Waking up your dashboard…',
+  'Syncing your verified skills…',
+  'Warming up SMART…',
+  'Fetching your progress…',
+  'Getting things ready…',
+  'Almost there…',
+] as const;
+
+function SessionCheckMessage() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % SESSION_CHECK_MESSAGES.length);
+    }, 1400);
+    return () => clearInterval(id);
+  }, []);
+  return <p className="text-sm text-[var(--text-muted)]">{SESSION_CHECK_MESSAGES[index]}</p>;
+}
 
 /**
  * Browser-side counterpart of api-core RolesGuard.
@@ -110,9 +134,24 @@ export function RolesGuard({
 
   if (gate === 'checking') {
     return (
-      <p className="p-8 text-sm text-[var(--text-muted)]" role="status">
-        Checking session…
-      </p>
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[var(--background)]"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <span
+            className="brand-gradient absolute inset-0 rounded-full opacity-30 blur-2xl"
+            aria-hidden="true"
+          />
+          <span
+            className="absolute inset-0 animate-ping rounded-full bg-[var(--brand-teal)]/15"
+            aria-hidden="true"
+          />
+          <SmartLogo kind="mark" className="relative h-11 w-11 animate-pulse" />
+        </div>
+        <SessionCheckMessage />
+      </div>
     );
   }
 

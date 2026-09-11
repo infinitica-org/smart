@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { trace } from '@opentelemetry/api';
 import pino, { type Logger, type LoggerOptions } from 'pino';
 import { REDACTED_PATHS, REDACTION_PLACEHOLDER } from './redaction.js';
 
@@ -75,9 +76,17 @@ export function buildPinoBaseOptions(
     // millis wastes minutes we do not have during an outage.
     timestamp: pino.stdTimeFunctions.isoTime,
     // Attach ambient correlation to every line, so no call site has to remember.
+    // `trace_id`/`span_id` are added only when a span is active (i.e. only when
+    // OpenTelemetry is actually enabled — see apps/api-core/src/tracing.ts);
+    // `trace.getActiveSpan()` on the default no-op tracer just returns
+    // undefined, so this is a no-op everywhere OTel isn't configured.
     mixin: () => {
       const context = getContext();
-      return context ? { ...context } : {};
+      const spanContext = trace.getActiveSpan()?.spanContext();
+      return {
+        ...(context ?? {}),
+        ...(spanContext ? { trace_id: spanContext.traceId, span_id: spanContext.spanId } : {}),
+      };
     },
   };
 }

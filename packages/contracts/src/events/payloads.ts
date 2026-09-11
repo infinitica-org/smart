@@ -14,6 +14,8 @@ import {
 import { TierTrailSchema } from '../domain/levels.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from '../dto/common.js';
 import { LanguageBreakdownEntrySchema } from '../dto/candidate-social.dto.js';
+import { RawSignalEnvelopeSchema } from '../dto/raw-signals.dto.js';
+import { CorroborationSnapshotSchema, VectorizedSignalSchema } from '../dto/signals.dto.js';
 import { SMART_TOPICS } from './topics.js';
 
 /**
@@ -292,6 +294,10 @@ export const SkillVerificationCompletedDataSchema = z.object({
   skillName: z.string(),
   status: z.enum(SKILL_VERIFICATION_STATUSES),
   detail: z.string(),
+  /** Optional catalog skill code for corroboration pairing (S6-RM-10). */
+  skillCode: z.string().min(1).max(80).optional(),
+  scorePercent: ScoreSchema.optional(),
+  passed: z.boolean().optional(),
 });
 export const SkillVerificationCompletedEventSchema = envelopeSchema(
   SMART_TOPICS.skillVerificationCompleted,
@@ -424,6 +430,31 @@ export const CandidateSkillsDiscoveredEventSchema = envelopeSchema(
 export type CandidateSkillsDiscoveredEvent = z.infer<typeof CandidateSkillsDiscoveredEventSchema>;
 
 /* -------------------------------------------------------------------------- */
+/*                    corroboration pipeline  (owner: Ramansh / VB)           */
+/* -------------------------------------------------------------------------- */
+
+export const SignalIngestedDataSchema = RawSignalEnvelopeSchema;
+export const SignalIngestedEventSchema = envelopeSchema(
+  SMART_TOPICS.signalIngested,
+  SignalIngestedDataSchema,
+);
+export type SignalIngestedEvent = z.infer<typeof SignalIngestedEventSchema>;
+
+export const SignalEncodedDataSchema = VectorizedSignalSchema;
+export const SignalEncodedEventSchema = envelopeSchema(
+  SMART_TOPICS.signalEncoded,
+  SignalEncodedDataSchema,
+);
+export type SignalEncodedEvent = z.infer<typeof SignalEncodedEventSchema>;
+
+export const CorroborationUpdatedDataSchema = CorroborationSnapshotSchema;
+export const CorroborationUpdatedEventSchema = envelopeSchema(
+  SMART_TOPICS.corroborationUpdated,
+  CorroborationUpdatedDataSchema,
+);
+export type CorroborationUpdatedEvent = z.infer<typeof CorroborationUpdatedEventSchema>;
+
+/* -------------------------------------------------------------------------- */
 /*                              topic → schema map                            */
 /* -------------------------------------------------------------------------- */
 
@@ -453,6 +484,9 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
   [SMART_TOPICS.proctoringSnapshotReady]: ProctoringSnapshotReadyEventSchema,
   [SMART_TOPICS.candidateSkillsDiscovered]: CandidateSkillsDiscoveredEventSchema,
+  [SMART_TOPICS.signalIngested]: SignalIngestedEventSchema,
+  [SMART_TOPICS.signalEncoded]: SignalEncodedEventSchema,
+  [SMART_TOPICS.corroborationUpdated]: CorroborationUpdatedEventSchema,
 } as const;
 
 export type SmartEvent =
@@ -475,4 +509,7 @@ export type SmartEvent =
   | ProjectSnapshotReadyEvent
   | ProjectVerifyCompletedEvent
   | ProctoringSnapshotReadyEvent
-  | CandidateSkillsDiscoveredEvent;
+  | CandidateSkillsDiscoveredEvent
+  | SignalIngestedEvent
+  | SignalEncodedEvent
+  | CorroborationUpdatedEvent;

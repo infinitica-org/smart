@@ -1,11 +1,54 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import type { GetWorkExperienceVerificationResponseDto } from '@smart/contracts';
+import type {
+  EmployerVerificationDecision,
+  GetWorkExperienceVerificationResponseDto,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
 
 interface PageProps {
   params: Promise<{ token: string }>;
+}
+
+const DECISION_OPTIONS: Array<{
+  decision: EmployerVerificationDecision;
+  label: string;
+  description: string;
+  tone: 'emerald' | 'red' | 'amber' | 'blue';
+}> = [
+  {
+    decision: 'YES',
+    label: 'Confirm fully',
+    description: 'Employment details are accurate as stated.',
+    tone: 'emerald',
+  },
+  {
+    decision: 'NO',
+    label: 'Cannot confirm',
+    description: 'I cannot confirm this employment claim.',
+    tone: 'red',
+  },
+  {
+    decision: 'PARTIAL',
+    label: 'Partially confirm',
+    description: 'Most details match with minor differences.',
+    tone: 'amber',
+  },
+  {
+    decision: 'NEED_CLARIFICATION',
+    label: 'Need clarification',
+    description: 'Additional information is required from the candidate.',
+    tone: 'blue',
+  },
+];
+
+function statusAfterDecision(
+  decision: EmployerVerificationDecision,
+): GetWorkExperienceVerificationResponseDto['status'] {
+  if (decision === 'YES' || decision === 'PARTIAL') return 'VERIFIED';
+  if (decision === 'NEED_CLARIFICATION') return 'SUBMITTED';
+  return 'REJECTED';
 }
 
 export default function WorkExperienceVerificationPage({ params }: PageProps) {
@@ -17,6 +60,9 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GetWorkExperienceVerificationResponseDto | null>(null);
 
+  const [selectedDecision, setSelectedDecision] = useState<EmployerVerificationDecision | null>(
+    null,
+  );
   const [comments, setComments] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
@@ -40,13 +86,27 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
     }
   }, [token]);
 
-  const handleSubmit = async (approved: boolean) => {
+  const handleSubmit = async () => {
+    if (!selectedDecision) {
+      setError('Select a verification decision before submitting.');
+      return;
+    }
+    if (
+      (selectedDecision === 'PARTIAL' || selectedDecision === 'NEED_CLARIFICATION') &&
+      comments.trim().length < 8
+    ) {
+      setError(
+        'Comments of at least 8 characters are required for partial or clarification responses.',
+      );
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
 
       const responseJson = await api.users.submitWorkExperienceVerificationByToken(token, {
-        approved,
+        decision: selectedDecision,
         comments: comments.trim() || undefined,
       });
 
@@ -54,7 +114,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
       if (data) {
         setData({
           ...data,
-          status: approved ? 'VERIFIED' : 'REJECTED',
+          status: responseJson.status ?? statusAfterDecision(selectedDecision),
           isAlreadyResponded: true,
         });
       }
@@ -79,24 +139,8 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
     return (
       <div className="mx-auto max-w-lg py-12">
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-          <svg
-            className="mx-auto h-10 w-10 text-red-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
           <h2 className="mt-3 text-lg font-semibold text-white">Verification Link Invalid</h2>
           <p className="mt-2 text-sm text-red-300">{error}</p>
-          <p className="mt-4 text-xs text-white/40">
-            This verification link may have expired or already been processed.
-          </p>
         </div>
       </div>
     );
@@ -125,67 +169,36 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
         </div>
 
         {submitSuccess && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4 text-sm font-medium text-emerald-300">
-            <svg
-              className="h-5 w-5 shrink-0 text-emerald-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            <span>{submitSuccess}</span>
+          <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4 text-sm font-medium text-emerald-300">
+            {submitSuccess}
           </div>
         )}
 
         {data.isAlreadyResponded && !submitSuccess && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/15 p-4 text-sm text-blue-300">
-            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>
-              Response already recorded: Status is{' '}
-              <strong className="font-bold text-white">{data.status}</strong>.
-            </span>
+          <div className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/15 p-4 text-sm text-blue-300">
+            Response already recorded: Status is{' '}
+            <strong className="font-bold text-white">{data.status}</strong>.
           </div>
         )}
 
         {data.isExpired && !data.isAlreadyResponded && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/15 p-4 text-sm text-amber-300">
-            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span>This verification invitation link has expired.</span>
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/15 p-4 text-sm text-amber-300">
+            This verification invitation link has expired.
           </div>
         )}
 
         <div className="mt-6 flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-white">Claim to verify</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                Candidate
+                Candidate identity
               </span>
               <p className="mt-1 text-base font-semibold text-white">{data.candidateName}</p>
             </div>
-
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                Employer
+                Company / employer
               </span>
               <p className="mt-1 text-base font-semibold text-white">{data.companyName}</p>
             </div>
@@ -194,27 +207,31 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                Role Title
+                Role / title
               </span>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {data.role} ({data.employmentType})
-              </p>
+              <p className="mt-1 text-sm font-semibold text-white">{data.role}</p>
             </div>
-
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                Tenure
+                Employment type
               </span>
-              <p className="mt-1 text-sm font-medium text-white">
-                {data.startDate} — {data.isCurrent ? 'Present' : data.endDate || 'N/A'}
-              </p>
+              <p className="mt-1 text-sm font-semibold text-white">{data.employmentType}</p>
             </div>
+          </div>
+
+          <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
+            <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
+              Employment dates
+            </span>
+            <p className="mt-1 text-sm font-medium text-white">
+              {data.startDate} — {data.isCurrent ? 'Present' : data.endDate || 'N/A'}
+            </p>
           </div>
 
           {data.responsibilities && (
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                Stated Responsibilities
+                Stated responsibilities / domain context
               </span>
               <p className="mt-2 text-xs text-white/80 leading-relaxed whitespace-pre-line">
                 {data.responsibilities}
@@ -223,27 +240,56 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
           )}
 
           <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 text-xs text-white/60">
-            Verifier Email: <strong className="text-white/90">{data.verifierEmail}</strong>
+            Verifier:{' '}
+            <strong className="text-white/90">
+              {data.verifierName ? `${data.verifierName} · ` : ''}
+              {data.verifierEmail}
+            </strong>
+            {data.verifierDesignation ? ` (${data.verifierDesignation})` : null}
           </div>
         </div>
 
         {!data.isAlreadyResponded && !data.isExpired && (
           <div className="mt-6 border-t border-white/10 pt-6 flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-white">Verifier Decision</h3>
+            <h3 className="text-sm font-semibold text-white">Structured verification decision</h3>
             <p className="text-xs text-white/60">
-              Please confirm whether the candidate details above accurately represent their
-              employment at {data.companyName}.
+              Confirm identity, employer, dates, employment type, and role details for{' '}
+              {data.candidateName} at {data.companyName}.
             </p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {DECISION_OPTIONS.map((option) => {
+                const selected = selectedDecision === option.decision;
+                return (
+                  <button
+                    key={option.decision}
+                    type="button"
+                    onClick={() => setSelectedDecision(option.decision)}
+                    className={`rounded-xl border p-4 text-left transition-colors ${
+                      selected
+                        ? 'border-[#00fad0]/50 bg-[#00fad0]/10'
+                        : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-white">{option.label}</p>
+                    <p className="mt-1 text-xs text-white/60">{option.description}</p>
+                  </button>
+                );
+              })}
+            </div>
 
             <div>
               <label className="block text-xs font-medium text-white/70 mb-1">
-                Optional Comments / Feedback
+                Comments{' '}
+                {selectedDecision === 'PARTIAL' || selectedDecision === 'NEED_CLARIFICATION'
+                  ? '(required, min 8 characters)'
+                  : '(optional)'}
               </label>
               <textarea
                 rows={3}
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                placeholder="Add optional comments or verification details..."
+                placeholder="Add verification notes or clarification details..."
                 className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#00fad0] focus:outline-none"
               />
             </div>
@@ -254,31 +300,14 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
-              <button
-                onClick={() => handleSubmit(true)}
-                disabled={submitting}
-                className="w-full sm:w-1/2 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-50 transition-colors"
-              >
-                {submitting ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
-                ) : (
-                  <>Approve Work Experience</>
-                )}
-              </button>
-
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={submitting}
-                className="w-full sm:w-1/2 flex items-center justify-center gap-2 rounded-xl bg-red-500/20 border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
-              >
-                {submitting ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-300 border-t-transparent" />
-                ) : (
-                  <>Reject Work Experience</>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || !selectedDecision}
+              className="w-full rounded-xl bg-[#00fad0] px-4 py-3 text-sm font-semibold text-black hover:bg-[#00e0ba] disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Submitting...' : 'Submit verification response'}
+            </button>
           </div>
         )}
       </div>

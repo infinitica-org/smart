@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX } from '@smart/contracts';
+import { API_PREFIX, type SendManagerEndorsementDto } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -18,6 +18,15 @@ export class WorkExperienceController {
   @ApiResponse({ status: 200, description: 'List of candidate work experience entries.' })
   list(@CurrentUser() user: RequestUser) {
     return this.service.listForStudent(user.sub);
+  }
+
+  @Get('ops-dashboard')
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Ops Dashboard items for work experience verification monitoring.' })
+  @ApiResponse({ status: 200, description: 'Ops Dashboard items list.' })
+  getOpsDashboard() {
+    return this.service.getOpsDashboard();
   }
 
   @Get(':id')
@@ -104,6 +113,21 @@ export class WorkExperienceController {
     return this.service.sendEmployerVerification(user.sub, id);
   }
 
+  @Post(':id/send-manager-endorsement')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'WE-T03: Send a 5-day magic link to candidate manager for endorsement.',
+  })
+  @ApiResponse({ status: 200, description: 'Manager endorsement request dispatched.' })
+  sendManagerEndorsement(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() body: SendManagerEndorsementDto,
+  ) {
+    return this.service.sendManagerEndorsement(user.sub, id, body);
+  }
+
   @Post(':id/restart-verification')
   @Roles('STUDENT')
   @ApiBearerAuth()
@@ -111,14 +135,5 @@ export class WorkExperienceController {
   @ApiResponse({ status: 200, description: 'Employer verification request restarted.' })
   restartVerification(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.service.restartEmployerVerification(user.sub, id);
-  }
-
-  @Get('ops-dashboard')
-  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get Ops Dashboard items for work experience verification monitoring.' })
-  @ApiResponse({ status: 200, description: 'Ops Dashboard items list.' })
-  getOpsDashboard() {
-    return this.service.getOpsDashboard();
   }
 }

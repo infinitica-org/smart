@@ -37,6 +37,7 @@ import { EMAIL_QUEUE } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { CertificateSourceVerificationService } from './verification/certificate-source-verification.service.js';
+import { PublicProfileService } from '../public-profile/public-profile.service.js';
 import { generateInviteToken, hashInviteToken } from '../invitations/invite-token.util.js';
 import type {
   CandidateCertificate,
@@ -59,6 +60,7 @@ export class CandidateCertificatesService {
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(CertificateSourceVerificationService)
     private readonly verificationService: CertificateSourceVerificationService,
+    @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
   ) {}
 
   /**
@@ -95,6 +97,8 @@ export class CandidateCertificatesService {
       resourceId: id,
       reasonCode: body.reason,
     });
+
+    await this.publicProfileService?.recheckActivationAfterVoid(existing.candidateId);
 
     return {
       id: updated.id,

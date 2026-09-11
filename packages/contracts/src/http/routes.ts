@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -19,8 +19,8 @@ export const API_PREFIX = '/api/v1' as const;
 /**
  * How tight the latency budget is, and why.
  *
- * ARCHITECTURE.md §3.2 sets < 200 ms for "the active test player and the
- * verification lookup" — not for every endpoint. A cohort analytics report that
+ * ARCHITECTURE.md Â§3.2 sets < 200 ms for "the active test player and the
+ * verification lookup" â€” not for every endpoint. A cohort analytics report that
  * takes 300 ms is fine; a 300 ms `next-item` call during a timed exam is not.
  * Making the distinction explicit stops the budget from being either violated
  * silently or applied so broadly that it becomes meaningless.
@@ -31,7 +31,7 @@ export type RouteCriticality =
   /**
    * A live LLM turn (the L4 interactive defense). Latency is bounded by the
    * model, not by our code, so it gets its own budget and the P1 priority lane
-   * that reserves 40 % of AI quota — a candidate mid-defense must never queue
+   * that reserves 40 % of AI quota â€” a candidate mid-defense must never queue
    * behind a batch JD parse.
    */
   | 'LLM_INTERACTIVE'
@@ -50,7 +50,7 @@ export interface RouteSpec {
   readonly rateLimit: string;
   readonly execution: 'SYNC' | 'ASYNC';
   readonly criticality: RouteCriticality;
-  /** Latency budget for SYNC routes (ARCHITECTURE.md §3.2). */
+  /** Latency budget for SYNC routes (ARCHITECTURE.md Â§3.2). */
   readonly slaMs?: number;
   readonly summary: string;
 }
@@ -235,7 +235,7 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 300,
     summary:
-      'LinkedIn OIDC redirect landing — exchanges the code and redirects back to onboarding.',
+      'LinkedIn OIDC redirect landing â€” exchanges the code and redirects back to onboarding.',
   },
   {
     method: 'POST',
@@ -248,6 +248,18 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 400,
     summary: 'Look up a public GitHub profile by URL for the identity confirm card.',
+  },
+  {
+    method: 'POST',
+    path: '/users/me/onboarding/reverse-geocode',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'onboarding.geocode',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Resolve browser coordinates to a city name for current-location prefill.',
   },
   {
     method: 'POST',
@@ -406,6 +418,30 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Delete candidate education entry.',
   },
   {
+    method: 'POST',
+    path: '/tpo/education/:id/confirm',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'],
+    rateLimit: 'role.institutionAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Home college TPO/admin confirms candidate education claim.',
+  },
+  {
+    method: 'POST',
+    path: '/tpo/education/:id/reject',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'],
+    rateLimit: 'role.institutionAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Home college TPO/admin rejects candidate education claim with mandatory reason.',
+  },
+  {
     method: 'GET',
     path: '/users/me/languages',
     module: 'users',
@@ -531,7 +567,7 @@ export const ROUTES: readonly RouteSpec[] = [
     module: 'users',
     owner: 'Vishal V',
     roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT'],
-    rateLimit: 'role.student',
+    rateLimit: 'role.placementStaff',
     criticality: 'REPORTING',
     execution: 'SYNC',
     slaMs: 300,
@@ -561,6 +597,46 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary:
       'Public endpoint for employer verifier to approve or reject candidate work experience claim.',
+  },
+  /* ---- WE-T03: Manager endorsement ---- */
+  {
+    method: 'POST',
+    path: '/users/me/work-experiences/:id/send-manager-endorsement',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'WE-T03: Send a 5-day tokenised magic-link to the named manager for work-experience endorsement. Domain must match offer-letter or Organization domain.',
+  },
+  {
+    method: 'GET',
+    path: '/users/work-experiences/manager-survey/:token',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'verify.workExperience',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary:
+      'WE-T03: Public - manager opens magic link to view candidate work experience and claimed skills survey.',
+  },
+  {
+    method: 'POST',
+    path: '/users/work-experiences/manager-survey/:token',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'verify.workExperience',
+    criticality: 'CANDIDATE_CRITICAL',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'WE-T03: Public - manager submits endorsement (confirm/dispute + optional skill ratings). Single-use; recalculates overall_verified.',
   },
   {
     method: 'POST',
@@ -1287,6 +1363,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/catalog/skills/se-v1',
+    module: 'catalog',
+    owner: 'Vedika G',
+    roles: ['PUBLIC'],
+    rateLimit: 'role.public',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 80,
+    summary: 'inf-se-v1 Software Engineering skill framework grouped by category A–I (S6-RM-13).',
+  },
+  {
+    method: 'GET',
     path: '/catalog/readiness',
     module: 'catalog',
     owner: 'Vedika G',
@@ -1845,7 +1933,7 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 300,
-    summary: 'Derive mu±sigma and publish; emits smart.track.updated.',
+    summary: 'Derive muÂ±sigma and publish; emits smart.track.updated.',
   },
   {
     method: 'GET',
@@ -2433,6 +2521,19 @@ export const ROUTES: readonly RouteSpec[] = [
     summary:
       'Void a work-experience entry for fraud/integrity reasons. One-directional; fully audited.',
   },
+  {
+    method: 'POST',
+    path: '/admin/work-experience/:id/approve',
+    module: 'work-experience',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Approve flagged work-experience letter authenticity. Clears doc_flagged without auto-fraud.',
+  },
 
   /* -------------------------- public candidate profile ---------------------- */
   {
@@ -2679,6 +2780,92 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 300,
     summary: 'Super Admin manual approval of candidate certificate source verification.',
   },
+  /* --------------------------- signal-ingestion (S6-VB-01) ---------------- */
+  {
+    method: 'GET',
+    path: '/signals/connections',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connections.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'List connected external passive signal sources for the signed-in student.',
+  },
+  {
+    method: 'POST',
+    path: '/signals/connect/:sourceId',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Connect GitHub, HackerRank, or LeetCode as a passive signal source.',
+  },
+  {
+    method: 'DELETE',
+    path: '/signals/disconnect/:sourceId',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Revoke an external passive signal connection.',
+  },
+  {
+    method: 'POST',
+    path: '/signals/refresh',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'corroboration.refresh',
+    criticality: 'INTERACTIVE',
+    execution: 'ASYNC',
+    slaMs: 300,
+    summary: 'Queue refresh of connected passive signal sources.',
+  },
+  /* --------------------------- corroboration (S6-RM-10) ------------------- */
+  {
+    method: 'GET',
+    path: '/corroboration/me',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'corroboration.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Student passive-signal corroboration readout (supporting evidence only).',
+  },
+  {
+    method: 'GET',
+    path: '/admin/corroboration/review-flags',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'corroboration.adminFlags',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'List pending passive-vs-assessment contradiction review flags.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/corroboration/review-flags/:id/resolve',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'corroboration.adminFlags',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Resolve a corroboration review flag (audit only; does not change SkillClaim status).',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {
@@ -2695,7 +2882,7 @@ export function routesForModule(module: string): readonly RouteSpec[] {
 
 /**
  * Synchronous routes whose declared SLA exceeds the budget for their
- * criticality class. Asserted empty in CI — a route that cannot meet its budget
+ * criticality class. Asserted empty in CI â€” a route that cannot meet its budget
  * must either be optimised or reclassified deliberately, never left to drift.
  */
 export function routesExceedingLatencyBudget(): readonly RouteSpec[] {

@@ -6,6 +6,7 @@ import { UsernameService } from './username.service.js';
 describe('UsernameService (CN-T09)', () => {
   let prisma: any;
   let auditPublisher: any;
+  let publicProfileService: any;
   let service: UsernameService;
 
   const userId = randomUUID();
@@ -28,7 +29,15 @@ describe('UsernameService (CN-T09)', () => {
       },
     };
     auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
-    service = new UsernameService(prisma, auditPublisher);
+    publicProfileService = {
+      evaluateActivationEligibility: vi.fn().mockResolvedValue({
+        eligible: true,
+        verifiedSkillsCount: 1,
+        verifiedCertsCount: 1,
+        verifiedWorkExpCount: 0,
+      }),
+    };
+    service = new UsernameService(prisma, auditPublisher, publicProfileService);
   });
 
   describe('reserve', () => {
@@ -182,6 +191,24 @@ describe('UsernameService (CN-T09)', () => {
       const call = prisma.user.update.mock.calls[0][0];
       expect(call.data.usernameStatus).toBeUndefined();
       expect(call.data.profileVisible).toBe(false);
+    });
+
+    it('rejects turning visibility on when the activation bar is not met (CN-T07)', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        usernameStatus: 'RESERVED',
+        profileVisible: false,
+      });
+      publicProfileService.evaluateActivationEligibility.mockResolvedValue({
+        eligible: false,
+        verifiedSkillsCount: 0,
+        verifiedCertsCount: 0,
+        verifiedWorkExpCount: 0,
+      });
+
+      await expect(
+        service.updateVisibility(userId, { profileVisible: true }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 });

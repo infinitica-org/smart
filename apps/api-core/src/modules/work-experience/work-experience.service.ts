@@ -14,6 +14,13 @@ import type {
   WorkExperienceVerificationStatus,
   VoidRequest,
   VoidWorkExperienceResponse,
+  SendManagerEndorsementDto,
+  SendManagerEndorsementResponseDto,
+  GetManagerEndorsementSurveyDto,
+  SubmitManagerEndorsementDto,
+  SubmitManagerEndorsementResponseDto,
+  AdminWorkExperienceReviewRequest,
+  ApproveWorkExperienceAuthenticityResponse,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -22,10 +29,22 @@ import {
   WorkExperienceSchema,
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
+  WorkExperienceLetterAuthenticityExtractSchema,
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
+  validateWorkExperienceLetterRules,
+  ApproveWorkExperienceAuthenticityResponseSchema,
+  toWorkExperienceDocumentPublicDto,
+  type WorkExperienceDocumentPublicDto,
+  companyRequiresPublicIdentity,
+  validateCompanyPublicIdentity,
+  isInvalidEmploymentProofAttachmentType,
+  isInvalidEmploymentProofClassification,
+  INVALID_EMPLOYMENT_PROOF_MESSAGE,
+  deriveWorkExperienceNextAction,
+  type WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -36,9 +55,10 @@ import {
   type EmailQueueJobData,
   type WorkExperienceReminderJobPayload,
   type WorkExperienceExpireJobPayload,
+  type WorkExperienceManagerReminderJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
-import type { Prisma } from '../../generated/prisma/index.js';
+import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
   id: string;
@@ -96,6 +116,13 @@ import {
   extractDomain,
   validateEmployerDomain,
 } from './company-name.util.js';
+import {
+  evaluateLetterAuthenticity,
+  mergeAuthenticityIntoValidationResult,
+  parseStoredDocumentAuthenticity,
+} from './work-experience-document-authenticity.util.js';
+
+import { PublicProfileService } from '../public-profile/public-profile.service.js';
 
 @Injectable()
 export class WorkExperienceService {
@@ -109,6 +136,7 @@ export class WorkExperienceService {
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
+    @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
   ) {}
 
   private async resolveOrganization(params: {
@@ -163,6 +191,22 @@ export class WorkExperienceService {
     });
   }
 
+  private mapDocumentToDto(doc: RawWorkExperienceDocument): WorkExperienceDocumentDto {
+    const authenticity = parseStoredDocumentAuthenticity(doc.validationResult);
+    return WorkExperienceDocumentSchema.parse({
+      id: doc.id,
+      experienceId: doc.experienceId,
+      documentType: doc.documentType,
+      fileUrl: doc.fileUrl,
+      fileName: doc.fileName,
+      fileSizeBytes: doc.fileSizeBytes,
+      mimeType: doc.mimeType,
+      authenticityStatus: authenticity.status,
+      authenticityResult: authenticity.result,
+      createdAt: doc.createdAt.toISOString(),
+    });
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
     const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
@@ -175,7 +219,7 @@ export class WorkExperienceService {
       companyWebsite: exp.companyWebsite ?? null,
       companyLinkedinUrl: exp.companyLinkedinUrl ?? null,
       role: exp.role,
-      employmentType: exp.employmentType,
+      employmentType: exp.employmentType ?? 'FULL_TIME',
       department: exp.department ?? null,
       domain: exp.domain ?? null,
       workLocation: exp.workLocation ?? null,
@@ -195,19 +239,19 @@ export class WorkExperienceService {
       rejectionReason: exp.rejectionReason ?? null,
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
-      documents: (exp.documents || []).map((doc: RawWorkExperienceDocument) =>
-        WorkExperienceDocumentSchema.parse({
-          id: doc.id,
-          experienceId: doc.experienceId,
-          documentType: doc.documentType,
-          fileUrl: doc.fileUrl,
-          fileName: doc.fileName,
-          fileSizeBytes: doc.fileSizeBytes,
-          mimeType: doc.mimeType,
-          createdAt: doc.createdAt.toISOString(),
-        }),
-      ),
+      documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
     });
+  }
+
+  /** WE-T02 — company-lite / B2B surfaces must never receive raw letter file URLs. */
+  mapToCompanyLiteDto(exp: RawWorkExperience): Omit<WorkExperienceDto, 'documents'> & {
+    documents: WorkExperienceDocumentPublicDto[];
+  } {
+    const dto = this.mapToDto(exp);
+    return {
+      ...dto,
+      documents: dto.documents.map((doc) => toWorkExperienceDocumentPublicDto(doc)),
+    };
   }
 
   async listForStudent(studentId: string): Promise<WorkExperienceDto[]> {
@@ -246,6 +290,21 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
+
+    const letterValidation = validateWorkExperienceLetterRules({
+      isCurrent: data.isCurrent,
+      endDate: data.endDate,
+      documents: data.documents,
+    });
+    if (!letterValidation.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: letterValidation.message || 'Required proof documents are missing.',
+        statusCode: 400,
+        details: { missingDocuments: letterValidation.missingDocuments },
+      });
+    }
+
     const rawName = data.companyName.trim();
     const org = await this.resolveOrganization({
       name: rawName,
@@ -278,6 +337,13 @@ export class WorkExperienceService {
       }
     }
 
+    await this.assertCompanyPublicIdentity({
+      companyId: data.companyId,
+      companyWebsite: data.companyWebsite,
+      companyLinkedinUrl: data.companyLinkedinUrl,
+      matchedCompanyId,
+    });
+
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
@@ -304,6 +370,19 @@ export class WorkExperienceService {
         verifierDesignation: data.verifierDesignation || null,
         verifierPhone: data.verifierPhone || null,
         status: 'SUBMITTED',
+        ...(data.documents && data.documents.length > 0
+          ? {
+              documents: {
+                create: data.documents.map((doc) => ({
+                  documentType: doc.documentType,
+                  fileUrl: doc.fileUrl,
+                  fileName: doc.fileName,
+                  fileSizeBytes: doc.fileSizeBytes,
+                  mimeType: doc.mimeType,
+                })),
+              },
+            }
+          : {}),
       },
       include: { documents: true },
     });
@@ -344,6 +423,30 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
+    const effectiveIsCurrent = data.isCurrent !== undefined ? data.isCurrent : existing.isCurrent;
+    const effectiveEndDate =
+      data.endDate !== undefined
+        ? data.endDate
+        : existing.endDate
+          ? existing.endDate.toISOString()
+          : null;
+    const effectiveDocs =
+      data.documents && data.documents.length > 0 ? data.documents : existing.documents;
+
+    const letterValidation = validateWorkExperienceLetterRules({
+      isCurrent: effectiveIsCurrent,
+      endDate: effectiveEndDate,
+      documents: effectiveDocs,
+    });
+    if (!letterValidation.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: letterValidation.message || 'Required proof documents are missing.',
+        statusCode: 400,
+        details: { missingDocuments: letterValidation.missingDocuments },
+      });
+    }
+
     if (
       existing.status === 'VERIFIED' &&
       data.skillsClaimed !== undefined &&
@@ -378,6 +481,19 @@ export class WorkExperienceService {
       updatedOrgId = org.id;
       updatedCompanyNameRaw = nameToUse.trim();
     }
+
+    const effectiveCompanyWebsite =
+      data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
+    const effectiveCompanyLinkedinUrl =
+      data.companyLinkedinUrl !== undefined ? data.companyLinkedinUrl : existing.companyLinkedinUrl;
+    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
+
+    await this.assertCompanyPublicIdentity({
+      companyId: effectiveCompanyId,
+      companyWebsite: effectiveCompanyWebsite,
+      companyLinkedinUrl: effectiveCompanyLinkedinUrl,
+      matchedCompanyId: effectiveCompanyId,
+    });
 
     const updated = await this.prisma.workExperience.update({
       where: { id },
@@ -502,16 +618,158 @@ export class WorkExperienceService {
       reasonCode: null,
     });
 
-    return WorkExperienceDocumentSchema.parse({
-      id: doc.id,
-      experienceId: doc.experienceId,
-      documentType: doc.documentType,
-      fileUrl: doc.fileUrl,
-      fileName: doc.fileName,
-      fileSizeBytes: doc.fileSizeBytes,
-      mimeType: doc.mimeType,
-      createdAt: doc.createdAt.toISOString(),
+    const checked = await this.runDocumentAuthenticityCheck(existing, doc.id);
+    return this.mapDocumentToDto(checked);
+  }
+
+  /**
+   * WE-T02 — OCR + heuristics after upload. Anomaly flags only; never auto-fraud.
+   */
+  async runDocumentAuthenticityCheck(
+    experience: Pick<RawWorkExperience, 'id' | 'companyName' | 'companyWebsite' | 'studentId'>,
+    documentId: string,
+    rawTextOverride?: string,
+  ): Promise<RawWorkExperienceDocument> {
+    const doc = await this.prisma.workExperienceDocument.findUnique({
+      where: { id: documentId },
     });
+    if (!doc || doc.experienceId !== experience.id) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Document attachment not found.',
+        statusCode: 404,
+      });
+    }
+
+    const checkedAt = new Date().toISOString();
+    let rawText = '';
+    let rawTextLength = 0;
+
+    try {
+      if (rawTextOverride && env.NODE_ENV === 'test') {
+        rawText = rawTextOverride.trim();
+      } else {
+        const buffer = await this.retrieveFileBuffer(doc.fileUrl);
+        rawText = this.extractDocumentContent(buffer, doc.mimeType, doc.fileName);
+      }
+      rawTextLength = rawText.length;
+    } catch {
+      const authenticity = {
+        status: 'doc_flagged' as const,
+        result: {
+          companyNameMatch: false,
+          domainMatch: false,
+          hasLetterhead: false,
+          hasSignatureBlock: false,
+          ocrConfidence: 0,
+          flagReasons: ['ILLEGIBLE: document text could not be extracted'],
+        },
+        checkedAt,
+      };
+      const updated = await this.prisma.workExperienceDocument.update({
+        where: { id: documentId },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(
+            doc.validationResult,
+            authenticity,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      await this.auditPublisher.record({
+        actorId: experience.studentId,
+        action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+        resourceType: 'WorkExperienceDocument',
+        resourceId: documentId,
+        reasonCode: 'doc_flagged',
+      });
+      return updated as RawWorkExperienceDocument;
+    }
+
+    let extracted;
+    try {
+      const aiCompletion = await this.aiGateway.complete({
+        promptRef: 'work-experience-letter-authenticity@1',
+        modelRole: 'PRIMARY_REASONING',
+        priority: 'P1_REALTIME',
+        variables: {
+          rawText,
+          fileName: doc.fileName,
+          mimeType: doc.mimeType,
+          claimedCompanyName: experience.companyName,
+        },
+        correlation: {},
+        maxOutputTokens: 2_048,
+        temperature: 0,
+      });
+      const parsed = WorkExperienceLetterAuthenticityExtractSchema.safeParse(aiCompletion.output);
+      if (!parsed.success) {
+        throw new Error('Malformed AI authenticity response');
+      }
+      extracted = parsed.data;
+    } catch {
+      const authenticity = {
+        status: 'doc_flagged' as const,
+        result: {
+          companyNameMatch: false,
+          domainMatch: false,
+          hasLetterhead: false,
+          hasSignatureBlock: false,
+          ocrConfidence: 0,
+          flagReasons: ['ILLEGIBLE: authenticity extraction unavailable'],
+        },
+        checkedAt,
+      };
+      const updated = await this.prisma.workExperienceDocument.update({
+        where: { id: documentId },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(
+            doc.validationResult,
+            authenticity,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      await this.auditPublisher.record({
+        actorId: experience.studentId,
+        action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+        resourceType: 'WorkExperienceDocument',
+        resourceId: documentId,
+        reasonCode: 'doc_flagged',
+      });
+      return updated as RawWorkExperienceDocument;
+    }
+
+    const evaluation = evaluateLetterAuthenticity({
+      claimedCompanyName: experience.companyName,
+      claimedCompanyWebsite: experience.companyWebsite ?? null,
+      extracted,
+      rawTextLength,
+    });
+
+    const authenticity = {
+      status: evaluation.status,
+      result: evaluation.result,
+      checkedAt,
+    };
+
+    const updated = await this.prisma.workExperienceDocument.update({
+      where: { id: documentId },
+      data: {
+        validationResult: mergeAuthenticityIntoValidationResult(
+          doc.validationResult,
+          authenticity,
+        ) as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditPublisher.record({
+      actorId: experience.studentId,
+      action: 'WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_CHECKED',
+      resourceType: 'WorkExperienceDocument',
+      resourceId: documentId,
+      reasonCode: evaluation.status,
+    });
+
+    return updated as RawWorkExperienceDocument;
   }
 
   async removeDocument(studentId: string, id: string, documentId: string): Promise<void> {
@@ -580,6 +838,36 @@ export class WorkExperienceService {
     const user = await this.prisma.user.findUnique({
       where: { id: studentId },
     });
+
+    if (isInvalidEmploymentProofAttachmentType(doc.documentType)) {
+      return this.persistProofValidationResult({
+        experience,
+        documentId,
+        studentId,
+        validationStatus: 'REJECTED',
+        reasonCode: 'INVALID_DOCUMENT_TYPE',
+        rejectionReason: INVALID_EMPLOYMENT_PROOF_MESSAGE,
+        documentType: doc.documentType,
+        isOfferLetter: true,
+        extractedData: {
+          documentType: doc.documentType as 'OFFER_LETTER',
+          isActualEmploymentProof: false,
+          candidateName: null,
+          companyName: null,
+          role: null,
+          startDate: null,
+          endDate: null,
+          confidence: 0,
+        },
+        matchResult: {
+          candidateNameMatch: false,
+          companyNameMatch: false,
+          roleMatch: false,
+          dateMatch: false,
+        },
+        updateExperienceOnReject: false,
+      });
+    }
 
     let rawText = '';
     if (rawTextOverride && env.NODE_ENV === 'test') {
@@ -659,18 +947,20 @@ export class WorkExperienceService {
 
     let validationStatus: 'VALIDATED' | 'REJECTED' | 'NEEDS_MANUAL_REVIEW' = 'VALIDATED';
     let rejectionReason: string | null = null;
-    let reasonCode = 'PROOF_VALIDATED';
+    let reasonCode: WorkExperienceProofReasonCode = 'PROOF_VALIDATED';
+    let updateExperienceOnReject = true;
 
-    if (isOfferLetter) {
+    if (
+      isInvalidEmploymentProofClassification({
+        documentType: extracted.documentType,
+        isActualEmploymentProof,
+        isOfferLetter,
+      })
+    ) {
       validationStatus = 'REJECTED';
-      rejectionReason =
-        'INVALID_DOCUMENT_TYPE: Uploaded document is an offer letter or appointment agreement, which is not acceptable proof of completed work experience.';
+      rejectionReason = INVALID_EMPLOYMENT_PROOF_MESSAGE;
       reasonCode = 'INVALID_DOCUMENT_TYPE';
-    } else if (!isActualEmploymentProof) {
-      validationStatus = 'REJECTED';
-      rejectionReason =
-        'Uploaded document does not establish proof of actual or completed employment.';
-      reasonCode = 'PROOF_REJECTED';
+      updateExperienceOnReject = false;
     } else if (!companyNameMatch) {
       validationStatus = 'REJECTED';
       rejectionReason = `Document company name (${extracted.companyName ?? 'Unknown'}) does not match submitted company (${experience.companyName}).`;
@@ -691,54 +981,131 @@ export class WorkExperienceService {
       reasonCode = 'NEEDS_MANUAL_REVIEW';
     }
 
-    const validatedAt = new Date().toISOString();
-
-    const validationResult = {
+    return this.persistProofValidationResult({
+      experience,
+      documentId,
+      studentId,
       validationStatus,
+      reasonCode,
+      rejectionReason,
       documentType: extracted.documentType,
       isOfferLetter,
       extractedData: extracted,
       matchResult,
-      rejectionReason,
+      updateExperienceOnReject,
+    });
+  }
+
+  private async persistProofValidationResult(params: {
+    experience: RawWorkExperience;
+    documentId: string;
+    studentId: string;
+    validationStatus: 'VALIDATED' | 'REJECTED' | 'NEEDS_MANUAL_REVIEW';
+    reasonCode: WorkExperienceProofReasonCode;
+    rejectionReason: string | null;
+    documentType: string;
+    isOfferLetter: boolean;
+    extractedData: {
+      documentType: string;
+      isActualEmploymentProof: boolean;
+      candidateName: string | null;
+      companyName: string | null;
+      role: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      confidence: number;
+    };
+    matchResult: {
+      candidateNameMatch: boolean;
+      companyNameMatch: boolean;
+      roleMatch: boolean;
+      dateMatch: boolean;
+    };
+    updateExperienceOnReject: boolean;
+  }): Promise<ValidateWorkExperienceProofResponse> {
+    const validatedAt = new Date().toISOString();
+    const validationResult = {
+      validationStatus: params.validationStatus,
+      documentType: params.documentType,
+      isOfferLetter: params.isOfferLetter,
+      extractedData: params.extractedData,
+      matchResult: params.matchResult,
+      rejectionReason: params.rejectionReason,
+      reasonCode: params.reasonCode,
       validatedAt,
     };
 
-    // Update document validation status & result
     await this.prisma.workExperienceDocument.update({
-      where: { id: documentId },
+      where: { id: params.documentId },
       data: {
-        validationStatus,
+        validationStatus: params.validationStatus,
         validationResult: validationResult as Prisma.InputJsonValue,
       },
     });
 
-    // Update work experience status if rejected (valid proof keeps experience status SUBMITTED, NEVER VERIFIED)
-    let updatedExperienceStatus = experience.status;
-    if (validationStatus === 'REJECTED') {
+    let updatedExperienceStatus = params.experience.status;
+    if (params.validationStatus === 'REJECTED' && params.updateExperienceOnReject) {
       const updatedExp = await this.prisma.workExperience.update({
-        where: { id },
+        where: { id: params.experience.id },
         data: {
           status: 'REJECTED',
-          rejectionReason,
+          rejectionReason: params.rejectionReason,
         },
       });
       updatedExperienceStatus = updatedExp.status;
     }
 
     await this.auditPublisher.record({
-      actorId: studentId,
+      actorId: params.studentId,
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperienceDocument',
-      resourceId: documentId,
-      reasonCode,
+      resourceId: params.documentId,
+      reasonCode: params.reasonCode,
     });
 
     return ValidateWorkExperienceProofResponseSchema.parse({
-      experienceId: id,
-      documentId,
+      experienceId: params.experience.id,
+      documentId: params.documentId,
       experienceStatus: updatedExperienceStatus,
       validationResult,
     });
+  }
+
+  private async assertCompanyPublicIdentity(params: {
+    companyId?: string | null;
+    companyWebsite?: string | null;
+    companyLinkedinUrl?: string | null;
+    matchedCompanyId?: string | null;
+  }): Promise<void> {
+    let catalogWebsite: string | null = null;
+    let catalogLinkedin: string | null = null;
+    const resolvedCompanyId = params.matchedCompanyId ?? params.companyId ?? null;
+    if (resolvedCompanyId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: resolvedCompanyId },
+      });
+      catalogWebsite = company?.website ?? null;
+      catalogLinkedin = company?.linkedinUrl ?? null;
+    }
+
+    const required = companyRequiresPublicIdentity({
+      companyId: resolvedCompanyId,
+      companyWebsite: params.companyWebsite,
+      catalogCompanyWebsite: catalogWebsite,
+      catalogCompanyLinkedinUrl: catalogLinkedin,
+    });
+    const result = validateCompanyPublicIdentity({
+      companyWebsite: params.companyWebsite,
+      companyLinkedinUrl: params.companyLinkedinUrl,
+      required,
+    });
+    if (!result.valid) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: result.message,
+        statusCode: 400,
+      });
+    }
   }
 
   /**
@@ -1156,25 +1523,31 @@ export class WorkExperienceService {
 
     await this.auditPublisher.record({
       actorId: null,
-      action: parsed.approved
+      action: approved
         ? 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_APPROVED'
         : 'WORK_EXPERIENCE_EMPLOYER_VERIFICATION_REJECTED',
       resourceType: 'WorkExperience',
       resourceId: exp.id,
-      reasonCode: parsed.approved ? 'employer_verified' : 'employer_rejected',
+      reasonCode: approved ? 'employer_verified' : 'employer_rejected',
       metadata: {
         attemptId: attempt.id,
-        approved: parsed.approved,
+        approved,
+        decision,
         comments: parsed.comments ?? null,
       },
     });
 
+    const message =
+      newStatus === 'VERIFIED'
+        ? 'Work experience successfully verified.'
+        : newStatus === 'SUBMITTED'
+          ? 'Clarification requested from candidate.'
+          : 'Work experience rejected.';
+
     return {
       success: true,
       status: newStatus,
-      message: parsed.approved
-        ? 'Work experience successfully verified.'
-        : 'Work experience rejected.',
+      message,
     };
   }
 
@@ -1208,6 +1581,7 @@ export class WorkExperienceService {
     const experiences = await this.prisma.workExperience.findMany({
       include: {
         student: true,
+        documents: true,
         verificationAttempts: {
           orderBy: { createdAt: 'desc' },
         },
@@ -1253,6 +1627,24 @@ export class WorkExperienceService {
         );
       }
 
+      const flaggedDocumentCount = (exp.documents ?? []).filter(
+        (document) =>
+          parseStoredDocumentAuthenticity(document.validationResult).status === 'doc_flagged',
+      ).length;
+      const hasValidatedProof = (exp.documents ?? []).some(
+        (document) => document.validationStatus === 'VALIDATED',
+      );
+
+      const nextAction = deriveWorkExperienceNextAction({
+        status: exp.status as WorkExperienceVerificationStatus,
+        currentStep,
+        emailState,
+        timeRemainingHours,
+        hasFlaggedDocuments: flaggedDocumentCount > 0,
+        hasValidatedProof,
+        hasVerifierEmail: Boolean(exp.verifierEmail),
+      });
+
       return {
         experienceId: exp.id,
         candidateId: exp.studentId,
@@ -1265,6 +1657,9 @@ export class WorkExperienceService {
         currentStep,
         emailState,
         timeRemainingHours,
+        flaggedDocumentCount,
+        hasFlaggedDocuments: flaggedDocumentCount > 0,
+        nextAction,
         createdAt: exp.createdAt.toISOString(),
       };
     });
@@ -1277,17 +1672,356 @@ export class WorkExperienceService {
    * `PublicProfileService.build()` only ever includes VERIFIED (or, opted-in, not-yet-decided,
    * never VOIDED) rows.
    */
+  /* ---- WE-T03: Manager endorsement ---- */
+
+  /**
+   * WE-T03: Extract a domain from the offer-letter (the document with documentType='OFFER_LETTER')
+   * validationResult JSON field.  Falls back to Organization.domain or companyWebsite.
+   */
+  private extractOfferLetterDomain(exp: {
+    companyWebsite?: string | null;
+    organization?: { domain?: string | null } | null;
+    documents?: Array<{
+      documentType: string;
+      validationResult?: unknown;
+    }> | null;
+  }): string | null {
+    // 1. Try offer-letter extraction result
+    if (exp.documents) {
+      for (const doc of exp.documents) {
+        if (doc.documentType === 'OFFER_LETTER' && doc.validationResult) {
+          const r = doc.validationResult as Record<string, unknown>;
+          const extracted = r['extractedData'] as Record<string, unknown> | undefined;
+          const explicitDomain = extracted?.['domain'] || extracted?.['companyWebsite'];
+          if (explicitDomain) {
+            const d = extractDomain(String(explicitDomain));
+            if (d) return d;
+          }
+          const company = String(extracted?.['companyName'] ?? '');
+          if (company && (company.includes('.') || company.includes('http'))) {
+            const d = extractDomain(company);
+            if (d) return d;
+          }
+        }
+      }
+    }
+    // 2. Organization.domain
+    if (exp.organization?.domain) return exp.organization.domain;
+    // 3. Company website
+    if (exp.companyWebsite) return extractDomain(exp.companyWebsite);
+    return null;
+  }
+
+  /**
+   * WE-T03: Student triggers a manager endorsement email.
+   * - Validates manager email is a corporate domain (not gmail/yahoo etc.)
+   * - Validates domain matches offer-letter domain or Organization.domain
+   * - Generates 32-byte secure token, stores SHA-256 hash
+   * - 5-day (120h) TTL; schedules 3-day (72h) reminder + 5-day expiry job
+   */
+  async sendManagerEndorsement(
+    studentId: string,
+    experienceId: string,
+    payload: SendManagerEndorsementDto,
+  ): Promise<SendManagerEndorsementResponseDto> {
+    const exp = await this.prisma.workExperience.findUnique({
+      where: { id: experienceId },
+      include: {
+        student: true,
+        organization: true,
+        documents: {
+          select: { documentType: true, validationResult: true },
+        },
+      },
+    });
+
+    if (!exp || exp.studentId !== studentId) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+
+    const managerEmail = payload.managerEmail.toLowerCase().trim();
+
+    // 1. Reject personal / free email providers
+    if (isDisallowedEndorserEmailDomain(managerEmail)) {
+      throw new BadRequestException(
+        `Manager email (${managerEmail}) uses a free or personal email provider. A corporate email is required for endorsement.`,
+      );
+    }
+
+    // 2. Domain matching: extract authoritative employer domain
+    const resolvedDomain = this.extractOfferLetterDomain(exp);
+    if (resolvedDomain) {
+      const domainValidation = validateEmployerDomain(managerEmail, `https://${resolvedDomain}`);
+      if (!domainValidation.domainMatch) {
+        throw new BadRequestException(
+          `Manager email domain (${domainValidation.verifierDomain}) does not match employer domain (${resolvedDomain}). Please use your official company email.`,
+        );
+      }
+    }
+
+    // 3. Generate single-use token (hash stored; raw sent in email)
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const TTL_120H = 120 * 60 * 60 * 1000; // 5 days
+    const expiresAt = new Date(Date.now() + TTL_120H);
+
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.create({
+      data: {
+        experienceId,
+        tokenHash,
+        managerEmail,
+        managerName: payload.managerName ?? null,
+        resolvedDomain: resolvedDomain ?? null,
+        expiresAt,
+        status: 'PENDING',
+      },
+    });
+
+    const surveyUrl = `${env.VERIFY_APP_URL}/work-experience/manager-survey/${rawToken}`;
+    const emailData = {
+      managerName: payload.managerName ?? 'Hiring Manager',
+      candidateName: exp.student?.fullName ?? 'Candidate',
+      companyName: exp.companyName,
+      roleTitle: exp.role,
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.isCurrent
+        ? 'Present'
+        : exp.endDate
+          ? exp.endDate.toISOString().substring(0, 10)
+          : 'N/A',
+      surveyUrl,
+      expiresAtFormatted: '5 days',
+    };
+
+    if (this.emailQueue) {
+      // Initial invite
+      await this.emailQueue.add('send', {
+        to: managerEmail,
+        template: 'work-experience-manager-invite',
+        data: emailData,
+      });
+
+      // Day-3 (72h) reminder
+      await this.emailQueue.add(
+        'send-manager-reminder',
+        {
+          endorsementId: endorsement.id,
+          to: managerEmail,
+          template: 'work-experience-manager-reminder',
+          data: { ...emailData, expiresAtFormatted: '2 days' },
+        } as WorkExperienceManagerReminderJobPayload,
+        { delay: 72 * 60 * 60 * 1000 },
+      );
+
+      // Day-5 (120h) expiry marker
+      await this.emailQueue.add(
+        'expire-manager-endorsement',
+        { endorsementId: endorsement.id, experienceId },
+        { delay: TTL_120H },
+      );
+    }
+
+    await this.auditPublisher.record({
+      actorId: studentId,
+      action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_SENT',
+      resourceType: 'WorkExperience',
+      resourceId: experienceId,
+      reasonCode: 'manager_endorsement_sent',
+      metadata: {
+        endorsementId: endorsement.id,
+        managerEmail,
+        resolvedDomain,
+      },
+    });
+
+    return {
+      success: true,
+      endorsementId: endorsement.id,
+      managerEmail,
+      expiresAt: expiresAt.toISOString(),
+      message: `Manager endorsement request dispatched to ${managerEmail}. Valid for 5 days.`,
+    };
+  }
+
+  /**
+   * WE-T03: Public — manager opens magic link to view the survey.
+   * Returns minimal candidate info; no excess PII.
+   */
+  async getManagerEndorsementByToken(rawToken: string): Promise<GetManagerEndorsementSurveyDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
+
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+      where: { tokenHash },
+      include: {
+        experience: {
+          include: { student: { select: { fullName: true } } },
+        },
+      },
+    });
+
+    if (!endorsement || !endorsement.experience) {
+      throw new NotFoundException('Invalid or expired endorsement link.');
+    }
+
+    const exp = endorsement.experience;
+    const now = new Date();
+    const isExpired = endorsement.expiresAt < now;
+    const isAlreadyResponded = endorsement.respondedAt !== null;
+
+    return {
+      endorsementId: endorsement.id,
+      candidateName: exp.student?.fullName ?? 'Candidate',
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType as GetManagerEndorsementSurveyDto['employmentType'],
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.endDate ? exp.endDate.toISOString().substring(0, 10) : null,
+      isCurrent: exp.isCurrent,
+      responsibilities: exp.responsibilities ?? null,
+      skillsClaimed: (exp.skills ?? []) as string[],
+      managerEmail: endorsement.managerEmail,
+      managerName: endorsement.managerName ?? null,
+      status: endorsement.status as GetManagerEndorsementSurveyDto['status'],
+      expiresAt: endorsement.expiresAt.toISOString(),
+      isExpired,
+      isAlreadyResponded,
+    };
+  }
+
+  /**
+   * WE-T03: Public — manager submits their endorsement decision.
+   * Single-use (enforced via respondedAt). Recalculates overall_verified.
+   *
+   * overall_verified = docOk && completedConfirmed
+   * completedConfirmed is set to true only when confirmed === true.
+   * Disputed endorsement keeps completedConfirmed = false; overall_verified stays false.
+   * Expiry does NOT auto-set any field.
+   */
+  async submitManagerEndorsement(
+    rawToken: string,
+    payload: SubmitManagerEndorsementDto,
+    meta?: { ip?: string; userAgent?: string },
+  ): Promise<SubmitManagerEndorsementResponseDto> {
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
+
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
+      where: { tokenHash },
+      include: { experience: true },
+    });
+
+    if (!endorsement || !endorsement.experience) {
+      throw new NotFoundException('Invalid or expired endorsement link.');
+    }
+
+    if (endorsement.respondedAt !== null) {
+      throw new BadRequestException('This endorsement link has already been used.');
+    }
+
+    if (endorsement.expiresAt < new Date()) {
+      throw new BadRequestException('This endorsement link has expired.');
+    }
+
+    const exp = endorsement.experience;
+    const now = new Date();
+    const newStatus = payload.confirmed ? 'CONFIRMED' : 'DISPUTED';
+
+    // Update endorsement record
+    await this.prisma.workExperienceManagerEndorsement.update({
+      where: { id: endorsement.id },
+      data: {
+        respondedAt: now,
+        status: newStatus,
+        confirmed: payload.confirmed,
+        skillRatings: payload.skillRatings
+          ? (payload.skillRatings as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        comments: payload.comments ?? null,
+        ipAddress: meta?.ip ?? null,
+        userAgent: meta?.userAgent ?? null,
+      },
+    });
+
+    // Recalculate overall_verified
+    const completedConfirmed = payload.confirmed === true;
+    // docOk: check if experience already has doc_ok set, or if at least one doc is VALIDATED
+    const currentExp = await this.prisma.workExperience.findUnique({
+      where: { id: exp.id },
+      select: { docOk: true },
+    });
+    const docOk = currentExp?.docOk === true;
+    const overallVerified = docOk && completedConfirmed;
+
+    await this.prisma.workExperience.update({
+      where: { id: exp.id },
+      data: {
+        completedConfirmed,
+        overallVerified,
+      },
+    });
+
+    await this.auditPublisher.record({
+      actorId: null,
+      action: payload.confirmed
+        ? 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED'
+        : 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
+      resourceType: 'WorkExperience',
+      resourceId: exp.id,
+      reasonCode: payload.confirmed ? 'manager_confirmed' : 'manager_disputed',
+      metadata: {
+        endorsementId: endorsement.id,
+        overallVerified,
+        skillRatings: payload.skillRatings ?? null,
+      },
+    });
+
+    return {
+      success: true,
+      status: newStatus as SubmitManagerEndorsementResponseDto['status'],
+      message: payload.confirmed
+        ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
+        : 'Your response has been recorded. The candidate has been notified.',
+    };
+  }
+
+  /**
+   * SA-T08 - extends the v0.9 fraud/void action to a work-experience row.
+   * One-directional: there is no "un-void".
+   */
   async voidWorkExperience(
     actorId: string,
     id: string,
     body: VoidRequest,
   ): Promise<VoidWorkExperienceResponse> {
-    const existing = await this.prisma.workExperience.findUnique({ where: { id } });
+    const existing = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
     if (!existing) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'Work experience entry not found.',
         statusCode: 404,
+      });
+    }
+
+    const voidedAt = new Date().toISOString();
+    for (const document of existing.documents) {
+      const prior = parseStoredDocumentAuthenticity(document.validationResult);
+      await this.prisma.workExperienceDocument.update({
+        where: { id: document.id },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(document.validationResult, {
+            status: 'voided',
+            result: prior.result,
+            checkedAt: voidedAt,
+          }) as Prisma.InputJsonValue,
+        },
       });
     }
 
@@ -1304,10 +2038,64 @@ export class WorkExperienceService {
       reasonCode: body.reason,
     });
 
+    await this.publicProfileService?.recheckActivationAfterVoid(existing.studentId);
+
     return {
       id: updated.id,
       status: updated.status as WorkExperienceVerificationStatus,
       voidedAt: updated.updatedAt.toISOString(),
     };
+  }
+
+  async approveWorkExperienceAuthenticity(
+    actorId: string,
+    id: string,
+    body: AdminWorkExperienceReviewRequest,
+  ): Promise<ApproveWorkExperienceAuthenticityResponse> {
+    const existing = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Work experience entry not found.',
+        statusCode: 404,
+      });
+    }
+
+    let cleared = 0;
+    const approvedAt = new Date().toISOString();
+
+    for (const document of existing.documents) {
+      const prior = parseStoredDocumentAuthenticity(document.validationResult);
+      if (prior.status !== 'doc_flagged') continue;
+
+      await this.prisma.workExperienceDocument.update({
+        where: { id: document.id },
+        data: {
+          validationResult: mergeAuthenticityIntoValidationResult(document.validationResult, {
+            status: 'doc_ok',
+            result: prior.result,
+            checkedAt: approvedAt,
+          }) as Prisma.InputJsonValue,
+        },
+      });
+      cleared += 1;
+    }
+
+    await this.auditPublisher.record({
+      actorId,
+      action: 'work_experience.authenticity_approved',
+      resourceType: 'WorkExperience',
+      resourceId: id,
+      reasonCode: body.reason,
+    });
+
+    return ApproveWorkExperienceAuthenticityResponseSchema.parse({
+      id,
+      flaggedDocumentsCleared: cleared,
+      approvedAt,
+    });
   }
 }

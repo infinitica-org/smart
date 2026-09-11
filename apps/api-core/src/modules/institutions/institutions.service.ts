@@ -319,6 +319,7 @@ export class InstitutionsService {
 
     const rows: InstitutionStudentDto[] = users.map((user) => {
       const invitation = latestByUser.get(user.id);
+      const socialUrls = socialUrlsFromOnboarding(user.onboardingDetails);
       return {
         userId: user.id,
         email: user.email,
@@ -329,6 +330,8 @@ export class InstitutionsService {
         lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
         acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
         heldAt: user.heldAt?.toISOString() ?? null,
+        linkedinUrl: socialUrls.linkedinUrl,
+        githubUrl: socialUrls.githubUrl,
       };
     });
 
@@ -909,7 +912,9 @@ export class InstitutionsService {
     fullName: string;
     batchId: string | null;
     heldAt: Date | null;
+    onboardingDetails?: unknown;
   }): InstitutionStudentDto {
+    const socialUrls = socialUrlsFromOnboarding(user.onboardingDetails);
     return {
       userId: user.id,
       email: user.email,
@@ -920,6 +925,8 @@ export class InstitutionsService {
       lastSentAt: null,
       acceptedAt: null,
       heldAt: user.heldAt?.toISOString() ?? null,
+      linkedinUrl: socialUrls.linkedinUrl,
+      githubUrl: socialUrls.githubUrl,
     };
   }
 
@@ -1702,6 +1709,25 @@ function toBatchDto(
     pendingInviteCount,
     createdAt: batch.createdAt.toISOString(),
   };
+}
+
+function socialUrlsFromOnboarding(onboardingDetails: unknown): {
+  linkedinUrl: string | null;
+  githubUrl: string | null;
+} {
+  if (!onboardingDetails || typeof onboardingDetails !== 'object') {
+    return { linkedinUrl: null, githubUrl: null };
+  }
+  const details = onboardingDetails as Record<string, unknown>;
+  const linkedin =
+    typeof details.linkedinUrl === 'string' && details.linkedinUrl.trim()
+      ? details.linkedinUrl.trim()
+      : null;
+  const github =
+    typeof details.githubUrl === 'string' && details.githubUrl.trim()
+      ? details.githubUrl.trim()
+      : null;
+  return { linkedinUrl: linkedin, githubUrl: github };
 }
 
 function toBatchMember(

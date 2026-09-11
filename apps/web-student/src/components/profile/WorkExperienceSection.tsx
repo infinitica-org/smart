@@ -20,8 +20,12 @@ import {
 } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
+  companyRequiresPublicIdentity,
+  validateCompanyPublicIdentity,
+  validateWorkExperienceLetterRules,
   type WorkExperienceDto,
   type WorkExperienceDocumentDto,
+  type WorkExperienceProofValidationResult,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
 
@@ -44,6 +48,40 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   FORM_16: 'Form 16',
   OTHER: 'Other Proof Document',
 };
+
+const VERIFICATION_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: 'Submitted — Ready for Verification',
+  PENDING_EMPLOYER: 'Pending Employer Response',
+  VERIFIED: 'Verified & Confirmed',
+  REJECTED: 'Verification Disputed / Rejected',
+  EXPIRED: 'Verification Link Expired (Action Needed)',
+};
+
+function getNextActionGuidance(
+  exp: WorkExperienceDto,
+  ruleCheck: { valid: boolean; missingDocuments: string[] },
+): string {
+  if (exp.status === 'VERIFIED') {
+    return 'Work experience claim is fully verified and locked on your candidate profile.';
+  }
+  if (exp.status === 'EXPIRED') {
+    return 'Link Expired — Resend or Try Another Verifier. Click "Restart Verification" or update verifier details.';
+  }
+  if (exp.status === 'REJECTED') {
+    return 'Verification was disputed or rejected by employer verifier. Update verifier details or review claim.';
+  }
+  if (exp.status === 'PENDING_EMPLOYER') {
+    return 'Verification request is active. Automated reminder sent at 6h; expires at 48h. You can resend if needed.';
+  }
+  // SUBMITTED state:
+  if (!ruleCheck.valid) {
+    return 'Upload required proof documents (Offer Letter / Relieving Letter) to proceed with claim verification.';
+  }
+  if (!exp.verifierEmail) {
+    return 'Click "Add Verifier" to configure employer HR/Manager contact details for verification.';
+  }
+  return 'Click "Send Verification Link" to dispatch verification request to your employer verifier.';
+}
 
 export function WorkExperienceSection() {
   const [experiences, setExperiences] = useState<WorkExperienceDto[]>([]);
@@ -170,6 +208,38 @@ export function WorkExperienceSection() {
     try {
       setSubmitting(true);
       setError(null);
+      const existingDocs = editingId
+        ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
+        : [];
+
+      const letterValidation = validateWorkExperienceLetterRules({
+        isCurrent,
+        endDate: !isCurrent && endDate ? endDate : null,
+        documents: existingDocs,
+      });
+
+      if (!letterValidation.valid) {
+        setError(letterValidation.message || 'Required proof documents are missing.');
+        setSubmitting(false);
+        return;
+      }
+
+      const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
+      const identityRequired = companyRequiresPublicIdentity({
+        companyId: editingExp?.companyId ?? null,
+        companyWebsite,
+      });
+      const identityValidation = validateCompanyPublicIdentity({
+        companyWebsite,
+        companyLinkedinUrl,
+        required: identityRequired,
+      });
+      if (!identityValidation.valid) {
+        setError(identityValidation.message || 'Company website and LinkedIn are required.');
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,
@@ -187,6 +257,13 @@ export function WorkExperienceSection() {
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
+        documents: existingDocs.map((doc) => ({
+          documentType: doc.documentType,
+          fileUrl: doc.fileUrl,
+          fileName: doc.fileName,
+          fileSizeBytes: doc.fileSizeBytes,
+          mimeType: doc.mimeType,
+        })),
       };
 
       if (editingId) {
@@ -249,7 +326,14 @@ export function WorkExperienceSection() {
   // Document validation state
   const [validatingDocId, setValidatingDocId] = useState<string | null>(null);
   const [validationResults, setValidationResults] = useState<
-    Record<string, { validationStatus: string; rejectionReason?: string | null }>
+    Record<
+      string,
+      {
+        validationStatus: string;
+        rejectionReason?: string | null;
+        reasonCode?: string | null;
+      }
+    >
   >({});
 
   const handleValidateProof = async (expId: string, docId: string) => {
@@ -257,11 +341,13 @@ export function WorkExperienceSection() {
       setValidatingDocId(docId);
       setError(null);
       const result = await api.users.validateWorkExperienceProof(expId, docId);
+      const validationResult = result.validationResult as WorkExperienceProofValidationResult;
       setValidationResults((prev) => ({
         ...prev,
         [docId]: {
-          validationStatus: result.validationResult.validationStatus,
-          rejectionReason: result.validationResult.rejectionReason,
+          validationStatus: validationResult.validationStatus,
+          rejectionReason: validationResult.rejectionReason,
+          reasonCode: validationResult.reasonCode,
         },
       }));
       await fetchExperiences();
@@ -359,17 +445,13 @@ export function WorkExperienceSection() {
                             : exp.status === 'EXPIRED'
                               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                               : exp.status === 'SUBMITTED'
-                                ? 'bg-[#00fad0]/15 text-[#00fad0]'
+                                ? 'bg-[#00fad0]/15 text-[#00fad0] border border-[#00fad0]/30'
                                 : exp.status === 'REJECTED'
-                                  ? 'bg-red-500/15 text-red-400'
+                                  ? 'bg-red-500/15 text-red-400 border border-red-500/30'
                                   : 'bg-white/10 text-white/50'
                       }`}
                     >
-                      {exp.status === 'PENDING_EMPLOYER'
-                        ? 'PENDING EMPLOYER'
-                        : exp.status === 'EXPIRED'
-                          ? 'VERIFICATION EXPIRED'
-                          : exp.status}
+                      {VERIFICATION_STATUS_LABELS[exp.status] || exp.status}
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/60">
@@ -399,6 +481,11 @@ export function WorkExperienceSection() {
                             })
                           : 'N/A'}
                     </span>
+                    {(exp.isCurrent || !exp.endDate) && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-0.5 text-[10px] font-medium text-[#00fad0]">
+                        Active — pending final documentation
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -469,6 +556,222 @@ export function WorkExperienceSection() {
                 </div>
               )}
 
+              {/* Student Status & Tracker Section */}
+              {(() => {
+                const ruleCheck = validateWorkExperienceLetterRules({
+                  isCurrent: exp.isCurrent,
+                  endDate: exp.endDate,
+                  documents: exp.documents ?? [],
+                });
+
+                const docs = exp.documents ?? [];
+                let docCheckText = 'No Proof Uploaded';
+                let docCheckTag = 'Missing';
+                let docCheckStyle = 'bg-white/10 text-white/50';
+
+                const hasValidated = docs.some(
+                  (d) =>
+                    (validationResults[d.id]?.validationStatus ??
+                      (d as unknown as Record<string, unknown>).validationStatus) === 'VALIDATED',
+                );
+                const hasManualReview = docs.some(
+                  (d) =>
+                    (validationResults[d.id]?.validationStatus ??
+                      (d as unknown as Record<string, unknown>).validationStatus) ===
+                    'NEEDS_MANUAL_REVIEW',
+                );
+                const hasRejected = docs.some(
+                  (d) =>
+                    (validationResults[d.id]?.validationStatus ??
+                      (d as unknown as Record<string, unknown>).validationStatus) === 'REJECTED',
+                );
+
+                if (hasValidated) {
+                  docCheckText = 'Validated (AI Check)';
+                  docCheckTag = 'Complete';
+                  docCheckStyle = 'bg-emerald-500/20 text-emerald-400';
+                } else if (hasManualReview) {
+                  docCheckText = 'Needs Manual Review';
+                  docCheckTag = 'Review Flagged';
+                  docCheckStyle = 'bg-amber-500/20 text-amber-300';
+                } else if (hasRejected) {
+                  docCheckText = 'Document Rejected';
+                  docCheckTag = 'Rejected';
+                  docCheckStyle = 'bg-red-500/15 text-red-400';
+                } else if (docs.length > 0) {
+                  docCheckText = 'Pending OCR Check';
+                  docCheckTag = 'Pending';
+                  docCheckStyle = 'bg-blue-500/20 text-blue-300';
+                }
+
+                const managerEndorsementStatus = (exp as unknown as Record<string, unknown>)
+                  .managerEndorsement
+                  ? String(
+                      (
+                        (exp as unknown as Record<string, unknown>).managerEndorsement as Record<
+                          string,
+                          unknown
+                        >
+                      ).status || 'PENDING',
+                    )
+                  : null;
+
+                return (
+                  <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                        Student Claim Status Tracker
+                      </span>
+                      <span className="text-xs font-medium text-[#00fad0]">
+                        {VERIFICATION_STATUS_LABELS[exp.status] || exp.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3 sm:grid-cols-2">
+                      {/* Stage 1: Document Proof */}
+                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-white/50">
+                          1. Document Proof
+                        </span>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                            {ruleCheck.valid ? 'Rules Satisfied' : 'Missing Proof'}
+                          </span>
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                              ruleCheck.valid
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-amber-500/20 text-amber-300'
+                            }`}
+                          >
+                            {ruleCheck.valid ? 'Complete' : 'Incomplete'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-white/40">
+                          {exp.isCurrent
+                            ? 'Offer Letter required'
+                            : 'Offer + Relieving Letter required'}
+                        </span>
+                      </div>
+
+                      {/* Stage 2: Document Check */}
+                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-white/50">
+                          2. Document Check
+                        </span>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                            {docCheckText}
+                          </span>
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${docCheckStyle}`}
+                          >
+                            {docCheckTag}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-white/40">
+                          {docs.length > 0
+                            ? `${docs.length} proof file(s) attached`
+                            : 'Upload offer/relieving letter'}
+                        </span>
+                      </div>
+
+                      {/* Stage 3: Employer Verification */}
+                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-white/50">
+                          3. Employer Verification
+                        </span>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                            {exp.verifierEmail
+                              ? exp.verifierName || exp.verifierEmail
+                              : 'No Verifier Set'}
+                          </span>
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                              exp.status === 'VERIFIED'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : exp.status === 'EXPIRED'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : exp.status === 'PENDING_EMPLOYER'
+                                    ? 'bg-blue-500/20 text-blue-300'
+                                    : 'bg-white/10 text-white/60'
+                            }`}
+                          >
+                            {exp.status === 'PENDING_EMPLOYER'
+                              ? 'Active Link'
+                              : exp.status === 'EXPIRED'
+                                ? 'Expired'
+                                : exp.status === 'VERIFIED'
+                                  ? 'Verified'
+                                  : 'Pending'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-white/40 truncate max-w-[170px]">
+                          {exp.verifierEmail || 'Click Edit to set verifier'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Manager Endorsement stage if present */}
+                    {managerEndorsementStatus && (
+                      <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-white/50">
+                          4. Manager Endorsement Status
+                        </span>
+                        <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-300">
+                          {managerEndorsementStatus}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Expired Verification Banner UX */}
+                    {exp.status === 'EXPIRED' && (
+                      <div className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+                        <div className="flex items-center gap-2 font-semibold text-amber-300">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                          <span>Link Expired — Resend or Try Another Verifier</span>
+                        </div>
+                        <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                          Verification link expired after 48h without a response. You can restart
+                          verification with the current verifier or update verifier details first to
+                          try another contact.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <button
+                            onClick={() => handleSendVerification(exp.id, exp.status)}
+                            disabled={sendingVerificationId === exp.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50 transition-colors"
+                          >
+                            {sendingVerificationId === exp.id ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Restarting...
+                              </>
+                            ) : (
+                              'Restart Verification'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => openEditModal(exp)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            Update Verifier Details
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Next Action Guidance */}
+                    <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-[11px] text-white/70">
+                      <span className="font-semibold text-[#00fad0] shrink-0">Next Action:</span>
+                      <span>{getNextActionGuidance(exp, ruleCheck)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Verifier Contact & Verification Action */}
               {exp.verifierEmail ? (
                 <div className="mt-1 flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
@@ -508,24 +811,6 @@ export function WorkExperienceSection() {
                       </button>
                     )}
                   </div>
-                  {exp.status === 'PENDING_EMPLOYER' && (
-                    <div className="text-[11px] text-blue-300/80 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="h-3 w-3 text-blue-400 shrink-0" />
-                      <span>
-                        Verification request is active. Automated reminders sent every 6h (expires
-                        at 48h).
-                      </span>
-                    </div>
-                  )}
-                  {exp.status === 'EXPIRED' && (
-                    <div className="text-[11px] text-amber-300 flex items-center gap-1 mt-0.5">
-                      <AlertCircle className="h-3 w-3 text-amber-400 shrink-0" />
-                      <span>
-                        Verification link expired after 48h without response. Click &quot;Restart
-                        Verification&quot; to send a new link.
-                      </span>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="mt-1 flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">
@@ -564,13 +849,16 @@ export function WorkExperienceSection() {
                   <div className="flex flex-col gap-2">
                     {exp.documents.map((doc: WorkExperienceDocumentDto) => {
                       const docRecord = doc as unknown as Record<string, unknown>;
+                      const validationResultRecord = docRecord.validationResult as
+                        Record<string, unknown> | undefined;
                       const valState = validationResults[doc.id] || {
                         validationStatus: docRecord.validationStatus as string | undefined,
-                        rejectionReason: (
-                          docRecord.validationResult as Record<string, unknown> | undefined
-                        )?.rejectionReason as string | undefined,
+                        rejectionReason: validationResultRecord?.rejectionReason as
+                          string | undefined,
+                        reasonCode: validationResultRecord?.reasonCode as string | undefined,
                       };
                       const isValidating = validatingDocId === doc.id;
+                      const isOfferAttachment = doc.documentType === 'OFFER_LETTER';
 
                       return (
                         <div
@@ -602,14 +890,23 @@ export function WorkExperienceSection() {
                               {valState.validationStatus === 'REJECTED' && (
                                 <span className="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium mt-0.5">
                                   <AlertCircle className="h-3 w-3" /> Proof Rejected:{' '}
-                                  {valState.rejectionReason || 'Offer Letter or mismatch detected'}
+                                  {valState.reasonCode === 'INVALID_DOCUMENT_TYPE'
+                                    ? valState.rejectionReason ||
+                                      'Offer letters support your claim but cannot be validated as employment proof.'
+                                    : valState.rejectionReason || 'Document mismatch detected'}
+                                </span>
+                              )}
+                              {isOfferAttachment && !valState.validationStatus && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-white/50 font-medium mt-0.5">
+                                  Offer letters support your claim but cannot be validated as
+                                  employment proof.
                                 </span>
                               )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 self-end sm:self-center">
-                            {!valState.validationStatus && (
+                            {!valState.validationStatus && !isOfferAttachment && (
                               <button
                                 onClick={() => handleValidateProof(exp.id, doc.id)}
                                 disabled={isValidating}
@@ -662,6 +959,40 @@ export function WorkExperienceSection() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {/* Rule Explanation Banner (WE-T01) */}
+            <div className="mt-3 rounded-2xl border border-[#00fad0]/25 bg-[#00fad0]/5 p-3.5 text-xs text-white/90">
+              <div className="flex items-center gap-2 font-semibold text-[#00fad0]">
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>Document Requirement Rules</span>
+              </div>
+              <p className="mt-1 text-white/75 leading-relaxed">
+                {isCurrent ? (
+                  <>
+                    <strong className="text-[#00fad0]">Ongoing Role: Offer letter required.</strong>{' '}
+                    Status will display as{' '}
+                    <span className="font-semibold text-white">
+                      Active — pending final documentation
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-amber-300">
+                      Ended Role: Offer Letter + Completion/Relieving Letter required.
+                    </strong>{' '}
+                    Both an Offer Letter and a Completion/Relieving Letter are required before
+                    submission.
+                  </>
+                )}
+              </p>
+            </div>
+
+            {error && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -734,7 +1065,10 @@ export function WorkExperienceSection() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">Company Website</label>
+                  <label className="block text-xs font-medium text-white/70">
+                    Company Website
+                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
+                  </label>
                   <input
                     type="url"
                     value={companyWebsite}
@@ -747,6 +1081,7 @@ export function WorkExperienceSection() {
                 <div>
                   <label className="block text-xs font-medium text-white/70">
                     Company LinkedIn URL
+                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
                   </label>
                   <input
                     type="url"

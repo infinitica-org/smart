@@ -576,3 +576,124 @@ describe('evaluationApi contracts', () => {
     expect(result.promptRef).toBe('sde-skill-code-runner@1');
   });
 });
+
+describe('WE-T03 manager endorsement contracts', () => {
+  it('GETs manager endorsement survey by raw token', async () => {
+    const surveyPayload = {
+      endorsementId: '00000000-0000-4000-8000-000000000001',
+      candidateName: 'Jane Doe',
+      companyName: 'Acme Corp',
+      role: 'Senior Software Engineer',
+      employmentType: 'FULL_TIME',
+      startDate: '2022-01-01',
+      endDate: null,
+      isCurrent: true,
+      responsibilities: 'Led frontend platform architecture.',
+      skillsClaimed: ['PROGRAMMING_FUNDAMENTALS_LOGIC', 'LANGUAGE_PROFICIENCY'],
+      managerEmail: 'boss@acme.com',
+      managerName: 'John Boss',
+      status: 'PENDING',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      isExpired: false,
+      isAlreadyResponded: false,
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: surveyPayload }]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    const result =
+      await api.users.getWorkExperienceManagerEndorsementByToken('raw-magic-token-123');
+
+    expect(calls[0]?.url).toBe(
+      'https://api.smart.test/api/v1/users/work-experiences/manager-survey/raw-magic-token-123',
+    );
+    expect(result.candidateName).toBe('Jane Doe');
+    expect(result.skillsClaimed).toEqual([
+      'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      'LANGUAGE_PROFICIENCY',
+    ]);
+    expect(result.isExpired).toBe(false);
+  });
+
+  it('POSTs manager endorsement survey response with skill ratings', async () => {
+    const submitResponse = {
+      success: true,
+      status: 'CONFIRMED',
+      message: 'Thank you for confirming this work experience.',
+    };
+    const { fetchImpl, calls } = stubFetch([{ body: submitResponse }]);
+    const api = createSmartApi(
+      new SmartApiClient({ baseUrl: 'https://api.smart.test', fetchImpl }),
+    );
+
+    const result = await api.users.submitWorkExperienceManagerEndorsementByToken(
+      'raw-magic-token-123',
+      {
+        confirmed: true,
+        skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+        comments: 'Great engineer!',
+      },
+    );
+
+    expect(calls[0]?.url).toBe(
+      'https://api.smart.test/api/v1/users/work-experiences/manager-survey/raw-magic-token-123',
+    );
+    expect(calls[0]?.init.method).toBe('POST');
+    expect(JSON.parse(calls[0]?.init.body as string)).toEqual({
+      confirmed: true,
+      skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+      comments: 'Great engineer!',
+    });
+    expect(result.status).toBe('CONFIRMED');
+  });
+});
+
+describe('onboardingApi education verification contracts', () => {
+  const eduBody = {
+    id: '33333333-3333-4333-8333-333333333333',
+    studentId: '11111111-1111-4111-8111-111111111111',
+    institutionName: 'Stanford University',
+    degree: 'B.S.',
+    fieldOfStudy: 'CS',
+    startDate: '2020-09-01',
+    endDate: '2024-05-01',
+    current: false,
+    grade: '3.9',
+    status: 'verified',
+    rejectionReason: null,
+    createdAt: '2026-09-10T10:00:00.000Z',
+    updatedAt: '2026-09-10T10:00:00.000Z',
+  };
+
+  it('posts /tpo/education/:id/confirm', async () => {
+    const { fetchImpl, calls } = stubFetch([{ status: 200, body: eduBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.onboarding.confirmEducation(eduBody.id);
+    expect(calls[0]?.url).toBe(`https://api.smart.test/api/v1/tpo/education/${eduBody.id}/confirm`);
+    expect(result.status).toBe('verified');
+  });
+
+  it('posts /tpo/education/:id/reject with mandatory reason', async () => {
+    const rejectedBody = { ...eduBody, status: 'rejected', rejectionReason: 'Invalid degree' };
+    const { fetchImpl, calls } = stubFetch([{ status: 200, body: rejectedBody }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    const result = await api.onboarding.rejectEducation(eduBody.id, { reason: 'Invalid degree' });
+    expect(calls[0]?.url).toBe(`https://api.smart.test/api/v1/tpo/education/${eduBody.id}/reject`);
+    expect(calls[0]?.init.body).toBe(JSON.stringify({ reason: 'Invalid degree' }));
+    expect(result.status).toBe('rejected');
+    expect(result.rejectionReason).toBe('Invalid degree');
+  });
+});

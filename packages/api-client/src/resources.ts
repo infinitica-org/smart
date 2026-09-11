@@ -16,6 +16,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
   SubmitCertificateEndorsementDecisionRequest,
@@ -42,6 +43,7 @@ import type {
   UpdateProfileVisibilityRequest,
   CreateCandidateEducationDto,
   UpdateCandidateEducationDto,
+  RejectCandidateEducationDto,
   CreateCandidateLanguageDto,
   UpdateCandidateLanguageDto,
   CreateBlockedWordRequest,
@@ -96,6 +98,7 @@ import {
   PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
   RepoLanguagesResponseSchema,
+  ReverseGeocodeResponseSchema,
   SandboxResultDtoSchema,
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
@@ -127,16 +130,22 @@ import {
   SendWorkExperienceVerificationResponseSchema,
   GetWorkExperienceVerificationResponseSchema,
   SubmitWorkExperienceVerificationResponseSchema,
+  GetManagerEndorsementSurveySchema,
+  SubmitManagerEndorsementResponseSchema,
+  SendManagerEndorsementResponseSchema,
   WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
   type CreateWorkExperienceDocumentDto,
   type SubmitWorkExperienceVerificationDto,
+  type SendManagerEndorsementDto,
+  type SubmitManagerEndorsementDto,
   UsernameStatusResponseSchema,
   ProfileVisibilityResponseSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
   VoidWorkExperienceResponseSchema,
+  ApproveWorkExperienceAuthenticityResponseSchema,
   VoidCandidateCertificateResponseSchema,
 } from '@smart/contracts';
 import { z } from 'zod';
@@ -240,6 +249,11 @@ export function usersApi(client: SmartApiClient) {
     fetchGithubProfile: (body: FetchGithubProfileRequest) =>
       client.post(prefixed('/users/me/onboarding/github/fetch-profile'), body, {
         schema: FetchGithubProfileResponseSchema,
+      }),
+
+    reverseGeocode: (body: ReverseGeocodeRequest) =>
+      client.post(prefixed('/users/me/onboarding/reverse-geocode'), body, {
+        schema: ReverseGeocodeResponseSchema,
       }),
 
     listGithubRepos: (body: ListGithubReposRequest) =>
@@ -422,6 +436,26 @@ export function usersApi(client: SmartApiClient) {
     ) =>
       client.post(prefixed(`/users/work-experiences/verify-token/${token}`), body, {
         schema: SubmitWorkExperienceVerificationResponseSchema,
+        anonymous: true,
+      }),
+
+    sendWorkExperienceManagerEndorsement: (id: string, body: SendManagerEndorsementDto) =>
+      client.post(prefixed(`/users/me/work-experiences/${id}/send-manager-endorsement`), body, {
+        schema: SendManagerEndorsementResponseSchema,
+      }),
+
+    getWorkExperienceManagerEndorsementByToken: (token: string) =>
+      client.get(prefixed(`/users/work-experiences/manager-survey/${token}`), {
+        schema: GetManagerEndorsementSurveySchema,
+        anonymous: true,
+      }),
+
+    submitWorkExperienceManagerEndorsementByToken: (
+      token: string,
+      body: SubmitManagerEndorsementDto,
+    ) =>
+      client.post(prefixed(`/users/work-experiences/manager-survey/${token}`), body, {
+        schema: SubmitManagerEndorsementResponseSchema,
         anonymous: true,
       }),
   };
@@ -623,6 +657,11 @@ export function onboardingApi(client: SmartApiClient) {
         schema: VoidWorkExperienceResponseSchema,
       }),
 
+    approveWorkExperienceAuthenticity: (id: string, body: VoidRequest) =>
+      client.post(prefixed(`/admin/work-experience/${id}/approve`), body, {
+        schema: ApproveWorkExperienceAuthenticityResponseSchema,
+      }),
+
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),
 
     holdStudent: (userId: string, body: TenantActionReason) =>
@@ -719,6 +758,16 @@ export function onboardingApi(client: SmartApiClient) {
     revokeStudentInvitation: (invitationId: string) =>
       client.post(prefixed(`/tpo/invitations/${invitationId}/revoke`), undefined, {
         schema: InvitationDtoSchema,
+      }),
+
+    confirmEducation: (id: string) =>
+      client.post(prefixed(`/tpo/education/${id}/confirm`), undefined, {
+        schema: CandidateEducationSchema,
+      }),
+
+    rejectEducation: (id: string, body: RejectCandidateEducationDto) =>
+      client.post(prefixed(`/tpo/education/${id}/reject`), body, {
+        schema: CandidateEducationSchema,
       }),
   };
 }

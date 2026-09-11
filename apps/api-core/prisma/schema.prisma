@@ -1153,8 +1153,17 @@ model WorkExperience {
   createdAt           DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // WE-T03: verification state machine fields
+  /// true when at least one attached document has validationStatus = 'VALIDATED'
+  docOk               Boolean                          @default(false) @map("doc_ok")
+  /// true when a manager has CONFIRMED the endorsement via magic link
+  completedConfirmed  Boolean                          @default(false) @map("completed_confirmed")
+  /// doc_ok && completed_confirmed — computed on each state transition, never auto-set on expiry
+  overallVerified     Boolean                          @default(false) @map("overall_verified")
+
   documents            WorkExperienceDocument[]
   verificationAttempts WorkExperienceVerificationAttempt[]
+  managerEndorsements  WorkExperienceManagerEndorsement[]
 
   @@index([studentId, status])
   @@index([companyId])
@@ -1197,6 +1206,52 @@ model WorkExperienceVerificationAttempt {
 
   @@index([experienceId])
   @@map("work_experience_verification_attempts")
+}
+
+/**
+ * WE-T03 — Manager endorsement magic-link record.
+ *
+ * Separate from WorkExperienceVerificationAttempt to preserve the existing
+ * employer verification lifecycle.  5-day TTL; single-use (respondedAt IS NOT NULL
+ * means used).  3-day (72h) reminder is scheduled at creation via BullMQ delayed job.
+ */
+model WorkExperienceManagerEndorsement {
+  id              String    @id @default(uuid()) @db.Uuid
+  experienceId    String    @map("experience_id") @db.Uuid
+  experience      WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 hash of the raw token.  Raw token lives only in the email; never stored.
+  tokenHash       String    @unique @map("token_hash")
+  managerEmail    String    @map("manager_email")
+  managerName     String?   @map("manager_name")
+
+  /// Domain used for matching (extracted from offer-letter or Organization.domain).
+  resolvedDomain  String?   @map("resolved_domain")
+
+  sentAt          DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
+  /// 120 hours (5 days) after sentAt.
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// Set when the manager opens and submits the survey. NULL = not yet responded.
+  respondedAt     DateTime? @map("responded_at") @db.Timestamptz(6)
+  /// Set when the 3-day reminder is dispatched.
+  reminderSentAt  DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+
+  /// PENDING | CONFIRMED | DISPUTED | EXPIRED
+  status          String    @default("PENDING")
+
+  /// true = manager confirmed the candidate worked there; false = disputed.
+  confirmed       Boolean?
+  /// Optional JSON array of { skillCode, rating } objects (1-5).
+  skillRatings    Json?     @map("skill_ratings")
+  comments        String?   @db.Text
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([experienceId])
+  @@index([managerEmail])
+  @@map("work_experience_manager_endorsements")
 }
 
 /**
@@ -1349,10 +1404,13 @@ model CandidateEducation {
   endDate         String?  @map("end_date")
   current         Boolean  @default(false)
   grade           String?
+  status          String   @default("unverified")
+  rejectionReason String?  @map("rejection_reason")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([studentId])
+  @@index([studentId, status])
   @@map("candidate_educations")
 }
 

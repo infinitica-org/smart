@@ -104,6 +104,9 @@ export const InstitutionStudentDtoSchema = z.object({
   lastSentAt: IsoDateTimeSchema.nullable(),
   acceptedAt: IsoDateTimeSchema.nullable(),
   heldAt: IsoDateTimeSchema.nullable(),
+  /** From candidate onboarding profile when available. */
+  linkedinUrl: z.string().nullable().default(null),
+  githubUrl: z.string().nullable().default(null),
 });
 export type InstitutionStudentDto = z.infer<typeof InstitutionStudentDtoSchema>;
 
