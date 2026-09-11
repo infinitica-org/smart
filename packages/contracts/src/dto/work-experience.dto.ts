@@ -78,6 +78,79 @@ export const CreateWorkExperienceBaseSchema = z.object({
   documents: z.array(CreateWorkExperienceDocumentSchema).optional().default([]),
 });
 
+export interface CompanyPublicIdentityParams {
+  companyId?: string | null;
+  companyWebsite?: string | null;
+  companyLinkedinUrl?: string | null;
+  catalogCompanyWebsite?: string | null;
+  catalogCompanyLinkedinUrl?: string | null;
+}
+
+/** S6-VB-01 — public company identity required when employer has a known public presence. */
+export function companyRequiresPublicIdentity(params: CompanyPublicIdentityParams): boolean {
+  if (params.companyId) {
+    return true;
+  }
+  if (params.catalogCompanyWebsite?.trim() || params.catalogCompanyLinkedinUrl?.trim()) {
+    return true;
+  }
+  if (params.companyWebsite?.trim()) {
+    return true;
+  }
+  return false;
+}
+
+export function validateCompanyPublicIdentity(params: {
+  companyWebsite?: string | null;
+  companyLinkedinUrl?: string | null;
+  required: boolean;
+}): { valid: boolean; message?: string; field?: 'companyWebsite' | 'companyLinkedinUrl' } {
+  if (!params.required) {
+    return { valid: true };
+  }
+  const website = params.companyWebsite?.trim();
+  const linkedin = params.companyLinkedinUrl?.trim();
+  if (!website) {
+    return {
+      valid: false,
+      message:
+        'Company website is required when the employer has a public presence or is matched in the catalog.',
+      field: 'companyWebsite',
+    };
+  }
+  if (!linkedin) {
+    return {
+      valid: false,
+      message:
+        'Company LinkedIn URL is required when the employer has a public presence or is matched in the catalog.',
+      field: 'companyLinkedinUrl',
+    };
+  }
+  return { valid: true };
+}
+
+function applyCompanyPublicIdentityRefinement(
+  data: z.infer<typeof CreateWorkExperienceBaseSchema>,
+  ctx: z.RefinementCtx,
+): void {
+  const required = companyRequiresPublicIdentity({
+    companyId: data.companyId,
+    companyWebsite: data.companyWebsite,
+  });
+  const result = validateCompanyPublicIdentity({
+    companyWebsite: data.companyWebsite,
+    companyLinkedinUrl: data.companyLinkedinUrl,
+    required,
+  });
+  if (!result.valid && result.message) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: result.message,
+      path: [result.field ?? 'companyWebsite'],
+    });
+  }
+}
+
 export interface WorkExperienceLetterValidationResult {
   valid: boolean;
   hasOfferLetter: boolean;
@@ -131,21 +204,49 @@ export function validateWorkExperienceLetterRules(params: {
   };
 }
 
-export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.refine(
-  (data) => {
+export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.superRefine(
+  (data, ctx) => {
     if (!data.isCurrent && !data.endDate) {
-      return false;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'End date is required if not currently employed',
+        path: ['endDate'],
+      });
     }
-    return true;
-  },
-  {
-    message: 'End date is required if not currently employed',
-    path: ['endDate'],
+    applyCompanyPublicIdentityRefinement(data, ctx);
   },
 );
 export type CreateWorkExperienceDto = z.infer<typeof CreateWorkExperienceSchema>;
 
-export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial();
+export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial().superRefine(
+  (data, ctx) => {
+    if (data.isCurrent === false && data.endDate === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'End date is required if not currently employed',
+        path: ['endDate'],
+      });
+    }
+    if (
+      data.companyId !== undefined ||
+      data.companyWebsite !== undefined ||
+      data.companyLinkedinUrl !== undefined
+    ) {
+      applyCompanyPublicIdentityRefinement(
+        {
+          companyId: data.companyId ?? null,
+          companyWebsite: data.companyWebsite ?? null,
+          companyLinkedinUrl: data.companyLinkedinUrl ?? null,
+          companyName: data.companyName ?? '',
+          role: data.role ?? '',
+          startDate: data.startDate ?? '',
+          isCurrent: data.isCurrent ?? false,
+        } as z.infer<typeof CreateWorkExperienceBaseSchema>,
+        ctx,
+      );
+    }
+  },
+);
 export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>;
 
 export const WorkExperienceSchema = z.object({
@@ -256,11 +357,55 @@ export const WorkExperienceOpsDashboardItemSchema = z.object({
   timeRemainingHours: z.number(),
   flaggedDocumentCount: z.number().int().nonnegative(),
   hasFlaggedDocuments: z.boolean(),
+  nextAction: z.string(),
   createdAt: z.string(),
 });
 export type WorkExperienceOpsDashboardItemDto = z.infer<
   typeof WorkExperienceOpsDashboardItemSchema
 >;
+
+/** S6-VB-01 — server/client guidance for the next verification action. */
+export function deriveWorkExperienceNextAction(params: {
+  status: z.infer<typeof WorkExperienceVerificationStatusSchema>;
+  currentStep?: string;
+  emailState?: string;
+  timeRemainingHours?: number;
+  hasFlaggedDocuments?: boolean;
+  hasValidatedProof?: boolean;
+  hasVerifierEmail?: boolean;
+}): string {
+  if (params.hasFlaggedDocuments) {
+    return 'Review flagged proof documents before employer verification can proceed.';
+  }
+  if (params.status === 'VERIFIED') {
+    return 'Work experience claim is fully verified and visible on the public profile.';
+  }
+  if (params.status === 'EXPIRED') {
+    return 'Verification link expired — student must restart with a new employer attempt.';
+  }
+  if (params.status === 'REJECTED') {
+    return 'Verification was rejected — student should update claim or verifier details and retry.';
+  }
+  if (params.status === 'VOIDED') {
+    return 'Work experience voided for integrity reasons — no further verification.';
+  }
+  if (params.status === 'PENDING_EMPLOYER') {
+    if (params.emailState === 'EXPIRED') {
+      return 'Employer verification expired — student must restart verification.';
+    }
+    if (params.timeRemainingHours && params.timeRemainingHours > 0) {
+      return `Awaiting employer response (${params.timeRemainingHours}h remaining). Reminders sent every 6 hours.`;
+    }
+    return 'Awaiting employer verification response.';
+  }
+  if (!params.hasValidatedProof) {
+    return 'Student must upload and validate employment proof before sending employer verification.';
+  }
+  if (!params.hasVerifierEmail) {
+    return 'Student must add an official company verifier email before dispatch.';
+  }
+  return 'Student can send employer verification when proof and verifier details are ready.';
+}
 
 /* -------------------- WE-T03: Manager Endorsement -------------------- */
 

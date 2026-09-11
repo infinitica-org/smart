@@ -88,7 +88,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /users/me/visibility": "role.student",
   "GET /users/me/work-experiences": "role.student",
   "GET /users/me/work-experiences/:id": "role.student",
-  "GET /users/me/work-experiences/ops-dashboard": "role.student",
+  "GET /users/me/work-experiences/ops-dashboard": "role.placementStaff",
   "GET /users/onboarding/linkedin/callback": "role.public",
   "GET /users/work-experiences/manager-survey/:token": "verify.workExperience",
   "GET /users/work-experiences/verify-token/:token": "verify.workExperience",

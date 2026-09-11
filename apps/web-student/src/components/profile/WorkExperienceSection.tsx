@@ -20,9 +20,12 @@ import {
 } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
+  companyRequiresPublicIdentity,
+  validateCompanyPublicIdentity,
   validateWorkExperienceLetterRules,
   type WorkExperienceDto,
   type WorkExperienceDocumentDto,
+  type WorkExperienceProofValidationResult,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
 
@@ -220,6 +223,23 @@ export function WorkExperienceSection() {
         setSubmitting(false);
         return;
       }
+
+      const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
+      const identityRequired = companyRequiresPublicIdentity({
+        companyId: editingExp?.companyId ?? null,
+        companyWebsite,
+      });
+      const identityValidation = validateCompanyPublicIdentity({
+        companyWebsite,
+        companyLinkedinUrl,
+        required: identityRequired,
+      });
+      if (!identityValidation.valid) {
+        setError(identityValidation.message || 'Company website and LinkedIn are required.');
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
         companyName,
         companyWebsite: companyWebsite || null,
@@ -306,7 +326,14 @@ export function WorkExperienceSection() {
   // Document validation state
   const [validatingDocId, setValidatingDocId] = useState<string | null>(null);
   const [validationResults, setValidationResults] = useState<
-    Record<string, { validationStatus: string; rejectionReason?: string | null }>
+    Record<
+      string,
+      {
+        validationStatus: string;
+        rejectionReason?: string | null;
+        reasonCode?: string | null;
+      }
+    >
   >({});
 
   const handleValidateProof = async (expId: string, docId: string) => {
@@ -314,11 +341,13 @@ export function WorkExperienceSection() {
       setValidatingDocId(docId);
       setError(null);
       const result = await api.users.validateWorkExperienceProof(expId, docId);
+      const validationResult = result.validationResult as WorkExperienceProofValidationResult;
       setValidationResults((prev) => ({
         ...prev,
         [docId]: {
-          validationStatus: result.validationResult.validationStatus,
-          rejectionReason: result.validationResult.rejectionReason,
+          validationStatus: validationResult.validationStatus,
+          rejectionReason: validationResult.rejectionReason,
+          reasonCode: validationResult.reasonCode,
         },
       }));
       await fetchExperiences();
@@ -820,13 +849,16 @@ export function WorkExperienceSection() {
                   <div className="flex flex-col gap-2">
                     {exp.documents.map((doc: WorkExperienceDocumentDto) => {
                       const docRecord = doc as unknown as Record<string, unknown>;
+                      const validationResultRecord = docRecord.validationResult as
+                        Record<string, unknown> | undefined;
                       const valState = validationResults[doc.id] || {
                         validationStatus: docRecord.validationStatus as string | undefined,
-                        rejectionReason: (
-                          docRecord.validationResult as Record<string, unknown> | undefined
-                        )?.rejectionReason as string | undefined,
+                        rejectionReason: validationResultRecord?.rejectionReason as
+                          string | undefined,
+                        reasonCode: validationResultRecord?.reasonCode as string | undefined,
                       };
                       const isValidating = validatingDocId === doc.id;
+                      const isOfferAttachment = doc.documentType === 'OFFER_LETTER';
 
                       return (
                         <div
@@ -858,14 +890,23 @@ export function WorkExperienceSection() {
                               {valState.validationStatus === 'REJECTED' && (
                                 <span className="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium mt-0.5">
                                   <AlertCircle className="h-3 w-3" /> Proof Rejected:{' '}
-                                  {valState.rejectionReason || 'Offer Letter or mismatch detected'}
+                                  {valState.reasonCode === 'INVALID_DOCUMENT_TYPE'
+                                    ? valState.rejectionReason ||
+                                      'Offer letters support your claim but cannot be validated as employment proof.'
+                                    : valState.rejectionReason || 'Document mismatch detected'}
+                                </span>
+                              )}
+                              {isOfferAttachment && !valState.validationStatus && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-white/50 font-medium mt-0.5">
+                                  Offer letters support your claim but cannot be validated as
+                                  employment proof.
                                 </span>
                               )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 self-end sm:self-center">
-                            {!valState.validationStatus && (
+                            {!valState.validationStatus && !isOfferAttachment && (
                               <button
                                 onClick={() => handleValidateProof(exp.id, doc.id)}
                                 disabled={isValidating}
@@ -1024,7 +1065,10 @@ export function WorkExperienceSection() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">Company Website</label>
+                  <label className="block text-xs font-medium text-white/70">
+                    Company Website
+                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
+                  </label>
                   <input
                     type="url"
                     value={companyWebsite}
@@ -1037,6 +1081,7 @@ export function WorkExperienceSection() {
                 <div>
                   <label className="block text-xs font-medium text-white/70">
                     Company LinkedIn URL
+                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
                   </label>
                   <input
                     type="url"

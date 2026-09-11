@@ -176,6 +176,29 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     expect(restartWorkExperienceVerification).toHaveBeenCalledWith('exp-1');
   });
 
+  it('shows offer-letter helper and hides validate proof action for offer attachments (S6-VB-01)', async () => {
+    render(<WorkExperienceSection />);
+    expect(await screen.findByText(/Offer letters support your claim/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Validate Proof/i })).toBeNull();
+  });
+
+  it('requires company website and LinkedIn when website is provided (S6-VB-01)', async () => {
+    render(<WorkExperienceSection />);
+
+    fireEvent.click(await screen.findByTitle('Edit Experience'));
+    expect(await screen.findByText('Edit Work Experience')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('https://company.com'), {
+      target: { value: 'https://acme.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('https://linkedin.com/company/acme'), {
+      target: { value: '' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+    expect(updateWorkExperience).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Company LinkedIn URL is required/i).length).toBeGreaterThan(0);
+  });
+
   it('renders manager endorsement stage when manager endorsement status is attached (WE-T04)', async () => {
     const mockEndorsedExp = {
       ...mockOngoingExp,

@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   GraduationCap,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -27,6 +28,12 @@ const mainNav: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Candidates', href: '/students', icon: Users },
   { name: 'Provisioning', href: '/provisioning', icon: UserPlus },
+  {
+    name: 'Work Experience',
+    href: '/work-experience-verification',
+    icon: Briefcase,
+    isNew: true,
+  },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
