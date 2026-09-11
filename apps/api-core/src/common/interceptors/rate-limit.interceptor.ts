@@ -96,12 +96,33 @@ export function matchContractRoute(method: string, rawUrl: string): RouteSpec | 
   const stripped = path.startsWith(API_PREFIX) ? path.slice(API_PREFIX.length) || '/' : path;
   const normalised = stripped.startsWith('/') ? stripped : `/${stripped}`;
 
-  return ROUTES.find((route) => route.method === method && pathMatches(route.path, normalised));
+  let best: RouteSpec | undefined;
+  let bestScore = -1;
+
+  for (const route of ROUTES) {
+    if (route.method !== method) continue;
+    const score = pathMatchScore(route.path, normalised);
+    if (score >= 0 && score > bestScore) {
+      best = route;
+      bestScore = score;
+    }
+  }
+
+  return best;
 }
 
-function pathMatches(template: string, actual: string): boolean {
+/** Literal path segments outrank `:param` captures so fixed routes win over wildcards. */
+function pathMatchScore(template: string, actual: string): number {
   const templateParts = template.split('/');
   const actualParts = actual.split('/');
-  if (templateParts.length !== actualParts.length) return false;
-  return templateParts.every((part, index) => part.startsWith(':') || part === actualParts[index]);
+  if (templateParts.length !== actualParts.length) return -1;
+
+  let literalSegments = 0;
+  for (let index = 0; index < templateParts.length; index += 1) {
+    const part = templateParts[index];
+    if (!part || part.startsWith(':')) continue;
+    if (part !== actualParts[index]) return -1;
+    literalSegments += 1;
+  }
+  return literalSegments;
 }
