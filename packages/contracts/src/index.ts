@@ -58,6 +58,8 @@ export * from './dto/username.dto.js';
 export * from './dto/void.dto.js';
 export * from './dto/candidate-profile.dto.js';
 export * from './dto/signals.dto.js';
+export * from './dto/raw-signals.dto.js';
+export * from './dto/signal-connections.dto.js';
 export * from './dto/corroboration.dto.js';
 
 /* -------------------------------- events ---------------------------------- */

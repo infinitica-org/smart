@@ -18,6 +18,7 @@ import { CandidateCertificatesModule } from './modules/candidate-certificates/ca
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { CertificateModule } from './modules/certificate/certificate.module.js';
 import { CorroborationModule } from './modules/corroboration/corroboration.module.js';
+import { SignalIngestionModule } from './modules/signal-ingestion/signal-ingestion.module.js';
 import { EvaluationModule } from './modules/evaluation/evaluation.module.js';
 import { SignalEncoderModule } from './modules/signal-encoder/signal-encoder.module.js';
 import { InstitutionsModule } from './modules/institutions/institutions.module.js';
@@ -75,6 +76,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     SandboxModule,
     EvaluationModule,
     CorroborationModule,
+    SignalIngestionModule,
     SignalEncoderModule,
     AiGatewayModule,
     CalibrationModule,

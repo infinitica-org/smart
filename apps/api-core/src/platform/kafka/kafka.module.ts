@@ -12,6 +12,7 @@ import { AssessmentSubmittedEvalConsumer } from '../../modules/evaluation/assess
 import { AuditRecordedConsumer } from './audit-recorded.consumer.js';
 import { CandidateSkillsDiscoveredConsumer } from '../../modules/assessment/candidate-skills-discovered.consumer.js';
 import { CandidateSkillsDiscoveredEncoderConsumer } from '../../modules/signal-encoder/candidate-skills-discovered.encoder-consumer.js';
+import { SignalIngestedEncoderConsumer } from '../../modules/signal-encoder/signal-ingested.encoder-consumer.js';
 import { SkillVerificationCorroborationConsumer } from '../../modules/corroboration/skill-verification-corroboration.consumer.js';
 import { EvalCompletedConsumer } from '../../modules/certificate/eval-completed.consumer.js';
 import { InvitationSentConsumer } from './invitation-sent.consumer.js';
@@ -44,6 +45,7 @@ import { WebhookDispatchConsumer } from './webhook-dispatch.consumer.js';
     WebhookDispatchConsumer,
     CandidateSkillsDiscoveredConsumer,
     CandidateSkillsDiscoveredEncoderConsumer,
+    SignalIngestedEncoderConsumer,
     SkillVerificationCorroborationConsumer,
   ],
   exports: [KafkaService, KafkaOutboxService],

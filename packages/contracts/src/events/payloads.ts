@@ -14,6 +14,7 @@ import {
 import { TierTrailSchema } from '../domain/levels.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from '../dto/common.js';
 import { LanguageBreakdownEntrySchema } from '../dto/candidate-social.dto.js';
+import { RawSignalEnvelopeSchema } from '../dto/raw-signals.dto.js';
 import { CorroborationSnapshotSchema, VectorizedSignalSchema } from '../dto/signals.dto.js';
 import { SMART_TOPICS } from './topics.js';
 
@@ -429,8 +430,15 @@ export const CandidateSkillsDiscoveredEventSchema = envelopeSchema(
 export type CandidateSkillsDiscoveredEvent = z.infer<typeof CandidateSkillsDiscoveredEventSchema>;
 
 /* -------------------------------------------------------------------------- */
-/*                    corroboration pipeline  (owner: Ramansh)                */
+/*                    corroboration pipeline  (owner: Ramansh / VB)           */
 /* -------------------------------------------------------------------------- */
+
+export const SignalIngestedDataSchema = RawSignalEnvelopeSchema;
+export const SignalIngestedEventSchema = envelopeSchema(
+  SMART_TOPICS.signalIngested,
+  SignalIngestedDataSchema,
+);
+export type SignalIngestedEvent = z.infer<typeof SignalIngestedEventSchema>;
 
 export const SignalEncodedDataSchema = VectorizedSignalSchema;
 export const SignalEncodedEventSchema = envelopeSchema(
@@ -476,6 +484,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
   [SMART_TOPICS.proctoringSnapshotReady]: ProctoringSnapshotReadyEventSchema,
   [SMART_TOPICS.candidateSkillsDiscovered]: CandidateSkillsDiscoveredEventSchema,
+  [SMART_TOPICS.signalIngested]: SignalIngestedEventSchema,
   [SMART_TOPICS.signalEncoded]: SignalEncodedEventSchema,
   [SMART_TOPICS.corroborationUpdated]: CorroborationUpdatedEventSchema,
 } as const;
@@ -501,5 +510,6 @@ export type SmartEvent =
   | ProjectVerifyCompletedEvent
   | ProctoringSnapshotReadyEvent
   | CandidateSkillsDiscoveredEvent
+  | SignalIngestedEvent
   | SignalEncodedEvent
   | CorroborationUpdatedEvent;

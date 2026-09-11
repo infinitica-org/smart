@@ -378,6 +378,24 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'S6-RM-10 external signal refresh cooldown (1/hr effective).',
   },
   {
+    key: 'signals.connections.read',
+    scope: 'USER',
+    limit: 30,
+    windowSeconds: 60,
+    burst: 5,
+    redisKey: 'rl:signals:connections:read:user:{id}',
+    rationale: 'S6-VB-01 list connected external signal sources.',
+  },
+  {
+    key: 'signals.connect',
+    scope: 'USER',
+    limit: 10,
+    windowSeconds: 3_600,
+    burst: 2,
+    redisKey: 'rl:signals:connect:user:{id}',
+    rationale: 'S6-VB-01 connect/disconnect external signal sources.',
+  },
+  {
     key: 'read.adminQueue',
     scope: 'USER',
     limit: 60,
@@ -455,4 +473,8 @@ export const REDIS_TTL_SECONDS = {
   proctoringBlob: 60,
   entitlementsResolve: 60,
   certAgendaRegen: 24 * 60 * 60,
+  hackerrankProfile: 60 * 60,
+  leetcodeProfile: 60 * 60,
+  signalIngestionDedupe: 60 * 60,
+  signalSourceCooldown: 15 * 60,
 } as const;

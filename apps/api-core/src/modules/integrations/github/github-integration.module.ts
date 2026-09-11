@@ -4,6 +4,6 @@ import { GithubOnboardingService } from './github-onboarding.service.js';
 
 @Module({
   providers: [GithubApiClient, GithubOnboardingService],
-  exports: [GithubOnboardingService],
+  exports: [GithubApiClient, GithubOnboardingService],
 })
 export class GithubIntegrationModule {}

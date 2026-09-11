@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   ACTIVE_TAXONOMY_VERSION,
+  type HackerrankRawPayload,
   type LanguageBreakdownEntry,
+  type LeetcodeRawPayload,
   type SignalSourceId,
   type VectorizedSignal,
   type VectorizedSignalEntry,
@@ -12,6 +14,24 @@ export interface EncodeGithubInput {
   readonly userId: string;
   readonly languages: readonly LanguageBreakdownEntry[];
   readonly selectedSkillNames: readonly string[];
+  readonly encodedAt: string;
+  readonly consentScope?: string;
+  readonly fetchedAt?: string;
+}
+
+export interface EncodeHackerrankInput {
+  readonly userId: string;
+  readonly payload: HackerrankRawPayload;
+  readonly consentScope: string;
+  readonly fetchedAt: string;
+  readonly encodedAt: string;
+}
+
+export interface EncodeLeetcodeInput {
+  readonly userId: string;
+  readonly payload: LeetcodeRawPayload;
+  readonly consentScope: string;
+  readonly fetchedAt: string;
   readonly encodedAt: string;
 }
 
@@ -35,11 +55,42 @@ export class RuleBasedEncoder {
       taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
       encodedAt: input.encodedAt,
       entries,
-      consentScope: 'github.onboarding.public_repos',
-      fetchedAt: input.encodedAt,
+      consentScope: input.consentScope ?? 'github.onboarding.public_repos',
+      fetchedAt: input.fetchedAt ?? input.encodedAt,
     };
   }
 
+  encodeHackerrank(input: EncodeHackerrankInput): VectorizedSignal {
+    const entries = this.mergeEntries(
+      this.resolver.resolveHackerrankTags(input.payload.solvedByTag),
+    );
+    return {
+      userId: input.userId,
+      sourceId: 'HACKERRANK',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: input.encodedAt,
+      entries,
+      consentScope: input.consentScope,
+      fetchedAt: input.fetchedAt,
+    };
+  }
+
+  encodeLeetcode(input: EncodeLeetcodeInput): VectorizedSignal {
+    const entries = this.mergeEntries(
+      this.resolver.resolveLeetcodeTags(input.payload.tagStats, input.payload.recentActivityDays),
+    );
+    return {
+      userId: input.userId,
+      sourceId: 'LEETCODE',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: input.encodedAt,
+      entries,
+      consentScope: input.consentScope,
+      fetchedAt: input.fetchedAt,
+    };
+  }
+
+  /** @deprecated Use encodeHackerrank / encodeLeetcode — kept for transitional tests. */
   encodeStub(
     sourceId: Extract<SignalSourceId, 'HACKERRANK' | 'LEETCODE'>,
     userId: string,
