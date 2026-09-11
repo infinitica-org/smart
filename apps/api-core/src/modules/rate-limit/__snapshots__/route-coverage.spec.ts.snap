@@ -3,6 +3,7 @@
 exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → policy so a silent matrix drift fails CI 1`] = `
 {
   "DELETE /admin/blocked-words/:id": "role.superAdmin",
+  "DELETE /signals/disconnect/:sourceId": "signals.connect",
   "DELETE /users/me/education/:id": "role.student",
   "DELETE /users/me/languages/:id": "role.student",
   "DELETE /users/me/work-experiences/:id": "role.student",
@@ -68,6 +69,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /projects/github/repos": "projects.github",
   "GET /projects/github/status": "projects.github",
   "GET /public/candidates/:slug": "verify.publicProfile",
+  "GET /signals/connections": "signals.connections.read",
   "GET /student/entitlements": "role.student",
   "GET /student/growth-report": "role.student",
   "GET /tpo/batches": "role.institutionAdmin",
@@ -189,6 +191,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /proctoring/precheck": "proctoring.media",
   "POST /proctoring/violations": "proctoring.telemetry",
   "POST /projects": "projects.submit",
+  "POST /signals/connect/:sourceId": "signals.connect",
+  "POST /signals/refresh": "corroboration.refresh",
   "POST /tpo/batches": "role.institutionAdmin",
   "POST /tpo/batches/:batchId/invites/send": "role.institutionAdmin",
   "POST /tpo/batches/:batchId/members": "role.institutionAdmin",
