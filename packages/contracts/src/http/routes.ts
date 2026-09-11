@@ -2756,6 +2756,43 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 300,
     summary: 'Super Admin manual approval of candidate certificate source verification.',
   },
+  /* --------------------------- corroboration (S6-RM-10) ------------------- */
+  {
+    method: 'GET',
+    path: '/corroboration/me',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'corroboration.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Student passive-signal corroboration readout (supporting evidence only).',
+  },
+  {
+    method: 'GET',
+    path: '/admin/corroboration/review-flags',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'corroboration.adminFlags',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'List pending passive-vs-assessment contradiction review flags.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/corroboration/review-flags/:id/resolve',
+    module: 'corroboration',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'corroboration.adminFlags',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Resolve a corroboration review flag (audit only; does not change SkillClaim status).',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

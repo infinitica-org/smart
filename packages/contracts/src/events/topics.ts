@@ -29,6 +29,8 @@ export const SMART_TOPICS = {
   projectVerifyCompleted: 'smart.project.verify.completed',
   proctoringSnapshotReady: 'smart.proctoring.snapshot.ready',
   candidateSkillsDiscovered: 'smart.candidate.skills_discovered',
+  signalEncoded: 'smart.signal.encoded',
+  corroborationUpdated: 'smart.corroboration.updated',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -248,7 +250,7 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     topic: SMART_TOPICS.candidateSkillsDiscovered,
     producerOwner: 'Vishal V',
     producerModule: 'users',
-    consumerModules: ['assessment'],
+    consumerModules: ['assessment', 'signal-encoder'],
     partitions: 3,
     retentionHours: 168,
     partitionKey: 'userId',
@@ -256,6 +258,28 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
       'CN-T01 candidate confirmed GitHub-derived skill suggestions at onboarding completion; ' +
       'consumer best-effort matches languages against the Software & IT catalog and auto-declares ' +
       'BEGINNER SkillClaims tagged source=GITHUB_DERIVED. Never overwrites an existing claim.',
+  },
+  {
+    topic: SMART_TOPICS.signalEncoded,
+    producerOwner: 'Ramansh',
+    producerModule: 'signal-encoder',
+    consumerModules: ['corroboration', 'analytics'],
+    partitions: 3,
+    retentionHours: 168,
+    partitionKey: 'userId',
+    purpose:
+      'Passive signal vectorized from external platform data. Observability + downstream fuse.',
+  },
+  {
+    topic: SMART_TOPICS.corroborationUpdated,
+    producerOwner: 'Ramansh',
+    producerModule: 'corroboration',
+    consumerModules: ['analytics'],
+    partitions: 3,
+    retentionHours: 168,
+    partitionKey: 'userId',
+    purpose:
+      'Trust-weighted competency readout refreshed. Never promotes SkillClaim status; may carry review flags.',
   },
 ] as const;
 

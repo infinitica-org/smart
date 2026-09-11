@@ -21,6 +21,7 @@ export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
 export * from './domain/skills.js';
+export * from './domain/skill-dimensions.js';
 export * from './domain/sde-v4-bridge.js';
 export * from './domain/skill-focus-progress.js';
 export * from './domain/question.js';
@@ -54,6 +55,8 @@ export * from './dto/organization.dto.js';
 export * from './dto/username.dto.js';
 export * from './dto/void.dto.js';
 export * from './dto/candidate-profile.dto.js';
+export * from './dto/signals.dto.js';
+export * from './dto/corroboration.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
