@@ -981,7 +981,8 @@ export class EvaluationService {
         idx = pool.findIndex((item) => allowed.includes(item.format));
       }
       if (idx < 0 && pool.length > 0 && expected.length === 1) {
-        const picked = pool.shift()!;
+        const picked = pool.shift();
+        if (!picked) throw new Error(`Missing open item format ${format}`);
         ordered.push({ ...picked, format });
         continue;
       }
