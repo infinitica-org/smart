@@ -238,14 +238,6 @@ export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
   return { displayLabel: 'Declared', badgeStatus: badge };
 }
 
-export function streamLabelForSkillDefinition(stream: SkillStream): string {
-  if (stream === 'UNIVERSAL') return 'Universal Core';
-  if (stream === 'SOFTWARE_DEVELOPMENT') return 'Software Development';
-  if (stream === 'DATA_SCIENCE_ANALYTICS') return 'Data Science';
-  if (stream === 'AI_ML_ENGINEERING') return 'AI / ML';
-  return 'Technical Skill';
-}
-
 export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
   'Complete your profile to unlock skill verification.';
 

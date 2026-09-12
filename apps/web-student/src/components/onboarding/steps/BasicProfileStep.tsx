@@ -24,9 +24,7 @@ interface BasicProfileStepProps {
     value: OnboardingProfileForm[K],
   ) => void;
   onBack: () => void;
-  onComplete: () => void;
-  saving: boolean;
-  completeError: string | null;
+  onContinue: () => void;
 }
 
 type SubTab = 'profile' | 'phone';
@@ -42,9 +40,7 @@ export default function BasicProfileStep({
   formData,
   updateField,
   onBack,
-  onComplete,
-  saving,
-  completeError,
+  onContinue,
 }: BasicProfileStepProps) {
   const [tab, setTab] = useState<SubTab>('profile');
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +81,7 @@ export default function BasicProfileStep({
         setError('You must agree to the DPDP consent terms to enter SMART.');
         return;
       }
-      onComplete();
+      onContinue();
     }
   };
 
@@ -100,7 +96,7 @@ export default function BasicProfileStep({
     }
   };
 
-  const bannerError = error ?? completeError;
+  const bannerError = error;
 
   return (
     <div>
@@ -262,10 +258,8 @@ export default function BasicProfileStep({
       </motion.div>
 
       <div className="mt-10 flex justify-between">
-        <BackButton onClick={goBack} disabled={saving} />
-        <PrimaryButton onClick={goNext} loading={saving && tab === 'phone'}>
-          {tab === 'phone' ? 'Enter SMART' : 'Continue'}
-        </PrimaryButton>
+        <BackButton onClick={goBack} />
+        <PrimaryButton onClick={goNext}>Continue</PrimaryButton>
       </div>
     </div>
   );

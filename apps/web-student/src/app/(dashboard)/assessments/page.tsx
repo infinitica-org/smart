@@ -29,7 +29,6 @@ import {
   SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
   canEnableTakeAssessment,
   repositoryStatusForClaim,
-  streamLabelForSkillDefinition,
   takeAssessmentBlockMessage,
 } from '@/lib/skill-declarations';
 import { canVerifySkills } from '@/lib/profile-progress';
@@ -376,7 +375,7 @@ export default function SkillRepositoryPage() {
       return {
         definition,
         claim,
-        streamLabel: streamLabelForSkillDefinition(definition.stream),
+        streamLabel: definition.categoryName,
         displayLabel,
         badgeStatus,
         verified: claim?.status === 'VERIFIED',
