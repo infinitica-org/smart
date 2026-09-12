@@ -61,13 +61,17 @@ export default function InterestDomainStep({
               className={`rounded-2xl border p-4 text-left transition-all ${
                 selected
                   ? 'border-[#00fad0] bg-[#00fad0]/10 shadow-lg shadow-[#00fad0]/5'
-                  : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900'
+                  : 'border-border bg-card hover:border-muted-foreground/30 hover:bg-muted'
               }`}
             >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-950/80">
-                <Icon className={`h-5 w-5 ${selected ? 'text-[#00fad0]' : 'text-zinc-400'}`} />
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+                <Icon
+                  className={`h-5 w-5 ${selected ? 'text-[#00fad0]' : 'text-muted-foreground'}`}
+                />
               </div>
-              <p className="text-sm font-semibold text-white">{INTEREST_DOMAIN_LABELS[domain]}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {INTEREST_DOMAIN_LABELS[domain]}
+              </p>
             </button>
           );
         })}

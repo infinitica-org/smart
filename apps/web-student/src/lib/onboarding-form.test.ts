@@ -71,6 +71,15 @@ describe('onboarding-form', () => {
     });
   });
 
+  it('keeps profilePhotoUrl in local onboarding form state without blocking completion', () => {
+    const form = minimalForm();
+    form.profilePhotoUrl = 'https://cdn.example/photo.jpg';
+
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+    expect(form.profilePhotoUrl).toBe('https://cdn.example/photo.jpg');
+  });
+
   it('builds the minimal completion payload', () => {
     const result = buildCompleteOnboardingRequest(minimalForm());
     expect('error' in result).toBe(false);

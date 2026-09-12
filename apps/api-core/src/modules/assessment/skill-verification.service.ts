@@ -40,6 +40,7 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
+import { ProfileCompletionService } from '../users/profile-completion.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
 
@@ -83,6 +84,8 @@ export class SkillVerificationService {
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(EvaluationService) private readonly evaluation: EvaluationService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(ProfileCompletionService)
+    private readonly profileCompletion: ProfileCompletionService,
   ) {}
 
   async start(
@@ -99,6 +102,7 @@ export class SkillVerificationService {
   }
 
   private async assertStartAllowed(userId: string, claimId: string) {
+    await this.profileCompletion.assertCompleteForSkillVerification(userId);
     const claim = await this.loadOwnClaim(userId, claimId);
     const sdeSkillCode = sdeV4FormCodeForCatalogSkill(claim.skill.code);
     if (!sdeSkillCode) {

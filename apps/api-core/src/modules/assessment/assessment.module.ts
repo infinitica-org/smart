@@ -3,6 +3,7 @@ import { AuditModule } from '../../platform/audit/audit.module.js';
 import { StorageModule } from '../../platform/storage/storage.module.js';
 import { AiGatewayModule } from '../ai-gateway/ai-gateway.module.js';
 import { EvaluationModule } from '../evaluation/evaluation.module.js';
+import { UsersModule } from '../users/users.module.js';
 import { AssessmentController } from './assessment.controller.js';
 import { AssessmentService } from './assessment.service.js';
 import { IntegrityAdminController } from './integrity-admin.controller.js';
@@ -11,7 +12,7 @@ import { CertVerificationAssessmentService } from './cert-verification-assessmen
 import { SkillVerificationService } from './skill-verification.service.js';
 
 @Module({
-  imports: [AuditModule, AiGatewayModule, EvaluationModule, StorageModule],
+  imports: [AuditModule, AiGatewayModule, EvaluationModule, StorageModule, UsersModule],
   controllers: [AssessmentController, IntegrityAdminController],
   providers: [
     AssessmentService,

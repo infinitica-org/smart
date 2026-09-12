@@ -116,31 +116,31 @@ export function JobPreferencesSection() {
   };
 
   if (loading) {
-    return <p className="text-sm text-white/45">Loading job preferences…</p>;
+    return <p className="text-sm text-muted-foreground">Loading job preferences…</p>;
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-white">Job preferences</h3>
-        <p className="mt-1 text-sm text-white/45">
+        <h3 className="text-lg font-medium text-foreground">Job preferences</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Optional matching preferences. These help SMART suggest relevant opportunities later.
         </p>
       </div>
 
       {error ? (
-        <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
         </p>
       ) : null}
       {success ? (
-        <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {success}
         </p>
       ) : null}
 
       <div className="max-w-sm">
-        <label className="mb-2 block text-sm font-medium text-white/80">
+        <label className="mb-2 block text-sm font-medium text-foreground/80">
           Expected CTC (INR lakhs)
         </label>
         <input
@@ -149,12 +149,14 @@ export function JobPreferencesSection() {
           value={expectedCtcLakhs}
           onChange={(e) => setExpectedCtcLakhs(e.target.value)}
           placeholder="e.g. 8"
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-[#00fad0]"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[#00fad0]"
         />
       </div>
 
       <div className="max-w-md">
-        <label className="mb-2 block text-sm font-medium text-white/80">Current location</label>
+        <label className="mb-2 block text-sm font-medium text-foreground/80">
+          Current location
+        </label>
         <div className="flex gap-2">
           <LightSelect
             value={currentLocation}
@@ -166,7 +168,7 @@ export function JobPreferencesSection() {
             type="button"
             onClick={handleUseMyLocation}
             disabled={locationLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-xs font-medium text-white/70 hover:border-zinc-700"
+            className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground/80 hover:bg-muted"
           >
             {locationLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -179,7 +181,9 @@ export function JobPreferencesSection() {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium text-white/80">Preferred locations</label>
+        <label className="mb-2 block text-sm font-medium text-foreground/80">
+          Preferred locations
+        </label>
         <div className="flex flex-wrap gap-2">
           {CITY_OPTIONS.map((city) => {
             const selected = preferredLocations.includes(city);
@@ -191,7 +195,7 @@ export function JobPreferencesSection() {
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                   selected
                     ? 'border-[#00fad0] bg-[#00fad0]/10 text-[#00fad0]'
-                    : 'border-zinc-800 text-white/60 hover:border-zinc-700'
+                    : 'border-border text-muted-foreground hover:bg-muted'
                 }`}
               >
                 {city}

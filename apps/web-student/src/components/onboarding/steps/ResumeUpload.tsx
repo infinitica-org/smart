@@ -64,17 +64,25 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
   };
 
   return (
-    <div className="flex flex-col w-full">
-      <h1 className="text-3xl sm:text-4xl font-display font-medium tracking-tight text-white mb-2">
+    <div className="flex w-full flex-col">
+      <h1 className="mb-2 font-display text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
         Let's build your profile
       </h1>
-      <p className="text-sm sm:text-base text-zinc-400 font-axiforma leading-relaxed mb-8">
+      <p className="mb-8 font-axiforma text-sm leading-relaxed text-muted-foreground sm:text-base">
         Upload your resume and we'll do the rest — skills, experience, education, all mapped out.
       </p>
 
-      <button
-        type="button"
+      <div
+        role={uploadStatus === 'idle' ? 'button' : undefined}
+        tabIndex={uploadStatus === 'idle' ? 0 : undefined}
         onClick={() => uploadStatus === 'idle' && fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (uploadStatus !== 'idle') return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           if (uploadStatus === 'idle') setIsDragging(true);
@@ -89,14 +97,14 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
           const file = e.dataTransfer.files[0];
           if (file && uploadStatus === 'idle') void startUpload(file);
         }}
-        className={`w-full min-h-[260px] rounded-3xl border border-dashed px-8 py-10 flex flex-col items-center justify-center text-center transition-all ${
+        className={`flex min-h-[260px] w-full flex-col items-center justify-center rounded-3xl border border-dashed px-8 py-10 text-center transition-all ${
           isDragging
-            ? 'border-emerald-500 bg-emerald-500/5'
+            ? 'border-[#00fad0] bg-[#00fad0]/5'
             : uploadStatus === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
+              ? 'border-emerald-300 bg-emerald-50'
               : uploadStatus === 'failed'
-                ? 'border-rose-500/30 bg-rose-500/[0.04]'
-                : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700'
+                ? 'border-rose-300 bg-rose-50'
+                : 'border-border bg-muted/50 hover:border-[#00fad0]/30 hover:bg-muted'
         } ${uploadStatus === 'idle' ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <input
@@ -112,12 +120,12 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'idle' && (
           <>
-            <div className="w-12 h-12 rounded-2xl border border-zinc-800 bg-zinc-900/80 flex items-center justify-center mb-4 text-emerald-400">
-              <FileText className="w-6 h-6" />
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card text-[#00967c]">
+              <FileText className="h-6 w-6" />
             </div>
-            <p className="text-lg font-display font-medium text-white mb-1">Upload Resume</p>
-            <p className="text-xs text-zinc-400 font-axiforma mb-1">Max file size of 5MB</p>
-            <p className="text-xs text-zinc-500 font-axiforma">
+            <p className="mb-1 font-display text-lg font-medium text-foreground">Upload Resume</p>
+            <p className="mb-1 font-axiforma text-xs text-muted-foreground">Max file size of 5MB</p>
+            <p className="font-axiforma text-xs text-muted-foreground">
               Only upload resume in (readable .pdf or .docx) format
             </p>
           </>
@@ -125,20 +133,22 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {busy && (
           <div className="w-full max-w-xs">
-            <Loader2 className="w-6 h-6 text-emerald-400 animate-spin mx-auto mb-4" />
-            <p className="text-sm font-display text-white mb-1">
+            <Loader2 className="mx-auto mb-4 h-6 w-6 animate-spin text-[#00967c]" />
+            <p className="mb-1 font-display text-sm text-foreground">
               {uploadStatus === 'extracting' ? 'Reading file…' : 'Parsing resume…'}
             </p>
-            <p className="text-xs text-zinc-400 truncate mb-2">{fileName}</p>
-            <p className="text-[11px] text-zinc-500 font-axiforma">Preparing raw text for parser</p>
+            <p className="mb-2 truncate text-xs text-muted-foreground">{fileName}</p>
+            <p className="font-axiforma text-[11px] text-muted-foreground">
+              Preparing raw text for parser
+            </p>
           </div>
         )}
 
         {uploadStatus === 'success' && (
           <>
-            <CheckCircle2 className="w-8 h-8 text-emerald-400 mb-3" />
-            <p className="text-base font-display font-medium text-white mb-1">Resume parsed</p>
-            <p className="text-sm text-zinc-400 font-axiforma mb-3">{fileName}</p>
+            <CheckCircle2 className="mb-3 h-8 w-8 text-emerald-600" />
+            <p className="mb-1 font-display text-base font-medium text-foreground">Resume parsed</p>
+            <p className="mb-3 font-axiforma text-sm text-muted-foreground">{fileName}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -148,7 +158,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setDraft(null);
                 setError(null);
               }}
-              className="text-xs text-emerald-400 font-axiforma hover:underline"
+              className="font-axiforma text-xs text-[#00967c] hover:underline"
             >
               Use a different file
             </button>
@@ -157,9 +167,11 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'failed' && (
           <>
-            <AlertCircle className="w-8 h-8 text-rose-400 mb-3" />
-            <p className="text-base font-display font-medium text-white mb-1">Parse incomplete</p>
-            <p className="text-sm text-zinc-400 font-axiforma mb-3">{fileName}</p>
+            <AlertCircle className="mb-3 h-8 w-8 text-rose-600" />
+            <p className="mb-1 font-display text-base font-medium text-foreground">
+              Parse incomplete
+            </p>
+            <p className="mb-3 font-axiforma text-sm text-muted-foreground">{fileName}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -168,45 +180,43 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setFileName('');
                 setDraft(null);
               }}
-              className="text-xs text-emerald-400 font-axiforma hover:underline"
+              className="font-axiforma text-xs text-[#00967c] hover:underline"
             >
               Try another file
             </button>
           </>
         )}
-      </button>
+      </div>
 
-      {error ? <p className="mt-3 text-sm text-rose-400 font-axiforma">{error}</p> : null}
+      {error ? <p className="mt-3 font-axiforma text-sm text-rose-600">{error}</p> : null}
 
-      {/* OR Divider Line */}
       <div className="relative my-8 flex items-center justify-center">
-        <div className="w-full border-t border-zinc-800/80" />
-        <span className="absolute bg-zinc-950 px-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+        <div className="w-full border-t border-border" />
+        <span className="absolute bg-background px-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
           OR
         </span>
       </div>
 
-      <div className="flex flex-col items-center mb-8">
+      <div className="mb-8 flex flex-col items-center">
         <button
           type="button"
           onClick={() => onContinue(null)}
           disabled={busy}
-          className="text-sm text-zinc-400 hover:text-emerald-400 font-axiforma transition-colors disabled:opacity-40"
+          className="font-axiforma text-sm text-muted-foreground transition-colors hover:text-[#00967c] disabled:opacity-40"
         >
           I don't have a resume yet →
         </button>
       </div>
 
-      {/* Bottom Action Bar */}
-      <div className="flex items-center justify-end pt-4 border-t border-zinc-900">
+      <div className="flex items-center justify-end border-t border-border pt-4">
         <button
           type="button"
           onClick={() => draft && onContinue(draft)}
           disabled={busy || uploadStatus !== 'success' || !draft}
-          className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-sm font-axiforma font-bold shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00fad0] px-7 py-3 font-axiforma text-sm font-bold text-[#131313] shadow-sm transition-all hover:bg-[#33ffdd] disabled:opacity-40"
         >
           Continue
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>

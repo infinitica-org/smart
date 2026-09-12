@@ -63,25 +63,25 @@ export function ProfessionalLinksSection() {
   };
 
   if (loading) {
-    return <p className="text-sm text-white/45">Loading professional links…</p>;
+    return <p className="text-sm text-muted-foreground">Loading professional links…</p>;
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-white">Professional links</h3>
-        <p className="mt-1 text-sm text-white/45">
+        <h3 className="text-lg font-medium text-foreground">Professional links</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Add LinkedIn or GitHub so employers can learn more about you. Verification is optional.
         </p>
       </div>
 
       {error ? (
-        <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
         </p>
       ) : null}
       {success ? (
-        <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {success}
         </p>
       ) : null}

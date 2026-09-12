@@ -21,11 +21,13 @@ export default function CertificatesPage() {
       <div className="flex items-center justify-between">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>
-        <span className="text-xs text-white/40">Certifications are optional for your profile</span>
+        <span className="text-xs text-muted-foreground">
+          Certifications are optional for your profile
+        </span>
       </div>
 
       <PageHeader
@@ -46,7 +48,7 @@ export default function CertificatesPage() {
           title="No certificates added yet"
           body="Adding external certifications is optional. You can add AWS, Coursera, Google, or Microsoft certificates anytime to highlight your verified skills."
           action={
-            <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
+            <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
               <Link
                 href="/certificates/add"
                 className="inline-flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#7dffe6]"
@@ -55,7 +57,7 @@ export default function CertificatesPage() {
               </Link>
               <Link
                 href="/dashboard"
-                className="text-xs font-medium text-white/60 hover:text-white"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground"
               >
                 Continue to Dashboard
               </Link>
@@ -67,16 +69,16 @@ export default function CertificatesPage() {
           {certificates.map((certificate) => (
             <Surface
               key={certificate.certificateId}
-              className="flex flex-wrap items-center justify-between gap-4 p-5 transition-all hover:border-white/20"
+              className="flex flex-wrap items-center justify-between gap-4 p-5 transition-all hover:border-gray-300"
             >
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-[#00fad0]" />
-                  <h3 className="font-semibold text-white">{certificate.title}</h3>
+                  <Award className="h-4 w-4 text-[#00967c]" />
+                  <h3 className="font-semibold text-gray-900">{certificate.title}</h3>
                 </div>
-                <p className="text-sm text-white/60">{certificate.issuer}</p>
+                <p className="text-sm text-gray-500">{certificate.issuer}</p>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-white/40 mt-1">
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-400">
                   {certificate.certificateNumber && (
                     <span className="font-mono">ID: {certificate.certificateNumber}</span>
                   )}
@@ -86,13 +88,13 @@ export default function CertificatesPage() {
                       href={certificate.verificationUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[#00fad0] hover:underline"
+                      className="inline-flex items-center gap-1 text-[#00967c] hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" /> View Source URL
                     </a>
                   )}
                   {certificate.certificateFileName && (
-                    <span className="inline-flex items-center gap-1 text-white/50">
+                    <span className="inline-flex items-center gap-1 text-gray-500">
                       <FileText className="h-3 w-3" /> {certificate.certificateFileName}
                     </span>
                   )}
@@ -103,7 +105,7 @@ export default function CertificatesPage() {
                     {certificate.skills.map((skill) => (
                       <span
                         key={skill.skillCode}
-                        className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70"
+                        className="rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
                       >
                         {skill.skillName} ({skill.selfAssessedProficiency})
                       </span>
@@ -120,19 +122,19 @@ export default function CertificatesPage() {
                 certificate.status !== 'VERIFIED' ? (
                   <Link
                     href={`/certificates/${certificate.certificateId}/verify`}
-                    className="text-sm text-[#00fad0] hover:underline"
+                    className="text-sm text-[#00967c] hover:underline"
                   >
                     Take assessment
                   </Link>
                 ) : null}
                 <Link
                   href={`/certificates/add?id=${certificate.certificateId}`}
-                  className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition-colors"
+                  className="rounded-full border border-gray-200 bg-gray-50 px-4 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
                 >
                   {IN_PROGRESS_STATUSES.has(certificate.status) ? 'Continue' : 'View Details'}
                 </Link>
                 {certificate.expiryDate ? (
-                  <span className="text-xs text-white/35">
+                  <span className="text-xs text-gray-400">
                     Expires {new Date(certificate.expiryDate).toLocaleDateString()}
                   </span>
                 ) : null}

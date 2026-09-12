@@ -83,7 +83,7 @@ export function LightSelect({
 
   return (
     <div
-      className={`relative w-full border border-zinc-800 rounded-xl px-4 py-3 bg-zinc-950 ${className}`}
+      className={`relative w-full border border-border rounded-xl px-4 py-3 bg-muted ${className}`}
       ref={containerRef}
     >
       <button
@@ -93,13 +93,15 @@ export function LightSelect({
       >
         <span
           className={
-            selectedOption ? 'text-zinc-100 font-medium truncate' : 'text-zinc-500 truncate'
+            selectedOption
+              ? 'text-foreground font-medium truncate'
+              : 'text-muted-foreground truncate'
           }
         >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#00fad0]' : 'text-zinc-400'}`}
+          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#00fad0]' : 'text-muted-foreground'}`}
         />
       </button>
 
@@ -116,7 +118,7 @@ export function LightSelect({
               maxHeight: menuBox.maxHeight,
               ...(menuBox.openUp ? { bottom: menuBox.bottom } : { top: menuBox.top }),
             }}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-y-auto"
+            className="bg-card border border-border rounded-xl shadow-2xl overflow-y-auto"
           >
             <div className="p-1 flex flex-col gap-1">
               {options.map((option) => {
@@ -132,7 +134,7 @@ export function LightSelect({
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
                       isSelected
                         ? 'bg-[#00fad0]/15 text-[#00fad0] font-semibold'
-                        : 'text-zinc-200 hover:bg-zinc-800 hover:text-white'
+                        : 'text-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
                     {option.label}

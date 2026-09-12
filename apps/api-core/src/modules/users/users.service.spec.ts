@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UsersService } from './users.service.js';
 
@@ -53,9 +53,19 @@ function mockCompletedUpdate(
   }));
 }
 
+function mockStorage() {
+  return {
+    upload: vi.fn().mockResolvedValue('profile-photos/user-id/photo.jpg'),
+    getSignedDownloadUrl: vi
+      .fn()
+      .mockResolvedValue('https://storage.example/profile-photos/user-id/photo.jpg'),
+  };
+}
+
 describe('UsersService completeOnboarding', () => {
   const auth = { revokeAllForUser: vi.fn() };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const storage = mockStorage();
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -72,7 +82,7 @@ describe('UsersService completeOnboarding', () => {
       },
     };
     outbox.enqueueEnvelope.mockClear();
-    service = new UsersService(prisma as never, auth as never, outbox as never);
+    service = new UsersService(prisma as never, auth as never, outbox as never, storage as never);
   });
 
   it('accepts valid minimal completion and sets onboardingCompleted=true', async () => {
@@ -312,9 +322,10 @@ describe('UsersService completeOnboarding', () => {
   });
 });
 
-describe('UsersService saveOnboardingDraft', () => {
+describe('UsersService uploadProfilePhoto', () => {
   const auth = { revokeAllForUser: vi.fn() };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const storage = mockStorage();
   let prisma: {
     user: {
       findUnique: ReturnType<typeof vi.fn>;
@@ -330,7 +341,70 @@ describe('UsersService saveOnboardingDraft', () => {
         update: vi.fn(),
       },
     };
-    service = new UsersService(prisma as never, auth as never, outbox as never);
+    storage.upload.mockClear();
+    storage.getSignedDownloadUrl.mockClear();
+    service = new UsersService(prisma as never, auth as never, outbox as never, storage as never);
+  });
+
+  it('stores the uploaded photo and returns a signed profilePhotoUrl', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce(user);
+
+    const result = await service.uploadProfilePhoto(user.id, {
+      buffer: Buffer.from('fake-image'),
+      fileName: 'avatar.png',
+      mimeType: 'image/png',
+    });
+
+    expect(storage.upload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        namespace: `profile-photos/${user.id}`,
+        fileName: 'avatar.png',
+        contentType: 'image/png',
+      }),
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { profilePhotoObjectKey: 'profile-photos/user-id/photo.jpg' },
+    });
+    expect(result.profilePhotoUrl).toBe('https://storage.example/profile-photos/user-id/photo.jpg');
+  });
+
+  it('rejects unsupported mime types', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+
+    await expect(
+      service.uploadProfilePhoto(user.id, {
+        buffer: Buffer.from('fake'),
+        fileName: 'avatar.gif',
+        mimeType: 'image/gif',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('UsersService saveOnboardingDraft', () => {
+  const auth = { revokeAllForUser: vi.fn() };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const storage = mockStorage();
+  let prisma: {
+    user: {
+      findUnique: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+    };
+  };
+  let service: UsersService;
+
+  beforeEach(() => {
+    prisma = {
+      user: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
+    };
+    service = new UsersService(prisma as never, auth as never, outbox as never, storage as never);
   });
 
   it('rejects an invalid draft payload', async () => {
@@ -339,19 +413,42 @@ describe('UsersService saveOnboardingDraft', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('rejects saving a draft once onboarding is already complete', async () => {
-    const user = studentRow({ onboardingCompleted: true });
-    prisma.user.findUnique.mockResolvedValueOnce(user);
+  it('merges progressive profile fields after onboarding is complete', async () => {
+    const user = studentRow({
+      onboardingCompleted: true,
+      onboardingDetails: {
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        dpdpConsent: true,
+        dpdpConsentAt: '2026-01-01T00:00:00.000Z',
+        completedAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+    prisma.user.findUnique
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce(user);
 
-    await expect(service.saveOnboardingDraft(user.id, { firstName: 'Ada' })).rejects.toBeInstanceOf(
-      ForbiddenException,
+    await service.saveOnboardingDraft(user.id, {
+      about: 'Full-stack engineer focused on verification systems.',
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: {
+          onboardingDetails: expect.objectContaining({
+            about: 'Full-stack engineer focused on verification systems.',
+          }),
+        },
+      }),
     );
-    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('merges partial fields into onboardingDetails without completing onboarding', async () => {
     const user = studentRow({ onboardingDetails: { firstName: 'Ada', linkedinUrl: '' } });
-    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.findUnique.mockResolvedValueOnce(user).mockResolvedValueOnce(user);
     prisma.user.update.mockResolvedValueOnce(user);
 
     const result = await service.saveOnboardingDraft(user.id, {
@@ -376,5 +473,6 @@ describe('UsersService saveOnboardingDraft', () => {
     expect(result.profile).toBeNull();
     expect(result.draft?.firstName).toBe('Ada');
     expect(result.draft?.lastName).toBe('Lovelace');
+    expect(result.profilePhotoUrl).toBeNull();
   });
 });

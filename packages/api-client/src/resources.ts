@@ -41,6 +41,7 @@ import type {
   RunSdeSkillFormCodeRequest,
   ReserveUsernameRequest,
   UpdateProfileVisibilityRequest,
+  CreateCandidateEducationDocumentDto,
   CreateCandidateEducationDto,
   UpdateCandidateEducationDto,
   RejectCandidateEducationDto,
@@ -67,9 +68,12 @@ import {
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
   CandidateCertificateDtoSchema,
+  CandidateEducationDocumentSchema,
   CandidateEducationSchema,
   CandidateLanguageSchema,
+  CandidateResumeStateResponseSchema,
   CandidateOnboardingProfileResponseSchema,
+  UploadProfilePhotoResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
   FetchGithubProfileResponseSchema,
@@ -113,6 +117,7 @@ import {
   VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
+  UploadResumeResponseSchema,
   ProctoringEnrollResponseSchema,
   ProctoringLivenessResponseSchema,
   ProctoringNonceResponseSchema,
@@ -222,6 +227,19 @@ export function usersApi(client: SmartApiClient) {
         schema: ParseResumeResponseSchema,
       }),
 
+    getResume: () =>
+      client.get(prefixed('/users/me/resume'), {
+        schema: CandidateResumeStateResponseSchema,
+      }),
+
+    uploadResume: (file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed('/users/me/resume'), formData, {
+        schema: UploadResumeResponseSchema,
+      });
+    },
+
     getOnboarding: () =>
       client.get(prefixed('/users/me/onboarding'), {
         schema: CandidateOnboardingProfileResponseSchema,
@@ -239,6 +257,14 @@ export function usersApi(client: SmartApiClient) {
       client.post(prefixed('/users/me/onboarding/complete'), body, {
         schema: AuthenticatedUserSchema,
       }),
+
+    uploadProfilePhoto: (file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed('/users/me/profile-photo'), formData, {
+        schema: UploadProfilePhotoResponseSchema,
+      });
+    },
 
     /** Begins "Sign in with LinkedIn" (OIDC) — open the returned URL to verify. */
     linkedinOauthUrl: () =>
@@ -337,6 +363,14 @@ export function usersApi(client: SmartApiClient) {
       }),
 
     deleteEducation: (id: string) => client.delete<void>(prefixed(`/users/me/education/${id}`)),
+
+    attachEducationDocument: (educationId: string, body: CreateCandidateEducationDocumentDto) =>
+      client.post(prefixed(`/users/me/education/${educationId}/documents`), body, {
+        schema: CandidateEducationDocumentSchema,
+      }),
+
+    removeEducationDocument: (educationId: string, documentId: string) =>
+      client.delete<void>(prefixed(`/users/me/education/${educationId}/documents/${documentId}`)),
 
     listLanguages: () =>
       client.get(prefixed('/users/me/languages'), {

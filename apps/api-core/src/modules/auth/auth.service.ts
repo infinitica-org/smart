@@ -12,7 +12,9 @@ import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
 import { resolveSessionHold } from '../../common/session-hold.js';
+import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
 const scrypt = promisify(scryptCallback);
@@ -29,6 +31,7 @@ export type UserWithAuthIncludes = {
   passwordHash: string | null;
   heldAt: Date | null;
   onboardingCompleted?: boolean;
+  profilePhotoObjectKey?: string | null;
   institution: {
     name: string;
     heldAt: Date | null;
@@ -47,6 +50,7 @@ export class AuthService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
@@ -184,7 +188,7 @@ export class AuthService {
       accessToken,
       tokenType: 'Bearer',
       expiresInSeconds: env.JWT_ACCESS_TTL_SECONDS,
-      user: toAuthenticatedUser(user),
+      user: await toAuthenticatedUserWithPhoto(this.storage, user),
     };
   }
 }
@@ -257,6 +261,7 @@ export function toAuthenticatedUser(user: {
   company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
+  profilePhotoObjectKey?: string | null;
 }): AuthenticatedUser {
   const hold = resolveSessionHold({
     role: user.role,
@@ -288,6 +293,7 @@ export function toAuthenticatedUser(user: {
     createdAt: user.createdAt.toISOString(),
     // Non-students skip candidate onboarding; students require the server flag.
     onboardingCompleted: user.role === 'STUDENT' ? Boolean(user.onboardingCompleted) : true,
+    profilePhotoUrl: null,
     sessionHold: hold,
   };
 }

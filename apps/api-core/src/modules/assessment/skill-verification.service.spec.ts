@@ -25,6 +25,15 @@ function declaredClaim() {
   };
 }
 
+function profileCompletion(overrides: Record<string, unknown> = {}) {
+  return {
+    assertCompleteForSkillVerification: vi.fn().mockResolvedValue(undefined),
+    isCompleteForSkillVerification: vi.fn().mockResolvedValue(true),
+    getProgressForStudent: vi.fn().mockResolvedValue({ percent: 100 }),
+    ...overrides,
+  };
+}
+
 describe('SkillVerificationService', () => {
   it('prepareOnly skips LLM generate after the claim/cooldown gate', async () => {
     const evaluation = { generateSkillForm: vi.fn() };
@@ -38,6 +47,7 @@ describe('SkillVerificationService', () => {
       redis as never,
       evaluation as never,
       { enqueueEnvelope: vi.fn() } as never,
+      profileCompletion() as never,
     );
 
     const prepared = await service.start(student(), CLAIM_ID, { prepareOnly: true });
@@ -62,6 +72,7 @@ describe('SkillVerificationService', () => {
       {
         enqueueEnvelope: vi.fn(),
       } as never,
+      profileCompletion() as never,
     );
 
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
@@ -85,6 +96,7 @@ describe('SkillVerificationService', () => {
       {
         enqueueEnvelope: vi.fn(),
       } as never,
+      profileCompletion() as never,
     );
 
     await expect(service.start(student(), CLAIM_ID)).rejects.toBeInstanceOf(BadRequestException);
@@ -170,6 +182,7 @@ describe('SkillVerificationService', () => {
       redis as never,
       evaluation as never,
       outbox as never,
+      profileCompletion() as never,
     );
 
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
@@ -204,6 +217,7 @@ describe('SkillVerificationService', () => {
       {} as never,
       {} as never,
       { enqueueEnvelope: vi.fn() } as never,
+      profileCompletion() as never,
     );
 
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
@@ -225,6 +239,7 @@ describe('SkillVerificationService', () => {
       {
         enqueueEnvelope: vi.fn(),
       } as never,
+      profileCompletion() as never,
     );
 
     await expect(service.start(student(), CLAIM_ID)).rejects.toBeInstanceOf(ForbiddenException);
@@ -286,6 +301,7 @@ describe('SkillVerificationService', () => {
       redis as never,
       evaluation as never,
       { enqueueEnvelope: vi.fn() } as never,
+      profileCompletion() as never,
     );
 
     const result = await service.complete(student(), SESSION_ID, { technicalFailure: true });
@@ -366,6 +382,7 @@ describe('SkillVerificationService', () => {
       redis as never,
       evaluation as never,
       { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
+      profileCompletion() as never,
     );
 
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
@@ -423,6 +440,7 @@ describe('SkillVerificationService', () => {
       redis as never,
       evaluation as never,
       { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
+      profileCompletion() as never,
     );
 
     const result = await service.complete(student(), SESSION_ID, {
@@ -438,5 +456,82 @@ describe('SkillVerificationService', () => {
     );
     expect(result.technicalFailure).toBe(false);
     expect(result.claim.status).toBe('BEGINNER_REATTEMPT');
+  });
+
+  it('rejects verification start when the profile is incomplete', async () => {
+    const redis = { setex: vi.fn().mockResolvedValue('OK') };
+    const prisma = {
+      skillClaim: { findUnique: vi.fn().mockResolvedValue(declaredClaim()) },
+      skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const profile = profileCompletion({
+      assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
+        new ForbiddenException({
+          error: 'profile_incomplete',
+          message: 'Complete your profile to unlock skill verification.',
+          statusCode: 403,
+        }),
+      ),
+    });
+    const service = new SkillVerificationService(
+      prisma as never,
+      redis as never,
+      {} as never,
+      { enqueueEnvelope: vi.fn() } as never,
+      profile as never,
+    );
+
+    await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'profile_incomplete' }),
+    });
+    expect(prisma.skillClaim.findUnique).not.toHaveBeenCalled();
+    expect(redis.setex).not.toHaveBeenCalled();
+  });
+
+  it('ignores client-supplied profile completion hints and uses server profile state', async () => {
+    const profile = profileCompletion({
+      assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
+        new ForbiddenException({
+          error: 'profile_incomplete',
+          message: 'Complete your profile to unlock skill verification.',
+          statusCode: 403,
+        }),
+      ),
+    });
+    const service = new SkillVerificationService(
+      { skillClaim: { findUnique: vi.fn() } } as never,
+      {} as never,
+      {} as never,
+      { enqueueEnvelope: vi.fn() } as never,
+      profile as never,
+    );
+
+    await expect(
+      service.start(student(), CLAIM_ID, { prepareOnly: true, profilePercent: 100 } as never),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'profile_incomplete' }),
+    });
+    expect(profile.assertCompleteForSkillVerification).toHaveBeenCalledWith(STUDENT_ID);
+  });
+
+  it('allows verification start when the eight-area profile is complete', async () => {
+    const redis = { setex: vi.fn().mockResolvedValue('OK') };
+    const prisma = {
+      skillClaim: { findUnique: vi.fn().mockResolvedValue(declaredClaim()) },
+      skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const profile = profileCompletion();
+    const service = new SkillVerificationService(
+      prisma as never,
+      redis as never,
+      {} as never,
+      { enqueueEnvelope: vi.fn() } as never,
+      profile as never,
+    );
+
+    await service.start(student(), CLAIM_ID, { prepareOnly: true });
+
+    expect(profile.assertCompleteForSkillVerification).toHaveBeenCalledWith(STUDENT_ID);
+    expect(redis.setex).toHaveBeenCalled();
   });
 });

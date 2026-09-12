@@ -393,11 +393,11 @@ export function WorkExperienceSection() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-lg font-medium text-white">
+          <h3 className="flex items-center gap-2 text-lg font-medium text-foreground">
             <Briefcase className="h-5 w-5 text-[#00fad0]" />
             Work Experience
           </h3>
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-muted-foreground">
             Add your professional work history and attach supporting proof documents.
           </p>
         </div>
@@ -411,14 +411,14 @@ export function WorkExperienceSection() {
       </div>
 
       {verificationSuccess && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-800" />
             <span>{verificationSuccess}</span>
           </div>
           <button
             onClick={() => setVerificationSuccess(null)}
-            className="text-emerald-400 hover:text-white"
+            className="text-emerald-800 hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -426,28 +426,30 @@ export function WorkExperienceSection() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-white/45">
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-[#00fad0]" />
           <span className="ml-2 text-sm">Loading work experience entries...</span>
         </div>
       ) : experiences.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-          <Building2 className="h-10 w-10 text-white/20" />
-          <p className="mt-3 text-sm font-medium text-white/60">No work experience added yet</p>
-          <p className="mt-1 text-xs text-white/40 max-w-md">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 p-8 text-center">
+          <Building2 className="h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-sm font-medium text-foreground/80">
+            No work experience added yet
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground max-w-md">
             Demonstrate your domain experience by listing your employment history, internships, and
             corporate roles.
           </p>
           <button
             onClick={openAddModal}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/15 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             Add First Entry
@@ -458,35 +460,35 @@ export function WorkExperienceSection() {
           {experiences.map((exp) => (
             <div
               key={exp.id}
-              className="group relative flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/20"
+              className="group relative flex flex-col gap-3 rounded-2xl border border-border bg-muted/50 p-5 transition-colors hover:border-border"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-base font-semibold text-white">{exp.role}</h4>
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
+                    <h4 className="text-base font-semibold text-foreground">{exp.role}</h4>
+                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-foreground/70">
                       {EMPLOYMENT_TYPE_LABELS[exp.employmentType] || exp.employmentType}
                     </span>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
                         exp.status === 'VERIFIED'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
                           : exp.status === 'PENDING_EMPLOYER'
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            ? 'border border-blue-200 bg-blue-50 text-blue-700'
                             : exp.status === 'EXPIRED'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              ? 'border border-amber-200 bg-amber-50 text-amber-900'
                               : exp.status === 'SUBMITTED'
-                                ? 'bg-[#00fad0]/15 text-[#00fad0] border border-[#00fad0]/30'
+                                ? 'border border-[#00fad0]/30 bg-[#00fad0]/10 text-[#00fad0]'
                                 : exp.status === 'REJECTED'
-                                  ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                                  : 'bg-white/10 text-white/50'
+                                  ? 'border border-red-200 bg-red-50 text-red-700'
+                                  : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {VERIFICATION_STATUS_LABELS[exp.status] || exp.status}
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/60">
-                    <span className="flex items-center gap-1 font-medium text-white/80">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 font-medium text-foreground/80">
                       <Building2 className="h-3.5 w-3.5 text-[#00fad0]" />
                       {exp.companyName}
                     </span>
@@ -496,7 +498,7 @@ export function WorkExperienceSection() {
                         {exp.workLocation}
                       </span>
                     )}
-                    <span className="flex items-center gap-1 text-white/45">
+                    <span className="flex items-center gap-1 text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
                       {new Date(exp.startDate).toLocaleDateString('en-US', {
                         month: 'short',
@@ -523,14 +525,14 @@ export function WorkExperienceSection() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEditModal(exp)}
-                    className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white transition-colors"
+                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     title="Edit Experience"
                   >
                     <Edit3 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(exp.id)}
-                    className="rounded-lg p-1.5 text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-700 transition-colors"
                     title="Delete Entry"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -568,7 +570,7 @@ export function WorkExperienceSection() {
 
               {/* Responsibilities */}
               {exp.responsibilities && (
-                <p className="text-xs text-white/70 leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-line">
                   {exp.responsibilities}
                 </p>
               )}
@@ -579,7 +581,7 @@ export function WorkExperienceSection() {
                   {exp.skillsClaimed.map((skillCode) => (
                     <span
                       key={skillCode}
-                      className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
+                      className="rounded-md border border-border bg-muted px-2 py-0.5 text-[10px] text-foreground/70"
                     >
                       {SKILL_NAME_BY_CODE.get(skillCode) ?? skillCode}
                     </span>
@@ -598,7 +600,7 @@ export function WorkExperienceSection() {
                 const docs = exp.documents ?? [];
                 let docCheckText = 'No Proof Uploaded';
                 let docCheckTag = 'Missing';
-                let docCheckStyle = 'bg-white/10 text-white/50';
+                let docCheckStyle = 'bg-muted text-muted-foreground';
 
                 const hasValidated = docs.some(
                   (d) =>
@@ -620,19 +622,19 @@ export function WorkExperienceSection() {
                 if (hasValidated) {
                   docCheckText = 'Validated (AI Check)';
                   docCheckTag = 'Complete';
-                  docCheckStyle = 'bg-emerald-500/20 text-emerald-400';
+                  docCheckStyle = 'bg-emerald-50 text-emerald-800';
                 } else if (hasManualReview) {
                   docCheckText = 'Needs Manual Review';
                   docCheckTag = 'Review Flagged';
-                  docCheckStyle = 'bg-amber-500/20 text-amber-300';
+                  docCheckStyle = 'bg-amber-50 text-amber-900';
                 } else if (hasRejected) {
                   docCheckText = 'Document Rejected';
                   docCheckTag = 'Rejected';
-                  docCheckStyle = 'bg-red-500/15 text-red-400';
+                  docCheckStyle = 'bg-red-50 text-red-700';
                 } else if (docs.length > 0) {
                   docCheckText = 'Pending OCR Check';
                   docCheckTag = 'Pending';
-                  docCheckStyle = 'bg-blue-500/20 text-blue-300';
+                  docCheckStyle = 'bg-blue-50 text-blue-700';
                 }
 
                 const managerEndorsementStatus = (exp as unknown as Record<string, unknown>)
@@ -648,9 +650,9 @@ export function WorkExperienceSection() {
                   : null;
 
                 return (
-                  <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                  <div className="mt-2 flex flex-col gap-3 rounded-xl border border-border bg-muted/50 p-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Student Claim Status Tracker
                       </span>
                       <span className="text-xs font-medium text-[#00fad0]">
@@ -660,25 +662,25 @@ export function WorkExperienceSection() {
 
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-3 sm:grid-cols-2">
                       {/* Stage 1: Document Proof */}
-                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
-                        <span className="text-[10px] font-medium text-white/50">
+                      <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-muted-foreground">
                           1. Document Proof
                         </span>
                         <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                          <span className="font-semibold text-foreground/90 truncate max-w-[130px]">
                             {ruleCheck.valid ? 'Rules Satisfied' : 'Missing Proof'}
                           </span>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                               ruleCheck.valid
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-amber-500/20 text-amber-300'
+                                ? 'bg-emerald-50 text-emerald-800'
+                                : 'bg-amber-50 text-amber-900'
                             }`}
                           >
                             {ruleCheck.valid ? 'Complete' : 'Incomplete'}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/40">
+                        <span className="text-[10px] text-muted-foreground">
                           {exp.isCurrent
                             ? 'Offer Letter required'
                             : 'Offer + Relieving Letter required'}
@@ -686,12 +688,12 @@ export function WorkExperienceSection() {
                       </div>
 
                       {/* Stage 2: Document Check */}
-                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
-                        <span className="text-[10px] font-medium text-white/50">
+                      <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-muted-foreground">
                           2. Document Check
                         </span>
                         <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                          <span className="font-semibold text-foreground/90 truncate max-w-[130px]">
                             {docCheckText}
                           </span>
                           <span
@@ -700,7 +702,7 @@ export function WorkExperienceSection() {
                             {docCheckTag}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/40">
+                        <span className="text-[10px] text-muted-foreground">
                           {docs.length > 0
                             ? `${docs.length} proof file(s) attached`
                             : 'Upload offer/relieving letter'}
@@ -708,12 +710,12 @@ export function WorkExperienceSection() {
                       </div>
 
                       {/* Stage 3: Employer Verification */}
-                      <div className="flex flex-col gap-1 rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
-                        <span className="text-[10px] font-medium text-white/50">
+                      <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-muted-foreground">
                           3. Employer Verification
                         </span>
                         <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-semibold text-white/90 truncate max-w-[130px]">
+                          <span className="font-semibold text-foreground/90 truncate max-w-[130px]">
                             {exp.verifierEmail
                               ? exp.verifierName || exp.verifierEmail
                               : 'No Verifier Set'}
@@ -721,12 +723,12 @@ export function WorkExperienceSection() {
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                               exp.status === 'VERIFIED'
-                                ? 'bg-emerald-500/20 text-emerald-400'
+                                ? 'bg-emerald-50 text-emerald-800'
                                 : exp.status === 'EXPIRED'
-                                  ? 'bg-amber-500/20 text-amber-300'
+                                  ? 'bg-amber-50 text-amber-900'
                                   : exp.status === 'PENDING_EMPLOYER'
-                                    ? 'bg-blue-500/20 text-blue-300'
-                                    : 'bg-white/10 text-white/60'
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'bg-muted text-muted-foreground'
                             }`}
                           >
                             {exp.status === 'PENDING_EMPLOYER'
@@ -738,7 +740,7 @@ export function WorkExperienceSection() {
                                   : 'Pending'}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/40 truncate max-w-[170px]">
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[170px]">
                           {exp.verifierEmail || 'Click Edit to set verifier'}
                         </span>
                       </div>
@@ -746,11 +748,11 @@ export function WorkExperienceSection() {
 
                     {/* Manager Endorsement stage if present */}
                     {managerEndorsementStatus && (
-                      <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-2.5 text-xs">
-                        <span className="text-[10px] font-medium text-white/50">
+                      <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-2.5 text-xs">
+                        <span className="text-[10px] font-medium text-muted-foreground">
                           4. Manager Endorsement Status
                         </span>
-                        <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-300">
+                        <span className="rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700">
                           {managerEndorsementStatus}
                         </span>
                       </div>
@@ -758,12 +760,12 @@ export function WorkExperienceSection() {
 
                     {/* Expired Verification Banner UX */}
                     {exp.status === 'EXPIRED' && (
-                      <div className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
-                        <div className="flex items-center gap-2 font-semibold text-amber-300">
-                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                      <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+                        <div className="flex items-center gap-2 font-semibold text-amber-900">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-900" />
                           <span>Link Expired — Resend or Try Another Verifier</span>
                         </div>
-                        <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                        <p className="text-[11px] text-amber-900/80 leading-relaxed">
                           Verification link expired after 48h without a response. You can restart
                           verification with the current verifier or update verifier details first to
                           try another contact.
@@ -772,7 +774,7 @@ export function WorkExperienceSection() {
                           <button
                             onClick={() => handleSendVerification(exp.id, exp.status)}
                             disabled={sendingVerificationId === exp.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-200 disabled:opacity-50 transition-colors"
                           >
                             {sendingVerificationId === exp.id ? (
                               <>
@@ -785,7 +787,7 @@ export function WorkExperienceSection() {
                           </button>
                           <button
                             onClick={() => openEditModal(exp)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-muted transition-colors"
                           >
                             <Edit3 className="h-3.5 w-3.5" />
                             Update Verifier Details
@@ -795,7 +797,7 @@ export function WorkExperienceSection() {
                     )}
 
                     {/* Next Action Guidance */}
-                    <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-[11px] text-white/70">
+                    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[11px] text-foreground/80">
                       <span className="font-semibold text-[#00fad0] shrink-0">Next Action:</span>
                       <span>{getNextActionGuidance(exp, ruleCheck)}</span>
                     </div>
@@ -805,13 +807,13 @@ export function WorkExperienceSection() {
 
               {/* Verifier Contact & Verification Action */}
               {exp.verifierEmail ? (
-                <div className="mt-1 flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
+                <div className="mt-1 flex flex-col gap-2 rounded-xl border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
                       <span>
                         Employer Verifier:{' '}
-                        <strong className="text-white/80">
+                        <strong className="text-foreground/80">
                           {exp.verifierName || 'HR/Manager'}
                         </strong>{' '}
                         ({exp.verifierEmail})
@@ -823,7 +825,7 @@ export function WorkExperienceSection() {
                         disabled={sendingVerificationId === exp.id}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors shrink-0 ${
                           exp.status === 'EXPIRED'
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
+                            ? 'border border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200'
                             : 'bg-[#00fad0]/10 border-[#00fad0]/30 text-[#00fad0] hover:bg-[#00fad0]/20'
                         }`}
                       >
@@ -844,14 +846,14 @@ export function WorkExperienceSection() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-1 flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">
+                <div className="mt-1 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                   <span>
                     No verifier email configured. Add verifier details to initiate employer
                     verification.
                   </span>
                   <button
                     onClick={() => openEditModal(exp)}
-                    className="rounded bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
+                    className="rounded border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200 transition-colors"
                   >
                     Add Verifier
                   </button>
@@ -859,9 +861,9 @@ export function WorkExperienceSection() {
               )}
 
               {/* Documents Section */}
-              <div className="mt-2 flex flex-col gap-2 border-t border-white/5 pt-3">
+              <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/50">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Supporting Proof Documents
                   </span>
                   <button
@@ -894,7 +896,7 @@ export function WorkExperienceSection() {
                       return (
                         <div
                           key={doc.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/80"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground/80"
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-[#00fad0] shrink-0" />
@@ -903,7 +905,7 @@ export function WorkExperienceSection() {
                                 <span className="font-medium">
                                   {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:
                                 </span>
-                                <span className="text-white/60 truncate max-w-[180px]">
+                                <span className="text-muted-foreground truncate max-w-[180px]">
                                   {doc.fileName}
                                 </span>
                               </div>
@@ -913,13 +915,13 @@ export function WorkExperienceSection() {
                                 </span>
                               )}
                               {valState.validationStatus === 'NEEDS_MANUAL_REVIEW' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-amber-300 font-medium mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-amber-900 font-medium mt-0.5">
                                   <AlertCircle className="h-3 w-3" /> Manual Review Flagged:{' '}
                                   {valState.rejectionReason || 'Role or date variance detected'}
                                 </span>
                               )}
                               {valState.validationStatus === 'REJECTED' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-red-700 font-medium mt-0.5">
                                   <AlertCircle className="h-3 w-3" /> Proof Rejected:{' '}
                                   {valState.reasonCode === 'INVALID_DOCUMENT_TYPE'
                                     ? valState.rejectionReason ||
@@ -928,7 +930,7 @@ export function WorkExperienceSection() {
                                 </span>
                               )}
                               {isOfferAttachment && !valState.validationStatus && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-white/50 font-medium mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-medium mt-0.5">
                                   Offer letters support your claim but cannot be validated as
                                   employment proof.
                                 </span>
@@ -954,7 +956,7 @@ export function WorkExperienceSection() {
                             )}
                             <button
                               onClick={() => handleRemoveDocument(exp.id, doc.id)}
-                              className="text-white/30 hover:text-red-400 p-1"
+                              className="text-muted-foreground/50 hover:text-red-700 p-1"
                               title="Remove document"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -965,7 +967,7 @@ export function WorkExperienceSection() {
                     })}
                   </div>
                 ) : (
-                  <span className="text-[11px] text-white/35 italic">
+                  <span className="text-[11px] text-muted-foreground italic">
                     No proof document attached yet.
                   </span>
                 )}
@@ -978,37 +980,37 @@ export function WorkExperienceSection() {
       {/* Experience Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-white/15 bg-[#0e131f] p-6 shadow-2xl overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-border bg-card p-6 shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-lg font-semibold text-foreground">
                 {editingId ? 'Edit Work Experience' : 'Add Work Experience'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-full p-1 text-white/40 hover:bg-white/10 hover:text-white"
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             {/* Rule Explanation Banner (WE-T01) */}
-            <div className="mt-3 rounded-2xl border border-[#00fad0]/25 bg-[#00fad0]/5 p-3.5 text-xs text-white/90">
+            <div className="mt-3 rounded-2xl border border-[#00fad0]/25 bg-[#00fad0]/5 p-3.5 text-xs text-foreground/90">
               <div className="flex items-center gap-2 font-semibold text-[#00fad0]">
                 <FileText className="h-4 w-4 shrink-0" />
                 <span>Document Requirement Rules</span>
               </div>
-              <p className="mt-1 text-white/75 leading-relaxed">
+              <p className="mt-1 text-foreground/75 leading-relaxed">
                 {isCurrent ? (
                   <>
                     <strong className="text-[#00fad0]">Ongoing Role: Offer letter required.</strong>{' '}
                     Status will display as{' '}
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-foreground">
                       Active — pending final documentation
                     </span>
                     .
                   </>
                 ) : (
                   <>
-                    <strong className="text-amber-300">
+                    <strong className="text-amber-900">
                       Ended Role: Offer Letter + Completion/Relieving Letter required.
                     </strong>{' '}
                     Both an Offer Letter and a Completion/Relieving Letter are required before
@@ -1019,8 +1021,8 @@ export function WorkExperienceSection() {
             </div>
 
             {error && (
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-900" />
                 <span>{error}</span>
               </div>
             )}
@@ -1028,19 +1030,21 @@ export function WorkExperienceSection() {
             <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">Company Name *</label>
+                  <label className="block text-xs font-medium text-foreground/80">
+                    Company Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Acme Corporation"
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70">
+                  <label className="block text-xs font-medium text-foreground/80">
                     Role / Designation *
                   </label>
                   <input
@@ -1049,14 +1053,14 @@ export function WorkExperienceSection() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     placeholder="e.g. Software Engineer Intern"
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">
+                  <label className="block text-xs font-medium text-foreground/80">
                     Employment Type *
                   </label>
                   <select
@@ -1083,20 +1087,22 @@ export function WorkExperienceSection() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70">Work Location</label>
+                  <label className="block text-xs font-medium text-foreground/80">
+                    Work Location
+                  </label>
                   <input
                     type="text"
                     value={workLocation}
                     onChange={(e) => setWorkLocation(e.target.value)}
                     placeholder="e.g. Bangalore, India (or Remote)"
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">
+                  <label className="block text-xs font-medium text-foreground/80">
                     Company Website
                     {companyRequiresPublicIdentity({
                       companyId: editingId
@@ -1112,12 +1118,12 @@ export function WorkExperienceSection() {
                     value={companyWebsite}
                     onChange={(e) => setCompanyWebsite(e.target.value)}
                     placeholder="https://company.com"
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70">
+                  <label className="block text-xs font-medium text-foreground/80">
                     Company LinkedIn URL
                     {companyRequiresPublicIdentity({
                       companyId: editingId
@@ -1133,25 +1139,27 @@ export function WorkExperienceSection() {
                     value={companyLinkedinUrl}
                     onChange={(e) => setCompanyLinkedinUrl(e.target.value)}
                     placeholder="https://linkedin.com/company/acme"
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-white/70">Start Date *</label>
+                  <label className="block text-xs font-medium text-foreground/80">
+                    Start Date *
+                  </label>
                   <input
                     type="date"
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70">
+                  <label className="block text-xs font-medium text-foreground/80">
                     End Date{!isCurrent ? ' *' : ''}
                   </label>
                   <input
@@ -1159,7 +1167,7 @@ export function WorkExperienceSection() {
                     disabled={isCurrent}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white disabled:opacity-40 focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-40 focus:border-[#00fad0] focus:outline-none"
                   />
                 </div>
               </div>
@@ -1170,15 +1178,15 @@ export function WorkExperienceSection() {
                   id="isCurrent"
                   checked={isCurrent}
                   onChange={(e) => setIsCurrent(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#00fad0] focus:ring-0"
+                  className="h-4 w-4 rounded border-border bg-background text-[#00fad0] focus:ring-0"
                 />
-                <label htmlFor="isCurrent" className="text-xs text-white/80">
+                <label htmlFor="isCurrent" className="text-xs text-foreground/80">
                   I currently work in this role
                 </label>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">
+                <label className="block text-xs font-medium text-foreground/80">
                   Professional Domain *
                 </label>
                 <input
@@ -1186,12 +1194,12 @@ export function WorkExperienceSection() {
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="e.g. Software Engineering, Business Analytics"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">
+                <label className="block text-xs font-medium text-foreground/80">
                   Responsibilities & Accomplishments *
                 </label>
                 <textarea
@@ -1199,15 +1207,15 @@ export function WorkExperienceSection() {
                   value={responsibilities}
                   onChange={(e) => setResponsibilities(e.target.value)}
                   placeholder="Key responsibilities, projects, and technologies used..."
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">
+                <label className="block text-xs font-medium text-foreground/80">
                   Skills used (from catalog) *
                 </label>
-                <p className="mt-0.5 text-[11px] text-white/45">
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Pick skills from the v0.9 taxonomy — free-text tags are not accepted.
                 </p>
                 {selectedSkillCodes.length > 0 ? (
@@ -1221,7 +1229,7 @@ export function WorkExperienceSection() {
                             current.filter((item) => item !== code),
                           )
                         }
-                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/80"
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-foreground/80"
                       >
                         {SKILL_NAME_BY_CODE.get(code) ?? code}
                         <X className="h-3 w-3" />
@@ -1234,10 +1242,10 @@ export function WorkExperienceSection() {
                   value={skillQuery}
                   onChange={(e) => setSkillQuery(e.target.value)}
                   placeholder="Search skills…"
-                  className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                 />
                 {skillQuery.trim().length >= 2 ? (
-                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-[#0b1220]">
+                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-border bg-card">
                     {SKILL_DEFINITIONS.filter((skill) => {
                       const q = skillQuery.trim().toLowerCase();
                       return (
@@ -1255,7 +1263,7 @@ export function WorkExperienceSection() {
                               setSelectedSkillCodes((current) => [...current, skill.code]);
                               setSkillQuery('');
                             }}
-                            className="block w-full px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
+                            className="block w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-muted"
                           >
                             {skill.name}
                           </button>
@@ -1265,53 +1273,55 @@ export function WorkExperienceSection() {
                 ) : null}
               </div>
 
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-border pt-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-[#00fad0]">
                   Employer Verifier Contact (Optional)
                 </h4>
-                <p className="mt-0.5 text-[11px] text-white/50">
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Provide HR/Manager contact details for verification dispatch.
                 </p>
 
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="block text-[11px] text-white/70">Verifier Name</label>
+                    <label className="block text-[11px] text-foreground/80">Verifier Name</label>
                     <input
                       type="text"
                       value={verifierName}
                       onChange={(e) => setVerifierName(e.target.value)}
                       placeholder="Jane Manager"
-                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-white/70">Official Work Email</label>
+                    <label className="block text-[11px] text-foreground/80">
+                      Official Work Email
+                    </label>
                     <input
                       type="email"
                       value={verifierEmail}
                       onChange={(e) => setVerifierEmail(e.target.value)}
                       placeholder="jane@company.com"
-                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-white/70">Designation</label>
+                    <label className="block text-[11px] text-foreground/80">Designation</label>
                     <input
                       type="text"
                       value={verifierDesignation}
                       onChange={(e) => setVerifierDesignation(e.target.value)}
                       placeholder="Engineering Lead"
-                      className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+              <div className="mt-4 flex items-center justify-end gap-3 border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-white/15 px-4 py-2 text-xs font-medium text-white hover:bg-white/10"
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   Cancel
                 </button>
@@ -1332,12 +1342,12 @@ export function WorkExperienceSection() {
       {/* Document Attach Modal */}
       {docModalExpId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="flex w-full max-w-md flex-col rounded-3xl border border-white/15 bg-[#0e131f] p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-base font-semibold text-white">Attach Proof Document</h3>
+          <div className="flex w-full max-w-md flex-col rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-semibold text-foreground">Attach Proof Document</h3>
               <button
                 onClick={() => setDocModalExpId(null)}
-                className="rounded-full p-1 text-white/40 hover:bg-white/10 hover:text-white"
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1345,7 +1355,9 @@ export function WorkExperienceSection() {
 
             <form onSubmit={handleAttachDocument} className="mt-4 flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-medium text-white/70">Document Type *</label>
+                <label className="block text-xs font-medium text-foreground/80">
+                  Document Type *
+                </label>
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
@@ -1371,22 +1383,24 @@ export function WorkExperienceSection() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">Proof File Name *</label>
+                <label className="block text-xs font-medium text-foreground/80">
+                  Proof File Name *
+                </label>
                 <input
                   type="text"
                   required
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
                   placeholder="e.g. Acme_Relieving_Letter.pdf"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                 />
               </div>
 
-              <div className="mt-2 flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+              <div className="mt-2 flex items-center justify-end gap-3 border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => setDocModalExpId(null)}
-                  className="rounded-xl border border-white/15 px-4 py-2 text-xs font-medium text-white hover:bg-white/10"
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   Cancel
                 </button>

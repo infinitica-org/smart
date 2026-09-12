@@ -152,7 +152,7 @@ export default function JobPreferencesStep({
       <div className="mb-5 max-w-sm">
         <FieldLabel required>Expected CTC (INR)</FieldLabel>
         <div className="flex">
-          <span className="inline-flex items-center px-3 border border-r-0 border-zinc-800 rounded-l-xl bg-zinc-900 text-zinc-400 text-sm select-none">
+          <span className="inline-flex select-none items-center rounded-l-xl border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground">
             ₹
           </span>
           <TextInput
@@ -164,7 +164,7 @@ export default function JobPreferencesStep({
             invalid={expectedCtcInvalid}
             className="rounded-l-none border-l-0"
           />
-          <span className="inline-flex items-center px-3 border border-l-0 border-zinc-800 rounded-r-xl bg-zinc-900 text-zinc-400 text-sm whitespace-nowrap select-none">
+          <span className="inline-flex select-none items-center whitespace-nowrap rounded-r-xl border border-l-0 border-border bg-muted px-3 text-sm text-muted-foreground">
             Lakhs Per Annum
           </span>
         </div>
@@ -202,7 +202,7 @@ export default function JobPreferencesStep({
       <div className="mb-8">
         <div className="flex items-center justify-between mb-1.5">
           <FieldLabel required>Preferred locations</FieldLabel>
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-muted-foreground">
             {prefs.preferredLocations.length}/{MAX_PREFERRED_LOCATIONS}
           </span>
         </div>
@@ -228,16 +228,16 @@ export default function JobPreferencesStep({
 
       <label
         className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer mb-8 transition-colors ${
-          consentInvalid ? 'border-rose-500 bg-rose-500/10' : 'border-zinc-800 bg-zinc-900/60'
+          consentInvalid ? 'border-rose-500 bg-rose-50' : 'border-border bg-muted/80'
         }`}
       >
         <input
           type="checkbox"
           checked={formData.dpdpConsent}
           onChange={(e) => updateField('dpdpConsent', e.target.checked)}
-          className="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-[#00fad0] focus:ring-[#00fad0]"
+          className="mt-0.5 rounded border-border bg-background text-[#00fad0] focus:ring-[#00fad0]"
         />
-        <span className="text-sm text-zinc-300">
+        <span className="text-sm text-foreground/90">
           I consent to SMART processing my personal data as described in the{' '}
           <Link
             href="/dpdp-policy"

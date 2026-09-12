@@ -41,9 +41,29 @@ describe('OnboardingWizard', () => {
     enrollTrack.mockReset();
     window.localStorage.clear();
 
-    getOnboarding.mockResolvedValue({ draft: null });
+    getOnboarding.mockResolvedValue({
+      draft: null,
+      profilePhotoUrl: null,
+      onboardingCompleted: false,
+    });
     saveOnboarding.mockResolvedValue({ saved: true });
     completeOnboarding.mockResolvedValue({ onboardingCompleted: true });
+  });
+
+  it('hydrates an uploaded profile photo from the onboarding response', async () => {
+    getOnboarding.mockResolvedValue({
+      draft: { firstName: 'Ada', lastName: 'Lovelace' },
+      profilePhotoUrl: 'https://cdn.example/photo.jpg',
+      onboardingCompleted: false,
+    });
+
+    render(<OnboardingWizard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Let's set up your profile")).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: /change photo/i })).toBeTruthy();
   });
 
   it('does not call enrollTrack during minimal onboarding completion', async () => {

@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canEnableTakeAssessment,
   claimToBadgeStatus,
   canStartSdeV4Verify,
   formatCooldown,
   formatSkillVerifyKioskTitle,
   mandatorySkillsForStream,
   progressForClaim,
+  repositoryStatusForClaim,
   skillsForStream,
   skillVerifyBlockMessage,
+  takeAssessmentBlockMessage,
 } from './skill-declarations';
 import type { SkillClaimDto } from '@smart/contracts';
 
@@ -184,5 +187,24 @@ describe('skill-declarations helpers', () => {
   it('formats lockedUntil for cooldown display', () => {
     expect(formatCooldown(null)).toBeNull();
     expect(formatCooldown('2026-09-30T00:00:00.000Z')).toMatch(/2026/);
+  });
+
+  it('maps repository status labels for catalog skills', () => {
+    expect(repositoryStatusForClaim(undefined).displayLabel).toBe('Not declared');
+    expect(repositoryStatusForClaim(claim({ status: 'DECLARED' })).displayLabel).toBe('Declared');
+    expect(repositoryStatusForClaim(claim({ status: 'VERIFIED' })).displayLabel).toBe('Verified');
+  });
+
+  it('gates Take Assessment on profile completion and proficiency', () => {
+    expect(canEnableTakeAssessment({ profilePercent: 99, proficiency: 'BEGINNER' })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 100, proficiency: null })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 100, proficiency: 'INTERMEDIATE' })).toBe(
+      true,
+    );
+  });
+
+  it('allows practice for verified skills by clearing the verified block message', () => {
+    expect(takeAssessmentBlockMessage(claim({ status: 'VERIFIED' }))).toBeNull();
+    expect(takeAssessmentBlockMessage(claim({ status: 'LOCKED' }))).toMatch(/locked/i);
   });
 });

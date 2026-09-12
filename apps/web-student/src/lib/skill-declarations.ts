@@ -11,6 +11,7 @@ import {
   type SkillClaimStatus,
   type SkillStream,
 } from '@smart/contracts';
+import { canVerifySkills } from './profile-progress';
 
 export const SOFTWARE_IT_DOMAIN_LABEL = 'Software & IT';
 
@@ -217,4 +218,66 @@ export function canStartSdeV4Verify(
 
 export function isClaimActive(status: SkillClaimStatus): boolean {
   return status !== 'LOCKED';
+}
+
+export type RepositoryStatusLabel =
+  'Not declared' | 'Declared' | 'Verified' | 'Not verified' | 'Locked' | 'Reattempting';
+
+/** Human-readable repository status for a catalog skill with an optional claim. */
+export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
+  displayLabel: RepositoryStatusLabel;
+  badgeStatus: string | null;
+} {
+  if (!claim) {
+    return { displayLabel: 'Not declared', badgeStatus: null };
+  }
+  const badge = claimToBadgeStatus(claim);
+  if (badge === 'VERIFIED') {
+    return { displayLabel: 'Verified', badgeStatus: 'VERIFIED' };
+  }
+  if (badge === 'DECLARED') {
+    return { displayLabel: 'Declared', badgeStatus: 'DECLARED' };
+  }
+  if (badge === 'NOT_VERIFIED') {
+    return { displayLabel: 'Not verified', badgeStatus: 'NOT_VERIFIED' };
+  }
+  if (badge === 'LOCKED') {
+    return { displayLabel: 'Locked', badgeStatus: 'LOCKED' };
+  }
+  if (claim.status === 'BEGINNER_REATTEMPT') {
+    return { displayLabel: 'Reattempting', badgeStatus: 'BEGINNER_REATTEMPT' };
+  }
+  return { displayLabel: 'Declared', badgeStatus: badge };
+}
+
+export function streamLabelForSkillDefinition(stream: SkillStream): string {
+  if (stream === 'UNIVERSAL') return 'Universal Core';
+  if (stream === 'SOFTWARE_DEVELOPMENT') return 'Software Development';
+  if (stream === 'DATA_SCIENCE_ANALYTICS') return 'Data Science';
+  if (stream === 'AI_ML_ENGINEERING') return 'AI / ML';
+  return 'Technical Skill';
+}
+
+export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
+  'Complete your profile to unlock skill verification.';
+
+export function isProfileCompleteForSkillVerification(percent: number | null | undefined): boolean {
+  return canVerifySkills(percent);
+}
+
+export function canEnableTakeAssessment(params: {
+  profilePercent: number | null | undefined;
+  proficiency: SkillProficiency | null | undefined;
+}): boolean {
+  return (
+    isProfileCompleteForSkillVerification(params.profilePercent) && Boolean(params.proficiency)
+  );
+}
+
+/** Block message for Take Assessment — verified skills may still practice. */
+export function takeAssessmentBlockMessage(claim?: SkillClaimDto | null): string | null {
+  if (!claim) return null;
+  const message = skillVerifyBlockMessage(claim);
+  if (message === 'This skill is already verified.') return null;
+  return message;
 }

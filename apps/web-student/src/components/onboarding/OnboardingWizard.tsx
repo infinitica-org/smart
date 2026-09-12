@@ -54,9 +54,18 @@ export default function OnboardingWizard() {
         if (cancelled) return;
         if (response.draft) {
           const next = applyServerDraft(formData, response.draft);
-          setFormData(next);
-          saveOnboardingDraft(next);
-          setCurrentStep(furthestStep(next));
+          const withPhoto = response.profilePhotoUrl
+            ? { ...next, profilePhotoUrl: response.profilePhotoUrl }
+            : next;
+          setFormData(withPhoto);
+          saveOnboardingDraft(withPhoto);
+          setCurrentStep(furthestStep(withPhoto));
+        } else if (response.profilePhotoUrl) {
+          setFormData((prev) => {
+            const withPhoto = { ...prev, profilePhotoUrl: response.profilePhotoUrl ?? '' };
+            saveOnboardingDraft(withPhoto);
+            return withPhoto;
+          });
         }
       })
       .catch(() => {
@@ -115,7 +124,7 @@ export default function OnboardingWizard() {
     return (
       <WizardPage>
         <div className="flex justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#00fad0]/20 border-t-[#00fad0]" />
         </div>
       </WizardPage>
     );

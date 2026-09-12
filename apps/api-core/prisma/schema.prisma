@@ -325,6 +325,8 @@ model User {
   onboardingCompleted Boolean      @default(false) @map("onboarding_completed")
   /// Structured onboarding profile + consent snapshot (JSON).
   onboardingDetails   Json?        @map("onboarding_details")
+  /// Object storage key for the candidate profile photo (signed URL served at read time).
+  profilePhotoObjectKey String?    @map("profile_photo_object_key")
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
@@ -1409,9 +1411,26 @@ model CandidateEducation {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  documents CandidateEducationDocument[]
+
   @@index([studentId])
   @@index([studentId, status])
   @@map("candidate_educations")
+}
+
+model CandidateEducationDocument {
+  id            String             @id @default(uuid()) @db.Uuid
+  educationId   String             @map("education_id") @db.Uuid
+  education     CandidateEducation   @relation(fields: [educationId], references: [id], onDelete: Cascade)
+  documentType  String             @map("document_type")
+  fileUrl       String             @map("file_url")
+  fileName      String             @map("file_name")
+  fileSizeBytes Int                @map("file_size_bytes")
+  mimeType      String             @map("mime_type")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([educationId])
+  @@map("candidate_education_documents")
 }
 
 model CandidateLanguage {

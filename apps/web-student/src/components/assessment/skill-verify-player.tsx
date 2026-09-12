@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isSmartApiError } from '@smart/api-client';
 import { Alert } from '@smart/ui';
 import type {
   GradeSdeSkillFormResponse,
@@ -9,7 +11,11 @@ import type {
   SkillVerifySessionDto,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { formatRetryAt, formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import {
+  SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
+  formatRetryAt,
+  formatSkillVerifyKioskTitle,
+} from '@/lib/skill-declarations';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
@@ -29,7 +35,16 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [report, setReport] = useState<GradeSdeSkillFormResponse | null>(null);
   const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
   const generateStarted = useRef(false);
+
+  const resolveStartError = useCallback((err: unknown): string => {
+    if (isSmartApiError(err) && err.code === 'profile_incomplete') {
+      setProfileIncomplete(true);
+      return err.message;
+    }
+    return err instanceof Error ? err.message : 'Could not start verification.';
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,14 +62,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         setPrepared(next);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not start verification.');
+          setError(resolveStartError(err));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [claimId]);
+  }, [claimId, resolveStartError]);
 
   const generateForm = useCallback(async () => {
     if (!prepared || generateStarted.current) return;
@@ -74,7 +89,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
       setCurrentIndex(0);
     } catch (err) {
       generateStarted.current = false;
-      setError(err instanceof Error ? err.message : 'Could not generate the form.');
+      setError(resolveStartError(err));
     } finally {
       setGenerating(false);
     }
@@ -171,7 +186,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           <button
             type="button"
             onClick={() => router.push('/skills')}
-            className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20"
+            className="mt-4 rounded-lg border border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground hover:bg-background"
           >
             Back to Skills
           </button>
@@ -182,15 +197,25 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   if (error && !prepared) {
     return (
-      <Alert tone="danger" title="Could not start">
-        {error}
-      </Alert>
+      <div className="mx-auto max-w-md space-y-4 p-6">
+        <Alert tone="danger" title="Could not start">
+          {profileIncomplete ? SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE : error}
+        </Alert>
+        {profileIncomplete ? (
+          <Link
+            href="/profile"
+            className="inline-flex rounded-lg bg-[#00fad0] px-4 py-2 text-sm font-semibold text-[#04120f] hover:bg-[#33ffdd]"
+          >
+            Complete your profile
+          </Link>
+        ) : null}
+      </div>
     );
   }
 
   if (!prepared) {
     return (
-      <p className="text-sm text-white/50" aria-live="polite">
+      <p className="text-sm text-muted-foreground" aria-live="polite">
         Checking eligibility…
       </p>
     );

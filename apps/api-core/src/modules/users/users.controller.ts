@@ -1,5 +1,19 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Put, Query, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Post,
+  Put,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { Multipart, MultipartFile } from '@fastify/multipart';
+import type { FastifyRequest } from 'fastify';
 import {
   API_PREFIX,
   ChangePasswordRequestSchema,
@@ -21,6 +35,9 @@ import { LinkedinOauthService } from '../auth/linkedin-oauth.service.js';
 import { GeocodingOnboardingService } from '../integrations/geocoding/geocoding-onboarding.service.js';
 import { GithubOnboardingService } from '../integrations/github/github-onboarding.service.js';
 import { UsersService } from './users.service.js';
+
+const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 @ApiTags('users')
 @Controller(`${API_PREFIX}/users`)
@@ -94,6 +111,105 @@ export class UsersController {
   @ApiResponse({ status: 422, description: 'Neither rawText nor objectKey supplied.' })
   parseResume(@Body() body: unknown) {
     return this.resumeParse.parse(body);
+  }
+
+  @Get('me/resume')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Read stored resume file metadata for the authenticated candidate.' })
+  getResume(@CurrentUser() user: RequestUser) {
+    return this.service.getResumeState(user.sub);
+  }
+
+  @Post('me/resume')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload or replace the candidate resume file (PDF/DOCX/TXT, max 5MB).' })
+  async uploadResume(@CurrentUser() user: RequestUser, @Req() request: FastifyRequest) {
+    const partsIter = (
+      request as FastifyRequest & { parts: (opts?: unknown) => AsyncIterableIterator<Multipart> }
+    ).parts({ limits: { fileSize: MAX_RESUME_BYTES } });
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        }
+      }
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The uploaded file exceeds the 5MB limit or could not be read.',
+        statusCode: 400,
+      });
+    }
+
+    if (!fileBuffer) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Choose a PDF, DOCX, DOC, or TXT resume to upload.',
+        statusCode: 400,
+      });
+    }
+
+    return this.service.uploadResume(user.sub, {
+      buffer: fileBuffer,
+      fileName,
+      mimeType,
+    });
+  }
+
+  @Post('me/profile-photo')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload or replace the candidate profile photo (JPEG/PNG/WebP).' })
+  @ApiResponse({ status: 200, description: 'Signed profilePhotoUrl for immediate display.' })
+  async uploadProfilePhoto(@CurrentUser() user: RequestUser, @Req() request: FastifyRequest) {
+    const partsIter = (
+      request as FastifyRequest & { parts: (opts?: unknown) => AsyncIterableIterator<Multipart> }
+    ).parts({ limits: { fileSize: MAX_PROFILE_PHOTO_BYTES } });
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        }
+      }
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The uploaded file exceeds the 2MB limit or could not be read.',
+        statusCode: 400,
+      });
+    }
+
+    if (!fileBuffer) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Choose a JPEG, PNG, or WebP image to upload.',
+        statusCode: 400,
+      });
+    }
+
+    return this.service.uploadProfilePhoto(user.sub, {
+      buffer: fileBuffer,
+      fileName,
+      mimeType,
+    });
   }
 
   @Get('me/onboarding/linkedin/oauth-url')
