@@ -28,21 +28,28 @@ export type CompetencyRollupInput = {
   readonly items: readonly ScoredCompetencyItem[];
 };
 
+export type VerificationMode = 'discovery' | 'declared-target';
+
 export type AssessmentIntelligenceInput = {
   readonly competencyModel: readonly SkillCompetency[];
   readonly proficiencyRequirements: readonly ProficiencyRequirement[];
   readonly items: readonly ScoredCompetencyItem[];
   readonly targetProficiency: ProficiencyLevel;
+  readonly verificationMode?: VerificationMode;
+  /** When false, do not request another upward probe (post-targeted finalize). */
+  readonly allowUpwardProbe?: boolean;
 };
 
 export type AssessmentIntelligenceOutput = {
   readonly competencyResults: CompetencyResult[];
-  readonly highestAssessmentSupportedProficiency: ProficiencyLevel;
+  readonly highestAssessmentSupportedProficiency: ProficiencyLevel | null;
   readonly confidence: AssessmentConfidenceLevel;
   readonly uncertainties: string[];
   readonly recommendedNextStep: RecommendedNextStep;
   readonly requiresInterview: boolean;
+  readonly requiresEvidenceVerification: boolean;
   readonly requiresAdditionalAssessment: boolean;
+  readonly assessmentComplete: boolean;
   readonly assessmentPassed: boolean;
   readonly scorePercent: number;
 };
@@ -126,9 +133,9 @@ export function rollupItemResultsToCompetencies(input: CompetencyRollupInput): C
 export function determineSupportedProficiency(
   competencyResults: readonly CompetencyResult[],
   requirements: readonly ProficiencyRequirement[],
-): ProficiencyLevel {
+): ProficiencyLevel | null {
   const statuses = new Map(competencyResults.map((row) => [row.competencyId, row.status]));
-  let supported: ProficiencyLevel = 'BEGINNER';
+  let supported: ProficiencyLevel | null = null;
   for (const level of PROFICIENCY_ORDER) {
     if (meetsProficiency(level, statuses, requirements)) {
       supported = level;
@@ -180,14 +187,80 @@ export function competencyIdsNeedingTargetedAssessment(
     .map((row) => row.competencyId);
 }
 
+/** Competencies that could still change the supported proficiency if resolved. */
+export function competencyIdsBlockingProficiency(
+  competencyResults: readonly CompetencyResult[],
+  supported: ProficiencyLevel | null,
+  requirements: readonly ProficiencyRequirement[],
+): string[] {
+  if (supported === null) {
+    const beginner = requirements.find((row) => row.level === 'BEGINNER');
+    if (!beginner) return competencyIdsNeedingTargetedAssessment(competencyResults);
+    const statuses = new Map(competencyResults.map((row) => [row.competencyId, row.status]));
+    return beginner.criticalCompetencyIds.filter((id) => {
+      const status = statuses.get(id);
+      return status !== 'DEMONSTRATED' && status !== 'PARTIALLY_DEMONSTRATED';
+    });
+  }
+
+  const supportedReq = requirements.find((row) => row.level === supported);
+  if (!supportedReq) return [];
+
+  const statuses = new Map(competencyResults.map((row) => [row.competencyId, row.status]));
+  return supportedReq.criticalCompetencyIds.filter((competencyId) => {
+    const status = statuses.get(competencyId);
+    return (
+      status === 'UNCERTAIN' || status === 'NOT_DEMONSTRATED' || status === 'PARTIALLY_DEMONSTRATED'
+    );
+  });
+}
+
+export function nextLevelProbeCompetencyIds(
+  supported: ProficiencyLevel,
+  competencyResults: readonly CompetencyResult[],
+  requirements: readonly ProficiencyRequirement[],
+  targetProficiency: ProficiencyLevel,
+): string[] {
+  const nextIndex = proficiencyIndex(supported) + 1;
+  const nextLevel = PROFICIENCY_ORDER[nextIndex];
+  if (!nextLevel || compareProficiency(nextLevel, targetProficiency) > 0) {
+    return [];
+  }
+  const nextReq = requirements.find((row) => row.level === nextLevel);
+  if (!nextReq) return [];
+  const statuses = new Map(competencyResults.map((row) => [row.competencyId, row.status]));
+  return nextReq.criticalCompetencyIds.filter((competencyId) => {
+    const status = statuses.get(competencyId);
+    return (
+      status === 'NOT_TESTED' ||
+      status === 'UNCERTAIN' ||
+      status === 'NOT_DEMONSTRATED' ||
+      status === 'PARTIALLY_DEMONSTRATED'
+    );
+  });
+}
+
 export function shouldStopTesting(
   competencyResults: readonly CompetencyResult[],
   targetProficiency: ProficiencyLevel,
   requirements: readonly ProficiencyRequirement[],
+  allowUpwardProbe = true,
 ): boolean {
   const supported = determineSupportedProficiency(competencyResults, requirements);
-  if (compareProficiency(supported, targetProficiency) >= 0) {
-    return true;
+  if (supported !== null) {
+    if (competencyIdsBlockingProficiency(competencyResults, supported, requirements).length > 0) {
+      return false;
+    }
+    if (!allowUpwardProbe) {
+      return true;
+    }
+    if (compareProficiency(supported, targetProficiency) >= 0) {
+      return true;
+    }
+    return (
+      nextLevelProbeCompetencyIds(supported, competencyResults, requirements, targetProficiency)
+        .length === 0
+    );
   }
   const unresolved = competencyIdsNeedingTargetedAssessment(competencyResults);
   const targetReq = requirements.find((row) => row.level === targetProficiency);
@@ -196,51 +269,62 @@ export function shouldStopTesting(
   return targetCritical.length === 0 && unresolved.length <= 1;
 }
 
-export function recommendNextStep(input: {
-  supportedProficiency: ProficiencyLevel;
+export function recommendAssessmentNextStep(input: {
+  supportedProficiency: ProficiencyLevel | null;
   targetProficiency: ProficiencyLevel;
   competencyResults: readonly CompetencyResult[];
-  confidence: AssessmentConfidenceLevel;
-  requiresInterviewGate: boolean;
-  requiresEvidenceGate: boolean;
+  requirements: readonly ProficiencyRequirement[];
   stageComplete: boolean;
+  verificationMode?: VerificationMode;
+  allowUpwardProbe?: boolean;
 }): {
   recommendedNextStep: RecommendedNextStep;
-  requiresInterview: boolean;
   requiresAdditionalAssessment: boolean;
 } {
-  const unresolved = competencyIdsNeedingTargetedAssessment(input.competencyResults);
-  if (!input.stageComplete && unresolved.length > 0) {
+  const allowUpwardProbe = input.allowUpwardProbe ?? true;
+  const blocking = competencyIdsBlockingProficiency(
+    input.competencyResults,
+    input.supportedProficiency,
+    input.requirements,
+  );
+  const probeIds =
+    input.supportedProficiency === null
+      ? competencyIdsNeedingTargetedAssessment(input.competencyResults)
+      : allowUpwardProbe
+        ? nextLevelProbeCompetencyIds(
+            input.supportedProficiency,
+            input.competencyResults,
+            input.requirements,
+            input.targetProficiency,
+          )
+        : [];
+  if (!input.stageComplete && (blocking.length > 0 || probeIds.length > 0)) {
     return {
       recommendedNextStep: 'TARGETED_ASSESSMENT',
-      requiresInterview: false,
       requiresAdditionalAssessment: true,
     };
   }
-  if (compareProficiency(input.supportedProficiency, input.targetProficiency) < 0) {
+
+  const verificationMode = input.verificationMode ?? 'declared-target';
+  if (verificationMode === 'discovery') {
+    if (input.supportedProficiency === null) {
+      return {
+        recommendedNextStep: 'REMEDIATION',
+        requiresAdditionalAssessment: false,
+      };
+    }
+  } else if (
+    input.supportedProficiency === null ||
+    compareProficiency(input.supportedProficiency, input.targetProficiency) < 0
+  ) {
     return {
       recommendedNextStep: 'REMEDIATION',
-      requiresInterview: false,
       requiresAdditionalAssessment: false,
     };
   }
-  if (input.requiresEvidenceGate) {
-    return {
-      recommendedNextStep: 'EVIDENCE_VERIFICATION',
-      requiresInterview: input.requiresInterviewGate,
-      requiresAdditionalAssessment: false,
-    };
-  }
-  if (input.requiresInterviewGate || input.confidence === 'LOW') {
-    return {
-      recommendedNextStep: 'INTERVIEW',
-      requiresInterview: true,
-      requiresAdditionalAssessment: false,
-    };
-  }
+
   return {
     recommendedNextStep: 'NONE',
-    requiresInterview: false,
     requiresAdditionalAssessment: false,
   };
 }
@@ -266,45 +350,47 @@ export function evaluateAssessmentIntelligence(
       100;
     const confidence = computeAssessmentConfidence(competencyResults, input.items.length);
     const uncertainties = listUncertainCompetencies(competencyResults, input.competencyModel);
-    const requiresInterviewGate =
-      (input.targetProficiency === 'ADVANCED' || input.targetProficiency === 'PROFESSIONAL') &&
-      compareProficiency(highestAssessmentSupportedProficiency, input.targetProficiency) >= 0;
-    const requiresEvidenceGate = input.targetProficiency === 'PROFESSIONAL';
+    const allowUpwardProbe = input.allowUpwardProbe ?? true;
     const stageComplete = shouldStopTesting(
       competencyResults,
       input.targetProficiency,
       input.proficiencyRequirements,
+      allowUpwardProbe,
     );
-    const next = recommendNextStep({
+    const next = recommendAssessmentNextStep({
       supportedProficiency: highestAssessmentSupportedProficiency,
       targetProficiency: input.targetProficiency,
       competencyResults,
-      confidence,
-      requiresInterviewGate,
-      requiresEvidenceGate,
+      requirements: input.proficiencyRequirements,
       stageComplete,
+      verificationMode: input.verificationMode,
+      allowUpwardProbe,
     });
-    const assessmentPassed =
-      compareProficiency(highestAssessmentSupportedProficiency, input.targetProficiency) >= 0 &&
-      next.recommendedNextStep !== 'EVIDENCE_VERIFICATION' &&
-      next.recommendedNextStep !== 'INTERVIEW';
+    const assessmentComplete =
+      highestAssessmentSupportedProficiency !== null &&
+      next.recommendedNextStep !== 'REMEDIATION' &&
+      next.recommendedNextStep !== 'TARGETED_ASSESSMENT';
+
     return {
       competencyResults,
       highestAssessmentSupportedProficiency,
       confidence,
       uncertainties,
       recommendedNextStep: next.recommendedNextStep,
-      requiresInterview: next.requiresInterview,
+      requiresInterview: false,
+      requiresEvidenceVerification: false,
       requiresAdditionalAssessment: next.requiresAdditionalAssessment,
-      assessmentPassed,
+      assessmentComplete,
+      assessmentPassed: assessmentComplete,
       scorePercent,
     };
   });
 }
 
 export function proficiencyMeetsTarget(
-  supported: ProficiencyLevel,
+  supported: ProficiencyLevel | null,
   target: ProficiencyLevel,
 ): boolean {
+  if (supported === null) return false;
   return compareProficiency(supported, target) >= 0;
 }

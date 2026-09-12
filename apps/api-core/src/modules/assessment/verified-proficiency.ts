@@ -2,6 +2,12 @@ import type { ProficiencyRequirementLevel, SkillProficiency } from '@smart/contr
 
 import { proficiencyMeetsTarget } from '@smart/scoring-engine';
 
+export function hasDemonstratedProficiency(
+  demonstrated: ProficiencyRequirementLevel | null,
+): demonstrated is ProficiencyRequirementLevel {
+  return demonstrated !== null;
+}
+
 export function claimProficiencyFromDemonstrated(
   demonstrated: ProficiencyRequirementLevel,
 ): SkillProficiency {

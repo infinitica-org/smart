@@ -12,7 +12,8 @@ export type VerificationState =
   | 'VERIFIED'
   | 'EXPIRING'
   | 'EXPIRING_SOON'
-  | 'BEGINNER_REATTEMPT';
+  | 'BEGINNER_REATTEMPT'
+  | 'PROVISIONAL';
 
 export interface VerificationBadgeProps extends HTMLAttributes<HTMLSpanElement> {
   status: VerificationState | string;
@@ -32,6 +33,12 @@ const STATE_CONFIGS: Record<string, StateStyle> = {
     classNameSolid: 'bg-success text-[#070707] border-transparent',
     classNameOutline: 'bg-success/10 text-success border-success/30',
     icon: CheckCircle,
+  },
+  PROVISIONAL: {
+    label: 'Provisional',
+    classNameSolid: 'bg-warning text-[#070707] border-transparent',
+    classNameOutline: 'bg-warning/10 text-warning border-warning/30',
+    icon: AlertTriangle,
   },
   IN_PROGRESS: {
     label: 'In Progress',

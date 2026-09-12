@@ -30,10 +30,11 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
 }
 
 describe('skill-declarations helpers', () => {
-  it('formats professional kiosk titles', () => {
-    expect(formatSkillVerifyKioskTitle('SQL_QUERY_OPTIMIZATION', 'PROFESSIONAL')).toContain(
-      'Professional',
+  it('formats kiosk titles with assessment stage labels', () => {
+    expect(formatSkillVerifyKioskTitle('SQL_QUERY_OPTIMIZATION', 'DIAGNOSTIC')).toContain(
+      'Short diagnostic',
     );
+    expect(formatSkillVerifyKioskTitle('SQL_QUERY_OPTIMIZATION')).not.toContain('Beginner');
   });
 
   it('allows editing proficiency before first verification', () => {
@@ -113,6 +114,11 @@ describe('skill-declarations helpers', () => {
       ),
     ).toBe('NOT_VERIFIED');
     expect(claimToBadgeStatus(claim({ status: 'VERIFIED' }))).toBe('VERIFIED');
+    expect(
+      claimToBadgeStatus(
+        claim({ status: 'VERIFIED', verificationDecision: 'PROVISIONAL', claimConfidence: 0.55 }),
+      ),
+    ).toBe('PROVISIONAL');
   });
 
   it('formats lockedUntil for cooldown display', () => {
@@ -126,12 +132,10 @@ describe('skill-declarations helpers', () => {
     expect(repositoryStatusForClaim(claim({ status: 'VERIFIED' })).displayLabel).toBe('Verified');
   });
 
-  it('gates Take Assessment on profile completion and proficiency', () => {
-    expect(canEnableTakeAssessment({ profilePercent: 99, proficiency: 'BEGINNER' })).toBe(false);
-    expect(canEnableTakeAssessment({ profilePercent: 100, proficiency: null })).toBe(false);
-    expect(canEnableTakeAssessment({ profilePercent: 100, proficiency: 'INTERMEDIATE' })).toBe(
-      true,
-    );
+  it('gates Take Assessment on profile completion only', () => {
+    expect(canEnableTakeAssessment({ profilePercent: 49 })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 50 })).toBe(true);
+    expect(canEnableTakeAssessment({ profilePercent: 100 })).toBe(true);
   });
 
   it('allows practice for verified skills by clearing the verified block message', () => {

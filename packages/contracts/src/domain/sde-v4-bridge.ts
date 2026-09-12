@@ -1,5 +1,11 @@
+import {
+  sdeFormCodeForSkill,
+  skillFocusOptionsForSkill,
+} from './evidence/skill-competency-registry.js';
+
 /**
  * Maps skill@1 catalog skill codes (SkillClaim.skillCode) onto SDE v4 form codes.
+ * @deprecated Prefer sdeFormCodeForSkill() from skill-competency-registry (81-skill index).
  */
 
 export const SKILL_TO_SDE_V4_FORM_CODE: Readonly<Record<string, string>> = {
@@ -23,7 +29,11 @@ export const INF05_TO_SDE_V4_FORM_CODE = SKILL_TO_SDE_V4_FORM_CODE;
 
 export function sdeV4FormCodeForCatalogSkill(skillCode: string): string | null {
   if (!skillCode || typeof skillCode !== 'string') return null;
-  return SKILL_TO_SDE_V4_FORM_CODE[skillCode] ?? 'SDE_PROGRAMMING_FUNDAMENTALS';
+  return (
+    sdeFormCodeForSkill(skillCode) ??
+    SKILL_TO_SDE_V4_FORM_CODE[skillCode] ??
+    'SDE_PROGRAMMING_FUNDAMENTALS'
+  );
 }
 
 export const SKILL_FOCUS_OPTIONS: Readonly<Record<string, readonly string[]>> = {
@@ -45,6 +55,8 @@ export const SKILL_FOCUS_OPTIONS: Readonly<Record<string, readonly string[]>> = 
 };
 
 export function skillFocusOptions(skillCode: string): readonly string[] {
+  const fromRegistry = skillFocusOptionsForSkill(skillCode);
+  if (fromRegistry.length > 0) return fromRegistry;
   return SKILL_FOCUS_OPTIONS[skillCode] ?? [];
 }
 

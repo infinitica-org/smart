@@ -19,5 +19,7 @@ export * from './skill-blueprint.js';
 export * from './competency-status.js';
 export * from './assessment-result.js';
 export * from './proficiency-requirements.js';
+export * from './skill-evidence-context.js';
 export * from './category-competency-templates.js';
+export * from './skill-competency-registry.js';
 export * from './skill-demonstration-evidence.js';

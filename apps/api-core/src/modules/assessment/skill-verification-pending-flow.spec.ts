@@ -59,6 +59,9 @@ function assessmentResult(overrides?: Partial<AssessmentResult>): AssessmentResu
     ],
     highestAssessmentSupportedProficiency: 'PROFESSIONAL',
     targetProficiency: 'PROFESSIONAL',
+    assessmentComplete: true,
+    assessmentPassed: true,
+    requiresEvidenceVerification: false,
     uncertainties: [],
     recommendedNextStep: 'EVIDENCE_VERIFICATION',
     requiresInterview: true,
@@ -103,9 +106,11 @@ function makeService(deps: {
   prisma?: Record<string, unknown>;
   redis?: Record<string, unknown>;
   evaluation?: Record<string, unknown>;
+  aiGateway?: Record<string, unknown>;
   intelligence?: Record<string, unknown>;
   verification?: Record<string, unknown>;
   outbox?: Record<string, unknown>;
+  profile?: Record<string, unknown>;
 }) {
   return new SkillVerificationService(
     (deps.prisma ?? {
@@ -125,13 +130,20 @@ function makeService(deps: {
       generateSkillInterview: vi.fn(),
       gradeSkillInterview: vi.fn(),
     }) as never,
+    (deps.aiGateway ?? { hasCallableProvider: vi.fn().mockReturnValue(true) }) as never,
     (deps.outbox ?? { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) }) as never,
     (deps.intelligence ?? {
       resolveBlueprint: vi.fn(),
       buildAssessmentResult: vi.fn(),
+      claimPassesFromAssessment: vi.fn().mockReturnValue(false),
     }) as never,
     (deps.verification ?? {
       evaluateClaimVerification: vi.fn(),
+    }) as never,
+    (deps.profile ?? {
+      assertCompleteForSkillVerification: vi.fn().mockResolvedValue(undefined),
+      isCompleteForSkillVerification: vi.fn().mockResolvedValue(true),
+      getProgressForStudent: vi.fn().mockResolvedValue({ percent: 100 }),
     }) as never,
   );
 }
@@ -179,6 +191,8 @@ describe('SkillVerificationService pending verification flow', () => {
           requiresInterview: true,
           requiresEvidence: true,
           canFinalizeClaim: true,
+          verificationDecision: 'VERIFIED',
+          claimConfidence: 0.85,
           reasons: [],
         }),
     };
@@ -211,6 +225,11 @@ describe('SkillVerificationService pending verification flow', () => {
         competencyModel: [],
       }),
       buildAssessmentResult: vi.fn().mockReturnValue(assessmentResult()),
+      claimPassesFromAssessment: vi
+        .fn()
+        .mockImplementation(
+          (result: { recommendedNextStep: string }) => result.recommendedNextStep === 'NONE',
+        ),
     };
 
     const prisma = {
@@ -222,7 +241,16 @@ describe('SkillVerificationService pending verification flow', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn(),
       },
-      $transaction: vi.fn().mockResolvedValue([updatedClaim]),
+      verificationDecision: {
+        create: vi.fn().mockResolvedValue({ id: 'decision-1' }),
+      },
+      $transaction: vi.fn().mockImplementation(async (ops) => {
+        const results = [];
+        for (const op of ops) {
+          results.push(await op);
+        }
+        return [updatedClaim, ...results.slice(1)];
+      }),
     };
 
     const service = makeService({ prisma, redis, evaluation, intelligence, verification });
@@ -276,6 +304,7 @@ describe('SkillVerificationService pending verification flow', () => {
       buildAssessmentResult: vi
         .fn()
         .mockReturnValue(assessmentResult({ recommendedNextStep: 'INTERVIEW' })),
+      claimPassesFromAssessment: vi.fn().mockReturnValue(false),
     };
     const verification = {
       evaluateClaimVerification: vi.fn().mockResolvedValue({

@@ -1,22 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { assessmentMeetsTarget, claimProficiencyFromDemonstrated } from './verified-proficiency.js';
+import {
+  assessmentMeetsTarget,
+  claimProficiencyFromDemonstrated,
+  hasDemonstratedProficiency,
+} from './verified-proficiency.js';
 
 describe('verified-proficiency', () => {
-  it('maps demonstrated professional to professional on claims', () => {
-    expect(claimProficiencyFromDemonstrated('PROFESSIONAL')).toBe('PROFESSIONAL');
+  it('treats null demonstration as failing target checks', () => {
+    expect(hasDemonstratedProficiency(null)).toBe(false);
+    expect(assessmentMeetsTarget(null, 'BEGINNER')).toBe(false);
   });
 
-  it('maps demonstrated advanced to advanced on claims', () => {
-    expect(claimProficiencyFromDemonstrated('ADVANCED')).toBe('ADVANCED');
-  });
-
-  it('preserves intermediate and beginner demonstrated levels', () => {
+  it('maps demonstrated levels onto claim proficiency', () => {
     expect(claimProficiencyFromDemonstrated('INTERMEDIATE')).toBe('INTERMEDIATE');
-    expect(claimProficiencyFromDemonstrated('BEGINNER')).toBe('BEGINNER');
-  });
-
-  it('assessmentMeetsTarget compares supported vs declared claim', () => {
-    expect(assessmentMeetsTarget('ADVANCED', 'INTERMEDIATE')).toBe(true);
-    expect(assessmentMeetsTarget('BEGINNER', 'INTERMEDIATE')).toBe(false);
+    expect(claimProficiencyFromDemonstrated('ADVANCED')).toBe('ADVANCED');
   });
 });

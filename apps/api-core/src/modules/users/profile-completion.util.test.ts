@@ -40,12 +40,13 @@ function completeInput(): ProfileProgressInput {
 }
 
 describe('canVerifySkills', () => {
-  it('blocks 0% and 99% profiles', () => {
+  it('blocks profiles below 50%', () => {
     expect(canVerifySkills(0)).toBe(false);
-    expect(canVerifySkills(99)).toBe(false);
+    expect(canVerifySkills(49)).toBe(false);
   });
 
-  it('allows 100% and does not block values above 100%', () => {
+  it('allows 50% and does not block values above 50%', () => {
+    expect(canVerifySkills(50)).toBe(true);
     expect(canVerifySkills(100)).toBe(true);
     expect(canVerifySkills(101)).toBe(true);
   });
@@ -57,11 +58,25 @@ describe('canVerifySkills', () => {
 });
 
 describe('isProfileCompleteForSkillVerification', () => {
-  it('returns false for seven of eight areas', () => {
-    const input = completeInput();
-    input.certificates = [];
+  it('returns false below 50% profile completion', () => {
+    const input = emptyInput({
+      skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+      languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+      education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+    });
     expect(isProfileCompleteForSkillVerification(input)).toBe(false);
-    expect(computeProfileCompletion(input).percent).toBe(88);
+    expect(computeProfileCompletion(input).percent).toBe(38);
+  });
+
+  it('returns true at 50% profile completion (four of eight areas)', () => {
+    const input = emptyInput({
+      skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+      languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+      education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+      experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Intern' } as never],
+    });
+    expect(isProfileCompleteForSkillVerification(input)).toBe(true);
+    expect(computeProfileCompletion(input).percent).toBe(50);
   });
 
   it('returns true when all eight areas are complete', () => {

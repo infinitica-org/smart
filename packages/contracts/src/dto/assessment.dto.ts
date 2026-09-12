@@ -23,6 +23,7 @@ import {
   AssessmentResultSchema,
   AssessmentStageSchema,
   RecommendedNextStepSchema,
+  SkillEvidenceContextSchema,
 } from '../domain/evidence/index.js';
 import {
   ProctoringEventClassSchema,
@@ -303,6 +304,7 @@ export const SkillVerifyPrepareDtoSchema = z.object({
   sessionId: UuidSchema,
   claimId: UuidSchema,
   expiresAt: IsoDateTimeSchema,
+  evidenceContext: SkillEvidenceContextSchema.optional(),
 });
 export type SkillVerifyPrepareDto = z.infer<typeof SkillVerifyPrepareDtoSchema>;
 
@@ -323,6 +325,7 @@ export const SkillVerifySessionDtoSchema = z.object({
   pendingCompetencies: z.array(z.string().max(500)).max(10).optional(),
   pendingVerification: z.boolean().optional(),
   verificationStep: RecommendedNextStepSchema.optional(),
+  evidenceContext: SkillEvidenceContextSchema.optional(),
 });
 export type SkillVerifySessionDto = z.infer<typeof SkillVerifySessionDtoSchema>;
 

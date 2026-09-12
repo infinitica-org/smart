@@ -56,7 +56,12 @@ import {
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { OrganizationsService } from '../institutions/organizations.service.js';
+import {
+  assertStudentControlledProofFileUrl,
+  InvalidStudentProofFileUrlError,
+} from './work-experience-proof-url.util.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -425,21 +430,28 @@ export class WorkExperienceService {
       }
     }
 
-    await this.assertWorkExperienceCompleteness({
-      companyName: data.companyName,
-      role: data.role,
-      employmentType: data.employmentType,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      isCurrent: data.isCurrent,
-      domain: data.domain,
-      responsibilities: data.responsibilities,
-      skillsClaimed: data.skillsClaimed,
-      companyId: matchedCompanyId ?? data.companyId,
-      companyWebsite: data.companyWebsite,
-      companyLinkedinUrl: data.companyLinkedinUrl,
-      documents: data.documents,
-    });
+    for (const doc of data.documents ?? []) {
+      this.assertProofFileUrlOrThrow(doc.fileUrl);
+    }
+
+    await this.assertWorkExperienceCompleteness(
+      {
+        companyName: data.companyName,
+        role: data.role,
+        employmentType: data.employmentType,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isCurrent: data.isCurrent,
+        domain: data.domain,
+        responsibilities: data.responsibilities,
+        skillsClaimed: data.skillsClaimed,
+        companyId: matchedCompanyId ?? data.companyId,
+        companyWebsite: data.companyWebsite,
+        companyLinkedinUrl: data.companyLinkedinUrl,
+        documents: data.documents,
+      },
+      { skipDocumentRules: (data.documents ?? []).length === 0 },
+    );
 
     const structuredMetadata = extractStructuredMetadata(data);
 
@@ -702,6 +714,8 @@ export class WorkExperienceService {
         details: parsed.error.flatten(),
       });
     }
+
+    this.assertProofFileUrlOrThrow(parsed.data.fileUrl);
 
     const doc = await this.prisma.workExperienceDocument.create({
       data: {
@@ -1353,6 +1367,22 @@ export class WorkExperienceService {
     });
   }
 
+  private assertProofFileUrlOrThrow(fileUrl: string): void {
+    try {
+      assertStudentControlledProofFileUrl(fileUrl);
+    } catch (error) {
+      const message =
+        error instanceof InvalidStudentProofFileUrlError
+          ? error.message
+          : 'Invalid proof document file reference.';
+      throw new BadRequestException({
+        error: 'invalid_file_url',
+        message,
+        statusCode: 400,
+      });
+    }
+  }
+
   private async assertWorkExperienceCompleteness(
     input:
       | WorkExperienceValidationInput
@@ -1374,6 +1404,7 @@ export class WorkExperienceService {
         > & {
           documents?: Array<{ documentType: string }>;
         }),
+    options?: { skipDocumentRules?: boolean },
   ): Promise<void> {
     const validationInput =
       'startDate' in input && input.startDate instanceof Date
@@ -1386,8 +1417,11 @@ export class WorkExperienceService {
           };
 
     const result = validateWorkExperienceSubmission(validationInput);
-    if (!result.valid) {
-      this.throwWorkExperienceValidationError(result);
+    const issues = options?.skipDocumentRules
+      ? result.issues.filter((issue) => issue.path !== 'documents')
+      : result.issues;
+    if (issues.length > 0) {
+      this.throwWorkExperienceValidationError({ valid: false, issues });
     }
   }
 
@@ -1427,30 +1461,7 @@ export class WorkExperienceService {
       }
     }
 
-    // 2. HTTP/HTTPS URL
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-      try {
-        const res = await fetch(fileUrl);
-        if (!res.ok) {
-          throw new Error(`HTTP fetch failed with status ${res.status}`);
-        }
-        const arrayBuf = await res.arrayBuffer();
-        const buf = Buffer.from(arrayBuf);
-        if (buf.length > MAX_FILE_SIZE_BYTES) {
-          throw new Error('Retrieved file size exceeds 5MB limit');
-        }
-        return buf;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new BadRequestException({
-          error: 'file_retrieval_failed',
-          message: `Proof document file could not be retrieved from remote URL: ${msg}`,
-          statusCode: 400,
-        });
-      }
-    }
-
-    // 3. Object storage key (MinIO/S3 via StorageService)
+    // 2. Object storage key (MinIO/S3 via StorageService)
     if (this.storageService) {
       try {
         return await this.storageService.getObjectBuffer(fileUrl);
@@ -1872,8 +1883,16 @@ export class WorkExperienceService {
   /**
    * Fetches Ops Dashboard items for tracking candidate work experience verifications.
    */
-  async getOpsDashboard(): Promise<WorkExperienceOpsDashboardItemDto[]> {
+  async getOpsDashboard(user: RequestUser): Promise<WorkExperienceOpsDashboardItemDto[]> {
+    const institutionScope =
+      user.role === 'SUPER_ADMIN'
+        ? {}
+        : user.inst
+          ? { student: { institutionId: user.inst } }
+          : { id: '__none__' };
+
     const experiences = await this.prisma.workExperience.findMany({
+      where: institutionScope,
       include: {
         student: true,
         documents: true,

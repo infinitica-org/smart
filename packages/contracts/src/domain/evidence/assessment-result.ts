@@ -6,6 +6,7 @@ import {
   CompetencyStatusSchema,
   RecommendedNextStepSchema,
 } from './competency-status.js';
+import { VerificationDecisionOutcomeSchema } from './enums.js';
 import { ProficiencyRequirementLevelSchema } from './proficiency-requirements.js';
 
 export const CompetencyResultSchema = z.object({
@@ -21,14 +22,24 @@ export const AssessmentResultSchema = z.object({
   assessmentVersion: z.string().max(40).default('v1'),
   attemptId: UuidSchema,
   competencyResults: z.array(CompetencyResultSchema).max(50),
-  highestAssessmentSupportedProficiency: ProficiencyRequirementLevelSchema,
+  highestAssessmentSupportedProficiency: ProficiencyRequirementLevelSchema.nullable(),
   targetProficiency: ProficiencyRequirementLevelSchema,
+  /** Assessment phase complete — demonstrated proficiency without further targeted items. */
+  assessmentComplete: z.boolean().default(false),
+  /** @deprecated Prefer assessmentComplete; kept for backward-compatible clients. */
+  assessmentPassed: z.boolean().default(false),
   uncertainties: z.array(z.string().max(500)).max(30).default([]),
   recommendedNextStep: RecommendedNextStepSchema,
   requiresInterview: z.boolean().default(false),
+  requiresEvidenceVerification: z.boolean().default(false),
   requiresAdditionalAssessment: z.boolean().default(false),
   confidence: AssessmentConfidenceLevelSchema,
   scorePercent: z.number().min(0).max(100).optional(),
+  verificationDecision: VerificationDecisionOutcomeSchema.optional(),
+  claimConfidence: z.number().min(0).max(1).optional(),
+  /** Targeted follow-up was recommended but could not be generated (AI unavailable or timeout). */
+  targetedAssessmentSkipped: z.boolean().optional(),
+  targetedAssessmentSkipReason: z.enum(['ai_unavailable', 'generation_failed']).optional(),
   evaluatedAt: IsoDateTimeSchema,
 });
 export type AssessmentResult = z.infer<typeof AssessmentResultSchema>;

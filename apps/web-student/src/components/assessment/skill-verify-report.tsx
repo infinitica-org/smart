@@ -1,137 +1,125 @@
 'use client';
 
+import Link from 'next/link';
 import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
-import { Badge, Button } from '@smart/ui';
+import { Badge, Button, VerificationBadge } from '@smart/ui';
+import { PROFICIENCY_LABELS, skillNameForCode } from '@/lib/skill-declarations';
+import { targetedAssessmentSkipMessage } from '@/lib/competency-display';
+import { CompetencyResultsGrid } from './competency-results-grid';
 
 export function SkillVerifyReport({
   grade,
   assessmentResult,
+  catalogSkillCode,
   onDone,
 }: {
   grade: GradeSdeSkillFormResponse;
   assessmentResult?: AssessmentResult | null;
+  catalogSkillCode?: string;
   onDone: () => void;
 }) {
-  const mcqWrong = grade.mcqTotal - grade.mcqCorrect;
-  const codingRows = grade.itemResults.filter((row) => row.format === 'CODING');
-  const otherOpen = grade.itemResults.filter(
-    (row) => row.format !== 'CODING' && row.format !== 'MCQ' && row.format !== 'TRACE',
-  );
+  const skillLabel = catalogSkillCode ? skillNameForCode(catalogSkillCode) : grade.skillCode;
+  const demonstrated = assessmentResult?.highestAssessmentSupportedProficiency;
+  const demonstratedLabel = demonstrated
+    ? (PROFICIENCY_LABELS[demonstrated] ?? demonstrated)
+    : 'Not demonstrated';
+  const intelligenceResult = assessmentResult && assessmentResult.competencyResults.length > 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 text-[var(--text-primary)]">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Verification summary</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {grade.skillCode} · {grade.proficiency} · {String(grade.scorePercent)}%
-          </p>
-        </div>
-        <Badge variant={grade.passed ? 'default' : 'destructive'}>
-          {grade.passed ? 'Passed' : 'Did not pass'}
-        </Badge>
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6 text-[var(--text-primary)]">
+      <header className="space-y-2">
+        <h1 className="text-xl font-semibold">Assessment complete</h1>
+        <p className="text-sm text-[var(--text-muted)]">{skillLabel}</p>
       </header>
 
-      {assessmentResult ? (
+      {intelligenceResult ? (
         <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-          <h2 className="text-sm font-medium">Competency assessment</h2>
-          <p className="mt-2 text-sm">
-            Supported proficiency:{' '}
-            <strong>{assessmentResult.highestAssessmentSupportedProficiency}</strong> · Confidence:{' '}
-            {assessmentResult.confidence.toLowerCase()}
-          </p>
-          {assessmentResult.uncertainties.length > 0 ? (
-            <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Gaps: {assessmentResult.uncertainties.join(', ')}
+          <p className="text-sm text-[var(--text-muted)]">Assessment-supported proficiency</p>
+          <p className="mt-1 text-2xl font-bold">{demonstratedLabel}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-[var(--text-muted)]">
+              Confidence: {assessmentResult.confidence.toLowerCase()}
+            </span>
+            {assessmentResult.verificationDecision ? (
+              <VerificationBadge status={assessmentResult.verificationDecision} variant="outline" />
+            ) : null}
+            {typeof assessmentResult.claimConfidence === 'number' ? (
+              <span className="text-xs text-[var(--text-muted)]">
+                {Math.round(assessmentResult.claimConfidence * 100)}% claim confidence
+              </span>
+            ) : null}
+          </div>
+          {assessmentResult.requiresEvidenceVerification ? (
+            <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+              Real-world application evidence is required to fully verify this level.
             </p>
           ) : null}
-          <ul className="mt-3 flex flex-col gap-1 text-sm">
-            {assessmentResult.competencyResults
-              .filter((row) => row.status !== 'NOT_TESTED')
-              .map((row) => (
-                <li key={row.competencyId}>
-                  {row.status.replaceAll('_', ' ').toLowerCase()} · {row.confidence.toLowerCase()}{' '}
-                  confidence
-                </li>
-              ))}
-          </ul>
+          {assessmentResult.requiresInterview ? (
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              A short defense interview may still be required.
+            </p>
+          ) : null}
+        </section>
+      ) : (
+        <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium">Overall score</p>
+            <Badge variant={grade.passed ? 'default' : 'destructive'}>
+              {grade.passed ? 'Passed' : 'Did not pass'}
+            </Badge>
+          </div>
+          <p className="mt-3 text-3xl font-bold tabular-nums">{String(grade.scorePercent)}%</p>
+          {grade.mcqTotal > 0 ? (
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              {String(grade.mcqCorrect)} of {String(grade.mcqTotal)} multiple-choice questions
+              correct
+              {grade.traceTotal > 0
+                ? ` · ${String(grade.traceCorrect)} of ${String(grade.traceTotal)} trace questions correct`
+                : ''}
+            </p>
+          ) : null}
+        </section>
+      )}
+
+      {assessmentResult?.targetedAssessmentSkipped ? (
+        <section
+          role="status"
+          className="rounded-[var(--radius-card)] border border-amber-300/50 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-100"
+        >
+          <p className="font-medium">Targeted follow-up skipped</p>
+          <p className="mt-1 leading-relaxed">
+            {targetedAssessmentSkipMessage(assessmentResult.targetedAssessmentSkipReason)}
+          </p>
         </section>
       ) : null}
 
-      <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-        <h2 className="text-sm font-medium">Multiple choice</h2>
-        <p className="mt-2 text-sm">
-          {String(grade.mcqCorrect)} correct, {String(mcqWrong)} wrong
-          {grade.mcqTotal > 0 ? ` (${String(grade.mcqTotal)} MCQs)` : ''}
-        </p>
-        {grade.traceTotal > 0 ? (
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Trace: {String(grade.traceCorrect)} of {String(grade.traceTotal)} correct
-          </p>
-        ) : null}
-      </section>
+      {assessmentResult && catalogSkillCode ? (
+        <CompetencyResultsGrid skillCode={catalogSkillCode} assessmentResult={assessmentResult} />
+      ) : null}
 
-      {codingRows.map((row) => (
-        <section
-          key={row.index}
-          className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4"
-        >
-          <h2 className="text-sm font-medium">Coding question {String(row.index)}</h2>
-          <p className="mt-2 text-sm">
-            {String(row.marksEarned)} / {String(row.marksMax)} marks
-            {row.testsTotal != null
-              ? ` · ${String(row.testsPassed ?? 0)} of ${String(row.testsTotal)} hidden tests passed`
-              : ''}
+      {assessmentResult && !intelligenceResult && assessmentResult.uncertainties.length > 0 ? (
+        <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4 text-sm">
+          <p>
+            Supported proficiency: <strong>{demonstratedLabel}</strong>
           </p>
-          {row.feedback ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-muted)]">
-              {row.feedback}
-            </p>
-          ) : null}
-          {row.missedTests && row.missedTests.length > 0 ? (
-            <div className="mt-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                What you missed
-              </p>
-              <ul className="mt-2 flex flex-col gap-2 text-sm">
-                {row.missedTests.map((missed, index) => (
-                  <li
-                    key={`${missed.input}-${String(index)}`}
-                    className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 font-mono text-xs"
-                  >
-                    <p>Input: {missed.input}</p>
-                    <p>Expected: {missed.expected}</p>
-                    <p className="mt-1 font-sans text-[var(--text-muted)]">{missed.reason}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <p className="mt-2 text-[var(--text-muted)]">
+            Areas to strengthen: {assessmentResult.uncertainties.slice(0, 3).join(', ')}
+            {assessmentResult.uncertainties.length > 3 ? '…' : ''}
+          </p>
         </section>
-      ))}
+      ) : null}
 
-      {otherOpen.map((row) => (
-        <section
-          key={row.index}
-          className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4"
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="button" variant="primary" className="flex-1" onClick={onDone}>
+          Back to Skills
+        </Button>
+        <Link
+          href="/assessments"
+          className="inline-flex flex-1 items-center justify-center rounded-lg border border-border bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-background"
         >
-          <h2 className="text-sm font-medium">
-            {row.format} · question {String(row.index)}
-          </h2>
-          <p className="mt-2 text-sm">
-            {String(row.marksEarned)} / {String(row.marksMax)} marks
-          </p>
-          {row.feedback ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-muted)]">
-              {row.feedback}
-            </p>
-          ) : null}
-        </section>
-      ))}
-
-      <Button type="button" variant="primary" onClick={onDone}>
-        Back to skills
-      </Button>
+          View skill repository
+        </Link>
+      </div>
     </div>
   );
 }

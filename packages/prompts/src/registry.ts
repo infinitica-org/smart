@@ -24,10 +24,13 @@ import { workExperienceLetterAuthenticityTemplate } from './templates/work-exper
 import {
   sdeSkillFormClosedTemplate,
   sdeSkillFormClosedTemplateV3,
+  sdeSkillFormClosedTemplateV4,
   sdeSkillFormOpenTemplate,
   sdeSkillFormOpenTemplateV3,
+  sdeSkillFormOpenTemplateV4,
   sdeSkillCodeRunnerTemplate,
   sdeSkillOpenBatchGraderTemplate,
+  sdeSkillOpenBatchGraderCriteriaTemplate,
   sdeSkillOpenGraderTemplate,
 } from './templates/sde-skill-form.js';
 
@@ -70,9 +73,12 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   workExperienceLetterAuthenticityTemplate,
   sdeSkillFormClosedTemplate,
   sdeSkillFormClosedTemplateV3,
+  sdeSkillFormClosedTemplateV4,
   sdeSkillFormOpenTemplate,
   sdeSkillFormOpenTemplateV3,
+  sdeSkillFormOpenTemplateV4,
   sdeSkillOpenBatchGraderTemplate,
+  sdeSkillOpenBatchGraderCriteriaTemplate,
   sdeSkillOpenGraderTemplate,
   sdeSkillCodeRunnerTemplate,
 ];

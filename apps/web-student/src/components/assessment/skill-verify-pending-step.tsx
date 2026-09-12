@@ -9,6 +9,8 @@ import type {
 } from '@smart/contracts';
 import { Alert, Button } from '@smart/ui';
 import { api } from '@/lib/api';
+import { CompetencyResultsGrid } from './competency-results-grid';
+import { SkillEvidenceContextPanel } from './skill-evidence-context-panel';
 import { SkillVerifyReport } from './skill-verify-report';
 
 export function SkillVerifyPendingStep({
@@ -16,12 +18,14 @@ export function SkillVerifyPendingStep({
   sessionId,
   grade: _grade,
   assessmentResult,
+  catalogSkillCode,
   onDone,
 }: {
   session: SkillVerifySessionDto;
   sessionId: string;
   grade: GradeSdeSkillFormResponse;
   assessmentResult: AssessmentResult;
+  catalogSkillCode?: string;
   onDone: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -102,6 +106,7 @@ export function SkillVerifyPendingStep({
       <SkillVerifyReport
         grade={finalReport.grade}
         assessmentResult={finalReport.assessmentResult}
+        catalogSkillCode={catalogSkillCode}
         onDone={onDone}
       />
     );
@@ -109,13 +114,29 @@ export function SkillVerifyPendingStep({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-6">
-      <header>
+      <header className="space-y-2">
         <h1 className="text-xl font-semibold">Additional verification</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Assessment supports {assessmentResult.highestAssessmentSupportedProficiency}. One more
-          step is required before your claim can be verified.
+        <p className="text-sm text-[var(--text-muted)]">
+          You demonstrated{' '}
+          <strong>
+            {assessmentResult.highestAssessmentSupportedProficiency ?? 'partial competency'}
+          </strong>{' '}
+          capability. One more step is required before SMART can confidently verify this claim.
         </p>
+        <Button type="button" variant="outline" onClick={onDone}>
+          Back to Skills
+        </Button>
       </header>
+
+      <SkillEvidenceContextPanel context={session.evidenceContext} />
+
+      {catalogSkillCode ? (
+        <CompetencyResultsGrid
+          skillCode={catalogSkillCode}
+          assessmentResult={assessmentResult}
+          compact
+        />
+      ) : null}
 
       {error ? (
         <Alert tone="danger" title="Verification step">

@@ -20,7 +20,7 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
 }
 
 describe('SkillVerifyRow lock time', () => {
-  it('offers Professional in the proficiency picker for declared claims', () => {
+  it('does not render a proficiency picker', () => {
     render(
       <SkillVerifyRow
         skillCode="SQL_QUERY_OPTIMIZATION"
@@ -31,16 +31,14 @@ describe('SkillVerifyRow lock time', () => {
           lockedUntil: null,
           retryAvailableAt: null,
         })}
-        proficiency="PROFESSIONAL"
         focus="Query tuning"
         pending={false}
-        onProficiency={vi.fn()}
         onFocus={vi.fn()}
         onVerify={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText(/Proficiency for SQL/i)).toBeTruthy();
-    expect(screen.getByRole('option', { name: 'Professional' })).toBeTruthy();
+    expect(screen.queryByLabelText(/Proficiency for SQL/i)).toBeNull();
+    expect(screen.getByLabelText(/Focus for SQL/i)).toBeTruthy();
   });
 
   it('shows the unlock time next to the skill name', () => {
@@ -49,10 +47,8 @@ describe('SkillVerifyRow lock time', () => {
         skillCode="GITOPS_CONTINUOUS_DELIVERY"
         skillName="Git"
         claim={claim()}
-        proficiency="BEGINNER"
         focus="Branching"
         pending={false}
-        onProficiency={vi.fn()}
         onFocus={vi.fn()}
         onVerify={vi.fn()}
       />,

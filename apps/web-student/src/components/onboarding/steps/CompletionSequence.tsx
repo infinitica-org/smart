@@ -23,7 +23,7 @@ const LOADING_BEATS: LoadingBeat[] = [
     text: 'Verified skills get noticed first — employers filter for the checkmark, not the claim.',
     kind: 'fact',
   },
-  { text: 'Mapping your skills to your track…', kind: 'status' },
+  { text: 'Preparing your dashboard…', kind: 'status' },
   {
     text: 'Your public profile updates itself the moment something new gets verified — no need to resend your link.',
     kind: 'fact',

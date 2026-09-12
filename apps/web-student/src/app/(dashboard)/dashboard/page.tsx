@@ -71,7 +71,7 @@ export default function DashboardPage() {
             showChecklist
           />
           <p className="text-sm text-muted-foreground">
-            Complete your profile to unlock skill verification.
+            Reach at least 50% profile completion to unlock skill verification.
           </p>
 
           {profileError ? (

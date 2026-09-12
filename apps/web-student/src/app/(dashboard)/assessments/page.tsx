@@ -11,21 +11,22 @@ import {
   Database,
   Globe,
   Layers,
+  Plus,
   Search,
   Sparkles,
+  X,
 } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
   skillFocusOptions,
   type SkillClaimDto,
   type SkillDefinition,
-  type SkillProficiency,
 } from '@smart/contracts';
 import { VerificationBadge, cn } from '@smart/ui';
 import { api } from '@/lib/api';
 import {
   PROFICIENCY_LABELS,
-  PROFICIENCY_OPTIONS,
+  SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
   SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
   canEnableTakeAssessment,
   repositoryStatusForClaim,
@@ -33,6 +34,7 @@ import {
 } from '@/lib/skill-declarations';
 import { canVerifySkills } from '@/lib/profile-progress';
 import { useProfileProgress } from '@/lib/use-profile-progress';
+import { SkillVerificationInstructions } from '@/components/assessment/skill-verification-instructions';
 
 const STREAM_VISUALS: Record<
   string,
@@ -135,6 +137,150 @@ function CatalogSkillRow({
   );
 }
 
+function AddSkillDialog({
+  open,
+  onClose,
+  claimedCodes,
+  onAdd,
+  addingCode,
+}: {
+  open: boolean;
+  onClose: () => void;
+  claimedCodes: ReadonlySet<string>;
+  onAdd: (code: string) => void;
+  addingCode: string | null;
+}) {
+  const [query, setQuery] = useState('');
+
+  const grouped = useMemo(() => {
+    const available = SKILL_DEFINITIONS.filter((definition) => !claimedCodes.has(definition.code));
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? available.filter(
+          (definition) =>
+            definition.name.toLowerCase().includes(q) ||
+            definition.code.toLowerCase().includes(q) ||
+            definition.categoryName.toLowerCase().includes(q),
+        )
+      : available;
+
+    const groups = new Map<string, SkillDefinition[]>();
+    for (const definition of filtered) {
+      const list = groups.get(definition.categoryName) ?? [];
+      list.push(definition);
+      groups.set(definition.categoryName, list);
+    }
+
+    const orderedKeys = [
+      ...STREAM_ORDER.filter((key) => groups.has(key)),
+      ...Array.from(groups.keys())
+        .filter((key) => !(STREAM_ORDER as readonly string[]).includes(key))
+        .sort(),
+    ];
+
+    return orderedKeys
+      .map((streamLabel) => ({
+        streamLabel,
+        skills: (groups.get(streamLabel) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .filter((group) => group.skills.length > 0);
+  }, [claimedCodes, query]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-skill-dialog-title"
+    >
+      <div className="flex max-h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <h2 id="add-skill-dialog-title" className="text-lg font-bold text-foreground">
+              Add skill
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Browse by category and add a skill to your repository.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Close add skill dialog"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="border-b border-border px-5 py-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search skills..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="w-full rounded-full border border-border bg-background py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0]/50 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {grouped.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {query.trim()
+                ? 'No matching skills found.'
+                : 'You have already added every skill in the catalog.'}
+            </p>
+          ) : (
+            <div className="space-y-5">
+              {grouped.map((group) => {
+                const visual = streamVisual(group.streamLabel);
+                const Icon = visual.Icon;
+                return (
+                  <section key={group.streamLabel}>
+                    <header className="mb-2 flex items-center gap-2">
+                      <Icon className={cn('h-4 w-4', visual.iconClass)} />
+                      <h3 className="text-sm font-bold text-foreground">{group.streamLabel}</h3>
+                    </header>
+                    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                      {group.skills.map((definition) => (
+                        <button
+                          key={definition.code}
+                          type="button"
+                          disabled={addingCode === definition.code}
+                          onClick={() => onAdd(definition.code)}
+                          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {definition.name}
+                            </p>
+                            <code className="font-mono text-xs text-muted-foreground">
+                              {definition.code}
+                            </code>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-1 text-xs font-semibold text-[#00967c]">
+                            <Plus className="h-3 w-3" />
+                            {addingCode === definition.code ? 'Adding…' : 'Add'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StreamSection({
   streamLabel,
   skills,
@@ -182,8 +328,6 @@ function StreamSection({
 
 function SkillDetailPanel({
   skill,
-  selectedProficiency,
-  onProficiencyChange,
   profilePercent,
   profileComplete,
   profileActionHref,
@@ -195,8 +339,6 @@ function SkillDetailPanel({
   onTakeAssessment,
 }: {
   skill: CatalogSkill;
-  selectedProficiency: SkillProficiency | null;
-  onProficiencyChange: (value: SkillProficiency) => void;
   profilePercent: number;
   profileComplete: boolean;
   profileActionHref: string;
@@ -209,9 +351,6 @@ function SkillDetailPanel({
 }) {
   const visual = streamVisual(skill.streamLabel);
   const Icon = visual.Icon;
-  const competencyBar = selectedProficiency
-    ? skill.definition.levels[selectedProficiency]?.competencyBar
-    : skill.definition.levels.INTERMEDIATE?.competencyBar;
 
   return (
     <section
@@ -246,49 +385,22 @@ function SkillDetailPanel({
             <span className="font-semibold text-foreground">Not declared</span>
           )}
         </div>
-        {skill.claim?.proficiency ? (
+        {skill.claim?.status === 'VERIFIED' && skill.claim.proficiency ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Declared proficiency</span>
+            <span className="text-muted-foreground">Verified proficiency</span>
             <span className="font-semibold text-foreground">
               {PROFICIENCY_LABELS[skill.claim.proficiency] ?? skill.claim.proficiency}
             </span>
           </div>
+        ) : skill.claim?.status === 'DECLARED' || skill.claim?.status === 'BEGINNER_REATTEMPT' ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Proficiency level</span>
+            <span className="font-semibold text-foreground">Determined by assessment</span>
+          </div>
         ) : null}
       </div>
 
-      {competencyBar ? (
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Competency bar
-          </p>
-          <p className="text-sm leading-relaxed text-foreground">{competencyBar}</p>
-        </div>
-      ) : null}
-
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-semibold text-foreground">Select proficiency</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {PROFICIENCY_OPTIONS.map((level) => {
-            const active = selectedProficiency === level;
-            return (
-              <button
-                key={level}
-                type="button"
-                aria-pressed={active}
-                onClick={() => onProficiencyChange(level as SkillProficiency)}
-                className={cn(
-                  'rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
-                  active
-                    ? 'border-[#00fad0]/50 bg-[#00fad0]/15 text-[#00967c]'
-                    : 'border-border bg-muted text-foreground hover:border-[#00fad0]/30 hover:bg-[#00fad0]/5',
-                )}
-              >
-                {PROFICIENCY_LABELS[level]}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      <SkillVerificationInstructions />
 
       {!profileComplete ? (
         <div
@@ -339,7 +451,7 @@ export default function SkillRepositoryPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'status'>('name');
   const [selectedSkillCode, setSelectedSkillCode] = useState<string | null>(null);
-  const [selectedProficiency, setSelectedProficiency] = useState<SkillProficiency | null>(null);
+  const [addSkillOpen, setAddSkillOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -369,33 +481,32 @@ export default function SkillRepositoryPage() {
   }, [skillClaims]);
 
   const catalogSkills = useMemo((): CatalogSkill[] => {
-    return SKILL_DEFINITIONS.map((definition) => {
+    return SKILL_DEFINITIONS.flatMap((definition) => {
       const claim = claimByCode.get(definition.code);
+      if (!claim) return [];
       const { displayLabel, badgeStatus } = repositoryStatusForClaim(claim);
-      return {
-        definition,
-        claim,
-        streamLabel: definition.categoryName,
-        displayLabel,
-        badgeStatus,
-        verified: claim?.status === 'VERIFIED',
-      };
+      return [
+        {
+          definition,
+          claim,
+          streamLabel: definition.categoryName,
+          displayLabel,
+          badgeStatus,
+          verified: claim.status === 'VERIFIED',
+        },
+      ];
     });
   }, [claimByCode]);
+
+  const claimedSkillCodes = useMemo(
+    () => new Set(skillClaims.map((claim) => claim.skillCode)),
+    [skillClaims],
+  );
 
   const selectedSkill = useMemo(
     () => catalogSkills.find((skill) => skill.definition.code === selectedSkillCode) ?? null,
     [catalogSkills, selectedSkillCode],
   );
-
-  useEffect(() => {
-    if (!selectedSkillCode) {
-      setSelectedProficiency(null);
-      return;
-    }
-    const claim = claimByCode.get(selectedSkillCode);
-    setSelectedProficiency(claim?.proficiency ?? null);
-  }, [selectedSkillCode, claimByCode]);
 
   const profilePercent = progress?.percent ?? 0;
   const profileComplete = canVerifySkills(profilePercent);
@@ -405,6 +516,15 @@ export default function SkillRepositoryPage() {
   const verifiedCount = catalogSkills.filter((skill) => skill.verified).length;
   const totalSkillsCount = catalogSkills.length;
   const readinessRatio = totalSkillsCount > 0 ? verifiedCount / totalSkillsCount : 0;
+
+  useEffect(() => {
+    if (
+      selectedSkillCode &&
+      !catalogSkills.some((skill) => skill.definition.code === selectedSkillCode)
+    ) {
+      setSelectedSkillCode(null);
+    }
+  }, [catalogSkills, selectedSkillCode]);
 
   const filterOptions = ['All', 'Verified', 'Not Verified'];
 
@@ -454,11 +574,31 @@ export default function SkillRepositoryPage() {
       .filter((group) => group.skills.length > 0);
   }, [filteredSkills]);
 
-  const verifySkill = (
-    code: string,
-    proficiency: SkillProficiency,
-    existingClaim?: SkillClaimDto,
-  ) => {
+  const addSkill = (code: string) => {
+    setError(null);
+    setPendingCode(code);
+    startTransition(() => {
+      void (async () => {
+        try {
+          const options = skillFocusOptions(code);
+          const created = await api.assessment.declareSkillClaim({
+            skillCode: code,
+            proficiency: SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
+            skillFocus: options[0] || undefined,
+          });
+          setSkillClaims((prev) => [...prev.filter((claim) => claim.skillCode !== code), created]);
+          setSelectedSkillCode(code);
+          setAddSkillOpen(false);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to add skill');
+        } finally {
+          setPendingCode(null);
+        }
+      })();
+    });
+  };
+
+  const verifySkill = (code: string, existingClaim?: SkillClaimDto) => {
     setError(null);
     setPendingCode(code);
     startTransition(() => {
@@ -473,7 +613,7 @@ export default function SkillRepositoryPage() {
             const options = skillFocusOptions(code);
             const created = await api.assessment.declareSkillClaim({
               skillCode: code,
-              proficiency,
+              proficiency: SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
               skillFocus: options[0] || undefined,
             });
             targetClaimId = created.claimId;
@@ -499,7 +639,6 @@ export default function SkillRepositoryPage() {
   const canTakeAssessment =
     canEnableTakeAssessment({
       profilePercent,
-      proficiency: selectedProficiency,
     }) && !selectedBlockMessage;
 
   return (
@@ -516,8 +655,8 @@ export default function SkillRepositoryPage() {
               Skill Repository
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Browse the skill catalog, review your claim status, choose a proficiency level, and
-              take a proctored assessment to verify your skills.
+              Browse the skill catalog, review your claim status, and take a diagnostic assessment
+              to verify your skills.
             </p>
             {error ? (
               <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">
@@ -536,7 +675,9 @@ export default function SkillRepositoryPage() {
                 <span className="text-muted-foreground">/{totalSkillsCount}</span> verified
               </p>
               <p className="text-sm text-muted-foreground">
-                {Math.round(readinessRatio * 100)}% of catalog
+                {totalSkillsCount === 0
+                  ? 'Add skills to begin verification'
+                  : `${Math.round(readinessRatio * 100)}% of your skills`}
               </p>
             </div>
 
@@ -643,7 +784,29 @@ export default function SkillRepositoryPage() {
         </div>
       ) : null}
 
-      {!loading && filteredSkills.length === 0 ? (
+      {!loading && catalogSkills.length === 0 ? (
+        <div className="flex flex-col items-center justify-center space-y-4 rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">No skills added yet</h3>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Add skills from the catalog to track verification and take assessments.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAddSkillOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-4 py-2.5 text-sm font-bold text-[#04120f] transition-all hover:bg-[#33ffdd]"
+          >
+            <Plus className="h-4 w-4" />
+            Add skill
+          </button>
+        </div>
+      ) : null}
+
+      {!loading && catalogSkills.length > 0 && filteredSkills.length === 0 ? (
         <div className="flex flex-col items-center justify-center space-y-4 rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
             <BookOpen className="h-6 w-6" />
@@ -651,7 +814,7 @@ export default function SkillRepositoryPage() {
           <div>
             <h3 className="text-lg font-bold text-foreground">No skills match your search</h3>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Try adjusting your filter or search terms to find skills in the repository.
+              Try adjusting your filter or search terms.
             </p>
           </div>
         </div>
@@ -660,6 +823,14 @@ export default function SkillRepositoryPage() {
       {!loading && groupedSkills.length > 0 ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <div className="space-y-6">
+            <button
+              type="button"
+              onClick={() => setAddSkillOpen(true)}
+              className="surface-panel flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#00fad0]/40 bg-[#00fad0]/5 px-5 py-4 text-sm font-bold text-[#00967c] transition-colors hover:bg-[#00fad0]/10"
+            >
+              <Plus className="h-4 w-4" />
+              Add skill
+            </button>
             {groupedSkills.map((group) => (
               <StreamSection
                 key={group.streamLabel}
@@ -675,8 +846,6 @@ export default function SkillRepositoryPage() {
             {selectedSkill ? (
               <SkillDetailPanel
                 skill={selectedSkill}
-                selectedProficiency={selectedProficiency}
-                onProficiencyChange={setSelectedProficiency}
                 profilePercent={profilePercent}
                 profileComplete={profileComplete}
                 profileActionHref={profileActionHref}
@@ -686,12 +855,7 @@ export default function SkillRepositoryPage() {
                 isBusy={pendingCode === selectedSkill.definition.code}
                 isPending={isPending}
                 onTakeAssessment={() => {
-                  if (!selectedProficiency) return;
-                  verifySkill(
-                    selectedSkill.definition.code,
-                    selectedProficiency,
-                    selectedSkill.claim,
-                  );
+                  verifySkill(selectedSkill.definition.code, selectedSkill.claim);
                 }}
               />
             ) : (
@@ -707,6 +871,14 @@ export default function SkillRepositoryPage() {
           </div>
         </div>
       ) : null}
+
+      <AddSkillDialog
+        open={addSkillOpen}
+        onClose={() => setAddSkillOpen(false)}
+        claimedCodes={claimedSkillCodes}
+        onAdd={addSkill}
+        addingCode={pendingCode}
+      />
     </div>
   );
 }

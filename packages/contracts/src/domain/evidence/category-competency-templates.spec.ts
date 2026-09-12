@@ -4,6 +4,7 @@ import {
   buildDefaultProficiencyRequirements,
   stableCompetencyId,
 } from './category-competency-templates.js';
+import { resolveProficiencyVerification } from './proficiency-requirements.js';
 import { buildSkillBlueprintForCategory } from './skill-blueprint.js';
 
 describe('category-competency-templates', () => {
@@ -34,5 +35,34 @@ describe('category-competency-templates', () => {
     );
     expect(blueprint.competencyModel).toHaveLength(6);
     expect(blueprint.proficiencyRequirements).toHaveLength(4);
+  });
+});
+
+describe('resolveProficiencyVerification', () => {
+  it('reads verification flags from blueprint proficiency requirements', () => {
+    const requirements = buildDefaultProficiencyRequirements('PROGRAMMING_LANGUAGES');
+    expect(resolveProficiencyVerification(requirements, 'BEGINNER')).toEqual({
+      realWorldApplicationRequired: false,
+      substantialApplicationRequired: false,
+      interviewRequired: false,
+    });
+    expect(resolveProficiencyVerification(requirements, 'ADVANCED')).toEqual({
+      realWorldApplicationRequired: true,
+      substantialApplicationRequired: false,
+      interviewRequired: true,
+    });
+    expect(resolveProficiencyVerification(requirements, 'PROFESSIONAL')).toEqual({
+      realWorldApplicationRequired: true,
+      substantialApplicationRequired: true,
+      interviewRequired: true,
+    });
+  });
+
+  it('falls back to legacy level gates when requirement row is missing', () => {
+    expect(resolveProficiencyVerification([], 'ADVANCED')).toEqual({
+      realWorldApplicationRequired: false,
+      substantialApplicationRequired: false,
+      interviewRequired: true,
+    });
   });
 });

@@ -47,11 +47,30 @@ export function categoryNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.categoryName ?? skillCode;
 }
 
+export const SKILL_VERIFY_STAGE_LABELS = {
+  DIAGNOSTIC: 'Short diagnostic',
+  TARGETED: 'Targeted assessment',
+  COMPLETE: 'Assessment',
+  INTERVIEW: 'Defense interview',
+} as const;
+
+export type SkillVerifyStageLabel = keyof typeof SKILL_VERIFY_STAGE_LABELS;
+
 export function formatSkillVerifyKioskTitle(
   skillCode: string,
-  proficiency: SkillProficiency,
+  stage?: SkillVerifyStageLabel | null,
 ): string {
-  return `${skillNameForCode(skillCode)} · ${PROFICIENCY_LABELS[proficiency]}`;
+  const name = skillNameForCode(skillCode);
+  if (!stage) return name;
+  const label = SKILL_VERIFY_STAGE_LABELS[stage];
+  return label ? `${name} · ${label}` : name;
+}
+
+export function proficiencyLabelForClaim(claim: SkillClaimDto): string | null {
+  if (claim.status === 'VERIFIED' && claim.proficiency) {
+    return PROFICIENCY_LABELS[claim.proficiency] ?? claim.proficiency;
+  }
+  return null;
 }
 
 export function isSdeV4Verifiable(skillCode: string): boolean {
@@ -60,6 +79,9 @@ export function isSdeV4Verifiable(skillCode: string): boolean {
 
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
+  if (claim.status === 'VERIFIED' && claim.verificationDecision === 'PROVISIONAL') {
+    return 'PROVISIONAL';
+  }
   if (claim.status === 'VERIFIED') return 'VERIFIED';
   if (claim.status === 'BEGINNER_REATTEMPT') return 'NOT_VERIFIED';
   if (claim.status === 'DECLARED' && claim.lastAttemptId) return 'NOT_VERIFIED';
@@ -239,7 +261,17 @@ export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
 }
 
 export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
-  'Complete your profile to unlock skill verification.';
+  'Reach at least 50% profile completion to unlock skill verification.';
+
+/** Default claim proficiency for diagnostic-first verification (candidate does not self-select). */
+export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGINNER';
+
+export const SKILL_VERIFICATION_ASSESSMENT_STEPS = [
+  'Start with a short diagnostic — SMART discovers what you can demonstrate; you do not self-rate proficiency.',
+  'Existing projects and work evidence are considered when available, but are not required to begin.',
+  'Targeted questions only appear where competencies are still uncertain — then evidence or interview if your level requires it.',
+  'Your verified badge reflects assessment-supported proficiency plus confidence, not a declared rating.',
+] as const;
 
 export function isProfileCompleteForSkillVerification(percent: number | null | undefined): boolean {
   return canVerifySkills(percent);
@@ -247,11 +279,8 @@ export function isProfileCompleteForSkillVerification(percent: number | null | u
 
 export function canEnableTakeAssessment(params: {
   profilePercent: number | null | undefined;
-  proficiency: SkillProficiency | null | undefined;
 }): boolean {
-  return (
-    isProfileCompleteForSkillVerification(params.profilePercent) && Boolean(params.proficiency)
-  );
+  return isProfileCompleteForSkillVerification(params.profilePercent);
 }
 
 /** Block message for Take Assessment — verified skills may still practice. */

@@ -14,7 +14,7 @@ export const PROFILE_AREA_IDS = [
 export type ProfileAreaId = (typeof PROFILE_AREA_IDS)[number];
 
 const AREA_COUNT = PROFILE_AREA_IDS.length;
-export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 100;
+export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 50;
 
 export interface ProfileProgressInput {
   skillClaims: ReadonlyArray<unknown>;

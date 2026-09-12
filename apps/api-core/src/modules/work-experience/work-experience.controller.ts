@@ -38,12 +38,12 @@ export class WorkExperienceController {
   }
 
   @Get('ops-dashboard')
-  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Ops Dashboard items for work experience verification monitoring.' })
   @ApiResponse({ status: 200, description: 'Ops Dashboard items list.' })
-  getOpsDashboard() {
-    return this.service.getOpsDashboard();
+  getOpsDashboard(@CurrentUser() user: RequestUser) {
+    return this.service.getOpsDashboard(user);
   }
 
   @Get(':id')

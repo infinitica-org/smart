@@ -118,7 +118,7 @@ export function skillVerifyErrorFromUnknown(
       return {
         kind: 'profile_incomplete',
         title: 'Profile incomplete',
-        message: 'Complete your profile to 100% before taking skill assessments.',
+        message: 'Reach at least 50% profile completion before taking skill assessments.',
       };
     }
     if (error.statusCode === 404 || error.code === 'not_found') {
@@ -142,6 +142,14 @@ export function skillVerifyErrorFromUnknown(
       error.statusCode === 502 ||
       error.statusCode === 503
     ) {
+      if (context === 'submit') {
+        return {
+          kind: 'generation_failed',
+          title: 'Could not finish assessment',
+          message:
+            'We saved your diagnostic answers but could not start the next stage. Return to Skills and try again shortly.',
+        };
+      }
       return GENERATION_FAILED;
     }
     if (looksTechnical(error.message)) {

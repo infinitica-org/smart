@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { SkillVerificationService } from './skill-verification.service.js';
@@ -34,6 +38,55 @@ function profileCompletion(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function intelligenceService(overrides: Record<string, unknown> = {}) {
+  return {
+    resolveBlueprint: vi.fn(),
+    buildAssessmentResult: vi.fn(),
+    claimPassesFromAssessment: vi.fn().mockReturnValue(false),
+    ...overrides,
+  };
+}
+
+function verificationService(overrides: Record<string, unknown> = {}) {
+  return {
+    evaluateClaimVerification: vi.fn(),
+    evaluateGate: vi.fn(),
+    loadEvidenceContext: vi.fn().mockResolvedValue({ availableCount: 0, items: [] }),
+    ...overrides,
+  };
+}
+
+function makeService(deps: {
+  prisma?: Record<string, unknown>;
+  redis?: Record<string, unknown>;
+  evaluation?: Record<string, unknown>;
+  aiGateway?: Record<string, unknown>;
+  outbox?: Record<string, unknown>;
+  intelligence?: Record<string, unknown>;
+  verification?: Record<string, unknown>;
+  profile?: Record<string, unknown>;
+}) {
+  return new SkillVerificationService(
+    (deps.prisma ?? {
+      skillClaim: { findUnique: vi.fn(), update: vi.fn() },
+      skillVerificationAttempt: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(),
+    }) as never,
+    (deps.redis ?? {
+      get: vi.fn(),
+      setex: vi.fn().mockResolvedValue('OK'),
+      del: vi.fn().mockResolvedValue(1),
+      exists: vi.fn().mockResolvedValue(0),
+    }) as never,
+    (deps.evaluation ?? { generateSkillForm: vi.fn(), gradeSkillForm: vi.fn() }) as never,
+    (deps.aiGateway ?? { hasCallableProvider: vi.fn().mockReturnValue(true) }) as never,
+    (deps.outbox ?? { enqueueEnvelope: vi.fn() }) as never,
+    intelligenceService(deps.intelligence) as never,
+    verificationService(deps.verification) as never,
+    profileCompletion(deps.profile) as never,
+  );
+}
+
 describe('SkillVerificationService', () => {
   it('prepareOnly skips LLM generate after the claim/cooldown gate', async () => {
     const evaluation = { generateSkillForm: vi.fn() };
@@ -42,13 +95,7 @@ describe('SkillVerificationService', () => {
       skillClaim: { findUnique: vi.fn().mockResolvedValue(declaredClaim()) },
       skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      evaluation as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma, redis, evaluation });
 
     const prepared = await service.start(student(), CLAIM_ID, { prepareOnly: true });
     expect('items' in prepared).toBe(false);
@@ -65,15 +112,7 @@ describe('SkillVerificationService', () => {
         findFirst: vi.fn().mockResolvedValue({ createdAt: new Date() }),
       },
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {
-        enqueueEnvelope: vi.fn(),
-      } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma });
 
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -89,15 +128,7 @@ describe('SkillVerificationService', () => {
         }),
       },
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {
-        enqueueEnvelope: vi.fn(),
-      } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma });
 
     await expect(service.start(student(), CLAIM_ID)).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -177,13 +208,7 @@ describe('SkillVerificationService', () => {
       $transaction: vi.fn().mockResolvedValue([updated]),
     };
     const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      evaluation as never,
-      outbox as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma, redis, evaluation, outbox });
 
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
 
@@ -212,13 +237,7 @@ describe('SkillVerificationService', () => {
         findFirst: vi.fn().mockResolvedValue({ createdAt: new Date() }),
       },
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma });
 
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -232,15 +251,7 @@ describe('SkillVerificationService', () => {
       },
       skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {
-        enqueueEnvelope: vi.fn(),
-      } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma });
 
     await expect(service.start(student(), CLAIM_ID)).rejects.toBeInstanceOf(ForbiddenException);
   });
@@ -296,13 +307,7 @@ describe('SkillVerificationService', () => {
       $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     const evaluation = { gradeSkillForm: vi.fn() };
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      evaluation as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma, redis, evaluation });
 
     const result = await service.complete(student(), SESSION_ID, { technicalFailure: true });
     expect(evaluation.gradeSkillForm).not.toHaveBeenCalled();
@@ -377,13 +382,7 @@ describe('SkillVerificationService', () => {
         itemResults: [],
       }),
     };
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      evaluation as never,
-      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma, redis, evaluation });
 
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
 
@@ -435,13 +434,7 @@ describe('SkillVerificationService', () => {
       $transaction: vi.fn().mockResolvedValue([updated]),
     };
     const evaluation = { gradeSkillForm: vi.fn() };
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      evaluation as never,
-      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
-      profileCompletion() as never,
-    );
+    const service = makeService({ prisma, redis, evaluation });
 
     const result = await service.complete(student(), SESSION_ID, {
       technicalFailure: true,
@@ -468,18 +461,12 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Complete your profile to unlock skill verification.',
+          message: 'Reach at least 50% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),
     });
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      {} as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profile as never,
-    );
+    const service = makeService({ prisma, redis, profile });
 
     await expect(service.start(student(), CLAIM_ID, { prepareOnly: true })).rejects.toMatchObject({
       response: expect.objectContaining({ error: 'profile_incomplete' }),
@@ -493,18 +480,15 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Complete your profile to unlock skill verification.',
+          message: 'Reach at least 50% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),
     });
-    const service = new SkillVerificationService(
-      { skillClaim: { findUnique: vi.fn() } } as never,
-      {} as never,
-      {} as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profile as never,
-    );
+    const service = makeService({
+      prisma: { skillClaim: { findUnique: vi.fn() } },
+      profile,
+    });
 
     await expect(
       service.start(student(), CLAIM_ID, { prepareOnly: true, profilePercent: 100 } as never),
@@ -514,6 +498,227 @@ describe('SkillVerificationService', () => {
     expect(profile.assertCompleteForSkillVerification).toHaveBeenCalledWith(STUDENT_ID);
   });
 
+  it('skips targeted generation immediately when no AI provider is callable', async () => {
+    const diagnosticGrade = {
+      skillCode: 'SDE_DATABASE_SQL',
+      proficiency: 'BEGINNER',
+      marksEarned: 8,
+      marksTotal: 10,
+      scorePercent: 80,
+      passed: true,
+      promptRef: 'sde-skill-open-batch-grader@2',
+      mcqCorrect: 4,
+      mcqTotal: 4,
+      traceCorrect: 2,
+      traceTotal: 3,
+      itemResults: [],
+    };
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
+      skillName: 'SQL Query Optimization',
+      sdeSkillCode: 'SDE_DATABASE_SQL',
+      proficiency: 'BEGINNER',
+      scoringToken: 'x'.repeat(24),
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      passMarkPercent: 80,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [{ index: 1, selectedKey: 'A' }],
+      intelligenceEnabled: true,
+      stage: 'DIAGNOSTIC' as const,
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      del: vi.fn().mockResolvedValue(1),
+      setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
+    };
+    const evaluation = {
+      gradeSkillForm: vi.fn().mockResolvedValue(diagnosticGrade),
+      generateSkillForm: vi.fn(),
+    };
+    const intelligence = intelligenceService({
+      resolveBlueprint: vi.fn().mockReturnValue({
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
+        competencyModel: [{ id: 'c1', capability: 'Pipelines' }],
+      }),
+      buildAssessmentResult: vi.fn().mockReturnValue({
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
+        assessmentVersion: 'v1',
+        attemptId: SESSION_ID,
+        competencyResults: [],
+        highestAssessmentSupportedProficiency: 'BEGINNER',
+        targetProficiency: 'BEGINNER',
+        assessmentPassed: true,
+        uncertainties: [],
+        recommendedNextStep: 'TARGETED_ASSESSMENT',
+        requiresInterview: false,
+        requiresAdditionalAssessment: true,
+        confidence: 'MEDIUM',
+        evaluatedAt: new Date().toISOString(),
+      }),
+      claimPassesFromAssessment: vi.fn().mockReturnValue(false),
+    });
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn(),
+      },
+      skillVerificationAttempt: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      $transaction: vi.fn().mockResolvedValue([declaredClaim()]),
+    };
+    const verification = verificationService({
+      evaluateClaimVerification: vi.fn().mockResolvedValue({
+        recommendedNextStep: 'NONE',
+        requiresInterview: false,
+        requiresEvidence: false,
+        canFinalizeClaim: true,
+        reasons: [],
+      }),
+    });
+    const service = makeService({
+      prisma,
+      redis,
+      evaluation,
+      intelligence,
+      verification,
+      aiGateway: { hasCallableProvider: vi.fn().mockReturnValue(false) },
+    });
+
+    const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
+
+    expect(evaluation.generateSkillForm).not.toHaveBeenCalled();
+    expect(result.assessmentResult?.targetedAssessmentSkipped).toBe(true);
+    expect(result.assessmentResult?.targetedAssessmentSkipReason).toBe('ai_unavailable');
+  });
+
+  it('finalizes diagnostic-only when targeted assessment generation fails', async () => {
+    const diagnosticGrade = {
+      skillCode: 'SDE_ML',
+      proficiency: 'BEGINNER',
+      marksEarned: 8,
+      marksTotal: 10,
+      scorePercent: 80,
+      passed: true,
+      promptRef: 'sde-skill-open-batch-grader@2',
+      mcqCorrect: 4,
+      mcqTotal: 4,
+      traceCorrect: 2,
+      traceTotal: 3,
+      itemResults: [
+        {
+          index: 1,
+          format: 'MCQ' as const,
+          marksEarned: 1,
+          marksMax: 1,
+          correct: true,
+          selectedKey: 'A' as const,
+          correctKey: 'A' as const,
+          feedback: 'Correct.',
+        },
+      ],
+    };
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
+      skillName: 'SQL Query Optimization',
+      sdeSkillCode: 'SDE_DATABASE_SQL',
+      proficiency: 'BEGINNER',
+      scoringToken: 'x'.repeat(24),
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      passMarkPercent: 80,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [{ index: 1, selectedKey: 'A' }],
+      intelligenceEnabled: true,
+      stage: 'DIAGNOSTIC' as const,
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      del: vi.fn().mockResolvedValue(1),
+      setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
+    };
+    const updated = {
+      ...declaredClaim(),
+      status: 'VERIFIED',
+      lastAttemptId: SESSION_ID,
+    };
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn(),
+      },
+      skillVerificationAttempt: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      $transaction: vi.fn().mockResolvedValue([updated]),
+    };
+    const evaluation = {
+      gradeSkillForm: vi.fn().mockResolvedValue(diagnosticGrade),
+      generateSkillForm: vi.fn().mockRejectedValue(
+        new ServiceUnavailableException({
+          error: 'ai_provider_unavailable',
+          message: 'No AI provider available.',
+        }),
+      ),
+    };
+    const intelligence = intelligenceService({
+      resolveBlueprint: vi.fn().mockReturnValue({
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
+        competencyModel: [{ id: 'c1', capability: 'Pipelines' }],
+      }),
+      buildAssessmentResult: vi.fn().mockReturnValue({
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
+        assessmentVersion: 'v1',
+        attemptId: SESSION_ID,
+        competencyResults: [],
+        highestAssessmentSupportedProficiency: 'BEGINNER',
+        targetProficiency: 'BEGINNER',
+        assessmentPassed: true,
+        uncertainties: [],
+        recommendedNextStep: 'TARGETED_ASSESSMENT',
+        requiresInterview: false,
+        requiresAdditionalAssessment: true,
+        confidence: 'MEDIUM',
+        evaluatedAt: new Date().toISOString(),
+      }),
+      claimPassesFromAssessment: vi.fn().mockReturnValue(true),
+    });
+    const verification = verificationService({
+      evaluateClaimVerification: vi.fn().mockResolvedValue({
+        recommendedNextStep: 'NONE',
+        requiresInterview: false,
+        requiresEvidence: false,
+        canFinalizeClaim: true,
+        reasons: [],
+      }),
+    });
+    const service = makeService({ prisma, redis, evaluation, intelligence, verification });
+
+    const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
+
+    expect(evaluation.generateSkillForm).toHaveBeenCalled();
+    expect(result.sessionContinues).not.toBe(true);
+    expect(result.grade?.marksEarned).toBe(8);
+    expect(result.assessmentResult?.targetedAssessmentSkipped).toBe(true);
+    expect(result.assessmentResult?.targetedAssessmentSkipReason).toBe('generation_failed');
+    expect(prisma.skillClaim.update).toHaveBeenCalled();
+  });
+
   it('allows verification start when the eight-area profile is complete', async () => {
     const redis = { setex: vi.fn().mockResolvedValue('OK') };
     const prisma = {
@@ -521,13 +726,7 @@ describe('SkillVerificationService', () => {
       skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const profile = profileCompletion();
-    const service = new SkillVerificationService(
-      prisma as never,
-      redis as never,
-      {} as never,
-      { enqueueEnvelope: vi.fn() } as never,
-      profile as never,
-    );
+    const service = makeService({ prisma, redis, profile });
 
     await service.start(student(), CLAIM_ID, { prepareOnly: true });
 

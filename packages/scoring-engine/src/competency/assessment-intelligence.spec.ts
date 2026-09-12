@@ -5,6 +5,7 @@ import {
   buildDefaultProficiencyRequirements,
 } from '@smart/contracts';
 import {
+  competencyIdsBlockingProficiency,
   evaluateAssessmentIntelligence,
   determineSupportedProficiency,
   rollupItemResultsToCompetencies,
@@ -59,6 +60,29 @@ describe('assessment-intelligence', () => {
     expect(output.assessmentPassed).toBe(false);
   });
 
+  it('returns null when no competency requirements are met', () => {
+    const results = rollupItemResultsToCompetencies({
+      competencyModel: model,
+      items: [{ competencyIds: [model[0]?.competencyId ?? ''], marksEarned: 0, marksMax: 10 }],
+    });
+    expect(determineSupportedProficiency(results, requirements)).toBeNull();
+  });
+
+  it('does not pass discovery assessment when nothing is demonstrated', () => {
+    const output = Effect.runSync(
+      evaluateAssessmentIntelligence({
+        competencyModel: model,
+        proficiencyRequirements: requirements,
+        items: [{ competencyIds: [model[0]?.competencyId ?? ''], marksEarned: 0, marksMax: 10 }],
+        targetProficiency: 'PROFESSIONAL',
+        verificationMode: 'discovery',
+      }),
+    );
+    expect(output.highestAssessmentSupportedProficiency).toBeNull();
+    expect(output.assessmentPassed).toBe(false);
+    expect(output.recommendedNextStep).not.toBe('NONE');
+  });
+
   it('stops testing once target proficiency is supported with no critical gaps', () => {
     const items = model.slice(0, 5).map((row) => ({
       competencyIds: [row.competencyId],
@@ -67,5 +91,52 @@ describe('assessment-intelligence', () => {
     }));
     const results = rollupItemResultsToCompetencies({ competencyModel: model, items });
     expect(shouldStopTesting(results, 'ADVANCED', requirements)).toBe(true);
+  });
+
+  it('marks assessment complete at demonstrated ceiling without verification gates', () => {
+    const [c1, c2, c3] = model.slice(0, 3).map((row) => row.competencyId);
+    const output = Effect.runSync(
+      evaluateAssessmentIntelligence({
+        competencyModel: model,
+        proficiencyRequirements: requirements,
+        items: [
+          { competencyIds: [c1], marksEarned: 10, marksMax: 10 },
+          { competencyIds: [c2], marksEarned: 10, marksMax: 10 },
+          { competencyIds: [c3], marksEarned: 10, marksMax: 10 },
+        ],
+        targetProficiency: 'PROFESSIONAL',
+        verificationMode: 'discovery',
+        allowUpwardProbe: false,
+      }),
+    );
+    expect(output.highestAssessmentSupportedProficiency).toBe('INTERMEDIATE');
+    expect(output.assessmentComplete).toBe(true);
+    expect(output.recommendedNextStep).toBe('NONE');
+    expect(output.requiresEvidenceVerification).toBe(false);
+  });
+
+  it('probes the next proficiency tier during diagnostic when critical comps are untested', () => {
+    const [c1, c2, c3] = model.slice(0, 3).map((row) => row.competencyId);
+    const results = rollupItemResultsToCompetencies({
+      competencyModel: model,
+      items: [
+        { competencyIds: [c1], marksEarned: 10, marksMax: 10 },
+        { competencyIds: [c2], marksEarned: 10, marksMax: 10 },
+        { competencyIds: [c3], marksEarned: 10, marksMax: 10 },
+      ],
+    });
+    expect(competencyIdsBlockingProficiency(results, 'INTERMEDIATE', requirements)).toEqual([]);
+    expect(shouldStopTesting(results, 'PROFESSIONAL', requirements, true)).toBe(false);
+  });
+
+  it('stops after targeted assessment without probing another tier upward', () => {
+    const items = model.slice(0, 5).map((row) => ({
+      competencyIds: [row.competencyId],
+      marksEarned: 10,
+      marksMax: 10,
+    }));
+    const results = rollupItemResultsToCompetencies({ competencyModel: model, items });
+    expect(determineSupportedProficiency(results, requirements)).toBe('ADVANCED');
+    expect(shouldStopTesting(results, 'PROFESSIONAL', requirements, false)).toBe(true);
   });
 });

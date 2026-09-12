@@ -9,6 +9,7 @@ import type {
   ProviderHealthResult,
 } from '../ai-gateway.interface.js';
 import { coerceGoogleStructuredOutput } from './google.output-coerce.js';
+import { coerceLlmJson } from './llm-json-coerce.js';
 import { parseJsonSafely, stripJsonNulls } from './openrouter.helpers.js';
 
 const ROLE_TO_MODEL: Record<AiModelRole, string> = {
@@ -90,7 +91,9 @@ export class GoogleAdapter implements AiProviderAdapter {
     let output: unknown = rawText;
     if (options.outputSchema) {
       try {
-        const parsed = coerceGoogleStructuredOutput(stripJsonNulls(parseJsonSafely(rawText)));
+        const parsed = coerceLlmJson(
+          coerceGoogleStructuredOutput(stripJsonNulls(parseJsonSafely(rawText))),
+        );
         output = options.outputSchema.parse(parsed);
       } catch (parseErr) {
         throw new Error(

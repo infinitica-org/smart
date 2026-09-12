@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CAREER_DOMAINS,
   TARGET_ROLES,
-  buildSkillBlueprintForCategory,
+  getSkillBlueprint as resolveSkillBlueprint,
   getSkillDefinition,
   type CareerDomainDto,
   type RecommendedSkillsResponse,
@@ -86,12 +86,14 @@ export class EvidenceCatalogService {
         statusCode: 404,
       });
     }
-    return buildSkillBlueprintForCategory(
-      definition.code,
-      definition.name,
-      definition.domain,
-      definition.categoryName,
-      definition.categoryId,
-    );
+    const blueprint = resolveSkillBlueprint(skillCode);
+    if (!blueprint) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `No competency blueprint for skill ${skillCode}.`,
+        statusCode: 404,
+      });
+    }
+    return blueprint;
   }
 }

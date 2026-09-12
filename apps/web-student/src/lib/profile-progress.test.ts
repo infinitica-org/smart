@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { ProfileProgressInput } from './profile-progress';
 import {
   RECOMMENDED_ACTION_DISMISSAL_MS,
-  canVerifySkills,
   computeProfileCompletion,
   dismissRecommendedAction,
   isRecommendedActionDismissed,
@@ -368,22 +367,5 @@ describe('recommended action dismissal', () => {
     expect(isRecommendedActionDismissed('add-skills')).toBe(true);
     vi.setSystemTime(new Date(Date.now() + RECOMMENDED_ACTION_DISMISSAL_MS + 1));
     expect(isRecommendedActionDismissed('add-skills')).toBe(false);
-  });
-});
-
-describe('canVerifySkills', () => {
-  it('blocks 0% and 99% profiles', () => {
-    expect(canVerifySkills(0)).toBe(false);
-    expect(canVerifySkills(99)).toBe(false);
-  });
-
-  it('allows 100% and does not block values above 100%', () => {
-    expect(canVerifySkills(100)).toBe(true);
-    expect(canVerifySkills(101)).toBe(true);
-  });
-
-  it('treats nullish percent as incomplete', () => {
-    expect(canVerifySkills(null)).toBe(false);
-    expect(canVerifySkills(undefined)).toBe(false);
   });
 });

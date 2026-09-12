@@ -95,7 +95,9 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: /Welcome back, Ada/i })).toBeTruthy();
     expect(screen.getByText('Your SMART Profile')).toBeTruthy();
     expect(screen.getByText('37% complete')).toBeTruthy();
-    expect(screen.getByText('Complete your profile to unlock skill verification.')).toBeTruthy();
+    expect(
+      screen.getByText('Reach at least 50% profile completion to unlock skill verification.'),
+    ).toBeTruthy();
     expect(screen.getByText('Recommended next step')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Add education' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add education' }).getAttribute('href')).toBe(

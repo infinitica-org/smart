@@ -58,6 +58,25 @@ const VERIFICATION_STATUS_LABELS: Record<string, string> = {
   EXPIRED: 'Verification Link Expired (Action Needed)',
 };
 
+const PROOF_FILE_MAX_BYTES = 5 * 1024 * 1024;
+const PROOF_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+
+type ModalPendingDocument = {
+  localId: string;
+  documentType: WorkExperienceDocumentDto['documentType'];
+  file: File;
+};
+
+function validateProofFile(file: File): string | null {
+  if (!PROOF_FILE_TYPES.includes(file.type)) {
+    return 'Only PDF, JPG, and PNG proof documents are accepted.';
+  }
+  if (file.size > PROOF_FILE_MAX_BYTES) {
+    return 'The proof document must be 5MB or smaller.';
+  }
+  return null;
+}
+
 function getNextActionGuidance(
   exp: WorkExperienceDto,
   ruleCheck: { valid: boolean; missingDocuments: string[] },
@@ -123,6 +142,12 @@ export function WorkExperienceSection() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
+  // Inline proof uploads inside the add/edit experience modal
+  const [modalPendingDocs, setModalPendingDocs] = useState<ModalPendingDocument[]>([]);
+  const [modalNewDocType, setModalNewDocType] =
+    useState<WorkExperienceDocumentDto['documentType']>('OFFER_LETTER');
+  const [modalNewProofFile, setModalNewProofFile] = useState<File | null>(null);
+
   const fetchExperiences = async () => {
     try {
       setLoading(true);
@@ -159,6 +184,9 @@ export function WorkExperienceSection() {
     setVerifierName('');
     setVerifierEmail('');
     setVerifierDesignation('');
+    setModalPendingDocs([]);
+    setModalNewDocType('OFFER_LETTER');
+    setModalNewProofFile(null);
     setIsModalOpen(true);
   };
 
@@ -181,7 +209,32 @@ export function WorkExperienceSection() {
     setVerifierName(exp.verifierName || '');
     setVerifierEmail(exp.verifierEmail || '');
     setVerifierDesignation(exp.verifierDesignation || '');
+    setModalPendingDocs([]);
+    setModalNewDocType('OFFER_LETTER');
+    setModalNewProofFile(null);
     setIsModalOpen(true);
+  };
+
+  const addModalPendingDocument = () => {
+    if (!modalNewProofFile) {
+      setError('Select a proof document file to add.');
+      return;
+    }
+    const fileError = validateProofFile(modalNewProofFile);
+    if (fileError) {
+      setError(fileError);
+      return;
+    }
+    setModalPendingDocs((current) => [
+      ...current,
+      {
+        localId: `${Date.now()}-${Math.random()}`,
+        documentType: modalNewDocType,
+        file: modalNewProofFile,
+      },
+    ]);
+    setModalNewProofFile(null);
+    setError(null);
   };
 
   const handleSendVerification = async (experienceId: string, status?: string) => {
@@ -212,6 +265,10 @@ export function WorkExperienceSection() {
         ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
         : [];
       const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
+      const documentsForValidation = [
+        ...existingDocs.map((doc) => ({ documentType: doc.documentType })),
+        ...modalPendingDocs.map((doc) => ({ documentType: doc.documentType })),
+      ];
 
       const submissionInput = {
         companyName,
@@ -226,13 +283,7 @@ export function WorkExperienceSection() {
         companyId: editingExp?.companyId ?? null,
         companyWebsite: companyWebsite || null,
         companyLinkedinUrl: companyLinkedinUrl || null,
-        documents: existingDocs.map((doc) => ({
-          documentType: doc.documentType,
-          fileUrl: doc.fileUrl,
-          fileName: doc.fileName,
-          fileSizeBytes: doc.fileSizeBytes,
-          mimeType: doc.mimeType,
-        })),
+        documents: documentsForValidation,
       };
 
       const validation =
@@ -293,15 +344,32 @@ export function WorkExperienceSection() {
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
-        documents: submissionInput.documents,
       };
 
       if (editingId) {
+        for (const doc of modalPendingDocs) {
+          await api.users.uploadWorkExperienceProofDocument(
+            editingId,
+            doc.file,
+            doc.file.name,
+            doc.documentType,
+          );
+        }
         await api.users.updateWorkExperience(editingId, payload);
       } else {
-        await api.users.createWorkExperience(payload);
+        const created = await api.users.createWorkExperience(payload);
+        for (const doc of modalPendingDocs) {
+          await api.users.uploadWorkExperienceProofDocument(
+            created.id,
+            doc.file,
+            doc.file.name,
+            doc.documentType,
+          );
+        }
       }
 
+      setModalPendingDocs([]);
+      setModalNewProofFile(null);
       setIsModalOpen(false);
       await fetchExperiences();
     } catch (err: unknown) {
@@ -325,13 +393,9 @@ export function WorkExperienceSection() {
     e.preventDefault();
     if (!docModalExpId || !proofFile) return;
 
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(proofFile.type)) {
-      setError('Only PDF, JPG, and PNG proof documents are accepted.');
-      return;
-    }
-    if (proofFile.size > 5 * 1024 * 1024) {
-      setError('The proof document must be 5MB or smaller.');
+    const fileError = validateProofFile(proofFile);
+    if (fileError) {
+      setError(fileError);
       return;
     }
 
@@ -1029,7 +1093,160 @@ export function WorkExperienceSection() {
                   </>
                 )}
               </p>
+              <p className="mt-2 text-foreground/70">
+                Upload the required documents in the Proof Documents section below before you
+                submit.
+              </p>
             </div>
+
+            {(() => {
+              const savedModalDocs = editingId
+                ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
+                : [];
+              const modalLetterCheck = validateWorkExperienceLetterRules({
+                isCurrent,
+                endDate: !isCurrent && endDate ? new Date(endDate).toISOString() : null,
+                documents: [
+                  ...savedModalDocs.map((doc) => ({ documentType: doc.documentType })),
+                  ...modalPendingDocs.map((doc) => ({ documentType: doc.documentType })),
+                ],
+              });
+
+              return (
+                <div className="mt-4 rounded-2xl border border-border bg-muted/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">Proof Documents *</h4>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        PDF, JPG, or PNG up to 5MB each.
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                        modalLetterCheck.valid
+                          ? 'bg-emerald-50 text-emerald-800'
+                          : 'bg-amber-50 text-amber-900'
+                      }`}
+                    >
+                      {modalLetterCheck.valid ? 'Requirements met' : 'Upload required'}
+                    </span>
+                  </div>
+
+                  {(savedModalDocs.length > 0 || modalPendingDocs.length > 0) && (
+                    <div className="mt-3 space-y-2">
+                      {savedModalDocs.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <FileText className="h-4 w-4 shrink-0 text-[#00fad0]" />
+                            <span className="truncate font-medium text-foreground">
+                              {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:{' '}
+                              {doc.fileName}
+                            </span>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-muted-foreground">Saved</span>
+                        </div>
+                      ))}
+                      {modalPendingDocs.map((doc) => (
+                        <div
+                          key={doc.localId}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/5 px-3 py-2 text-xs"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <FileText className="h-4 w-4 shrink-0 text-[#00fad0]" />
+                            <span className="truncate font-medium text-foreground">
+                              {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:{' '}
+                              {doc.file.name}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setModalPendingDocs((current) =>
+                                current.filter((item) => item.localId !== doc.localId),
+                              )
+                            }
+                            className="shrink-0 text-muted-foreground hover:text-red-700"
+                            aria-label={`Remove ${doc.file.name}`}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!modalLetterCheck.valid ? (
+                    <p className="mt-3 text-[11px] text-amber-900">{modalLetterCheck.message}</p>
+                  ) : null}
+
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] sm:items-end">
+                    <div>
+                      <label
+                        htmlFor="modal-proof-document-type"
+                        className="block text-[11px] font-medium text-foreground/80"
+                      >
+                        Document type
+                      </label>
+                      <select
+                        id="modal-proof-document-type"
+                        value={modalNewDocType}
+                        onChange={(event) =>
+                          setModalNewDocType(
+                            event.target.value as WorkExperienceDocumentDto['documentType'],
+                          )
+                        }
+                        className={`${nativeSelectClass} mt-1 h-10 py-2 text-sm`}
+                      >
+                        <option value="OFFER_LETTER" className={nativeOptionClass}>
+                          Offer Letter
+                        </option>
+                        <option value="RELIEVING_LETTER" className={nativeOptionClass}>
+                          Relieving Letter
+                        </option>
+                        <option value="EXPERIENCE_LETTER" className={nativeOptionClass}>
+                          Experience Letter
+                        </option>
+                        <option value="PAYSLIP" className={nativeOptionClass}>
+                          Payslip
+                        </option>
+                        <option value="FORM_16" className={nativeOptionClass}>
+                          Form 16
+                        </option>
+                        <option value="OTHER">Other Proof Document</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="modal-proof-document-file"
+                        className="block text-[11px] font-medium text-foreground/80"
+                      >
+                        Proof document
+                      </label>
+                      <input
+                        id="modal-proof-document-file"
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/jpg,image/png"
+                        onChange={(event) => {
+                          setModalNewProofFile(event.target.files?.[0] ?? null);
+                        }}
+                        className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-[#00fad0]/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#00fad0]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addModalPendingDocument}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/10 px-4 py-2.5 text-xs font-semibold text-[#00fad0] hover:bg-[#00fad0]/20"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      Add file
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {error && (
               <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -1406,12 +1623,12 @@ export function WorkExperienceSection() {
                   }}
                   className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-[#00fad0]/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#00fad0]"
                 />
-                <p className="mt-1 text-[11px] text-white/40">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   PDF, JPG, or PNG up to 5MB. Files are stored securely for AI proof validation.
                 </p>
                 {proofFile ? (
-                  <p className="mt-1 text-[11px] text-white/60">
-                    Selected: <span className="font-mono text-white/80">{proofFile.name}</span>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Selected: <span className="font-mono text-foreground/80">{proofFile.name}</span>
                   </p>
                 ) : null}
               </div>

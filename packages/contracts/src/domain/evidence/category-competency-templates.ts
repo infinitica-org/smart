@@ -95,21 +95,37 @@ export function buildDefaultProficiencyRequirements(
 ): ProficiencyRequirement[] {
   const c = (slot: number) => stableCompetencyId(categoryId, slot);
   return [
-    { level: 'BEGINNER', requiredCompetencyIds: [c(1)], criticalCompetencyIds: [c(1)] },
+    {
+      level: 'BEGINNER',
+      requiredCompetencyIds: [c(1)],
+      criticalCompetencyIds: [c(1)],
+      realWorldApplicationRequired: false,
+      substantialApplicationRequired: false,
+      interviewRequired: false,
+    },
     {
       level: 'INTERMEDIATE',
       requiredCompetencyIds: [c(1), c(2), c(3)],
       criticalCompetencyIds: [c(3)],
+      realWorldApplicationRequired: false,
+      substantialApplicationRequired: false,
+      interviewRequired: false,
     },
     {
       level: 'ADVANCED',
       requiredCompetencyIds: [c(1), c(2), c(3), c(4), c(5)],
       criticalCompetencyIds: [c(4), c(5)],
+      realWorldApplicationRequired: true,
+      substantialApplicationRequired: false,
+      interviewRequired: true,
     },
     {
       level: 'PROFESSIONAL',
       requiredCompetencyIds: [c(1), c(2), c(3), c(4), c(5), c(6)],
       criticalCompetencyIds: [c(5), c(6)],
+      realWorldApplicationRequired: true,
+      substantialApplicationRequired: true,
+      interviewRequired: true,
     },
   ];
 }

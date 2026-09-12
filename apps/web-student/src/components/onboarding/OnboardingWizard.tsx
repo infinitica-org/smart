@@ -9,7 +9,6 @@ import { api } from '@/lib/api';
 import ResumeUpload from './steps/ResumeUpload';
 import BasicProfileStep from './steps/BasicProfileStep';
 import StreamStep from './steps/StreamStep';
-import SkillsStep from './steps/SkillsStep';
 import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
@@ -65,11 +64,11 @@ function furthestStep(form: OnboardingProfileForm): WizardStepId {
   const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
   if (hasSocial) return 'social';
   if (form.languages.some((l) => l.language.trim())) return 'languages';
-  const hasSkills =
+  const hasLegacySkillsData =
     Object.keys(form.catalogSkills).length > 0 ||
     form.codingProficiencies.length > 0 ||
     form.frameworkProficiencies.length > 0;
-  if (hasSkills) return 'skills';
+  if (hasLegacySkillsData) return 'languages';
   if (form.firstName.trim() || form.lastName.trim()) return 'profile';
   return 'resume';
 }
@@ -204,15 +203,6 @@ export default function OnboardingWizard() {
 
         {currentStep === 'stream' && (
           <StreamStep onBack={() => goBackTo('stream')} onContinue={() => advanceFrom('stream')} />
-        )}
-
-        {currentStep === 'skills' && (
-          <SkillsStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('skills')}
-            onContinue={() => advanceFrom('skills')}
-          />
         )}
 
         {currentStep === 'languages' && (

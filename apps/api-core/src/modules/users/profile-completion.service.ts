@@ -27,7 +27,7 @@ export class ProfileCompletionService {
       if (!complete) {
         throw new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Complete your profile to unlock skill verification.',
+          message: 'Reach at least 50% profile completion to unlock skill verification.',
           statusCode: 403,
         });
       }

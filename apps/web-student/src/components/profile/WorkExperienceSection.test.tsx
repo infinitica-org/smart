@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkExperienceSection } from './WorkExperienceSection';
 
@@ -154,6 +154,56 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     expect(
       screen.getByText(/Ended Role: Offer Letter \+ Completion\/Relieving Letter required/i),
     ).toBeTruthy();
+  });
+
+  it('shows proof document upload controls in the add experience modal', async () => {
+    await openAddExperienceModal();
+
+    expect(screen.getByText('Proof Documents *')).toBeTruthy();
+    expect(screen.getByLabelText('Proof document')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Add file/i })).toBeTruthy();
+  });
+
+  it('submits a new ongoing role when an offer letter is attached in the modal', async () => {
+    createWorkExperience.mockResolvedValue({
+      ...mockOngoingExp,
+      id: 'exp-new',
+    });
+    uploadWorkExperienceProofDocument.mockResolvedValue({
+      id: 'doc-new',
+      experienceId: 'exp-new',
+      documentType: 'OFFER_LETTER',
+      fileName: 'offer.pdf',
+      fileUrl: 'work-experience-proofs/student-1/offer.pdf',
+      fileSizeBytes: 128,
+      mimeType: 'application/pdf',
+      createdAt: '2026-09-01T00:00:00.000Z',
+    });
+
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container);
+    selectCatalogSkill('Version Control & Code Collaboration');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    const file = new File(['%PDF-1.4 offer'], 'offer.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Proof document'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /Add file/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    await waitFor(() => {
+      expect(createWorkExperience).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          documents: expect.anything(),
+        }),
+      );
+      expect(uploadWorkExperienceProofDocument).toHaveBeenCalledWith(
+        'exp-new',
+        file,
+        'offer.pdf',
+        'OFFER_LETTER',
+      );
+    });
   });
 
   it('prevents submission client-side if required offer letter is missing', async () => {

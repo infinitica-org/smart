@@ -30,3 +30,23 @@ export function qualifiesAsSkillDemonstrationEvidence(params: {
   }
   return params.verificationStatus === 'VERIFIED';
 }
+
+/** Provisional linked evidence — supports PROVISIONAL claim settlement, not full VERIFIED. */
+export function qualifiesAsProvisionalDemonstrationEvidence(params: {
+  evidenceType: EvidenceType;
+  relatedSkillCodes: readonly string[];
+  catalogSkillCode: string;
+  verificationStatus: EvidenceVerificationStatus;
+}): boolean {
+  if (
+    !SKILL_DEMONSTRATION_EVIDENCE_TYPES.includes(
+      params.evidenceType as SkillDemonstrationEvidenceType,
+    )
+  ) {
+    return false;
+  }
+  if (!params.relatedSkillCodes.includes(params.catalogSkillCode)) {
+    return false;
+  }
+  return params.verificationStatus === 'PROVISIONAL' || params.verificationStatus === 'VERIFIED';
+}

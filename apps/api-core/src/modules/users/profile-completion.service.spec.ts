@@ -1,4 +1,3 @@
-import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ProfileCompletionService } from './profile-completion.service.js';
 
@@ -50,19 +49,17 @@ function completePrismaMocks() {
         .mockResolvedValue([{ id: 'lang-1', language: 'English', proficiency: 'FLUENT' }]),
     },
     candidateEducation: {
-      findMany: vi
-        .fn()
-        .mockResolvedValue([
-          {
-            id: 'edu-1',
-            institutionName: 'MIT',
-            degree: 'BSc',
-            fieldOfStudy: 'CS',
-            startYear: 2020,
-            endYear: 2024,
-            grade: 'A',
-          },
-        ]),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: 'edu-1',
+          institutionName: 'MIT',
+          degree: 'BSc',
+          fieldOfStudy: 'CS',
+          startYear: 2020,
+          endYear: 2024,
+          grade: 'A',
+        },
+      ]),
     },
     workExperience: {
       findMany: vi.fn().mockResolvedValue([
@@ -115,7 +112,7 @@ describe('ProfileCompletionService', () => {
     expect(await service.isCompleteForSkillVerification(STUDENT_ID)).toBe(true);
   });
 
-  it('reports 88% when one area is missing and blocks verification', async () => {
+  it('reports 88% when one area is missing and still allows verification at 50% gate', async () => {
     const prisma = completePrismaMocks();
     prisma.candidateCertificate.findMany.mockResolvedValue([]);
     const service = new ProfileCompletionService(prisma as never);
@@ -123,21 +120,36 @@ describe('ProfileCompletionService', () => {
     const progress = await service.getProgressForStudent(STUDENT_ID);
 
     expect(progress.percent).toBe(88);
-    expect(await service.isCompleteForSkillVerification(STUDENT_ID)).toBe(false);
-    await expect(service.assertCompleteForSkillVerification(STUDENT_ID)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    expect(await service.isCompleteForSkillVerification(STUDENT_ID)).toBe(true);
   });
 
-  it('throws profile_incomplete without mutating verification state', async () => {
+  it('throws profile_incomplete when profile is below 50%', async () => {
     const prisma = completePrismaMocks();
+    prisma.workExperience.findMany.mockResolvedValue([]);
     prisma.project.findMany.mockResolvedValue([]);
+    prisma.candidateCertificate.findMany.mockResolvedValue([]);
+    prisma.user.findUnique.mockResolvedValue({
+      onboardingCompleted: true,
+      onboardingDetails: {
+        interestDomain: 'CS_IT',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        phoneCountryCode: '+91',
+        phoneNumber: '9876543210',
+        dpdpConsent: true,
+        dpdpConsentAt: '2026-01-01T00:00:00.000Z',
+        completedAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
     const service = new ProfileCompletionService(prisma as never);
+
+    const progress = await service.getProgressForStudent(STUDENT_ID);
+    expect(progress.percent).toBe(38);
 
     await expect(service.assertCompleteForSkillVerification(STUDENT_ID)).rejects.toMatchObject({
       response: expect.objectContaining({
         error: 'profile_incomplete',
-        message: 'Complete your profile to unlock skill verification.',
+        message: 'Reach at least 50% profile completion to unlock skill verification.',
       }),
     });
   });

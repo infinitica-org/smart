@@ -57,11 +57,12 @@ describe('SkillVerifyExam layout', () => {
     expect(screen.getByText('First stem')).toBeDefined();
     expect(screen.queryByText('Second stem')).toBeNull();
     expect(
-      screen.getByRole('heading', { name: /sql & query optimization · beginner/i }),
+      screen.getByRole('heading', { name: /sql & query optimization · short diagnostic/i }),
     ).toBeDefined();
     expect(screen.getByText('Single Choice')).toBeDefined();
     expect(screen.queryByText(/Pass bar/)).toBeNull();
-    expect(screen.getByRole('button', { name: /submit and see results/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /next question/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /submit and see results/i })).toBeNull();
     expect(screen.queryByText('Monitoring')).toBeNull();
   });
 
@@ -69,7 +70,7 @@ describe('SkillVerifyExam layout', () => {
     render(
       <SkillVerifyExam
         session={session()}
-        currentIndex={0}
+        currentIndex={1}
         answers={{ 1: { selectedKey: 'B' } }}
         pending={false}
         error={null}
@@ -212,6 +213,65 @@ describe('SkillVerifyExam layout', () => {
     expect(onSelectKey).toHaveBeenCalledWith(1, 'A');
   });
 
+  it('shows a missing-snippet note when trace code is absent from the prompt', () => {
+    render(
+      <SkillVerifyExam
+        session={session({
+          items: [
+            {
+              index: 1,
+              format: 'TRACE',
+              prompt:
+                'What shape does X_transformed have after running Imputer and StandardScaler in a FeatureUnion?',
+              options: { A: '(n, 1)', B: '(n, 2)', C: '(n, n)', D: '(1, n)' },
+            },
+          ],
+        })}
+        currentIndex={0}
+        answers={{}}
+        pending={false}
+        error={null}
+        onSelectKey={vi.fn()}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/not included in this question/i)).toBeDefined();
+  });
+
+  it('wraps inline trace code when the LLM omitted markdown fences', () => {
+    render(
+      <SkillVerifyExam
+        session={session({
+          items: [
+            {
+              index: 1,
+              format: 'TRACE',
+              prompt:
+                'What shape does X have?\nfrom sklearn.pipeline import FeatureUnion\nunion = FeatureUnion([])',
+              options: { A: '(n, 1)', B: '(n, 2)', C: '(n, n)', D: '(1, n)' },
+            },
+          ],
+        })}
+        currentIndex={0}
+        answers={{}}
+        pending={false}
+        error={null}
+        onSelectKey={vi.fn()}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/from sklearn\.pipeline import FeatureUnion/)).toBeDefined();
+    expect(screen.getByText(/union = FeatureUnion\(\[\]\)/)).toBeDefined();
+  });
+
   it('renders a split studio pane for DEBUG items', () => {
     render(
       <SkillVerifyExam
@@ -296,155 +356,5 @@ describe('SkillVerifyExam layout', () => {
     });
     expect(await screen.findByText('1/1 tests passed')).toBeDefined();
     expect(screen.getByText(/PASS/)).toBeDefined();
-  });
-
-  it('splits fenced code out of a trace stem', () => {
-    expect(
-      splitPromptSegments('What prints?\n```js\nconsole.log(1)\n```\nChoose the output.'),
-    ).toEqual([
-      { type: 'prose', text: 'What prints?' },
-      { type: 'code', language: 'js', text: 'console.log(1)' },
-      { type: 'prose', text: 'Choose the output.' },
-    ]);
-  });
-
-  it('renders a split studio pane for TRACE items', () => {
-    const onSelectKey = vi.fn();
-    render(
-      <SkillVerifyExam
-        session={session({
-          items: [
-            {
-              index: 1,
-              format: 'TRACE',
-              prompt: 'What is printed?\n```js\nconsole.log(a)\n```',
-              options: { A: '42', B: 'undefined', C: 'Error', D: 'null' },
-            },
-          ],
-        })}
-        currentIndex={0}
-        answers={{}}
-        pending={false}
-        error={null}
-        onSelectKey={onSelectKey}
-        onChangeText={vi.fn()}
-        onGoTo={vi.fn()}
-        onClear={vi.fn()}
-        onExit={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole('heading', { name: 'Trace the snippet' })).toBeDefined();
-    expect(screen.getByText('Answer')).toBeDefined();
-    expect(screen.getByText('console.log(a)')).toBeDefined();
-    fireEvent.click(screen.getByRole('radio', { name: /42/ }));
-    expect(onSelectKey).toHaveBeenCalledWith(1, 'A');
-  });
-
-  it('renders a split studio pane for DEBUG items', () => {
-    render(
-      <SkillVerifyExam
-        session={session({
-          items: [
-            {
-              index: 1,
-              format: 'DEBUG',
-              title: 'Null pointer in parser',
-              prompt: 'Find the bug.\n```ts\nfoo(null)\n```',
-              options: null,
-            },
-          ],
-        })}
-        currentIndex={0}
-        answers={{}}
-        pending={false}
-        error={null}
-        onSelectKey={vi.fn()}
-        onChangeText={vi.fn()}
-        onGoTo={vi.fn()}
-        onClear={vi.fn()}
-        onExit={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Null pointer in parser')).toBeDefined();
-    expect(screen.getByText('Root cause and fix')).toBeDefined();
-    expect(screen.getByPlaceholderText('Describe the bug and the fix')).toBeDefined();
-    expect(screen.getByLabelText('Debug response')).toBeDefined();
-  });
-
-  it('splits fenced code out of a trace stem', () => {
-    expect(
-      splitPromptSegments('What prints?\n```js\nconsole.log(1)\n```\nChoose the output.'),
-    ).toEqual([
-      { type: 'prose', text: 'What prints?' },
-      { type: 'code', language: 'js', text: 'console.log(1)' },
-      { type: 'prose', text: 'Choose the output.' },
-    ]);
-  });
-
-  it('renders a split studio pane for TRACE items', () => {
-    const onSelectKey = vi.fn();
-    render(
-      <SkillVerifyExam
-        session={session({
-          items: [
-            {
-              index: 1,
-              format: 'TRACE',
-              prompt: 'What is printed?\n```js\nconsole.log(a)\n```',
-              options: { A: '42', B: 'undefined', C: 'Error', D: 'null' },
-            },
-          ],
-        })}
-        currentIndex={0}
-        answers={{}}
-        pending={false}
-        error={null}
-        onSelectKey={onSelectKey}
-        onChangeText={vi.fn()}
-        onGoTo={vi.fn()}
-        onClear={vi.fn()}
-        onExit={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole('heading', { name: 'Trace the snippet' })).toBeDefined();
-    expect(screen.getByText('Answer')).toBeDefined();
-    expect(screen.getByText('console.log(a)')).toBeDefined();
-    fireEvent.click(screen.getByRole('radio', { name: /42/ }));
-    expect(onSelectKey).toHaveBeenCalledWith(1, 'A');
-  });
-
-  it('renders a split studio pane for DEBUG items', () => {
-    render(
-      <SkillVerifyExam
-        session={session({
-          items: [
-            {
-              index: 1,
-              format: 'DEBUG',
-              title: 'Null pointer in parser',
-              prompt: 'Find the bug.\n```ts\nfoo(null)\n```',
-              options: null,
-            },
-          ],
-        })}
-        currentIndex={0}
-        answers={{}}
-        pending={false}
-        error={null}
-        onSelectKey={vi.fn()}
-        onChangeText={vi.fn()}
-        onGoTo={vi.fn()}
-        onClear={vi.fn()}
-        onExit={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Null pointer in parser')).toBeDefined();
-    expect(screen.getByText('Root cause and fix')).toBeDefined();
-    expect(screen.getByPlaceholderText('Describe the bug and the fix')).toBeDefined();
-    expect(screen.getByLabelText('Debug response')).toBeDefined();
   });
 });

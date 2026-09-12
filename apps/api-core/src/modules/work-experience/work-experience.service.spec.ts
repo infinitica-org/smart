@@ -7,6 +7,10 @@ import {
   validateEmployerDomain,
 } from './work-experience.service.js';
 import { parseStoredDocumentAuthenticity } from './work-experience-document-authenticity.util.js';
+import {
+  assertStudentControlledProofFileUrl,
+  InvalidStudentProofFileUrlError,
+} from './work-experience-proof-url.util.js';
 
 describe('WorkExperienceService', () => {
   let prisma: any;
@@ -873,6 +877,28 @@ describe('WorkExperienceService', () => {
           resourceId: docId,
         }),
       );
+    });
+
+    it('rejects remote HTTP(S) proof file URLs before persistence', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValueOnce({
+        id: expId,
+        studentId: mockStudentId,
+        companyName: 'Acme Corporation',
+        companyWebsite: 'https://acme.com',
+      });
+
+      await expect(
+        service.attachDocument(mockStudentId, expId, {
+          documentType: 'OFFER_LETTER',
+          fileUrl: 'https://169.254.169.254/latest/meta-data/',
+          fileName: 'offer.pdf',
+          fileSizeBytes: 2048,
+          mimeType: 'application/pdf',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.workExperienceDocument.create).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException if experience entry does not exist or belong to student', async () => {
@@ -1850,7 +1876,16 @@ describe('WorkExperienceService', () => {
           },
         ]);
 
-        const items = await service.getOpsDashboard();
+        const items = await service.getOpsDashboard({
+          sub: mockStudentId,
+          role: 'SUPER_ADMIN',
+          inst: null,
+        });
+        expect(prisma.workExperience.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {},
+          }),
+        );
         expect(items).toHaveLength(1);
         expect(items[0].candidateName).toBe('John Doe');
         expect(items[0].companyName).toBe('Acme Corp');
@@ -2388,5 +2423,37 @@ describe('WorkExperienceService', () => {
         ).rejects.toBeInstanceOf(BadRequestException);
       });
     });
+  });
+});
+
+describe('assertStudentControlledProofFileUrl', () => {
+  it('accepts storage object keys and data URIs', () => {
+    expect(() =>
+      assertStudentControlledProofFileUrl('work-experience-proofs/student-1/offer.pdf'),
+    ).not.toThrow();
+    expect(() =>
+      assertStudentControlledProofFileUrl('data:application/pdf;base64,QUJDRA=='),
+    ).not.toThrow();
+  });
+
+  it('rejects remote HTTP(S) URLs', () => {
+    expect(() => assertStudentControlledProofFileUrl('https://evil.example/proof.pdf')).toThrow(
+      InvalidStudentProofFileUrlError,
+    );
+    expect(() => assertStudentControlledProofFileUrl('http://169.254.169.254/')).toThrow(
+      InvalidStudentProofFileUrlError,
+    );
+  });
+
+  it('rejects absolute filesystem paths and traversal', () => {
+    expect(() => assertStudentControlledProofFileUrl('/etc/passwd')).toThrow(
+      InvalidStudentProofFileUrlError,
+    );
+    expect(() => assertStudentControlledProofFileUrl('C:\\Windows\\System32\\config\\SAM')).toThrow(
+      InvalidStudentProofFileUrlError,
+    );
+    expect(() => assertStudentControlledProofFileUrl('storage/../secrets/key')).toThrow(
+      InvalidStudentProofFileUrlError,
+    );
   });
 });

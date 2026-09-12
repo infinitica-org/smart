@@ -1,35 +1,28 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
-  buildSkillBlueprintForCategory,
+  getSkillBlueprint,
   getSkillDefinition,
+  SKILL_VERIFICATION_DISCOVERY_TARGET,
   type AssessmentResult,
   type SkillBlueprint,
   type SkillProficiency,
 } from '@smart/contracts';
-import { evaluateAssessmentIntelligence, proficiencyMeetsTarget } from '@smart/scoring-engine';
+import { evaluateAssessmentIntelligence, type VerificationMode } from '@smart/scoring-engine';
 import { Effect } from 'effect';
 import type { GradeSdeSkillFormResponse } from '@smart/contracts';
-import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
 
 @Injectable()
 export class AssessmentIntelligenceService {
-  constructor(
-    @Inject(VerificationOrchestratorService)
-    private readonly verification: VerificationOrchestratorService,
-  ) {}
-
   resolveBlueprint(catalogSkillCode: string): SkillBlueprint {
     const definition = getSkillDefinition(catalogSkillCode);
     if (!definition) {
       throw new Error(`Unknown catalog skill ${catalogSkillCode}`);
     }
-    return buildSkillBlueprintForCategory(
-      definition.code,
-      definition.name,
-      definition.domain,
-      definition.categoryName,
-      definition.categoryId,
-    );
+    const blueprint = getSkillBlueprint(catalogSkillCode);
+    if (!blueprint) {
+      throw new Error(`No competency blueprint for catalog skill ${catalogSkillCode}`);
+    }
+    return blueprint;
   }
 
   enrichGrade(
@@ -53,9 +46,10 @@ export class AssessmentIntelligenceService {
     );
     return {
       ...grade,
-      passed: intelligence.assessmentPassed,
-      assessmentPassed: intelligence.assessmentPassed,
-      competencySupportedProficiency: intelligence.highestAssessmentSupportedProficiency,
+      passed: intelligence.assessmentComplete,
+      assessmentPassed: intelligence.assessmentComplete,
+      competencySupportedProficiency:
+        intelligence.highestAssessmentSupportedProficiency ?? undefined,
     };
   }
 
@@ -63,10 +57,14 @@ export class AssessmentIntelligenceService {
     catalogSkillCode: string;
     attemptId: string;
     blueprint: SkillBlueprint;
-    targetProficiency: SkillProficiency;
+    targetProficiency?: SkillProficiency;
+    verificationMode?: VerificationMode;
+    allowUpwardProbe?: boolean;
     grade: GradeSdeSkillFormResponse;
     competencyIdsByIndex: ReadonlyMap<number, readonly string[]>;
   }): AssessmentResult {
+    const targetProficiency = input.targetProficiency ?? SKILL_VERIFICATION_DISCOVERY_TARGET;
+    const verificationMode = input.verificationMode ?? 'discovery';
     const items = input.grade.itemResults.map((item) => ({
       competencyIds: input.competencyIdsByIndex.get(item.index) ?? item.competencyIds ?? [],
       marksEarned: item.marksEarned,
@@ -77,25 +75,24 @@ export class AssessmentIntelligenceService {
         competencyModel: input.blueprint.competencyModel,
         proficiencyRequirements: input.blueprint.proficiencyRequirements ?? [],
         items,
-        targetProficiency: input.targetProficiency,
+        targetProficiency,
+        verificationMode,
+        allowUpwardProbe: input.allowUpwardProbe,
       }),
     );
-    const gate = this.verification.evaluateGate({
-      targetProficiency: input.targetProficiency,
-      supportedProficiency: intelligence.highestAssessmentSupportedProficiency,
-      recommendedNextStep: intelligence.recommendedNextStep,
-      confidence: intelligence.confidence,
-    });
     return {
       skillCode: input.catalogSkillCode,
       assessmentVersion: 'v1',
       attemptId: input.attemptId,
       competencyResults: intelligence.competencyResults,
       highestAssessmentSupportedProficiency: intelligence.highestAssessmentSupportedProficiency,
-      targetProficiency: input.targetProficiency,
+      targetProficiency,
+      assessmentComplete: intelligence.assessmentComplete,
+      assessmentPassed: intelligence.assessmentComplete,
       uncertainties: intelligence.uncertainties,
-      recommendedNextStep: gate.recommendedNextStep,
-      requiresInterview: gate.requiresInterview,
+      recommendedNextStep: intelligence.recommendedNextStep,
+      requiresInterview: intelligence.requiresInterview,
+      requiresEvidenceVerification: intelligence.requiresEvidenceVerification,
       requiresAdditionalAssessment: intelligence.requiresAdditionalAssessment,
       confidence: intelligence.confidence,
       scorePercent: input.grade.scorePercent,
@@ -103,13 +100,10 @@ export class AssessmentIntelligenceService {
     };
   }
 
-  claimPassesFromAssessment(
-    assessmentResult: AssessmentResult,
-    targetProficiency: SkillProficiency,
-  ): boolean {
-    const target = targetProficiency as AssessmentResult['targetProficiency'];
+  claimPassesFromAssessment(assessmentResult: AssessmentResult): boolean {
     return (
-      proficiencyMeetsTarget(assessmentResult.highestAssessmentSupportedProficiency, target) &&
+      assessmentResult.assessmentComplete &&
+      assessmentResult.highestAssessmentSupportedProficiency !== null &&
       assessmentResult.recommendedNextStep === 'NONE'
     );
   }
