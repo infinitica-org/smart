@@ -74,6 +74,18 @@ export const TRACK_CATEGORIES = ['TECH', 'MBA'] as const;
 export const TrackCategorySchema = z.enum(TRACK_CATEGORIES);
 export type TrackCategory = z.infer<typeof TrackCategorySchema>;
 
+/**
+ * Broad area-of-interest captured at candidate onboarding entry.
+ *
+ * This is intentionally **not** a {@link TrackCode}: it does not enroll the
+ * student in Full Stack / SDE / Finance Analyst tracks or any career role.
+ * Track selection remains a separate progressive step (`primaryTrack` on the
+ * user row via `POST /users/me/enroll-track`).
+ */
+export const INTEREST_DOMAINS = ['CS_IT', 'BUSINESS_MANAGEMENT', 'FINANCE', 'OTHER'] as const;
+export const InterestDomainSchema = z.enum(INTEREST_DOMAINS);
+export type InterestDomain = z.infer<typeof InterestDomainSchema>;
+
 export const TRACK_CODES = [
   // 5 IT tracks
   'TECH_FULLSTACK',

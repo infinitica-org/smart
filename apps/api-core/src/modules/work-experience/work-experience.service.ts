@@ -21,6 +21,9 @@ import type {
   SubmitManagerEndorsementResponseDto,
   AdminWorkExperienceReviewRequest,
   ApproveWorkExperienceAuthenticityResponse,
+  UpdateWorkExperienceDto,
+  WorkExperienceValidationInput,
+  WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
@@ -34,17 +37,15 @@ import {
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
-  validateWorkExperienceLetterRules,
+  validateWorkExperienceEffectiveUpdate,
+  validateWorkExperienceSubmission,
   ApproveWorkExperienceAuthenticityResponseSchema,
   toWorkExperienceDocumentPublicDto,
   type WorkExperienceDocumentPublicDto,
-  companyRequiresPublicIdentity,
-  validateCompanyPublicIdentity,
   isInvalidEmploymentProofAttachmentType,
   isInvalidEmploymentProofClassification,
   INVALID_EMPLOYMENT_PROOF_MESSAGE,
   deriveWorkExperienceNextAction,
-  type WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -291,20 +292,6 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
-    const letterValidation = validateWorkExperienceLetterRules({
-      isCurrent: data.isCurrent,
-      endDate: data.endDate,
-      documents: data.documents,
-    });
-    if (!letterValidation.valid) {
-      throw new BadRequestException({
-        error: 'validation_error',
-        message: letterValidation.message || 'Required proof documents are missing.',
-        statusCode: 400,
-        details: { missingDocuments: letterValidation.missingDocuments },
-      });
-    }
-
     const rawName = data.companyName.trim();
     const org = await this.resolveOrganization({
       name: rawName,
@@ -337,11 +324,20 @@ export class WorkExperienceService {
       }
     }
 
-    await this.assertCompanyPublicIdentity({
-      companyId: data.companyId,
+    await this.assertWorkExperienceCompleteness({
+      companyName: data.companyName,
+      role: data.role,
+      employmentType: data.employmentType,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      isCurrent: data.isCurrent,
+      domain: data.domain,
+      responsibilities: data.responsibilities,
+      skillsClaimed: data.skillsClaimed,
+      companyId: matchedCompanyId ?? data.companyId,
       companyWebsite: data.companyWebsite,
       companyLinkedinUrl: data.companyLinkedinUrl,
-      matchedCompanyId,
+      documents: data.documents,
     });
 
     const created = await this.prisma.workExperience.create({
@@ -423,28 +419,14 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
-    const effectiveIsCurrent = data.isCurrent !== undefined ? data.isCurrent : existing.isCurrent;
-    const effectiveEndDate =
-      data.endDate !== undefined
-        ? data.endDate
-        : existing.endDate
-          ? existing.endDate.toISOString()
-          : null;
-    const effectiveDocs =
-      data.documents && data.documents.length > 0 ? data.documents : existing.documents;
-
-    const letterValidation = validateWorkExperienceLetterRules({
-      isCurrent: effectiveIsCurrent,
-      endDate: effectiveEndDate,
-      documents: effectiveDocs,
-    });
-    if (!letterValidation.valid) {
-      throw new BadRequestException({
-        error: 'validation_error',
-        message: letterValidation.message || 'Required proof documents are missing.',
-        statusCode: 400,
-        details: { missingDocuments: letterValidation.missingDocuments },
-      });
+    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
+    const catalog = await this.resolveCatalogCompanyIdentity(effectiveCompanyId);
+    const effectiveValidation = validateWorkExperienceEffectiveUpdate(
+      this.toWorkExperienceValidationInput(existing, catalog),
+      this.toWorkExperienceValidationPatch(data),
+    );
+    if (!effectiveValidation.valid) {
+      this.throwWorkExperienceValidationError(effectiveValidation);
     }
 
     if (
@@ -481,19 +463,6 @@ export class WorkExperienceService {
       updatedOrgId = org.id;
       updatedCompanyNameRaw = nameToUse.trim();
     }
-
-    const effectiveCompanyWebsite =
-      data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
-    const effectiveCompanyLinkedinUrl =
-      data.companyLinkedinUrl !== undefined ? data.companyLinkedinUrl : existing.companyLinkedinUrl;
-    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
-
-    await this.assertCompanyPublicIdentity({
-      companyId: effectiveCompanyId,
-      companyWebsite: effectiveCompanyWebsite,
-      companyLinkedinUrl: effectiveCompanyLinkedinUrl,
-      matchedCompanyId: effectiveCompanyId,
-    });
 
     const updated = await this.prisma.workExperience.update({
       where: { id },
@@ -826,6 +795,8 @@ export class WorkExperienceService {
       });
     }
 
+    await this.assertWorkExperienceCompleteness(experience);
+
     const doc = experience.documents.find((d) => d.id === documentId);
     if (!doc) {
       throw new NotFoundException({
@@ -1071,40 +1042,154 @@ export class WorkExperienceService {
     });
   }
 
-  private async assertCompanyPublicIdentity(params: {
-    companyId?: string | null;
-    companyWebsite?: string | null;
-    companyLinkedinUrl?: string | null;
-    matchedCompanyId?: string | null;
-  }): Promise<void> {
-    let catalogWebsite: string | null = null;
-    let catalogLinkedin: string | null = null;
-    const resolvedCompanyId = params.matchedCompanyId ?? params.companyId ?? null;
-    if (resolvedCompanyId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: resolvedCompanyId },
-      });
-      catalogWebsite = company?.website ?? null;
-      catalogLinkedin = company?.linkedinUrl ?? null;
+  private async resolveCatalogCompanyIdentity(companyId?: string | null): Promise<{
+    catalogCompanyWebsite: string | null;
+    catalogCompanyLinkedinUrl: string | null;
+  }> {
+    if (!companyId) {
+      return { catalogCompanyWebsite: null, catalogCompanyLinkedinUrl: null };
     }
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    return {
+      catalogCompanyWebsite: company?.website ?? null,
+      catalogCompanyLinkedinUrl: company?.linkedinUrl ?? null,
+    };
+  }
 
-    const required = companyRequiresPublicIdentity({
-      companyId: resolvedCompanyId,
-      companyWebsite: params.companyWebsite,
-      catalogCompanyWebsite: catalogWebsite,
-      catalogCompanyLinkedinUrl: catalogLinkedin,
+  private toWorkExperienceValidationInput(
+    exp: RawWorkExperience,
+    catalog?: {
+      catalogCompanyWebsite?: string | null;
+      catalogCompanyLinkedinUrl?: string | null;
+    },
+  ): WorkExperienceValidationInput {
+    return {
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType,
+      startDate: exp.startDate.toISOString(),
+      endDate: exp.endDate ? exp.endDate.toISOString() : null,
+      isCurrent: exp.isCurrent,
+      domain: exp.domain,
+      responsibilities: exp.responsibilities,
+      skillsClaimed: exp.skills ?? [],
+      companyId: exp.companyId,
+      companyWebsite: exp.companyWebsite,
+      companyLinkedinUrl: exp.companyLinkedinUrl,
+      catalogCompanyWebsite: catalog?.catalogCompanyWebsite ?? null,
+      catalogCompanyLinkedinUrl: catalog?.catalogCompanyLinkedinUrl ?? null,
+      documents: (exp.documents ?? []).map((doc) => ({ documentType: doc.documentType })),
+    };
+  }
+
+  private async getWorkExperienceValidationInput(
+    exp: Pick<
+      RawWorkExperience,
+      | 'companyName'
+      | 'role'
+      | 'employmentType'
+      | 'startDate'
+      | 'endDate'
+      | 'isCurrent'
+      | 'domain'
+      | 'responsibilities'
+      | 'skills'
+      | 'companyId'
+      | 'companyWebsite'
+      | 'companyLinkedinUrl'
+    > & {
+      documents?: Array<{ documentType: string }>;
+    },
+  ): Promise<WorkExperienceValidationInput> {
+    const catalog = await this.resolveCatalogCompanyIdentity(exp.companyId);
+    return {
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType,
+      startDate: exp.startDate.toISOString(),
+      endDate: exp.endDate ? exp.endDate.toISOString() : null,
+      isCurrent: exp.isCurrent,
+      domain: exp.domain,
+      responsibilities: exp.responsibilities,
+      skillsClaimed: exp.skills ?? [],
+      companyId: exp.companyId,
+      companyWebsite: exp.companyWebsite,
+      companyLinkedinUrl: exp.companyLinkedinUrl,
+      catalogCompanyWebsite: catalog.catalogCompanyWebsite,
+      catalogCompanyLinkedinUrl: catalog.catalogCompanyLinkedinUrl,
+      documents: (exp.documents ?? []).map((doc) => ({ documentType: doc.documentType })),
+    };
+  }
+
+  private toWorkExperienceValidationPatch(
+    data: Partial<UpdateWorkExperienceDto>,
+  ): Partial<WorkExperienceValidationInput> {
+    const patch: Partial<WorkExperienceValidationInput> = {};
+    if (data.companyName !== undefined) patch.companyName = data.companyName;
+    if (data.role !== undefined) patch.role = data.role;
+    if (data.employmentType !== undefined) patch.employmentType = data.employmentType;
+    if (data.startDate !== undefined) patch.startDate = data.startDate;
+    if (data.endDate !== undefined) patch.endDate = data.endDate;
+    if (data.isCurrent !== undefined) patch.isCurrent = data.isCurrent;
+    if (data.domain !== undefined) patch.domain = data.domain;
+    if (data.responsibilities !== undefined) patch.responsibilities = data.responsibilities;
+    if (data.skillsClaimed !== undefined) patch.skillsClaimed = data.skillsClaimed;
+    if (data.companyId !== undefined) patch.companyId = data.companyId;
+    if (data.companyWebsite !== undefined) patch.companyWebsite = data.companyWebsite;
+    if (data.companyLinkedinUrl !== undefined) patch.companyLinkedinUrl = data.companyLinkedinUrl;
+    if (data.documents !== undefined) patch.documents = data.documents;
+    return patch;
+  }
+
+  private throwWorkExperienceValidationError(result: {
+    valid: boolean;
+    issues: Array<{ path: string; message: string }>;
+  }): never {
+    throw new BadRequestException({
+      error: 'validation_error',
+      message: result.issues[0]?.message ?? 'Invalid work experience submission.',
+      statusCode: 400,
+      details: { issues: result.issues },
     });
-    const result = validateCompanyPublicIdentity({
-      companyWebsite: params.companyWebsite,
-      companyLinkedinUrl: params.companyLinkedinUrl,
-      required,
-    });
+  }
+
+  private async assertWorkExperienceCompleteness(
+    input:
+      | WorkExperienceValidationInput
+      | RawWorkExperience
+      | (Pick<
+          RawWorkExperience,
+          | 'companyName'
+          | 'role'
+          | 'employmentType'
+          | 'startDate'
+          | 'endDate'
+          | 'isCurrent'
+          | 'domain'
+          | 'responsibilities'
+          | 'skills'
+          | 'companyId'
+          | 'companyWebsite'
+          | 'companyLinkedinUrl'
+        > & {
+          documents?: Array<{ documentType: string }>;
+        }),
+  ): Promise<void> {
+    const validationInput =
+      'startDate' in input && input.startDate instanceof Date
+        ? await this.getWorkExperienceValidationInput(input as RawWorkExperience)
+        : {
+            ...(input as WorkExperienceValidationInput),
+            ...(await this.resolveCatalogCompanyIdentity(
+              (input as WorkExperienceValidationInput).companyId,
+            )),
+          };
+
+    const result = validateWorkExperienceSubmission(validationInput);
     if (!result.valid) {
-      throw new BadRequestException({
-        error: 'validation_error',
-        message: result.message,
-        statusCode: 400,
-      });
+      this.throwWorkExperienceValidationError(result);
     }
   }
 
@@ -1267,7 +1352,7 @@ export class WorkExperienceService {
   ): Promise<SendWorkExperienceVerificationResponseDto> {
     const exp = await this.prisma.workExperience.findUnique({
       where: { id: experienceId },
-      include: { student: true, organization: true },
+      include: { student: true, organization: true, documents: true },
     });
 
     if (!exp) {
@@ -1276,6 +1361,7 @@ export class WorkExperienceService {
     if (exp.studentId !== studentId) {
       throw new NotFoundException('Work experience record not found.');
     }
+    await this.assertWorkExperienceCompleteness(exp);
     if (!exp.verifierEmail) {
       throw new BadRequestException(
         'Verifier email is required to send verification. Please update work experience entry with verifier details.',
@@ -1738,6 +1824,8 @@ export class WorkExperienceService {
     if (!exp || exp.studentId !== studentId) {
       throw new NotFoundException('Work experience record not found.');
     }
+
+    await this.assertWorkExperienceCompleteness(exp);
 
     const managerEmail = payload.managerEmail.toLowerCase().trim();
 

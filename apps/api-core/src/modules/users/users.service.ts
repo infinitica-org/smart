@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -20,8 +19,6 @@ import {
   CandidateOnboardingProfileSchema,
   CompleteCandidateOnboardingRequestSchema,
   SaveCandidateOnboardingDraftRequestSchema,
-  SkillProficiencySchema,
-  SKILL_DEFINITIONS,
   SMART_TOPICS,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
@@ -33,32 +30,17 @@ import {
   toAuthenticatedUser,
   verifyPassword,
 } from '../auth/auth.service.js';
-import { AssessmentService } from '../assessment/assessment.service.js';
-
-/**
- * Case-insensitive catalog skill NAME -> code, restricted to skills that take a
- * single self-declared proficiency (mirrors `candidate-skills-discovered.consumer.ts`'s
- * `SKILL_NAME_TO_CODE`). `LANGUAGE_PROFICIENCY`/`FRONTEND_BACKEND_FRAMEWORK` never
- * appear here by name — the onboarding wizard sends per-item names for those
- * (e.g. "Python", "React") instead of the catalog's family name, so they never
- * resolve to a code and are correctly left onboarding-JSON-only for now.
- */
-const MANDATORY_SKILL_NAME_TO_CODE = new Map(
-  SKILL_DEFINITIONS.filter(
-    (skill) => skill.stream === 'UNIVERSAL' || skill.stream === 'SOFTWARE_DEVELOPMENT',
-  ).map((skill) => [skill.name.toLowerCase(), skill.code]),
-);
 
 @Injectable()
 export class UsersService {
   readonly owner = 'Vishal V';
-  readonly purpose = 'Current user profile, track enrolment, and CN-T01 onboarding completion.';
+  readonly purpose =
+    'Current user profile, track enrolment, and CN-T01 minimal onboarding completion.';
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
-    @Inject(AssessmentService) private readonly assessment: AssessmentService,
   ) {}
 
   async getMe(userId: string): Promise<AuthenticatedUser> {
@@ -230,30 +212,6 @@ export class UsersService {
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
-
-    // Mandatory Core/Niche skills are self-declared during onboarding itself
-    // (not the best-effort async GitHub-derived path below), so every one of
-    // them is guaranteed a real SkillClaim rather than a "best effort" one.
-    // Declared synchronously but tolerantly: a per-skill conflict (already
-    // claimed/locked, e.g. a retried completion call) must never fail the
-    // onboarding completion that already succeeded above.
-    const requestUser = { sub: userId, role: user.role, inst: user.institutionId };
-    for (const entry of request.skills) {
-      if (entry.type !== 'technical') continue;
-      const skillCode = MANDATORY_SKILL_NAME_TO_CODE.get(entry.name.toLowerCase());
-      if (!skillCode) continue;
-      const proficiency = SkillProficiencySchema.safeParse(entry.proficiency);
-      if (!proficiency.success) continue;
-      try {
-        await this.assessment.declareSkillClaim(requestUser, {
-          skillCode,
-          proficiency: proficiency.data,
-        });
-      } catch (error) {
-        if (error instanceof ConflictException || error instanceof ForbiddenException) continue;
-        throw error;
-      }
-    }
 
     const selectedSkillNames = request.skillDiscovery?.selectedSkillNames ?? [];
     // Only the languages the candidate actually kept checked count toward

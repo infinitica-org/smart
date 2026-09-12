@@ -21,8 +21,9 @@ import {
 import {
   SKILL_DEFINITIONS,
   companyRequiresPublicIdentity,
-  validateCompanyPublicIdentity,
+  validateWorkExperienceEffectiveUpdate,
   validateWorkExperienceLetterRules,
+  validateWorkExperienceSubmission,
   type WorkExperienceDto,
   type WorkExperienceDocumentDto,
   type WorkExperienceProofValidationResult,
@@ -211,31 +212,67 @@ export function WorkExperienceSection() {
       const existingDocs = editingId
         ? (experiences.find((exp) => exp.id === editingId)?.documents ?? [])
         : [];
-
-      const letterValidation = validateWorkExperienceLetterRules({
-        isCurrent,
-        endDate: !isCurrent && endDate ? endDate : null,
-        documents: existingDocs,
-      });
-
-      if (!letterValidation.valid) {
-        setError(letterValidation.message || 'Required proof documents are missing.');
-        setSubmitting(false);
-        return;
-      }
-
       const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
-      const identityRequired = companyRequiresPublicIdentity({
+
+      const submissionInput = {
+        companyName,
+        role,
+        employmentType,
+        startDate: startDate ? new Date(startDate).toISOString() : '',
+        endDate: !isCurrent && endDate ? new Date(endDate).toISOString() : null,
+        isCurrent,
+        domain,
+        responsibilities,
+        skillsClaimed: selectedSkillCodes,
         companyId: editingExp?.companyId ?? null,
-        companyWebsite,
-      });
-      const identityValidation = validateCompanyPublicIdentity({
-        companyWebsite,
-        companyLinkedinUrl,
-        required: identityRequired,
-      });
-      if (!identityValidation.valid) {
-        setError(identityValidation.message || 'Company website and LinkedIn are required.');
+        companyWebsite: companyWebsite || null,
+        companyLinkedinUrl: companyLinkedinUrl || null,
+        documents: existingDocs.map((doc) => ({
+          documentType: doc.documentType,
+          fileUrl: doc.fileUrl,
+          fileName: doc.fileName,
+          fileSizeBytes: doc.fileSizeBytes,
+          mimeType: doc.mimeType,
+        })),
+      };
+
+      const validation =
+        editingId && editingExp
+          ? validateWorkExperienceEffectiveUpdate(
+              {
+                companyName: editingExp.companyName,
+                role: editingExp.role,
+                employmentType: editingExp.employmentType,
+                startDate: editingExp.startDate,
+                endDate: editingExp.endDate,
+                isCurrent: editingExp.isCurrent,
+                domain: editingExp.domain,
+                responsibilities: editingExp.responsibilities,
+                skillsClaimed: editingExp.skillsClaimed ?? [],
+                companyId: editingExp.companyId,
+                companyWebsite: editingExp.companyWebsite,
+                companyLinkedinUrl: editingExp.companyLinkedinUrl,
+                documents: editingExp.documents ?? [],
+              },
+              {
+                companyName,
+                role,
+                employmentType,
+                startDate: submissionInput.startDate,
+                endDate: submissionInput.endDate,
+                isCurrent,
+                domain,
+                responsibilities,
+                skillsClaimed: selectedSkillCodes,
+                companyWebsite: submissionInput.companyWebsite,
+                companyLinkedinUrl: submissionInput.companyLinkedinUrl,
+                documents: submissionInput.documents,
+              },
+            )
+          : validateWorkExperienceSubmission(submissionInput);
+
+      if (!validation.valid) {
+        setError(validation.issues[0]?.message || 'Please complete all required fields.');
         setSubmitting(false);
         return;
       }
@@ -257,13 +294,7 @@ export function WorkExperienceSection() {
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
-        documents: existingDocs.map((doc) => ({
-          documentType: doc.documentType,
-          fileUrl: doc.fileUrl,
-          fileName: doc.fileName,
-          fileSizeBytes: doc.fileSizeBytes,
-          mimeType: doc.mimeType,
-        })),
+        documents: submissionInput.documents,
       };
 
       if (editingId) {
@@ -1067,7 +1098,14 @@ export function WorkExperienceSection() {
                 <div>
                   <label className="block text-xs font-medium text-white/70">
                     Company Website
-                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
+                    {companyRequiresPublicIdentity({
+                      companyId: editingId
+                        ? (experiences.find((exp) => exp.id === editingId)?.companyId ?? null)
+                        : null,
+                      companyWebsite,
+                    })
+                      ? ' *'
+                      : ''}
                   </label>
                   <input
                     type="url"
@@ -1081,7 +1119,14 @@ export function WorkExperienceSection() {
                 <div>
                   <label className="block text-xs font-medium text-white/70">
                     Company LinkedIn URL
-                    {companyRequiresPublicIdentity({ companyWebsite }) ? ' *' : ''}
+                    {companyRequiresPublicIdentity({
+                      companyId: editingId
+                        ? (experiences.find((exp) => exp.id === editingId)?.companyId ?? null)
+                        : null,
+                      companyWebsite,
+                    })
+                      ? ' *'
+                      : ''}
                   </label>
                   <input
                     type="url"
@@ -1106,7 +1151,9 @@ export function WorkExperienceSection() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70">End Date</label>
+                  <label className="block text-xs font-medium text-white/70">
+                    End Date{!isCurrent ? ' *' : ''}
+                  </label>
                   <input
                     type="date"
                     disabled={isCurrent}
@@ -1132,7 +1179,20 @@ export function WorkExperienceSection() {
 
               <div>
                 <label className="block text-xs font-medium text-white/70">
-                  Responsibilities & Accomplishments
+                  Professional Domain *
+                </label>
+                <input
+                  type="text"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder="e.g. Software Engineering, Business Analytics"
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70">
+                  Responsibilities & Accomplishments *
                 </label>
                 <textarea
                   rows={3}
@@ -1145,7 +1205,7 @@ export function WorkExperienceSection() {
 
               <div>
                 <label className="block text-xs font-medium text-white/70">
-                  Skills used (from catalog)
+                  Skills used (from catalog) *
                 </label>
                 <p className="mt-0.5 text-[11px] text-white/45">
                   Pick skills from the v0.9 taxonomy — free-text tags are not accepted.

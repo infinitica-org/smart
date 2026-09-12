@@ -49,18 +49,63 @@ vi.mock('@/lib/skill-declarations', () => ({
   claimToBadgeStatus: (claim: { status: string }) => claim.status,
 }));
 
+vi.mock('@/lib/tour', () => ({
+  consumeTourAutostart: () => false,
+}));
+
+vi.mock('@/components/tour/ProductTour', () => ({
+  ProductTour: () => null,
+}));
+
+vi.mock('@/lib/use-profile-progress', () => ({
+  useProfileProgress: () => ({
+    loading: false,
+    error: null,
+    progress: {
+      percent: 37,
+      completedAreas: ['skills', 'languages', 'projects'],
+      incompleteAreas: [],
+      areaStatus: {
+        skills: true,
+        languages: true,
+        education: false,
+        experience: false,
+        projects: true,
+        certifications: false,
+        professionalLinks: false,
+        jobPreferences: false,
+      },
+    },
+    visibleRecommendedAction: {
+      id: 'add-education',
+      title: 'Add education',
+      description: 'Help employers understand your academic background.',
+      ctaLabel: 'Add education',
+      href: '/profile#education',
+    },
+    dismissRecommendedAction: vi.fn(),
+  }),
+}));
+
 describe('DashboardPage', () => {
-  it('renders skills section and candidate welcome, but does NOT render Application tracker or Public profile', () => {
+  it('renders profile progress, recommended action, and existing dashboard content', () => {
     render(<DashboardPage />);
 
     expect(screen.getByText(/Welcome back, Ada/i)).toBeTruthy();
+    expect(screen.getByText('Your SMART Profile')).toBeTruthy();
+    expect(screen.getByText('37% complete')).toBeTruthy();
+    expect(screen.getByText('Recommended next step')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Add education' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Add education' }).getAttribute('href')).toBe(
+      '/profile#education',
+    );
     expect(screen.getByText('Your skills')).toBeTruthy();
-    const manageLink = screen.getByText('Manage');
-    expect(manageLink.getAttribute('href')).toBe('/skills');
     expect(screen.getByText('Verified Skills')).toBeTruthy();
     expect(screen.getByText('Skills Declared')).toBeTruthy();
 
-    // Verify Application tracker and Public profile are removed from Home page
+    const manageLink = screen.getByText('Manage');
+    expect(manageLink.getAttribute('href')).toBe('/assessments');
+
     expect(screen.queryByText(/Application tracker/i)).toBeNull();
     expect(screen.queryByText(/Public profile/i)).toBeNull();
     expect(screen.queryByText(/Active Apps/i)).toBeNull();

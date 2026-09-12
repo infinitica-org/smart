@@ -17,19 +17,9 @@ interface LoadingBeat {
  * to actually be read, not skimmed.
  */
 const LOADING_BEATS: LoadingBeat[] = [
-  { text: 'Creating your profile…', kind: 'status' },
-  { text: 'Curating your experience…', kind: 'status' },
+  { text: 'Setting up your SMART account…', kind: 'status' },
   {
-    text: 'Verified skills get noticed first — employers filter for the checkmark, not the claim.',
-    kind: 'fact',
-  },
-  { text: 'Mapping your skills to your track…', kind: 'status' },
-  {
-    text: 'Your public profile updates itself the moment something new gets verified — no need to resend your link.',
-    kind: 'fact',
-  },
-  {
-    text: 'A username is a one-time claim, so the handle you picked is yours for good.',
+    text: 'You can build your profile at your own pace from your dashboard.',
     kind: 'fact',
   },
   { text: 'Almost there…', kind: 'status' },
@@ -195,8 +185,8 @@ export default function CompletionSequence({
               transition={{ delay: 0.8, duration: 0.6 }}
               className="mb-8 max-w-sm text-zinc-400"
             >
-              Your profile is ready and we&apos;re already matching you with opportunities.
-              Let&apos;s take a quick look at where everything lives.
+              You&apos;re ready to explore SMART. Add skills, experience, and preferences whenever
+              you&apos;re ready.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 8 }}

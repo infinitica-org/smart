@@ -17,6 +17,56 @@ describe('WorkExperienceService', () => {
 
   const mockStudentId = randomUUID();
 
+  const OFFER_DOC = {
+    documentType: 'OFFER_LETTER',
+    fileUrl: 'storage/proofs/offer.pdf',
+    fileName: 'offer.pdf',
+    fileSizeBytes: 1024,
+    mimeType: 'application/pdf',
+  };
+
+  const RELIEVING_DOC = {
+    documentType: 'RELIEVING_LETTER',
+    fileUrl: 'storage/proofs/relieving.pdf',
+    fileName: 'relieving.pdf',
+    fileSizeBytes: 1024,
+    mimeType: 'application/pdf',
+  };
+
+  function buildValidCreatePayload(overrides: Record<string, unknown> = {}) {
+    return {
+      companyName: 'Acme Corp',
+      role: 'Senior Developer',
+      employmentType: 'FULL_TIME',
+      startDate: '2022-01-01T00:00:00.000Z',
+      isCurrent: true,
+      domain: 'Software Engineering',
+      responsibilities: 'Built and maintained backend services.',
+      skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
+      documents: [OFFER_DOC],
+      ...overrides,
+    };
+  }
+
+  function buildCompleteExpRecord(overrides: Record<string, unknown> = {}) {
+    return {
+      companyName: 'Acme Corp',
+      role: 'Senior Software Engineer',
+      employmentType: 'FULL_TIME',
+      startDate: new Date('2022-01-01'),
+      endDate: new Date('2023-01-01'),
+      isCurrent: false,
+      domain: 'Software Engineering',
+      responsibilities: 'Built and maintained backend services.',
+      skills: ['GIT_VERSION_CONTROL'],
+      companyWebsite: 'https://acme.com',
+      companyLinkedinUrl: 'https://linkedin.com/company/acme',
+      companyId: null,
+      documents: [{ documentType: 'OFFER_LETTER' }, { documentType: 'EXPERIENCE_LETTER' }],
+      ...overrides,
+    };
+  }
+
   beforeEach(() => {
     const emailQueue: any = {
       add: vi.fn().mockResolvedValue({ id: 'job-1' }),
@@ -90,25 +140,10 @@ describe('WorkExperienceService', () => {
 
   describe('create', () => {
     it('creates an ongoing work experience record with offer letter and publishes audit event', async () => {
-      const payload = {
-        companyName: 'Acme Corp',
+      const payload = buildValidCreatePayload({
         companyWebsite: 'https://acme.com',
         companyLinkedinUrl: 'https://linkedin.com/company/acme',
-        role: 'Senior Developer',
-        employmentType: 'FULL_TIME',
-        startDate: '2022-01-01T00:00:00.000Z',
-        isCurrent: true,
-        skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
-        documents: [
-          {
-            documentType: 'OFFER_LETTER',
-            fileUrl: 'storage/proofs/offer.pdf',
-            fileName: 'offer.pdf',
-            fileSizeBytes: 1024,
-            mimeType: 'application/pdf',
-          },
-        ],
-      };
+      });
 
       const experienceId = randomUUID();
       const mockCreated = {
@@ -121,12 +156,12 @@ describe('WorkExperienceService', () => {
         role: payload.role,
         employmentType: payload.employmentType,
         department: null,
-        domain: null,
+        domain: payload.domain,
         workLocation: null,
         startDate: new Date(payload.startDate),
         endDate: null,
         isCurrent: true,
-        responsibilities: null,
+        responsibilities: payload.responsibilities,
         skills: payload.skillsClaimed,
         projects: null,
         candidateLinkedin: null,
@@ -173,29 +208,14 @@ describe('WorkExperienceService', () => {
     });
 
     it('creates an ended work experience record when both offer letter and completion/relieving letter are provided', async () => {
-      const payload = {
+      const payload = buildValidCreatePayload({
         companyName: 'Beta Corp',
         role: 'Developer',
         startDate: '2021-01-01T00:00:00.000Z',
         endDate: '2022-01-01T00:00:00.000Z',
         isCurrent: false,
-        documents: [
-          {
-            documentType: 'OFFER_LETTER',
-            fileUrl: 'storage/offer.pdf',
-            fileName: 'offer.pdf',
-            fileSizeBytes: 1024,
-            mimeType: 'application/pdf',
-          },
-          {
-            documentType: 'RELIEVING_LETTER',
-            fileUrl: 'storage/relieving.pdf',
-            fileName: 'relieving.pdf',
-            fileSizeBytes: 1024,
-            mimeType: 'application/pdf',
-          },
-        ],
-      };
+        documents: [OFFER_DOC, RELIEVING_DOC],
+      });
 
       prisma.organization.findFirst.mockResolvedValue(null);
       prisma.organization.create.mockResolvedValue({ id: 'org-2', name: 'Beta Corp' });
@@ -226,22 +246,13 @@ describe('WorkExperienceService', () => {
     });
 
     it('rejects creating ongoing role without offer letter', async () => {
-      const payload = {
-        companyName: 'Acme Corp',
-        role: 'Developer',
-        startDate: '2022-01-01T00:00:00.000Z',
-        isCurrent: true,
-        documents: [],
-      };
+      const payload = buildValidCreatePayload({ documents: [] });
 
       await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
     });
 
     it('rejects creating ended role without offer letter', async () => {
-      const payload = {
-        companyName: 'Acme Corp',
-        role: 'Developer',
-        startDate: '2022-01-01T00:00:00.000Z',
+      const payload = buildValidCreatePayload({
         endDate: '2023-01-01T00:00:00.000Z',
         isCurrent: false,
         documents: [
@@ -253,60 +264,33 @@ describe('WorkExperienceService', () => {
             mimeType: 'application/pdf',
           },
         ],
-      };
+      });
 
       await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
     });
 
     it('rejects creating ended role without completion/relieving letter', async () => {
-      const payload = {
-        companyName: 'Acme Corp',
-        role: 'Developer',
-        startDate: '2022-01-01T00:00:00.000Z',
+      const payload = buildValidCreatePayload({
         endDate: '2023-01-01T00:00:00.000Z',
         isCurrent: false,
-        documents: [
-          {
-            documentType: 'OFFER_LETTER',
-            fileUrl: 'url',
-            fileName: 'file.pdf',
-            fileSizeBytes: 100,
-            mimeType: 'application/pdf',
-          },
-        ],
-      };
+        documents: [OFFER_DOC],
+      });
 
       await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
     });
     it('rejects free-text skillsClaimed values outside the taxonomy', async () => {
       await expect(
-        service.create(mockStudentId, {
-          companyName: 'Acme Corp',
-          role: 'Developer',
-          startDate: '2022-01-01T00:00:00.000Z',
-          isCurrent: true,
-          skillsClaimed: ['TypeScript'],
-          documents: [
-            {
-              documentType: 'OFFER_LETTER',
-              fileUrl: 'url',
-              fileName: 'file.pdf',
-              fileSizeBytes: 100,
-              mimeType: 'application/pdf',
-            },
-          ],
-        }),
+        service.create(mockStudentId, buildValidCreatePayload({ skillsClaimed: ['TypeScript'] })),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('rejects invalid payload without start date or end date when not current', async () => {
-      const payload = {
-        companyName: 'Acme Corp',
-        role: 'Developer',
+      const payload = buildValidCreatePayload({
         isCurrent: false,
-        startDate: '2022-01-01T00:00:00.000Z',
-        // missing endDate when isCurrent is false
-      };
+        endDate: undefined,
+        documents: [OFFER_DOC, RELIEVING_DOC],
+      });
+      delete (payload as { endDate?: string }).endDate;
 
       await expect(service.create(mockStudentId, payload)).rejects.toBeInstanceOf(
         BadRequestException,
@@ -315,8 +299,9 @@ describe('WorkExperienceService', () => {
   });
 
   describe('update', () => {
+    const expId = randomUUID();
+
     it('rejects skillsClaimed edits on a verified entry', async () => {
-      const expId = randomUUID();
       prisma.workExperience.findUnique.mockResolvedValueOnce({
         id: expId,
         studentId: mockStudentId,
@@ -326,12 +311,12 @@ describe('WorkExperienceService', () => {
         role: 'Developer',
         employmentType: 'FULL_TIME',
         department: null,
-        domain: null,
+        domain: 'Software Engineering',
         workLocation: null,
         startDate: new Date('2022-01-01'),
         endDate: null,
         isCurrent: true,
-        responsibilities: null,
+        responsibilities: 'Built and maintained backend services.',
         skills: ['GIT_VERSION_CONTROL'],
         projects: null,
         candidateLinkedin: null,
@@ -343,12 +328,165 @@ describe('WorkExperienceService', () => {
         rejectionReason: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        documents: [],
+        documents: [OFFER_DOC],
       });
 
       await expect(
         service.update(mockStudentId, expId, { skillsClaimed: ['DATABASE_FUNDAMENTALS'] }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('S6-VB-01 mandatory field enforcement (api-core)', () => {
+    const expId = randomUUID();
+
+    function mockCompleteExisting(overrides: Record<string, unknown> = {}) {
+      return {
+        id: expId,
+        studentId: mockStudentId,
+        ...buildCompleteExpRecord(),
+        projects: null,
+        candidateLinkedin: null,
+        verifierName: null,
+        verifierEmail: 'manager@acme.com',
+        verifierDesignation: null,
+        verifierPhone: null,
+        status: 'SUBMITTED',
+        rejectionReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [OFFER_DOC, RELIEVING_DOC],
+        student: { fullName: 'John Doe' },
+        organization: { domain: 'acme.com' },
+        ...overrides,
+      };
+    }
+
+    it('create rejects missing domain', async () => {
+      await expect(
+        service.create(mockStudentId, buildValidCreatePayload({ domain: '' })),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('create rejects empty responsibilities', async () => {
+      await expect(
+        service.create(mockStudentId, buildValidCreatePayload({ responsibilities: '' })),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('create rejects empty skillsClaimed', async () => {
+      await expect(
+        service.create(mockStudentId, buildValidCreatePayload({ skillsClaimed: [] })),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('update rejects clearing domain', async () => {
+      prisma.workExperience.findUnique.mockResolvedValueOnce(mockCompleteExisting());
+      await expect(service.update(mockStudentId, expId, { domain: '' })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('update rejects clearing responsibilities', async () => {
+      prisma.workExperience.findUnique.mockResolvedValueOnce(mockCompleteExisting());
+      await expect(
+        service.update(mockStudentId, expId, { responsibilities: '' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('update rejects empty skillsClaimed', async () => {
+      prisma.workExperience.findUnique.mockResolvedValueOnce(mockCompleteExisting());
+      await expect(
+        service.update(mockStudentId, expId, { skillsClaimed: [] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('validateProofDocument rejects incomplete claims before OCR', async () => {
+      const docId = randomUUID();
+      prisma.workExperience.findUnique.mockResolvedValueOnce(
+        mockCompleteExisting({
+          domain: null,
+          documents: [
+            {
+              id: docId,
+              experienceId: expId,
+              documentType: 'EXPERIENCE_LETTER',
+              fileName: 'exp.pdf',
+              mimeType: 'application/pdf',
+              fileUrl: 'data:application/pdf;base64,cHJvb2Y=',
+              fileSizeBytes: 100,
+              createdAt: new Date(),
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        service.validateProofDocument(mockStudentId, expId, docId),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(aiGateway.complete).not.toHaveBeenCalled();
+    });
+
+    it('sendEmployerVerification rejects incomplete claims', async () => {
+      prisma.workExperience.findUnique.mockResolvedValueOnce(
+        mockCompleteExisting({
+          domain: null,
+          verifierEmail: 'manager@acme.com',
+        }),
+      );
+
+      await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('restartEmployerVerification rejects incomplete claims', async () => {
+      const incompleteExp = mockCompleteExisting({
+        responsibilities: null,
+        verifierEmail: 'manager@acme.com',
+      });
+      prisma.workExperience.findUnique
+        .mockResolvedValueOnce(incompleteExp)
+        .mockResolvedValueOnce(incompleteExp);
+
+      await expect(
+        service.restartEmployerVerification(mockStudentId, expId),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('sendManagerEndorsement rejects incomplete claims', async () => {
+      prisma.workExperience.findUnique.mockResolvedValueOnce(
+        mockCompleteExisting({
+          skills: [],
+          documents: [{ documentType: 'OFFER_LETTER', validationResult: null }],
+        }),
+      );
+
+      await expect(
+        service.sendManagerEndorsement(mockStudentId, expId, {
+          managerEmail: 'manager@acme.com',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('valid complete work experience continues through existing downstream flows', async () => {
+      const completeExp = mockCompleteExisting({
+        isCurrent: true,
+        endDate: null,
+        documents: [OFFER_DOC],
+      });
+      prisma.workExperience.findUnique.mockResolvedValueOnce(completeExp);
+      prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({
+        id: randomUUID(),
+        experienceId: expId,
+      });
+      prisma.workExperience.update.mockResolvedValueOnce({
+        ...completeExp,
+        status: 'PENDING_EMPLOYER',
+      });
+
+      const sent = await service.sendEmployerVerification(mockStudentId, expId);
+      expect(sent.status).toBe('PENDING_EMPLOYER');
     });
   });
 
@@ -554,12 +692,19 @@ describe('WorkExperienceService', () => {
     const mockExpRecord = {
       id: expId,
       studentId: mockStudentId,
-      companyName: 'Acme Corporation',
-      role: 'Senior Software Engineer',
-      startDate: new Date('2022-01-01'),
-      endDate: new Date('2023-01-01'),
+      ...buildCompleteExpRecord(),
       status: 'SUBMITTED',
       documents: [
+        {
+          id: randomUUID(),
+          experienceId: expId,
+          documentType: 'OFFER_LETTER',
+          fileName: 'offer.pdf',
+          mimeType: 'application/pdf',
+          fileUrl: 'storage/offer.pdf',
+          fileSizeBytes: 1024,
+          createdAt: new Date(),
+        },
         {
           id: docId,
           experienceId: expId,
@@ -603,7 +748,8 @@ describe('WorkExperienceService', () => {
     it('rejects OFFER_LETTER attachment as INVALID_DOCUMENT_TYPE without invoking AI', async () => {
       const offerDocRecord = {
         ...mockExpRecord,
-        documents: [{ ...mockExpRecord.documents[0], documentType: 'OFFER_LETTER' }],
+        ...buildCompleteExpRecord({ isCurrent: true, endDate: null }),
+        documents: [{ ...mockExpRecord.documents[0], id: docId, documentType: 'OFFER_LETTER' }],
       };
       prisma.workExperience.findUnique.mockResolvedValueOnce(offerDocRecord);
       prisma.workExperienceDocument.update.mockResolvedValueOnce({});
@@ -757,6 +903,7 @@ describe('WorkExperienceService', () => {
       const dataUriExpRecord = {
         ...mockExpRecord,
         documents: [
+          mockExpRecord.documents[0],
           {
             id: dataUriDocId,
             experienceId: expId,
@@ -976,14 +1123,15 @@ describe('WorkExperienceService', () => {
         const mockExp = {
           id: expId,
           studentId: mockStudentId,
-          companyName: 'Acme Corp',
-          role: 'Software Engineer',
+          ...buildCompleteExpRecord({
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierName: 'Jane Smith',
           verifierEmail: 'jane@acme.com',
-          startDate: new Date('2022-01-01'),
-          endDate: null,
-          isCurrent: true,
           student: { fullName: 'John Candidate' },
+          organization: { domain: 'acme.com' },
         };
 
         prisma.workExperience.findUnique.mockResolvedValueOnce(mockExp);
@@ -1246,13 +1394,15 @@ describe('WorkExperienceService', () => {
         prisma.workExperience.findUnique.mockResolvedValueOnce({
           id: expId,
           studentId: mockStudentId,
+          ...buildCompleteExpRecord({
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierEmail: 'manager@acme.com',
           companyWebsite: 'https://www.acme.com',
-          companyName: 'Acme Corp',
-          role: 'Engineer',
-          startDate: new Date('2023-01-01'),
-          isCurrent: true,
           student: { fullName: 'Alice Student' },
+          organization: { domain: 'acme.com' },
         });
 
         prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({ id: 'att-1' });
@@ -1281,13 +1431,14 @@ describe('WorkExperienceService', () => {
         prisma.workExperience.findUnique.mockResolvedValueOnce({
           id: expId,
           studentId: mockStudentId,
+          ...buildCompleteExpRecord({
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierEmail: 'manager@gmail.com',
-          companyWebsite: 'https://acme.com',
-          companyName: 'Acme Corp',
-          role: 'Engineer',
-          startDate: new Date('2023-01-01'),
-          isCurrent: true,
           student: { fullName: 'Alice Student' },
+          organization: { domain: 'acme.com' },
         });
 
         await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
@@ -1300,13 +1451,14 @@ describe('WorkExperienceService', () => {
         prisma.workExperience.findUnique.mockResolvedValueOnce({
           id: expId,
           studentId: mockStudentId,
+          ...buildCompleteExpRecord({
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierEmail: 'manager@differentdomain.com',
-          companyWebsite: 'https://acme.com',
-          companyName: 'Acme Corp',
-          role: 'Engineer',
-          startDate: new Date('2023-01-01'),
-          isCurrent: true,
           student: { fullName: 'Alice Student' },
+          organization: { domain: 'acme.com' },
         });
 
         await expect(service.sendEmployerVerification(mockStudentId, expId)).rejects.toThrow(
@@ -1319,14 +1471,15 @@ describe('WorkExperienceService', () => {
         const expMock = {
           id: expId,
           studentId: mockStudentId,
+          ...buildCompleteExpRecord({
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierEmail: 'manager@acme.com',
-          companyWebsite: 'https://acme.com',
-          companyName: 'Acme Corp',
-          role: 'Engineer',
-          startDate: new Date('2023-01-01'),
-          isCurrent: true,
           status: 'EXPIRED',
           student: { fullName: 'Alice Student' },
+          organization: { domain: 'acme.com' },
         };
         prisma.workExperience.findUnique
           .mockResolvedValueOnce(expMock)
@@ -1410,24 +1563,13 @@ describe('WorkExperienceService', () => {
     describe('S6-VB-01 lifecycle', () => {
       it('runs create → validate proof → send → YES → VERIFIED', async () => {
         const expId = randomUUID();
-        const payload = {
-          companyName: 'Acme Corp',
+        const payload = buildValidCreatePayload({
           role: 'Engineer',
           startDate: '2023-01-01T00:00:00.000Z',
-          isCurrent: true,
           companyWebsite: 'https://acme.com',
           companyLinkedinUrl: 'https://linkedin.com/company/acme',
           verifierEmail: 'manager@acme.com',
-          documents: [
-            {
-              documentType: 'OFFER_LETTER',
-              fileUrl: 'x',
-              fileName: 'offer.pdf',
-              fileSizeBytes: 100,
-              mimeType: 'application/pdf',
-            },
-          ],
-        };
+        });
 
         prisma.organization.findFirst.mockResolvedValueOnce(null);
         prisma.organization.create.mockResolvedValueOnce({ id: randomUUID(), domain: 'acme.com' });
@@ -1440,15 +1582,15 @@ describe('WorkExperienceService', () => {
           companyWebsite: payload.companyWebsite,
           companyLinkedinUrl: payload.companyLinkedinUrl,
           role: payload.role,
-          employmentType: null,
+          employmentType: 'FULL_TIME',
           department: null,
-          domain: null,
+          domain: payload.domain,
           workLocation: null,
           startDate: new Date(payload.startDate),
           endDate: null,
           isCurrent: true,
-          responsibilities: null,
-          skills: [],
+          responsibilities: payload.responsibilities,
+          skills: payload.skillsClaimed,
           projects: null,
           candidateLinkedin: null,
           verifierName: null,
@@ -1474,10 +1616,19 @@ describe('WorkExperienceService', () => {
         const proofExp = {
           id: expId,
           studentId: mockStudentId,
-          companyName: 'Acme Corp',
-          role: 'Engineer',
+          ...buildCompleteExpRecord({ role: 'Engineer', isCurrent: true, endDate: null }),
           status: 'SUBMITTED',
           documents: [
+            {
+              id: randomUUID(),
+              experienceId: expId,
+              documentType: 'OFFER_LETTER',
+              fileName: 'offer.pdf',
+              mimeType: 'application/pdf',
+              fileUrl: 'storage/offer.pdf',
+              fileSizeBytes: 100,
+              createdAt: new Date(),
+            },
             {
               id: proofDocId,
               experienceId: expId,
@@ -1512,13 +1663,15 @@ describe('WorkExperienceService', () => {
         prisma.workExperience.findUnique.mockResolvedValueOnce({
           id: expId,
           studentId: mockStudentId,
+          ...buildCompleteExpRecord({
+            role: 'Engineer',
+            isCurrent: true,
+            endDate: null,
+            documents: [{ documentType: 'OFFER_LETTER' }],
+          }),
           verifierEmail: 'manager@acme.com',
-          companyWebsite: 'https://acme.com',
-          companyName: 'Acme Corp',
-          role: 'Engineer',
-          startDate: new Date('2023-01-01'),
-          isCurrent: true,
           student: { fullName: 'John Doe' },
+          organization: { domain: 'acme.com' },
         });
         prisma.workExperienceVerificationAttempt.create.mockResolvedValueOnce({ id: 'att-1' });
         prisma.workExperience.update.mockResolvedValueOnce({
@@ -1733,14 +1886,7 @@ describe('WorkExperienceService', () => {
     const mockExp = {
       id: experienceId,
       studentId: mockStudentId,
-      companyName: 'Acme Corp',
-      companyWebsite: 'https://acme.com',
-      role: 'Software Engineer',
-      employmentType: 'FULL_TIME',
-      startDate: new Date('2023-01-01'),
-      endDate: null,
-      isCurrent: true,
-      skills: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
+      ...buildCompleteExpRecord({ isCurrent: true, endDate: null }),
       docOk: true,
       completedConfirmed: false,
       overallVerified: false,
@@ -1827,7 +1973,7 @@ describe('WorkExperienceService', () => {
         const res = await service.getManagerEndorsementByToken('valid-token');
         expect(res.candidateName).toBe('John Doe');
         expect(res.companyName).toBe('Acme Corp');
-        expect(res.role).toBe('Software Engineer');
+        expect(res.role).toBe('Senior Software Engineer');
         expect(res.skillsClaimed).toContain('GIT_VERSION_CONTROL');
         expect(res.isExpired).toBe(false);
         expect(res.isAlreadyResponded).toBe(false);

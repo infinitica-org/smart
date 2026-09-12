@@ -151,6 +151,185 @@ function applyCompanyPublicIdentityRefinement(
   }
 }
 
+export interface WorkExperienceMandatoryFieldIssue {
+  field: 'domain' | 'responsibilities' | 'skillsClaimed';
+  message: string;
+}
+
+/** S6-VB-01 — always-required claim fields beyond base Zod string mins. */
+export function validateWorkExperienceMandatoryFields(params: {
+  domain?: string | null;
+  responsibilities?: string | null;
+  skillsClaimed?: string[] | null;
+}): { valid: boolean; issues: WorkExperienceMandatoryFieldIssue[] } {
+  const issues: WorkExperienceMandatoryFieldIssue[] = [];
+
+  if (!params.domain?.trim()) {
+    issues.push({
+      field: 'domain',
+      message: 'Professional domain is required.',
+    });
+  }
+  if (!params.responsibilities?.trim()) {
+    issues.push({
+      field: 'responsibilities',
+      message: 'Responsibilities and accomplishments are required.',
+    });
+  }
+  if (!params.skillsClaimed || params.skillsClaimed.length < 1) {
+    issues.push({
+      field: 'skillsClaimed',
+      message: 'At least one skill from the catalog is required.',
+    });
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+export interface WorkExperienceValidationInput {
+  companyName?: string | null;
+  role?: string | null;
+  employmentType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isCurrent?: boolean;
+  domain?: string | null;
+  responsibilities?: string | null;
+  skillsClaimed?: string[] | null;
+  companyId?: string | null;
+  companyWebsite?: string | null;
+  companyLinkedinUrl?: string | null;
+  catalogCompanyWebsite?: string | null;
+  catalogCompanyLinkedinUrl?: string | null;
+  documents?: Array<{ documentType: string }> | null;
+}
+
+export interface WorkExperienceValidationIssue {
+  path: string;
+  message: string;
+}
+
+export interface WorkExperienceValidationResult {
+  valid: boolean;
+  issues: WorkExperienceValidationIssue[];
+}
+
+/** Merge an existing record with a partial update for effective validation. */
+export function mergeWorkExperienceValidationInput(
+  existing: WorkExperienceValidationInput,
+  patch: Partial<WorkExperienceValidationInput>,
+): WorkExperienceValidationInput {
+  return {
+    ...existing,
+    ...patch,
+    skillsClaimed: patch.skillsClaimed !== undefined ? patch.skillsClaimed : existing.skillsClaimed,
+    documents: patch.documents !== undefined ? patch.documents : existing.documents,
+  };
+}
+
+/**
+ * S6-VB-01 — full submission validation for create and effective update paths.
+ * Reuses company identity and letter-rule helpers; does not alter verification logic.
+ */
+export function validateWorkExperienceSubmission(
+  input: WorkExperienceValidationInput,
+): WorkExperienceValidationResult {
+  const issues: WorkExperienceValidationIssue[] = [];
+  const isCurrent = input.isCurrent ?? false;
+
+  if (!input.companyName?.trim()) {
+    issues.push({ path: 'companyName', message: 'Company name is required.' });
+  }
+  if (!input.role?.trim()) {
+    issues.push({ path: 'role', message: 'Role/designation is required.' });
+  }
+  if (!EmploymentTypeSchema.safeParse(input.employmentType).success) {
+    issues.push({ path: 'employmentType', message: 'Employment type is required.' });
+  }
+  if (!input.startDate?.trim()) {
+    issues.push({ path: 'startDate', message: 'Start date is required.' });
+  }
+
+  for (const mandatoryIssue of validateWorkExperienceMandatoryFields({
+    domain: input.domain,
+    responsibilities: input.responsibilities,
+    skillsClaimed: input.skillsClaimed,
+  }).issues) {
+    issues.push({ path: mandatoryIssue.field, message: mandatoryIssue.message });
+  }
+
+  if (!isCurrent && !input.endDate) {
+    issues.push({
+      path: 'endDate',
+      message: 'End date is required if not currently employed',
+    });
+  }
+
+  const identityRequired = companyRequiresPublicIdentity({
+    companyId: input.companyId,
+    companyWebsite: input.companyWebsite,
+    catalogCompanyWebsite: input.catalogCompanyWebsite,
+    catalogCompanyLinkedinUrl: input.catalogCompanyLinkedinUrl,
+  });
+  const identityResult = validateCompanyPublicIdentity({
+    companyWebsite: input.companyWebsite,
+    companyLinkedinUrl: input.companyLinkedinUrl,
+    required: identityRequired,
+  });
+  if (!identityResult.valid && identityResult.message) {
+    issues.push({
+      path: identityResult.field ?? 'companyWebsite',
+      message: identityResult.message,
+    });
+  }
+
+  const letterResult = validateWorkExperienceLetterRules({
+    isCurrent,
+    endDate: input.endDate,
+    documents: input.documents ?? [],
+  });
+  if (!letterResult.valid && letterResult.message) {
+    issues.push({ path: 'documents', message: letterResult.message });
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+export function validateWorkExperienceEffectiveUpdate(
+  existing: WorkExperienceValidationInput,
+  patch: Partial<WorkExperienceValidationInput>,
+): WorkExperienceValidationResult {
+  return validateWorkExperienceSubmission(mergeWorkExperienceValidationInput(existing, patch));
+}
+
+function applyWorkExperienceSubmissionRefinements(
+  data: WorkExperienceValidationInput,
+  ctx: z.RefinementCtx,
+): void {
+  const result = validateWorkExperienceSubmission({
+    companyName: data.companyName,
+    role: data.role,
+    employmentType: data.employmentType,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    isCurrent: data.isCurrent,
+    domain: data.domain,
+    responsibilities: data.responsibilities,
+    skillsClaimed: data.skillsClaimed,
+    companyId: data.companyId,
+    companyWebsite: data.companyWebsite,
+    companyLinkedinUrl: data.companyLinkedinUrl,
+    documents: data.documents,
+  });
+  for (const issue of result.issues) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: issue.message,
+      path: [issue.path],
+    });
+  }
+}
+
 export interface WorkExperienceLetterValidationResult {
   valid: boolean;
   hasOfferLetter: boolean;
@@ -206,14 +385,7 @@ export function validateWorkExperienceLetterRules(params: {
 
 export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.superRefine(
   (data, ctx) => {
-    if (!data.isCurrent && !data.endDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'End date is required if not currently employed',
-        path: ['endDate'],
-      });
-    }
-    applyCompanyPublicIdentityRefinement(data, ctx);
+    applyWorkExperienceSubmissionRefinements(data, ctx);
   },
 );
 export type CreateWorkExperienceDto = z.infer<typeof CreateWorkExperienceSchema>;
@@ -245,6 +417,8 @@ export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial
         ctx,
       );
     }
+    // Full mandatory-field checks for updates use validateWorkExperienceEffectiveUpdate()
+    // with the persisted record merged into the patch (see api-core service layer).
   },
 );
 export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>;

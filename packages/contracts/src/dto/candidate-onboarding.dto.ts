@@ -1,12 +1,31 @@
 import { z } from 'zod';
+import { InterestDomainSchema } from '../domain/enums.js';
 import { SkillDiscoverySchema, SocialVerificationSchema } from './candidate-social.dto.js';
 
 /**
  * CN-T01 — candidate onboarding completion payload.
  *
+ * Progressive onboarding model: completion means the student has entered SMART
+ * with a broad interest domain and minimum identity/contact fields — not that
+ * they finished their professional profile, declared skills, or enrolled in a
+ * certification track.
+ *
  * Persisted server-side on the user row. Completing onboarding requires DPDP
  * consent (`dpdpConsent: true`) and flips `AuthenticatedUser.onboardingCompleted`.
+ *
+ * Career track enrollment (`primaryTrack` / `TECH_FULLSTACK`, etc.) is out of
+ * scope for this payload — see `EnrollTrackRequest` in `auth.dto.ts`.
  */
+
+/** Human-readable labels for interest-domain pickers (onboarding + profile). */
+export const INTEREST_DOMAIN_LABELS: Readonly<
+  Record<z.infer<typeof InterestDomainSchema>, string>
+> = {
+  CS_IT: 'CS & IT',
+  BUSINESS_MANAGEMENT: 'Business & Management',
+  FINANCE: 'Finance',
+  OTHER: 'Other',
+} as const;
 
 export const CandidateOnboardingEducationSchema = z.object({
   institutionName: z.string().min(1).max(200),
@@ -41,7 +60,7 @@ export const WORK_MODES = ['FULL_TIME', 'PART_TIME', 'REMOTE', 'HYBRID'] as cons
 export const WorkModeSchema = z.enum(WORK_MODES);
 export type WorkMode = z.infer<typeof WorkModeSchema>;
 
-/** CN-T01 — job-matching preferences captured at the end of onboarding. */
+/** Job-matching preferences — progressive profile; optional at onboarding completion. */
 export const CandidateOnboardingJobPreferencesSchema = z.object({
   /** Lakhs per annum. Optional — not every candidate has a current job. */
   currentCtcLakhs: z.number().positive().max(1000).optional(),
@@ -54,25 +73,29 @@ export type CandidateOnboardingJobPreferences = z.infer<
   typeof CandidateOnboardingJobPreferencesSchema
 >;
 
+/**
+ * Minimum fields that unlock platform entry (`onboardingCompleted=true`).
+ * Everything else on {@link CompleteCandidateOnboardingRequestSchema} is
+ * progressive profile data and may be omitted at completion time.
+ */
 export const CompleteCandidateOnboardingRequestSchema = z.object({
+  /** Broad area-of-interest — not a certification track or career role. */
+  interestDomain: InterestDomainSchema,
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
   gender: z.string().max(40).optional(),
   dateOfBirth: z.string().max(32).optional(),
   phoneCountryCode: z.string().min(1).max(8),
   phoneNumber: z.string().min(1).max(32),
-  linkedinUrl: z.union([z.url(), z.literal('')]),
-  /** Optional — not every candidate has a public GitHub profile. */
+  /** Progressive profile — optional at onboarding completion. */
+  linkedinUrl: z.union([z.url(), z.literal('')]).optional(),
   githubUrl: z.union([z.url(), z.literal('')]).optional(),
   education: z.array(CandidateOnboardingEducationSchema).max(20).default([]),
   experiences: z.array(CandidateOnboardingExperienceSchema).max(30).default([]),
+  /** Progressive profile — optional at onboarding completion; must not gate entry. */
   skills: z.array(CandidateOnboardingSkillSchema).max(40).default([]),
-  jobPreferences: CandidateOnboardingJobPreferencesSchema,
-  /**
-   * LinkedIn/GitHub identity confirmation + GitHub-derived skill suggestions.
-   * Purely a trust/UX signal — optional even on completion, since GitHub
-   * itself is optional and LinkedIn OIDC verification is never a hard gate.
-   */
+  /** Progressive profile — optional at onboarding completion. */
+  jobPreferences: CandidateOnboardingJobPreferencesSchema.optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   /** DPDP consent must be explicitly accepted to complete onboarding. */
@@ -95,6 +118,7 @@ export type CandidateOnboardingProfile = z.infer<typeof CandidateOnboardingProfi
  * `onboardingCompleted`.
  */
 export const CandidateOnboardingDraftSchema = z.object({
+  interestDomain: InterestDomainSchema.optional(),
   firstName: z.string().max(50).optional(),
   lastName: z.string().max(50).optional(),
   gender: z.string().max(40).optional(),

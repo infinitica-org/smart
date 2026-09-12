@@ -17,6 +17,9 @@ import { claimToBadgeStatus, skillNameForCode } from '@/lib/skill-declarations';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { DASHBOARD_TOUR_STEPS } from '@/lib/tour-steps';
 import { consumeTourAutostart } from '@/lib/tour';
+import { NextActionCard } from '@/components/next-action-card';
+import { ProfileProgressPanel } from '@/components/profile/ProfileProgressPanel';
+import { useProfileProgress } from '@/lib/use-profile-progress';
 
 export default function DashboardPage() {
   const { data: user } = useCurrentUser();
@@ -25,7 +28,13 @@ export default function DashboardPage() {
     queryKey: ['me', 'skill-claims'] as const,
     queryFn: () => api.assessment.listSkillClaims(),
   });
-  // Lazy init — a one-shot read that clears the flag, so it must run exactly once per mount.
+  const {
+    loading: profileLoading,
+    error: profileError,
+    progress,
+    visibleRecommendedAction,
+    dismissRecommendedAction,
+  } = useProfileProgress();
   const [autoStartTour] = useState(consumeTourAutostart);
 
   const verifiedCount = (claims ?? []).filter((claim) => claim.status === 'VERIFIED').length;
@@ -35,8 +44,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative mx-auto w-full max-w-[1400px] pb-16 pt-2">
-      <div className="relative space-y-10 z-10">
-        {/* Top */}
+      <div className="relative z-10 space-y-10">
         <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-4xl font-medium tracking-tight text-white md:text-[44px]">
@@ -48,14 +56,38 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-end gap-12 xl:pt-4">
-            <Stat icon={CheckCircle2} value={verifiedCount} label="Verified Skills" />
+            <Stat
+              icon={CheckCircle2}
+              value={verifiedCount}
+              label="Verified Skills"
+              detail={
+                progress && !profileLoading
+                  ? `Profile Completion: ${String(progress.percent)}%`
+                  : undefined
+              }
+            />
             <Stat icon={Layers} value={declaredCount} label="Skills Declared" />
           </div>
         </div>
 
-        {/* Main Grid */}
+        <ProfileProgressPanel
+          percent={progress?.percent ?? null}
+          areaStatus={progress?.areaStatus ?? null}
+          loading={profileLoading}
+          showChecklist={false}
+        />
+
+        {profileError ? (
+          <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {profileError}
+          </p>
+        ) : null}
+
+        {visibleRecommendedAction ? (
+          <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
+        ) : null}
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Candidate Profile Hero */}
           <div className="lg:col-span-1">
             <div
               data-tour="candidate-card"
@@ -75,13 +107,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Skills Section */}
           <div className="lg:col-span-2">
             <div data-tour="skills-panel" className="rounded-[28px] bg-[#1a1a1a] p-7">
               <div className="mb-6 flex items-start justify-between">
                 <h3 className="text-lg font-medium text-white">Your skills</h3>
                 <Link
-                  href="/skills"
+                  href="/assessments"
                   data-tour="manage-skills-link"
                   className="text-[13px] text-[#00fad0] hover:underline"
                 >
@@ -116,7 +147,17 @@ export default function DashboardPage() {
   );
 }
 
-function Stat({ icon: Icon, value, label }: { icon: LucideIcon; value: number; label: string }) {
+function Stat({
+  icon: Icon,
+  value,
+  label,
+  detail,
+}: {
+  icon: LucideIcon;
+  value: number;
+  label: string;
+  detail?: string;
+}) {
   return (
     <div className="flex items-center gap-4">
       <Icon className="h-5 w-5 text-white/40" />
@@ -125,6 +166,7 @@ function Stat({ icon: Icon, value, label }: { icon: LucideIcon; value: number; l
         <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">
           {label}
         </span>
+        {detail ? <span className="mt-1 text-xs text-[#00fad0]">{detail}</span> : null}
       </div>
     </div>
   );

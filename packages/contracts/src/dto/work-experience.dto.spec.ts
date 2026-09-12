@@ -2,9 +2,52 @@ import { describe, expect, it } from 'vitest';
 import {
   companyRequiresPublicIdentity,
   validateCompanyPublicIdentity,
+  validateWorkExperienceEffectiveUpdate,
   validateWorkExperienceLetterRules,
+  validateWorkExperienceMandatoryFields,
+  validateWorkExperienceSubmission,
   CreateWorkExperienceSchema,
 } from './work-experience.dto.js';
+
+const OFFER_DOCUMENT = {
+  documentType: 'OFFER_LETTER' as const,
+  fileUrl: 'storage/proofs/offer.pdf',
+  fileName: 'offer.pdf',
+  fileSizeBytes: 1024,
+  mimeType: 'application/pdf',
+};
+
+const RELIEVING_DOCUMENT = {
+  documentType: 'RELIEVING_LETTER' as const,
+  fileUrl: 'storage/proofs/relieving.pdf',
+  fileName: 'relieving.pdf',
+  fileSizeBytes: 1024,
+  mimeType: 'application/pdf',
+};
+
+function buildValidOngoingSubmission(overrides: Record<string, unknown> = {}) {
+  return {
+    companyName: 'Acme Corp',
+    role: 'Software Engineer',
+    employmentType: 'FULL_TIME',
+    startDate: '2022-01-01T00:00:00.000Z',
+    isCurrent: true,
+    domain: 'Software Engineering',
+    responsibilities: 'Built backend services and APIs.',
+    skillsClaimed: ['GIT_VERSION_CONTROL'],
+    documents: [OFFER_DOCUMENT],
+    ...overrides,
+  };
+}
+
+function buildValidEndedSubmission(overrides: Record<string, unknown> = {}) {
+  return buildValidOngoingSubmission({
+    isCurrent: false,
+    endDate: '2023-01-01T00:00:00.000Z',
+    documents: [OFFER_DOCUMENT, RELIEVING_DOCUMENT],
+    ...overrides,
+  });
+}
 
 describe('WorkExperience DTO & Letter Validation Rules (WE-T01)', () => {
   it('validates ongoing role with offer letter', () => {
@@ -85,22 +128,125 @@ describe('WorkExperience DTO & Letter Validation Rules (WE-T01)', () => {
   });
 
   it('validates CreateWorkExperienceSchema requires end date when not current', () => {
-    const invalidResult = CreateWorkExperienceSchema.safeParse({
-      companyName: 'Acme Corp',
-      role: 'Developer',
-      startDate: '2022-01-01T00:00:00.000Z',
-      isCurrent: false,
-    });
+    const invalidResult = CreateWorkExperienceSchema.safeParse(
+      buildValidOngoingSubmission({
+        isCurrent: false,
+        endDate: undefined,
+        documents: [OFFER_DOCUMENT],
+      }),
+    );
     expect(invalidResult.success).toBe(false);
 
-    const validResult = CreateWorkExperienceSchema.safeParse({
-      companyName: 'Acme Corp',
-      role: 'Developer',
-      startDate: '2022-01-01T00:00:00.000Z',
-      endDate: '2023-01-01T00:00:00.000Z',
-      isCurrent: false,
-    });
+    const validResult = CreateWorkExperienceSchema.safeParse(buildValidEndedSubmission());
     expect(validResult.success).toBe(true);
+  });
+});
+
+describe('S6-VB-01 mandatory Work Experience fields', () => {
+  it('accepts a valid complete ongoing submission', () => {
+    const submission = validateWorkExperienceSubmission(buildValidOngoingSubmission());
+    expect(submission.valid).toBe(true);
+    expect(submission.issues).toHaveLength(0);
+
+    const parsed = CreateWorkExperienceSchema.safeParse(buildValidOngoingSubmission());
+    expect(parsed.success).toBe(true);
+  });
+
+  it('rejects missing companyName', () => {
+    const result = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({ companyName: '' }),
+    );
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'companyName')).toBe(true);
+  });
+
+  it('rejects missing role', () => {
+    const result = validateWorkExperienceSubmission(buildValidOngoingSubmission({ role: '' }));
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'role')).toBe(true);
+  });
+
+  it('rejects missing employmentType', () => {
+    const result = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({ employmentType: 'NOT_A_TYPE' }),
+    );
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'employmentType')).toBe(true);
+  });
+
+  it('rejects missing startDate', () => {
+    const result = validateWorkExperienceSubmission(buildValidOngoingSubmission({ startDate: '' }));
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'startDate')).toBe(true);
+  });
+
+  it('rejects missing domain', () => {
+    const mandatory = validateWorkExperienceMandatoryFields({
+      domain: '',
+      responsibilities: 'Built APIs.',
+      skillsClaimed: ['GIT_VERSION_CONTROL'],
+    });
+    expect(mandatory.valid).toBe(false);
+    expect(mandatory.issues.some((issue) => issue.field === 'domain')).toBe(true);
+
+    const submission = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({ domain: '' }),
+    );
+    expect(submission.valid).toBe(false);
+    expect(submission.issues.some((issue) => issue.path === 'domain')).toBe(true);
+  });
+
+  it('rejects missing responsibilities', () => {
+    const mandatory = validateWorkExperienceMandatoryFields({
+      domain: 'Software Engineering',
+      responsibilities: '',
+      skillsClaimed: ['GIT_VERSION_CONTROL'],
+    });
+    expect(mandatory.valid).toBe(false);
+    expect(mandatory.issues.some((issue) => issue.field === 'responsibilities')).toBe(true);
+  });
+
+  it('rejects empty skillsClaimed', () => {
+    const mandatory = validateWorkExperienceMandatoryFields({
+      domain: 'Software Engineering',
+      responsibilities: 'Built APIs.',
+      skillsClaimed: [],
+    });
+    expect(mandatory.valid).toBe(false);
+    expect(mandatory.issues.some((issue) => issue.field === 'skillsClaimed')).toBe(true);
+
+    const submission = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({ skillsClaimed: [] }),
+    );
+    expect(submission.valid).toBe(false);
+    expect(submission.issues.some((issue) => issue.path === 'skillsClaimed')).toBe(true);
+  });
+
+  it('rejects ended roles without endDate via conditional validation', () => {
+    const result = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({
+        isCurrent: false,
+        endDate: null,
+        documents: [OFFER_DOCUMENT, RELIEVING_DOCUMENT],
+      }),
+    );
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'endDate')).toBe(true);
+  });
+
+  it('rejects submissions missing required proof documents', () => {
+    const result = validateWorkExperienceSubmission(buildValidOngoingSubmission({ documents: [] }));
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'documents')).toBe(true);
+  });
+
+  it('validates effective merged updates instead of partial patches alone', () => {
+    const existing = buildValidOngoingSubmission();
+    const result = validateWorkExperienceEffectiveUpdate(existing, {
+      responsibilities: '',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'responsibilities')).toBe(true);
   });
 });
 
@@ -168,64 +314,42 @@ describe('S6-VB-01 company public identity (AC1)', () => {
   });
 
   it('CreateWorkExperienceSchema rejects missing LinkedIn when website is provided', () => {
-    const result = CreateWorkExperienceSchema.safeParse({
-      companyName: 'Acme Corp',
-      role: 'Engineer',
-      startDate: '2022-01-01T00:00:00.000Z',
-      isCurrent: true,
-      companyWebsite: 'https://acme.com',
-      documents: [
-        {
-          documentType: 'OFFER_LETTER',
-          fileUrl: 'x',
-          fileName: 'a.pdf',
-          fileSizeBytes: 100,
-          mimeType: 'application/pdf',
-        },
-      ],
-    });
+    const result = CreateWorkExperienceSchema.safeParse(
+      buildValidOngoingSubmission({
+        companyWebsite: 'https://acme.com',
+      }),
+    );
     expect(result.success).toBe(false);
   });
 
   it('CreateWorkExperienceSchema accepts public identity when both fields are present', () => {
-    const result = CreateWorkExperienceSchema.safeParse({
-      companyName: 'Acme Corp',
-      role: 'Engineer',
-      startDate: '2022-01-01T00:00:00.000Z',
-      isCurrent: true,
-      companyWebsite: 'https://acme.com',
-      companyLinkedinUrl: 'https://linkedin.com/company/acme',
-      documents: [
-        {
-          documentType: 'OFFER_LETTER',
-          fileUrl: 'x',
-          fileName: 'a.pdf',
-          fileSizeBytes: 100,
-          mimeType: 'application/pdf',
-        },
-      ],
-    });
+    const result = CreateWorkExperienceSchema.safeParse(
+      buildValidOngoingSubmission({
+        companyWebsite: 'https://acme.com',
+        companyLinkedinUrl: 'https://linkedin.com/company/acme',
+      }),
+    );
     expect(result.success).toBe(true);
   });
 
   it('CreateWorkExperienceSchema rejects invalid website URL when identity is required', () => {
-    const result = CreateWorkExperienceSchema.safeParse({
-      companyName: 'Acme Corp',
-      role: 'Engineer',
-      startDate: '2022-01-01T00:00:00.000Z',
-      isCurrent: true,
-      companyWebsite: 'not-a-url',
-      companyLinkedinUrl: 'https://linkedin.com/company/acme',
-      documents: [
-        {
-          documentType: 'OFFER_LETTER',
-          fileUrl: 'x',
-          fileName: 'a.pdf',
-          fileSizeBytes: 100,
-          mimeType: 'application/pdf',
-        },
-      ],
-    });
+    const result = CreateWorkExperienceSchema.safeParse(
+      buildValidOngoingSubmission({
+        companyWebsite: 'not-a-url',
+        companyLinkedinUrl: 'https://linkedin.com/company/acme',
+      }),
+    );
     expect(result.success).toBe(false);
+  });
+
+  it('validateWorkExperienceSubmission enforces company public identity when catalog data exists', () => {
+    const result = validateWorkExperienceSubmission({
+      ...buildValidOngoingSubmission(),
+      companyWebsite: null,
+      companyLinkedinUrl: null,
+      catalogCompanyWebsite: 'https://acme.com',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.path === 'companyWebsite')).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import type {
   CandidateOnboardingDraft,
   CandidateOnboardingJobPreferences,
   CompleteCandidateOnboardingRequest,
+  InterestDomain,
   ResumeParseDraft,
   SaveCandidateOnboardingDraftRequest,
   SkillDiscovery,
@@ -15,6 +16,7 @@ const NAME_TO_SKILL_CODE = new Map(
 );
 
 export interface OnboardingProfileForm {
+  interestDomain: InterestDomain | '';
   firstName: string;
   lastName: string;
   gender: string;
@@ -66,6 +68,7 @@ export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
 
 export function emptyOnboardingForm(): OnboardingProfileForm {
   return {
+    interestDomain: '',
     firstName: '',
     lastName: '',
     gender: '',
@@ -193,6 +196,7 @@ export function applyServerDraft(
 
   return {
     ...form,
+    interestDomain: draft.interestDomain ?? form.interestDomain,
     firstName: draft.firstName ?? form.firstName,
     lastName: draft.lastName ?? form.lastName,
     gender: draft.gender ?? form.gender,
@@ -298,6 +302,7 @@ export function buildOnboardingDraftPayload(
       : undefined;
 
   return {
+    interestDomain: form.interestDomain || undefined,
     firstName: form.firstName.trim() || undefined,
     lastName: form.lastName.trim() || undefined,
     gender: form.gender.trim() || undefined,
@@ -339,28 +344,32 @@ export const MONTHS = [
   'December',
 ];
 
+function normalizeOptionalUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export function buildCompleteOnboardingRequest(
   form: OnboardingProfileForm,
 ): CompleteCandidateOnboardingRequest | { error: string } {
+  if (!form.interestDomain) {
+    return { error: 'Please select an area of interest.' };
+  }
   if (!form.firstName.trim() || !form.lastName.trim()) {
     return { error: 'First and last name are required.' };
+  }
+  if (!form.phoneCountryCode.trim()) {
+    return { error: 'Phone country code is required.' };
   }
   if (!form.phoneNumber.trim()) {
     return { error: 'Phone number is required.' };
   }
-
-  const jobPreferences = buildJobPreferencesPayload(form);
-  if (!jobPreferences) {
-    return { error: 'Expected CTC is required.' };
-  }
-  if (!jobPreferences.currentLocation) {
-    return { error: 'Current location is required.' };
-  }
-  if (jobPreferences.preferredLocations.length === 0) {
-    return { error: 'Pick at least one preferred location.' };
+  if (!/^\d{10}$/.test(form.phoneNumber.trim())) {
+    return { error: 'Mobile number must contain exactly 10 digits.' };
   }
   if (!form.dpdpConsent) {
-    return { error: 'You must agree to the DPDP consent terms to complete your profile.' };
+    return { error: 'You must agree to the DPDP consent terms to enter SMART.' };
   }
 
   const dateOfBirth =
@@ -368,33 +377,35 @@ export function buildCompleteOnboardingRequest(
       ? `${form.dobYear}-${String(MONTHS.indexOf(form.dobMonth) + 1).padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`
       : undefined;
 
-  let linkedinUrl = form.linkedinUrl.trim();
-  if (linkedinUrl && !/^https?:\/\//i.test(linkedinUrl)) {
-    linkedinUrl = `https://${linkedinUrl}`;
-  }
+  const linkedinUrl = normalizeOptionalUrl(form.linkedinUrl);
+  const githubUrl = normalizeOptionalUrl(form.githubUrl);
+  const skills = buildSkillsPayload(form);
+  const jobPreferences = buildJobPreferencesPayload(form);
 
-  let githubUrl = form.githubUrl.trim();
-  if (githubUrl && !/^https?:\/\//i.test(githubUrl)) {
-    githubUrl = `https://${githubUrl}`;
-  }
-
-  return {
+  const payload = {
+    interestDomain: form.interestDomain,
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
-    gender: form.gender.trim() || undefined,
-    dateOfBirth,
     phoneCountryCode: form.phoneCountryCode.trim() || '+91',
     phoneNumber: form.phoneNumber.trim(),
-    linkedinUrl,
-    githubUrl: githubUrl || undefined,
-    education: [],
-    experiences: [],
-    skills: buildSkillsPayload(form),
-    jobPreferences,
-    socialVerification: form.socialVerification,
-    skillDiscovery: form.skillDiscovery,
-    dpdpConsent: true,
+    dpdpConsent: true as const,
+    ...(form.gender.trim() ? { gender: form.gender.trim() } : {}),
+    ...(dateOfBirth ? { dateOfBirth } : {}),
+    ...(linkedinUrl ? { linkedinUrl } : {}),
+    ...(githubUrl ? { githubUrl } : {}),
+    ...(skills.length > 0 ? { skills } : {}),
+    ...(jobPreferences ? { jobPreferences } : {}),
+    ...(form.socialVerification.linkedin || form.socialVerification.github
+      ? { socialVerification: form.socialVerification }
+      : {}),
+    ...(form.skillDiscovery.selectedSkillNames.length > 0 ||
+    form.skillDiscovery.customSkillNames.length > 0 ||
+    form.skillDiscovery.suggestedFromGithub.length > 0
+      ? { skillDiscovery: form.skillDiscovery }
+      : {}),
   };
+
+  return payload as CompleteCandidateOnboardingRequest;
 }
 
 export const LANGUAGE_OPTIONS = [
