@@ -34,6 +34,7 @@ const mockOngoingExp = {
   companyName: 'Acme Corp',
   role: 'Software Engineer',
   employmentType: 'FULL_TIME',
+  domain: 'Software Engineering',
   startDate: '2022-01-01T00:00:00.000Z',
   endDate: null,
   isCurrent: true,
@@ -57,6 +58,58 @@ const mockOngoingExp = {
     },
   ],
 };
+
+function fillMandatoryWorkExperienceFields(
+  container: HTMLElement,
+  overrides: Record<string, string> = {},
+) {
+  const values = {
+    companyName: 'Tech Corp',
+    role: 'Frontend Engineer',
+    domain: 'Software Engineering',
+    responsibilities: 'Built customer-facing features.',
+    startDate: '2022-01-01',
+    endDate: '',
+    ...overrides,
+  };
+
+  fireEvent.change(screen.getByPlaceholderText(/Acme Corporation/i), {
+    target: { value: values.companyName },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/Software Engineer Intern/i), {
+    target: { value: values.role },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/Software Engineering, Business Analytics/i), {
+    target: { value: values.domain },
+  });
+  fireEvent.change(
+    screen.getByPlaceholderText(/Key responsibilities, projects, and technologies used/i),
+    { target: { value: values.responsibilities } },
+  );
+
+  const dateInputs = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
+  const startDateInput = dateInputs[0];
+  if (startDateInput) {
+    fireEvent.change(startDateInput, { target: { value: values.startDate } });
+  }
+  if (values.endDate && dateInputs[1]) {
+    fireEvent.change(dateInputs[1], { target: { value: values.endDate } });
+  }
+}
+
+function selectCatalogSkill(skillName: string) {
+  fireEvent.change(screen.getByPlaceholderText(/Search skills/i), {
+    target: { value: skillName.slice(0, 4) },
+  });
+  fireEvent.click(screen.getByRole('button', { name: skillName }));
+}
+
+async function openAddExperienceModal() {
+  listWorkExperiences.mockResolvedValueOnce([]);
+  const view = render(<WorkExperienceSection />);
+  fireEvent.click(await screen.findByRole('button', { name: /Add/i }));
+  return view;
+}
 
 describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
   beforeEach(() => {
@@ -101,31 +154,13 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
   });
 
   it('prevents submission client-side if required offer letter is missing', async () => {
-    listWorkExperiences.mockResolvedValueOnce([]);
-    const { container } = render(<WorkExperienceSection />);
+    const { container } = await openAddExperienceModal();
 
-    const addButton = await screen.findByRole('button', { name: /Add/i });
-    fireEvent.click(addButton);
+    fillMandatoryWorkExperienceFields(container);
+    selectCatalogSkill('Git & version control');
 
-    fireEvent.change(screen.getByPlaceholderText(/Acme Corporation/i), {
-      target: { value: 'Tech Corp' },
-    });
-    fireEvent.change(screen.getByPlaceholderText(/Software Engineer Intern/i), {
-      target: { value: 'Frontend Engineer' },
-    });
-
-    const currentCheckbox = screen.getByLabelText(/I currently work in this role/i);
-    fireEvent.click(currentCheckbox);
-
-    // Set valid start date so HTML5 validation passes
-    const dateInputs = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
-    const startDateInput = dateInputs[0];
-    if (startDateInput) {
-      fireEvent.change(startDateInput, { target: { value: '2022-01-01' } });
-    }
-
-    const submitBtn = screen.getByRole('button', { name: /Submit Experience/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
 
     expect(createWorkExperience).not.toHaveBeenCalled();
     expect(
@@ -212,5 +247,128 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     expect(await screen.findByText('4. Manager Endorsement Status')).toBeTruthy();
     expect(screen.getByText('CONFIRMED')).toBeTruthy();
+  });
+});
+
+describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
+  beforeEach(() => {
+    listWorkExperiences.mockReset().mockResolvedValue([mockOngoingExp]);
+    createWorkExperience.mockReset();
+    updateWorkExperience.mockReset().mockResolvedValue(mockOngoingExp);
+  });
+
+  it('renders the Professional Domain field', async () => {
+    await openAddExperienceModal();
+    expect(screen.getByPlaceholderText(/Software Engineering, Business Analytics/i)).toBeTruthy();
+  });
+
+  it('marks Professional Domain as required', async () => {
+    await openAddExperienceModal();
+    expect(screen.getByText('Professional Domain *')).toBeTruthy();
+  });
+
+  it('prevents save when domain is empty', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container, { domain: '' });
+    selectCatalogSkill('Git & version control');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Professional domain is required/i).length).toBeGreaterThan(0);
+  });
+
+  it('prevents save when responsibilities are empty', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container, { responsibilities: '' });
+    selectCatalogSkill('Git & version control');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText(/Responsibilities and accomplishments are required/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('prevents save when no skills are selected', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container);
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText(/At least one skill from the catalog is required/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('marks End Date as required when employment has ended', async () => {
+    await openAddExperienceModal();
+    expect(screen.getByText('End Date *')).toBeTruthy();
+  });
+
+  it('prevents save for ended employment when End Date is missing', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container);
+    selectCatalogSkill('Git & version control');
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText(/End date is required if not currently employed/i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('End Date *')).toBeTruthy();
+  });
+
+  it('keeps End Date optional when currently employed', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container);
+    selectCatalogSkill('Git & version control');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    expect(screen.queryByText('End Date *')).toBeNull();
+    expect(screen.getByText(/^End Date$/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText(/An offer letter is required for all work experience claims/i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/End date is required if not currently employed/i)).toBeNull();
+  });
+
+  it('allows saving a valid complete work experience entry', async () => {
+    render(<WorkExperienceSection />);
+    fireEvent.click(await screen.findByTitle('Edit Experience'));
+    expect(await screen.findByText('Edit Work Experience')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+
+    expect(updateWorkExperience).toHaveBeenCalledWith(
+      'exp-1',
+      expect.objectContaining({
+        domain: 'Software Engineering',
+        responsibilities: 'Building awesome apps',
+        skillsClaimed: ['GIT_VERSION_CONTROL'],
+      }),
+    );
+  });
+
+  it('does not call the API when mandatory validation fails', async () => {
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container, { domain: '   ' });
+    selectCatalogSkill('Git & version control');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    expect(createWorkExperience).not.toHaveBeenCalled();
+    expect(updateWorkExperience).not.toHaveBeenCalled();
   });
 });

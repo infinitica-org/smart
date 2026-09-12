@@ -197,7 +197,7 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 200,
     summary:
-      'Persist profile + DPDP consent and set onboardingCompleted=true (CN-T01 server gate).',
+      'Persist minimal onboarding (interestDomain + basic profile + DPDP) and set onboardingCompleted=true (CN-T01 server gate). Progressive profile fields remain optional.',
   },
   {
     method: 'PUT',

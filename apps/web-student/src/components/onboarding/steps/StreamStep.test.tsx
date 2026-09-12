@@ -12,6 +12,8 @@ vi.mock('@/lib/api', () => ({
 }));
 
 describe('StreamStep', () => {
+  // StreamStep is preserved for future progressive profile / track flows.
+  // It is no longer part of the minimal onboarding wizard.
   it('renders stream options correctly', () => {
     render(<StreamStep onBack={vi.fn()} onContinue={vi.fn()} />);
 
