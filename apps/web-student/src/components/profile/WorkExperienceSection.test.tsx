@@ -193,8 +193,8 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     await waitFor(() => {
       expect(createWorkExperience).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          documents: expect.anything(),
+        expect.objectContaining({
+          documents: [],
         }),
       );
       expect(uploadWorkExperienceProofDocument).toHaveBeenCalledWith(

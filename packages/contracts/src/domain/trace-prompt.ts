@@ -26,7 +26,7 @@ export function looksLikeCodeLine(line: string): boolean {
   }
   if (/^[A-Za-z_][\w]*\s*=/.test(trimmed)) return true;
   if (/^\.\w+/.test(trimmed)) return true;
-  return /[=(){}\[\];]/.test(trimmed) && !/^[A-D][.)]\s/.test(trimmed);
+  return /[=(){}[\];]/.test(trimmed) && !/^[A-D][.)]\s/.test(trimmed);
 }
 
 function looksLikeCode(text: string): boolean {
