@@ -379,6 +379,8 @@ export function buildCompleteOnboardingRequest(
   }
 
   return {
+    // Stream step currently enrolls TECH_FULLSTACK only; broad domain stays CS & IT.
+    interestDomain: 'CS_IT',
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     gender: form.gender.trim() || undefined,

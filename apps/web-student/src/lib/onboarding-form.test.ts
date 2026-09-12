@@ -50,6 +50,7 @@ describe('onboarding-form', () => {
     expect('error' in result).toBe(false);
     if ('error' in result) return;
     expect(result.dpdpConsent).toBe(true);
+    expect(result.interestDomain).toBe('CS_IT');
     expect(result.linkedinUrl).toBe('https://linkedin.com/in/ada');
     expect(result.education).toEqual([]);
     expect(result.experiences).toEqual([]);
