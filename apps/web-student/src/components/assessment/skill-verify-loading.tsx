@@ -1,6 +1,7 @@
 'use client';
 
 import { Alert } from '@smart/ui';
+import type { SkillVerifyError } from '@/lib/skill-verify-errors';
 import { SkillVerifyWaitGame } from './skill-verify-wait-game';
 
 export function SkillVerifyLoading({
@@ -9,7 +10,7 @@ export function SkillVerifyLoading({
   kioskTitle = 'Skill verification',
 }: {
   generating: boolean;
-  error: string | null;
+  error: SkillVerifyError | null;
   kioskTitle?: string;
 }) {
   return (
@@ -21,8 +22,11 @@ export function SkillVerifyLoading({
       <div className="flex min-h-0 flex-1 items-center justify-center p-6">
         <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[var(--surface)] p-5 shadow-xl">
           {error ? (
-            <Alert tone="danger" title="Could not generate">
-              {error}
+            <Alert tone="danger" title={error.title}>
+              {error.message}
+              {error.retryAfterSeconds
+                ? ` Try again in ${String(error.retryAfterSeconds)} seconds.`
+                : null}
             </Alert>
           ) : (
             <SkillVerifyWaitGame />

@@ -12,6 +12,12 @@ import type {
 } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { formatRetryAt } from '@/lib/skill-declarations';
+import {
+  areAllSkillVerifyItemsAnswered,
+  skillVerifyErrorFromUnknown,
+  skillVerifyIncompleteError,
+  type SkillVerifyError,
+} from '@/lib/skill-verify-errors';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
@@ -52,7 +58,7 @@ export function CertVerifyPlayer({
   const router = useRouter();
   const [prepared, setPrepared] = useState<CertVerifyPrepareDto | null>(null);
   const [session, setSession] = useState<CertVerifySessionDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SkillVerifyError | null>(null);
   const [generating, setGenerating] = useState(false);
   const [kioskTitle, setKioskTitle] = useState(title);
   const [isPending, startTransition] = useTransition();
@@ -65,6 +71,16 @@ export function CertVerifyPlayer({
   const generateStarted = useRef(false);
 
   useEffect(() => {
+    if (
+      session &&
+      error?.kind === 'incomplete' &&
+      areAllSkillVerifyItemsAnswered(certSessionToSkillShape(session), answers)
+    ) {
+      setError(null);
+    }
+  }, [session, answers, error]);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
@@ -72,7 +88,7 @@ export function CertVerifyPlayer({
         if (!cancelled) setPrepared(next);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not start verification.');
+          setError(skillVerifyErrorFromUnknown(err, 'prepare'));
         }
       }
     })();
@@ -99,7 +115,7 @@ export function CertVerifyPlayer({
       setCurrentIndex(0);
     } catch (err) {
       generateStarted.current = false;
-      setError(err instanceof Error ? err.message : 'Could not generate the assessment.');
+      setError(skillVerifyErrorFromUnknown(err, 'generate'));
     } finally {
       setGenerating(false);
     }
@@ -146,7 +162,7 @@ export function CertVerifyPlayer({
           const next = await api.assessment.saveCertVerify(session.sessionId, { responses });
           setSession(next);
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Save failed.');
+          setError(skillVerifyErrorFromUnknown(err, 'save'));
         }
       })();
     });
@@ -154,6 +170,10 @@ export function CertVerifyPlayer({
 
   const complete = () => {
     if (!session) return;
+    if (!areAllSkillVerifyItemsAnswered(certSessionToSkillShape(session), answers)) {
+      setError(skillVerifyIncompleteError());
+      return;
+    }
     setError(null);
     startTransition(() => {
       void (async () => {
@@ -175,7 +195,7 @@ export function CertVerifyPlayer({
           }
           router.push('/certificates');
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Could not complete verification.');
+          setError(skillVerifyErrorFromUnknown(err, 'submit'));
         }
       })();
     });
@@ -208,8 +228,11 @@ export function CertVerifyPlayer({
 
   if (error && !prepared) {
     return (
-      <Alert tone="danger" title="Could not start">
-        {error}
+      <Alert tone="danger" title={error.title}>
+        {error.message}
+        {error.retryAfterSeconds
+          ? ` Try again in ${String(error.retryAfterSeconds)} seconds.`
+          : null}
       </Alert>
     );
   }

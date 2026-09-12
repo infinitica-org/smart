@@ -10,6 +10,11 @@ import type {
 import { AnswerOption, Badge, Button, ProgressIndicator, QuestionCard, Timer } from '@smart/ui';
 import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
 import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import {
+  areAllSkillVerifyItemsAnswered,
+  isSkillVerifyAnswered,
+  type SkillVerifyError,
+} from '@/lib/skill-verify-errors';
 
 const SUBMIT_LABEL_BY_STAGE = {
   DIAGNOSTIC: 'Finish diagnostic',
@@ -36,18 +41,7 @@ export function skillVerifyTimerProps(session: SkillVerifySessionDto) {
   };
 }
 
-export function isSkillVerifyAnswered(
-  answer:
-    | {
-        selectedKey?: string;
-        text?: string;
-      }
-    | undefined,
-) {
-  if (!answer) return false;
-  if (answer.selectedKey) return true;
-  return Boolean(answer.text?.trim());
-}
+export { isSkillVerifyAnswered } from '@/lib/skill-verify-errors';
 
 type ProseBlock =
   { type: 'p'; text: string } | { type: 'ol'; items: string[] } | { type: 'ul'; items: string[] };
@@ -146,7 +140,7 @@ export function SkillVerifyExam({
   currentIndex: number;
   answers: Record<number, { selectedKey?: string; text?: string }>;
   pending: boolean;
-  error: string | null;
+  error: SkillVerifyError | null;
   kioskTitle?: string;
   onSelectKey: (itemIndex: number, key: 'A' | 'B' | 'C' | 'D') => void;
   onChangeText: (itemIndex: number, text: string) => void;
@@ -181,6 +175,8 @@ export function SkillVerifyExam({
     session.stage && session.stage in SUBMIT_LABEL_BY_STAGE
       ? SUBMIT_LABEL_BY_STAGE[session.stage]
       : 'Submit and see results';
+  const allAnswered = areAllSkillVerifyItemsAnswered(session, answers);
+  const canSubmit = !pending && allAnswered;
 
   const runCode = async () => {
     if (!onRunCode || !coding) return;
@@ -211,7 +207,7 @@ export function SkillVerifyExam({
           <Button type="button" variant="outline" disabled={pending} onClick={onExit}>
             Exit
           </Button>
-          <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
+          <Button type="button" variant="primary" disabled={!canSubmit} onClick={onSubmit}>
             {submitLabel}
           </Button>
         </div>
@@ -230,7 +226,13 @@ export function SkillVerifyExam({
 
           {error ? (
             <p className="mb-3 text-sm text-danger" role="alert">
-              {error}
+              <span className="font-medium">{error.title}.</span> {error.message}
+            </p>
+          ) : null}
+
+          {!allAnswered ? (
+            <p className="mb-3 text-sm text-[var(--text-muted)]">
+              Answer all {String(total)} questions before submitting.
             </p>
           ) : null}
 
@@ -325,7 +327,7 @@ export function SkillVerifyExam({
                 Clear response
               </Button>
               {last ? (
-                <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
+                <Button type="button" variant="primary" disabled={!canSubmit} onClick={onSubmit}>
                   {submitLabel}
                 </Button>
               ) : (

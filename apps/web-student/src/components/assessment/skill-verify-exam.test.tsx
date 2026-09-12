@@ -65,6 +65,29 @@ describe('SkillVerifyExam layout', () => {
     expect(screen.queryByText('Monitoring')).toBeNull();
   });
 
+  it('disables submit until every question is answered', () => {
+    render(
+      <SkillVerifyExam
+        session={session()}
+        currentIndex={0}
+        answers={{ 1: { selectedKey: 'B' } }}
+        pending={false}
+        error={null}
+        onSelectKey={vi.fn()}
+        onChangeText={vi.fn()}
+        onGoTo={vi.fn()}
+        onClear={vi.fn()}
+        onExit={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    const submitButton = screen.getAllByRole('button', {
+      name: /submit and see results/i,
+    })[0] as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(true);
+    expect(screen.getByText(/answer all 2 questions before submitting/i)).toBeDefined();
+  });
+
   it('jumps from the question palette and clears an MCQ', () => {
     const onGoTo = vi.fn();
     const onClear = vi.fn();

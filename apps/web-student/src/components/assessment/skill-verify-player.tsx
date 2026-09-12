@@ -11,6 +11,12 @@ import type {
 } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { formatRetryAt, formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import {
+  areAllSkillVerifyItemsAnswered,
+  skillVerifyErrorFromUnknown,
+  skillVerifyIncompleteError,
+  type SkillVerifyError,
+} from '@/lib/skill-verify-errors';
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
@@ -21,7 +27,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const router = useRouter();
   const [prepared, setPrepared] = useState<SkillVerifyPrepareDto | null>(null);
   const [session, setSession] = useState<SkillVerifySessionDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SkillVerifyError | null>(null);
   const [generating, setGenerating] = useState(false);
   const [kioskTitle, setKioskTitle] = useState('Skill verification');
   const [isPending, startTransition] = useTransition();
@@ -35,6 +41,16 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [pendingGrade, setPendingGrade] = useState<GradeSdeSkillFormResponse | null>(null);
   const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
   const generateStarted = useRef(false);
+
+  useEffect(() => {
+    if (
+      session &&
+      error?.kind === 'incomplete' &&
+      areAllSkillVerifyItemsAnswered(session, answers)
+    ) {
+      setError(null);
+    }
+  }, [session, answers, error]);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +68,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         setPrepared(next);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not start verification.');
+          setError(skillVerifyErrorFromUnknown(err, 'prepare'));
         }
       }
     })();
@@ -79,7 +95,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
       setCurrentIndex(0);
     } catch (err) {
       generateStarted.current = false;
-      setError(err instanceof Error ? err.message : 'Could not generate the form.');
+      setError(skillVerifyErrorFromUnknown(err, 'generate'));
     } finally {
       setGenerating(false);
     }
@@ -125,7 +141,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           const next = await api.assessment.saveSkillVerify(session.sessionId, { responses });
           setSession(next);
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Save failed.');
+          setError(skillVerifyErrorFromUnknown(err, 'save'));
         }
       })();
     });
@@ -133,6 +149,10 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   const complete = () => {
     if (!session) return;
+    if (!areAllSkillVerifyItemsAnswered(session, answers)) {
+      setError(skillVerifyIncompleteError());
+      return;
+    }
     setError(null);
     startTransition(() => {
       void (async () => {
@@ -174,7 +194,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           }
           router.push('/skills');
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Could not complete verification.');
+          setError(skillVerifyErrorFromUnknown(err, 'submit'));
         }
       })();
     });
@@ -207,8 +227,11 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   if (error && !prepared) {
     return (
-      <Alert tone="danger" title="Could not start">
-        {error}
+      <Alert tone="danger" title={error.title}>
+        {error.message}
+        {error.retryAfterSeconds
+          ? ` Try again in ${String(error.retryAfterSeconds)} seconds.`
+          : null}
       </Alert>
     );
   }
