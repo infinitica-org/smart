@@ -344,6 +344,7 @@ export function WorkExperienceSection() {
         verifierName: verifierName || null,
         verifierEmail: verifierEmail || null,
         verifierDesignation: verifierDesignation || null,
+        documents: [],
       };
 
       if (editingId) {

@@ -32,7 +32,7 @@ describe('competency-display', () => {
             qualifiesForDemonstration: true,
           },
           {
-            evidenceType: 'GITHUB',
+            evidenceType: 'PASSIVE_SIGNAL',
             label: 'GitHub activity',
             verificationStatus: 'PENDING',
             qualifiesForDemonstration: false,
