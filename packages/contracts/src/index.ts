@@ -24,6 +24,7 @@ export * from './domain/skill-levels.js';
 export * from './domain/skill-taxonomy.js';
 export * from './domain/skills.js';
 export * from './domain/skill-dimensions.js';
+export * from './domain/se-skills.js';
 export * from './domain/signal-consent-scopes.js';
 export * from './domain/sde-v4-bridge.js';
 export * from './domain/skill-focus-progress.js';

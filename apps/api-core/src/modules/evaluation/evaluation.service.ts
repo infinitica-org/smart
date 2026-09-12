@@ -438,16 +438,18 @@ export class EvaluationService {
     const proficiency = request.proficiency;
     const spec = skill.levels[proficiency];
     const stage = request.stage ?? 'FULL';
-    const blueprint =
-      request.catalogSkillCode && getSkillDefinition(request.catalogSkillCode)
-        ? buildSkillBlueprintForCategory(
-            getSkillDefinition(request.catalogSkillCode)!.code,
-            getSkillDefinition(request.catalogSkillCode)!.name,
-            getSkillDefinition(request.catalogSkillCode)!.domain,
-            getSkillDefinition(request.catalogSkillCode)!.categoryName,
-            getSkillDefinition(request.catalogSkillCode)!.categoryId,
-          )
-        : null;
+    const catalogSkill = request.catalogSkillCode
+      ? getSkillDefinition(request.catalogSkillCode)
+      : undefined;
+    const blueprint = catalogSkill
+      ? buildSkillBlueprintForCategory(
+          catalogSkill.code,
+          catalogSkill.name,
+          catalogSkill.domain,
+          catalogSkill.categoryName,
+          catalogSkill.categoryId,
+        )
+      : null;
     const scaled = scaleFormCounts(
       spec.closed,
       spec.openFormats.length,
@@ -463,8 +465,8 @@ export class EvaluationService {
     const openPromptRef = intelligenceEnabled
       ? SDE_SKILL_FORM_OPEN_PROMPT_REF_V3
       : SDE_SKILL_FORM_OPEN_PROMPT_REF;
-    const competencyLabels = intelligenceEnabled
-      ? blueprint!.competencyModel.slice(0, 6).map((comp, idx) => ({
+    const competencyLabels = blueprint
+      ? blueprint.competencyModel.slice(0, 6).map((comp, idx) => ({
           slot: `C${String(idx + 1)}` as CompetencySlot,
           name: comp.capability,
         }))

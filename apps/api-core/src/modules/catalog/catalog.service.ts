@@ -4,7 +4,9 @@ import {
   LEVEL_DEFINITIONS,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
+  buildSeSkillLibraryResponse,
   buildSkillLibraryResponse,
+  type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type TrackDto,
 } from '@smart/contracts';
@@ -22,6 +24,9 @@ const competencySelect = {
 
 /** Frozen at boot — skill@1 taxonomy is immutable for this release. */
 const SKILL_LIBRARY: SkillLibraryResponse = buildSkillLibraryResponse();
+
+/** Frozen at boot — inf-se-v1 taxonomy is immutable for this release. */
+const SE_SKILL_LIBRARY: SeSkillLibraryResponse = buildSeSkillLibraryResponse();
 
 @Injectable()
 export class CatalogService {
@@ -47,6 +52,11 @@ export class CatalogService {
   /** skill@1 library grouped by category (Global IT Skills Database). */
   listSkillLibrary(): SkillLibraryResponse {
     return SKILL_LIBRARY;
+  }
+
+  /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */
+  listSeSkillLibrary(): SeSkillLibraryResponse {
+    return SE_SKILL_LIBRARY;
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

@@ -1422,6 +1422,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/catalog/skills/se-v1',
+    module: 'catalog',
+    owner: 'Vedika G',
+    roles: ['PUBLIC'],
+    rateLimit: 'role.public',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 80,
+    summary: 'inf-se-v1 Software Engineering skill framework grouped by category A–I (S6-RM-13).',
+  },
+  {
+    method: 'GET',
     path: '/catalog/readiness',
     module: 'catalog',
     owner: 'Vedika G',

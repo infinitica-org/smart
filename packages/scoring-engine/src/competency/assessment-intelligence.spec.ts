@@ -18,7 +18,9 @@ const requirements = buildDefaultProficiencyRequirements(categoryId);
 
 describe('assessment-intelligence', () => {
   it('rolls up item marks into competency statuses', () => {
-    const c1 = model[0]!.competencyId;
+    const first = model.at(0);
+    if (!first) throw new Error('expected competency model fixture');
+    const c1 = first.competencyId;
     const results = rollupItemResultsToCompetencies({
       competencyModel: model,
       items: [{ competencyIds: [c1], marksEarned: 1, marksMax: 1 }],

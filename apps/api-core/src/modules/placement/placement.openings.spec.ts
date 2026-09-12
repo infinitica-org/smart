@@ -225,12 +225,12 @@ describe('CO-T01 create opening', () => {
       { requiredSkills: [{ skillCode: 'javascript', minProficiency: 'BEGINNER' }] },
     ],
     [
-      'proficiency outside BEGINNER/INTERMEDIATE/ADVANCED',
+      'proficiency outside SkillProficiencySchema',
       {
         requiredSkills: [
           {
             skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
-            minProficiency: 'PROFESSIONAL',
+            minProficiency: 'EXPERT',
           },
         ],
       },

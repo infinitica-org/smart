@@ -52,4 +52,10 @@ export class CatalogController {
   skillBlueprint(@Param('skillCode') skillCode: string) {
     return this.evidenceCatalog.getSkillBlueprint(skillCode);
   }
+
+  @Public()
+  @Get('skills/se-v1')
+  listSeSkills() {
+    return this.catalog.listSeSkillLibrary();
+  }
 }

@@ -14,7 +14,7 @@ import { SkillVerifyReport } from './skill-verify-report';
 export function SkillVerifyPendingStep({
   session,
   sessionId,
-  grade,
+  grade: _grade,
   assessmentResult,
   onDone,
 }: {

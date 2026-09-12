@@ -49,6 +49,9 @@ import type {
   UpdateCandidateLanguageDto,
   CreateBlockedWordRequest,
   VoidRequest,
+  CreateEvidenceRequest,
+  SaveOnboardingSelectionRequest,
+  CreateVerificationDecisionRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -109,13 +112,10 @@ import {
   RecommendedSkillsResponseSchema,
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
-  SaveOnboardingSelectionRequestSchema,
   EvidenceRecordDtoSchema,
-  CreateEvidenceRequestSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
   VerificationDecisionDtoSchema,
-  CreateVerificationDecisionRequestSchema,
   SkillVerifyInterviewDtoSchema,
   SkillVerifyPrepareDtoSchema,
   SkillVerifySessionDtoSchema,
@@ -864,7 +864,7 @@ export function evidenceApi(client: SmartApiClient) {
         schema: EvidenceRecordDtoSchema,
       }),
 
-    create: (body: z.infer<typeof CreateEvidenceRequestSchema>) =>
+    create: (body: CreateEvidenceRequest) =>
       client.post(prefixed('/users/me/evidence'), body, {
         schema: EvidenceRecordDtoSchema,
       }),
@@ -874,7 +874,7 @@ export function evidenceApi(client: SmartApiClient) {
         schema: CandidateEvidenceProfileDtoSchema,
       }),
 
-    saveOnboardingSelection: (body: z.infer<typeof SaveOnboardingSelectionRequestSchema>) =>
+    saveOnboardingSelection: (body: SaveOnboardingSelectionRequest) =>
       client.patch(prefixed('/users/me/evidence-profile/onboarding-selection'), body, {
         schema: CandidateEvidenceProfileDtoSchema,
       }),
@@ -894,7 +894,7 @@ export function evidenceApi(client: SmartApiClient) {
         schema: z.array(PassiveSignalEvidenceDtoSchema),
       }),
 
-    createVerificationDecision: (body: z.infer<typeof CreateVerificationDecisionRequestSchema>) =>
+    createVerificationDecision: (body: CreateVerificationDecisionRequest) =>
       client.post(prefixed('/users/me/verification-decisions'), body, {
         schema: VerificationDecisionDtoSchema,
       }),

@@ -17,7 +17,7 @@ import {
   type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
 } from '@smart/contracts';
-import { Prisma } from '../../generated/prisma/index.js';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import {

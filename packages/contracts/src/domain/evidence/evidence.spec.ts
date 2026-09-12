@@ -53,8 +53,11 @@ describe('evidence domain schemas', () => {
       keyof typeof RESPONSIBILITY_LEVEL_RANK
     >;
     for (let i = 1; i < levels.length; i += 1) {
-      expect(RESPONSIBILITY_LEVEL_RANK[levels[i]!]).toBeGreaterThan(
-        RESPONSIBILITY_LEVEL_RANK[levels[i - 1]!]!,
+      const current = levels[i];
+      const previous = levels[i - 1];
+      if (!current || !previous) continue;
+      expect(RESPONSIBILITY_LEVEL_RANK[current]).toBeGreaterThan(
+        RESPONSIBILITY_LEVEL_RANK[previous],
       );
     }
   });

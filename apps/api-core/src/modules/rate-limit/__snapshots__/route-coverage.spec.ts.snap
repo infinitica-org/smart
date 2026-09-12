@@ -47,6 +47,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /catalog/readiness": "role.institutionAdmin",
   "GET /catalog/skills": "role.public",
   "GET /catalog/skills/:skillCode/blueprint": "role.public",
+  "GET /catalog/skills/se-v1": "role.public",
   "GET /catalog/target-roles": "role.public",
   "GET /catalog/target-roles/:roleId/recommended-skills": "role.public",
   "GET /catalog/tracks": "role.public",

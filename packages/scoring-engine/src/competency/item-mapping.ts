@@ -37,7 +37,8 @@ export function assignCompetencyIds(
   targetCompetencyIds?: readonly string[],
 ): string[] {
   if (targetCompetencyIds && targetCompetencyIds.length > 0) {
-    return [targetCompetencyIds[itemIndex % targetCompetencyIds.length]!];
+    const competencyId = targetCompetencyIds[itemIndex % targetCompetencyIds.length];
+    return competencyId ? [competencyId] : [];
   }
   const slotByFormat: Record<SdeFormFormat, number> = {
     MCQ: 0,

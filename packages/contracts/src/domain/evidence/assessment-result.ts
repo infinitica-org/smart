@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { IsoDateTimeSchema, UuidSchema } from '../../dto/common.js';
-import { SkillProficiencySchema } from '../enums.js';
 import { TaxonomySkillCodeSchema } from '../../dto/catalog.dto.js';
 import {
   AssessmentConfidenceLevelSchema,

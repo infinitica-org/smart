@@ -76,16 +76,21 @@ describe('SkillsPage', () => {
     });
     render(<SkillsPage />);
     await screen.findByRole('heading', { name: 'Skills' });
-    fireEvent.click(screen.getAllByRole('button', { name: /Add Skill/i })[0]!);
+    const addSkillButton = screen.getAllByRole('button', { name: /Add Skill/i })[0];
+    if (!addSkillButton) throw new Error('Add Skill button not found');
+    fireEvent.click(addSkillButton);
     const dialogHeading = await screen.findByRole('heading', { name: 'Add a Skill' });
     const modal = dialogHeading.closest('.fixed');
     const form = modal?.querySelector('form');
     if (!form) throw new Error('Add skill form not found');
     const selects = within(form as HTMLElement).getAllByRole('combobox');
-    fireEvent.change(selects[0]!, {
+    const skillSelect = selects[0];
+    const proficiencySelect = selects[1];
+    if (!skillSelect || !proficiencySelect) throw new Error('Add skill selects not found');
+    fireEvent.change(skillSelect, {
       target: { value: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' },
     });
-    fireEvent.change(selects[1]!, {
+    fireEvent.change(proficiencySelect, {
       target: { value: 'PROFESSIONAL' },
     });
     fireEvent.submit(form as HTMLFormElement);
