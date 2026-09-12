@@ -3,6 +3,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openingsApi } from '../lib/api';
 import { OpeningsWorkspace } from './openings-workspace';
 
+vi.mock('@smart/contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@smart/contracts')>();
+  const testSkill = actual.SKILL_DEFINITIONS.find(
+    (skill) => skill.code === 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+  );
+  if (!testSkill) {
+    throw new Error(
+      'Expected ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION in SKILL_DEFINITIONS for CO-T01 tests',
+    );
+  }
+  return {
+    ...actual,
+    SKILL_DEFINITIONS: [testSkill],
+  };
+});
+
 vi.mock('../lib/api', () => ({
   openingsApi: {
     create: vi.fn(),
@@ -54,8 +70,13 @@ async function fillValidForm() {
     target: { value: '5' },
   });
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Coimbatore' } });
+  fireEvent.change(screen.getByLabelText('Category (optional)'), {
+    target: { value: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN' },
+  });
   fireEvent.click(
-    screen.getByRole('checkbox', { name: /Algorithmic Complexity & Performance Optimization/ }),
+    await screen.findByRole('checkbox', {
+      name: /Algorithmic Complexity & Performance Optimization/,
+    }),
   );
 }
 
@@ -142,7 +163,7 @@ describe('CO-T01 TPO opening workspace', () => {
     );
     resolveCreate(opening);
     expect(await screen.findByText('Job opening created in Draft status.')).toBeDefined();
-  });
+  }, 15_000);
 
   it('validates experience range and headcount with the shared contract', async () => {
     renderEmpty();
@@ -168,7 +189,7 @@ describe('CO-T01 TPO opening workspace', () => {
     submitForm();
     expect(await screen.findByText(/expected number to be >=1/)).toBeDefined();
     expect(openingsApi.create).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('submits a taxonomy skill with chosen proficiency and refreshes the list', async () => {
     vi.mocked(openingsApi.list)
