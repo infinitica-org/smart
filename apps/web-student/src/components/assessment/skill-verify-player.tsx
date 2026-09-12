@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert } from '@smart/ui';
 import type {
@@ -10,7 +11,11 @@ import type {
   SkillVerifySessionDto,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { formatRetryAt, formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import {
+  SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
+  formatRetryAt,
+  formatSkillVerifyKioskTitle,
+} from '@/lib/skill-declarations';
 import {
   areAllSkillVerifyItemsAnswered,
   skillVerifyErrorFromUnknown,
@@ -42,6 +47,11 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
   const generateStarted = useRef(false);
 
+  const mapStartError = useCallback((err: unknown, context: 'prepare' | 'generate') => {
+    const mapped = skillVerifyErrorFromUnknown(err, context);
+    return mapped;
+  }, []);
+
   useEffect(() => {
     if (
       session &&
@@ -68,14 +78,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         setPrepared(next);
       } catch (err) {
         if (!cancelled) {
-          setError(skillVerifyErrorFromUnknown(err, 'prepare'));
+          setError(mapStartError(err, 'prepare'));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [claimId]);
+  }, [claimId, mapStartError]);
 
   const generateForm = useCallback(async () => {
     if (!prepared || generateStarted.current) return;
@@ -95,11 +105,11 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
       setCurrentIndex(0);
     } catch (err) {
       generateStarted.current = false;
-      setError(skillVerifyErrorFromUnknown(err, 'generate'));
+      setError(mapStartError(err, 'generate'));
     } finally {
       setGenerating(false);
     }
-  }, [claimId, prepared]);
+  }, [claimId, mapStartError, prepared]);
 
   const generateFormRef = useRef(generateForm);
   generateFormRef.current = generateForm;
@@ -200,6 +210,8 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     });
   };
 
+  const profileGate = error?.kind === 'profile_incomplete';
+
   if (terminationCooldown) {
     const formatted = formatRetryAt(terminationCooldown);
     return (
@@ -216,7 +228,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           <button
             type="button"
             onClick={() => router.push('/skills')}
-            className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20"
+            className="mt-4 rounded-lg border border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground hover:bg-background"
           >
             Back to Skills
           </button>
@@ -227,18 +239,28 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   if (error && !prepared) {
     return (
-      <Alert tone="danger" title={error.title}>
-        {error.message}
-        {error.retryAfterSeconds
-          ? ` Try again in ${String(error.retryAfterSeconds)} seconds.`
-          : null}
-      </Alert>
+      <div className="mx-auto max-w-md space-y-4 p-6">
+        <Alert tone="danger" title={error.title}>
+          {profileGate ? SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE : error.message}
+          {!profileGate && error.retryAfterSeconds
+            ? ` Try again in ${String(error.retryAfterSeconds)} seconds.`
+            : null}
+        </Alert>
+        {profileGate ? (
+          <Link
+            href="/profile"
+            className="inline-flex rounded-lg bg-[#00fad0] px-4 py-2 text-sm font-semibold text-[#04120f] hover:bg-[#33ffdd]"
+          >
+            Complete your profile
+          </Link>
+        ) : null}
+      </div>
     );
   }
 
   if (!prepared) {
     return (
-      <p className="text-sm text-white/50" aria-live="polite">
+      <p className="text-sm text-muted-foreground" aria-live="polite">
         Checking eligibility…
       </p>
     );

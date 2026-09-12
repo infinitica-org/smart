@@ -50,6 +50,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
 import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
+import { ProfileCompletionService } from '../users/profile-completion.service.js';
 import { AssessmentIntelligenceService } from './assessment-intelligence.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
@@ -156,6 +157,8 @@ export class SkillVerificationService {
     private readonly intelligence: AssessmentIntelligenceService,
     @Inject(VerificationOrchestratorService)
     private readonly verification: VerificationOrchestratorService,
+    @Inject(ProfileCompletionService)
+    private readonly profileCompletion: ProfileCompletionService,
   ) {}
 
   async start(
@@ -172,6 +175,7 @@ export class SkillVerificationService {
   }
 
   private async assertStartAllowed(userId: string, claimId: string) {
+    await this.profileCompletion.assertCompleteForSkillVerification(userId);
     const claim = await this.loadOwnClaim(userId, claimId);
     const sdeSkillCode = sdeV4FormCodeForCatalogSkill(claim.skill.code);
     if (!sdeSkillCode) {

@@ -33,10 +33,10 @@ export function EndorsementRequestForm({
         : undefined;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-6">
       <div>
-        <h3 className="text-sm font-semibold text-white">Request Endorsement</h3>
-        <p className="mt-1 text-xs text-white/45">
+        <h3 className="text-sm font-semibold text-foreground">Request Endorsement</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
           Name someone who can vouch for this certificate. They&apos;ll get an email with a link to
           review it — no account required. Their email must be a work address, not a personal one.
         </p>

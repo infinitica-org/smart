@@ -184,7 +184,7 @@ export function CertificateWizard() {
   if (loadingExisting) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="animate-pulse text-sm text-white/40">Loading certificate data…</p>
+        <p className="animate-pulse text-sm text-muted-foreground">Loading certificate data…</p>
       </div>
     );
   }
@@ -193,11 +193,11 @@ export function CertificateWizard() {
     <div className="mb-6 flex items-center justify-between">
       <Link
         href="/certificates"
-        className="inline-flex items-center gap-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to My Certificates
       </Link>
-      <Link href="/dashboard" className="text-xs font-medium text-[#00fad0] hover:underline">
+      <Link href="/dashboard" className="text-xs font-medium text-[#00967c] hover:underline">
         Skip to Dashboard &rarr;
       </Link>
     </div>
@@ -245,8 +245,8 @@ export function CertificateWizard() {
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-white">{certificate.title}</h2>
-            <p className="text-sm text-white/50">{certificate.issuer}</p>
+            <h2 className="text-xl font-bold text-foreground">{certificate.title}</h2>
+            <p className="text-sm text-muted-foreground">{certificate.issuer}</p>
           </div>
           <CertificateStatusBadge status={certificate.status} />
         </div>
@@ -265,7 +265,7 @@ export function CertificateWizard() {
               <ShieldAlert className="h-6 w-6 shrink-0 text-danger" />
               <div>
                 <h4 className="font-semibold text-danger">Certificate Voided</h4>
-                <p className="mt-1 text-xs text-white/80 leading-relaxed">
+                <p className="mt-1 text-xs text-foreground/80 leading-relaxed">
                   This certificate has been voided by a platform administrator due to an integrity
                   policy violation or invalid credentials. Voided entries cannot be re-verified or
                   edited.
@@ -276,12 +276,12 @@ export function CertificateWizard() {
         )}
 
         {isRejected && (
-          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-6 text-sm text-white">
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-6 text-sm text-foreground">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-6 w-6 shrink-0 text-warning" />
               <div className="flex-1">
                 <h4 className="font-semibold text-warning">Source Verification Failed</h4>
-                <p className="mt-1 text-xs text-white/80 leading-relaxed">
+                <p className="mt-1 text-xs text-foreground/80 leading-relaxed">
                   Automated or manual check could not confirm this certificate against the issuer
                   database or verification URL. Please double-check your Certificate Number, direct
                   Verification URL, or re-upload a clear PDF document.
@@ -301,20 +301,20 @@ export function CertificateWizard() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <h3 className="mb-4 text-sm font-semibold text-white">
+        <div className="rounded-2xl border border-border bg-muted/30 p-6">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">
             Verification History &amp; Audit Log
           </h3>
           {(eventsRes?.events.length ?? 0) === 0 ? (
-            <p className="text-xs text-white/40">No verification events recorded yet.</p>
+            <p className="text-xs text-muted-foreground">No verification events recorded yet.</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {eventsRes?.events.map((event) => (
                 <li key={event.eventId} className="flex items-start gap-3 text-xs">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00fad0]" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00967c]" />
                   <div>
-                    <p className="text-white/80 font-mono">{event.message}</p>
-                    <p className="text-[11px] text-white/40">
+                    <p className="text-foreground/80 font-mono">{event.message}</p>
+                    <p className="text-[11px] text-muted-foreground">
                       {new Date(event.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -341,10 +341,10 @@ export function CertificateWizard() {
 
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">{certificate.title}</h2>
-          <p className="text-sm text-white/50">{certificate.issuer}</p>
+          <h2 className="text-xl font-bold text-foreground">{certificate.title}</h2>
+          <p className="text-sm text-muted-foreground">{certificate.issuer}</p>
           {certificate.certificateNumber && (
-            <p className="text-xs text-white/40 font-mono mt-0.5">
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
               Cert #: {certificate.certificateNumber}
             </p>
           )}
@@ -353,7 +353,7 @@ export function CertificateWizard() {
           <Button
             type="button"
             variant="ghost"
-            className="text-xs text-white/60 hover:text-white"
+            className="text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setIsEditingDetails(true)}
           >
             Edit Details
@@ -418,7 +418,7 @@ export function CertificateWizard() {
           error={endorsementError}
         />
       ) : (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center text-xs text-white/40">
+        <div className="rounded-xl border border-border bg-muted/30 p-4 text-center text-xs text-muted-foreground">
           Add a certificate file or verification URL, at least one skill, and your practical
           learning details to complete submission.
         </div>

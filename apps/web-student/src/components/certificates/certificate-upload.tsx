@@ -62,22 +62,22 @@ export function CertificateUpload({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h3 className="text-base font-semibold text-white">Provide Certificate Proof</h3>
-        <p className="text-xs text-white/50">
+        <h3 className="text-base font-semibold text-foreground">Provide Certificate Proof</h3>
+        <p className="text-xs text-muted-foreground">
           Upload your official certificate document (PDF, JPG, PNG) OR provide a public verification
           URL.
         </p>
       </div>
 
       {currentFileName && (
-        <div className="flex items-center justify-between rounded-xl border border-success/30 bg-success/5 p-3 text-xs text-white">
+        <div className="flex items-center justify-between rounded-xl border border-success/30 bg-success/5 p-3 text-xs text-foreground">
           <div className="flex items-center gap-2">
             <FileCheck className="h-4 w-4 text-success" />
             <span>
               Uploaded: <strong className="font-mono text-success">{currentFileName}</strong>
             </span>
           </div>
-          <span className="text-[11px] text-white/40">Uploaded File</span>
+          <span className="text-[11px] text-muted-foreground">Uploaded File</span>
         </div>
       )}
 
@@ -95,19 +95,21 @@ export function CertificateUpload({
           if (file) validateAndUpload(file);
         }}
         className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-          dragOver ? 'border-[#00fad0]/60 bg-[#00fad0]/5' : 'border-white/15 bg-white/[0.01]'
+          dragOver ? 'border-[#00967c]/60 bg-[#00967c]/5' : 'border-border bg-muted/30'
         }`}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/60">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
           <Upload className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-medium text-white">
+          <p className="text-sm font-medium text-foreground">
             Drag &amp; drop your certificate document
           </p>
-          <p className="text-xs text-white/40">or browse from your device</p>
+          <p className="text-xs text-muted-foreground">or browse from your device</p>
         </div>
-        <p className="text-[11px] text-white/30">Accepted Formats: PDF, JPG, PNG (Max 10MB)</p>
+        <p className="text-[11px] text-muted-foreground/70">
+          Accepted Formats: PDF, JPG, PNG (Max 10MB)
+        </p>
         <button
           type="button"
           disabled={isUploading}
@@ -130,10 +132,10 @@ export function CertificateUpload({
       </div>
 
       {onSourceUrlSubmit && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
-            <LinkIcon className="h-4 w-4 text-[#00fad0]" />
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+            <LinkIcon className="h-4 w-4 text-[#00967c]" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Or Verification / Source URL
             </h4>
           </div>

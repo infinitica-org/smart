@@ -81,6 +81,8 @@ let mockEducations: Record<string, unknown>[] = [
     endDate: '2024-06-01',
     current: false,
     grade: '3.9 GPA',
+    status: 'unverified',
+    documents: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },

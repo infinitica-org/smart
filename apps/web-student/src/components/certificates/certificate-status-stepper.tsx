@@ -85,13 +85,13 @@ export function CertificateStatusStepper({
   const isRetry = currentStage === 'retry';
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-5">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Certification Lifecycle
           </h4>
-          <p className="text-sm font-medium text-white capitalize">
+          <p className="text-sm font-medium text-foreground capitalize">
             Current Stage:{' '}
             <span
               className={
@@ -101,7 +101,7 @@ export function CertificateStatusStepper({
                     ? 'text-danger font-semibold'
                     : isRetry
                       ? 'text-warning font-semibold'
-                      : 'text-[#00fad0] font-semibold'
+                      : 'text-[#00967c] font-semibold'
               }
             >
               {currentStage}
@@ -132,7 +132,7 @@ export function CertificateStatusStepper({
           const isActive = step.id === currentStage;
           const Icon = step.icon;
 
-          let bgStyle = 'border-white/10 bg-white/5 text-white/40';
+          let bgStyle = 'border-border bg-muted/50 text-muted-foreground';
           if (isActive) {
             if (step.id === 'verified')
               bgStyle =
@@ -145,7 +145,7 @@ export function CertificateStatusStepper({
                 'border-warning bg-warning/20 text-warning shadow-[0_0_12px_rgba(245,158,11,0.3)]';
             else
               bgStyle =
-                'border-[#00fad0] bg-[#00fad0]/15 text-[#00fad0] shadow-[0_0_12px_rgba(0,250,208,0.3)]';
+                'border-[#00967c] bg-[#00967c]/15 text-[#00967c] shadow-[0_0_12px_rgba(0,150,124,0.3)]';
           }
 
           return (
@@ -161,24 +161,25 @@ export function CertificateStatusStepper({
       </div>
 
       {/* Detailed Status Guidance Box */}
-      <div className="mt-1 rounded-xl border border-white/5 bg-white/[0.01] p-3 text-xs leading-relaxed text-white/70">
+      <div className="mt-1 rounded-xl border border-border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
         {currentStage === 'source check' && (
           <p>
-            <strong className="text-white">Source Check in Progress:</strong> We are inspecting the
-            certificate details and source proof. Ensure your certificate number or direct
+            <strong className="text-foreground">Source Check in Progress:</strong> We are inspecting
+            the certificate details and source proof. Ensure your certificate number or direct
             verification URL is accurate.
           </p>
         )}
         {currentStage === 'generate' && (
           <p>
-            <strong className="text-white">Proof Uploaded:</strong> Next, select the catalog skills
-            that match this certification and describe your practical learning.
+            <strong className="text-foreground">Proof Uploaded:</strong> Next, select the catalog
+            skills that match this certification and describe your practical learning.
           </p>
         )}
         {currentStage === 'sit' && (
           <p>
-            <strong className="text-white">Ready for Verification:</strong> Submit an endorsement
-            request to a reviewer with a corporate work email address to finalize verification.
+            <strong className="text-foreground">Ready for Verification:</strong> Submit an
+            endorsement request to a reviewer with a corporate work email address to finalize
+            verification.
           </p>
         )}
         {currentStage === 'retry' && (

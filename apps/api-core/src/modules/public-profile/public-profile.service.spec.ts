@@ -12,11 +12,16 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
   function baseOwner(overrides: Record<string, unknown> = {}) {
     return {
       fullName: 'Ada Lovelace',
+      profilePhotoObjectKey: null,
       primaryTrack: null,
       showInProgressItems: false,
       ...overrides,
     };
   }
+
+  const storage = {
+    getSignedDownloadUrl: vi.fn().mockResolvedValue('https://storage.example/photo.jpg'),
+  };
 
   beforeEach(() => {
     prisma = {
@@ -44,7 +49,8 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       },
       candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
     };
-    service = new PublicProfileService(prisma);
+    storage.getSignedDownloadUrl.mockClear();
+    service = new PublicProfileService(prisma, storage as never);
   });
 
   describe('getBySlug', () => {

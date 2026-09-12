@@ -9,7 +9,7 @@ export default function L1McqAttemptPage() {
   const attemptId = params.attemptId;
 
   if (!attemptId) {
-    return <p className="text-sm text-white/50">Missing attempt id.</p>;
+    return <p className="text-sm text-muted-foreground">Missing attempt id.</p>;
   }
 
   return (

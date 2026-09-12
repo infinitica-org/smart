@@ -12,5 +12,5 @@ export default function SkillVerifyRedirectPage() {
       router.replace(`/assessments/skills/${params.claimId}`);
     }
   }, [params.claimId, router]);
-  return <p className="text-sm text-white/50">Opening skill verification…</p>;
+  return <p className="text-sm text-muted-foreground">Opening skill verification…</p>;
 }

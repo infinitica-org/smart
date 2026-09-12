@@ -35,6 +35,7 @@ describe('StreamStep', () => {
       emailVerified: true,
       createdAt: new Date().toISOString(),
       onboardingCompleted: false,
+      profilePhotoUrl: null,
       sessionHold: null,
     });
 

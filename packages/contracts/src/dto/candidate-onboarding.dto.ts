@@ -61,6 +61,20 @@ export const WorkModeSchema = z.enum(WORK_MODES);
 export type WorkMode = z.infer<typeof WorkModeSchema>;
 
 /** Job-matching preferences — progressive profile; optional at onboarding completion. */
+/** Short professional summary — progressive profile field (optional at onboarding). */
+export const CandidateAboutSchema = z.string().max(4000);
+
+/** Stored resume metadata once a candidate uploads from profile. */
+export const CandidateResumeFileSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  objectKey: z.string().min(1).max(512),
+  mimeType: z.string().min(1).max(120),
+  fileSizeBytes: z.number().int().positive(),
+  uploadedAt: z.string().datetime(),
+  lastParsedAt: z.string().datetime().nullable().optional(),
+});
+export type CandidateResumeFile = z.infer<typeof CandidateResumeFileSchema>;
+
 export const CandidateOnboardingJobPreferencesSchema = z.object({
   /** Lakhs per annum. Optional — not every candidate has a current job. */
   currentCtcLakhs: z.number().positive().max(1000).optional(),
@@ -88,8 +102,10 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   phoneCountryCode: z.string().min(1).max(8),
   phoneNumber: z.string().min(1).max(32),
   /** Progressive profile — optional at onboarding completion. */
+  about: CandidateAboutSchema.optional(),
   linkedinUrl: z.union([z.url(), z.literal('')]).optional(),
   githubUrl: z.union([z.url(), z.literal('')]).optional(),
+  resumeFile: CandidateResumeFileSchema.optional(),
   education: z.array(CandidateOnboardingEducationSchema).max(20).default([]),
   experiences: z.array(CandidateOnboardingExperienceSchema).max(30).default([]),
   /** Progressive profile — optional at onboarding completion; must not gate entry. */
@@ -125,8 +141,10 @@ export const CandidateOnboardingDraftSchema = z.object({
   dateOfBirth: z.string().max(32).optional(),
   phoneCountryCode: z.string().max(8).optional(),
   phoneNumber: z.string().max(32).optional(),
+  about: CandidateAboutSchema.optional(),
   linkedinUrl: z.string().max(2048).optional(),
   githubUrl: z.string().max(2048).optional(),
+  resumeFile: CandidateResumeFileSchema.optional(),
   education: z.array(CandidateOnboardingEducationSchema.partial()).max(20).optional(),
   experiences: z.array(CandidateOnboardingExperienceSchema.partial()).max(30).optional(),
   skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
@@ -145,11 +163,18 @@ export type SaveCandidateOnboardingDraftRequest = z.infer<
   typeof SaveCandidateOnboardingDraftRequestSchema
 >;
 
+export const UploadProfilePhotoResponseSchema = z.object({
+  profilePhotoUrl: z.string().url(),
+});
+export type UploadProfilePhotoResponse = z.infer<typeof UploadProfilePhotoResponseSchema>;
+
 export const CandidateOnboardingProfileResponseSchema = z.object({
   profile: CandidateOnboardingProfileSchema.nullable(),
   /** Persisted in-progress data, present only while onboarding is incomplete. */
   draft: CandidateOnboardingDraftSchema.nullable(),
   onboardingCompleted: z.boolean(),
+  /** Resolved from the user row when a profile photo has been uploaded. */
+  profilePhotoUrl: z.string().url().nullable(),
 });
 export type CandidateOnboardingProfileResponse = z.infer<
   typeof CandidateOnboardingProfileResponseSchema

@@ -46,6 +46,8 @@ export interface OnboardingProfileForm {
     preferredLocations: string[];
   };
   dpdpConsent: boolean;
+  /** Signed profile photo URL after upload; optional during onboarding. */
+  profilePhotoUrl: string;
 }
 
 export const emptySocialVerification = (): SocialVerification => ({ linkedin: null, github: null });
@@ -88,6 +90,7 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     skillDiscovery: emptySkillDiscovery(),
     jobPreferences: emptyJobPreferences(),
     dpdpConsent: false,
+    profilePhotoUrl: '',
   };
 }
 

@@ -1,5 +1,28 @@
 import { z } from 'zod';
-import { SharedVerificationStatusSchema } from '../domain/enums.js';
+import { EducationDocumentTypeSchema, SharedVerificationStatusSchema } from '../domain/enums.js';
+
+export const CandidateEducationDocumentSchema = z.object({
+  id: z.string().uuid(),
+  educationId: z.string().uuid(),
+  documentType: EducationDocumentTypeSchema,
+  fileUrl: z.string().min(1),
+  fileName: z.string().min(1),
+  fileSizeBytes: z.number().int().positive(),
+  mimeType: z.string().min(1),
+  createdAt: z.string(),
+});
+export type CandidateEducationDocumentDto = z.infer<typeof CandidateEducationDocumentSchema>;
+
+export const CreateCandidateEducationDocumentSchema = z.object({
+  documentType: EducationDocumentTypeSchema,
+  fileUrl: z.string().min(1, 'File URL is required'),
+  fileName: z.string().min(1, 'File name is required'),
+  fileSizeBytes: z.number().int().positive('File size must be positive'),
+  mimeType: z.string().min(1, 'MIME type is required'),
+});
+export type CreateCandidateEducationDocumentDto = z.infer<
+  typeof CreateCandidateEducationDocumentSchema
+>;
 
 export const CandidateEducationSchema = z.object({
   id: z.string().uuid(),
@@ -13,6 +36,7 @@ export const CandidateEducationSchema = z.object({
   grade: z.string().max(40).nullable().optional(),
   status: SharedVerificationStatusSchema.default('unverified'),
   rejectionReason: z.string().max(500).nullable().optional(),
+  documents: z.array(CandidateEducationDocumentSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

@@ -448,6 +448,16 @@ export const EXPERIENCE_DOCUMENT_TYPES = [
 export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
 export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
 
+/** Education proof document types — mirrors work-experience document attachment pattern. */
+export const EDUCATION_DOCUMENT_TYPES = [
+  'DEGREE_CERTIFICATE',
+  'MARKSHEET',
+  'TRANSCRIPT',
+  'OTHER',
+] as const;
+export const EducationDocumentTypeSchema = z.enum(EDUCATION_DOCUMENT_TYPES);
+export type EducationDocumentType = z.infer<typeof EducationDocumentTypeSchema>;
+
 /** WE-T02 — letter authenticity outcomes after OCR + heuristics (never auto-fraud). */
 export const WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_STATUSES = [
   'pending',

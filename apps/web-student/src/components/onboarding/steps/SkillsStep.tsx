@@ -41,8 +41,8 @@ function SingleValueSkillRow({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
-      <span className="text-sm font-medium text-zinc-100">{name}</span>
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/80 px-4 py-3">
+      <span className="text-sm font-medium text-foreground">{name}</span>
       <LightSelect
         value={value}
         onChange={onChange}
@@ -74,9 +74,9 @@ function MultiItemSkillGroup({
   required?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-xl border border-border bg-muted/80 p-4">
       <FieldLabel required={required}>{title}</FieldLabel>
-      <p className="text-xs text-zinc-400 -mt-1 mb-3">{helper}</p>
+      <p className="text-xs text-muted-foreground -mt-1 mb-3">{helper}</p>
       <div className="flex flex-col gap-2.5">
         <AnimatePresence initial={false}>
           {items.map((item) => (
@@ -104,7 +104,7 @@ function MultiItemSkillGroup({
               <button
                 type="button"
                 onClick={() => onRemove(item.id)}
-                className="p-2 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

@@ -1,73 +1,93 @@
 'use client';
 
-import { CheckCircle2, User } from 'lucide-react';
-import { PageHeader, Surface } from '@/components/dashboard/ConsoleChrome';
+import { CheckCircle2 } from 'lucide-react';
+
+import { AboutSection } from '@/components/profile/AboutSection';
+
+import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
+
 import { CertificatesSection } from '@/components/profile/CertificatesSection';
+
 import { EducationSection } from '@/components/profile/EducationSection';
+
 import { JobPreferencesSection } from '@/components/profile/JobPreferencesSection';
+
 import { LanguagesSection } from '@/components/profile/LanguagesSection';
+
 import { ProfessionalLinksSection } from '@/components/profile/ProfessionalLinksSection';
+
 import { ProfileProgressPanel } from '@/components/profile/ProfileProgressPanel';
+
 import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
-import { SkillsSection } from '@/components/profile/SkillsSection';
+
+import { ResumeSection } from '@/components/profile/ResumeSection';
+
 import { WorkExperienceSection } from '@/components/profile/WorkExperienceSection';
+
 import { NextActionCard } from '@/components/next-action-card';
+
 import { headlineFor, useCurrentUser, useTracks } from '@/lib/candidate-identity';
+
+import type { ProfileAreaId } from '@/lib/profile-progress';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 
-/** Candidate console profile: CN-T03 Education/Experience/Languages/Certificates, CN-T04 skills, CN-T08 project submission. */
+/** Candidate console profile: progressive profile sections in Phase 5 order. */
+
 export default function ProfilePage() {
   const { data: user } = useCurrentUser();
+
   const { data: tracks } = useTracks();
+
   const {
     loading,
+
     error,
+
     progress,
+
     visibleRecommendedAction,
+
     dismissRecommendedAction,
+
     linkedinVerified,
+
     githubVerified,
   } = useProfileProgress();
 
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
-      <PageHeader
-        title="My Profile"
-        subtitle="Build your SMART profile at your own pace — add useful information when you are ready."
-      />
+      <section className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00967c]">
+          My Profile
+        </p>
 
-      <Surface className="flex flex-col gap-4 border-white/10 bg-[#141414] md:flex-row md:items-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#00fad0]/15 text-[#00fad0]">
-          <User className="h-7 w-7" />
-        </div>
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-medium text-white">{user?.fullName ?? ''}</h2>
-            {linkedinVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/15 px-2.5 py-0.5 text-xs font-semibold text-blue-300">
-                <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" />
-                LinkedIn Verified
-              </span>
-            ) : null}
-            {githubVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/15 px-2.5 py-0.5 text-xs font-semibold text-purple-300">
-                <CheckCircle2 className="h-3.5 w-3.5 text-purple-400" />
-                GitHub Verified
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-sm text-white/45">{headlineFor(user, tracks)}</p>
-        </div>
-      </Surface>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+          Build your SMART profile
+        </h1>
 
-      <ProfileProgressPanel
-        percent={progress?.percent ?? null}
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Add useful information at your own pace — education, experience, links, and more.
+        </p>
+      </section>
+
+      <SurfaceHeader
+        user={user}
+
+        tracks={tracks}
+
+        linkedinVerified={linkedinVerified}
+
+        githubVerified={githubVerified}
+
+        profilePercent={progress?.percent ?? null}
+
+        profileLoading={loading}
+
         areaStatus={progress?.areaStatus ?? null}
-        loading={loading}
       />
 
       {error ? (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
         </p>
       ) : null}
@@ -76,53 +96,153 @@ export default function ProfilePage() {
         <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
       ) : null}
 
+      <div id="about" className="scroll-mt-24">
+        <ProfileSurface>
+          <AboutSection />
+        </ProfileSurface>
+      </div>
+
       <div id="education" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <EducationSection />
-        </Surface>
+        </ProfileSurface>
       </div>
 
       <div id="experience" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <WorkExperienceSection />
-        </Surface>
+        </ProfileSurface>
       </div>
 
       <div id="languages" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <LanguagesSection />
-        </Surface>
+        </ProfileSurface>
       </div>
 
       <div id="certificates" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <CertificatesSection />
-        </Surface>
-      </div>
-
-      <div id="skills" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
-          <SkillsSection />
-        </Surface>
-      </div>
-
-      <div id="projects" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
-          <ProjectSubmissionForm />
-        </Surface>
+        </ProfileSurface>
       </div>
 
       <div id="links" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <ProfessionalLinksSection />
-        </Surface>
+        </ProfileSurface>
+      </div>
+
+      <div id="projects" className="scroll-mt-24">
+        <ProfileSurface>
+          <ProjectSubmissionForm />
+        </ProfileSurface>
       </div>
 
       <div id="preferences" className="scroll-mt-24">
-        <Surface className="border-white/10 bg-[#141414]">
+        <ProfileSurface>
           <JobPreferencesSection />
-        </Surface>
+        </ProfileSurface>
+      </div>
+
+      <div id="resume" className="scroll-mt-24">
+        <ProfileSurface>
+          <ResumeSection />
+        </ProfileSurface>
       </div>
     </div>
+  );
+}
+
+function ProfileSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="surface-panel rounded-[28px] border border-border bg-card p-6 md:p-7">
+      {children}
+    </div>
+  );
+}
+
+function SurfaceHeader({
+  user,
+
+  tracks,
+
+  linkedinVerified,
+
+  githubVerified,
+
+  profilePercent,
+
+  profileLoading,
+
+  areaStatus,
+}: {
+  user: ReturnType<typeof useCurrentUser>['data'];
+
+  tracks: ReturnType<typeof useTracks>['data'];
+
+  linkedinVerified: boolean;
+
+  githubVerified: boolean;
+
+  profilePercent: number | null;
+
+  profileLoading: boolean;
+
+  areaStatus: Record<ProfileAreaId, boolean> | null;
+}) {
+  return (
+    <section className="surface-panel rounded-[28px] border border-border bg-card p-6 md:p-7">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center">
+        <CandidateAvatar
+          fullName={user?.fullName}
+
+          profilePhotoUrl={user?.profilePhotoUrl}
+
+          className="h-20 w-20 rounded-2xl border border-[#00fad0]/30 bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
+
+          fallbackClassName="rounded-2xl bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
+        />
+
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-medium text-foreground">{user?.fullName ?? ''}</h2>
+
+            {linkedinVerified ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
+                LinkedIn Verified
+              </span>
+            ) : null}
+
+            {githubVerified ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-purple-700" />
+                GitHub Verified
+              </span>
+            ) : null}
+          </div>
+
+          <p className="mt-1 text-sm text-muted-foreground">{headlineFor(user, tracks)}</p>
+
+          {!profileLoading && profilePercent !== null ? (
+            <p className="mt-2 text-sm font-medium text-[#00fad0]">
+              {profilePercent}% profile complete
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-border pt-6">
+        <ProfileProgressPanel
+          percent={profilePercent}
+
+          areaStatus={areaStatus}
+
+          loading={profileLoading}
+
+          showChecklist
+        />
+      </div>
+    </section>
   );
 }

@@ -22,6 +22,7 @@ export type SkillVerifyErrorKind =
   | 'locked'
   | 'not_found'
   | 'forbidden'
+  | 'profile_incomplete'
   | 'session_expired'
   | 'save_failed'
   | 'submit_failed'
@@ -111,6 +112,13 @@ export function skillVerifyErrorFromUnknown(
         kind: 'session_expired',
         title: 'Time is up',
         message: 'This assessment window has closed.',
+      };
+    }
+    if (error.code === 'profile_incomplete') {
+      return {
+        kind: 'profile_incomplete',
+        title: 'Profile incomplete',
+        message: 'Complete your profile to 100% before taking skill assessments.',
       };
     }
     if (error.statusCode === 404 || error.code === 'not_found') {

@@ -37,6 +37,12 @@ export const PROFILE_AREA_LABELS: Record<ProfileAreaId, string> = {
 const AREA_COUNT = PROFILE_AREA_IDS.length;
 const DISMISSAL_STORAGE_PREFIX = 'smart.profile.next-action.dismissed.';
 export const RECOMMENDED_ACTION_DISMISSAL_MS = 7 * 24 * 60 * 60 * 1000;
+export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 100;
+
+/** True when the eight-area profile completion gate allows skill verification. */
+export function canVerifySkills(percent: number | null | undefined): boolean {
+  return (percent ?? 0) >= PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT;
+}
 
 export interface ProfileProgressInput {
   skillClaims: SkillClaimDto[];

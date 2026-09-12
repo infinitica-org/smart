@@ -14,7 +14,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { initialsOf } from '@/lib/candidate-identity';
+import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
 import { VisibilitySettingsCard } from '@/components/public-profile/visibility-settings-card';
 
 const VERIFICATION_METHOD_LABELS: Record<string, string> = {
@@ -34,7 +34,6 @@ export default function PublicProfilePreviewPage() {
     queryFn: () => api.users.getPublicProfileLink(),
   });
 
-  const initials = initialsOf(profile?.fullName);
   const trackLabel = profile
     ? [profile.trackCategory === 'MBA' ? 'MBA' : null, profile.trackName]
         .filter(Boolean)
@@ -123,9 +122,12 @@ export default function PublicProfilePreviewPage() {
             <div className="overflow-hidden rounded-[40px] border border-gray-100 bg-white shadow-[0_12px_40px_rgb(0,0,0,0.06)] dark:border-white/5 dark:bg-[#1c1c1e] dark:shadow-[0_12px_40px_rgb(0,0,0,0.15)]">
               <div className="relative h-32 bg-gradient-to-r from-[#00fad0]/20 to-blue-500/20">
                 <div className="absolute -bottom-12 left-8 h-24 w-24 rounded-full bg-white p-1.5 dark:bg-[#161616]">
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-2xl font-bold text-gray-500 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400">
-                    {initials}
-                  </div>
+                  <CandidateAvatar
+                    fullName={profile.fullName}
+                    profilePhotoUrl={profile.profilePhotoUrl}
+                    className="h-full w-full text-2xl font-bold"
+                    fallbackClassName="rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-2xl font-bold text-gray-500 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400"
+                  />
                 </div>
               </div>
 

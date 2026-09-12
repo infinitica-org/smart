@@ -2,17 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Layers } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { VerificationBadge, useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
-import {
-  firstNameOf,
-  headlineFor,
-  initialsOf,
-  useCurrentUser,
-  useTracks,
-} from '@/lib/candidate-identity';
+import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
+import { firstNameOf, headlineFor, useCurrentUser, useTracks } from '@/lib/candidate-identity';
 import { claimToBadgeStatus, skillNameForCode } from '@/lib/skill-declarations';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { DASHBOARD_TOUR_STEPS } from '@/lib/tour-steps';
@@ -37,137 +31,121 @@ export default function DashboardPage() {
   } = useProfileProgress();
   const [autoStartTour] = useState(consumeTourAutostart);
 
-  const verifiedCount = (claims ?? []).filter((claim) => claim.status === 'VERIFIED').length;
-  const declaredCount = claims?.length ?? 0;
+  const verifiedClaims = (claims ?? []).filter((claim) => claim.status === 'VERIFIED');
   const firstName = firstNameOf(user?.fullName);
-  const initials = initialsOf(user?.fullName);
 
   return (
-    <div className="relative mx-auto w-full max-w-[1400px] pb-16 pt-2">
-      <div className="relative z-10 space-y-10">
-        <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="font-display text-4xl font-medium tracking-tight text-white md:text-[44px]">
-              Welcome back{firstName ? `, ${firstName}` : ''}
-            </h1>
-            <p className="text-sm text-white/40">
-              Here&apos;s where your candidacy stands right now.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-end gap-12 xl:pt-4">
-            <Stat
-              icon={CheckCircle2}
-              value={verifiedCount}
-              label="Verified Skills"
-              detail={
-                progress && !profileLoading
-                  ? `Profile Completion: ${String(progress.percent)}%`
-                  : undefined
-              }
+    <div className="relative mx-auto w-full max-w-[900px] pb-16 pt-2">
+      <div className="relative z-10 space-y-8">
+        <section aria-labelledby="home-greeting">
+          <div
+            data-tour="candidate-card"
+            className="flex flex-col gap-4 sm:flex-row sm:items-center"
+          >
+            <CandidateAvatar
+              fullName={user?.fullName}
+              profilePhotoUrl={user?.profilePhotoUrl}
+              className="h-16 w-16 shrink-0 border-2 border-[#00fad0]/30 bg-[#00fad0]/10 text-lg font-semibold text-[#00967c]"
+              fallbackClassName="bg-[#00fad0]/10 text-lg font-semibold text-[#00967c]"
             />
-            <Stat icon={Layers} value={declaredCount} label="Skills Declared" />
+            <div className="min-w-0">
+              <h1
+                id="home-greeting"
+                className="font-display text-3xl font-medium tracking-tight text-foreground md:text-4xl"
+              >
+                Welcome back{firstName ? `, ${firstName}` : ''}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">{headlineFor(user, tracks)}</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your home base for building your SMART profile and showcasing verified skills.
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <ProfileProgressPanel
-          percent={progress?.percent ?? null}
-          areaStatus={progress?.areaStatus ?? null}
-          loading={profileLoading}
-          showChecklist={false}
-        />
-
-        {profileError ? (
-          <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            {profileError}
+        <section aria-label="Profile completion" className="space-y-4">
+          <ProfileProgressPanel
+            percent={progress?.percent ?? null}
+            areaStatus={progress?.areaStatus ?? null}
+            loading={profileLoading}
+            showChecklist
+          />
+          <p className="text-sm text-muted-foreground">
+            Complete your profile to unlock skill verification.
           </p>
-        ) : null}
 
-        {visibleRecommendedAction ? (
-          <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
-        ) : null}
+          {profileError ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {profileError}
+            </p>
+          ) : null}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div
-              data-tour="candidate-card"
-              className="relative flex min-h-[220px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br from-[#004c63] to-[#0a0a0a] p-6 shadow-2xl"
+          {visibleRecommendedAction ? (
+            <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
+          ) : null}
+
+          <Link
+            href="/profile"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#00967c] transition hover:text-[#00fad0]"
+          >
+            Continue building your profile
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </section>
+
+        <section
+          aria-labelledby="verified-skills-heading"
+          data-tour="skills-panel"
+          className="surface-panel rounded-[28px] p-6 md:p-7"
+        >
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00967c]">
+                Verified Skills
+              </p>
+              <h2
+                id="verified-skills-heading"
+                className="mt-1 text-xl font-medium text-foreground md:text-2xl"
+              >
+                Skills you have verified
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Only evidence-backed skills appear here. Declare and verify more in the Skill
+                Repository.
+              </p>
+            </div>
+            <Link
+              href="/assessments"
+              data-tour="manage-skills-link"
+              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#00967c] transition hover:text-[#00fad0]"
             >
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
-                  {initials}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="truncate font-display text-xl font-medium text-white">
-                    {user?.fullName ?? ''}
-                  </h2>
-                  <p className="mt-1 text-[13px] text-white/60">{headlineFor(user, tracks)}</p>
-                </div>
-              </div>
-            </div>
+              Browse Skill Repository
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
 
-          <div className="lg:col-span-2">
-            <div data-tour="skills-panel" className="rounded-[28px] bg-[#1a1a1a] p-7">
-              <div className="mb-6 flex items-start justify-between">
-                <h3 className="text-lg font-medium text-white">Your skills</h3>
-                <Link
-                  href="/assessments"
-                  data-tour="manage-skills-link"
-                  className="text-[13px] text-[#00fad0] hover:underline"
-                >
-                  Manage
-                </Link>
-              </div>
-              {!claims ? (
-                <p className="text-sm text-white/40">Loading…</p>
-              ) : claims.length === 0 ? (
-                <p className="text-sm text-white/40">
-                  No skills declared yet — add some from your profile.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {claims.slice(0, 12).map((claim) => (
-                    <span
-                      key={claim.claimId}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white/80"
-                    >
-                      <span className="font-medium">{skillNameForCode(claim.skillCode)}</span>
-                      <VerificationBadge status={claimToBadgeStatus(claim)} variant="outline" />
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+          {!claims ? (
+            <p className="text-sm text-muted-foreground">Loading verified skills…</p>
+          ) : verifiedClaims.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No verified skills yet. Finish your profile, then pick a skill in the Skill Repository
+              to start verification.
+            </p>
+          ) : (
+            <ul className="flex flex-wrap gap-2">
+              {verifiedClaims.map((claim) => (
+                <li key={claim.claimId}>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-2 text-[13px] text-foreground">
+                    <span className="font-medium">{skillNameForCode(claim.skillCode)}</span>
+                    <VerificationBadge status={claimToBadgeStatus(claim)} variant="outline" />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
       <ProductTour steps={DASHBOARD_TOUR_STEPS} autoStart={autoStartTour} />
-    </div>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  value,
-  label,
-  detail,
-}: {
-  icon: LucideIcon;
-  value: number;
-  label: string;
-  detail?: string;
-}) {
-  return (
-    <div className="flex items-center gap-4">
-      <Icon className="h-5 w-5 text-white/40" />
-      <div className="flex flex-col">
-        <span className="text-[40px] leading-none font-light tabular-nums text-white">{value}</span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">
-          {label}
-        </span>
-        {detail ? <span className="mt-1 text-xs text-[#00fad0]">{detail}</span> : null}
-      </div>
     </div>
   );
 }
