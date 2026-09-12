@@ -24,8 +24,11 @@ const validBody = {
   roleTitle: 'Backend Engineer',
   domain: 'SOFTWARE_IT',
   requiredSkills: [
-    { skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', minProficiency: 'INTERMEDIATE' },
-    { skillCode: 'DATABASE_FUNDAMENTALS', minProficiency: 'BEGINNER' },
+    {
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+      minProficiency: 'INTERMEDIATE',
+    },
+    { skillCode: 'SQL_QUERY_OPTIMIZATION', minProficiency: 'BEGINNER' },
   ],
   minYearsExperience: 1,
   maxYearsExperience: 4,
@@ -49,8 +52,11 @@ function storedOpening(overrides: Record<string, unknown> = {}) {
     status: 'DRAFT',
     createdAt: new Date('2026-09-02T05:30:00.000Z'),
     requiredSkills: [
-      { minProficiency: 'INTERMEDIATE', skill: { code: 'PROGRAMMING_FUNDAMENTALS_LOGIC' } },
-      { minProficiency: 'BEGINNER', skill: { code: 'DATABASE_FUNDAMENTALS' } },
+      {
+        minProficiency: 'INTERMEDIATE',
+        skill: { code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION' },
+      },
+      { minProficiency: 'BEGINNER', skill: { code: 'SQL_QUERY_OPTIMIZATION' } },
     ],
     ...overrides,
   };
@@ -59,8 +65,8 @@ function storedOpening(overrides: Record<string, unknown> = {}) {
 /** Seeded taxonomy rows the service resolves `skillCode` against. */
 function setup(options: { seededCodes?: string[]; rows?: unknown[]; row?: unknown } = {}) {
   const seededCodes = options.seededCodes ?? [
-    'PROGRAMMING_FUNDAMENTALS_LOGIC',
-    'DATABASE_FUNDAMENTALS',
+    'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    'SQL_QUERY_OPTIMIZATION',
   ];
   const prisma = {
     skill: {
@@ -180,8 +186,11 @@ describe('CO-T01 create opening', () => {
     expect(data.minYearsExperience).toBe(1);
     expect(data.maxYearsExperience).toBe(4);
     expect(data.requiredSkills.create).toEqual([
-      { skillId: 'skill-PROGRAMMING_FUNDAMENTALS_LOGIC', minProficiency: 'INTERMEDIATE' },
-      { skillId: 'skill-DATABASE_FUNDAMENTALS', minProficiency: 'BEGINNER' },
+      {
+        skillId: 'skill-ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        minProficiency: 'INTERMEDIATE',
+      },
+      { skillId: 'skill-SQL_QUERY_OPTIMIZATION', minProficiency: 'BEGINNER' },
     ]);
   });
 
@@ -192,7 +201,7 @@ describe('CO-T01 create opening', () => {
 
     expect(prisma.skill.findMany).toHaveBeenCalledWith({
       where: {
-        code: { in: ['PROGRAMMING_FUNDAMENTALS_LOGIC', 'DATABASE_FUNDAMENTALS'] },
+        code: { in: ['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'SQL_QUERY_OPTIMIZATION'] },
       },
       select: { id: true, code: true },
     });
@@ -200,7 +209,9 @@ describe('CO-T01 create opening', () => {
   });
 
   it('rejects a taxonomy code that is valid in contracts but unseeded, creating nothing', async () => {
-    const { controller, prisma } = setup({ seededCodes: ['PROGRAMMING_FUNDAMENTALS_LOGIC'] });
+    const { controller, prisma } = setup({
+      seededCodes: ['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION'],
+    });
 
     await expect(controller.createOpening(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
@@ -217,7 +228,10 @@ describe('CO-T01 create opening', () => {
       'proficiency outside BEGINNER/INTERMEDIATE/ADVANCED',
       {
         requiredSkills: [
-          { skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', minProficiency: 'PROFESSIONAL' },
+          {
+            skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+            minProficiency: 'PROFESSIONAL',
+          },
         ],
       },
     ],
@@ -281,8 +295,11 @@ describe('CO-T01 get one opening', () => {
       institutionId,
     });
     expect(dto.requiredSkills).toEqual([
-      { skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', minProficiency: 'INTERMEDIATE' },
-      { skillCode: 'DATABASE_FUNDAMENTALS', minProficiency: 'BEGINNER' },
+      {
+        skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        minProficiency: 'INTERMEDIATE',
+      },
+      { skillCode: 'SQL_QUERY_OPTIMIZATION', minProficiency: 'BEGINNER' },
     ]);
   });
 

@@ -13,9 +13,10 @@ import {
   TierSchema,
   TrackCodeSchema,
 } from '../domain/enums.js';
-import { SKILL_STREAMS, SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
+import { AssessmentResultSchema } from '../domain/evidence/assessment-result.js';
+import { SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
-import { TaxonomySkillCodeSchema } from './catalog.dto.js';
+import { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
  * Placement overlay contracts.
@@ -167,9 +168,8 @@ export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 /* ----------------------- structured openings (PRD MMP) ---------------------- */
 
 export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
-export const SkillStreamSchema = z.enum(SKILL_STREAMS);
 
-export { TaxonomySkillCodeSchema } from './catalog.dto.js';
+export { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 export const SkillRequirementSchema = z.object({
   skillCode: TaxonomySkillCodeSchema,
@@ -185,7 +185,7 @@ export const JobOpeningFieldsSchema = z.object({
   companyName: z.string().min(2).max(150),
   roleTitle: z.string().min(2).max(150),
   domain: SkillTaxonomyDomainSchema,
-  stream: SkillStreamSchema.optional(),
+  categoryId: SkillCategoryIdSchema.optional(),
   requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
   minYearsExperience: z.number().int().min(0).max(40),
   maxYearsExperience: z.number().int().min(0).max(40),
@@ -328,6 +328,8 @@ export const SkillClaimDtoSchema = z.object({
       }),
     )
     .optional(),
+  /** Latest competency intelligence from the most recent passed verification (read-only). */
+  latestAssessmentResult: AssessmentResultSchema.nullable().optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 

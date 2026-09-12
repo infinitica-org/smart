@@ -7,9 +7,11 @@ import {
   CreateJobOpeningRequestSchema,
   EMPLOYMENT_TYPES,
   JOB_OPENING_STATUSES,
+  SKILL_CATEGORY_IDS,
+  SKILL_CATEGORIES,
   SKILL_DEFINITIONS,
-  SKILL_STREAMS,
   SKILL_TAXONOMY_DOMAINS,
+  type SkillCategoryId,
   SKILL_PROFICIENCIES,
   type JobOpeningDto,
   type JobOpeningStatus,
@@ -31,7 +33,7 @@ type FormState = {
   companyName: string;
   roleTitle: string;
   domain: string;
-  stream: string;
+  categoryId: string;
   minYearsExperience: string;
   maxYearsExperience: string;
   location: string;
@@ -43,7 +45,7 @@ const EMPTY_FORM: FormState = {
   companyName: '',
   roleTitle: '',
   domain: 'SOFTWARE_IT',
-  stream: '',
+  categoryId: '',
   minYearsExperience: '0',
   maxYearsExperience: '0',
   location: '',
@@ -137,7 +139,7 @@ export function OpeningsWorkspace() {
   }
 
   const visibleSkills = SKILL_DEFINITIONS.filter(
-    (skill) => !form.stream || skill.stream === 'UNIVERSAL' || skill.stream === form.stream,
+    (skill) => !form.categoryId || skill.categoryId === form.categoryId,
   );
 
   function updateSkill(code: string, selected: boolean) {
@@ -156,7 +158,7 @@ export function OpeningsWorkspace() {
 
     const parsed = CreateJobOpeningRequestSchema.safeParse({
       ...form,
-      stream: form.stream || undefined,
+      categoryId: (form.categoryId as SkillCategoryId) || undefined,
       minYearsExperience: Number(form.minYearsExperience),
       maxYearsExperience: Number(form.maxYearsExperience),
       headcount: Number(form.headcount),
@@ -271,11 +273,12 @@ export function OpeningsWorkspace() {
               options={SKILL_TAXONOMY_DOMAINS}
             />
             <SelectField
-              label="Stream (optional)"
-              value={form.stream}
-              onChange={(stream) => setForm({ ...form, stream })}
-              options={SKILL_STREAMS}
-              emptyLabel="All streams / not specified"
+              label="Category (optional)"
+              value={form.categoryId}
+              onChange={(categoryId) => setForm({ ...form, categoryId })}
+              options={SKILL_CATEGORY_IDS}
+              emptyLabel="All categories"
+              optionLabel={(id) => SKILL_CATEGORIES[id as SkillCategoryId]?.name ?? id}
             />
             <Input
               label="Minimum years experience"
@@ -341,7 +344,7 @@ export function OpeningsWorkspace() {
                       <span>
                         {skill.name}
                         <span className="block text-[11px] text-slate-500 font-normal">
-                          {labelFor(skill.stream)}
+                          {skill.categoryName}
                         </span>
                       </span>
                     </label>
@@ -696,13 +699,16 @@ function SelectField({
   onChange,
   options,
   emptyLabel,
+  optionLabel,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: readonly string[];
   emptyLabel?: string;
+  optionLabel?: (value: string) => string;
 }) {
+  const formatOption = optionLabel ?? labelFor;
   return (
     <label className="grid gap-1.5 text-sm">
       <span className="font-medium">{label}</span>
@@ -714,7 +720,7 @@ function SelectField({
         {emptyLabel ? <option value="">{emptyLabel}</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
-            {labelFor(option)}
+            {formatOption(option)}
           </option>
         ))}
       </select>

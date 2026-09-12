@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from 'next/navigation';
 import { Alert } from '@smart/ui';
 import type {
+  AssessmentResult,
   GradeSdeSkillFormResponse,
   SkillVerifyPrepareDto,
   SkillVerifySessionDto,
@@ -13,6 +14,7 @@ import { formatRetryAt, formatSkillVerifyKioskTitle } from '@/lib/skill-declarat
 import { ProctoringShell } from '@/components/proctoring/proctoring-shell';
 import { SkillVerifyExam } from './skill-verify-exam';
 import { SkillVerifyLoading } from './skill-verify-loading';
+import { SkillVerifyPendingStep } from './skill-verify-pending-step';
 import { SkillVerifyReport } from './skill-verify-report';
 
 export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
@@ -28,6 +30,9 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [report, setReport] = useState<GradeSdeSkillFormResponse | null>(null);
+  const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
+  const [pendingSession, setPendingSession] = useState<SkillVerifySessionDto | null>(null);
+  const [pendingGrade, setPendingGrade] = useState<GradeSdeSkillFormResponse | null>(null);
   const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
   const generateStarted = useRef(false);
 
@@ -143,8 +148,28 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             );
             return;
           }
+          if (
+            settled.pendingVerification &&
+            settled.session &&
+            settled.grade &&
+            settled.assessmentResult
+          ) {
+            setPendingSession(settled.session);
+            setPendingGrade(settled.grade);
+            setAssessmentResult(settled.assessmentResult);
+            setSession(null);
+            return;
+          }
+          if (settled.sessionContinues && settled.session) {
+            setSession(settled.session);
+            setAnswers({});
+            setCurrentIndex(0);
+            setReport(null);
+            return;
+          }
           if (settled.grade && !settled.technicalFailure) {
             setReport(settled.grade);
+            setAssessmentResult(settled.assessmentResult ?? null);
             return;
           }
           router.push('/skills');
@@ -207,11 +232,23 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         void generateFormRef.current();
       }}
     >
-      {!session ? (
+      {!session && !pendingSession ? (
         <SkillVerifyLoading generating={generating} error={error} kioskTitle={kioskTitle} />
+      ) : pendingSession && pendingGrade && assessmentResult ? (
+        <SkillVerifyPendingStep
+          session={pendingSession}
+          sessionId={pendingSession.sessionId}
+          grade={pendingGrade}
+          assessmentResult={assessmentResult}
+          onDone={() => router.push('/assessments')}
+        />
       ) : report ? (
-        <SkillVerifyReport grade={report} onDone={() => router.push('/assessments')} />
-      ) : (
+        <SkillVerifyReport
+          grade={report}
+          assessmentResult={assessmentResult}
+          onDone={() => router.push('/assessments')}
+        />
+      ) : session ? (
         <SkillVerifyExam
           session={session}
           currentIndex={currentIndex}
@@ -253,7 +290,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             })
           }
         />
-      )}
+      ) : null}
     </ProctoringShell>
   );
 }

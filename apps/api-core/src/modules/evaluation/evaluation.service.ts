@@ -46,23 +46,40 @@ import {
 import {
   SDE_SKILL_CODE_RUNNER_PROMPT_REF,
   SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+  SDE_SKILL_FORM_CLOSED_PROMPT_REF_V3,
   SDE_SKILL_FORM_OPEN_PROMPT_REF,
+  SDE_SKILL_FORM_OPEN_PROMPT_REF_V3,
   SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
   SDE_V4_PROFICIENCIES,
   SDE_V4_SKILL_BY_CODE,
   SdeCodeRunnerOutputSchema,
   SdeOpenBatchGradeSchema,
   SdeSkillFormClosedOutputSchema,
+  SdeSkillFormClosedOutputSchemaV3,
   SdeSkillFormOpenOutputSchema,
+  SdeSkillFormOpenOutputSchemaV3,
   agendaGuardFailure,
   alignAgendaToSyllabus,
   assertSdeV4FormShape,
   CertAgendaScorableGenerateOutputSchema,
   publisherSyllabus,
   toStudentPaperFromScorable,
+  type CompetencySlot,
   type SdeV4Format,
 } from '@smart/prompts';
-import { computeSdeV4FormScore, SDE_V4_MARKS, scoreClosedChoice } from '@smart/scoring-engine';
+import {
+  computeSdeV4FormScore,
+  SDE_V4_MARKS,
+  scoreClosedChoice,
+  assignCompetencyIds,
+  scaleFormCounts,
+  evaluateAssessmentIntelligence,
+} from '@smart/scoring-engine';
+import {
+  buildSkillBlueprintForCategory,
+  getSkillDefinition,
+  type SkillBlueprint,
+} from '@smart/contracts';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
@@ -80,6 +97,7 @@ const ScoringKeySchema = z.object({
   rubric: z.string().optional(),
   modelAnswer: z.string().optional(),
   marksMax: z.number(),
+  competencyIds: z.array(z.string().uuid()).max(5).optional(),
   hiddenTests: z
     .array(
       z.object({
@@ -97,6 +115,10 @@ const SealedSdeFormSchema = z.object({
   skillCode: z.string(),
   proficiency: z.enum(SDE_V4_PROFICIENCIES),
   items: z.array(ScoringKeySchema).min(1),
+  intelligenceEnabled: z.boolean().optional(),
+  catalogSkillCode: z.string().optional(),
+  targetProficiency: z.enum(SDE_V4_PROFICIENCIES).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional(),
 });
 
 const ExaminerOutputSchema = z.object({
@@ -415,13 +437,43 @@ export class EvaluationService {
     }
     const proficiency = request.proficiency;
     const spec = skill.levels[proficiency];
+    const stage = request.stage ?? 'FULL';
+    const blueprint =
+      request.catalogSkillCode && getSkillDefinition(request.catalogSkillCode)
+        ? buildSkillBlueprintForCategory(
+            getSkillDefinition(request.catalogSkillCode)!.code,
+            getSkillDefinition(request.catalogSkillCode)!.name,
+            getSkillDefinition(request.catalogSkillCode)!.domain,
+            getSkillDefinition(request.catalogSkillCode)!.categoryName,
+            getSkillDefinition(request.catalogSkillCode)!.categoryId,
+          )
+        : null;
+    const scaled = scaleFormCounts(
+      spec.closed,
+      spec.openFormats.length,
+      stage === 'FULL' ? 'FULL' : stage,
+      request.targetCompetencyIds?.length ?? 2,
+    );
     const attemptId = request.attemptId ?? randomUUID();
     const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
+    const intelligenceEnabled = Boolean(blueprint?.competencyModel.length);
+    const closedPromptRef = intelligenceEnabled
+      ? SDE_SKILL_FORM_CLOSED_PROMPT_REF_V3
+      : SDE_SKILL_FORM_CLOSED_PROMPT_REF;
+    const openPromptRef = intelligenceEnabled
+      ? SDE_SKILL_FORM_OPEN_PROMPT_REF_V3
+      : SDE_SKILL_FORM_OPEN_PROMPT_REF;
+    const competencyLabels = intelligenceEnabled
+      ? blueprint!.competencyModel.slice(0, 6).map((comp, idx) => ({
+          slot: `C${String(idx + 1)}` as CompetencySlot,
+          name: comp.capability,
+        }))
+      : [];
 
     try {
       const [closedResult, openResult] = await Promise.all([
         this.completeWithRetry({
-          promptRef: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
+          promptRef: closedPromptRef,
           modelRole: 'PRIMARY_REASONING',
           priority: 'P1_REALTIME',
           variables: {
@@ -429,17 +481,18 @@ export class EvaluationService {
             skillName: skill.name,
             proficiency,
             attemptId,
-            mcqCount: spec.closed.MCQ,
-            traceCount: spec.closed.TRACE,
+            mcqCount: scaled.closed.MCQ,
+            traceCount: scaled.closed.TRACE,
             priorStems,
             skillFocus: request.skillFocus ?? '',
+            ...(intelligenceEnabled ? { competencyLabels } : {}),
           },
           correlation: {},
           maxOutputTokens: 3_072,
-          temperature: 0.4,
+          temperature: intelligenceEnabled ? 0.35 : 0.4,
         }),
         this.completeWithRetry({
-          promptRef: SDE_SKILL_FORM_OPEN_PROMPT_REF,
+          promptRef: openPromptRef,
           modelRole: 'PRIMARY_REASONING',
           priority: 'P1_REALTIME',
           variables: {
@@ -454,20 +507,27 @@ export class EvaluationService {
               : [...spec.flavorNotes],
             priorStems,
             skillFocus: request.skillFocus ?? '',
+            ...(intelligenceEnabled ? { competencyLabels } : {}),
           },
           correlation: {},
           maxOutputTokens: 4_096,
-          temperature: 0.4,
+          temperature: intelligenceEnabled ? 0.35 : 0.4,
         }),
       ]);
-      const closedParsed = SdeSkillFormClosedOutputSchema.parse(closedResult.output);
+      const closedParsed = (
+        intelligenceEnabled ? SdeSkillFormClosedOutputSchemaV3 : SdeSkillFormClosedOutputSchema
+      ).parse(closedResult.output);
       const closedOrdered = this.orderClosed(
         closedParsed.items,
-        spec.closed.MCQ,
-        spec.closed.TRACE,
+        scaled.closed.MCQ,
+        scaled.closed.TRACE,
       );
-      const openParsed = SdeSkillFormOpenOutputSchema.parse(openResult.output);
-      const openOrdered = this.orderOpen(openParsed.items, spec.openFormats);
+      const openFormats =
+        stage === 'FULL' ? [...spec.openFormats] : [...spec.openFormats].slice(0, scaled.openCount);
+      const openParsed = (
+        intelligenceEnabled ? SdeSkillFormOpenOutputSchemaV3 : SdeSkillFormOpenOutputSchema
+      ).parse(openResult.output);
+      const openOrdered = this.orderOpen(openParsed.items, openFormats);
 
       this.logger.log(
         `skill_form ${skill.code} ${proficiency} closed in=${String(closedResult.promptTokens ?? 0)} out=${String(closedResult.completionTokens ?? 0)} ${String(closedResult.latencyMs ?? 0)}ms ~$${(closedResult.estimatedCostUsd ?? 0).toFixed(6)} | open in=${String(openResult.promptTokens ?? 0)} out=${String(openResult.completionTokens ?? 0)} ${String(openResult.latencyMs ?? 0)}ms ~$${(openResult.estimatedCostUsd ?? 0).toFixed(6)} | total ~$${((closedResult.estimatedCostUsd ?? 0) + (openResult.estimatedCostUsd ?? 0)).toFixed(6)}`,
@@ -477,27 +537,49 @@ export class EvaluationService {
         ...closedOrdered.map((item) => item.format),
         ...openOrdered.map((item) => item.format),
       ];
-      assertSdeV4FormShape(skill, proficiency, formats);
+      if (stage === 'FULL') {
+        assertSdeV4FormShape(skill, proficiency, formats);
+      }
 
       const items: GenerateSdeSkillFormResponse['items'] = [];
       const scoringItems: z.infer<typeof ScoringKeySchema>[] = [];
       let index = 1;
       for (const item of closedOrdered) {
+        const competencyIds = blueprint?.competencyModel.length
+          ? this.resolveCompetencyIds(
+              blueprint,
+              this.competencySlotFromItem(item),
+              item.format,
+              index,
+              request.targetCompetencyIds,
+            )
+          : undefined;
         items.push({
           index,
           format: item.format,
           prompt: item.prompt,
           options: item.options,
+          ...(competencyIds ? { competencyIds } : {}),
         });
         scoringItems.push({
           index,
           format: item.format,
           answer: item.answer,
           marksMax: SDE_V4_MARKS[item.format],
+          ...(competencyIds ? { competencyIds } : {}),
         });
         index += 1;
       }
       for (const item of openOrdered) {
+        const competencyIds = blueprint?.competencyModel.length
+          ? this.resolveCompetencyIds(
+              blueprint,
+              this.competencySlotFromItem(item),
+              item.format,
+              index,
+              request.targetCompetencyIds,
+            )
+          : undefined;
         items.push({
           index,
           format: item.format,
@@ -506,6 +588,7 @@ export class EvaluationService {
           ...(item.title ? { title: item.title } : {}),
           ...(item.constraints ? { constraints: item.constraints } : {}),
           ...(item.examples && item.examples.length > 0 ? { examples: item.examples } : {}),
+          ...(competencyIds ? { competencyIds } : {}),
         });
         scoringItems.push({
           index,
@@ -515,6 +598,7 @@ export class EvaluationService {
           modelAnswer: item.modelAnswer,
           marksMax: SDE_V4_MARKS[item.format],
           hiddenTests: item.hiddenTests,
+          ...(competencyIds ? { competencyIds } : {}),
         });
         index += 1;
       }
@@ -525,17 +609,29 @@ export class EvaluationService {
         skillCode: skill.code,
         proficiency,
         items: scoringItems,
+        ...(blueprint
+          ? {
+              intelligenceEnabled: true,
+              catalogSkillCode: blueprint.skillCode,
+              targetProficiency: proficiency,
+              stage,
+            }
+          : {}),
       });
 
       return GenerateSdeSkillFormResponseSchema.parse({
         skillCode: skill.code,
         proficiency,
         attemptId,
-        timeMinutes: spec.timeMinutes,
-        passMarkPercent: spec.passMarkPercent,
+        timeMinutes:
+          stage === 'DIAGNOSTIC'
+            ? Math.max(10, Math.ceil(spec.timeMinutes * 0.45))
+            : spec.timeMinutes,
+        passMarkPercent: blueprint ? undefined : spec.passMarkPercent,
+        stage,
         promptRefs: {
-          closed: SDE_SKILL_FORM_CLOSED_PROMPT_REF,
-          open: SDE_SKILL_FORM_OPEN_PROMPT_REF,
+          closed: closedPromptRef,
+          open: openPromptRef,
         },
         items,
         scoringToken,
@@ -613,6 +709,7 @@ export class EvaluationService {
           feedback: correct
             ? 'Correct.'
             : `Incorrect. The correct option was ${key.answer ?? '?'}.`,
+          ...(key.competencyIds ? { competencyIds: key.competencyIds } : {}),
         });
       }
 
@@ -665,6 +762,7 @@ export class EvaluationService {
             testsTotal: grade.testsTotal,
             missedTests: grade.missedTests,
             feedback: grade.justification,
+            ...(key.competencyIds ? { competencyIds: key.competencyIds } : {}),
           });
         }
       }
@@ -678,13 +776,47 @@ export class EvaluationService {
           message: 'Skill form could not be scored.',
         });
       }
+
+      let passed = result.right.passed;
+      let competencySupportedProficiency: GradeSdeSkillFormResponse['competencySupportedProficiency'];
+      let assessmentPassed: boolean | undefined;
+      if (bundle.intelligenceEnabled && bundle.catalogSkillCode) {
+        const definition = getSkillDefinition(bundle.catalogSkillCode);
+        if (definition) {
+          const blueprint = buildSkillBlueprintForCategory(
+            definition.code,
+            definition.name,
+            definition.domain,
+            definition.categoryName,
+            definition.categoryId,
+          );
+          const intelligence = Effect.runSync(
+            evaluateAssessmentIntelligence({
+              competencyModel: blueprint.competencyModel,
+              proficiencyRequirements: blueprint.proficiencyRequirements ?? [],
+              items: itemResults.map((item) => ({
+                competencyIds: item.competencyIds ?? [],
+                marksEarned: item.marksEarned,
+                marksMax: item.marksMax,
+              })),
+              targetProficiency: bundle.targetProficiency ?? request.proficiency,
+            }),
+          );
+          passed = intelligence.assessmentPassed;
+          assessmentPassed = intelligence.assessmentPassed;
+          competencySupportedProficiency = intelligence.highestAssessmentSupportedProficiency;
+        }
+      }
+
       return GradeSdeSkillFormResponseSchema.parse({
         skillCode: request.skillCode,
         proficiency: request.proficiency,
         marksEarned: result.right.marksEarned,
         marksTotal: result.right.marksTotal,
         scorePercent: result.right.scorePercent,
-        passed: result.right.passed,
+        passed,
+        assessmentPassed,
+        competencySupportedProficiency,
         promptRef: SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
         mcqCorrect,
         mcqTotal,
@@ -729,6 +861,31 @@ export class EvaluationService {
     } catch (err) {
       this.failClosed(err, 'skill_form_run_unavailable', 'Code could not be run.');
     }
+  }
+
+  private competencySlotFromItem(item: { format: SdeV4Format }): CompetencySlot | undefined {
+    const slot = (item as { competencySlot?: unknown }).competencySlot;
+    if (typeof slot === 'string' && /^C[1-6]$/.test(slot)) {
+      return slot as CompetencySlot;
+    }
+    return undefined;
+  }
+
+  private resolveCompetencyIds(
+    blueprint: SkillBlueprint,
+    slot: CompetencySlot | undefined,
+    format: SdeV4Format,
+    index: number,
+    targetCompetencyIds?: readonly string[],
+  ): string[] {
+    if (slot) {
+      const match = /^C(\d)$/i.exec(slot);
+      if (match) {
+        const comp = blueprint.competencyModel[Number(match[1]) - 1];
+        if (comp) return [comp.competencyId];
+      }
+    }
+    return assignCompetencyIds(format, index, blueprint.competencyModel, targetCompetencyIds);
   }
 
   private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(

@@ -257,6 +257,9 @@ export const GenerateSdeSkillFormRequestSchema = z.object({
   attemptId: z.string().min(1).max(80).optional(),
   priorStems: z.array(z.string().max(200)).max(40).optional(),
   skillFocus: z.string().min(1).max(64).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional().default('FULL'),
+  targetCompetencyIds: z.array(z.uuid()).max(20).optional(),
+  catalogSkillCode: z.string().min(2).max(64).optional(),
 });
 export type GenerateSdeSkillFormRequest = z.infer<typeof GenerateSdeSkillFormRequestSchema>;
 
@@ -283,6 +286,7 @@ export const SdeSkillFormPublicItemSchema = z.object({
   constraints: z.string().min(1).max(2_000).optional(),
   /** Visible examples only. Hidden judge cases stay in the scoring token. */
   examples: z.array(SdeSkillFormExampleSchema).max(4).optional(),
+  competencyIds: z.array(z.uuid()).max(5).optional(),
 });
 export type SdeSkillFormPublicItem = z.infer<typeof SdeSkillFormPublicItemSchema>;
 
@@ -298,7 +302,8 @@ export const GenerateSdeSkillFormResponseSchema = z.object({
   proficiency: SdeV4FormProficiencySchema,
   attemptId: z.string().min(1).max(80),
   timeMinutes: z.number().int().positive(),
-  passMarkPercent: z.number().int().min(1).max(100),
+  passMarkPercent: z.number().int().min(1).max(100).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional(),
   promptRefs: z.object({
     closed: z.string().regex(/^[a-z0-9-]+@\d+$/),
     open: z.string().regex(/^[a-z0-9-]+@\d+$/),
@@ -335,6 +340,7 @@ export const SdeSkillFormItemResultSchema = z.object({
   testsTotal: z.number().int().min(0).max(20).optional(),
   missedTests: z.array(SdeSkillFormMissedTestSchema).max(8).optional(),
   feedback: z.string().max(2_000).optional(),
+  competencyIds: z.array(z.uuid()).max(5).optional(),
 });
 export type SdeSkillFormItemResult = z.infer<typeof SdeSkillFormItemResultSchema>;
 
@@ -351,6 +357,8 @@ export const GradeSdeSkillFormResponseSchema = z.object({
   traceCorrect: z.number().int().nonnegative(),
   traceTotal: z.number().int().nonnegative(),
   itemResults: z.array(SdeSkillFormItemResultSchema),
+  competencySupportedProficiency: SdeV4FormProficiencySchema.optional(),
+  assessmentPassed: z.boolean().optional(),
 });
 export type GradeSdeSkillFormResponse = z.infer<typeof GradeSdeSkillFormResponseSchema>;
 

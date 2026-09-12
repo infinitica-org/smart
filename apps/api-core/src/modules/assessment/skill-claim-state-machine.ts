@@ -62,7 +62,7 @@ export type SkillClaimSnapshot = {
 export type SkillClaimEvent =
   | { type: 'START' }
   | { type: 'TECHNICAL_FAILURE' }
-  | { type: 'GENUINE_PASS' }
+  | { type: 'GENUINE_PASS'; verifiedProficiency?: SkillProficiency }
   | { type: 'GENUINE_FAIL' };
 
 export type SkillClaimBlockReason =
@@ -187,11 +187,16 @@ function applyTechnicalFailure(claim: SkillClaimSnapshot): SkillClaimTransitionR
   return allow(copyClaim(claim));
 }
 
-function applyGenuinePass(claim: SkillClaimSnapshot, now: Date): SkillClaimTransitionResult {
+function applyGenuinePass(
+  claim: SkillClaimSnapshot,
+  now: Date,
+  verifiedProficiency?: SkillProficiency,
+): SkillClaimTransitionResult {
+  const nextProficiency = verifiedProficiency ?? claim.proficiency;
   if (claim.status === 'DECLARED') {
     return allow({
       status: 'VERIFIED',
-      proficiency: claim.proficiency,
+      proficiency: nextProficiency,
       strikes: claim.strikes,
       lockedUntil: null,
       verifiedUntil: addSkillRefreshPeriod(now),
@@ -200,7 +205,7 @@ function applyGenuinePass(claim: SkillClaimSnapshot, now: Date): SkillClaimTrans
   if (claim.status === 'BEGINNER_REATTEMPT') {
     return allow({
       status: 'VERIFIED',
-      proficiency: 'BEGINNER',
+      proficiency: verifiedProficiency ?? 'BEGINNER',
       strikes: claim.strikes,
       lockedUntil: null,
       verifiedUntil: addSkillRefreshPeriod(now),
@@ -250,7 +255,7 @@ export function applySkillClaimTransition(
     case 'TECHNICAL_FAILURE':
       return applyTechnicalFailure(claim);
     case 'GENUINE_PASS':
-      return applyGenuinePass(claim, now);
+      return applyGenuinePass(claim, now, event.verifiedProficiency);
     case 'GENUINE_FAIL':
       return applyGenuineFail(claim, now);
     default: {

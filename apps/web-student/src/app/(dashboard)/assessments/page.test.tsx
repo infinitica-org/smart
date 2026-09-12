@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SkillsPage from './page';
 
@@ -28,14 +28,14 @@ describe('SkillsPage', () => {
       {
         claimId: 'claim-1',
         studentId: 'student-1',
-        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
         proficiency: 'INTERMEDIATE',
         status: 'VERIFIED',
       },
       {
         claimId: 'claim-2',
         studentId: 'student-1',
-        skillCode: 'GIT_VERSION_CONTROL',
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
         proficiency: 'BEGINNER',
         status: 'DECLARED',
       },
@@ -45,8 +45,8 @@ describe('SkillsPage', () => {
   it('renders the Skills header and lists real database skill claims', async () => {
     render(<SkillsPage />);
     expect(await screen.findByRole('heading', { name: 'Skills' })).toBeDefined();
-    expect(screen.getByText('Programming fundamentals & logic')).toBeDefined();
-    expect(screen.getByText('Git & version control')).toBeDefined();
+    expect(screen.getByText('Algorithmic Complexity & Performance Optimization')).toBeDefined();
+    expect(screen.getByText('SQL & Query Optimization')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not Verified').length).toBeGreaterThan(0);
   });
@@ -60,6 +60,42 @@ describe('SkillsPage', () => {
     fireEvent.click(startButtons[0]);
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/assessments/skills/claim-2');
+    });
+  });
+
+  it('declares a new skill at professional proficiency from the add dialog', async () => {
+    declareSkillClaimMock.mockResolvedValue({
+      claimId: 'claim-pro',
+      studentId: 'student-1',
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      proficiency: 'PROFESSIONAL',
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: null,
+    });
+    render(<SkillsPage />);
+    await screen.findByRole('heading', { name: 'Skills' });
+    fireEvent.click(screen.getAllByRole('button', { name: /Add Skill/i })[0]!);
+    const dialogHeading = await screen.findByRole('heading', { name: 'Add a Skill' });
+    const modal = dialogHeading.closest('.fixed');
+    const form = modal?.querySelector('form');
+    if (!form) throw new Error('Add skill form not found');
+    const selects = within(form as HTMLElement).getAllByRole('combobox');
+    fireEvent.change(selects[0]!, {
+      target: { value: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' },
+    });
+    fireEvent.change(selects[1]!, {
+      target: { value: 'PROFESSIONAL' },
+    });
+    fireEvent.submit(form as HTMLFormElement);
+    await waitFor(() => {
+      expect(declareSkillClaimMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          proficiency: 'PROFESSIONAL',
+        }),
+      );
     });
   });
 

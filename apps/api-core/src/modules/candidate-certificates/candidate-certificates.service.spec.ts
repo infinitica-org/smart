@@ -28,7 +28,7 @@ function baseCertificateRow(overrides: Record<string, unknown> = {}) {
     practicalDescription: 'Deployed a sample app.',
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
     updatedAt: new Date('2026-09-01T00:00:00.000Z'),
-    skills: [{ skillCode: 'GIT_VERSION_CONTROL', selfAssessedProficiency: 'INTERMEDIATE' }],
+    skills: [{ skillCode: 'SQL_QUERY_OPTIMIZATION', selfAssessedProficiency: 'INTERMEDIATE' }],
     ...overrides,
   };
 }
@@ -209,7 +209,7 @@ describe('CandidateCertificatesService', () => {
     );
     await expect(
       service.replaceSkills(candidateId, certificateId, {
-        skills: [{ skillCode: 'GIT_VERSION_CONTROL', selfAssessedProficiency: 'BEGINNER' }],
+        skills: [{ skillCode: 'SQL_QUERY_OPTIMIZATION', selfAssessedProficiency: 'BEGINNER' }],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -305,8 +305,8 @@ describe('CandidateCertificatesService', () => {
     );
     const dto = await service.getOwned(candidateId, certificateId);
     expect(dto.skillsClaimedSnapshot).toEqual({
-      taxonomyVersion: '0.9',
-      skillCodes: ['GIT_VERSION_CONTROL'],
+      taxonomyVersion: 'skill@1',
+      skillCodes: ['SQL_QUERY_OPTIMIZATION'],
     });
   });
 

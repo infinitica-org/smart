@@ -30,6 +30,7 @@ import {
   CreateWorkExperienceDocumentSchema,
   UpdateWorkExperienceSchema,
   WorkExperienceSchema,
+  WorkExperienceResponsibilitySchema,
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
   WorkExperienceLetterAuthenticityExtractSchema,
@@ -91,6 +92,22 @@ interface RawWorkExperience {
   createdAt: Date;
   updatedAt: Date;
   documents?: RawWorkExperienceDocument[];
+  deliverablesStructured?: unknown;
+  personalContributions?: unknown;
+  structuredResponsibilities?: Array<{
+    id: string;
+    task: string;
+    skillCode?: string | null;
+    personalContribution: string;
+    responsibilityLevel: string;
+    independence?: string | null;
+    tools: string[];
+    decision?: string | null;
+    constraintText?: string | null;
+    outcome?: string | null;
+    artifactId?: string | null;
+    activity?: unknown;
+  }>;
 }
 
 interface RawWorkExperienceDocument {
@@ -124,6 +141,15 @@ import {
 } from './work-experience-document-authenticity.util.js';
 
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
+import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
+import {
+  buildEvidenceFromWorkExperienceRow,
+  extractStructuredMetadata,
+  responsibilityRowsCreateInput,
+  structuredMetadataWriteData,
+  type WorkExperienceWithEvidenceRelations,
+} from './work-experience-evidence.adapter.js';
+import { z } from 'zod';
 
 @Injectable()
 export class WorkExperienceService {
@@ -138,7 +164,33 @@ export class WorkExperienceService {
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync?: EvidenceSyncService,
   ) {}
+
+  private readonly evidenceInclude = {
+    documents: true,
+    structuredResponsibilities: true,
+  } as const;
+
+  private async syncEvidenceRecord(
+    studentId: string,
+    experienceId: string,
+    overrides?: ReturnType<typeof extractStructuredMetadata>,
+  ): Promise<void> {
+    await this.evidenceSync?.syncWorkExperienceEvidenceRecord(studentId, experienceId, overrides);
+  }
+
+  private async persistStructuredResponsibilities(
+    experienceId: string,
+    items: z.infer<typeof WorkExperienceResponsibilitySchema>[],
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.workExperienceResponsibility.deleteMany({ where: { experienceId } }),
+      ...responsibilityRowsCreateInput(experienceId, items).map((row) =>
+        this.prisma.workExperienceResponsibility.create({ data: row }),
+      ),
+    ]);
+  }
 
   private async resolveOrganization(params: {
     name: string;
@@ -241,6 +293,7 @@ export class WorkExperienceService {
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
       documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
+      evidence: buildEvidenceFromWorkExperienceRow(exp as WorkExperienceWithEvidenceRelations),
     });
   }
 
@@ -258,7 +311,7 @@ export class WorkExperienceService {
   async listForStudent(studentId: string): Promise<WorkExperienceDto[]> {
     const list = await this.prisma.workExperience.findMany({
       where: { studentId },
-      include: { documents: true },
+      include: this.evidenceInclude,
       orderBy: { startDate: 'desc' },
     });
     return list.map((item) => this.mapToDto(item));
@@ -267,7 +320,7 @@ export class WorkExperienceService {
   async getForStudent(studentId: string, id: string): Promise<WorkExperienceDto> {
     const record = await this.prisma.workExperience.findUnique({
       where: { id },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
     if (!record || record.studentId !== studentId) {
       throw new NotFoundException({
@@ -277,6 +330,38 @@ export class WorkExperienceService {
       });
     }
     return this.mapToDto(record);
+  }
+
+  async listStructuredResponsibilities(studentId: string, experienceId: string) {
+    await this.getForStudent(studentId, experienceId);
+    const rows = await this.prisma.workExperienceResponsibility.findMany({
+      where: { experienceId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) =>
+      WorkExperienceResponsibilitySchema.parse({
+        responsibilityId: row.id,
+        task: row.task,
+        skillCode: row.skillCode ?? undefined,
+        personalContribution: row.personalContribution,
+        responsibilityLevel: row.responsibilityLevel,
+        independence: row.independence ?? undefined,
+        tools: row.tools,
+        decision: row.decision ?? undefined,
+        constraint: row.constraintText ?? undefined,
+        outcome: row.outcome ?? undefined,
+        artifactId: row.artifactId,
+        activity: row.activity ?? undefined,
+      }),
+    );
+  }
+
+  async replaceStructuredResponsibilities(studentId: string, experienceId: string, body: unknown) {
+    await this.getForStudent(studentId, experienceId);
+    const items = z.array(WorkExperienceResponsibilitySchema).parse(body);
+    await this.persistStructuredResponsibilities(experienceId, items);
+    await this.syncEvidenceRecord(studentId, experienceId, { structuredResponsibilities: items });
+    return this.listStructuredResponsibilities(studentId, experienceId);
   }
 
   async create(studentId: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -340,6 +425,8 @@ export class WorkExperienceService {
       documents: data.documents,
     });
 
+    const structuredMetadata = extractStructuredMetadata(data);
+
     const created = await this.prisma.workExperience.create({
       data: {
         studentId,
@@ -366,6 +453,7 @@ export class WorkExperienceService {
         verifierDesignation: data.verifierDesignation || null,
         verifierPhone: data.verifierPhone || null,
         status: 'SUBMITTED',
+        ...structuredMetadataWriteData(structuredMetadata),
         ...(data.documents && data.documents.length > 0
           ? {
               documents: {
@@ -380,8 +468,17 @@ export class WorkExperienceService {
             }
           : {}),
       },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
+
+    if (structuredMetadata.structuredResponsibilities?.length) {
+      await this.persistStructuredResponsibilities(
+        created.id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, created.id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
@@ -391,7 +488,11 @@ export class WorkExperienceService {
       reasonCode: null,
     });
 
-    return this.mapToDto(created);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id: created.id },
+      include: this.evidenceInclude,
+    });
+    return this.mapToDto(reloaded ?? created);
   }
 
   async update(studentId: string, id: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -464,7 +565,9 @@ export class WorkExperienceService {
       updatedCompanyNameRaw = nameToUse.trim();
     }
 
-    const updated = await this.prisma.workExperience.update({
+    const structuredMetadata = extractStructuredMetadata(data);
+
+    await this.prisma.workExperience.update({
       where: { id },
       data: {
         ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
@@ -502,19 +605,35 @@ export class WorkExperienceService {
           ? { verifierDesignation: data.verifierDesignation || null }
           : {}),
         ...(data.verifierPhone !== undefined ? { verifierPhone: data.verifierPhone || null } : {}),
+        ...structuredMetadataWriteData(structuredMetadata),
       },
-      include: { documents: true },
     });
+
+    if (structuredMetadata.structuredResponsibilities !== undefined) {
+      await this.persistStructuredResponsibilities(
+        id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperience',
-      resourceId: updated.id,
+      resourceId: id,
       reasonCode: null,
     });
 
-    return this.mapToDto(updated);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: this.evidenceInclude,
+    });
+    if (!reloaded) {
+      return this.getForStudent(studentId, id);
+    }
+    return this.mapToDto(reloaded);
   }
 
   async delete(studentId: string, id: string): Promise<void> {
@@ -1623,6 +1742,8 @@ export class WorkExperienceService {
       },
     });
 
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
+
     const message =
       newStatus === 'VERIFIED'
         ? 'Work experience successfully verified.'
@@ -2067,6 +2188,8 @@ export class WorkExperienceService {
         skillRatings: payload.skillRatings ?? null,
       },
     });
+
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
 
     return {
       success: true,

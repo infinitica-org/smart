@@ -201,11 +201,13 @@ describe('OnboardingGate', () => {
       <OnboardingGate
         attemptId={ATTEMPT}
         faceLiveCheck
-        kioskTitle="Git & version control · Beginner"
+        kioskTitle="GitOps & Continuous Delivery · Beginner"
         onPassed={vi.fn()}
       />,
     );
-    expect(screen.getByRole('heading', { name: /git & version control · beginner/i })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: /gitops & continuous delivery · beginner/i }),
+    ).toBeTruthy();
     expect(screen.getByRole('heading', { name: /how the challenge works/i })).toBeTruthy();
     expect(screen.getByText(/5 integrity warnings/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /continue and allow camera/i })).toBeNull();

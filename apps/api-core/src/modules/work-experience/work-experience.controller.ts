@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX, type SendManagerEndorsementDto } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -64,6 +75,28 @@ export class WorkExperienceController {
   @ApiResponse({ status: 204, description: 'Work experience entry deleted.' })
   delete(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.service.delete(user.sub, id);
+  }
+
+  @Get(':id/responsibilities')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List structured responsibilities for a work experience entry.' })
+  @ApiResponse({ status: 200, description: 'Structured responsibilities list.' })
+  listResponsibilities(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.service.listStructuredResponsibilities(user.sub, id);
+  }
+
+  @Patch(':id/responsibilities')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Replace structured responsibilities for a work experience entry.' })
+  @ApiResponse({ status: 200, description: 'Updated structured responsibilities list.' })
+  replaceResponsibilities(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.service.replaceStructuredResponsibilities(user.sub, id, body);
   }
 
   @Post(':id/documents')

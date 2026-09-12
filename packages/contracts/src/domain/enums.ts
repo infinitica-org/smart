@@ -354,7 +354,12 @@ export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
  * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
  * Silver / Bronze) still come from cut scores — do not invent a parallel score.
  */
-export const SKILL_PROFICIENCIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+export const SKILL_PROFICIENCIES = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'PROFESSIONAL',
+] as const;
 export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
 export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 
@@ -543,9 +548,9 @@ export type CertificateVerificationMethod = z.infer<typeof CertificateVerificati
 
 /**
  * Self-assessed proficiency for a certificate's claimed skills. Deliberately
- * separate from `SkillProficiencySchema` (BEGINNER/INTERMEDIATE/ADVANCED only,
- * tied to the SkillClaim verification-threshold framework) — this one adds
- * EXPERT and is purely a candidate self-assessment, never itself a verified claim.
+ * separate from `SkillProficiencySchema` (BEGINNER through PROFESSIONAL on
+ * verified SkillClaims) — this one adds EXPERT and is purely a candidate
+ * self-assessment, never itself a verified claim.
  */
 export const CERTIFICATE_PROFICIENCIES = [
   'BEGINNER',

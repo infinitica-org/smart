@@ -13,6 +13,8 @@
     "lint": "eslint src scripts --max-warnings=0",
     "test": "vitest run",
     "validate:staged": "tsx src/cli.ts validate",
+    "codegen:skill": "tsx src/codegen-skill-taxonomy.ts",
+    "skill:sync": "tsx src/codegen-skill-taxonomy.ts",
     "schema:generate": "tsx scripts/generate-schema.ts",
     "clean": "rimraf dist .turbo *.tsbuildinfo"
   },

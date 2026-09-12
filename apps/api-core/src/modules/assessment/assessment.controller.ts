@@ -14,6 +14,7 @@ import {
   API_PREFIX,
   CompleteAttemptRequestSchema,
   CompleteCertVerifyRequestSchema,
+  CompleteSkillVerifyInterviewRequestSchema,
   CompleteSkillVerifyRequestSchema,
   DeclareSkillClaimRequestSchema,
   SaveCertVerifyRequestSchema,
@@ -87,7 +88,10 @@ export class AssessmentController {
       required: ['skillCode', 'proficiency'],
       properties: {
         skillCode: { type: 'string' },
-        proficiency: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
+        proficiency: {
+          type: 'string',
+          enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'],
+        },
       },
     },
   })
@@ -156,6 +160,41 @@ export class AssessmentController {
   ): Promise<CompleteSkillVerifyResponse> {
     CompleteSkillVerifyRequestSchema.parse(body ?? {});
     return this.skillVerify.complete(user, UuidSchema.parse(sessionId), body ?? {});
+  }
+
+  @Post('skill-verify/:sessionId/interview/start')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Start competency-targeted defense interview after assessment.' })
+  startSkillVerifyInterview(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.skillVerify.startInterview(user, UuidSchema.parse(sessionId));
+  }
+
+  @Post('skill-verify/:sessionId/interview/complete')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit defense interview and attempt verification finalize.' })
+  completeSkillVerifyInterview(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
+  ): Promise<CompleteSkillVerifyResponse> {
+    CompleteSkillVerifyInterviewRequestSchema.parse(body ?? {});
+    return this.skillVerify.completeInterview(user, UuidSchema.parse(sessionId), body);
+  }
+
+  @Post('skill-verify/:sessionId/finalize-verification')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Re-check evidence gates and finalize a pending verification.' })
+  finalizeSkillVerify(
+    @CurrentUser() user: RequestUser,
+    @Param('sessionId') sessionId: string,
+  ): Promise<CompleteSkillVerifyResponse> {
+    return this.skillVerify.finalizeVerification(user, UuidSchema.parse(sessionId));
   }
 
   @Post('candidate-certificates/:certificateId/verify/start')

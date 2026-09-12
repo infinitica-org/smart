@@ -2,7 +2,12 @@ import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LEVEL_DEFINITIONS, TRACK_DEFINITIONS } from '@smart/contracts';
+import {
+  LEVEL_DEFINITIONS,
+  SKILL_CODES,
+  SKILL_DEFINITIONS,
+  TRACK_DEFINITIONS,
+} from '@smart/contracts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
@@ -130,16 +135,22 @@ async function main(): Promise<void> {
     }
   }
 
-  await prisma.skill.upsert({
-    where: { code: 'javascript' },
-    update: { name: 'JavaScript', domain: 'SOFTWARE_IT' },
-    create: { code: 'javascript', name: 'JavaScript', domain: 'SOFTWARE_IT' },
+  await prisma.skillClaim.deleteMany({
+    where: { skill: { code: { notIn: [...SKILL_CODES] } } },
   });
-  await prisma.skill.upsert({
-    where: { code: 'sql' },
-    update: { name: 'SQL', domain: 'SOFTWARE_IT' },
-    create: { code: 'sql', name: 'SQL', domain: 'SOFTWARE_IT' },
+  await prisma.jobOpeningSkill.deleteMany({
+    where: { skill: { code: { notIn: [...SKILL_CODES] } } },
   });
+  await prisma.skill.deleteMany({
+    where: { code: { notIn: [...SKILL_CODES] } },
+  });
+  for (const skill of SKILL_DEFINITIONS) {
+    await prisma.skill.upsert({
+      where: { code: skill.code },
+      update: { name: skill.name, domain: skill.domain, active: true },
+      create: { code: skill.code, name: skill.name, domain: skill.domain, active: true },
+    });
+  }
 
   const seedDomain = resolveSeedEmailDomain();
   const seedPassword = resolveSeedPassword();

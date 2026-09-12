@@ -33,6 +33,7 @@ import type {
   StartAttemptRequest,
   CompleteCertVerifyRequest,
   CompleteSkillVerifyRequest,
+  CompleteSkillVerifyInterviewRequest,
   SaveCertVerifyRequest,
   SaveSkillVerifyRequest,
   StartCertVerifyRequest,
@@ -103,6 +104,19 @@ import {
   SendBatchInvitesResultDtoSchema,
   SkillClaimDtoSchema,
   SkillLibraryResponseSchema,
+  CareerDomainDtoSchema,
+  TargetRoleDtoSchema,
+  RecommendedSkillsResponseSchema,
+  SkillBlueprintDtoSchema,
+  CandidateEvidenceProfileDtoSchema,
+  SaveOnboardingSelectionRequestSchema,
+  EvidenceRecordDtoSchema,
+  CreateEvidenceRequestSchema,
+  ProfessionalCredentialDtoSchema,
+  PassiveSignalEvidenceDtoSchema,
+  VerificationDecisionDtoSchema,
+  CreateVerificationDecisionRequestSchema,
+  SkillVerifyInterviewDtoSchema,
   SkillVerifyPrepareDtoSchema,
   SkillVerifySessionDtoSchema,
   SsoStartResponseSchema,
@@ -791,6 +805,81 @@ export function catalogApi(client: SmartApiClient) {
         schema: SkillLibraryResponseSchema,
         anonymous: true,
       }),
+
+    careerDomains: () =>
+      client.get(prefixed('/catalog/career-domains'), {
+        schema: z.array(CareerDomainDtoSchema),
+        anonymous: true,
+      }),
+
+    targetRoles: (domainId?: string) =>
+      client.get(prefixed('/catalog/target-roles'), {
+        schema: z.array(TargetRoleDtoSchema),
+        anonymous: true,
+        query: domainId ? { domainId } : undefined,
+      }),
+
+    recommendedSkills: (roleId: string) =>
+      client.get(prefixed(`/catalog/target-roles/${roleId}/recommended-skills`), {
+        schema: RecommendedSkillsResponseSchema,
+        anonymous: true,
+      }),
+
+    skillBlueprint: (skillCode: string) =>
+      client.get(prefixed(`/catalog/skills/${skillCode}/blueprint`), {
+        schema: SkillBlueprintDtoSchema,
+        anonymous: true,
+      }),
+  };
+}
+
+export function evidenceApi(client: SmartApiClient) {
+  return {
+    list: (query?: { skillCode?: string; claimId?: string; evidenceType?: string }) =>
+      client.get(prefixed('/users/me/evidence'), {
+        schema: z.array(EvidenceRecordDtoSchema),
+        query,
+      }),
+
+    get: (evidenceId: string) =>
+      client.get(prefixed(`/users/me/evidence/${evidenceId}`), {
+        schema: EvidenceRecordDtoSchema,
+      }),
+
+    create: (body: z.infer<typeof CreateEvidenceRequestSchema>) =>
+      client.post(prefixed('/users/me/evidence'), body, {
+        schema: EvidenceRecordDtoSchema,
+      }),
+
+    getProfile: () =>
+      client.get(prefixed('/users/me/evidence-profile'), {
+        schema: CandidateEvidenceProfileDtoSchema,
+      }),
+
+    saveOnboardingSelection: (body: z.infer<typeof SaveOnboardingSelectionRequestSchema>) =>
+      client.patch(prefixed('/users/me/evidence-profile/onboarding-selection'), body, {
+        schema: CandidateEvidenceProfileDtoSchema,
+      }),
+
+    listCredentials: () =>
+      client.get(prefixed('/users/me/credentials'), {
+        schema: z.array(ProfessionalCredentialDtoSchema),
+      }),
+
+    createCredential: (body: unknown) =>
+      client.post(prefixed('/users/me/credentials'), body, {
+        schema: ProfessionalCredentialDtoSchema,
+      }),
+
+    listPassiveSignals: () =>
+      client.get(prefixed('/users/me/passive-signals'), {
+        schema: z.array(PassiveSignalEvidenceDtoSchema),
+      }),
+
+    createVerificationDecision: (body: z.infer<typeof CreateVerificationDecisionRequestSchema>) =>
+      client.post(prefixed('/users/me/verification-decisions'), body, {
+        schema: VerificationDecisionDtoSchema,
+      }),
   };
 }
 
@@ -837,6 +926,29 @@ export function assessmentApi(client: SmartApiClient) {
       client.post(prefixed(`/assessment/skill-verify/${sessionId}/complete`), body, {
         schema: CompleteSkillVerifyResponseSchema,
       }),
+
+    startSkillVerifyInterview: (sessionId: string) =>
+      client.post(
+        prefixed(`/assessment/skill-verify/${sessionId}/interview/start`),
+        {},
+        {
+          schema: SkillVerifyInterviewDtoSchema,
+        },
+      ),
+
+    completeSkillVerifyInterview: (sessionId: string, body: CompleteSkillVerifyInterviewRequest) =>
+      client.post(prefixed(`/assessment/skill-verify/${sessionId}/interview/complete`), body, {
+        schema: CompleteSkillVerifyResponseSchema,
+      }),
+
+    finalizeSkillVerify: (sessionId: string) =>
+      client.post(
+        prefixed(`/assessment/skill-verify/${sessionId}/finalize-verification`),
+        {},
+        {
+          schema: CompleteSkillVerifyResponseSchema,
+        },
+      ),
 
     prepareCertVerify: (certificateId: string) =>
       client.post(
@@ -1150,6 +1262,7 @@ export function createSmartApi(client: SmartApiClient) {
     auth: authApi(client),
     users: usersApi(client),
     catalog: catalogApi(client),
+    evidence: evidenceApi(client),
     assessment: assessmentApi(client),
     evaluation: evaluationApi(client),
     proctoring: proctoringApi(client),

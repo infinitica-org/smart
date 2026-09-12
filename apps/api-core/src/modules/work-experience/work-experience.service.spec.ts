@@ -13,6 +13,7 @@ describe('WorkExperienceService', () => {
   let auditPublisher: any;
   let aiGateway: any;
   let publicProfileService: any;
+  let evidenceSync: any;
   let service: WorkExperienceService;
 
   const mockStudentId = randomUUID();
@@ -42,7 +43,7 @@ describe('WorkExperienceService', () => {
       isCurrent: true,
       domain: 'Software Engineering',
       responsibilities: 'Built and maintained backend services.',
-      skillsClaimed: ['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS'],
+      skillsClaimed: ['GITOPS_CONTINUOUS_DELIVERY', 'SQL_QUERY_OPTIMIZATION'],
       documents: [OFFER_DOC],
       ...overrides,
     };
@@ -58,7 +59,7 @@ describe('WorkExperienceService', () => {
       isCurrent: false,
       domain: 'Software Engineering',
       responsibilities: 'Built and maintained backend services.',
-      skills: ['GIT_VERSION_CONTROL'],
+      skills: ['SQL_QUERY_OPTIMIZATION'],
       companyWebsite: 'https://acme.com',
       companyLinkedinUrl: 'https://linkedin.com/company/acme',
       companyId: null,
@@ -97,6 +98,16 @@ describe('WorkExperienceService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      workExperienceResponsibility: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        create: vi.fn().mockImplementation(async ({ data }: any) => ({
+          id: randomUUID(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...data,
+        })),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       organization: {
         findFirst: vi.fn(),
         findUnique: vi.fn(),
@@ -128,6 +139,10 @@ describe('WorkExperienceService', () => {
       recheckActivationAfterVoid: vi.fn().mockResolvedValue(undefined),
     };
 
+    evidenceSync = {
+      syncWorkExperienceEvidenceRecord: vi.fn().mockResolvedValue(undefined),
+    };
+
     service = new WorkExperienceService(
       prisma,
       auditPublisher,
@@ -135,6 +150,7 @@ describe('WorkExperienceService', () => {
       emailQueue,
       undefined,
       publicProfileService,
+      evidenceSync,
     );
   });
 
@@ -195,7 +211,7 @@ describe('WorkExperienceService', () => {
 
       expect(result.companyName).toBe('Acme Corp');
       expect(result.status).toBe('SUBMITTED');
-      expect(result.skillsClaimed).toEqual(['GIT_VERSION_CONTROL', 'DATABASE_FUNDAMENTALS']);
+      expect(result.skillsClaimed).toEqual(payload.skillsClaimed);
       expect(result.skillsClaimedSnapshot).toBeNull();
       expect(auditPublisher.record).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -226,11 +242,16 @@ describe('WorkExperienceService', () => {
         studentId: mockStudentId,
         companyName: 'Beta Corp',
         role: 'Developer',
+        employmentType: 'FULL_TIME',
+        department: null,
+        domain: payload.domain,
+        workLocation: null,
+        responsibilities: payload.responsibilities,
         startDate: new Date('2021-01-01'),
         endDate: new Date('2022-01-01'),
         isCurrent: false,
         status: 'SUBMITTED',
-        skills: [],
+        skills: payload.skillsClaimed,
         createdAt: new Date(),
         updatedAt: new Date(),
         documents: payload.documents.map((doc) => ({
@@ -239,6 +260,7 @@ describe('WorkExperienceService', () => {
           experienceId,
           createdAt: new Date(),
         })),
+        structuredResponsibilities: [],
       });
 
       const result = await service.create(mockStudentId, payload);
@@ -298,6 +320,185 @@ describe('WorkExperienceService', () => {
     });
   });
 
+  describe('evidence metadata integration', () => {
+    it('persists structured metadata on create and syncs evidence record', async () => {
+      const payload = buildValidCreatePayload({
+        deliverables: ['Auth microservice v2'],
+        personalContributions: [
+          {
+            whatWasDone: 'Designed OAuth2 flow',
+            personalContribution: 'Owned auth module rollout',
+            responsibilityLevel: 'OWNED',
+          },
+        ],
+        structuredResponsibilities: [
+          {
+            task: 'Owned auth service',
+            personalContribution: 'Designed OAuth2 flow',
+            responsibilityLevel: 'OWNED',
+            skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          },
+        ],
+      });
+      const experienceId = randomUUID();
+      const mockCreated = {
+        id: experienceId,
+        studentId: mockStudentId,
+        companyId: null,
+        companyName: payload.companyName,
+        companyWebsite: null,
+        companyLinkedinUrl: null,
+        role: payload.role,
+        employmentType: payload.employmentType,
+        department: null,
+        domain: payload.domain,
+        workLocation: null,
+        startDate: new Date(payload.startDate),
+        endDate: null,
+        isCurrent: true,
+        responsibilities: payload.responsibilities,
+        skills: payload.skillsClaimed,
+        projects: null,
+        candidateLinkedin: null,
+        verifierName: null,
+        verifierEmail: null,
+        verifierDesignation: null,
+        verifierPhone: null,
+        status: 'SUBMITTED',
+        rejectionReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliverablesStructured: payload.deliverables,
+        personalContributions: payload.personalContributions,
+        documents: payload.documents.map((doc) => ({
+          ...doc,
+          id: randomUUID(),
+          experienceId,
+          createdAt: new Date(),
+        })),
+        structuredResponsibilities: [],
+      };
+
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({
+        id: 'org-evidence',
+        name: 'Acme Corp',
+        domain: 'acme.com',
+        verificationStatus: 'PENDING',
+      });
+      prisma.company.findFirst.mockResolvedValue(null);
+      prisma.workExperience.create.mockResolvedValueOnce(mockCreated);
+
+      const result = await service.create(mockStudentId, payload);
+
+      const createArgs = prisma.workExperience.create.mock.calls[0][0];
+      expect(createArgs.data.deliverablesStructured).toEqual(payload.deliverables);
+      expect(createArgs.data.personalContributions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            whatWasDone: 'Designed OAuth2 flow',
+            personalContribution: 'Owned auth module rollout',
+            responsibilityLevel: 'OWNED',
+          }),
+        ]),
+      );
+      expect(prisma.workExperienceResponsibility.create).toHaveBeenCalled();
+      expect(evidenceSync.syncWorkExperienceEvidenceRecord).toHaveBeenCalledTimes(1);
+      const [, syncedExperienceId, syncOverrides] =
+        evidenceSync.syncWorkExperienceEvidenceRecord.mock.calls[0];
+      expect(syncedExperienceId).toBe(experienceId);
+      expect(syncOverrides.deliverables).toEqual(payload.deliverables);
+      expect(syncOverrides.structuredResponsibilities?.[0]?.task).toBe('Owned auth service');
+      expect(result.evidence?.employer).toBe('Acme Corp');
+    });
+
+    it('replaceStructuredResponsibilities replaces rows and re-syncs evidence', async () => {
+      const experienceId = randomUUID();
+      const existing = {
+        id: experienceId,
+        studentId: mockStudentId,
+        companyName: 'Acme Corp',
+        companyWebsite: null,
+        companyLinkedinUrl: null,
+        role: 'Developer',
+        employmentType: 'FULL_TIME',
+        department: null,
+        domain: 'Software Engineering',
+        workLocation: null,
+        startDate: new Date('2022-01-01'),
+        endDate: null,
+        isCurrent: true,
+        responsibilities: 'Built APIs.',
+        skills: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+        projects: null,
+        candidateLinkedin: null,
+        verifierName: null,
+        verifierEmail: null,
+        verifierDesignation: null,
+        verifierPhone: null,
+        status: 'SUBMITTED',
+        rejectionReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [
+          {
+            ...OFFER_DOC,
+            id: randomUUID(),
+            experienceId,
+            createdAt: new Date(),
+          },
+        ],
+        structuredResponsibilities: [],
+      };
+      const replacement = [
+        {
+          task: 'Owned auth service',
+          personalContribution: 'Designed OAuth2 flow',
+          responsibilityLevel: 'OWNED',
+          skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        },
+      ];
+
+      prisma.workExperience.findUnique.mockResolvedValue(existing);
+      prisma.workExperienceResponsibility.findMany.mockResolvedValueOnce([
+        {
+          id: randomUUID(),
+          experienceId,
+          task: replacement[0].task,
+          skillCode: replacement[0].skillCode,
+          personalContribution: replacement[0].personalContribution,
+          responsibilityLevel: replacement[0].responsibilityLevel,
+          independence: null,
+          tools: [],
+          decision: null,
+          constraintText: null,
+          outcome: null,
+          artifactId: null,
+          activity: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const result = await service.replaceStructuredResponsibilities(
+        mockStudentId,
+        experienceId,
+        replacement,
+      );
+
+      expect(prisma.workExperienceResponsibility.deleteMany).toHaveBeenCalledWith({
+        where: { experienceId },
+      });
+      expect(evidenceSync.syncWorkExperienceEvidenceRecord).toHaveBeenCalledTimes(1);
+      const [, syncedExperienceId, syncOverrides] =
+        evidenceSync.syncWorkExperienceEvidenceRecord.mock.calls[0];
+      expect(syncedExperienceId).toBe(experienceId);
+      expect(syncOverrides.structuredResponsibilities?.[0]?.task).toBe('Owned auth service');
+      expect(result).toHaveLength(1);
+      expect(result[0].task).toBe('Owned auth service');
+    });
+  });
+
   describe('update', () => {
     const expId = randomUUID();
 
@@ -317,7 +518,7 @@ describe('WorkExperienceService', () => {
         endDate: null,
         isCurrent: true,
         responsibilities: 'Built and maintained backend services.',
-        skills: ['GIT_VERSION_CONTROL'],
+        skills: ['SQL_QUERY_OPTIMIZATION'],
         projects: null,
         candidateLinkedin: null,
         verifierName: null,
@@ -332,7 +533,9 @@ describe('WorkExperienceService', () => {
       });
 
       await expect(
-        service.update(mockStudentId, expId, { skillsClaimed: ['DATABASE_FUNDAMENTALS'] }),
+        service.update(mockStudentId, expId, {
+          skillsClaimed: ['RELATIONAL_DATABASE_DESIGN_ADMINISTRATION'],
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
@@ -549,7 +752,7 @@ describe('WorkExperienceService', () => {
           endDate: new Date('2022-01-01'),
           isCurrent: false,
           responsibilities: null,
-          skills: ['GIT_VERSION_CONTROL'],
+          skills: ['SQL_QUERY_OPTIMIZATION'],
           projects: null,
           candidateLinkedin: null,
           verifierName: null,
@@ -566,8 +769,8 @@ describe('WorkExperienceService', () => {
 
       const result = await service.listForStudent(mockStudentId);
       expect(result[0]?.skillsClaimedSnapshot).toEqual({
-        taxonomyVersion: '0.9',
-        skillCodes: ['GIT_VERSION_CONTROL'],
+        taxonomyVersion: 'skill@1',
+        skillCodes: ['SQL_QUERY_OPTIMIZATION'],
       });
     });
   });
@@ -1795,6 +1998,7 @@ describe('WorkExperienceService', () => {
         companyName: 'Acme',
         role: 'Engineer',
         employmentType: 'FULL_TIME',
+        skills: [],
         startDate: new Date(),
         endDate: null,
         isCurrent: true,
@@ -1974,7 +2178,7 @@ describe('WorkExperienceService', () => {
         expect(res.candidateName).toBe('John Doe');
         expect(res.companyName).toBe('Acme Corp');
         expect(res.role).toBe('Senior Software Engineer');
-        expect(res.skillsClaimed).toContain('GIT_VERSION_CONTROL');
+        expect(res.skillsClaimed).toContain('SQL_QUERY_OPTIMIZATION');
         expect(res.isExpired).toBe(false);
         expect(res.isAlreadyResponded).toBe(false);
       });
@@ -2007,7 +2211,7 @@ describe('WorkExperienceService', () => {
 
         const res = await service.submitManagerEndorsement('valid-token', {
           confirmed: true,
-          skillRatings: [{ skillCode: 'GIT_VERSION_CONTROL', rating: 5 }],
+          skillRatings: [{ skillCode: 'SQL_QUERY_OPTIMIZATION', rating: 5 }],
           comments: 'Great engineer!',
         });
 

@@ -109,8 +109,14 @@ export function BackButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
 }
 
 export const WIZARD_STEP_META = [
-  { id: 'domain', label: 'Interest' },
+  { id: 'resume', label: 'Resume' },
   { id: 'profile', label: 'Profile' },
+  { id: 'stream', label: 'Stream' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'languages', label: 'Languages' },
+  { id: 'social', label: 'Social' },
+  { id: 'preferences', label: 'Preferences' },
+  { id: 'username', label: 'Handle' },
 ] as const;
 
 export type WizardStepId = (typeof WIZARD_STEP_META)[number]['id'];

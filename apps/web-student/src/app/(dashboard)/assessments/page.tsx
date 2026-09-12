@@ -23,7 +23,11 @@ import {
   type SkillProficiency,
 } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { skillNameForCode } from '@/lib/skill-declarations';
+import {
+  PROFICIENCY_LABELS,
+  PROFICIENCY_OPTIONS,
+  skillNameForCode,
+} from '@/lib/skill-declarations';
 import { cn } from '@smart/ui';
 
 /** Visual identity per skill stream — icon + accent colour, driving the
@@ -373,21 +377,11 @@ export default function SkillsPage() {
       const def = SKILL_DEFINITIONS.find((s) => s.code === claim.skillCode);
       const name = def?.name ?? skillNameForCode(claim.skillCode);
       const verified = claim.status === 'VERIFIED';
-      const streamLabel =
-        def?.stream === 'UNIVERSAL'
-          ? 'Universal Core'
-          : def?.stream === 'SOFTWARE_DEVELOPMENT'
-            ? 'Software Development'
-            : def?.stream === 'DATA_SCIENCE_ANALYTICS'
-              ? 'Data Science'
-              : def?.stream === 'AI_ML_ENGINEERING'
-                ? 'AI / ML'
-                : 'Technical Skill';
+      const streamLabel = def?.categoryName ?? 'Technical Skill';
 
-      let proficiencyLabel = 'Intermediate';
+      let proficiencyLabel = PROFICIENCY_LABELS.INTERMEDIATE ?? 'Intermediate';
       if (claim.proficiency) {
-        proficiencyLabel =
-          claim.proficiency.charAt(0).toUpperCase() + claim.proficiency.slice(1).toLowerCase();
+        proficiencyLabel = PROFICIENCY_LABELS[claim.proficiency] ?? claim.proficiency;
       }
 
       return {
@@ -714,10 +708,11 @@ export default function SkillsPage() {
                   onChange={(e) => setNewSkillProficiency(e.target.value as SkillProficiency)}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-sm text-white focus:border-[#00fad0]/50 focus:outline-none"
                 >
-                  <option value="BEGINNER">Beginner</option>
-                  <option value="INTERMEDIATE">Intermediate</option>
-                  <option value="ADVANCED">Advanced</option>
-                  <option value="PROFESSIONAL">Professional</option>
+                  {PROFICIENCY_OPTIONS.map((level) => (
+                    <option key={level} value={level}>
+                      {PROFICIENCY_LABELS[level]}
+                    </option>
+                  ))}
                 </select>
               </div>
 

@@ -11,96 +11,68 @@ import {
 } from '../domain/enums.js';
 import { LevelNumberSchema } from '../domain/enums.js';
 import {
-  INF_SE_V1_TAXONOMY_VERSION,
-  SE_SKILL_CATEGORIES,
-  SE_SKILL_CATEGORY_IDS,
-  SE_SKILL_CODE_SET,
-  SKILL_TAG_TYPES,
-  TOOL_PROFICIENCY_TIERS,
-  groupSeSkillsByCategory,
-} from '../domain/se-skills.js';
-import {
+  DEFAULT_COMPETENCY_BARS,
+  SKILL_CATEGORY_IDS,
   SKILL_CODE_SET,
-  SKILL_STREAMS,
   SKILL_TAXONOMY_DOMAINS,
   SKILL_TAXONOMY_VERSION,
+  groupSkillsByCategory,
 } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './common.js';
 
-/** INF-05 skill code only — never free-text names (SK-T01 / JD pickers). */
+/** skill@1 code only — never free-text names (SK-T01 / JD pickers). */
 export const TaxonomySkillCodeSchema = z
   .string()
   .min(2)
   .max(64)
   .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
 
+export const SkillCategoryIdSchema = z.enum(SKILL_CATEGORY_IDS);
+
 export const SkillLibraryItemDtoSchema = z.object({
   code: TaxonomySkillCodeSchema,
   name: z.string().min(1),
-  domain: z.enum(SKILL_TAXONOMY_DOMAINS),
-  stream: z.enum(SKILL_STREAMS),
-});
-export type SkillLibraryItemDto = z.infer<typeof SkillLibraryItemDtoSchema>;
-
-export const SkillLibraryResponseSchema = z.object({
-  taxonomyVersion: z.string().min(1).max(32),
-  skills: z.array(SkillLibraryItemDtoSchema),
-});
-export type SkillLibraryResponse = z.infer<typeof SkillLibraryResponseSchema>;
-
-/** inf-se-v1 skill code only — parallel SE verification framework (S6-RM-13). */
-export const SeTaxonomySkillCodeSchema = z
-  .string()
-  .min(2)
-  .max(64)
-  .refine((code) => SE_SKILL_CODE_SET.has(code), { message: 'Unknown inf-se-v1 skill code' });
-
-export const SeSkillLibraryItemDtoSchema = z.object({
-  code: SeTaxonomySkillCodeSchema,
-  name: z.string().min(1),
-  categoryId: z.enum(SE_SKILL_CATEGORY_IDS),
+  categoryId: SkillCategoryIdSchema,
   categoryName: z.string().min(1),
-  tagType: z.enum(SKILL_TAG_TYPES),
+  domain: z.enum(SKILL_TAXONOMY_DOMAINS),
   competencyBars: z.object({
     BEGINNER: z.string().min(1),
     INTERMEDIATE: z.string().min(1),
     ADVANCED: z.string().min(1),
     PROFESSIONAL: z.string().min(1),
   }),
-  toolBars: z.record(z.enum(TOOL_PROFICIENCY_TIERS), z.string().min(1)).optional(),
   corroborationEligible: z.boolean(),
   assessmentRequiredForClaim: z.boolean(),
 });
-export type SeSkillLibraryItemDto = z.infer<typeof SeSkillLibraryItemDtoSchema>;
+export type SkillLibraryItemDto = z.infer<typeof SkillLibraryItemDtoSchema>;
 
-export const SeSkillCategoryGroupDtoSchema = z.object({
-  id: z.enum(SE_SKILL_CATEGORY_IDS),
+export const SkillCategoryGroupDtoSchema = z.object({
+  id: SkillCategoryIdSchema,
   name: z.string().min(1),
-  skills: z.array(SeSkillLibraryItemDtoSchema),
+  skills: z.array(SkillLibraryItemDtoSchema),
 });
-export type SeSkillCategoryGroupDto = z.infer<typeof SeSkillCategoryGroupDtoSchema>;
+export type SkillCategoryGroupDto = z.infer<typeof SkillCategoryGroupDtoSchema>;
 
-export const SeSkillLibraryResponseSchema = z.object({
-  taxonomyVersion: z.literal(INF_SE_V1_TAXONOMY_VERSION),
-  categories: z.array(SeSkillCategoryGroupDtoSchema).length(SE_SKILL_CATEGORY_IDS.length),
+export const SkillLibraryResponseSchema = z.object({
+  taxonomyVersion: z.literal(SKILL_TAXONOMY_VERSION),
+  categories: z.array(SkillCategoryGroupDtoSchema).length(SKILL_CATEGORY_IDS.length),
 });
-export type SeSkillLibraryResponse = z.infer<typeof SeSkillLibraryResponseSchema>;
+export type SkillLibraryResponse = z.infer<typeof SkillLibraryResponseSchema>;
 
-/** Canonical inf-se-v1 library — single source for catalog API and JSON drift checks. */
-export function buildSeSkillLibraryResponse(): SeSkillLibraryResponse {
-  return SeSkillLibraryResponseSchema.parse({
-    taxonomyVersion: INF_SE_V1_TAXONOMY_VERSION,
-    categories: groupSeSkillsByCategory().map((category) => ({
+/** Canonical skill@1 library — single source for catalog API and JSON drift checks. */
+export function buildSkillLibraryResponse(): SkillLibraryResponse {
+  return SkillLibraryResponseSchema.parse({
+    taxonomyVersion: SKILL_TAXONOMY_VERSION,
+    categories: groupSkillsByCategory().map((category) => ({
       id: category.id,
       name: category.name,
       skills: category.skills.map((skill) => ({
         code: skill.code,
         name: skill.name,
         categoryId: skill.categoryId,
-        categoryName: SE_SKILL_CATEGORIES[skill.categoryId].name,
-        tagType: skill.tagType,
-        competencyBars: { ...skill.competencyBars },
-        toolBars: skill.toolBars ? { ...skill.toolBars } : undefined,
+        categoryName: skill.categoryName,
+        domain: skill.domain,
+        competencyBars: { ...DEFAULT_COMPETENCY_BARS },
         corroborationEligible: skill.corroborationEligible,
         assessmentRequiredForClaim: skill.assessmentRequiredForClaim,
       })),
@@ -109,11 +81,11 @@ export function buildSeSkillLibraryResponse(): SeSkillLibraryResponse {
 }
 
 /** Throws when committed JSON diverges from contracts (tamper / drift guard). */
-export function assertInfSeV1MatchesCanonical(candidate: unknown): void {
-  const parsed = SeSkillLibraryResponseSchema.parse(candidate);
-  const canonical = buildSeSkillLibraryResponse();
+export function assertSkillTaxonomyMatchesCanonical(candidate: unknown): void {
+  const parsed = SkillLibraryResponseSchema.parse(candidate);
+  const canonical = buildSkillLibraryResponse();
   if (JSON.stringify(canonical) !== JSON.stringify(parsed)) {
-    throw new Error('inf-se-v1.json drifts from contracts SE_SKILL_DEFINITIONS');
+    throw new Error('skill.json drifts from contracts SKILL_DEFINITIONS');
   }
 }
 
@@ -166,6 +138,7 @@ export const SkillPassThresholdsDtoSchema = z.object({
   BEGINNER: ProficiencyPassBarsDtoSchema,
   INTERMEDIATE: ProficiencyPassBarsDtoSchema,
   ADVANCED: ProficiencyPassBarsDtoSchema,
+  PROFESSIONAL: ProficiencyPassBarsDtoSchema,
 });
 export type SkillPassThresholdsDto = z.infer<typeof SkillPassThresholdsDtoSchema>;
 

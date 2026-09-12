@@ -12,7 +12,7 @@ function session(overrides: Partial<SkillVerifySessionDto> = {}): SkillVerifySes
   return {
     sessionId: '55555555-5555-4555-8555-555555555555',
     claimId: '44444444-4444-4444-8444-444444444444',
-    skillCode: 'GIT_VERSION_CONTROL',
+    skillCode: 'SQL_QUERY_OPTIMIZATION',
     proficiency: 'BEGINNER',
     timeMinutes: 30,
     passMarkPercent: 70,
@@ -57,7 +57,7 @@ describe('SkillVerifyExam layout', () => {
     expect(screen.getByText('First stem')).toBeDefined();
     expect(screen.queryByText('Second stem')).toBeNull();
     expect(
-      screen.getByRole('heading', { name: /git & version control · beginner/i }),
+      screen.getByRole('heading', { name: /sql & query optimization · beginner/i }),
     ).toBeDefined();
     expect(screen.getByText('Single Choice')).toBeDefined();
     expect(screen.queryByText(/Pass bar/)).toBeNull();

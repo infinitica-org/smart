@@ -11,7 +11,7 @@ import {
   SKILL_CODES,
 } from '../index.js';
 
-const taxonomySkill = SKILL_CODES[0] ?? 'PROGRAMMING_FUNDAMENTALS_LOGIC';
+const taxonomySkill = SKILL_CODES[0] ?? 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION';
 
 function validCreate(overrides: Record<string, unknown> = {}) {
   return {

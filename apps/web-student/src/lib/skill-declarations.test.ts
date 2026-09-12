@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   claimToBadgeStatus,
   canStartSdeV4Verify,
+  categoryNameForCode,
   formatCooldown,
   formatSkillVerifyKioskTitle,
-  mandatorySkillsForStream,
   progressForClaim,
-  skillsForStream,
+  skillsForCategory,
   skillVerifyBlockMessage,
+  viewForFocus,
 } from './skill-declarations';
 import type { SkillClaimDto } from '@smart/contracts';
 
@@ -15,7 +16,7 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
   return {
     claimId: '44444444-4444-4444-8444-444444444444',
     studentId: '11111111-1111-4111-8111-111111111111',
-    skillCode: 'GIT_VERSION_CONTROL',
+    skillCode: 'SQL_QUERY_OPTIMIZATION',
     proficiency: 'BEGINNER',
     status: 'DECLARED',
     strikes: 0,
@@ -26,116 +27,57 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
 }
 
 describe('skill-declarations helpers', () => {
-  it('formats the kiosk title as skill name and proficiency', () => {
-    expect(formatSkillVerifyKioskTitle('GIT_VERSION_CONTROL', 'INTERMEDIATE')).toBe(
-      'Git & version control · Intermediate',
+  it('formats professional kiosk titles', () => {
+    expect(formatSkillVerifyKioskTitle('SQL_QUERY_OPTIMIZATION', 'PROFESSIONAL')).toContain(
+      'Professional',
     );
   });
 
-  it('filters SOFTWARE_IT skills by stream', () => {
-    const universal = skillsForStream('UNIVERSAL');
-    expect(universal.length).toBeGreaterThan(0);
-    expect(universal.every((s) => s.stream === 'UNIVERSAL')).toBe(true);
+  it('allows editing proficiency before first verification', () => {
+    const view = viewForFocus(claim(), 'SQL_QUERY_OPTIMIZATION', 'Query tuning');
+    expect(view.canEditProficiency).toBe(true);
+    expect(view.canEditProficiency).toBe(view.canStart);
   });
 
-  it('makes Universal Core plus role-stream skills mandatory', () => {
-    const pack = mandatorySkillsForStream('SOFTWARE_DEVELOPMENT');
-    expect(pack.some((skill) => skill.code === 'GIT_VERSION_CONTROL')).toBe(true);
-    expect(pack.some((skill) => skill.code === 'TESTING_DEBUGGING')).toBe(true);
-    expect(
-      pack.every(
-        (skill) => skill.stream === 'UNIVERSAL' || skill.stream === 'SOFTWARE_DEVELOPMENT',
-      ),
-    ).toBe(true);
+  it('blocks proficiency edits once verified', () => {
+    const view = viewForFocus(
+      claim({ status: 'VERIFIED', proficiency: 'PROFESSIONAL' }),
+      'SQL_QUERY_OPTIMIZATION',
+      undefined,
+    );
+    expect(view.canEditProficiency).toBe(false);
   });
 
-  it('allows SDE v4 start only for mapped DECLARED or BEGINNER_REATTEMPT claims off cooldown', () => {
+  it('filters skills by category', () => {
+    const programming = skillsForCategory('PROGRAMMING_LANGUAGES');
+    expect(programming.length).toBeGreaterThan(0);
+    expect(programming.every((s) => s.categoryId === 'PROGRAMMING_LANGUAGES')).toBe(true);
+  });
+
+  it('resolves category name from skill code', () => {
+    expect(categoryNameForCode('PYTHON_APPLICATION_BACKEND_DEVELOPMENT')).toBe(
+      'Programming Languages',
+    );
+  });
+
+  it('allows SDE v4 start for mapped DECLARED claims off cooldown', () => {
     expect(canStartSdeV4Verify(claim())).toBe(true);
     expect(canStartSdeV4Verify(claim({ retryAvailableAt: '2099-01-01T00:00:00.000Z' }))).toBe(
       false,
     );
-    expect(
-      canStartSdeV4Verify(
-        claim({
-          skillFocus: 'Branching',
-          focusProgress: [
-            {
-              focus: 'Branching',
-              status: 'DECLARED',
-              strikes: 0,
-              lockedUntil: null,
-              lastAttemptId: '33333333-3333-4333-8333-333333333333',
-              lastGenuineFailureAt: '2026-09-05T00:00:00.000Z',
-              retryAvailableAt: '2099-01-01T00:00:00.000Z',
-            },
-          ],
-        }),
-        Date.now(),
-        'Branching',
-      ),
-    ).toBe(false);
     expect(canStartSdeV4Verify(claim({ status: 'VERIFIED' }))).toBe(false);
-    expect(canStartSdeV4Verify(claim({ skillCode: 'LANGUAGE_PROFICIENCY' }))).toBe(true);
     expect(
-      canStartSdeV4Verify(
-        claim({
-          status: 'BEGINNER_REATTEMPT',
-          retryAvailableAt: '2099-01-01T00:00:00.000Z',
-        }),
-      ),
-    ).toBe(false);
-    expect(
-      canStartSdeV4Verify(
-        claim({
-          skillCode: 'COMPUTER_NETWORKS_BASICS',
-          status: 'DECLARED',
-          skillFocus: 'TCP/UDP',
-          focusProgress: [
-            {
-              focus: 'HTTP & REST',
-              status: 'BEGINNER_REATTEMPT',
-              strikes: 1,
-              lockedUntil: null,
-              lastAttemptId: null,
-              lastGenuineFailureAt: '2026-09-05T00:00:00.000Z',
-              retryAvailableAt: '2099-01-01T00:00:00.000Z',
-            },
-          ],
-        }),
-        Date.now(),
-        'TCP/UDP',
-      ),
+      canStartSdeV4Verify(claim({ skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' })),
     ).toBe(true);
-    expect(
-      canStartSdeV4Verify(
-        claim({
-          skillCode: 'COMPUTER_NETWORKS_BASICS',
-          status: 'DECLARED',
-          skillFocus: 'HTTP & REST',
-          focusProgress: [
-            {
-              focus: 'HTTP & REST',
-              status: 'BEGINNER_REATTEMPT',
-              strikes: 1,
-              lockedUntil: null,
-              lastAttemptId: null,
-              retryAvailableAt: '2099-01-01T00:00:00.000Z',
-            },
-          ],
-        }),
-        Date.now(),
-        'HTTP & REST',
-      ),
-    ).toBe(false);
   });
 
   it('coerces optional focus-progress timestamps to null', () => {
     const rows = progressForClaim(
       claim({
-        skillCode: 'COMPUTER_NETWORKS_BASICS',
+        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
         focusProgress: [
           {
-            focus: 'HTTP & REST',
+            focus: 'APIs',
             status: 'DECLARED',
             strikes: 0,
             lockedUntil: null,
@@ -158,15 +100,6 @@ describe('skill-declarations helpers', () => {
         }),
       ),
     ).toMatch(/already sat/i);
-    expect(
-      skillVerifyBlockMessage(
-        claim({
-          status: 'LOCKED',
-          lockedUntil: '2099-09-07T09:30:00.000Z',
-          retryAvailableAt: '2099-09-07T09:30:00.000Z',
-        }),
-      ),
-    ).toMatch(/locked until/i);
   });
 
   it('maps claim statuses onto VerificationBadge language', () => {
@@ -176,9 +109,7 @@ describe('skill-declarations helpers', () => {
         claim({ status: 'DECLARED', lastAttemptId: '55555555-5555-4555-8555-555555555555' }),
       ),
     ).toBe('NOT_VERIFIED');
-    expect(claimToBadgeStatus(claim({ status: 'BEGINNER_REATTEMPT' }))).toBe('NOT_VERIFIED');
     expect(claimToBadgeStatus(claim({ status: 'VERIFIED' }))).toBe('VERIFIED');
-    expect(claimToBadgeStatus(claim({ status: 'LOCKED' }))).toBe('LOCKED');
   });
 
   it('formats lockedUntil for cooldown display', () => {

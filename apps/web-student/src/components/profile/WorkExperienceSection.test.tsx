@@ -39,7 +39,7 @@ const mockOngoingExp = {
   endDate: null,
   isCurrent: true,
   responsibilities: 'Building awesome apps',
-  skillsClaimed: ['GIT_VERSION_CONTROL'],
+  skillsClaimed: ['SQL_QUERY_OPTIMIZATION'],
   verifierName: 'Jane Manager',
   verifierEmail: 'jane@acme.com',
   status: 'SUBMITTED',

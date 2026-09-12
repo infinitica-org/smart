@@ -28,11 +28,11 @@ const openingRow = {
   requiredSkills: [
     {
       minProficiency: 'INTERMEDIATE',
-      skill: { code: 'PROGRAMMING_FUNDAMENTALS_LOGIC', domain: 'SOFTWARE_IT' },
+      skill: { code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', domain: 'SOFTWARE_IT' },
     },
     {
       minProficiency: 'BEGINNER',
-      skill: { code: 'DATABASE_FUNDAMENTALS', domain: 'SOFTWARE_IT' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION', domain: 'SOFTWARE_IT' },
     },
   ],
 };
@@ -46,11 +46,11 @@ function verifiedStudent(overrides: Record<string, unknown> = {}) {
     skillClaims: [
       {
         proficiency: 'INTERMEDIATE',
-        skill: { code: 'PROGRAMMING_FUNDAMENTALS_LOGIC', domain: 'SOFTWARE_IT' },
+        skill: { code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', domain: 'SOFTWARE_IT' },
       },
       {
         proficiency: 'BEGINNER',
-        skill: { code: 'DATABASE_FUNDAMENTALS', domain: 'SOFTWARE_IT' },
+        skill: { code: 'SQL_QUERY_OPTIMIZATION', domain: 'SOFTWARE_IT' },
       },
     ],
     ...overrides,
@@ -176,7 +176,10 @@ describe('SE-T05 POST /placement/match', () => {
           skillClaims: [
             {
               proficiency: 'INTERMEDIATE',
-              skill: { code: 'PROGRAMMING_FUNDAMENTALS_LOGIC', domain: 'SOFTWARE_IT' },
+              skill: {
+                code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+                domain: 'SOFTWARE_IT',
+              },
             },
           ],
         }),
@@ -187,7 +190,7 @@ describe('SE-T05 POST /placement/match', () => {
 
     expect(dto.candidates).toHaveLength(1);
     expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
-    expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('DATABASE_FUNDAMENTALS');
+    expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('SQL_QUERY_OPTIMIZATION');
   });
 
   it('rejects an invalid jdId before touching the database', async () => {

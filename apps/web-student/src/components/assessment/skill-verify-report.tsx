@@ -1,13 +1,15 @@
 'use client';
 
-import type { GradeSdeSkillFormResponse } from '@smart/contracts';
+import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
 import { Badge, Button } from '@smart/ui';
 
 export function SkillVerifyReport({
   grade,
+  assessmentResult,
   onDone,
 }: {
   grade: GradeSdeSkillFormResponse;
+  assessmentResult?: AssessmentResult | null;
   onDone: () => void;
 }) {
   const mcqWrong = grade.mcqTotal - grade.mcqCorrect;
@@ -29,6 +31,32 @@ export function SkillVerifyReport({
           {grade.passed ? 'Passed' : 'Did not pass'}
         </Badge>
       </header>
+
+      {assessmentResult ? (
+        <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
+          <h2 className="text-sm font-medium">Competency assessment</h2>
+          <p className="mt-2 text-sm">
+            Supported proficiency:{' '}
+            <strong>{assessmentResult.highestAssessmentSupportedProficiency}</strong> · Confidence:{' '}
+            {assessmentResult.confidence.toLowerCase()}
+          </p>
+          {assessmentResult.uncertainties.length > 0 ? (
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Gaps: {assessmentResult.uncertainties.join(', ')}
+            </p>
+          ) : null}
+          <ul className="mt-3 flex flex-col gap-1 text-sm">
+            {assessmentResult.competencyResults
+              .filter((row) => row.status !== 'NOT_TESTED')
+              .map((row) => (
+                <li key={row.competencyId}>
+                  {row.status.replaceAll('_', ' ').toLowerCase()} · {row.confidence.toLowerCase()}{' '}
+                  confidence
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
         <h2 className="text-sm font-medium">Multiple choice</h2>

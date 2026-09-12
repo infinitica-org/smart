@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  type SkillCategoryId,
   type SkillClaimDto,
   type SkillProficiency,
-  type SkillStream,
   skillFocusOptions,
 } from '@smart/contracts';
 import { Alert } from '@smart/ui';
@@ -13,13 +13,12 @@ import { api } from '../../lib/api';
 import { SkillVerifyRow } from '../assessment/skill-verify-row';
 import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 import {
+  CATEGORY_LABELS,
   SOFTWARE_IT_DOMAIN_LABEL,
-  STREAM_LABELS,
-  mandatorySkillsForStream,
+  skillsForCategory,
   viewForFocus,
 } from '../../lib/skill-declarations';
-
-const STREAM_OPTIONS = Object.keys(STREAM_LABELS) as SkillStream[];
+import { CATEGORY_OPTIONS } from '../../lib/skills-catalog';
 
 function emptyFoci(codes: readonly string[]): Record<string, string> {
   const next: Record<string, string> = {};
@@ -41,7 +40,7 @@ export function SkillsSection() {
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [domain, setDomain] = useState<'SOFTWARE_IT'>('SOFTWARE_IT');
-  const [stream, setStream] = useState<SkillStream>('SOFTWARE_DEVELOPMENT');
+  const [categoryId, setCategoryId] = useState<SkillCategoryId>('PROGRAMMING_LANGUAGES');
   const [proficiencies, setProficiencies] = useState<Record<string, SkillProficiency>>({});
   const [foci, setFoci] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -73,26 +72,26 @@ export function SkillsSection() {
     };
   }, []);
 
-  const mandatorySkills = useMemo(() => mandatorySkillsForStream(stream), [stream]);
+  const categorySkills = useMemo(() => skillsForCategory(categoryId), [categoryId]);
 
   useEffect(() => {
     const claimed = new Map(claims.map((row) => [row.skillCode, row]));
     setProficiencies((prev) => {
-      const next = emptyProficiencies(mandatorySkills.map((skill) => skill.code));
-      for (const skill of mandatorySkills) {
+      const next = emptyProficiencies(categorySkills.map((skill) => skill.code));
+      for (const skill of categorySkills) {
         next[skill.code] = claimed.get(skill.code)?.proficiency ?? prev[skill.code] ?? 'BEGINNER';
       }
       return next;
     });
     setFoci((prev) => {
-      const next = emptyFoci(mandatorySkills.map((skill) => skill.code));
-      for (const skill of mandatorySkills) {
+      const next = emptyFoci(categorySkills.map((skill) => skill.code));
+      for (const skill of categorySkills) {
         const options = skillFocusOptions(skill.code);
         next[skill.code] = prev[skill.code] ?? options[0] ?? '';
       }
       return next;
     });
-  }, [mandatorySkills, claims]);
+  }, [categorySkills, claims]);
 
   const claimByCode = useMemo(() => new Map(claims.map((row) => [row.skillCode, row])), [claims]);
 
@@ -145,8 +144,8 @@ export function SkillsSection() {
           Skills
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[var(--text-secondary)]">
-          Choose your domain and stream, set a proficiency and focus, then verify. Cooldown applies
-          only to the focus you sat, not every sub-skill.
+          Choose a category, set proficiency and focus, then verify. Cooldown applies only to the
+          focus you sat.
         </p>
       </div>
 
@@ -166,15 +165,15 @@ export function SkillsSection() {
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-gray-900">Stream</span>
+            <span className="font-medium text-gray-900">Category</span>
             <select
-              value={stream}
-              onChange={(e) => setStream(e.target.value as SkillStream)}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value as SkillCategoryId)}
               className={`${nativeSelectClass} py-2`}
             >
-              {STREAM_OPTIONS.map((key) => (
-                <option key={key} value={key} className={nativeOptionClass}>
-                  {STREAM_LABELS[key]}
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id} className={nativeOptionClass}>
+                  {option.name}
                 </option>
               ))}
             </select>
@@ -182,7 +181,9 @@ export function SkillsSection() {
         </div>
 
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-gray-900">Required skills</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900">
+            {CATEGORY_LABELS[categoryId]} skills
+          </h3>
           <ul className="flex flex-col gap-2">
             <li className="hidden px-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem] lg:gap-3">
               <span>Skill</span>
@@ -191,9 +192,8 @@ export function SkillsSection() {
               <span>Focus</span>
               <span>Action</span>
             </li>
-            {mandatorySkills.map((skill) => {
+            {categorySkills.map((skill) => {
               const claim = claimByCode.get(skill.code);
-              const focusOptions = skillFocusOptions(skill.code);
               const busy = pendingCode === skill.code;
               return (
                 <SkillVerifyRow
@@ -202,25 +202,25 @@ export function SkillsSection() {
                   skillName={skill.name}
                   claim={claim}
                   proficiency={proficiencies[skill.code] ?? 'BEGINNER'}
-                  focus={foci[skill.code] ?? focusOptions[0] ?? ''}
-                  pending={busy || (isPending && pendingCode === skill.code)}
-                  onProficiency={(value) =>
+                  onProficiency={(value: SkillProficiency) =>
                     setProficiencies((prev) => ({ ...prev, [skill.code]: value }))
                   }
-                  onFocus={(value) => setFoci((prev) => ({ ...prev, [skill.code]: value }))}
+                  focus={foci[skill.code] ?? ''}
+                  onFocus={(value: string) => setFoci((prev) => ({ ...prev, [skill.code]: value }))}
                   onVerify={() => verifySkill(skill.code)}
+                  pending={busy || isPending}
                 />
               );
             })}
           </ul>
         </div>
-
-        {error ? (
-          <Alert tone="danger" title="Could not verify">
-            {error}
-          </Alert>
-        ) : null}
       </div>
+
+      {error ? (
+        <Alert tone="danger" title="Error">
+          {error}
+        </Alert>
+      ) : null}
     </section>
   );
 }

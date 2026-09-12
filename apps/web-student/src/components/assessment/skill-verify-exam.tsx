@@ -11,7 +11,11 @@ import { AnswerOption, Badge, Button, ProgressIndicator, QuestionCard, Timer } f
 import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
 import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
 
-const SUBMIT_LABEL = 'Submit and see results';
+const SUBMIT_LABEL_BY_STAGE = {
+  DIAGNOSTIC: 'Finish diagnostic',
+  TARGETED: 'Submit and see results',
+  COMPLETE: 'Submit and see results',
+} as const;
 
 const FORMAT_LABEL: Record<SdeSkillFormFormat, string> = {
   MCQ: 'Single Choice',
@@ -173,6 +177,10 @@ export function SkillVerifyExam({
   const studio = coding || trace || debug;
 
   const heading = kioskTitle ?? formatSkillVerifyKioskTitle(session.skillCode, session.proficiency);
+  const submitLabel =
+    session.stage && session.stage in SUBMIT_LABEL_BY_STAGE
+      ? SUBMIT_LABEL_BY_STAGE[session.stage]
+      : 'Submit and see results';
 
   const runCode = async () => {
     if (!onRunCode || !coding) return;
@@ -204,7 +212,7 @@ export function SkillVerifyExam({
             Exit
           </Button>
           <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-            {SUBMIT_LABEL}
+            {submitLabel}
           </Button>
         </div>
       </header>
@@ -213,6 +221,7 @@ export function SkillVerifyExam({
         <div className="flex min-h-0 flex-col overflow-hidden">
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
             <Badge variant="secondary">{session.proficiency}</Badge>
+            {session.stageLabel ? <Badge variant="outline">{session.stageLabel}</Badge> : null}
             <span>{FORMAT_LABEL[item.format]}</span>
             <span className="rounded-md border border-[var(--surface-border)] px-2 py-0.5 text-[var(--text-primary)]">
               Total questions: {String(total)}
@@ -317,7 +326,7 @@ export function SkillVerifyExam({
               </Button>
               {last ? (
                 <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-                  {SUBMIT_LABEL}
+                  {submitLabel}
                 </Button>
               ) : (
                 <Button

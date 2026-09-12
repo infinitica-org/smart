@@ -2,7 +2,7 @@
   {
     "id": "UNI-01-001",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -20,7 +20,7 @@
   {
     "id": "UNI-01-002",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -38,7 +38,7 @@
   {
     "id": "UNI-01-003",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -56,7 +56,7 @@
   {
     "id": "UNI-01-004",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -74,7 +74,7 @@
   {
     "id": "UNI-01-005",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -92,7 +92,7 @@
   {
     "id": "UNI-01-006",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -110,7 +110,7 @@
   {
     "id": "UNI-01-007",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -128,7 +128,7 @@
   {
     "id": "UNI-01-008",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -146,7 +146,7 @@
   {
     "id": "UNI-01-009",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -164,7 +164,7 @@
   {
     "id": "UNI-01-010",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -182,7 +182,7 @@
   {
     "id": "UNI-01-011",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -200,7 +200,7 @@
   {
     "id": "UNI-01-012",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -218,7 +218,7 @@
   {
     "id": "UNI-01-013",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -236,7 +236,7 @@
   {
     "id": "UNI-01-014",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -254,7 +254,7 @@
   {
     "id": "UNI-01-015",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -272,7 +272,7 @@
   {
     "id": "UNI-01-016",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -290,7 +290,7 @@
   {
     "id": "UNI-01-017",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -308,7 +308,7 @@
   {
     "id": "UNI-01-018",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -326,7 +326,7 @@
   {
     "id": "UNI-01-019",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -344,7 +344,7 @@
   {
     "id": "UNI-01-020",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -362,7 +362,7 @@
   {
     "id": "UNI-01-021",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -380,7 +380,7 @@
   {
     "id": "UNI-01-022",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -398,7 +398,7 @@
   {
     "id": "UNI-01-023",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -416,7 +416,7 @@
   {
     "id": "UNI-01-024",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -434,7 +434,7 @@
   {
     "id": "UNI-01-025",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -452,7 +452,7 @@
   {
     "id": "UNI-01-026",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -470,7 +470,7 @@
   {
     "id": "UNI-01-027",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -488,7 +488,7 @@
   {
     "id": "UNI-01-028",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -506,7 +506,7 @@
   {
     "id": "UNI-01-029",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -524,7 +524,7 @@
   {
     "id": "UNI-01-030",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -542,7 +542,7 @@
   {
     "id": "UNI-01-031",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -560,7 +560,7 @@
   {
     "id": "UNI-01-032",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -578,7 +578,7 @@
   {
     "id": "UNI-01-033",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -596,7 +596,7 @@
   {
     "id": "UNI-01-034",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -614,7 +614,7 @@
   {
     "id": "UNI-01-035",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -627,7 +627,7 @@
   {
     "id": "UNI-01-036",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -640,7 +640,7 @@
   {
     "id": "UNI-01-037",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -653,7 +653,7 @@
   {
     "id": "UNI-01-038",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -666,7 +666,7 @@
   {
     "id": "UNI-01-039",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -679,7 +679,7 @@
   {
     "id": "UNI-01-040",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -692,7 +692,7 @@
   {
     "id": "UNI-01-041",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -705,7 +705,7 @@
   {
     "id": "UNI-01-042",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -718,7 +718,7 @@
   {
     "id": "UNI-01-043",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -731,7 +731,7 @@
   {
     "id": "UNI-01-044",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -744,7 +744,7 @@
   {
     "id": "UNI-01-045",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -757,7 +757,7 @@
   {
     "id": "UNI-01-046",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -770,7 +770,7 @@
   {
     "id": "UNI-01-047",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -783,7 +783,7 @@
   {
     "id": "UNI-01-048",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -796,7 +796,7 @@
   {
     "id": "UNI-01-049",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -809,7 +809,7 @@
   {
     "id": "UNI-01-050",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -822,7 +822,7 @@
   {
     "id": "UNI-01-051",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -835,7 +835,7 @@
   {
     "id": "UNI-01-052",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -848,7 +848,7 @@
   {
     "id": "UNI-01-053",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -861,7 +861,7 @@
   {
     "id": "UNI-01-054",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -874,7 +874,7 @@
   {
     "id": "UNI-01-055",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -887,7 +887,7 @@
   {
     "id": "UNI-01-056",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "SHORT_ANSWER",
@@ -900,7 +900,7 @@
   {
     "id": "UNI-01-057",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "SHORT_ANSWER",
@@ -913,7 +913,7 @@
   {
     "id": "UNI-01-058",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -926,7 +926,7 @@
   {
     "id": "UNI-01-059",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -939,7 +939,7 @@
   {
     "id": "UNI-01-060",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -952,7 +952,7 @@
   {
     "id": "UNI-01-061",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -965,7 +965,7 @@
   {
     "id": "UNI-01-062",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -978,7 +978,7 @@
   {
     "id": "UNI-01-063",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -991,7 +991,7 @@
   {
     "id": "UNI-01-064",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "SHORT_ANSWER",
@@ -1004,7 +1004,7 @@
   {
     "id": "UNI-01-065",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "SHORT_ANSWER",
@@ -1017,7 +1017,7 @@
   {
     "id": "UNI-01-066",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "LONG_ANSWER",
@@ -1030,7 +1030,7 @@
   {
     "id": "UNI-01-067",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "BEGINNER",
     "format": "LONG_ANSWER",
@@ -1043,7 +1043,7 @@
   {
     "id": "UNI-01-068",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "LONG_ANSWER",
@@ -1056,7 +1056,7 @@
   {
     "id": "UNI-01-069",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "LONG_ANSWER",
@@ -1069,7 +1069,7 @@
   {
     "id": "UNI-01-070",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "LONG_ANSWER",
@@ -1082,7 +1082,7 @@
   {
     "id": "UNI-01-071",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "LONG_ANSWER",
@@ -1095,7 +1095,7 @@
   {
     "id": "UNI-01-072",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "LONG_ANSWER",
@@ -1108,7 +1108,7 @@
   {
     "id": "UNI-01-073",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "CODING",
@@ -1121,7 +1121,7 @@
   {
     "id": "UNI-01-074",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "INTERMEDIATE",
     "format": "CODING",
@@ -1134,7 +1134,7 @@
   {
     "id": "UNI-01-075",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "CODING",
@@ -1147,7 +1147,7 @@
   {
     "id": "UNI-01-076",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "CODING",
@@ -1160,7 +1160,7 @@
   {
     "id": "UNI-01-077",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "ADVANCED",
     "format": "CODING",
@@ -1173,7 +1173,7 @@
   {
     "id": "UNI-01-078",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -1186,7 +1186,7 @@
   {
     "id": "UNI-01-079",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -1199,7 +1199,7 @@
   {
     "id": "UNI-01-080",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -1212,7 +1212,7 @@
   {
     "id": "UNI-01-INC",
     "stream": "UNIVERSAL",
-    "skillCode": "PROGRAMMING_FUNDAMENTALS_LOGIC",
+    "skillCode": "ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION",
     "skillName": "Programming fundamentals & logic",
     "level": "PROFESSIONAL",
     "format": "DEBUG_SCENARIO",
@@ -7340,7 +7340,7 @@
   {
     "id": "UNI-07-001",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7358,7 +7358,7 @@
   {
     "id": "UNI-07-002",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7376,7 +7376,7 @@
   {
     "id": "UNI-07-003",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7394,7 +7394,7 @@
   {
     "id": "UNI-07-004",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7412,7 +7412,7 @@
   {
     "id": "UNI-07-005",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7430,7 +7430,7 @@
   {
     "id": "UNI-07-006",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7448,7 +7448,7 @@
   {
     "id": "UNI-07-007",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7466,7 +7466,7 @@
   {
     "id": "UNI-07-008",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7484,7 +7484,7 @@
   {
     "id": "UNI-07-009",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7502,7 +7502,7 @@
   {
     "id": "UNI-07-010",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "MCQ",
@@ -7520,7 +7520,7 @@
   {
     "id": "UNI-07-011",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7538,7 +7538,7 @@
   {
     "id": "UNI-07-012",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7556,7 +7556,7 @@
   {
     "id": "UNI-07-013",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7574,7 +7574,7 @@
   {
     "id": "UNI-07-014",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7592,7 +7592,7 @@
   {
     "id": "UNI-07-015",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7610,7 +7610,7 @@
   {
     "id": "UNI-07-016",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7628,7 +7628,7 @@
   {
     "id": "UNI-07-017",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7646,7 +7646,7 @@
   {
     "id": "UNI-07-018",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "MCQ",
@@ -7664,7 +7664,7 @@
   {
     "id": "UNI-07-019",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7682,7 +7682,7 @@
   {
     "id": "UNI-07-020",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7700,7 +7700,7 @@
   {
     "id": "UNI-07-021",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7718,7 +7718,7 @@
   {
     "id": "UNI-07-022",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7736,7 +7736,7 @@
   {
     "id": "UNI-07-023",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7754,7 +7754,7 @@
   {
     "id": "UNI-07-024",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7772,7 +7772,7 @@
   {
     "id": "UNI-07-025",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7790,7 +7790,7 @@
   {
     "id": "UNI-07-026",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7808,7 +7808,7 @@
   {
     "id": "UNI-07-027",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7826,7 +7826,7 @@
   {
     "id": "UNI-07-028",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "MCQ",
@@ -7844,7 +7844,7 @@
   {
     "id": "UNI-07-029",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7862,7 +7862,7 @@
   {
     "id": "UNI-07-030",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7880,7 +7880,7 @@
   {
     "id": "UNI-07-031",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7898,7 +7898,7 @@
   {
     "id": "UNI-07-032",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7916,7 +7916,7 @@
   {
     "id": "UNI-07-033",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7934,7 +7934,7 @@
   {
     "id": "UNI-07-034",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "MCQ",
@@ -7952,7 +7952,7 @@
   {
     "id": "UNI-07-035",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -7965,7 +7965,7 @@
   {
     "id": "UNI-07-036",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -7978,7 +7978,7 @@
   {
     "id": "UNI-07-037",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -7991,7 +7991,7 @@
   {
     "id": "UNI-07-038",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -8004,7 +8004,7 @@
   {
     "id": "UNI-07-039",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -8017,7 +8017,7 @@
   {
     "id": "UNI-07-040",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "TRUE_FALSE",
@@ -8030,7 +8030,7 @@
   {
     "id": "UNI-07-041",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -8043,7 +8043,7 @@
   {
     "id": "UNI-07-042",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -8056,7 +8056,7 @@
   {
     "id": "UNI-07-043",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -8069,7 +8069,7 @@
   {
     "id": "UNI-07-044",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -8082,7 +8082,7 @@
   {
     "id": "UNI-07-045",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "TRUE_FALSE",
@@ -8095,7 +8095,7 @@
   {
     "id": "UNI-07-046",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8108,7 +8108,7 @@
   {
     "id": "UNI-07-047",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8121,7 +8121,7 @@
   {
     "id": "UNI-07-048",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8134,7 +8134,7 @@
   {
     "id": "UNI-07-049",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8147,7 +8147,7 @@
   {
     "id": "UNI-07-050",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8160,7 +8160,7 @@
   {
     "id": "UNI-07-051",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "TRUE_FALSE",
@@ -8173,7 +8173,7 @@
   {
     "id": "UNI-07-052",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -8186,7 +8186,7 @@
   {
     "id": "UNI-07-053",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -8199,7 +8199,7 @@
   {
     "id": "UNI-07-054",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -8212,7 +8212,7 @@
   {
     "id": "UNI-07-055",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "TRUE_FALSE",
@@ -8225,7 +8225,7 @@
   {
     "id": "UNI-07-056",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "SHORT_ANSWER",
@@ -8238,7 +8238,7 @@
   {
     "id": "UNI-07-057",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "SHORT_ANSWER",
@@ -8251,7 +8251,7 @@
   {
     "id": "UNI-07-058",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -8264,7 +8264,7 @@
   {
     "id": "UNI-07-059",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -8277,7 +8277,7 @@
   {
     "id": "UNI-07-060",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "SHORT_ANSWER",
@@ -8290,7 +8290,7 @@
   {
     "id": "UNI-07-061",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -8303,7 +8303,7 @@
   {
     "id": "UNI-07-062",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -8316,7 +8316,7 @@
   {
     "id": "UNI-07-063",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "SHORT_ANSWER",
@@ -8329,7 +8329,7 @@
   {
     "id": "UNI-07-064",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "SHORT_ANSWER",
@@ -8342,7 +8342,7 @@
   {
     "id": "UNI-07-065",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "SHORT_ANSWER",
@@ -8355,7 +8355,7 @@
   {
     "id": "UNI-07-066",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "LONG_ANSWER",
@@ -8368,7 +8368,7 @@
   {
     "id": "UNI-07-067",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "BEGINNER",
     "format": "LONG_ANSWER",
@@ -8381,7 +8381,7 @@
   {
     "id": "UNI-07-068",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "LONG_ANSWER",
@@ -8394,7 +8394,7 @@
   {
     "id": "UNI-07-069",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "LONG_ANSWER",
@@ -8407,7 +8407,7 @@
   {
     "id": "UNI-07-070",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "LONG_ANSWER",
@@ -8420,7 +8420,7 @@
   {
     "id": "UNI-07-071",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "LONG_ANSWER",
@@ -8433,7 +8433,7 @@
   {
     "id": "UNI-07-072",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "LONG_ANSWER",
@@ -8446,7 +8446,7 @@
   {
     "id": "UNI-07-073",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "CODING",
@@ -8459,7 +8459,7 @@
   {
     "id": "UNI-07-074",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "INTERMEDIATE",
     "format": "CODING",
@@ -8472,7 +8472,7 @@
   {
     "id": "UNI-07-075",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "CODING",
@@ -8485,7 +8485,7 @@
   {
     "id": "UNI-07-076",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "CODING",
@@ -8498,7 +8498,7 @@
   {
     "id": "UNI-07-077",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "ADVANCED",
     "format": "CODING",
@@ -8511,7 +8511,7 @@
   {
     "id": "UNI-07-078",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -8524,7 +8524,7 @@
   {
     "id": "UNI-07-079",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -8537,7 +8537,7 @@
   {
     "id": "UNI-07-080",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "CODING",
@@ -8550,7 +8550,7 @@
   {
     "id": "UNI-07-INC",
     "stream": "UNIVERSAL",
-    "skillCode": "GIT_VERSION_CONTROL",
+    "skillCode": "GITOPS_CONTINUOUS_DELIVERY",
     "skillName": "Git & version control",
     "level": "PROFESSIONAL",
     "format": "DEBUG_SCENARIO",

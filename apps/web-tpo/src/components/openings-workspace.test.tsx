@@ -19,7 +19,7 @@ const opening = {
   domain: 'SOFTWARE_IT' as const,
   requiredSkills: [
     {
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       minProficiency: 'ADVANCED' as const,
     },
   ],
@@ -54,7 +54,9 @@ async function fillValidForm() {
     target: { value: '5' },
   });
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Coimbatore' } });
-  fireEvent.click(screen.getByRole('checkbox', { name: /Programming fundamentals & logic/ }));
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: /Algorithmic Complexity & Performance Optimization/ }),
+  );
 }
 
 function submitForm() {
@@ -108,13 +110,17 @@ describe('CO-T01 TPO opening workspace', () => {
     renderEmpty();
     await screen.findByText(/No job openings yet/);
     expect(screen.getByRole('button', { name: 'Create opening' })).toHaveProperty('disabled', true);
-    fireEvent.click(screen.getByRole('checkbox', { name: /Programming fundamentals & logic/ }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /Algorithmic Complexity & Performance Optimization/ }),
+    );
     expect(screen.getByRole('button', { name: 'Create opening' })).toHaveProperty(
       'disabled',
       false,
     );
     expect(
-      screen.getByLabelText('Minimum proficiency for Programming fundamentals & logic'),
+      screen.getByLabelText(
+        'Minimum proficiency for Algorithmic Complexity & Performance Optimization',
+      ),
     ).toBeDefined();
   });
 
@@ -173,7 +179,7 @@ describe('CO-T01 TPO opening workspace', () => {
     await fillValidForm();
 
     const proficiency = screen.getByLabelText(
-      'Minimum proficiency for Programming fundamentals & logic',
+      'Minimum proficiency for Algorithmic Complexity & Performance Optimization',
     );
     fireEvent.change(proficiency, { target: { value: 'ADVANCED' } });
     submitForm();
@@ -185,7 +191,7 @@ describe('CO-T01 TPO opening workspace', () => {
           roleTitle: 'Backend Engineer',
           requiredSkills: [
             {
-              skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+              skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
               minProficiency: 'ADVANCED',
             },
           ],
@@ -237,10 +243,10 @@ describe('CO-T01 TPO opening workspace', () => {
       expect(openingsApi.get).toHaveBeenCalledWith(opening.openingId);
 
       expect(await screen.findByText('Required Taxonomy Skills')).toBeDefined();
-      expect(screen.getAllByText('Programming fundamentals & logic').length).toBeGreaterThanOrEqual(
-        1,
-      );
-      expect(screen.getByText('PROGRAMMING_FUNDAMENTALS_LOGIC')).toBeDefined();
+      expect(
+        screen.getAllByText('Algorithmic Complexity & Performance Optimization').length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION')).toBeDefined();
 
       fireEvent.click(screen.getByRole('button', { name: 'Close inspection' }));
       expect(screen.queryByText('Required Taxonomy Skills')).toBeNull();

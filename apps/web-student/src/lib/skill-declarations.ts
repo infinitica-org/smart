@@ -1,32 +1,31 @@
 import {
+  SKILL_CATEGORIES,
+  SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   hydrateFocusProgress,
   focusProgressFor,
   retryAvailableAtForFocus,
+  type SkillCategoryId,
   type SkillFocusProgress,
   type SkillProficiency,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
-  type SkillStream,
 } from '@smart/contracts';
 
 export const SOFTWARE_IT_DOMAIN_LABEL = 'Software & IT';
 
-export const STREAM_LABELS: Record<SkillStream, string> = {
-  UNIVERSAL: 'Universal Core',
-  SOFTWARE_DEVELOPMENT: 'Software Development',
-  DATA_SCIENCE_ANALYTICS: 'Data Science & Analytics',
-  AI_ML_ENGINEERING: 'AI/ML Engineering',
-};
+export const CATEGORY_LABELS: Record<SkillCategoryId, string> = Object.fromEntries(
+  SKILL_CATEGORY_IDS.map((id) => [id, SKILL_CATEGORIES[id].name]),
+) as Record<SkillCategoryId, string>;
 
-export const PROFICIENCY_OPTIONS: readonly string[] = [
+export const PROFICIENCY_OPTIONS = [
   'BEGINNER',
   'INTERMEDIATE',
   'ADVANCED',
   'PROFESSIONAL',
-] as const;
+] as const satisfies readonly SkillProficiency[];
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
   BEGINNER: 'Beginner',
@@ -35,25 +34,16 @@ export const PROFICIENCY_LABELS: Record<string, string> = {
   PROFESSIONAL: 'Professional',
 };
 
-export function skillsForStream(stream: SkillStream) {
-  return SKILL_DEFINITIONS.filter((s) => s.domain === 'SOFTWARE_IT' && s.stream === stream);
-}
-
-/** INF-05: Universal Core plus the chosen role stream (core loads for every stream). */
-export function mandatorySkillsForStream(stream: SkillStream) {
-  const universal = skillsForStream('UNIVERSAL');
-  if (stream === 'UNIVERSAL') return universal;
-  const seen = new Set(universal.map((skill) => skill.code));
-  const extra = skillsForStream(stream).filter((skill) => {
-    if (seen.has(skill.code)) return false;
-    seen.add(skill.code);
-    return true;
-  });
-  return [...universal, ...extra];
+export function skillsForCategory(categoryId: SkillCategoryId) {
+  return SKILL_DEFINITIONS.filter((skill) => skill.categoryId === categoryId);
 }
 
 export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
+}
+
+export function categoryNameForCode(skillCode: string): string {
+  return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.categoryName ?? skillCode;
 }
 
 export function formatSkillVerifyKioskTitle(
@@ -67,10 +57,6 @@ export function isSdeV4Verifiable(skillCode: string): boolean {
   return sdeV4FormCodeForCatalogSkill(skillCode) !== null;
 }
 
-/**
- * Map persisted SkillClaimStatus onto VerificationBadge statuses.
- * After a sit, fail/retry states show as Not verified; pass shows Verified.
- */
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
   if (claim.status === 'VERIFIED') return 'VERIFIED';
@@ -184,6 +170,8 @@ export function viewForFocus(
   const hasForm = isSdeV4Verifiable(skillCode);
   const canStart =
     hasForm && !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
+  const canEditProficiency =
+    !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT' || !claim);
   const synthetic: SkillClaimDto | undefined = claim
     ? {
         ...claim,
@@ -201,7 +189,7 @@ export function viewForFocus(
     canStart,
     cooling,
     retryAt: cooling ? retryAt : null,
-    canEditProficiency: false,
+    canEditProficiency,
     hasForm,
     blockMessage: synthetic ? skillVerifyBlockMessage(synthetic) : null,
   };

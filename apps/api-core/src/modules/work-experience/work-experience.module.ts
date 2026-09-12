@@ -8,11 +8,19 @@ import { PublicWorkExperienceManagerSurveyController } from './public-work-exper
 import { WorkExperienceAdminController } from './work-experience-admin.controller.js';
 import { WorkExperienceService } from './work-experience.service.js';
 
+import { EvidenceModule } from '../evidence/evidence.module.js';
 import { InstitutionsModule } from '../institutions/institutions.module.js';
 import { PublicProfileModule } from '../public-profile/public-profile.module.js';
 
 @Module({
-  imports: [PrismaModule, AuditModule, AiGatewayModule, InstitutionsModule, PublicProfileModule],
+  imports: [
+    PrismaModule,
+    AuditModule,
+    AiGatewayModule,
+    InstitutionsModule,
+    PublicProfileModule,
+    EvidenceModule,
+  ],
   controllers: [
     WorkExperienceController,
     PublicWorkExperienceVerificationController,

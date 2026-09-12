@@ -2,13 +2,9 @@ import { Buffer } from 'node:buffer';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
-  SKILL_DEFINITIONS,
-  SKILL_TAXONOMY_VERSION,
-  SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
-  buildSeSkillLibraryResponse,
-  type SeSkillLibraryResponse,
+  buildSkillLibraryResponse,
   type SkillLibraryResponse,
   type TrackDto,
 } from '@smart/contracts';
@@ -24,8 +20,8 @@ const competencySelect = {
   assessedAtLevels: true,
 } as const;
 
-/** Frozen at boot — inf-se-v1 taxonomy is immutable for this release. */
-const SE_SKILL_LIBRARY: SeSkillLibraryResponse = buildSeSkillLibraryResponse();
+/** Frozen at boot — skill@1 taxonomy is immutable for this release. */
+const SKILL_LIBRARY: SkillLibraryResponse = buildSkillLibraryResponse();
 
 @Injectable()
 export class CatalogService {
@@ -48,22 +44,9 @@ export class CatalogService {
     return TRACK_DEFINITIONS.map(fromContract);
   }
 
-  /** SK-T01 — queryable v0.9 skill-set library; sourced from frozen INF-05 contracts. */
+  /** skill@1 library grouped by category (Global IT Skills Database). */
   listSkillLibrary(): SkillLibraryResponse {
-    return SkillLibraryResponseSchema.parse({
-      taxonomyVersion: SKILL_TAXONOMY_VERSION,
-      skills: SKILL_DEFINITIONS.map((skill) => ({
-        code: skill.code,
-        name: skill.name,
-        domain: skill.domain,
-        stream: skill.stream,
-      })),
-    });
-  }
-
-  /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */
-  listSeSkillLibrary(): SeSkillLibraryResponse {
-    return SE_SKILL_LIBRARY;
+    return SKILL_LIBRARY;
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

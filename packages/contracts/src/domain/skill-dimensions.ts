@@ -6,8 +6,8 @@
 
 import type { ProficiencyLevel } from './skills.js';
 
-/** Active taxonomy version for passive-signal encoding. Bump when INF-05 changes. */
-export const ACTIVE_TAXONOMY_VERSION = 'inf-05@3' as const;
+/** Active taxonomy version for passive-signal encoding. Bump when skill@1 changes. */
+export const ACTIVE_TAXONOMY_VERSION = 'skill@1' as const;
 
 export interface SkillDimensionRef {
   readonly taxonomyVersion: string;

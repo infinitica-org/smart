@@ -1,8 +1,5 @@
 /**
- * GitHub language → INF-05 skill dimension mapping (S6-RM-10).
- * Ported from assessment/candidate-skills-discovered.consumer.ts LANGUAGE_SKILL_HINTS.
- *
- * Owner: Ramansh.
+ * GitHub language → skill@1 dimension mapping.
  */
 
 export interface GithubLanguageMappingEntry {
@@ -16,120 +13,154 @@ export const GITHUB_LANGUAGE_MAPPING: Readonly<
   Record<string, readonly GithubLanguageMappingEntry[]>
 > = {
   javascript: [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
     {
-      dimensionKey: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      weight: 0.8,
+      dimensionKey: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      weight: 1,
     },
   ],
   typescript: [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
     {
-      dimensionKey: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      weight: 0.8,
+      dimensionKey: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      weight: 1,
     },
   ],
   python: [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
     {
-      dimensionKey: 'PYTHON_R_DATA_ANALYSIS',
-      skillCode: 'PYTHON_R_DATA_ANALYSIS',
-      weight: 0.9,
+      dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      weight: 1,
     },
   ],
   java: [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
     {
-      dimensionKey: 'OBJECT_ORIENTED_PROGRAMMING',
-      skillCode: 'OBJECT_ORIENTED_PROGRAMMING',
-      weight: 0.85,
+      dimensionKey: 'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT',
+      skillCode: 'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT',
+      weight: 1,
     },
   ],
   'c++': [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
     {
-      dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-      skillCode: 'DATA_STRUCTURES_ALGORITHMS',
-      weight: 0.85,
+      dimensionKey: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
+      skillCode: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
+      weight: 1,
     },
   ],
   c: [
     {
-      dimensionKey: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      dimensionKey: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
+      skillCode: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
       weight: 0.9,
     },
   ],
-  go: [{ dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 }],
-  rust: [{ dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 }],
-  ruby: [{ dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 }],
-  php: [{ dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 }],
-  kotlin: [
-    { dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 },
+  go: [
     {
-      dimensionKey: 'OBJECT_ORIENTED_PROGRAMMING',
-      skillCode: 'OBJECT_ORIENTED_PROGRAMMING',
-      weight: 0.85,
+      dimensionKey: 'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES',
+      skillCode: 'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES',
+      weight: 1,
     },
   ],
-  swift: [{ dimensionKey: 'LANGUAGE_PROFICIENCY', skillCode: 'LANGUAGE_PROFICIENCY', weight: 1 }],
-  sql: [{ dimensionKey: 'DATABASE_FUNDAMENTALS', skillCode: 'DATABASE_FUNDAMENTALS', weight: 1 }],
+  rust: [
+    {
+      dimensionKey: 'RUST_FOR_SYSTEMS_RELIABILITY_ENGINEERING',
+      skillCode: 'RUST_FOR_SYSTEMS_RELIABILITY_ENGINEERING',
+      weight: 1,
+    },
+  ],
+  ruby: [
+    {
+      dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      weight: 0.75,
+    },
+  ],
+  php: [
+    {
+      dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      weight: 0.75,
+    },
+  ],
+  kotlin: [
+    {
+      dimensionKey: 'KOTLIN_FOR_ANDROID_BACKEND_SERVICES',
+      skillCode: 'KOTLIN_FOR_ANDROID_BACKEND_SERVICES',
+      weight: 1,
+    },
+  ],
+  swift: [
+    {
+      dimensionKey: 'SWIFT_FOR_IOS_MACOS_DEVELOPMENT',
+      skillCode: 'SWIFT_FOR_IOS_MACOS_DEVELOPMENT',
+      weight: 1,
+    },
+  ],
+  sql: [
+    {
+      dimensionKey: 'SQL_QUERY_OPTIMIZATION',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
+      weight: 1,
+    },
+  ],
   plpgsql: [
-    { dimensionKey: 'DATABASE_FUNDAMENTALS', skillCode: 'DATABASE_FUNDAMENTALS', weight: 1 },
+    {
+      dimensionKey: 'SQL_QUERY_OPTIMIZATION',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
+      weight: 1,
+    },
   ],
   html: [
     {
-      dimensionKey: 'FRONTEND_BACKEND_FRAMEWORK',
-      skillCode: 'FRONTEND_BACKEND_FRAMEWORK',
+      dimensionKey: 'MODERN_FRONTEND_FRAMEWORKS',
+      skillCode: 'MODERN_FRONTEND_FRAMEWORKS',
       weight: 0.7,
     },
   ],
   css: [
     {
-      dimensionKey: 'FRONTEND_BACKEND_FRAMEWORK',
-      skillCode: 'FRONTEND_BACKEND_FRAMEWORK',
+      dimensionKey: 'MODERN_FRONTEND_FRAMEWORKS',
+      skillCode: 'MODERN_FRONTEND_FRAMEWORKS',
       weight: 0.7,
     },
   ],
   scss: [
     {
-      dimensionKey: 'FRONTEND_BACKEND_FRAMEWORK',
-      skillCode: 'FRONTEND_BACKEND_FRAMEWORK',
+      dimensionKey: 'MODERN_FRONTEND_FRAMEWORKS',
+      skillCode: 'MODERN_FRONTEND_FRAMEWORKS',
       weight: 0.7,
     },
   ],
   vue: [
     {
-      dimensionKey: 'FRONTEND_BACKEND_FRAMEWORK',
-      skillCode: 'FRONTEND_BACKEND_FRAMEWORK',
+      dimensionKey: 'MODERN_FRONTEND_FRAMEWORKS',
+      skillCode: 'MODERN_FRONTEND_FRAMEWORKS',
       weight: 0.85,
     },
   ],
   dockerfile: [
     {
-      dimensionKey: 'DEPLOYMENT_CICD_BASICS',
-      skillCode: 'DEPLOYMENT_CICD_BASICS',
+      dimensionKey: 'CONTAINERIZATION_ORCHESTRATION',
+      skillCode: 'CONTAINERIZATION_ORCHESTRATION',
       weight: 0.8,
     },
   ],
   shell: [
     {
-      dimensionKey: 'DEPLOYMENT_CICD_BASICS',
-      skillCode: 'DEPLOYMENT_CICD_BASICS',
+      dimensionKey: 'INFRASTRUCTURE_AS_CODE_IAC',
+      skillCode: 'INFRASTRUCTURE_AS_CODE_IAC',
       weight: 0.75,
     },
   ],
   'jupyter notebook': [
     {
-      dimensionKey: 'PYTHON_R_DATA_ANALYSIS',
-      skillCode: 'PYTHON_R_DATA_ANALYSIS',
+      dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
       weight: 0.9,
     },
     {
-      dimensionKey: 'MACHINE_LEARNING_FUNDAMENTALS',
-      skillCode: 'MACHINE_LEARNING_FUNDAMENTALS',
+      dimensionKey: 'MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT',
+      skillCode: 'MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT',
       weight: 0.7,
     },
   ],

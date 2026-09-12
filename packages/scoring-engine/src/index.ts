@@ -28,6 +28,10 @@ export * from './bars/mode-consensus.js';
 export * from './proficiency/mark-weighted-scoring.js';
 export * from './proficiency/sde-v4-scoring.js';
 
+/* -------------------- Competency assessment intelligence ------------------ */
+export * from './competency/assessment-intelligence.js';
+export * from './competency/item-mapping.js';
+
 /* ---------------------------- Reliability gates --------------------------- */
 export * from './reliability/agreement.js';
 
