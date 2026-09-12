@@ -46,11 +46,12 @@ export class AiGatewayService {
 
   /** Fast local check — no network probe — for skipping synchronous LLM work. */
   hasCallableProvider(): boolean {
-    const configured: Array<{ provider: AiProvider; ready: boolean }> = [
+    const entries: Array<{ provider: AiProvider; ready: boolean }> = [
       { provider: 'ANTHROPIC', ready: this.anthropic.isConfigured },
       { provider: 'GOOGLE', ready: this.google.isConfigured },
       { provider: 'OPENROUTER', ready: this.openrouter.isConfigured },
-    ].map((entry) => ({
+    ];
+    const configured = entries.map((entry) => ({
       provider: entry.provider,
       ready: entry.ready && this.circuitBreaker.isCallAllowed(entry.provider),
     }));

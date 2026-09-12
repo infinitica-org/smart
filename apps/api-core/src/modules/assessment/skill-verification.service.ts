@@ -589,7 +589,8 @@ export class SkillVerificationService {
           assessmentPassed && gate.canFinalizeClaim && gate.verificationDecision === 'PROVISIONAL';
         if (
           (genuinePass || provisionalSettlement) &&
-          gate.verificationDecision &&
+          (gate.verificationDecision === 'VERIFIED' ||
+            gate.verificationDecision === 'PROVISIONAL') &&
           gate.claimConfidence !== undefined
         ) {
           if (genuinePass) {
@@ -787,7 +788,7 @@ export class SkillVerificationService {
       verifiedProficiency: canFinalize ? claimProficiencyFromDemonstrated(demonstrated) : undefined,
       verificationSettlement:
         (canFinalize || provisionalSettlement) &&
-        gate.verificationDecision &&
+        (gate.verificationDecision === 'VERIFIED' || gate.verificationDecision === 'PROVISIONAL') &&
         gate.claimConfidence !== undefined
           ? {
               decision: gate.verificationDecision,
