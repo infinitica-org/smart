@@ -120,8 +120,7 @@ export function WorkExperienceSection() {
   // Document Upload Modal state
   const [docModalExpId, setDocModalExpId] = useState<string | null>(null);
   const [docType, setDocType] = useState('EXPERIENCE_LETTER');
-  const [fileName, setFileName] = useState('');
-  const [fileSizeBytes] = useState<number>(1048576);
+  const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   const fetchExperiences = async () => {
@@ -324,21 +323,32 @@ export function WorkExperienceSection() {
 
   const handleAttachDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!docModalExpId || !fileName) return;
+    if (!docModalExpId || !proofFile) return;
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(proofFile.type)) {
+      setError('Only PDF, JPG, and PNG proof documents are accepted.');
+      return;
+    }
+    if (proofFile.size > 5 * 1024 * 1024) {
+      setError('The proof document must be 5MB or smaller.');
+      return;
+    }
+
     try {
       setUploadingDoc(true);
-      await api.users.attachWorkExperienceDocument(docModalExpId, {
-        documentType: docType as WorkExperienceDocumentDto['documentType'],
-        fileName,
-        fileUrl: `storage/proofs/${fileName.toLowerCase().replace(/[^a-z0-9.]/g, '_')}`,
-        fileSizeBytes,
-        mimeType: fileName.endsWith('.pdf') ? 'application/pdf' : 'image/png',
-      });
+      setError(null);
+      await api.users.uploadWorkExperienceProofDocument(
+        docModalExpId,
+        proofFile,
+        proofFile.name,
+        docType as WorkExperienceDocumentDto['documentType'],
+      );
       setDocModalExpId(null);
-      setFileName('');
+      setProofFile(null);
       await fetchExperiences();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to attach document.');
+      setError((err as Error)?.message || 'Failed to upload proof document.');
     } finally {
       setUploadingDoc(false);
     }
@@ -867,7 +877,8 @@ export function WorkExperienceSection() {
                   <button
                     onClick={() => {
                       setDocModalExpId(exp.id);
-                      setFileName('');
+                      setDocType('EXPERIENCE_LETTER');
+                      setProofFile(null);
                     }}
                     className="flex items-center gap-1 text-xs text-[#00fad0] hover:underline font-medium"
                   >
@@ -1371,15 +1382,24 @@ export function WorkExperienceSection() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">Proof File Name *</label>
+                <label className="block text-xs font-medium text-white/70">Proof Document *</label>
                 <input
-                  type="text"
+                  type="file"
                   required
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  placeholder="e.g. Acme_Relieving_Letter.pdf"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  accept="application/pdf,image/jpeg,image/jpg,image/png"
+                  onChange={(event) => {
+                    setProofFile(event.target.files?.[0] ?? null);
+                  }}
+                  className="mt-1 block w-full text-xs text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00fad0]/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#00fad0]"
                 />
+                <p className="mt-1 text-[11px] text-white/40">
+                  PDF, JPG, or PNG up to 5MB. Files are stored securely for AI proof validation.
+                </p>
+                {proofFile ? (
+                  <p className="mt-1 text-[11px] text-white/60">
+                    Selected: <span className="font-mono text-white/80">{proofFile.name}</span>
+                  </p>
+                ) : null}
               </div>
 
               <div className="mt-2 flex items-center justify-end gap-3 border-t border-white/10 pt-4">
@@ -1396,7 +1416,7 @@ export function WorkExperienceSection() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-5 py-2 text-xs font-medium text-black hover:bg-[#00e0ba] disabled:opacity-50"
                 >
                   {uploadingDoc && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Attach Document
+                  Upload Document
                 </button>
               </div>
             </form>

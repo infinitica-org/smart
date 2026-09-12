@@ -1,5 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type {
@@ -60,6 +66,7 @@ import {
   type WorkExperienceManagerReminderJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
@@ -151,6 +158,14 @@ import {
 } from './work-experience-evidence.adapter.js';
 import { z } from 'zod';
 
+const WE_PROOF_ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+]);
+const WE_PROOF_MAX_BYTES = 5 * 1024 * 1024;
+
 @Injectable()
 export class WorkExperienceService {
   readonly owner = 'Vishal V';
@@ -165,6 +180,7 @@ export class WorkExperienceService {
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
     @Inject(EvidenceSyncService) private readonly evidenceSync?: EvidenceSyncService,
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
 
   private readonly evidenceInclude = {
@@ -708,6 +724,69 @@ export class WorkExperienceService {
 
     const checked = await this.runDocumentAuthenticityCheck(existing, doc.id);
     return this.mapDocumentToDto(checked);
+  }
+
+  async uploadProofDocument(
+    studentId: string,
+    experienceId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+    documentTypeRaw: string,
+  ): Promise<WorkExperienceDocumentDto> {
+    if (!this.storageService) {
+      throw new BadRequestException({
+        error: 'storage_unavailable',
+        message: 'Proof document upload is unavailable.',
+        statusCode: 400,
+      });
+    }
+
+    const documentTypeResult = z
+      .enum([
+        'OFFER_LETTER',
+        'EXPERIENCE_LETTER',
+        'PAYSLIP',
+        'RELIEVING_LETTER',
+        'FORM_16',
+        'OTHER',
+      ])
+      .safeParse(documentTypeRaw);
+    if (!documentTypeResult.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Invalid proof document type.',
+        statusCode: 400,
+      });
+    }
+
+    if (!WE_PROOF_ALLOWED_MIME_TYPES.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, JPG, and PNG files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > WE_PROOF_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The proof document must be 5MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `work-experience-proofs/${studentId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    return this.attachDocument(studentId, experienceId, {
+      documentType: documentTypeResult.data,
+      fileUrl: objectKey,
+      fileName: file.fileName,
+      fileSizeBytes: file.buffer.byteLength,
+      mimeType: file.mimeType,
+    });
   }
 
   /**
@@ -1371,7 +1450,16 @@ export class WorkExperienceService {
       }
     }
 
-    // 3. Local filesystem path
+    // 3. Object storage key (MinIO/S3 via StorageService)
+    if (this.storageService) {
+      try {
+        return await this.storageService.getObjectBuffer(fileUrl);
+      } catch {
+        // Fall through to local filesystem lookup.
+      }
+    }
+
+    // 4. Local filesystem path
     try {
       const fs = await import('node:fs/promises');
       const path = await import('node:path');

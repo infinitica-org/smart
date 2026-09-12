@@ -238,6 +238,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /users/me/work-experiences": "role.student",
   "POST /users/me/work-experiences/:id/documents": "role.student",
   "POST /users/me/work-experiences/:id/documents/:documentId/validate": "role.student",
+  "POST /users/me/work-experiences/:id/documents/upload": "role.student",
   "POST /users/me/work-experiences/:id/restart-verification": "role.student",
   "POST /users/me/work-experiences/:id/send-manager-endorsement": "role.student",
   "POST /users/me/work-experiences/:id/send-verification": "role.student",

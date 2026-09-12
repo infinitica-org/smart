@@ -403,6 +403,24 @@ export function usersApi(client: SmartApiClient) {
         schema: WorkExperienceDocumentSchema,
       }),
 
+    uploadWorkExperienceProofDocument: (
+      id: string,
+      file: File | Blob,
+      fileName: string,
+      documentType: CreateWorkExperienceDocumentDto['documentType'],
+    ) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      formData.append('documentType', documentType);
+      return client.postForm(
+        prefixed(`/users/me/work-experiences/${id}/documents/upload`),
+        formData,
+        {
+          schema: WorkExperienceDocumentSchema,
+        },
+      );
+    },
+
     removeWorkExperienceDocument: (id: string, documentId: string) =>
       client.delete<void>(prefixed(`/users/me/work-experiences/${id}/documents/${documentId}`)),
 

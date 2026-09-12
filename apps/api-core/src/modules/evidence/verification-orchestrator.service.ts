@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   LEVEL_VERIFICATION_METHOD,
+  qualifiesAsSkillDemonstrationEvidence,
   type AssessmentConfidenceLevel,
   type ProficiencyRequirementLevel,
   type RecommendedNextStep,
@@ -98,14 +99,25 @@ export class VerificationOrchestratorService {
   }
 
   async evaluateClaimVerification(input: VerificationGateInput): Promise<VerificationGateResult> {
-    const evidenceLinks =
+    const needsDemonstrationEvidence =
       input.targetProficiency === 'PROFESSIONAL' ||
-      LEVEL_VERIFICATION_METHOD[input.targetProficiency].projectRequired
-        ? await this.prisma.skillClaimEvidenceLink.findMany({
-            where: { claimId: input.claimId },
-            select: { evidenceId: true },
-          })
-        : [];
+      LEVEL_VERIFICATION_METHOD[input.targetProficiency].projectRequired;
+
+    const evidenceLinks = needsDemonstrationEvidence
+      ? await this.prisma.skillClaimEvidenceLink.findMany({
+          where: { claimId: input.claimId },
+          include: {
+            evidence: {
+              select: {
+                evidenceType: true,
+                relatedSkillCodes: true,
+                verificationStatus: true,
+                studentId: true,
+              },
+            },
+          },
+        })
+      : [];
 
     const gate = this.evaluateGate({
       ...input,
@@ -113,10 +125,24 @@ export class VerificationOrchestratorService {
     });
 
     const reasons: string[] = [];
-    const hasEvidence = evidenceLinks.length > 0;
+    const qualifyingEvidence = evidenceLinks.filter(
+      (link) =>
+        link.evidence.studentId === input.studentId &&
+        qualifiesAsSkillDemonstrationEvidence({
+          evidenceType: link.evidence.evidenceType,
+          relatedSkillCodes: link.evidence.relatedSkillCodes,
+          catalogSkillCode: input.catalogSkillCode,
+          verificationStatus: link.evidence.verificationStatus,
+        }),
+    );
+    const hasEvidence = qualifyingEvidence.length > 0;
 
     if (gate.requiresEvidence && !hasEvidence) {
-      reasons.push('Professional verification requires linked project or work evidence.');
+      reasons.push(
+        evidenceLinks.length > 0
+          ? 'Linked evidence must be a verified project or work experience that demonstrates this skill.'
+          : 'Professional verification requires linked project or work evidence.',
+      );
       return {
         recommendedNextStep: 'EVIDENCE_VERIFICATION',
         requiresInterview: gate.requiresInterview,

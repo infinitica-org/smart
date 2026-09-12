@@ -355,7 +355,8 @@ export const CompleteSkillVerifyInterviewRequestSchema = z.object({
     .array(
       z.object({
         index: z.number().int().min(1).max(3),
-        question: z.string().min(10).max(500),
+        /** Ignored for grading — server binds answers to interview/start questions. */
+        question: z.string().min(10).max(500).optional(),
         answer: z.string().min(1).max(8_000),
       }),
     )

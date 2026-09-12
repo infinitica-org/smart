@@ -20,3 +20,4 @@ export * from './competency-status.js';
 export * from './assessment-result.js';
 export * from './proficiency-requirements.js';
 export * from './category-competency-templates.js';
+export * from './skill-demonstration-evidence.js';

@@ -56,7 +56,6 @@ export function SkillVerifyPendingStep({
           const settled = await api.assessment.completeSkillVerifyInterview(sessionId, {
             items: interview.questions.map((question) => ({
               index: question.index,
-              question: question.text,
               answer: answers[question.index] ?? '',
             })),
           });

@@ -514,6 +514,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Attach proof document metadata to a work experience record.',
   },
   {
+    method: 'POST',
+    path: '/users/me/work-experiences/:id/documents/upload',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Upload a proof document file and attach it to a work experience record.',
+  },
+  {
     method: 'DELETE',
     path: '/users/me/work-experiences/:id/documents/:documentId',
     module: 'users',

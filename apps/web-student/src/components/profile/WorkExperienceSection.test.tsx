@@ -8,6 +8,7 @@ const updateWorkExperience = vi.fn();
 const deleteWorkExperience = vi.fn();
 const sendWorkExperienceVerification = vi.fn();
 const restartWorkExperienceVerification = vi.fn();
+const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
 const removeWorkExperienceDocument = vi.fn();
 
@@ -22,6 +23,8 @@ vi.mock('@/lib/api', () => ({
         sendWorkExperienceVerification(...args),
       restartWorkExperienceVerification: (...args: unknown[]) =>
         restartWorkExperienceVerification(...args),
+      uploadWorkExperienceProofDocument: (...args: unknown[]) =>
+        uploadWorkExperienceProofDocument(...args),
       attachWorkExperienceDocument: (...args: unknown[]) => attachWorkExperienceDocument(...args),
       removeWorkExperienceDocument: (...args: unknown[]) => removeWorkExperienceDocument(...args),
     },
@@ -157,7 +160,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     const { container } = await openAddExperienceModal();
 
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
 
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -270,7 +273,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when domain is empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -282,7 +285,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when responsibilities are empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { responsibilities: '' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -314,7 +317,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save for ended employment when End Date is missing', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
 
@@ -328,7 +331,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('keeps End Date optional when currently employed', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     expect(screen.queryByText('End Date *')).toBeNull();
@@ -355,7 +358,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
       expect.objectContaining({
         domain: 'Software Engineering',
         responsibilities: 'Building awesome apps',
-        skillsClaimed: ['GIT_VERSION_CONTROL'],
+        skillsClaimed: ['SQL_QUERY_OPTIMIZATION'],
       }),
     );
   });
@@ -363,7 +366,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('does not call the API when mandatory validation fails', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '   ' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));

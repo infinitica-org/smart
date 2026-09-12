@@ -14,6 +14,7 @@ describe('WorkExperienceService', () => {
   let aiGateway: any;
   let publicProfileService: any;
   let evidenceSync: any;
+  let storage: any;
   let service: WorkExperienceService;
 
   const mockStudentId = randomUUID();
@@ -143,6 +144,10 @@ describe('WorkExperienceService', () => {
       syncWorkExperienceEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     };
 
+    storage = {
+      upload: vi.fn().mockResolvedValue('work-experience-proofs/student/uuid-offer.pdf'),
+    };
+
     service = new WorkExperienceService(
       prisma,
       auditPublisher,
@@ -151,6 +156,7 @@ describe('WorkExperienceService', () => {
       undefined,
       publicProfileService,
       evidenceSync,
+      storage,
     );
   });
 
@@ -881,6 +887,99 @@ describe('WorkExperienceService', () => {
           mimeType: 'application/pdf',
         }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('uploadProofDocument', () => {
+    it('uploads file to object storage then attaches document metadata', async () => {
+      const expId = randomUUID();
+      const docId = randomUUID();
+
+      prisma.workExperience.findUnique.mockResolvedValue({
+        id: expId,
+        studentId: mockStudentId,
+        companyName: 'Acme Corporation',
+        companyWebsite: 'https://acme.com',
+      });
+
+      prisma.workExperienceDocument.create.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'OFFER_LETTER',
+        fileUrl: 'work-experience-proofs/student/uuid-offer.pdf',
+        fileName: 'offer.pdf',
+        fileSizeBytes: 128,
+        mimeType: 'application/pdf',
+        validationResult: null,
+        createdAt: new Date(),
+      });
+
+      prisma.workExperienceDocument.findUnique.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'OFFER_LETTER',
+        fileUrl: 'work-experience-proofs/student/uuid-offer.pdf',
+        fileName: 'offer.pdf',
+        fileSizeBytes: 128,
+        mimeType: 'application/pdf',
+        validationResult: null,
+        createdAt: new Date(),
+      });
+
+      aiGateway.complete.mockResolvedValueOnce({
+        output: {
+          candidateName: 'Jane Doe',
+          companyName: 'Acme Corporation',
+          companyDomain: 'acme.com',
+          hasLetterhead: true,
+          hasSignatureBlock: true,
+          confidence: 0.9,
+        },
+      });
+
+      prisma.workExperienceDocument.update.mockResolvedValueOnce({
+        id: docId,
+        experienceId: expId,
+        documentType: 'OFFER_LETTER',
+        fileUrl: 'work-experience-proofs/student/uuid-offer.pdf',
+        fileName: 'offer.pdf',
+        fileSizeBytes: 128,
+        mimeType: 'application/pdf',
+        validationResult: {
+          authenticity: {
+            status: 'doc_ok',
+            result: {
+              companyNameMatch: true,
+              domainMatch: true,
+              hasLetterhead: true,
+              hasSignatureBlock: true,
+              ocrConfidence: 0.9,
+              flagReasons: [],
+            },
+            checkedAt: '2026-09-10T00:00:00.000Z',
+          },
+        },
+        createdAt: new Date(),
+      });
+
+      const result = await service.uploadProofDocument(
+        mockStudentId,
+        expId,
+        {
+          buffer: Buffer.from('Offer letter body for Jane Doe at Acme.'),
+          fileName: 'offer.pdf',
+          mimeType: 'application/pdf',
+        },
+        'OFFER_LETTER',
+      );
+
+      expect(storage.upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          namespace: `work-experience-proofs/${mockStudentId}`,
+          fileName: 'offer.pdf',
+        }),
+      );
+      expect(result.fileUrl).toBe('work-experience-proofs/student/uuid-offer.pdf');
     });
   });
 

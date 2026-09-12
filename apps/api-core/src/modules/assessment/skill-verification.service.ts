@@ -100,6 +100,51 @@ function ttlSeconds(expiresAt: string): number {
   );
 }
 
+function normalizeInterviewText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function bindInterviewAnswers(
+  storedQuestions: Array<{ index: number; text: string }>,
+  requestItems: Array<{ index: number; question?: string; answer: string }>,
+): Array<{ index: number; question: string; answer: string }> {
+  if (storedQuestions.length < 3) {
+    throw new BadRequestException({
+      error: 'interview_not_started',
+      message: 'Start the defense interview before submitting answers.',
+      statusCode: 400,
+    });
+  }
+
+  const storedByIndex = new Map(storedQuestions.map((question) => [question.index, question.text]));
+
+  return requestItems.map((item) => {
+    const expectedQuestion = storedByIndex.get(item.index);
+    if (!expectedQuestion) {
+      throw new BadRequestException({
+        error: 'interview_question_mismatch',
+        message: `Interview answer index ${item.index} does not match the active interview.`,
+        statusCode: 400,
+      });
+    }
+    if (
+      item.question !== undefined &&
+      normalizeInterviewText(item.question) !== normalizeInterviewText(expectedQuestion)
+    ) {
+      throw new BadRequestException({
+        error: 'interview_question_mismatch',
+        message: 'Interview answers must correspond to the server-generated questions.',
+        statusCode: 400,
+      });
+    }
+    return {
+      index: item.index,
+      question: expectedQuestion,
+      answer: item.answer,
+    };
+  });
+}
+
 @Injectable()
 export class SkillVerificationService {
   constructor(
@@ -535,10 +580,11 @@ export class SkillVerificationService {
       });
     }
     const interviewProficiency = this.interviewProficiency(stored.proficiency);
+    const gradedItems = bindInterviewAnswers(stored.interviewQuestions ?? [], request.items);
     const grade = await this.evaluation.gradeSkillInterview({
       skillCode: stored.catalogSkillCode,
       proficiency: interviewProficiency,
-      items: request.items,
+      items: gradedItems,
     });
     stored.interviewPassed = grade.passed;
     stored.interviewExplanation = grade.explanation;

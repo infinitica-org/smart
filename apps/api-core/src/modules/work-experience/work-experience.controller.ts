@@ -9,13 +9,19 @@ import {
   Patch,
   Post,
   Put,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { Multipart, MultipartFile } from '@fastify/multipart';
+import type { FastifyRequest } from 'fastify';
 import { API_PREFIX, type SendManagerEndorsementDto } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { WorkExperienceService } from './work-experience.service.js';
+
+const WE_PROOF_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 @ApiTags('work-experience')
 @Controller(`${API_PREFIX}/users/me/work-experiences`)
@@ -106,6 +112,66 @@ export class WorkExperienceController {
   @ApiResponse({ status: 201, description: 'Attached proof document metadata.' })
   attachDocument(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
     return this.service.attachDocument(user.sub, id, body);
+  }
+
+  @Post(':id/documents/upload')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload a proof document file and attach it to a work experience record.',
+  })
+  @ApiResponse({ status: 201, description: 'Uploaded and attached proof document.' })
+  async uploadDocument(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const partsIter = (
+      request as FastifyRequest & { parts: (opts?: unknown) => AsyncIterableIterator<Multipart> }
+    ).parts({ limits: { fileSize: WE_PROOF_UPLOAD_MAX_BYTES } });
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+    let documentType = 'EXPERIENCE_LETTER';
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        } else if (part.type === 'field' && part.fieldname === 'documentType') {
+          documentType = String(part.value ?? '').trim() || documentType;
+        }
+      }
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The uploaded file exceeds the 5MB limit or could not be read.',
+        statusCode: 400,
+      });
+    }
+
+    if (!fileBuffer) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Choose a PDF, JPG, or PNG proof document to upload.',
+        statusCode: 400,
+      });
+    }
+
+    return this.service.uploadProofDocument(
+      user.sub,
+      id,
+      {
+        buffer: fileBuffer,
+        fileName,
+        mimeType,
+      },
+      documentType,
+    );
   }
 
   @HttpCode(204)

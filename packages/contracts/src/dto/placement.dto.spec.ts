@@ -72,13 +72,22 @@ describe('CO-T01 job opening contracts', () => {
     expect(parsed.success).toBe(false);
   });
 
-  it('rejects JD proficiency values that are not BEGINNER/INTERMEDIATE/ADVANCED', () => {
+  it('rejects JD proficiency values outside the skill proficiency enum', () => {
+    const parsed = CreateJobOpeningRequestSchema.safeParse(
+      validCreate({
+        requiredSkills: [{ skillCode: taxonomySkill, minProficiency: 'EXPERT' }],
+      }),
+    );
+    expect(parsed.success).toBe(false);
+  });
+
+  it('accepts PROFESSIONAL as a valid JD minProficiency', () => {
     const parsed = CreateJobOpeningRequestSchema.safeParse(
       validCreate({
         requiredSkills: [{ skillCode: taxonomySkill, minProficiency: 'PROFESSIONAL' }],
       }),
     );
-    expect(parsed.success).toBe(false);
+    expect(parsed.success).toBe(true);
   });
 
   it('rejects an experience range where minimum exceeds maximum', () => {

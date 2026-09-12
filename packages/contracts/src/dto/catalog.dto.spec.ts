@@ -109,6 +109,7 @@ describe('CompetencyDtoSchema passThresholds (optional until catalog seed)', () 
         BEGINNER: { assessmentPass: 0.6, interviewPass: null, assessmentWeight: 1 },
         INTERMEDIATE: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
         ADVANCED: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
+        PROFESSIONAL: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
       },
     });
     expect(parsed.passThresholds?.BEGINNER.assessmentPass).toBe(0.6);
