@@ -21,7 +21,7 @@ describe('CatalogController', () => {
     expect(tracks[0]?.code).toBe('TECH_FULLSTACK');
   });
 
-  it('listSeSkills() returns the inf-se-v1 library from CatalogService', () => {
+  it('listSeSkills() returns the inf-se-v1 library from CatalogService (S6-RM-13)', () => {
     const listSeSkillLibrary = vi.fn().mockReturnValue({
       taxonomyVersion: 'inf-se-v1@1',
       categories: [{ id: 'A', name: 'Programming & Software Development', skills: [] }],
@@ -47,5 +47,19 @@ describe('CatalogController', () => {
     const library = controller.listSkills();
     expect(listSkillLibrary).toHaveBeenCalledOnce();
     expect(library.taxonomyVersion).toBe(SKILL_TAXONOMY_VERSION);
+  });
+
+  it('get() returns one track by code', async () => {
+    const getTrack = vi.fn().mockResolvedValue({
+      code: 'TECH_FULLSTACK',
+      competencies: [{ name: 'React', passThresholds: { BEGINNER: { assessmentPass: 0.6 } } }],
+    });
+    const controller = new CatalogController(
+      { getTrack } as unknown as CatalogService,
+      {} as unknown as EvidenceCatalogService,
+    );
+    const track = await controller.get('TECH_FULLSTACK');
+    expect(getTrack).toHaveBeenCalledWith('TECH_FULLSTACK');
+    expect(track.competencies[0]?.passThresholds?.BEGINNER.assessmentPass).toBe(0.6);
   });
 });

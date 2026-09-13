@@ -91,6 +91,12 @@ export const LEETCODE_TAG_MAPPING: Readonly<Record<string, SignalTagMappingEntry
     skillCode: 'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
     weight: 0.9,
   },
+  string: {
+    tag: 'string',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    weight: 0.8,
+  },
 };
 
 /** Cap confidence when recent activity is stale (anti-gaming). */

@@ -2,9 +2,11 @@ import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   QuestionSchema,
+  SeSkillLibraryResponseSchema,
   SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   assertDomainWeightsSumToOne,
+  assertInfSeV1MatchesCanonical,
   assertSkillTaxonomyMatchesCanonical,
 } from '@smart/contracts';
 import { ItemAuthoringSchema } from './schema.js';
@@ -70,7 +72,9 @@ export function runValidate(files?: string[], cwd: string = process.cwd()): Vali
       continue;
     }
 
-    if (relative.replace(/\\/g, '/').endsWith('taxonomies/skill.json')) {
+    const normalizedPath = relative.replace(/\\/g, '/');
+
+    if (normalizedPath.endsWith('taxonomies/skill.json')) {
       const result = SkillLibraryResponseSchema.safeParse(parsed);
       if (!result.success) {
         ok = false;
@@ -81,6 +85,25 @@ export function runValidate(files?: string[], cwd: string = process.cwd()): Vali
       } else {
         try {
           assertSkillTaxonomyMatchesCanonical(result.data);
+        } catch (error) {
+          ok = false;
+          messages.push(`${relative}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      continue;
+    }
+
+    if (normalizedPath.endsWith('taxonomies/inf-se-v1.json')) {
+      const result = SeSkillLibraryResponseSchema.safeParse(parsed);
+      if (!result.success) {
+        ok = false;
+        for (const issue of result.error.issues) {
+          const at = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+          messages.push(`${relative}: ${at} — ${issue.message}`);
+        }
+      } else {
+        try {
+          assertInfSeV1MatchesCanonical(result.data);
         } catch (error) {
           ok = false;
           messages.push(`${relative}: ${error instanceof Error ? error.message : String(error)}`);
