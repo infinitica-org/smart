@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkExperienceSection } from './WorkExperienceSection';
 
@@ -8,6 +8,7 @@ const updateWorkExperience = vi.fn();
 const deleteWorkExperience = vi.fn();
 const sendWorkExperienceVerification = vi.fn();
 const restartWorkExperienceVerification = vi.fn();
+const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
 const removeWorkExperienceDocument = vi.fn();
 
@@ -22,6 +23,8 @@ vi.mock('@/lib/api', () => ({
         sendWorkExperienceVerification(...args),
       restartWorkExperienceVerification: (...args: unknown[]) =>
         restartWorkExperienceVerification(...args),
+      uploadWorkExperienceProofDocument: (...args: unknown[]) =>
+        uploadWorkExperienceProofDocument(...args),
       attachWorkExperienceDocument: (...args: unknown[]) => attachWorkExperienceDocument(...args),
       removeWorkExperienceDocument: (...args: unknown[]) => removeWorkExperienceDocument(...args),
     },
@@ -39,7 +42,7 @@ const mockOngoingExp = {
   endDate: null,
   isCurrent: true,
   responsibilities: 'Building awesome apps',
-  skillsClaimed: ['GIT_VERSION_CONTROL'],
+  skillsClaimed: ['SQL_QUERY_OPTIMIZATION'],
   verifierName: 'Jane Manager',
   verifierEmail: 'jane@acme.com',
   status: 'SUBMITTED',
@@ -153,11 +156,61 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     ).toBeTruthy();
   });
 
+  it('shows proof document upload controls in the add experience modal', async () => {
+    await openAddExperienceModal();
+
+    expect(screen.getByText('Proof Documents *')).toBeTruthy();
+    expect(screen.getByLabelText('Proof document')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Add file/i })).toBeTruthy();
+  });
+
+  it('submits a new ongoing role when an offer letter is attached in the modal', async () => {
+    createWorkExperience.mockResolvedValue({
+      ...mockOngoingExp,
+      id: 'exp-new',
+    });
+    uploadWorkExperienceProofDocument.mockResolvedValue({
+      id: 'doc-new',
+      experienceId: 'exp-new',
+      documentType: 'OFFER_LETTER',
+      fileName: 'offer.pdf',
+      fileUrl: 'work-experience-proofs/student-1/offer.pdf',
+      fileSizeBytes: 128,
+      mimeType: 'application/pdf',
+      createdAt: '2026-09-01T00:00:00.000Z',
+    });
+
+    const { container } = await openAddExperienceModal();
+    fillMandatoryWorkExperienceFields(container);
+    selectCatalogSkill('Version Control & Code Collaboration');
+    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+
+    const file = new File(['%PDF-1.4 offer'], 'offer.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Proof document'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /Add file/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
+
+    await waitFor(() => {
+      expect(createWorkExperience).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documents: [],
+        }),
+      );
+      expect(uploadWorkExperienceProofDocument).toHaveBeenCalledWith(
+        'exp-new',
+        file,
+        'offer.pdf',
+        'OFFER_LETTER',
+      );
+    });
+  });
+
   it('prevents submission client-side if required offer letter is missing', async () => {
     const { container } = await openAddExperienceModal();
 
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
 
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -270,7 +323,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when domain is empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -282,7 +335,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when responsibilities are empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { responsibilities: '' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -314,7 +367,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save for ended employment when End Date is missing', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
 
@@ -328,7 +381,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('keeps End Date optional when currently employed', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     expect(screen.queryByText('End Date *')).toBeNull();
@@ -355,7 +408,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
       expect.objectContaining({
         domain: 'Software Engineering',
         responsibilities: 'Building awesome apps',
-        skillsClaimed: ['GIT_VERSION_CONTROL'],
+        skillsClaimed: ['SQL_QUERY_OPTIMIZATION'],
       }),
     );
   });
@@ -363,7 +416,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('does not call the API when mandatory validation fails', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '   ' });
-    selectCatalogSkill('Git & version control');
+    selectCatalogSkill('Version Control & Code Collaboration');
     fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
 
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));

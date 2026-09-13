@@ -33,30 +33,33 @@ export function CertificatesSection() {
   return (
     <section className="flex flex-col gap-6" aria-labelledby="certificates-heading">
       <div>
-        <h2 id="certificates-heading" className="text-xl font-semibold tracking-tight text-white">
+        <h2
+          id="certificates-heading"
+          className="text-xl font-semibold tracking-tight text-foreground"
+        >
           Certifications
         </h2>
-        <p className="mt-1 text-sm text-white/50">
+        <p className="mt-1 text-sm text-muted-foreground">
           Professional certifications and verified credentials that CV and Work Experience can
           attach to.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-white/40">Loading certificates…</p>
+        <p className="text-sm text-muted-foreground">Loading certificates…</p>
       ) : certificates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
-          <Award className="h-10 w-10 text-white/20" />
-          <p className="mt-2 text-sm font-medium text-white/60">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-muted/50 p-8 text-center">
+          <Award className="h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-2 text-sm font-medium text-foreground/80">
             No candidate certificates attached yet
           </p>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             Certificates earned or imported will be listed here.
           </p>
         </div>
@@ -65,23 +68,25 @@ export function CertificatesSection() {
           {certificates.map((cert) => (
             <div
               key={cert.certificateId}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 p-5"
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#00fad0]/10 text-[#00fad0]">
                   <Award className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">
+                  <h3 className="font-semibold text-foreground">
                     {cert.title || 'Untitled Certificate'}
                   </h3>
-                  <p className="text-sm text-white/70">Issuer: {cert.issuer || 'Unknown Issuer'}</p>
+                  <p className="text-sm text-foreground/80">
+                    Issuer: {cert.issuer || 'Unknown Issuer'}
+                  </p>
                   {cert.issueDate && (
-                    <p className="mt-1 text-xs text-white/45">Issued: {cert.issueDate}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Issued: {cert.issueDate}</p>
                   )}
                 </div>
               </div>
-              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-400">
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                 {cert.status}
               </span>
             </div>

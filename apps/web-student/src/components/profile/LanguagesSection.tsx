@@ -111,10 +111,13 @@ export function LanguagesSection() {
     <section className="flex flex-col gap-6" aria-labelledby="languages-heading">
       <div className="flex items-center justify-between">
         <div>
-          <h2 id="languages-heading" className="text-xl font-semibold tracking-tight text-white">
-            Languages
+          <h2
+            id="languages-heading"
+            className="text-xl font-semibold tracking-tight text-foreground"
+          >
+            Languages Known
           </h2>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-muted-foreground">
             Languages you speak and your proficiency level.
           </p>
         </div>
@@ -129,18 +132,18 @@ export function LanguagesSection() {
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-white/40">Loading languages…</p>
+        <p className="text-sm text-muted-foreground">Loading languages…</p>
       ) : languages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
-          <Languages className="h-10 w-10 text-white/20" />
-          <p className="mt-2 text-sm font-medium text-white/60">No languages added yet</p>
-          <p className="text-xs text-white/40">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-muted/50 p-8 text-center">
+          <Languages className="h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-2 text-sm font-medium text-foreground/80">No languages added yet</p>
+          <p className="text-xs text-muted-foreground">
             Add your spoken languages for global job opportunities.
           </p>
         </div>
@@ -149,15 +152,15 @@ export function LanguagesSection() {
           {languages.map((lang) => (
             <div
               key={lang.id}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 p-4"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00fad0]/10 text-[#00fad0]">
                   <Languages className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">{lang.language}</h3>
-                  <span className="inline-block mt-0.5 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/70">
+                  <h3 className="font-semibold text-foreground">{lang.language}</h3>
+                  <span className="inline-block mt-0.5 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">
                     {lang.proficiency}
                   </span>
                 </div>
@@ -166,7 +169,7 @@ export function LanguagesSection() {
                 <button
                   type="button"
                   onClick={() => openEditModal(lang)}
-                  className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   title="Edit Language"
                 >
                   <Pencil className="h-4 w-4" />
@@ -174,7 +177,7 @@ export function LanguagesSection() {
                 <button
                   type="button"
                   onClick={() => handleDelete(lang.id)}
-                  className="rounded-lg p-1.5 text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                  className="rounded-lg p-1.5 text-red-600/80 hover:bg-red-50 hover:text-red-700 transition-colors"
                   title="Delete Language"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -188,15 +191,15 @@ export function LanguagesSection() {
       {/* Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-zinc-900 p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-lg font-semibold text-foreground">
                 {editingId ? 'Edit Language' : 'Add Language'}
               </h3>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -204,14 +207,14 @@ export function LanguagesSection() {
 
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               {formError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                   {formError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-white/70">
-                  Language <span className="text-red-400">*</span>
+                <label className="block text-xs font-medium text-foreground/80">
+                  Language <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -219,16 +222,16 @@ export function LanguagesSection() {
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   placeholder="e.g. English, German, Spanish"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70">Proficiency</label>
+                <label className="block text-xs font-medium text-foreground/80">Proficiency</label>
                 <select
                   value={proficiency}
                   onChange={(e) => setProficiency(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-[#00fad0] focus:outline-none"
                 >
                   {PROFICIENCY_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -238,11 +241,11 @@ export function LanguagesSection() {
                 </select>
               </div>
 
-              <div className="mt-4 flex justify-end gap-3 border-t border-white/10 pt-4">
+              <div className="mt-4 flex justify-end gap-3 border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10"
+                  className="rounded-xl border border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted/80"
                 >
                   Cancel
                 </button>

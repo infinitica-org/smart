@@ -8,6 +8,7 @@ import { CandidateEducationTpoController } from '../candidate-education/candidat
 import { CandidateEducationService } from '../candidate-education/candidate-education.service.js';
 import { CandidateLanguagesController } from '../candidate-languages/candidate-languages.controller.js';
 import { CandidateLanguagesService } from '../candidate-languages/candidate-languages.service.js';
+import { ProfileCompletionService } from './profile-completion.service.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
@@ -19,7 +20,17 @@ import { UsersService } from './users.service.js';
     CandidateEducationTpoController,
     CandidateLanguagesController,
   ],
-  providers: [UsersService, CandidateEducationService, CandidateLanguagesService],
-  exports: [UsersService, CandidateEducationService, CandidateLanguagesService],
+  providers: [
+    UsersService,
+    CandidateEducationService,
+    CandidateLanguagesService,
+    ProfileCompletionService,
+  ],
+  exports: [
+    UsersService,
+    CandidateEducationService,
+    CandidateLanguagesService,
+    ProfileCompletionService,
+  ],
 })
 export class UsersModule {}

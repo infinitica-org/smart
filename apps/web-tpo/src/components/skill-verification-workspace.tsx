@@ -15,15 +15,17 @@ import {
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import {
+  SKILL_CATEGORY_IDS,
+  SKILL_CATEGORIES,
   SKILL_DEFINITIONS,
-  SKILL_STREAMS,
   type BatchDto,
   type InstitutionStudentDto,
+  type SkillCategoryId,
   type SkillClaimDto,
-  type SkillStream,
 } from '@smart/contracts';
 import { Badge, Button, Card } from '@smart/ui';
 import { api } from '../lib/api';
+import { CompetencyBreakdown } from './competency-breakdown';
 
 function errorMessage(caught: unknown, fallback: string): string {
   if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
@@ -34,23 +36,12 @@ function skillNameFor(code: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === code)?.name ?? code;
 }
 
-function skillStreamFor(code: string): SkillStream {
-  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
-  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
-  return stream;
+function skillCategoryFor(code: string): SkillCategoryId | null {
+  return SKILL_DEFINITIONS.find((s) => s.code === code)?.categoryId ?? null;
 }
 
-function streamLabel(stream: string): string {
-  switch (stream) {
-    case 'SOFTWARE_DEVELOPMENT':
-      return 'Software Engineering';
-    case 'DATA_SCIENCE_ANALYTICS':
-      return 'Data & Analytics';
-    case 'AI_ML_ENGINEERING':
-      return 'AI & Machine Learning';
-    default:
-      return stream.replace(/_/g, ' ');
-  }
+function categoryLabel(categoryId: SkillCategoryId): string {
+  return SKILL_CATEGORIES[categoryId].name;
 }
 
 export function SkillVerificationWorkspace() {
@@ -63,7 +54,7 @@ export function SkillVerificationWorkspace() {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string>('ALL');
-  const [selectedStream, setSelectedStream] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
@@ -108,12 +99,11 @@ export function SkillVerificationWorkspace() {
     // Student skill claims
     const studentClaims = claims.filter((c) => c.studentId === student.userId);
 
-    // Stream filter
-    if (selectedStream !== 'ALL') {
-      const hasStreamClaim = studentClaims.some(
-        (claim) => skillStreamFor(claim.skillCode) === selectedStream,
+    if (selectedCategory !== 'ALL') {
+      const hasCategoryClaim = studentClaims.some(
+        (claim) => skillCategoryFor(claim.skillCode) === selectedCategory,
       );
-      if (!hasStreamClaim && studentClaims.length > 0) return false;
+      if (!hasCategoryClaim && studentClaims.length > 0) return false;
     }
 
     // Status filter
@@ -280,14 +270,14 @@ export function SkillVerificationWorkspace() {
           {/* Domain Stream Filter */}
           <select
             aria-label="Filter by Skill Domain Stream"
-            value={selectedStream}
-            onChange={(e) => setSelectedStream(e.target.value)}
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             className="h-10 rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 text-xs font-semibold text-zinc-300 focus:outline-none focus:border-emerald-500/60"
           >
-            <option value="ALL">All Domains</option>
-            {SKILL_STREAMS.map((st) => (
-              <option key={st} value={st}>
-                {streamLabel(st)}
+            <option value="ALL">All categories</option>
+            {SKILL_CATEGORY_IDS.map((categoryId) => (
+              <option key={categoryId} value={categoryId}>
+                {categoryLabel(categoryId)}
               </option>
             ))}
           </select>
@@ -459,7 +449,11 @@ export function SkillVerificationWorkspace() {
                                 {skillNameFor(claim.skillCode)}
                               </h4>
                               <p className="text-[11px] font-semibold text-zinc-400 mt-0.5">
-                                Stream: {streamLabel(skillStreamFor(claim.skillCode))}
+                                Category:{' '}
+                                {(() => {
+                                  const categoryId = skillCategoryFor(claim.skillCode);
+                                  return categoryId ? categoryLabel(categoryId) : 'Unknown';
+                                })()}
                               </p>
                             </div>
                             <Badge
@@ -500,6 +494,14 @@ export function SkillVerificationWorkspace() {
                               </strong>{' '}
                               {levelMeta.competencyBar}
                             </p>
+                          ) : null}
+
+                          {claim.latestAssessmentResult ? (
+                            <CompetencyBreakdown
+                              skillCode={claim.skillCode}
+                              assessmentResult={claim.latestAssessmentResult}
+                              compact
+                            />
                           ) : null}
                         </div>
 

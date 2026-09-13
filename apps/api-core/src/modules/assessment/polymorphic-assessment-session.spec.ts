@@ -87,7 +87,7 @@ describe('SE-T10 Polymorphic Assessment Session Adapter & Integration', () => {
         sessionId: SESSION_ID,
         userId: STUDENT_ID,
         claimId: CLAIM_ID,
-        catalogSkillCode: 'GIT_VERSION_CONTROL',
+        catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
         skillName: 'Git',
         sdeSkillCode: 'SDE_GIT',
         proficiency: 'BEGINNER',
@@ -109,7 +109,7 @@ describe('SE-T10 Polymorphic Assessment Session Adapter & Integration', () => {
         lockedUntil: null,
         verifiedUntil: null,
         lastAttemptId: null,
-        skill: { code: 'GIT_VERSION_CONTROL', name: 'Git' },
+        skill: { code: 'SQL_QUERY_OPTIMIZATION', name: 'Git' },
       };
 
       const redis = {

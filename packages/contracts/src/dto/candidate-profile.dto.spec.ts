@@ -44,6 +44,18 @@ describe('Candidate Education & Language DTO Schemas', () => {
       grade: 'A',
       status: 'verified',
       rejectionReason: null,
+      documents: [
+        {
+          id: '123e4567-e89b-12d3-a456-426614174010',
+          educationId: '123e4567-e89b-12d3-a456-426614174000',
+          documentType: 'DEGREE_CERTIFICATE',
+          fileUrl: 'storage/education-proofs/degree.pdf',
+          fileName: 'degree.pdf',
+          fileSizeBytes: 1200,
+          mimeType: 'application/pdf',
+          createdAt: new Date().toISOString(),
+        },
+      ],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

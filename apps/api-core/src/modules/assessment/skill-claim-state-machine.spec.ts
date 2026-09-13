@@ -79,6 +79,16 @@ describe('skill-claim state machine (SE-T01)', () => {
     expect(cooldown.toISOString()).toBe('2026-09-04T10:00:00.000Z');
   });
 
+  it('uses verifiedProficiency on GENUINE_PASS when supplied', () => {
+    const result = apply(declared({ proficiency: 'BEGINNER' }), {
+      type: 'GENUINE_PASS',
+      verifiedProficiency: 'ADVANCED',
+    });
+    expect(result.accepted).toBe(true);
+    expect(result.next.status).toBe('VERIFIED');
+    expect(result.next.proficiency).toBe('ADVANCED');
+  });
+
   it.each([
     {
       name: '1. DECLARED + genuine pass → VERIFIED, verifiedUntil = now + 35d, proficiency preserved',
@@ -257,5 +267,12 @@ describe('skill-claim state machine (SE-T01)', () => {
     expect(fail2.next.status).toBe('LOCKED');
     expect(start3.attemptAllowed).toBe(false);
     expect(start3.accepted).toBe(false);
+  });
+
+  it('PROVISIONAL_SETTLEMENT leaves claim unchanged', () => {
+    const result = apply(declared(), { type: 'PROVISIONAL_SETTLEMENT' });
+    expect(result.accepted).toBe(true);
+    expect(result.next.status).toBe('DECLARED');
+    expect(result.next.strikes).toBe(0);
   });
 });

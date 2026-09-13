@@ -49,6 +49,18 @@ export function hidePlayerForFullscreen(blocked: boolean): boolean {
   return blocked;
 }
 
+/** Leave fullscreen and keyboard lock after an attempt ends. */
+export async function releaseProctoringSession(): Promise<void> {
+  unlockAssessmentKeyboard();
+  if (typeof document !== 'undefined' && document.fullscreenElement) {
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Best-effort when the browser already exited fullscreen.
+    }
+  }
+}
+
 export async function enterAssessmentFullscreen(target?: Element | null): Promise<boolean> {
   if (typeof document === 'undefined') return false;
   const node = target ?? document.documentElement;

@@ -1,5 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type {
@@ -30,6 +36,7 @@ import {
   CreateWorkExperienceDocumentSchema,
   UpdateWorkExperienceSchema,
   WorkExperienceSchema,
+  WorkExperienceResponsibilitySchema,
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
   WorkExperienceLetterAuthenticityExtractSchema,
@@ -49,7 +56,12 @@ import {
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { OrganizationsService } from '../institutions/organizations.service.js';
+import {
+  assertStudentControlledProofFileUrl,
+  InvalidStudentProofFileUrlError,
+} from './work-experience-proof-url.util.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -59,6 +71,7 @@ import {
   type WorkExperienceManagerReminderJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
@@ -91,6 +104,22 @@ interface RawWorkExperience {
   createdAt: Date;
   updatedAt: Date;
   documents?: RawWorkExperienceDocument[];
+  deliverablesStructured?: unknown;
+  personalContributions?: unknown;
+  structuredResponsibilities?: Array<{
+    id: string;
+    task: string;
+    skillCode?: string | null;
+    personalContribution: string;
+    responsibilityLevel: string;
+    independence?: string | null;
+    tools: string[];
+    decision?: string | null;
+    constraintText?: string | null;
+    outcome?: string | null;
+    artifactId?: string | null;
+    activity?: unknown;
+  }>;
 }
 
 interface RawWorkExperienceDocument {
@@ -124,6 +153,23 @@ import {
 } from './work-experience-document-authenticity.util.js';
 
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
+import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
+import {
+  buildEvidenceFromWorkExperienceRow,
+  extractStructuredMetadata,
+  responsibilityRowsCreateInput,
+  structuredMetadataWriteData,
+  type WorkExperienceWithEvidenceRelations,
+} from './work-experience-evidence.adapter.js';
+import { z } from 'zod';
+
+const WE_PROOF_ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+]);
+const WE_PROOF_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class WorkExperienceService {
@@ -138,7 +184,34 @@ export class WorkExperienceService {
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync?: EvidenceSyncService,
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
+
+  private readonly evidenceInclude = {
+    documents: true,
+    structuredResponsibilities: true,
+  } as const;
+
+  private async syncEvidenceRecord(
+    studentId: string,
+    experienceId: string,
+    overrides?: ReturnType<typeof extractStructuredMetadata>,
+  ): Promise<void> {
+    await this.evidenceSync?.syncWorkExperienceEvidenceRecord(studentId, experienceId, overrides);
+  }
+
+  private async persistStructuredResponsibilities(
+    experienceId: string,
+    items: z.infer<typeof WorkExperienceResponsibilitySchema>[],
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.workExperienceResponsibility.deleteMany({ where: { experienceId } }),
+      ...responsibilityRowsCreateInput(experienceId, items).map((row) =>
+        this.prisma.workExperienceResponsibility.create({ data: row }),
+      ),
+    ]);
+  }
 
   private async resolveOrganization(params: {
     name: string;
@@ -241,6 +314,7 @@ export class WorkExperienceService {
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
       documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
+      evidence: buildEvidenceFromWorkExperienceRow(exp as WorkExperienceWithEvidenceRelations),
     });
   }
 
@@ -258,7 +332,7 @@ export class WorkExperienceService {
   async listForStudent(studentId: string): Promise<WorkExperienceDto[]> {
     const list = await this.prisma.workExperience.findMany({
       where: { studentId },
-      include: { documents: true },
+      include: this.evidenceInclude,
       orderBy: { startDate: 'desc' },
     });
     return list.map((item) => this.mapToDto(item));
@@ -267,7 +341,7 @@ export class WorkExperienceService {
   async getForStudent(studentId: string, id: string): Promise<WorkExperienceDto> {
     const record = await this.prisma.workExperience.findUnique({
       where: { id },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
     if (!record || record.studentId !== studentId) {
       throw new NotFoundException({
@@ -277,6 +351,38 @@ export class WorkExperienceService {
       });
     }
     return this.mapToDto(record);
+  }
+
+  async listStructuredResponsibilities(studentId: string, experienceId: string) {
+    await this.getForStudent(studentId, experienceId);
+    const rows = await this.prisma.workExperienceResponsibility.findMany({
+      where: { experienceId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) =>
+      WorkExperienceResponsibilitySchema.parse({
+        responsibilityId: row.id,
+        task: row.task,
+        skillCode: row.skillCode ?? undefined,
+        personalContribution: row.personalContribution,
+        responsibilityLevel: row.responsibilityLevel,
+        independence: row.independence ?? undefined,
+        tools: row.tools,
+        decision: row.decision ?? undefined,
+        constraint: row.constraintText ?? undefined,
+        outcome: row.outcome ?? undefined,
+        artifactId: row.artifactId,
+        activity: row.activity ?? undefined,
+      }),
+    );
+  }
+
+  async replaceStructuredResponsibilities(studentId: string, experienceId: string, body: unknown) {
+    await this.getForStudent(studentId, experienceId);
+    const items = z.array(WorkExperienceResponsibilitySchema).parse(body);
+    await this.persistStructuredResponsibilities(experienceId, items);
+    await this.syncEvidenceRecord(studentId, experienceId, { structuredResponsibilities: items });
+    return this.listStructuredResponsibilities(studentId, experienceId);
   }
 
   async create(studentId: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -324,21 +430,30 @@ export class WorkExperienceService {
       }
     }
 
-    await this.assertWorkExperienceCompleteness({
-      companyName: data.companyName,
-      role: data.role,
-      employmentType: data.employmentType,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      isCurrent: data.isCurrent,
-      domain: data.domain,
-      responsibilities: data.responsibilities,
-      skillsClaimed: data.skillsClaimed,
-      companyId: matchedCompanyId ?? data.companyId,
-      companyWebsite: data.companyWebsite,
-      companyLinkedinUrl: data.companyLinkedinUrl,
-      documents: data.documents,
-    });
+    for (const doc of data.documents ?? []) {
+      this.assertProofFileUrlOrThrow(doc.fileUrl);
+    }
+
+    await this.assertWorkExperienceCompleteness(
+      {
+        companyName: data.companyName,
+        role: data.role,
+        employmentType: data.employmentType,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isCurrent: data.isCurrent,
+        domain: data.domain,
+        responsibilities: data.responsibilities,
+        skillsClaimed: data.skillsClaimed,
+        companyId: matchedCompanyId ?? data.companyId,
+        companyWebsite: data.companyWebsite,
+        companyLinkedinUrl: data.companyLinkedinUrl,
+        documents: data.documents,
+      },
+      { skipDocumentRules: (data.documents ?? []).length === 0 },
+    );
+
+    const structuredMetadata = extractStructuredMetadata(data);
 
     const created = await this.prisma.workExperience.create({
       data: {
@@ -366,6 +481,7 @@ export class WorkExperienceService {
         verifierDesignation: data.verifierDesignation || null,
         verifierPhone: data.verifierPhone || null,
         status: 'SUBMITTED',
+        ...structuredMetadataWriteData(structuredMetadata),
         ...(data.documents && data.documents.length > 0
           ? {
               documents: {
@@ -380,8 +496,17 @@ export class WorkExperienceService {
             }
           : {}),
       },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
+
+    if (structuredMetadata.structuredResponsibilities?.length) {
+      await this.persistStructuredResponsibilities(
+        created.id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, created.id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
@@ -391,7 +516,11 @@ export class WorkExperienceService {
       reasonCode: null,
     });
 
-    return this.mapToDto(created);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id: created.id },
+      include: this.evidenceInclude,
+    });
+    return this.mapToDto(reloaded ?? created);
   }
 
   async update(studentId: string, id: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -464,7 +593,9 @@ export class WorkExperienceService {
       updatedCompanyNameRaw = nameToUse.trim();
     }
 
-    const updated = await this.prisma.workExperience.update({
+    const structuredMetadata = extractStructuredMetadata(data);
+
+    await this.prisma.workExperience.update({
       where: { id },
       data: {
         ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
@@ -502,19 +633,35 @@ export class WorkExperienceService {
           ? { verifierDesignation: data.verifierDesignation || null }
           : {}),
         ...(data.verifierPhone !== undefined ? { verifierPhone: data.verifierPhone || null } : {}),
+        ...structuredMetadataWriteData(structuredMetadata),
       },
-      include: { documents: true },
     });
+
+    if (structuredMetadata.structuredResponsibilities !== undefined) {
+      await this.persistStructuredResponsibilities(
+        id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperience',
-      resourceId: updated.id,
+      resourceId: id,
       reasonCode: null,
     });
 
-    return this.mapToDto(updated);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: this.evidenceInclude,
+    });
+    if (!reloaded) {
+      return this.getForStudent(studentId, id);
+    }
+    return this.mapToDto(reloaded);
   }
 
   async delete(studentId: string, id: string): Promise<void> {
@@ -568,6 +715,8 @@ export class WorkExperienceService {
       });
     }
 
+    this.assertProofFileUrlOrThrow(parsed.data.fileUrl);
+
     const doc = await this.prisma.workExperienceDocument.create({
       data: {
         experienceId: id,
@@ -589,6 +738,69 @@ export class WorkExperienceService {
 
     const checked = await this.runDocumentAuthenticityCheck(existing, doc.id);
     return this.mapDocumentToDto(checked);
+  }
+
+  async uploadProofDocument(
+    studentId: string,
+    experienceId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+    documentTypeRaw: string,
+  ): Promise<WorkExperienceDocumentDto> {
+    if (!this.storageService) {
+      throw new BadRequestException({
+        error: 'storage_unavailable',
+        message: 'Proof document upload is unavailable.',
+        statusCode: 400,
+      });
+    }
+
+    const documentTypeResult = z
+      .enum([
+        'OFFER_LETTER',
+        'EXPERIENCE_LETTER',
+        'PAYSLIP',
+        'RELIEVING_LETTER',
+        'FORM_16',
+        'OTHER',
+      ])
+      .safeParse(documentTypeRaw);
+    if (!documentTypeResult.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Invalid proof document type.',
+        statusCode: 400,
+      });
+    }
+
+    if (!WE_PROOF_ALLOWED_MIME_TYPES.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, JPG, and PNG files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > WE_PROOF_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The proof document must be 5MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `work-experience-proofs/${studentId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    return this.attachDocument(studentId, experienceId, {
+      documentType: documentTypeResult.data,
+      fileUrl: objectKey,
+      fileName: file.fileName,
+      fileSizeBytes: file.buffer.byteLength,
+      mimeType: file.mimeType,
+    });
   }
 
   /**
@@ -1155,6 +1367,22 @@ export class WorkExperienceService {
     });
   }
 
+  private assertProofFileUrlOrThrow(fileUrl: string): void {
+    try {
+      assertStudentControlledProofFileUrl(fileUrl);
+    } catch (error) {
+      const message =
+        error instanceof InvalidStudentProofFileUrlError
+          ? error.message
+          : 'Invalid proof document file reference.';
+      throw new BadRequestException({
+        error: 'invalid_file_url',
+        message,
+        statusCode: 400,
+      });
+    }
+  }
+
   private async assertWorkExperienceCompleteness(
     input:
       | WorkExperienceValidationInput
@@ -1176,6 +1404,7 @@ export class WorkExperienceService {
         > & {
           documents?: Array<{ documentType: string }>;
         }),
+    options?: { skipDocumentRules?: boolean },
   ): Promise<void> {
     const validationInput =
       'startDate' in input && input.startDate instanceof Date
@@ -1188,8 +1417,11 @@ export class WorkExperienceService {
           };
 
     const result = validateWorkExperienceSubmission(validationInput);
-    if (!result.valid) {
-      this.throwWorkExperienceValidationError(result);
+    const issues = options?.skipDocumentRules
+      ? result.issues.filter((issue) => issue.path !== 'documents')
+      : result.issues;
+    if (issues.length > 0) {
+      this.throwWorkExperienceValidationError({ valid: false, issues });
     }
   }
 
@@ -1229,30 +1461,16 @@ export class WorkExperienceService {
       }
     }
 
-    // 2. HTTP/HTTPS URL
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+    // 2. Object storage key (MinIO/S3 via StorageService)
+    if (this.storageService) {
       try {
-        const res = await fetch(fileUrl);
-        if (!res.ok) {
-          throw new Error(`HTTP fetch failed with status ${res.status}`);
-        }
-        const arrayBuf = await res.arrayBuffer();
-        const buf = Buffer.from(arrayBuf);
-        if (buf.length > MAX_FILE_SIZE_BYTES) {
-          throw new Error('Retrieved file size exceeds 5MB limit');
-        }
-        return buf;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new BadRequestException({
-          error: 'file_retrieval_failed',
-          message: `Proof document file could not be retrieved from remote URL: ${msg}`,
-          statusCode: 400,
-        });
+        return await this.storageService.getObjectBuffer(fileUrl);
+      } catch {
+        // Fall through to local filesystem lookup.
       }
     }
 
-    // 3. Local filesystem path
+    // 4. Local filesystem path
     try {
       const fs = await import('node:fs/promises');
       const path = await import('node:path');
@@ -1623,6 +1841,8 @@ export class WorkExperienceService {
       },
     });
 
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
+
     const message =
       newStatus === 'VERIFIED'
         ? 'Work experience successfully verified.'
@@ -1663,8 +1883,16 @@ export class WorkExperienceService {
   /**
    * Fetches Ops Dashboard items for tracking candidate work experience verifications.
    */
-  async getOpsDashboard(): Promise<WorkExperienceOpsDashboardItemDto[]> {
+  async getOpsDashboard(user: RequestUser): Promise<WorkExperienceOpsDashboardItemDto[]> {
+    const institutionScope =
+      user.role === 'SUPER_ADMIN'
+        ? {}
+        : user.inst
+          ? { student: { institutionId: user.inst } }
+          : { id: '__none__' };
+
     const experiences = await this.prisma.workExperience.findMany({
+      where: institutionScope,
       include: {
         student: true,
         documents: true,
@@ -2067,6 +2295,8 @@ export class WorkExperienceService {
         skillRatings: payload.skillRatings ?? null,
       },
     });
+
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
 
     return {
       success: true,

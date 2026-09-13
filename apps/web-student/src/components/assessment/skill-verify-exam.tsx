@@ -1,17 +1,27 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type {
-  RunSdeSkillFormCodeResponse,
-  SdeSkillFormFormat,
-  SdeSkillFormPublicItem,
-  SkillVerifySessionDto,
+import {
+  splitTracePromptForDisplay,
+  type RunSdeSkillFormCodeResponse,
+  type SdeSkillFormFormat,
+  type SdeSkillFormPublicItem,
+  type SkillVerifySessionDto,
 } from '@smart/contracts';
 import { AnswerOption, Badge, Button, ProgressIndicator, QuestionCard, Timer } from '@smart/ui';
 import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
 import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
+import {
+  areAllSkillVerifyItemsAnswered,
+  isSkillVerifyAnswered,
+  type SkillVerifyError,
+} from '@/lib/skill-verify-errors';
 
-const SUBMIT_LABEL = 'Submit and see results';
+const SUBMIT_LABEL_BY_STAGE = {
+  DIAGNOSTIC: 'Finish diagnostic',
+  TARGETED: 'Submit and see results',
+  COMPLETE: 'Submit and see results',
+} as const;
 
 const FORMAT_LABEL: Record<SdeSkillFormFormat, string> = {
   MCQ: 'Single Choice',
@@ -32,18 +42,7 @@ export function skillVerifyTimerProps(session: SkillVerifySessionDto) {
   };
 }
 
-export function isSkillVerifyAnswered(
-  answer:
-    | {
-        selectedKey?: string;
-        text?: string;
-      }
-    | undefined,
-) {
-  if (!answer) return false;
-  if (answer.selectedKey) return true;
-  return Boolean(answer.text?.trim());
-}
+export { isSkillVerifyAnswered } from '@/lib/skill-verify-errors';
 
 type ProseBlock =
   { type: 'p'; text: string } | { type: 'ol'; items: string[] } | { type: 'ul'; items: string[] };
@@ -53,7 +52,7 @@ export type PromptSegment =
 
 export function splitPromptSegments(text: string): PromptSegment[] {
   const segments: PromptSegment[] = [];
-  const fence = /```(\w*)\r?\n([\s\S]*?)```/g;
+  const fence = /```(\w*)[\s\r\n]*([\s\S]*?)```/g;
   let cursor = 0;
   let match: RegExpExecArray | null = fence.exec(text);
   while (match) {
@@ -130,6 +129,8 @@ export function SkillVerifyExam({
   pending,
   error,
   kioskTitle,
+  stageNotice,
+  onDismissStageNotice,
   onSelectKey,
   onChangeText,
   onGoTo,
@@ -142,8 +143,10 @@ export function SkillVerifyExam({
   currentIndex: number;
   answers: Record<number, { selectedKey?: string; text?: string }>;
   pending: boolean;
-  error: string | null;
+  error: SkillVerifyError | null;
   kioskTitle?: string;
+  stageNotice?: string | null;
+  onDismissStageNotice?: () => void;
   onSelectKey: (itemIndex: number, key: 'A' | 'B' | 'C' | 'D') => void;
   onChangeText: (itemIndex: number, text: string) => void;
   onGoTo: (index: number) => void;
@@ -172,7 +175,14 @@ export function SkillVerifyExam({
   const debug = item.format === 'DEBUG';
   const studio = coding || trace || debug;
 
-  const heading = kioskTitle ?? formatSkillVerifyKioskTitle(session.skillCode, session.proficiency);
+  const heading =
+    kioskTitle ?? formatSkillVerifyKioskTitle(session.skillCode, session.stage ?? 'DIAGNOSTIC');
+  const submitLabel =
+    session.stage && session.stage in SUBMIT_LABEL_BY_STAGE
+      ? SUBMIT_LABEL_BY_STAGE[session.stage]
+      : 'Submit and see results';
+  const allAnswered = areAllSkillVerifyItemsAnswered(session, answers);
+  const canSubmit = !pending && allAnswered;
 
   const runCode = async () => {
     if (!onRunCode || !coding) return;
@@ -203,25 +213,63 @@ export function SkillVerifyExam({
           <Button type="button" variant="outline" disabled={pending} onClick={onExit}>
             Exit
           </Button>
-          <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-            {SUBMIT_LABEL}
-          </Button>
         </div>
       </header>
+
+      {stageNotice ? (
+        <div
+          role="status"
+          className="mx-6 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/10 px-4 py-3 text-sm text-foreground"
+        >
+          <p>{stageNotice}</p>
+          {onDismissStageNotice ? (
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold text-[#00967c] hover:underline"
+              onClick={onDismissStageNotice}
+            >
+              Dismiss
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid min-h-0 flex-1 gap-6 overflow-hidden p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-h-0 flex-col overflow-hidden">
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
-            <Badge variant="secondary">{session.proficiency}</Badge>
+            {session.intelligenceEnabled && session.stageLabel ? (
+              <Badge variant="outline">{session.stageLabel}</Badge>
+            ) : (
+              <Badge variant="secondary">{session.proficiency}</Badge>
+            )}
+            {session.stage === 'TARGETED' && (session.pendingCompetencies?.length ?? 0) > 0 ? (
+              <span className="text-xs">
+                Focusing on: {session.pendingCompetencies?.slice(0, 3).join(', ')}
+              </span>
+            ) : null}
             <span>{FORMAT_LABEL[item.format]}</span>
             <span className="rounded-md border border-[var(--surface-border)] px-2 py-0.5 text-[var(--text-primary)]">
               Total questions: {String(total)}
             </span>
           </div>
 
+          {pending ? (
+            <p className="mb-3 text-sm text-[var(--text-muted)]" aria-live="polite">
+              {submitLabel === 'Finish diagnostic'
+                ? 'Grading your diagnostic…'
+                : 'Submitting your assessment…'}
+            </p>
+          ) : null}
+
           {error ? (
             <p className="mb-3 text-sm text-danger" role="alert">
-              {error}
+              <span className="font-medium">{error.title}.</span> {error.message}
+            </p>
+          ) : null}
+
+          {!allAnswered ? (
+            <p className="mb-3 text-sm text-[var(--text-muted)]">
+              Answer all {String(total)} questions before submitting.
             </p>
           ) : null}
 
@@ -315,9 +363,9 @@ export function SkillVerifyExam({
               >
                 Clear response
               </Button>
-              {last ? (
-                <Button type="button" variant="primary" disabled={pending} onClick={onSubmit}>
-                  {SUBMIT_LABEL}
+              {last || allAnswered ? (
+                <Button type="button" variant="primary" disabled={!canSubmit} onClick={onSubmit}>
+                  {pending ? 'Please wait…' : submitLabel}
                 </Button>
               ) : (
                 <Button
@@ -386,7 +434,12 @@ export function SkillVerifyExam({
 }
 
 function ProblemStatement({ item, heading }: { item: SdeSkillFormPublicItem; heading: string }) {
-  const segments = splitPromptSegments(item.prompt);
+  const segments: PromptSegment[] =
+    item.format === 'TRACE'
+      ? splitTracePromptForDisplay(item.prompt)
+      : splitPromptSegments(item.prompt).filter(
+          (segment) => segment.type !== 'code' || segment.text.trim().length > 0,
+        );
   return (
     <article className="flex flex-col gap-5 text-sm leading-relaxed">
       <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{heading}</h2>
@@ -400,7 +453,13 @@ function ProblemStatement({ item, heading }: { item: SdeSkillFormPublicItem; hea
             />
           );
         }
-        return <ProseBlocks key={`prose-${String(index)}`} text={segment.text} />;
+        return (
+          <TraceProseBlocks
+            key={`prose-${String(index)}`}
+            text={segment.text}
+            muted={/not included in this question/i.test(segment.text)}
+          />
+        );
       })}
       {item.examples && item.examples.length > 0 ? (
         <section>
@@ -457,6 +516,17 @@ function ProblemStatement({ item, heading }: { item: SdeSkillFormPublicItem; hea
   );
 }
 
+function TraceProseBlocks({ text, muted = false }: { text: string; muted?: boolean }) {
+  if (muted) {
+    return (
+      <p className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-muted)]">
+        {text}
+      </p>
+    );
+  }
+  return <ProseBlocks text={text} />;
+}
+
 function ProseBlocks({ text }: { text: string }) {
   return (
     <>
@@ -497,14 +567,14 @@ function ProseBlocks({ text }: { text: string }) {
 
 function CodeSnippet({ language, code }: { language: string; code: string }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111827]">
+    <div className="overflow-hidden rounded-lg border border-[var(--surface-border)] bg-[#0f172a]">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/45">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-300">
           {language}
         </span>
-        <span className="text-[10px] text-white/30">Snippet</span>
+        <span className="text-[10px] text-slate-400">Snippet</span>
       </div>
-      <pre className="overflow-x-auto px-3 py-3 font-mono text-xs leading-6 text-[#e5e7eb]">
+      <pre className="overflow-x-auto px-3 py-3 font-mono text-xs leading-6 text-slate-100">
         {code}
       </pre>
     </div>

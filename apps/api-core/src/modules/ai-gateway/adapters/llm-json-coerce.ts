@@ -32,6 +32,41 @@ function coerceHidden(row: unknown): { input: string; expected: string } | null 
   return { input: clip(input, 800), expected: clip(expected, 800) };
 }
 
+const COMPETENCY_SLOTS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'] as const;
+const OPEN_FORMATS = ['CODING', 'SCENARIO', 'DEBUG', 'DESIGN_REASONING'] as const;
+type OpenFormat = (typeof OPEN_FORMATS)[number];
+
+function normalizeOpenFormat(raw: unknown): OpenFormat | null {
+  if (typeof raw !== 'string') return null;
+  const normalized = raw
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  if ((OPEN_FORMATS as readonly string[]).includes(normalized)) {
+    return normalized as OpenFormat;
+  }
+  if (normalized.includes('SCENARIO') || normalized === 'CASE_STUDY') return 'SCENARIO';
+  if (normalized.includes('DEBUG')) return 'DEBUG';
+  if (normalized.includes('DESIGN')) return 'DESIGN_REASONING';
+  if (normalized.includes('COD') || normalized === 'CODE') return 'CODING';
+  return null;
+}
+
+function readArray(row: Record<string, unknown>, ...keys: string[]): unknown[] {
+  for (const key of keys) {
+    const value = row[key];
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') return [value];
+  }
+  return [];
+}
+
+function normalizeCompetencySlot(raw: unknown, fallback: string): string {
+  const slot = text(raw)?.toUpperCase();
+  if (slot && (COMPETENCY_SLOTS as readonly string[]).includes(slot)) return slot;
+  return fallback;
+}
+
 function padHidden(
   hidden: Array<{ input: string; expected: string }>,
   examples: Array<{ input: string; output: string }>,
@@ -53,8 +88,8 @@ function padHidden(
   return out.slice(0, 8);
 }
 
-function coerceOpenItem(row: Record<string, unknown>): Record<string, unknown> {
-  const format = String(row.format ?? '');
+function coerceOpenItem(row: Record<string, unknown>, itemIndex: number): Record<string, unknown> {
+  const format = normalizeOpenFormat(row.format) ?? String(row.format ?? '');
   const prompt = clip(text(row.prompt) ?? 'Describe your approach to this task in detail.', 4_000);
   const rubric = clip(
     text(row.rubric) ?? 'Award marks for a concrete, correct approach with named trade-offs.',
@@ -67,16 +102,12 @@ function coerceOpenItem(row: Record<string, unknown>): Record<string, unknown> {
   const constraints = text(row.constraints);
   if (constraints) next.constraints = clip(constraints, 2_000);
 
-  const examples = Array.isArray(row.examples)
-    ? row.examples
-        .map(coerceExample)
-        .filter((item): item is NonNullable<typeof item> => item !== null)
-    : [];
-  const hidden = Array.isArray(row.hiddenTests)
-    ? row.hiddenTests
-        .map(coerceHidden)
-        .filter((item): item is NonNullable<typeof item> => item !== null)
-    : [];
+  const examples = readArray(row, 'examples', 'visibleExamples', 'sampleCases', 'testCases')
+    .map(coerceExample)
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const hidden = readArray(row, 'hiddenTests', 'hidden_tests', 'privateTests')
+    .map(coerceHidden)
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   if (format === 'CODING') {
     next.title = clip(title ?? prompt.slice(0, 40), 120);
@@ -98,10 +129,17 @@ function coerceOpenItem(row: Record<string, unknown>): Record<string, unknown> {
     if (examples.length > 0) next.examples = examples.slice(0, 4);
     if (hidden.length > 0) next.hiddenTests = hidden.slice(0, 8);
   }
+  next.competencySlot = normalizeCompetencySlot(
+    row.competencySlot,
+    COMPETENCY_SLOTS[itemIndex % COMPETENCY_SLOTS.length] ?? 'C1',
+  );
   return next;
 }
 
-function coerceClosedItem(row: Record<string, unknown>): Record<string, unknown> {
+function coerceClosedItem(
+  row: Record<string, unknown>,
+  itemIndex: number,
+): Record<string, unknown> {
   const optionsRaw =
     row.options && typeof row.options === 'object' && !Array.isArray(row.options)
       ? (row.options as Record<string, unknown>)
@@ -111,34 +149,66 @@ function coerceClosedItem(row: Record<string, unknown>): Record<string, unknown>
     keys.map((key) => [key, clip(text(optionsRaw[key]) ?? `Option ${key}`, 400)]),
   );
   const answer = keys.includes(row.answer as (typeof keys)[number]) ? row.answer : 'A';
-  return {
+  const next: Record<string, unknown> = {
     format: row.format === 'TRACE' ? 'TRACE' : 'MCQ',
     prompt: clip(text(row.prompt) ?? 'Choose the best answer for this skill check.', 2_000),
     options,
     answer,
   };
+  next.competencySlot = normalizeCompetencySlot(
+    row.competencySlot,
+    COMPETENCY_SLOTS[itemIndex % COMPETENCY_SLOTS.length] ?? 'C1',
+  );
+  return next;
+}
+
+function normalizeSkillFormRoot(value: unknown): unknown {
+  const root = stripJsonNulls(value);
+  if (Array.isArray(root)) {
+    return { items: root };
+  }
+  if (!root || typeof root !== 'object') {
+    return root;
+  }
+  const row = root as Record<string, unknown>;
+  if (Array.isArray(row.items)) {
+    return row;
+  }
+  for (const key of ['questions', 'data', 'result'] as const) {
+    const nested = row[key];
+    if (Array.isArray(nested)) {
+      return { ...row, items: nested };
+    }
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      const inner = nested as Record<string, unknown>;
+      if (Array.isArray(inner.items)) {
+        return { ...row, items: inner.items };
+      }
+    }
+  }
+  return row;
 }
 
 /** Clip/fill Gemini skill-form JSON so Zod max/min checks do not fail closed. */
 export function coerceLlmJson(value: unknown): unknown {
-  const root = stripJsonNulls(value);
+  const root = normalizeSkillFormRoot(value);
   if (!root || typeof root !== 'object' || Array.isArray(root)) return root;
   const items = (root as { items?: unknown }).items;
   if (!Array.isArray(items)) return root;
   return {
     ...root,
-    items: items.map((item) => {
+    items: items.map((item, itemIndex) => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
       const row = item as Record<string, unknown>;
-      const format = String(row.format ?? '');
-      if (format === 'MCQ' || format === 'TRACE') return coerceClosedItem(row);
+      const format = normalizeOpenFormat(row.format) ?? String(row.format ?? '');
+      if (format === 'MCQ' || format === 'TRACE') return coerceClosedItem(row, itemIndex);
       if (
         format === 'CODING' ||
         format === 'SCENARIO' ||
         format === 'DEBUG' ||
         format === 'DESIGN_REASONING'
       ) {
-        return coerceOpenItem(row);
+        return coerceOpenItem({ ...row, format }, itemIndex);
       }
       return row;
     }),

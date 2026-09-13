@@ -52,22 +52,22 @@ export function CertificateAgendaForm({
       onSubmit={(event) => {
         void handleSubmit(event);
       }}
-      className="rounded-2xl border border-white/10 bg-white/[0.02] p-6"
+      className="rounded-2xl border border-border bg-muted/30 p-6"
     >
-      <h3 className="text-sm font-semibold text-white">Course agenda</h3>
-      <p className="mt-1 text-sm text-white/45">
+      <h3 className="text-sm font-semibold text-foreground">Course agenda</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
         Paste the syllabus topics you studied. We generate a proctored check from this agenda after
         source verification passes.
       </p>
 
-      <label className="mt-4 block text-xs font-medium text-white/60" htmlFor="cert-track">
+      <label className="mt-4 block text-xs font-medium text-muted-foreground" htmlFor="cert-track">
         Track
       </label>
       <select
         id="cert-track"
         value={trackCode}
         onChange={(event) => setTrackCode(event.target.value as TrackCode)}
-        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
       >
         {TRACK_DEFINITIONS.map((track) => (
           <option key={track.code} value={track.code}>
@@ -76,7 +76,7 @@ export function CertificateAgendaForm({
         ))}
       </select>
 
-      <label className="mt-4 block text-xs font-medium text-white/60" htmlFor="cert-agenda">
+      <label className="mt-4 block text-xs font-medium text-muted-foreground" htmlFor="cert-agenda">
         Agenda lines (one topic per line)
       </label>
       <textarea
@@ -84,11 +84,11 @@ export function CertificateAgendaForm({
         value={agendaText}
         onChange={(event) => setAgendaText(event.target.value)}
         rows={8}
-        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
         placeholder={'React fundamentals\nREST API design\nPostgreSQL queries\n…'}
       />
 
-      <label className="mt-4 block text-xs font-medium text-white/60" htmlFor="cert-expiry">
+      <label className="mt-4 block text-xs font-medium text-muted-foreground" htmlFor="cert-expiry">
         Certificate expiry (optional, display only)
       </label>
       <input
@@ -96,7 +96,7 @@ export function CertificateAgendaForm({
         type="date"
         value={expiryDate}
         onChange={(event) => setExpiryDate(event.target.value)}
-        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
       />
 
       {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
@@ -108,7 +108,7 @@ export function CertificateAgendaForm({
         {hasAgenda ? (
           <Link
             href={`/certificates/${certificateId}/verify`}
-            className="text-sm text-[#00fad0] hover:underline"
+            className="text-sm text-[#00967c] hover:underline"
           >
             Take assessment →
           </Link>

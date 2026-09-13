@@ -45,7 +45,10 @@ describe('declareSkillClaim', () => {
   });
 
   it('creates a SkillClaim at DECLARED for a new INF-05 skill', async () => {
-    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'PROGRAMMING_FUNDAMENTALS_LOGIC' });
+    findUniqueSkill.mockResolvedValue({
+      id: SKILL_ID,
+      code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    });
     findUniqueClaim.mockResolvedValue(null);
     createClaim.mockResolvedValue({
       id: CLAIM_ID,
@@ -55,11 +58,11 @@ describe('declareSkillClaim', () => {
       strikes: 0,
       lockedUntil: null,
       lastAttemptId: null,
-      skill: { code: 'PROGRAMMING_FUNDAMENTALS_LOGIC' },
+      skill: { code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION' },
     });
 
     const row = await service.declareSkillClaim(studentUser(), {
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       proficiency: 'BEGINNER',
     });
 
@@ -74,7 +77,7 @@ describe('declareSkillClaim', () => {
       }),
     );
     expect(row.status).toBe('DECLARED');
-    expect(row.skillCode).toBe('PROGRAMMING_FUNDAMENTALS_LOGIC');
+    expect(row.skillCode).toBe('ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION');
   });
 
   it('rejects unknown skill codes', async () => {
@@ -89,7 +92,7 @@ describe('declareSkillClaim', () => {
 
   it('blocks re-declare while LOCKED cooldown is active', async () => {
     const lockedUntil = new Date(Date.now() + 86_400_000);
-    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'SQL_QUERY_OPTIMIZATION' });
     findUniqueClaim.mockResolvedValue({
       id: CLAIM_ID,
       studentId: STUDENT_ID,
@@ -98,12 +101,12 @@ describe('declareSkillClaim', () => {
       proficiency: 'BEGINNER',
       strikes: 2,
       lastAttemptId: null,
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
 
     await expect(
       service.declareSkillClaim(studentUser(), {
-        skillCode: 'GIT_VERSION_CONTROL',
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
         proficiency: 'INTERMEDIATE',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -111,7 +114,7 @@ describe('declareSkillClaim', () => {
   });
 
   it('re-declares to DECLARED after LOCKED cooldown expires', async () => {
-    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'SQL_QUERY_OPTIMIZATION' });
     findUniqueClaim.mockResolvedValue({
       id: CLAIM_ID,
       studentId: STUDENT_ID,
@@ -120,7 +123,7 @@ describe('declareSkillClaim', () => {
       proficiency: 'BEGINNER',
       strikes: 2,
       lastAttemptId: null,
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
     updateClaim.mockResolvedValue({
       id: CLAIM_ID,
@@ -130,11 +133,11 @@ describe('declareSkillClaim', () => {
       strikes: 0,
       lockedUntil: null,
       lastAttemptId: null,
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
 
     const row = await service.declareSkillClaim(studentUser(), {
-      skillCode: 'GIT_VERSION_CONTROL',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
       proficiency: 'INTERMEDIATE',
     });
 
@@ -152,7 +155,7 @@ describe('declareSkillClaim', () => {
   });
 
   it('updates proficiency and focus on an existing DECLARED claim', async () => {
-    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'SQL_QUERY_OPTIMIZATION' });
     findUniqueClaim.mockResolvedValue({
       id: CLAIM_ID,
       studentId: STUDENT_ID,
@@ -162,7 +165,7 @@ describe('declareSkillClaim', () => {
       strikes: 0,
       lastAttemptId: null,
       sourceMetadata: null,
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
     updateClaim.mockResolvedValue({
       id: CLAIM_ID,
@@ -172,23 +175,56 @@ describe('declareSkillClaim', () => {
       strikes: 0,
       lockedUntil: null,
       lastAttemptId: null,
-      sourceMetadata: { skillFocus: 'Rebase' },
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      sourceMetadata: { skillFocus: 'Query tuning' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
 
     const row = await service.declareSkillClaim(studentUser(), {
-      skillCode: 'GIT_VERSION_CONTROL',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
       proficiency: 'ADVANCED',
-      skillFocus: 'Rebase',
+      skillFocus: 'Query tuning',
     });
 
     expect(updateClaim).toHaveBeenCalled();
     expect(row.proficiency).toBe('ADVANCED');
-    expect(row.skillFocus).toBe('Rebase');
+    expect(row.skillFocus).toBe('Query tuning');
+  });
+
+  it('accepts professional proficiency on re-declare', async () => {
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'SQL_QUERY_OPTIMIZATION' });
+    findUniqueClaim.mockResolvedValue({
+      id: CLAIM_ID,
+      studentId: STUDENT_ID,
+      status: 'DECLARED',
+      lockedUntil: null,
+      proficiency: 'INTERMEDIATE',
+      strikes: 0,
+      lastAttemptId: null,
+      sourceMetadata: null,
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
+    });
+    updateClaim.mockResolvedValue({
+      id: CLAIM_ID,
+      studentId: STUDENT_ID,
+      proficiency: 'PROFESSIONAL',
+      status: 'DECLARED',
+      strikes: 0,
+      lockedUntil: null,
+      lastAttemptId: null,
+      sourceMetadata: null,
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
+    });
+
+    const row = await service.declareSkillClaim(studentUser(), {
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
+      proficiency: 'PROFESSIONAL',
+    });
+
+    expect(row.proficiency).toBe('PROFESSIONAL');
   });
 
   it('rejects declare when a verified claim already exists', async () => {
-    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'GIT_VERSION_CONTROL' });
+    findUniqueSkill.mockResolvedValue({ id: SKILL_ID, code: 'SQL_QUERY_OPTIMIZATION' });
     findUniqueClaim.mockResolvedValue({
       id: CLAIM_ID,
       studentId: STUDENT_ID,
@@ -197,12 +233,12 @@ describe('declareSkillClaim', () => {
       proficiency: 'BEGINNER',
       strikes: 0,
       lastAttemptId: null,
-      skill: { code: 'GIT_VERSION_CONTROL' },
+      skill: { code: 'SQL_QUERY_OPTIMIZATION' },
     });
 
     await expect(
       service.declareSkillClaim(studentUser(), {
-        skillCode: 'GIT_VERSION_CONTROL',
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
         proficiency: 'ADVANCED',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -213,7 +249,7 @@ describe('declareSkillClaim', () => {
     await expect(
       service.declareSkillClaim(
         { sub: STUDENT_ID, role: 'PLACEMENT_STAFF', inst: '33333333-3333-4333-8333-333333333333' },
-        { skillCode: 'GIT_VERSION_CONTROL', proficiency: 'BEGINNER' },
+        { skillCode: 'SQL_QUERY_OPTIMIZATION', proficiency: 'BEGINNER' },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });

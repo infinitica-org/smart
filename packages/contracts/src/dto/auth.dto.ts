@@ -66,6 +66,8 @@ export const AuthenticatedUserSchema = z.object({
    * Non-students are always true. Career track enrollment is separate.
    */
   onboardingCompleted: z.boolean(),
+  /** Signed download URL for the candidate profile photo, when uploaded. */
+  profilePhotoUrl: z.string().url().nullable(),
   sessionHold: z
     .object({
       code: SessionHoldCodeSchema,

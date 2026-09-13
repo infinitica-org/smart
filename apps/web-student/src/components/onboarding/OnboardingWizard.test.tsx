@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { push, getOnboarding, saveOnboarding, completeOnboarding, enrollTrack } = vi.hoisted(() => ({
@@ -31,6 +31,7 @@ vi.mock('@/lib/tour', () => ({
 }));
 
 import OnboardingWizard from './OnboardingWizard';
+import { WIZARD_STEP_META } from './wizard-ui';
 
 describe('OnboardingWizard', () => {
   beforeEach(() => {
@@ -41,48 +42,60 @@ describe('OnboardingWizard', () => {
     enrollTrack.mockReset();
     window.localStorage.clear();
 
-    getOnboarding.mockResolvedValue({ draft: null });
+    getOnboarding.mockResolvedValue({
+      draft: null,
+      profilePhotoUrl: null,
+      onboardingCompleted: false,
+    });
     saveOnboarding.mockResolvedValue({ saved: true });
     completeOnboarding.mockResolvedValue({ onboardingCompleted: true });
   });
 
-  it('does not call enrollTrack during minimal onboarding completion', async () => {
-    render(<OnboardingWizard />);
+  it('does not include a skills selection step in the wizard', () => {
+    expect(WIZARD_STEP_META.map((step) => step.id)).not.toContain('skills');
+  });
 
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to SMART')).toBeTruthy();
+  it('hydrates an uploaded profile photo from the onboarding response', async () => {
+    getOnboarding.mockResolvedValue({
+      draft: { firstName: 'Ada', lastName: 'Lovelace' },
+      profilePhotoUrl: 'https://cdn.example/photo.jpg',
+      onboardingCompleted: false,
     });
 
-    fireEvent.click(screen.getByTestId('interest-domain-CS_IT'));
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    render(<OnboardingWizard />);
 
     await waitFor(() => {
       expect(screen.getByText("Let's set up your profile")).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByPlaceholderText('First name'), { target: { value: 'Ada' } });
-    fireEvent.change(screen.getByPlaceholderText('Last name'), { target: { value: 'Lovelace' } });
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    expect(screen.getByRole('button', { name: /change photo/i })).toBeTruthy();
+  });
 
-    fireEvent.change(screen.getByPlaceholderText('9876543210'), {
-      target: { value: '9876543210' },
+  it('resumes past legacy skills data to the languages step', async () => {
+    getOnboarding.mockResolvedValue({
+      draft: {
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        skills: [{ type: 'technical', name: 'JavaScript', proficiency: 'Intermediate' }],
+      },
+      profilePhotoUrl: null,
+      onboardingCompleted: false,
     });
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /enter smart/i }));
+
+    render(<OnboardingWizard />);
 
     await waitFor(() => {
-      expect(completeOnboarding).toHaveBeenCalledWith(
-        expect.objectContaining({
-          interestDomain: 'CS_IT',
-          firstName: 'Ada',
-          lastName: 'Lovelace',
-          phoneCountryCode: '+91',
-          phoneNumber: '9876543210',
-          dpdpConsent: true,
-        }),
-      );
+      expect(screen.getByText('Languages you know')).toBeTruthy();
     });
 
-    expect(enrollTrack).not.toHaveBeenCalled();
+    expect(screen.queryByText('Your skills')).toBeNull();
+  });
+
+  it('routes stream enrollment to languages instead of skills', () => {
+    const stepOrder = WIZARD_STEP_META.map((step) => step.id);
+    const streamIndex = stepOrder.indexOf('stream');
+
+    expect(streamIndex).toBeGreaterThanOrEqual(0);
+    expect(stepOrder[streamIndex + 1]).toBe('languages');
   });
 });

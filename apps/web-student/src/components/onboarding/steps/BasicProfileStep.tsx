@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2 } from 'lucide-react';
 import { LightSelect } from '../../ui/LightSelect';
 import { MONTHS, type OnboardingProfileForm } from '@/lib/onboarding-form';
+import { ProfilePhotoPicker } from '../ProfilePhotoPicker';
 import {
   BackButton,
   ErrorBanner,
@@ -23,9 +24,7 @@ interface BasicProfileStepProps {
     value: OnboardingProfileForm[K],
   ) => void;
   onBack: () => void;
-  onComplete: () => void;
-  saving: boolean;
-  completeError: string | null;
+  onContinue: () => void;
 }
 
 type SubTab = 'profile' | 'phone';
@@ -41,9 +40,7 @@ export default function BasicProfileStep({
   formData,
   updateField,
   onBack,
-  onComplete,
-  saving,
-  completeError,
+  onContinue,
 }: BasicProfileStepProps) {
   const [tab, setTab] = useState<SubTab>('profile');
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +81,7 @@ export default function BasicProfileStep({
         setError('You must agree to the DPDP consent terms to enter SMART.');
         return;
       }
-      onComplete();
+      onContinue();
     }
   };
 
@@ -99,7 +96,7 @@ export default function BasicProfileStep({
     }
   };
 
-  const bannerError = error ?? completeError;
+  const bannerError = error;
 
   return (
     <div>
@@ -116,8 +113,8 @@ export default function BasicProfileStep({
                 isActive
                   ? 'bg-[#00fad0] font-bold text-black shadow-md shadow-[#00fad0]/20'
                   : isCompleted
-                    ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
-                    : 'text-zinc-500 hover:text-zinc-300'
+                    ? 'bg-muted text-foreground hover:bg-muted/80'
+                    : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {isCompleted && !isActive && <CheckCircle2 className="h-3 w-3 text-[#00fad0]" />}
@@ -139,6 +136,11 @@ export default function BasicProfileStep({
       <motion.div key={tab} {...stepMotionProps}>
         {tab === 'profile' && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <ProfilePhotoPicker
+              fullName={`${formData.firstName} ${formData.lastName}`.trim()}
+              profilePhotoUrl={formData.profilePhotoUrl}
+              onPhotoChange={(url) => updateField('profilePhotoUrl', url)}
+            />
             <div>
               <FieldLabel required>First Name</FieldLabel>
               <TextInput
@@ -204,7 +206,7 @@ export default function BasicProfileStep({
             <div className="max-w-sm">
               <FieldLabel required>Mobile Number</FieldLabel>
               <div className="flex items-center gap-2">
-                <div className="flex h-12 w-20 shrink-0 select-none items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-sm font-semibold text-zinc-200">
+                <div className="flex h-12 w-20 shrink-0 select-none items-center justify-center rounded-xl border border-border bg-muted px-3 text-sm font-semibold text-foreground">
                   +91
                 </div>
                 <TextInput
@@ -222,21 +224,21 @@ export default function BasicProfileStep({
                   maxLength={10}
                 />
               </div>
-              <p className="mt-1.5 text-xs text-gray-400">Must be exactly 10 digits.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">Must be exactly 10 digits.</p>
             </div>
 
             <label
               className={`mt-8 flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
-                consentInvalid ? 'border-rose-500 bg-rose-500/10' : 'border-zinc-800 bg-zinc-900/60'
+                consentInvalid ? 'border-rose-500 bg-rose-500/10' : 'border-border bg-card'
               }`}
             >
               <input
                 type="checkbox"
                 checked={formData.dpdpConsent}
                 onChange={(e) => updateField('dpdpConsent', e.target.checked)}
-                className="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-[#00fad0] focus:ring-[#00fad0]"
+                className="mt-0.5 rounded border-border bg-muted text-[#00fad0] focus:ring-[#00fad0]"
               />
-              <span className="text-sm text-zinc-300">
+              <span className="text-sm text-foreground">
                 I consent to SMART processing my personal data as described in the{' '}
                 <Link
                   href="/dpdp-policy"
@@ -256,10 +258,8 @@ export default function BasicProfileStep({
       </motion.div>
 
       <div className="mt-10 flex justify-between">
-        <BackButton onClick={goBack} disabled={saving} />
-        <PrimaryButton onClick={goNext} loading={saving && tab === 'phone'}>
-          {tab === 'phone' ? 'Enter SMART' : 'Continue'}
-        </PrimaryButton>
+        <BackButton onClick={goBack} />
+        <PrimaryButton onClick={goNext}>Continue</PrimaryButton>
       </div>
     </div>
   );

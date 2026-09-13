@@ -1,9 +1,5 @@
 /**
- * HackerRank / LeetCode tag → INF-05 dimension mappings (S6-RM-12).
- *
- * Source JSON: tools/content-pipeline/data/signal-mappings/*.json
- *
- * Owner: Ramansh.
+ * HackerRank / LeetCode tag → skill@1 dimension mappings.
  */
 
 export interface SignalTagMappingEntry {
@@ -13,95 +9,87 @@ export interface SignalTagMappingEntry {
   readonly weight: number;
 }
 
-/** Mirrors hackerrank-inf-05@3.json */
 export const HACKERRANK_TAG_MAPPING: Readonly<Record<string, SignalTagMappingEntry>> = {
   python: {
     tag: 'python',
-    dimensionKey: 'PYTHON_R_DATA_ANALYSIS',
-    skillCode: 'PYTHON_R_DATA_ANALYSIS',
+    dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+    skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
     weight: 1,
   },
   java: {
     tag: 'java',
-    dimensionKey: 'OBJECT_ORIENTED_PROGRAMMING',
-    skillCode: 'OBJECT_ORIENTED_PROGRAMMING',
+    dimensionKey: 'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT',
+    skillCode: 'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT',
     weight: 0.9,
   },
   sql: {
     tag: 'sql',
-    dimensionKey: 'DATABASE_FUNDAMENTALS',
-    skillCode: 'DATABASE_FUNDAMENTALS',
+    dimensionKey: 'SQL_QUERY_OPTIMIZATION',
+    skillCode: 'SQL_QUERY_OPTIMIZATION',
     weight: 1,
   },
   'problem solving': {
     tag: 'problem solving',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 1,
   },
   'data structures': {
     tag: 'data structures',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 0.95,
   },
   javascript: {
     tag: 'javascript',
-    dimensionKey: 'LANGUAGE_PROFICIENCY',
-    skillCode: 'LANGUAGE_PROFICIENCY',
+    dimensionKey: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+    skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
     weight: 0.9,
   },
   'c++': {
     tag: 'c++',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
+    skillCode: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
     weight: 0.85,
   },
 };
 
-/** Mirrors leetcode-inf-05@3.json */
 export const LEETCODE_TAG_MAPPING: Readonly<Record<string, SignalTagMappingEntry>> = {
   array: {
     tag: 'array',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 0.9,
   },
   'dynamic-programming': {
     tag: 'dynamic-programming',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 1,
   },
   tree: {
     tag: 'tree',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 0.95,
   },
   graph: {
     tag: 'graph',
-    dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-    skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+    dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
     weight: 0.95,
   },
   sql: {
     tag: 'sql',
-    dimensionKey: 'DATABASE_FUNDAMENTALS',
-    skillCode: 'DATABASE_FUNDAMENTALS',
+    dimensionKey: 'SQL_QUERY_OPTIMIZATION',
+    skillCode: 'SQL_QUERY_OPTIMIZATION',
     weight: 1,
   },
   database: {
     tag: 'database',
-    dimensionKey: 'DATABASE_FUNDAMENTALS',
-    skillCode: 'DATABASE_FUNDAMENTALS',
+    dimensionKey: 'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
+    skillCode: 'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
     weight: 0.9,
-  },
-  string: {
-    tag: 'string',
-    dimensionKey: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-    skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
-    weight: 0.8,
   },
 };
 

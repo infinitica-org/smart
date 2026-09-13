@@ -6,8 +6,25 @@ import {
   WorkExperienceDocumentAuthenticityStatusSchema,
   WorkExperienceVerificationStatusSchema,
 } from '../domain/enums.js';
+import {
+  ContributionSchema,
+  SkillMappingSchema,
+  WorkExperienceEvidenceSchema,
+  WorkExperienceResponsibilitySchema,
+} from '../domain/evidence/index.js';
 import { SkillsClaimedSnapshotSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 import { WorkExperienceLetterAuthenticityResultSchema } from './work-experience-letter-authenticity.dto.js';
+
+/** Optional structured evidence metadata on create/update (Evidence Framework). */
+export const WorkExperienceStructuredMetadataSchema = z.object({
+  structuredResponsibilities: z.array(WorkExperienceResponsibilitySchema).max(50).optional(),
+  deliverables: z.array(z.string().max(2000)).max(50).optional(),
+  personalContributions: z.array(ContributionSchema).max(50).optional(),
+  skillMappings: z.array(SkillMappingSchema).max(50).optional(),
+});
+export type WorkExperienceStructuredMetadata = z.infer<
+  typeof WorkExperienceStructuredMetadataSchema
+>;
 
 export const WorkExperienceDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -76,6 +93,10 @@ export const CreateWorkExperienceBaseSchema = z.object({
   verifierDesignation: z.string().max(120).optional().nullable().or(z.literal('')),
   verifierPhone: z.string().max(32).optional().nullable().or(z.literal('')),
   documents: z.array(CreateWorkExperienceDocumentSchema).optional().default([]),
+  structuredResponsibilities: z.array(WorkExperienceResponsibilitySchema).max(50).optional(),
+  deliverables: z.array(z.string().max(2000)).max(50).optional(),
+  personalContributions: z.array(ContributionSchema).max(50).optional(),
+  skillMappings: z.array(SkillMappingSchema).max(50).optional(),
 });
 
 export interface CompanyPublicIdentityParams {
@@ -455,6 +476,8 @@ export const WorkExperienceSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   documents: z.array(WorkExperienceDocumentSchema).default([]),
+  /** Evidence-framework projection of this work experience entry. */
+  evidence: WorkExperienceEvidenceSchema.optional(),
 });
 export type WorkExperienceDto = z.infer<typeof WorkExperienceSchema>;
 

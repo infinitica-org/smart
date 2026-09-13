@@ -1,8 +1,8 @@
 import type { CandidateCertificateStatus } from '@smart/contracts';
 
 const STATUS_COPY: Record<CandidateCertificateStatus, { label: string; className: string }> = {
-  DECLARED: { label: 'Not started', className: 'border-white/15 bg-white/5 text-white/60' },
-  UPLOADED: { label: 'In progress', className: 'border-white/15 bg-white/5 text-white/60' },
+  DECLARED: { label: 'Not started', className: 'border-border bg-muted/50 text-muted-foreground' },
+  UPLOADED: { label: 'In progress', className: 'border-border bg-muted/50 text-muted-foreground' },
   IN_VERIFICATION: {
     label: 'In verification',
     className: 'border-info/40 bg-info/10 text-info',

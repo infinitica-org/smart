@@ -36,14 +36,14 @@ export function ToolsPicker({ tools, onChange, disabled }: ToolsPickerProps) {
           {tools.map((tool) => (
             <span
               key={tool}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground"
             >
               {tool}
               <button
                 type="button"
                 onClick={() => removeTool(tool)}
                 disabled={disabled}
-                className="text-white/30 hover:text-white/70"
+                className="text-muted-foreground/60 hover:text-muted-foreground"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -64,13 +64,13 @@ export function ToolsPicker({ tools, onChange, disabled }: ToolsPickerProps) {
             }
           }}
           placeholder="Add a tool or technology (e.g. AWS Console)"
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-[#00fad0]/50 focus:outline-none"
+          className="flex-1 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
         />
         <button
           type="button"
           onClick={addTool}
           disabled={disabled}
-          className="inline-flex h-[42px] items-center gap-1.5 rounded-xl border border-white/15 px-4 text-sm text-white/80 hover:bg-white/5"
+          className="inline-flex h-[42px] items-center gap-1.5 rounded-xl border border-border px-4 text-sm text-foreground/80 hover:bg-muted"
         >
           <Plus className="h-4 w-4" /> Add
         </button>

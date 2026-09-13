@@ -20,33 +20,74 @@ import {
   groupSeSkillsByCategory,
 } from '../domain/se-skills.js';
 import {
+  DEFAULT_COMPETENCY_BARS,
+  SKILL_CATEGORY_IDS,
   SKILL_CODE_SET,
-  SKILL_STREAMS,
   SKILL_TAXONOMY_DOMAINS,
   SKILL_TAXONOMY_VERSION,
+  groupSkillsByCategory,
 } from '../domain/skills.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './common.js';
 
-/** INF-05 skill code only — never free-text names (SK-T01 / JD pickers). */
+/** skill@1 code only — never free-text names (SK-T01 / JD pickers). */
 export const TaxonomySkillCodeSchema = z
   .string()
   .min(2)
   .max(64)
   .refine((code) => SKILL_CODE_SET.has(code), { message: 'Unknown taxonomy skill code' });
 
+export const SkillCategoryIdSchema = z.enum(SKILL_CATEGORY_IDS);
+
 export const SkillLibraryItemDtoSchema = z.object({
   code: TaxonomySkillCodeSchema,
   name: z.string().min(1),
+  categoryId: SkillCategoryIdSchema,
+  categoryName: z.string().min(1),
   domain: z.enum(SKILL_TAXONOMY_DOMAINS),
-  stream: z.enum(SKILL_STREAMS),
+  competencyBars: z.object({
+    BEGINNER: z.string().min(1),
+    INTERMEDIATE: z.string().min(1),
+    ADVANCED: z.string().min(1),
+    PROFESSIONAL: z.string().min(1),
+  }),
+  corroborationEligible: z.boolean(),
+  assessmentRequiredForClaim: z.boolean(),
 });
 export type SkillLibraryItemDto = z.infer<typeof SkillLibraryItemDtoSchema>;
 
-export const SkillLibraryResponseSchema = z.object({
-  taxonomyVersion: z.string().min(1).max(32),
+export const SkillCategoryGroupDtoSchema = z.object({
+  id: SkillCategoryIdSchema,
+  name: z.string().min(1),
   skills: z.array(SkillLibraryItemDtoSchema),
 });
+export type SkillCategoryGroupDto = z.infer<typeof SkillCategoryGroupDtoSchema>;
+
+export const SkillLibraryResponseSchema = z.object({
+  taxonomyVersion: z.literal(SKILL_TAXONOMY_VERSION),
+  categories: z.array(SkillCategoryGroupDtoSchema).length(SKILL_CATEGORY_IDS.length),
+});
 export type SkillLibraryResponse = z.infer<typeof SkillLibraryResponseSchema>;
+
+/** Canonical skill@1 library — single source for catalog API and JSON drift checks. */
+export function buildSkillLibraryResponse(): SkillLibraryResponse {
+  return SkillLibraryResponseSchema.parse({
+    taxonomyVersion: SKILL_TAXONOMY_VERSION,
+    categories: groupSkillsByCategory().map((category) => ({
+      id: category.id,
+      name: category.name,
+      skills: category.skills.map((skill) => ({
+        code: skill.code,
+        name: skill.name,
+        categoryId: skill.categoryId,
+        categoryName: skill.categoryName,
+        domain: skill.domain,
+        competencyBars: { ...DEFAULT_COMPETENCY_BARS },
+        corroborationEligible: skill.corroborationEligible,
+        assessmentRequiredForClaim: skill.assessmentRequiredForClaim,
+      })),
+    })),
+  });
+}
 
 /** inf-se-v1 skill code only — parallel SE verification framework (S6-RM-13). */
 export const SeTaxonomySkillCodeSchema = z
@@ -109,6 +150,14 @@ export function buildSeSkillLibraryResponse(): SeSkillLibraryResponse {
 }
 
 /** Throws when committed JSON diverges from contracts (tamper / drift guard). */
+export function assertSkillTaxonomyMatchesCanonical(candidate: unknown): void {
+  const parsed = SkillLibraryResponseSchema.parse(candidate);
+  const canonical = buildSkillLibraryResponse();
+  if (JSON.stringify(canonical) !== JSON.stringify(parsed)) {
+    throw new Error('skill.json drifts from contracts SKILL_DEFINITIONS');
+  }
+}
+
 export function assertInfSeV1MatchesCanonical(candidate: unknown): void {
   const parsed = SeSkillLibraryResponseSchema.parse(candidate);
   const canonical = buildSeSkillLibraryResponse();
@@ -166,6 +215,7 @@ export const SkillPassThresholdsDtoSchema = z.object({
   BEGINNER: ProficiencyPassBarsDtoSchema,
   INTERMEDIATE: ProficiencyPassBarsDtoSchema,
   ADVANCED: ProficiencyPassBarsDtoSchema,
+  PROFESSIONAL: ProficiencyPassBarsDtoSchema,
 });
 export type SkillPassThresholdsDto = z.infer<typeof SkillPassThresholdsDtoSchema>;
 

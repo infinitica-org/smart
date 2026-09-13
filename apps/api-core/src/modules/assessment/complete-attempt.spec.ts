@@ -87,7 +87,7 @@ describe('completeAttempt', () => {
             id: CLAIM_ID,
             studentId: STUDENT_ID,
             lastAttemptId: ATTEMPT_ID,
-            skill: { code: 'GIT_VERSION_CONTROL' },
+            skill: { code: 'SQL_QUERY_OPTIMIZATION' },
             ...data,
           }),
         ),

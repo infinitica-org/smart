@@ -27,7 +27,7 @@ const mockOpening = {
   domain: 'SOFTWARE_IT' as const,
   requiredSkills: [
     {
-      skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       minProficiency: 'ADVANCED' as const,
     },
   ],

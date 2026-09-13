@@ -2,12 +2,10 @@ import { Buffer } from 'node:buffer';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
-  SKILL_DEFINITIONS,
-  SKILL_TAXONOMY_VERSION,
-  SkillLibraryResponseSchema,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
   buildSeSkillLibraryResponse,
+  buildSkillLibraryResponse,
   type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type TrackDto,
@@ -23,6 +21,9 @@ const competencySelect = {
   realWorldWeight: true,
   assessedAtLevels: true,
 } as const;
+
+/** Frozen at boot — skill@1 taxonomy is immutable for this release. */
+const SKILL_LIBRARY: SkillLibraryResponse = buildSkillLibraryResponse();
 
 /** Frozen at boot — inf-se-v1 taxonomy is immutable for this release. */
 const SE_SKILL_LIBRARY: SeSkillLibraryResponse = buildSeSkillLibraryResponse();
@@ -48,17 +49,9 @@ export class CatalogService {
     return TRACK_DEFINITIONS.map(fromContract);
   }
 
-  /** SK-T01 — queryable v0.9 skill-set library; sourced from frozen INF-05 contracts. */
+  /** skill@1 library grouped by category (Global IT Skills Database). */
   listSkillLibrary(): SkillLibraryResponse {
-    return SkillLibraryResponseSchema.parse({
-      taxonomyVersion: SKILL_TAXONOMY_VERSION,
-      skills: SKILL_DEFINITIONS.map((skill) => ({
-        code: skill.code,
-        name: skill.name,
-        domain: skill.domain,
-        stream: skill.stream,
-      })),
-    });
+    return SKILL_LIBRARY;
   }
 
   /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */

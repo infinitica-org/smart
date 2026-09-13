@@ -47,6 +47,11 @@ describe('CandidateEducationService', () => {
         update: vi.fn(),
         delete: vi.fn(),
       },
+      candidateEducationDocument: {
+        create: vi.fn(),
+        findUnique: vi.fn(),
+        delete: vi.fn(),
+      },
       user: {
         findUnique: vi.fn(),
       },
@@ -70,6 +75,7 @@ describe('CandidateEducationService', () => {
           grade: '4.0',
           status: 'unverified',
           rejectionReason: null,
+          documents: [],
           createdAt: now,
           updatedAt: now,
         },
@@ -81,6 +87,7 @@ describe('CandidateEducationService', () => {
       expect(result[0].status).toBe('unverified');
       expect(prismaMock.candidateEducation.findMany).toHaveBeenCalledWith({
         where: { studentId },
+        include: { documents: { orderBy: { createdAt: 'desc' } } },
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -560,6 +567,49 @@ describe('CandidateEducationService', () => {
       await expect(
         service.rejectByHomeCollege(eduId, { reason: 'Student self-rejection' }, studentUser),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('education proof documents', () => {
+    it('attaches proof metadata to an owned education record', async () => {
+      const now = new Date();
+      prismaMock.candidateEducation.findUnique.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College of Tech',
+        degree: 'B.Tech',
+        fieldOfStudy: 'CS',
+        startDate: null,
+        endDate: null,
+        current: true,
+        grade: null,
+        status: 'unverified',
+        rejectionReason: null,
+        documents: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+      prismaMock.candidateEducationDocument.create.mockResolvedValue({
+        id: '66666666-6666-4666-8666-666666666666',
+        educationId: eduId,
+        documentType: 'DEGREE_CERTIFICATE',
+        fileUrl: 'storage/education-proofs/degree.pdf',
+        fileName: 'degree.pdf',
+        fileSizeBytes: 1200,
+        mimeType: 'application/pdf',
+        createdAt: now,
+      });
+
+      const result = await service.attachDocument(studentId, eduId, {
+        documentType: 'DEGREE_CERTIFICATE',
+        fileUrl: 'storage/education-proofs/degree.pdf',
+        fileName: 'degree.pdf',
+        fileSizeBytes: 1200,
+        mimeType: 'application/pdf',
+      });
+
+      expect(result.fileName).toBe('degree.pdf');
+      expect(prismaMock.candidateEducationDocument.create).toHaveBeenCalled();
     });
   });
 });

@@ -100,8 +100,8 @@ const passiveSignal = {
     {
       dimension: {
         taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
-        dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-        skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+        dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       },
       sourceId: 'GITHUB' as const,
       score: 0.05,
@@ -160,14 +160,14 @@ describe('CorroborationService', () => {
     await service.fuseWithAssessment({
       userId: USER_A,
       claimId: CLAIM_A,
-      skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       assessedAt: '2026-09-11T01:00:00.000Z',
       entries: [
         {
           dimension: {
             taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
-            dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-            skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+            dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+            skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
           },
           scorePercent: 85,
           passed: true,
@@ -190,14 +190,14 @@ describe('CorroborationService', () => {
     const assessment = {
       userId: USER_A,
       claimId: CLAIM_A,
-      skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       assessedAt: '2026-09-11T01:00:00.000Z',
       entries: [
         {
           dimension: {
             taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
-            dimensionKey: 'DATA_STRUCTURES_ALGORITHMS',
-            skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+            dimensionKey: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+            skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
           },
           scorePercent: 85,
           passed: true,
@@ -221,7 +221,7 @@ describe('CorroborationService', () => {
       userId: USER_A,
       institutionId: INST_A,
       claimId: CLAIM_A,
-      skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+      skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
       severity: 'MEDIUM',
       reason: 'test',
       passiveScore: 0.1,
@@ -235,7 +235,7 @@ describe('CorroborationService', () => {
       userId: USER_B,
       institutionId: INST_B,
       claimId: '00000000-0000-4000-8000-000000000011',
-      skillCode: 'DATABASE_FUNDAMENTALS',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
       severity: 'MEDIUM',
       reason: 'test',
       passiveScore: 0.1,
@@ -269,7 +269,7 @@ describe('CorroborationService', () => {
       userId: USER_B,
       institutionId: INST_B,
       claimId: '00000000-0000-4000-8000-000000000011',
-      skillCode: 'DATABASE_FUNDAMENTALS',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
       severity: 'MEDIUM',
       reason: 'test',
       passiveScore: 0.1,

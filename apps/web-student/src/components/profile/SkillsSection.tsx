@@ -1,25 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  type SkillClaimDto,
-  type SkillProficiency,
-  type SkillStream,
-  skillFocusOptions,
-} from '@smart/contracts';
+import { type SkillCategoryId, type SkillClaimDto, skillFocusOptions } from '@smart/contracts';
 import { Alert } from '@smart/ui';
 import { api } from '../../lib/api';
 import { SkillVerifyRow } from '../assessment/skill-verify-row';
+import { SkillVerificationInstructions } from '../assessment/skill-verification-instructions';
 import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 import {
+  CATEGORY_LABELS,
+  SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
   SOFTWARE_IT_DOMAIN_LABEL,
-  STREAM_LABELS,
-  mandatorySkillsForStream,
+  skillsForCategory,
   viewForFocus,
 } from '../../lib/skill-declarations';
-
-const STREAM_OPTIONS = Object.keys(STREAM_LABELS) as SkillStream[];
+import { CATEGORY_OPTIONS } from '../../lib/skills-catalog';
 
 function emptyFoci(codes: readonly string[]): Record<string, string> {
   const next: Record<string, string> = {};
@@ -30,19 +27,12 @@ function emptyFoci(codes: readonly string[]): Record<string, string> {
   return next;
 }
 
-function emptyProficiencies(codes: readonly string[]): Record<string, SkillProficiency> {
-  const next: Record<string, SkillProficiency> = {};
-  for (const code of codes) next[code] = 'BEGINNER';
-  return next;
-}
-
 export function SkillsSection() {
   const router = useRouter();
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [domain, setDomain] = useState<'SOFTWARE_IT'>('SOFTWARE_IT');
-  const [stream, setStream] = useState<SkillStream>('SOFTWARE_DEVELOPMENT');
-  const [proficiencies, setProficiencies] = useState<Record<string, SkillProficiency>>({});
+  const [categoryId, setCategoryId] = useState<SkillCategoryId>('PROGRAMMING_LANGUAGES');
   const [foci, setFoci] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
@@ -73,26 +63,18 @@ export function SkillsSection() {
     };
   }, []);
 
-  const mandatorySkills = useMemo(() => mandatorySkillsForStream(stream), [stream]);
+  const categorySkills = useMemo(() => skillsForCategory(categoryId), [categoryId]);
 
   useEffect(() => {
-    const claimed = new Map(claims.map((row) => [row.skillCode, row]));
-    setProficiencies((prev) => {
-      const next = emptyProficiencies(mandatorySkills.map((skill) => skill.code));
-      for (const skill of mandatorySkills) {
-        next[skill.code] = claimed.get(skill.code)?.proficiency ?? prev[skill.code] ?? 'BEGINNER';
-      }
-      return next;
-    });
     setFoci((prev) => {
-      const next = emptyFoci(mandatorySkills.map((skill) => skill.code));
-      for (const skill of mandatorySkills) {
+      const next = emptyFoci(categorySkills.map((skill) => skill.code));
+      for (const skill of categorySkills) {
         const options = skillFocusOptions(skill.code);
         next[skill.code] = prev[skill.code] ?? options[0] ?? '';
       }
       return next;
     });
-  }, [mandatorySkills, claims]);
+  }, [categorySkills]);
 
   const claimByCode = useMemo(() => new Map(claims.map((row) => [row.skillCode, row])), [claims]);
 
@@ -106,7 +88,7 @@ export function SkillsSection() {
           if (!claim || claim.status === 'DECLARED' || claim.status === 'BEGINNER_REATTEMPT') {
             claim = await api.assessment.declareSkillClaim({
               skillCode,
-              proficiency: proficiencies[skillCode] ?? 'BEGINNER',
+              proficiency: SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
               skillFocus: foci[skillCode] || undefined,
             });
             await refreshClaims();
@@ -145,10 +127,18 @@ export function SkillsSection() {
           Skills
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[var(--text-secondary)]">
-          Choose your domain and stream, set a proficiency and focus, then verify. Cooldown applies
-          only to the focus you sat, not every sub-skill.
+          Choose a category and focus area, then start verification. For the full skill catalog with
+          search and status filters, use the Skill Repository.
         </p>
+        <Link
+          href="/assessments"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#00967c] hover:underline"
+        >
+          Open Skill Repository
+        </Link>
       </div>
+
+      <SkillVerificationInstructions />
 
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-gray-50/50 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -166,15 +156,15 @@ export function SkillsSection() {
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-gray-900">Stream</span>
+            <span className="font-medium text-gray-900">Category</span>
             <select
-              value={stream}
-              onChange={(e) => setStream(e.target.value as SkillStream)}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value as SkillCategoryId)}
               className={`${nativeSelectClass} py-2`}
             >
-              {STREAM_OPTIONS.map((key) => (
-                <option key={key} value={key} className={nativeOptionClass}>
-                  {STREAM_LABELS[key]}
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id} className={nativeOptionClass}>
+                  {option.name}
                 </option>
               ))}
             </select>
@@ -182,18 +172,18 @@ export function SkillsSection() {
         </div>
 
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-gray-900">Required skills</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900">
+            {CATEGORY_LABELS[categoryId]} skills
+          </h3>
           <ul className="flex flex-col gap-2">
-            <li className="hidden px-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem] lg:gap-3">
+            <li className="hidden px-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase lg:grid lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_10rem_8.5rem] lg:gap-3">
               <span>Skill</span>
               <span className="text-center">Status</span>
-              <span>Proficiency</span>
               <span>Focus</span>
               <span>Action</span>
             </li>
-            {mandatorySkills.map((skill) => {
+            {categorySkills.map((skill) => {
               const claim = claimByCode.get(skill.code);
-              const focusOptions = skillFocusOptions(skill.code);
               const busy = pendingCode === skill.code;
               return (
                 <SkillVerifyRow
@@ -201,26 +191,22 @@ export function SkillsSection() {
                   skillCode={skill.code}
                   skillName={skill.name}
                   claim={claim}
-                  proficiency={proficiencies[skill.code] ?? 'BEGINNER'}
-                  focus={foci[skill.code] ?? focusOptions[0] ?? ''}
-                  pending={busy || (isPending && pendingCode === skill.code)}
-                  onProficiency={(value) =>
-                    setProficiencies((prev) => ({ ...prev, [skill.code]: value }))
-                  }
-                  onFocus={(value) => setFoci((prev) => ({ ...prev, [skill.code]: value }))}
+                  focus={foci[skill.code] ?? ''}
+                  onFocus={(value: string) => setFoci((prev) => ({ ...prev, [skill.code]: value }))}
                   onVerify={() => verifySkill(skill.code)}
+                  pending={busy || isPending}
                 />
               );
             })}
           </ul>
         </div>
-
-        {error ? (
-          <Alert tone="danger" title="Could not verify">
-            {error}
-          </Alert>
-        ) : null}
       </div>
+
+      {error ? (
+        <Alert tone="danger" title="Error">
+          {error}
+        </Alert>
+      ) : null}
     </section>
   );
 }

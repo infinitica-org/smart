@@ -89,7 +89,7 @@ export default function LanguagesStep({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex gap-3 items-center rounded-xl border border-zinc-800 bg-zinc-900/60 p-3"
+              className="flex items-center gap-3 rounded-xl border border-border bg-muted/80 p-3"
             >
               <LightSelect
                 value={item.language}
@@ -108,7 +108,7 @@ export default function LanguagesStep({
               <button
                 type="button"
                 onClick={() => removeLanguage(item.id)}
-                className="p-2 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

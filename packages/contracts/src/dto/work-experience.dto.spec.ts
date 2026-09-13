@@ -34,7 +34,7 @@ function buildValidOngoingSubmission(overrides: Record<string, unknown> = {}) {
     isCurrent: true,
     domain: 'Software Engineering',
     responsibilities: 'Built backend services and APIs.',
-    skillsClaimed: ['GIT_VERSION_CONTROL'],
+    skillsClaimed: ['VERSION_CONTROL_CODE_COLLABORATION'],
     documents: [OFFER_DOCUMENT],
     ...overrides,
   };
@@ -184,7 +184,7 @@ describe('S6-VB-01 mandatory Work Experience fields', () => {
     const mandatory = validateWorkExperienceMandatoryFields({
       domain: '',
       responsibilities: 'Built APIs.',
-      skillsClaimed: ['GIT_VERSION_CONTROL'],
+      skillsClaimed: ['VERSION_CONTROL_CODE_COLLABORATION'],
     });
     expect(mandatory.valid).toBe(false);
     expect(mandatory.issues.some((issue) => issue.field === 'domain')).toBe(true);
@@ -200,7 +200,7 @@ describe('S6-VB-01 mandatory Work Experience fields', () => {
     const mandatory = validateWorkExperienceMandatoryFields({
       domain: 'Software Engineering',
       responsibilities: '',
-      skillsClaimed: ['GIT_VERSION_CONTROL'],
+      skillsClaimed: ['VERSION_CONTROL_CODE_COLLABORATION'],
     });
     expect(mandatory.valid).toBe(false);
     expect(mandatory.issues.some((issue) => issue.field === 'responsibilities')).toBe(true);

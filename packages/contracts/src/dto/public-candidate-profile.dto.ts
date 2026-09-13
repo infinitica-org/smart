@@ -84,6 +84,8 @@ export type PublicEducation = z.infer<typeof PublicEducationSchema>;
 
 export const PublicCandidateProfileDtoSchema = z.object({
   fullName: z.string(),
+  /** Signed download URL for the candidate profile photo, when uploaded. */
+  profilePhotoUrl: z.string().url().nullable(),
   trackName: z.string().nullable(),
   trackCategory: z.enum(['TECH', 'MBA']).nullable(),
   /** VERIFIED skill claims only — a public profile shows proof, not self-declarations. */

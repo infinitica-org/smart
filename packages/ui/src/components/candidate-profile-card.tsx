@@ -117,6 +117,7 @@ export interface CognitiveCommSummary {
 export interface CandidateProfileCardProps extends HTMLAttributes<HTMLDivElement> {
   candidateId: string;
   displayName: string;
+  profilePhotoUrl?: string | null;
   trackName: string;
   headlineTier: Tier;
   skills: CandidateSkill[];
@@ -190,6 +191,7 @@ function getSkillIcon(skillName: string) {
 export function CandidateProfileCard({
   candidateId: _candidateId,
   displayName,
+  profilePhotoUrl,
   trackName,
   headlineTier,
   skills,
@@ -245,10 +247,18 @@ export function CandidateProfileCard({
           <div className="flex flex-col sm:flex-row items-start gap-5">
             {/* Avatar Circle with Teal Ring & Status Dot */}
             <div className="relative shrink-0">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1a2123] to-[#0f1314] border-2 border-[#00E5D4] p-0.5 shadow-[0_0_20px_rgba(0,229,212,0.2)]">
-                <span className="font-heading text-2xl font-extrabold text-[#00E5D4]">
-                  {displayName.substring(0, 2).toUpperCase()}
-                </span>
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[#00E5D4] bg-gradient-to-br from-[#1a2123] to-[#0f1314] p-0.5 shadow-[0_0_20px_rgba(0,229,212,0.2)]">
+                {profilePhotoUrl ? (
+                  <img
+                    src={profilePhotoUrl}
+                    alt={`${displayName} profile photo`}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="font-heading text-2xl font-extrabold text-[#00E5D4]">
+                    {displayName.substring(0, 2).toUpperCase()}
+                  </span>
+                )}
               </div>
               <span
                 className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-[#111516]"

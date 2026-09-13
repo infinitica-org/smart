@@ -27,6 +27,7 @@ import {
   type TrackCode,
   SKILL_DEFINITIONS,
   SKILL_REFRESH_DAYS,
+  AssessmentResultSchema,
   hydrateFocusProgress,
   focusProgressFor,
   resolveSkillFocus,
@@ -397,17 +398,32 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }>,
   ): Promise<SkillClaimDto[]> {
     if (rows.length === 0) return [];
+    const claimIds = rows.map((row) => row.id);
     const failures = await this.prisma.skillVerificationAttempt.findMany({
       where: {
-        claimId: { in: rows.map((row) => row.id) },
+        claimId: { in: claimIds },
         OR: [{ passed: false }, { technicalFailure: true }],
       },
       orderBy: { createdAt: 'desc' },
       select: { claimId: true, createdAt: true },
     });
+    const passedAttempts = await this.prisma.skillVerificationAttempt.findMany({
+      where: {
+        claimId: { in: claimIds },
+        passed: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { claimId: true, assessmentResultJson: true },
+    });
     const lastFail = new Map<string, Date>();
     for (const row of failures) {
       if (!lastFail.has(row.claimId)) lastFail.set(row.claimId, row.createdAt);
+    }
+    const latestAssessment = new Map<string, SkillClaimDto['latestAssessmentResult']>();
+    for (const row of passedAttempts) {
+      if (latestAssessment.has(row.claimId) || row.assessmentResultJson == null) continue;
+      const parsed = AssessmentResultSchema.safeParse(row.assessmentResultJson);
+      if (parsed.success) latestAssessment.set(row.claimId, parsed.data);
     }
     return rows.map((row) => {
       const lastGenuineFailureAt = lastFail.get(row.id)?.toISOString() ?? null;
@@ -437,6 +453,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         skillFocus,
         focusProgress: progress,
         retryAvailableAt: selected?.retryAvailableAt ?? null,
+        latestAssessmentResult: latestAssessment.get(row.id) ?? null,
       });
     });
   }

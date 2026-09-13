@@ -8,6 +8,7 @@ export const PRD_73_DEFAULT_PASS_THRESHOLDS: SkillPassThresholdsDto = {
   BEGINNER: { assessmentPass: 0.6, interviewPass: null, assessmentWeight: 1 },
   INTERMEDIATE: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
   ADVANCED: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
+  PROFESSIONAL: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
 };
 
 /** Software & IT seed domain = TECH_FULLSTACK competencies (~18 topics; ticket asked ~15). */

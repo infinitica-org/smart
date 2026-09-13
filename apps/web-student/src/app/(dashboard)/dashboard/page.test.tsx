@@ -30,6 +30,7 @@ vi.mock('@/lib/candidate-identity', () => ({
       userId: 'usr_1',
       fullName: 'Ada Lovelace',
       email: 'ada@example.com',
+      profilePhotoUrl: null,
     },
   }),
   useTracks: () => ({
@@ -41,7 +42,7 @@ vi.mock('@/lib/candidate-identity', () => ({
       ?.split(' ')
       .map((part) => part[0])
       .join('') ?? '',
-  headlineFor: () => 'Full Stack Engineer',
+  headlineFor: () => 'SMART candidate',
 }));
 
 vi.mock('@/lib/skill-declarations', () => ({
@@ -88,24 +89,32 @@ vi.mock('@/lib/use-profile-progress', () => ({
 }));
 
 describe('DashboardPage', () => {
-  it('renders profile progress, recommended action, and existing dashboard content', () => {
+  it('renders greeting, profile progress, unlock message, and verified skills only', () => {
     render(<DashboardPage />);
 
-    expect(screen.getByText(/Welcome back, Ada/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Welcome back, Ada/i })).toBeTruthy();
     expect(screen.getByText('Your SMART Profile')).toBeTruthy();
     expect(screen.getByText('37% complete')).toBeTruthy();
+    expect(
+      screen.getByText('Reach at least 50% profile completion to unlock skill verification.'),
+    ).toBeTruthy();
     expect(screen.getByText('Recommended next step')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Add education' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add education' }).getAttribute('href')).toBe(
       '/profile#education',
     );
-    expect(screen.getByText('Your skills')).toBeTruthy();
-    expect(screen.getByText('Verified Skills')).toBeTruthy();
-    expect(screen.getByText('Skills Declared')).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: /Continue building your profile/i }).getAttribute('href'),
+    ).toBe('/profile');
 
-    const manageLink = screen.getByText('Manage');
-    expect(manageLink.getAttribute('href')).toBe('/assessments');
+    expect(screen.getByRole('heading', { name: 'Skills you have verified' })).toBeTruthy();
+    expect(screen.getByText('REACT')).toBeTruthy();
+    expect(screen.queryByText('NODE')).toBeNull();
 
+    const skillRepositoryLink = screen.getByRole('link', { name: /Browse Skill Repository/i });
+    expect(skillRepositoryLink.getAttribute('href')).toBe('/assessments');
+
+    expect(screen.queryByText('Skills Declared')).toBeNull();
     expect(screen.queryByText(/Application tracker/i)).toBeNull();
     expect(screen.queryByText(/Public profile/i)).toBeNull();
     expect(screen.queryByText(/Active Apps/i)).toBeNull();

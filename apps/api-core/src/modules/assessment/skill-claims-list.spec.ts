@@ -87,4 +87,56 @@ describe('listSkillClaims', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(findMany).not.toHaveBeenCalled();
   });
+
+  it('attaches latestAssessmentResult from the newest passed attempt', async () => {
+    const attemptFindMany = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          claimId: CLAIM_ID,
+          assessmentResultJson: {
+            skillCode: 'SQL_QUERY_OPTIMIZATION',
+            assessmentVersion: 'v1',
+            attemptId: '77777777-7777-4777-8777-777777777777',
+            competencyResults: [],
+            highestAssessmentSupportedProficiency: 'ADVANCED',
+            targetProficiency: 'ADVANCED',
+            uncertainties: [],
+            recommendedNextStep: 'NONE',
+            requiresInterview: false,
+            requiresAdditionalAssessment: false,
+            confidence: 'HIGH',
+            evaluatedAt: new Date().toISOString(),
+          },
+        },
+      ]);
+    const prisma = {
+      skillClaim: { findMany },
+      skillVerificationAttempt: { findMany: attemptFindMany },
+    };
+    service = new AssessmentService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    findMany.mockResolvedValue([
+      {
+        id: CLAIM_ID,
+        studentId: STUDENT_ID,
+        proficiency: 'ADVANCED',
+        status: 'VERIFIED',
+        strikes: 0,
+        lockedUntil: null,
+        lastAttemptId: '77777777-7777-4777-8777-777777777777',
+        skill: { code: 'SQL_QUERY_OPTIMIZATION' },
+      },
+    ]);
+
+    const rows = await service.listSkillClaims(studentUser());
+    expect(rows[0]?.latestAssessmentResult?.highestAssessmentSupportedProficiency).toBe('ADVANCED');
+  });
 });

@@ -5,9 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CandidateEducationDto } from '@smart/contracts';
+import type { CandidateEducationDocumentDto, CandidateEducationDto } from '@smart/contracts';
 import {
+  CandidateEducationDocumentSchema,
   CandidateEducationSchema,
+  CreateCandidateEducationDocumentSchema,
   CreateCandidateEducationSchema,
   RejectCandidateEducationSchema,
   UpdateCandidateEducationSchema,
@@ -30,6 +32,7 @@ export class CandidateEducationService {
   async listForStudent(userId: string): Promise<CandidateEducationDto[]> {
     const records = await this.prisma.candidateEducation.findMany({
       where: { studentId: userId },
+      include: { documents: { orderBy: { createdAt: 'desc' } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -73,7 +76,10 @@ export class CandidateEducationService {
   }
 
   async getForStudent(userId: string, id: string): Promise<CandidateEducationDto> {
-    const record = await this.prisma.candidateEducation.findUnique({ where: { id } });
+    const record = await this.prisma.candidateEducation.findUnique({
+      where: { id },
+      include: { documents: { orderBy: { createdAt: 'desc' } } },
+    });
     if (!record) {
       throw new NotFoundException({
         error: 'not_found',
@@ -159,6 +165,52 @@ export class CandidateEducationService {
   async delete(userId: string, id: string): Promise<void> {
     await this.getForStudent(userId, id);
     await this.prisma.candidateEducation.delete({ where: { id } });
+  }
+
+  async attachDocument(
+    userId: string,
+    educationId: string,
+    payload: unknown,
+  ): Promise<CandidateEducationDocumentDto> {
+    await this.getForStudent(userId, educationId);
+    const parsed = CreateCandidateEducationDocumentSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Invalid education document attachment payload.',
+        statusCode: 400,
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const doc = await this.prisma.candidateEducationDocument.create({
+      data: {
+        educationId,
+        documentType: parsed.data.documentType,
+        fileUrl: parsed.data.fileUrl,
+        fileName: parsed.data.fileName,
+        fileSizeBytes: parsed.data.fileSizeBytes,
+        mimeType: parsed.data.mimeType,
+      },
+    });
+
+    return this.mapDocumentToDto(doc);
+  }
+
+  async removeDocument(userId: string, educationId: string, documentId: string): Promise<void> {
+    await this.getForStudent(userId, educationId);
+    const doc = await this.prisma.candidateEducationDocument.findUnique({
+      where: { id: documentId },
+    });
+    if (!doc || doc.educationId !== educationId) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Education document not found.',
+        statusCode: 404,
+      });
+    }
+
+    await this.prisma.candidateEducationDocument.delete({ where: { id: documentId } });
   }
 
   async confirmByHomeCollege(id: string, user: RequestUser): Promise<CandidateEducationDto> {
@@ -257,6 +309,28 @@ export class CandidateEducationService {
     }
   }
 
+  private mapDocumentToDto(doc: {
+    id: string;
+    educationId: string;
+    documentType: string;
+    fileUrl: string;
+    fileName: string;
+    fileSizeBytes: number;
+    mimeType: string;
+    createdAt: Date;
+  }): CandidateEducationDocumentDto {
+    return CandidateEducationDocumentSchema.parse({
+      id: doc.id,
+      educationId: doc.educationId,
+      documentType: doc.documentType,
+      fileUrl: doc.fileUrl,
+      fileName: doc.fileName,
+      fileSizeBytes: doc.fileSizeBytes,
+      mimeType: doc.mimeType,
+      createdAt: doc.createdAt.toISOString(),
+    });
+  }
+
   private mapToDto(r: {
     id: string;
     studentId: string;
@@ -271,6 +345,16 @@ export class CandidateEducationService {
     rejectionReason: string | null;
     createdAt: Date;
     updatedAt: Date;
+    documents?: Array<{
+      id: string;
+      educationId: string;
+      documentType: string;
+      fileUrl: string;
+      fileName: string;
+      fileSizeBytes: number;
+      mimeType: string;
+      createdAt: Date;
+    }>;
   }): CandidateEducationDto {
     return CandidateEducationSchema.parse({
       id: r.id,
@@ -284,6 +368,7 @@ export class CandidateEducationService {
       grade: r.grade,
       status: r.status,
       rejectionReason: r.rejectionReason,
+      documents: (r.documents ?? []).map((doc) => this.mapDocumentToDto(doc)),
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     });

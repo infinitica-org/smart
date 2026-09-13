@@ -36,8 +36,8 @@ const MS_PER_DAY = 24 * MS_PER_HOUR;
  * Isolated duration helpers — change only these if product picks calendar days
  * instead of 24-hour multiples.
  */
-export function addSkillRefreshPeriod(from: Date): Date {
-  return new Date(from.getTime() + SKILL_REFRESH_DAYS * MS_PER_DAY);
+export function addSkillRefreshPeriod(from: Date, refreshDays = SKILL_REFRESH_DAYS): Date {
+  return new Date(from.getTime() + refreshDays * MS_PER_DAY);
 }
 
 export function addInterAttemptCooldown(from: Date): Date {
@@ -62,7 +62,8 @@ export type SkillClaimSnapshot = {
 export type SkillClaimEvent =
   | { type: 'START' }
   | { type: 'TECHNICAL_FAILURE' }
-  | { type: 'GENUINE_PASS' }
+  | { type: 'PROVISIONAL_SETTLEMENT' }
+  | { type: 'GENUINE_PASS'; verifiedProficiency?: SkillProficiency; refreshDays?: number }
   | { type: 'GENUINE_FAIL' };
 
 export type SkillClaimBlockReason =
@@ -187,23 +188,30 @@ function applyTechnicalFailure(claim: SkillClaimSnapshot): SkillClaimTransitionR
   return allow(copyClaim(claim));
 }
 
-function applyGenuinePass(claim: SkillClaimSnapshot, now: Date): SkillClaimTransitionResult {
+function applyGenuinePass(
+  claim: SkillClaimSnapshot,
+  now: Date,
+  verifiedProficiency?: SkillProficiency,
+  refreshDays?: number,
+): SkillClaimTransitionResult {
+  const nextProficiency = verifiedProficiency ?? claim.proficiency;
+  const verifiedUntil = addSkillRefreshPeriod(now, refreshDays);
   if (claim.status === 'DECLARED') {
     return allow({
       status: 'VERIFIED',
-      proficiency: claim.proficiency,
+      proficiency: nextProficiency,
       strikes: claim.strikes,
       lockedUntil: null,
-      verifiedUntil: addSkillRefreshPeriod(now),
+      verifiedUntil,
     });
   }
   if (claim.status === 'BEGINNER_REATTEMPT') {
     return allow({
       status: 'VERIFIED',
-      proficiency: 'BEGINNER',
+      proficiency: verifiedProficiency ?? 'BEGINNER',
       strikes: claim.strikes,
       lockedUntil: null,
-      verifiedUntil: addSkillRefreshPeriod(now),
+      verifiedUntil,
     });
   }
   if (claim.status === 'LOCKED') {
@@ -248,9 +256,10 @@ export function applySkillClaimTransition(
     case 'START':
       return applyStart(claim, now, lastGenuineFailureAt);
     case 'TECHNICAL_FAILURE':
+    case 'PROVISIONAL_SETTLEMENT':
       return applyTechnicalFailure(claim);
     case 'GENUINE_PASS':
-      return applyGenuinePass(claim, now);
+      return applyGenuinePass(claim, now, event.verifiedProficiency, event.refreshDays);
     case 'GENUINE_FAIL':
       return applyGenuineFail(claim, now);
     default: {

@@ -193,12 +193,10 @@ describe('route registry', () => {
   });
 });
 
-describe('skill taxonomy (INF-05)', () => {
-  it('defines the Universal Core plus three Role Depth streams', () => {
-    const streams = new Set(SKILL_DEFINITIONS.map((s) => s.stream));
-    expect(streams).toEqual(
-      new Set(['UNIVERSAL', 'SOFTWARE_DEVELOPMENT', 'DATA_SCIENCE_ANALYTICS', 'AI_ML_ENGINEERING']),
-    );
+describe('skill taxonomy (skill@1)', () => {
+  it('defines 81 skills across 14 categories', () => {
+    expect(SKILL_DEFINITIONS).toHaveLength(81);
+    expect(new Set(SKILL_DEFINITIONS.map((skill) => skill.categoryId)).size).toBe(14);
   });
 
   it('has no duplicate skill codes', () => {
@@ -463,30 +461,31 @@ describe('SDE v4 skill-verify assessment routes', () => {
   });
 
   it('maps Software & IT catalog codes onto v4 form codes', () => {
-    expect(sdeV4FormCodeForCatalogSkill('GIT_VERSION_CONTROL')).toBe('SDE_GIT');
-    expect(sdeV4FormCodeForCatalogSkill('LANGUAGE_PROFICIENCY')).toBe(
+    expect(sdeV4FormCodeForCatalogSkill('PYTHON_APPLICATION_BACKEND_DEVELOPMENT')).toBe(
+      'SDE_PROGRAMMING_FUNDAMENTALS',
+    );
+    expect(sdeV4FormCodeForCatalogSkill('JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT')).toBe(
       'SDE_PROGRAMMING_FUNDAMENTALS',
     );
     expect(sdeV4FormCodeForCatalogSkill('UNKNOWN_SKILL_CODE')).toBe('SDE_PROGRAMMING_FUNDAMENTALS');
     expect(sdeV4FormCodeForCatalogSkill('')).toBeNull();
   });
 
-  it('lists language/framework foci for catalog skills including Language proficiency', () => {
-    expect(skillFocusOptions('LANGUAGE_PROFICIENCY')).toEqual([
-      'Java',
+  it('lists language/framework foci for catalog skills', () => {
+    expect(skillFocusOptions('PYTHON_APPLICATION_BACKEND_DEVELOPMENT')).toEqual([
       'Python',
-      'JavaScript',
-      'C++',
+      'Django',
+      'FastAPI',
     ]);
-    expect(skillFocusOptions('FRONTEND_BACKEND_FRAMEWORK')).toContain('React');
-    expect(resolveSkillFocus('LANGUAGE_PROFICIENCY', 'Python')).toBe('Python');
-    expect(resolveSkillFocus('LANGUAGE_PROFICIENCY', 'COBOL')).toBe('Java');
+    expect(skillFocusOptions('MODERN_FRONTEND_FRAMEWORKS')).toContain('React');
+    expect(resolveSkillFocus('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', 'Python')).toBe('Python');
+    expect(resolveSkillFocus('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', 'COBOL')).toBe('Python');
   });
 
   it('seeds legacy claim status onto the last-used focus only', () => {
     const rows = hydrateFocusProgress({
-      skillCode: 'COMPUTER_NETWORKS_BASICS',
-      metadata: { skillFocus: 'HTTP & REST' },
+      skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
+      metadata: { skillFocus: 'APIs' },
       status: 'BEGINNER_REATTEMPT',
       strikes: 1,
       lockedUntil: null,
@@ -494,14 +493,14 @@ describe('SDE v4 skill-verify assessment routes', () => {
       lastGenuineFailureAt: '2026-09-05T05:00:00.000Z',
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.focus).toBe('HTTP & REST');
+    expect(rows[0]?.focus).toBe('APIs');
     expect(rows[0]?.status).toBe('BEGINNER_REATTEMPT');
     expect(focusProgressFor(rows, 'TCP/UDP')).toBeNull();
   });
 
   it('exposes retryAvailableAt on DECLARED after a sit so cooldown is not beginner-only', () => {
     const rows = hydrateFocusProgress({
-      skillCode: 'GIT_VERSION_CONTROL',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
       metadata: {
         skillFocus: 'Git basics',
         focusProgress: [
