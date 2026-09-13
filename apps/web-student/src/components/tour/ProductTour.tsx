@@ -117,7 +117,7 @@ export function ProductTour({ steps, autoStart }: { steps: TourStep[]; autoStart
           initial={{ opacity: 0, y: step.placement === 'top' ? 8 : -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl"
+          className="fixed w-72 rounded-2xl border border-border bg-card p-5 shadow-xl"
           style={{
             left: cardLeft,
             top: step.placement === 'bottom' ? rect.top + rect.height + CARD_GAP : undefined,
@@ -132,19 +132,19 @@ export function ProductTour({ steps, autoStart }: { steps: TourStep[]; autoStart
               type="button"
               onClick={finish}
               aria-label="Close tour"
-              className="text-zinc-500 transition-colors hover:text-white"
+              className="text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-          <h3 className="mb-1.5 text-base font-semibold text-white">{step.title}</h3>
-          <p className="mb-5 text-sm leading-relaxed text-zinc-400">{step.description}</p>
+          <h3 className="mb-1.5 text-base font-semibold text-foreground">{step.title}</h3>
+          <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
           <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
               disabled={isFirst}
-              className="flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-0"
+              className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back

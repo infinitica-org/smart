@@ -7,7 +7,7 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
   return {
     claimId: '44444444-4444-4444-8444-444444444444',
     studentId: '11111111-1111-4111-8111-111111111111',
-    skillCode: 'GIT_VERSION_CONTROL',
+    skillCode: 'GITOPS_CONTINUOUS_DELIVERY',
     proficiency: 'BEGINNER',
     status: 'LOCKED',
     strikes: 2,
@@ -20,16 +20,35 @@ function claim(overrides: Partial<SkillClaimDto> = {}): SkillClaimDto {
 }
 
 describe('SkillVerifyRow lock time', () => {
+  it('does not render a proficiency picker', () => {
+    render(
+      <SkillVerifyRow
+        skillCode="SQL_QUERY_OPTIMIZATION"
+        skillName="SQL"
+        claim={claim({
+          skillCode: 'SQL_QUERY_OPTIMIZATION',
+          status: 'DECLARED',
+          lockedUntil: null,
+          retryAvailableAt: null,
+        })}
+        focus="Query tuning"
+        pending={false}
+        onFocus={vi.fn()}
+        onVerify={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText(/Proficiency for SQL/i)).toBeNull();
+    expect(screen.getByLabelText(/Focus for SQL/i)).toBeTruthy();
+  });
+
   it('shows the unlock time next to the skill name', () => {
     render(
       <SkillVerifyRow
-        skillCode="GIT_VERSION_CONTROL"
+        skillCode="GITOPS_CONTINUOUS_DELIVERY"
         skillName="Git"
         claim={claim()}
-        proficiency="BEGINNER"
         focus="Branching"
         pending={false}
-        onProficiency={vi.fn()}
         onFocus={vi.fn()}
         onVerify={vi.fn()}
       />,

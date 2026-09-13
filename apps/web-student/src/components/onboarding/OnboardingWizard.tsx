@@ -9,7 +9,6 @@ import { api } from '@/lib/api';
 import ResumeUpload from './steps/ResumeUpload';
 import BasicProfileStep from './steps/BasicProfileStep';
 import StreamStep from './steps/StreamStep';
-import SkillsStep from './steps/SkillsStep';
 import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
@@ -65,11 +64,11 @@ function furthestStep(form: OnboardingProfileForm): WizardStepId {
   const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
   if (hasSocial) return 'social';
   if (form.languages.some((l) => l.language.trim())) return 'languages';
-  const hasSkills =
+  const hasLegacySkillsData =
     Object.keys(form.catalogSkills).length > 0 ||
     form.codingProficiencies.length > 0 ||
     form.frameworkProficiencies.length > 0;
-  if (hasSkills) return 'skills';
+  if (hasLegacySkillsData) return 'languages';
   if (form.firstName.trim() || form.lastName.trim()) return 'profile';
   return 'resume';
 }
@@ -93,9 +92,18 @@ export default function OnboardingWizard() {
         if (cancelled) return;
         if (response.draft) {
           const next = applyServerDraft(formData, response.draft);
-          setFormData(next);
-          saveOnboardingDraft(next);
-          setCurrentStep(furthestStep(next));
+          const withPhoto = response.profilePhotoUrl
+            ? { ...next, profilePhotoUrl: response.profilePhotoUrl }
+            : next;
+          setFormData(withPhoto);
+          saveOnboardingDraft(withPhoto);
+          setCurrentStep(furthestStep(withPhoto));
+        } else if (response.profilePhotoUrl) {
+          setFormData((prev) => {
+            const withPhoto = { ...prev, profilePhotoUrl: response.profilePhotoUrl ?? '' };
+            saveOnboardingDraft(withPhoto);
+            return withPhoto;
+          });
         }
       })
       .catch(() => {
@@ -167,7 +175,7 @@ export default function OnboardingWizard() {
     return (
       <WizardPage>
         <div className="flex justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#00fad0]/20 border-t-[#00fad0]" />
         </div>
       </WizardPage>
     );
@@ -195,15 +203,6 @@ export default function OnboardingWizard() {
 
         {currentStep === 'stream' && (
           <StreamStep onBack={() => goBackTo('stream')} onContinue={() => advanceFrom('stream')} />
-        )}
-
-        {currentStep === 'skills' && (
-          <SkillsStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('skills')}
-            onContinue={() => advanceFrom('skills')}
-          />
         )}
 
         {currentStep === 'languages' && (

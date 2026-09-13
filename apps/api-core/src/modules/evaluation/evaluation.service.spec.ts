@@ -204,6 +204,129 @@ describe('EvaluationService SDE v4 skill form', () => {
     expect(complete).toHaveBeenCalledTimes(2);
   });
 
+  it('accepts extra LLM items on diagnostic forms and coerces sparse CODING output', async () => {
+    const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
+      ...item,
+      competencySlot: `C${String((idx % 6) + 1)}` as const,
+    }));
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedWithSlots } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'CODING',
+              competencySlot: 'C2',
+              prompt: 'Implement two sum for a unique-integer array with O(n) expected time.',
+              rubric: 'Correct hash map solution with tests in mind.',
+              modelAnswer: 'Use a hashmap of value to index.',
+            },
+            {
+              format: 'SCENARIO',
+              competencySlot: 'C3',
+              prompt: 'Extra scenario item the model over-generated for diagnostic stage.',
+              rubric: 'Names a concrete mitigation step with trade-offs.',
+              modelAnswer: 'Reduce scope and roll back the change safely.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_PROGRAMMING_FUNDAMENTALS',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-diagnostic',
+        stage: 'DIAGNOSTIC',
+        catalogSkillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      },
+      OWNER_ID,
+    );
+
+    expect(result.stage).toBe('DIAGNOSTIC');
+    expect(result.items.length).toBeLessThan(12);
+    expect(result.items.some((item) => item.format === 'CODING')).toBe(true);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it('accepts mislabeled CODING output for SCENARIO-only deployment diagnostic forms', async () => {
+    const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
+      ...item,
+      competencySlot: `C${String((idx % 6) + 1)}` as const,
+    }));
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedWithSlots } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'CODING',
+              competencySlot: 'C2',
+              prompt:
+                'Your MLflow model registry promotion fails during canary deploy. What steps do you take first?',
+              rubric: 'Names metrics comparison, rollback, or registry checks with trade-offs.',
+              modelAnswer:
+                'Compare canary error rate to baseline and halt promotion if it regresses.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_DEPLOYMENT_CICD',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-mlops-diagnostic',
+        stage: 'DIAGNOSTIC',
+        catalogSkillCode: 'MLOPS_MODEL_LIFECYCLE_MANAGEMENT',
+      },
+      OWNER_ID,
+    );
+
+    expect(result.stage).toBe('DIAGNOSTIC');
+    expect(result.items.some((item) => item.format === 'SCENARIO')).toBe(true);
+    expect(complete.mock.calls[1]?.[0]?.variables.formats).toEqual(['SCENARIO']);
+  });
+
+  it('remaps DEBUG output to SCENARIO when diagnostic expects only scenario items', async () => {
+    const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
+      ...item,
+      competencySlot: `C${String((idx % 6) + 1)}` as const,
+    }));
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedWithSlots } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'DEBUG',
+              competencySlot: 'C4',
+              prompt:
+                'A Kubeflow pipeline step fails after model registry promotion. Identify the first checks.',
+              rubric: 'Names logs, metrics, or rollback with a concrete next step.',
+              modelAnswer: 'Inspect pipeline pod logs and compare canary metrics to baseline.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_DEPLOYMENT_CICD',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-mlops-debug-diagnostic',
+        stage: 'DIAGNOSTIC',
+        catalogSkillCode: 'MLOPS_MODEL_LIFECYCLE_MANAGEMENT',
+      },
+      OWNER_ID,
+    );
+
+    expect(result.items.some((item) => item.format === 'SCENARIO')).toBe(true);
+  });
+
   it('passes skillFocus into both generate prompt variable bags', async () => {
     const complete = vi
       .fn()

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   INF_SE_V1_TAXONOMY_VERSION,
   SE_SKILL_DEFINITIONS,
+  SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   SKILL_TAXONOMY_VERSION,
   TRACK_DEFINITIONS,
@@ -39,16 +40,13 @@ describe('CatalogService', () => {
     });
   });
 
-  it('listSkillLibrary() returns the frozen v0.9 INF-05 skill-set (SK-T01)', () => {
+  it('listSkillLibrary() returns skill@1 grouped by category', () => {
     const library = service.listSkillLibrary();
     expect(library.taxonomyVersion).toBe(SKILL_TAXONOMY_VERSION);
-    expect(library.skills).toHaveLength(SKILL_DEFINITIONS.length);
-    expect(library.skills[0]).toMatchObject({
-      code: expect.any(String),
-      name: expect.any(String),
-      domain: 'SOFTWARE_IT',
-      stream: expect.any(String),
-    });
+    expect(library.categories).toHaveLength(SKILL_CATEGORY_IDS.length);
+    expect(library.categories.flatMap((category) => category.skills)).toHaveLength(
+      SKILL_DEFINITIONS.length,
+    );
   });
 
   it('listTracks() returns all 10 tracks from contract fallback when DB is unavailable', async () => {
@@ -79,7 +77,7 @@ describe('CatalogService', () => {
     await expect(service.getTrack('NOT_A_REAL_TRACK')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('TECH_FULLSTACK competencies each expose PRD 7.3 pass thresholds (INF-05)', async () => {
+  it('TECH_FULLSTACK competencies each expose PRD 7.3 pass thresholds', async () => {
     const track = await service.getTrack('TECH_FULLSTACK');
     const fullstack = TRACK_DEFINITIONS.find((definition) => definition.code === 'TECH_FULLSTACK');
     const expectedTopics = fullstack?.domains.flatMap((domain) => domain.topics);

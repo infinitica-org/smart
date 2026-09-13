@@ -82,9 +82,9 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
             return (
               <div
                 key={sel.skillCode}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+                className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2"
               >
-                <span className="flex-1 text-sm font-medium text-white">
+                <span className="flex-1 text-sm font-medium text-foreground">
                   {definition?.name ??
                     (isUnlistedSkillCode(sel.skillCode)
                       ? sel.skillCode.replace(/^UL_/, '').replace(/_/g, ' ')
@@ -108,7 +108,7 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
                   type="button"
                   onClick={() => removeSkill(sel.skillCode)}
                   disabled={disabled}
-                  className="text-white/30 hover:text-white/70"
+                  className="text-muted-foreground/60 hover:text-muted-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -131,17 +131,17 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
             }
           }}
           placeholder="Search skills (e.g. AWS, Cloud Computing)"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-[#00fad0]/50 focus:outline-none"
+          className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
         />
         {query.trim() ? (
           matches.length > 0 ? (
-            <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-white/10 bg-[#161616] py-1.5 shadow-xl">
+            <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border bg-background py-1.5 shadow-xl">
               {matches.map((skill) => (
                 <button
                   key={skill.code}
                   type="button"
                   onClick={() => addSkill(skill.code)}
-                  className="flex w-full items-center px-3.5 py-2 text-left text-sm text-white/80 hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center px-3.5 py-2 text-left text-sm text-foreground/80 hover:bg-muted hover:text-foreground"
                 >
                   {skill.name}
                 </button>
@@ -149,12 +149,12 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
             </div>
           ) : (
             <div className="mt-2 flex flex-col gap-2">
-              <p className="text-xs text-white/50">No matching skill in our catalog.</p>
+              <p className="text-xs text-muted-foreground">No matching skill in our catalog.</p>
               <button
                 type="button"
                 disabled={disabled || query.trim().length < 2}
                 onClick={() => addSkill(unlistedSkillCode(query))}
-                className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/80 hover:bg-white/5 disabled:opacity-40"
+                className="self-start rounded-lg border border-border px-3 py-1.5 text-xs text-foreground/80 hover:bg-muted disabled:opacity-40"
               >
                 Add “{query.trim()}” as unlisted
               </button>

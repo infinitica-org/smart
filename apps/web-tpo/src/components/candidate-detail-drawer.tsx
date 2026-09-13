@@ -7,32 +7,17 @@ import {
   SKILL_DEFINITIONS,
   type InstitutionStudentDto,
   type SkillClaimDto,
-  type SkillStream,
 } from '@smart/contracts';
 import { CandidateProfileCard, type CandidateSkill } from '@smart/ui';
 import { api } from '../lib/api';
+import { CompetencyBreakdown } from './competency-breakdown';
 
 function skillNameFor(code: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === code)?.name ?? code;
 }
 
-function skillStreamFor(code: string): SkillStream {
-  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
-  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
-  return stream;
-}
-
-function streamLabel(stream: string): string {
-  switch (stream) {
-    case 'SOFTWARE_DEVELOPMENT':
-      return 'Software Engineering';
-    case 'DATA_SCIENCE_ANALYTICS':
-      return 'Data & Analytics';
-    case 'AI_ML_ENGINEERING':
-      return 'AI & Machine Learning';
-    default:
-      return stream.replace(/_/g, ' ');
-  }
+function skillCategoryNameFor(code: string): string {
+  return SKILL_DEFINITIONS.find((s) => s.code === code)?.categoryName ?? 'Uncategorized';
 }
 
 export function CandidateDetailDrawer({
@@ -78,7 +63,9 @@ export function CandidateDetailDrawer({
   }));
 
   const firstClaim = claims && claims.length > 0 ? claims[0] : null;
-  const primaryStream = firstClaim ? skillStreamFor(firstClaim.skillCode) : 'SOFTWARE_DEVELOPMENT';
+  const primaryCategory = firstClaim
+    ? skillCategoryNameFor(firstClaim.skillCode)
+    : 'Programming Languages';
 
   return (
     <>
@@ -112,9 +99,8 @@ export function CandidateDetailDrawer({
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-emerald-400" />
             <span>
-              <strong className="text-white">Observational Data Only:</strong> Candidate stream
-              choices and skill verifications are managed autonomously. TPO views are strictly
-              read-only.
+              <strong className="text-white">Observational Data Only:</strong> Candidate skill
+              choices and verifications are managed autonomously. TPO views are strictly read-only.
             </span>
           </div>
         </div>
@@ -125,10 +111,10 @@ export function CandidateDetailDrawer({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-900/80 p-5 rounded-xl border border-zinc-800">
             <div>
               <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
-                Candidate-Selected Stream
+                Primary Skill Category
               </span>
               <span className="text-xs font-extrabold text-white bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-md inline-block">
-                {streamLabel(primaryStream)}
+                {primaryCategory}
               </span>
               <p className="text-[11px] text-zinc-500 mt-1">
                 Chosen by candidate during onboarding
@@ -162,10 +148,35 @@ export function CandidateDetailDrawer({
             </div>
           </div>
 
+          {claims?.some((claim) => claim.latestAssessmentResult) ? (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Verified competency breakdown
+              </h3>
+              <div className="mt-3 flex flex-col gap-4">
+                {claims
+                  .filter((claim) => claim.latestAssessmentResult)
+                  .map((claim) => (
+                    <div key={claim.claimId}>
+                      <p className="text-sm font-semibold text-white">
+                        {skillNameFor(claim.skillCode)} · {claim.proficiency}
+                      </p>
+                      {claim.latestAssessmentResult ? (
+                        <CompetencyBreakdown
+                          skillCode={claim.skillCode}
+                          assessmentResult={claim.latestAssessmentResult}
+                        />
+                      ) : null}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ) : null}
+
           <CandidateProfileCard
             candidateId={candidate.userId}
             displayName={candidate.fullName}
-            trackName={candidate.batchName || streamLabel(primaryStream)}
+            trackName={candidate.batchName || primaryCategory}
             headlineTier="GOLD"
             skills={candidateSkills}
             contactInfo={{

@@ -19,7 +19,7 @@ describe('fuseSignals', () => {
         encodedAt: '2026-09-11T00:00:00.000Z',
         entries: [
           {
-            dimension: dim('PYTHON_R_DATA_ANALYSIS'),
+            dimension: dim('PYTHON_APPLICATION_BACKEND_DEVELOPMENT'),
             sourceId: 'GITHUB',
             score: 0.6,
             confidence: 0.8,
@@ -83,7 +83,7 @@ describe('fuseSignals', () => {
         encodedAt: '2026-09-11T00:00:00.000Z',
         entries: [
           {
-            dimension: dim('DATA_STRUCTURES_ALGORITHMS'),
+            dimension: dim('ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION'),
             sourceId: 'GITHUB',
             score: 0.05,
             confidence: 0.7,
@@ -93,11 +93,11 @@ describe('fuseSignals', () => {
       assessmentY: {
         userId: '00000000-0000-4000-8000-000000000001',
         claimId: '00000000-0000-4000-8000-000000000003',
-        skillCode: 'DATA_STRUCTURES_ALGORITHMS',
+        skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
         assessedAt: '2026-09-11T01:00:00.000Z',
         entries: [
           {
-            dimension: dim('DATA_STRUCTURES_ALGORITHMS'),
+            dimension: dim('ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION'),
             scorePercent: 82,
             passed: true,
             proficiencyLevel: 'INTERMEDIATE',
@@ -108,7 +108,9 @@ describe('fuseSignals', () => {
     });
 
     expect(result.readouts[0]?.contradictionFlag).toBe(true);
-    expect(result.contradictionDimensions).toContain('DATA_STRUCTURES_ALGORITHMS');
+    expect(result.contradictionDimensions).toContain(
+      'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+    );
   });
 
   it('does not flag when assessment failed even with low passive', () => {
@@ -120,7 +122,7 @@ describe('fuseSignals', () => {
         encodedAt: '2026-09-11T00:00:00.000Z',
         entries: [
           {
-            dimension: dim('DATABASE_FUNDAMENTALS'),
+            dimension: dim('SQL_QUERY_OPTIMIZATION'),
             sourceId: 'GITHUB',
             score: 0.05,
             confidence: 0.7,
@@ -130,11 +132,11 @@ describe('fuseSignals', () => {
       assessmentY: {
         userId: '00000000-0000-4000-8000-000000000001',
         claimId: '00000000-0000-4000-8000-000000000004',
-        skillCode: 'DATABASE_FUNDAMENTALS',
+        skillCode: 'SQL_QUERY_OPTIMIZATION',
         assessedAt: '2026-09-11T01:00:00.000Z',
         entries: [
           {
-            dimension: dim('DATABASE_FUNDAMENTALS'),
+            dimension: dim('SQL_QUERY_OPTIMIZATION'),
             scorePercent: 40,
             passed: false,
             proficiencyLevel: 'BEGINNER',

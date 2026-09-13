@@ -13,8 +13,18 @@ describe('SkillVerifyLoading', () => {
   });
 
   it('surfaces generate errors instead of the game', () => {
-    render(<SkillVerifyLoading generating error="Skill form could not be generated." />);
-    expect(screen.getByText('Skill form could not be generated.')).toBeTruthy();
+    render(
+      <SkillVerifyLoading
+        generating
+        error={{
+          kind: 'generation_failed',
+          title: 'Assessment unavailable',
+          message: 'We could not prepare your assessment right now.',
+        }}
+      />,
+    );
+    expect(screen.getByText('Assessment unavailable')).toBeTruthy();
+    expect(screen.getByText(/could not prepare your assessment/i)).toBeTruthy();
     expect(screen.queryByLabelText('Pulse wait game')).toBeNull();
   });
 });

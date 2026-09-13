@@ -20,6 +20,12 @@ import {
 } from './evaluation.dto.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 import {
+  AssessmentResultSchema,
+  AssessmentStageSchema,
+  RecommendedNextStepSchema,
+  SkillEvidenceContextSchema,
+} from '../domain/evidence/index.js';
+import {
   ProctoringEventClassSchema,
   ProctoringSeveritySchema,
   ProctoringViolationKindSchema,
@@ -298,6 +304,7 @@ export const SkillVerifyPrepareDtoSchema = z.object({
   sessionId: UuidSchema,
   claimId: UuidSchema,
   expiresAt: IsoDateTimeSchema,
+  evidenceContext: SkillEvidenceContextSchema.optional(),
 });
 export type SkillVerifyPrepareDto = z.infer<typeof SkillVerifyPrepareDtoSchema>;
 
@@ -307,11 +314,18 @@ export const SkillVerifySessionDtoSchema = z.object({
   skillCode: z.string().min(2).max(64),
   proficiency: SkillProficiencySchema,
   timeMinutes: z.number().int().positive(),
-  passMarkPercent: z.number().int().min(1).max(100),
+  passMarkPercent: z.number().int().min(1).max(100).optional(),
   expiresAt: IsoDateTimeSchema,
   serverRemainingSeconds: z.number().int().nonnegative(),
   items: z.array(SdeSkillFormPublicItemSchema).min(1),
   answers: z.array(SdeSkillFormResponseItemSchema),
+  stage: AssessmentStageSchema.optional(),
+  intelligenceEnabled: z.boolean().optional(),
+  stageLabel: z.string().max(120).optional(),
+  pendingCompetencies: z.array(z.string().max(500)).max(10).optional(),
+  pendingVerification: z.boolean().optional(),
+  verificationStep: RecommendedNextStepSchema.optional(),
+  evidenceContext: SkillEvidenceContextSchema.optional(),
 });
 export type SkillVerifySessionDto = z.infer<typeof SkillVerifySessionDtoSchema>;
 
@@ -333,7 +347,42 @@ export const CompleteSkillVerifyResponseSchema = z.object({
   claim: SkillClaimDtoSchema,
   technicalFailure: z.boolean(),
   grade: GradeSdeSkillFormResponseSchema.nullable(),
+  assessmentResult: AssessmentResultSchema.nullable().optional(),
+  sessionContinues: z.boolean().optional(),
+  session: SkillVerifySessionDtoSchema.nullable().optional(),
+  pendingVerification: z.boolean().optional(),
 });
+
+export const CompleteSkillVerifyInterviewRequestSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        index: z.number().int().min(1).max(3),
+        /** Ignored for grading — server binds answers to interview/start questions. */
+        question: z.string().min(10).max(500).optional(),
+        answer: z.string().min(1).max(8_000),
+      }),
+    )
+    .length(3),
+});
+export type CompleteSkillVerifyInterviewRequest = z.infer<
+  typeof CompleteSkillVerifyInterviewRequestSchema
+>;
+
+export const SkillVerifyInterviewDtoSchema = z.object({
+  sessionId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  proficiency: z.enum(['ADVANCED', 'PROFESSIONAL']),
+  questions: z
+    .array(
+      z.object({
+        index: z.number().int().min(1).max(3),
+        text: z.string().min(10).max(500),
+      }),
+    )
+    .length(3),
+});
+export type SkillVerifyInterviewDto = z.infer<typeof SkillVerifyInterviewDtoSchema>;
 export type CompleteSkillVerifyResponse = z.infer<typeof CompleteSkillVerifyResponseSchema>;
 
 /* ---------------- polymorphic assessment session (SE-T10) ---------------- */

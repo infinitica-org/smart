@@ -74,10 +74,10 @@ export function CertificateDetailsForm({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-          <Award className="h-5 w-5 text-[#00fad0]" /> Certificate Details
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Award className="h-5 w-5 text-[#00967c]" /> Certificate Details
         </h2>
-        <p className="mt-1 text-sm text-white/50">
+        <p className="mt-1 text-sm text-muted-foreground">
           Enter provider name, credential details, and valid verification link.
         </p>
       </div>
@@ -149,7 +149,7 @@ export function CertificateDetailsForm({
             disabled={isPending}
             onChange={(event) => setVerificationUrl(event.target.value)}
           />
-          <p className="text-[11px] text-white/40">
+          <p className="text-[11px] text-muted-foreground">
             Provide a direct public link (Credly, CertMetrics, issuer badge) for instant automated
             source verification.
           </p>

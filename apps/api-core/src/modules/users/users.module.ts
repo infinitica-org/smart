@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AiGatewayModule } from '../ai-gateway/ai-gateway.module.js';
-import { AssessmentModule } from '../assessment/assessment.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { GeocodingIntegrationModule } from '../integrations/geocoding/geocoding-integration.module.js';
 import { GithubIntegrationModule } from '../integrations/github/github-integration.module.js';
@@ -9,24 +8,29 @@ import { CandidateEducationTpoController } from '../candidate-education/candidat
 import { CandidateEducationService } from '../candidate-education/candidate-education.service.js';
 import { CandidateLanguagesController } from '../candidate-languages/candidate-languages.controller.js';
 import { CandidateLanguagesService } from '../candidate-languages/candidate-languages.service.js';
+import { ProfileCompletionService } from './profile-completion.service.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
 @Module({
-  imports: [
-    AuthModule,
-    AiGatewayModule,
-    GithubIntegrationModule,
-    GeocodingIntegrationModule,
-    AssessmentModule,
-  ],
+  imports: [AuthModule, AiGatewayModule, GithubIntegrationModule, GeocodingIntegrationModule],
   controllers: [
     UsersController,
     CandidateEducationController,
     CandidateEducationTpoController,
     CandidateLanguagesController,
   ],
-  providers: [UsersService, CandidateEducationService, CandidateLanguagesService],
-  exports: [UsersService, CandidateEducationService, CandidateLanguagesService],
+  providers: [
+    UsersService,
+    CandidateEducationService,
+    CandidateLanguagesService,
+    ProfileCompletionService,
+  ],
+  exports: [
+    UsersService,
+    CandidateEducationService,
+    CandidateLanguagesService,
+    ProfileCompletionService,
+  ],
 })
 export class UsersModule {}

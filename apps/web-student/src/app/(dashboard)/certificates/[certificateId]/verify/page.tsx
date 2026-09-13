@@ -18,7 +18,7 @@ export default function CertificateVerifyPage({
   });
 
   if (isLoading) {
-    return <p className="text-sm text-white/50">Loading certificate…</p>;
+    return <p className="text-sm text-muted-foreground">Loading certificate…</p>;
   }
 
   if (!certificate) {

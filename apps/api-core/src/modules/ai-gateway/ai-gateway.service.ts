@@ -44,6 +44,28 @@ export class AiGatewayService {
     return this.circuitBreaker;
   }
 
+  /** Fast local check — no network probe — for skipping synchronous LLM work. */
+  hasCallableProvider(): boolean {
+    const entries: Array<{ provider: AiProvider; ready: boolean }> = [
+      { provider: 'ANTHROPIC', ready: this.anthropic.isConfigured },
+      { provider: 'GOOGLE', ready: this.google.isConfigured },
+      { provider: 'OPENROUTER', ready: this.openrouter.isConfigured },
+    ];
+    const configured = entries.map((entry) => ({
+      provider: entry.provider,
+      ready: entry.ready && this.circuitBreaker.isCallAllowed(entry.provider),
+    }));
+
+    const primary = env.AI_PRIMARY_PROVIDER;
+    const ordered = primary
+      ? [
+          ...configured.filter((entry) => entry.provider === primary),
+          ...configured.filter((entry) => entry.provider !== primary),
+        ]
+      : configured;
+    return ordered.some((entry) => entry.ready);
+  }
+
   async getHealth(): Promise<AiHealthDto> {
     const [anthropicHealth, googleHealth, openrouterHealth] = await Promise.all([
       this.anthropic.checkHealth(),

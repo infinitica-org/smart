@@ -1,5 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type {
@@ -21,12 +27,16 @@ import type {
   SubmitManagerEndorsementResponseDto,
   AdminWorkExperienceReviewRequest,
   ApproveWorkExperienceAuthenticityResponse,
+  UpdateWorkExperienceDto,
+  WorkExperienceValidationInput,
+  WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import {
   CreateWorkExperienceSchema,
   CreateWorkExperienceDocumentSchema,
   UpdateWorkExperienceSchema,
   WorkExperienceSchema,
+  WorkExperienceResponsibilitySchema,
   WorkExperienceDocumentSchema,
   WorkExperienceProofExtractedDataSchema,
   WorkExperienceLetterAuthenticityExtractSchema,
@@ -34,21 +44,24 @@ import {
   SubmitWorkExperienceVerificationSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
-  validateWorkExperienceLetterRules,
+  validateWorkExperienceEffectiveUpdate,
+  validateWorkExperienceSubmission,
   ApproveWorkExperienceAuthenticityResponseSchema,
   toWorkExperienceDocumentPublicDto,
   type WorkExperienceDocumentPublicDto,
-  companyRequiresPublicIdentity,
-  validateCompanyPublicIdentity,
   isInvalidEmploymentProofAttachmentType,
   isInvalidEmploymentProofClassification,
   INVALID_EMPLOYMENT_PROOF_MESSAGE,
   deriveWorkExperienceNextAction,
-  type WorkExperienceProofReasonCode,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { OrganizationsService } from '../institutions/organizations.service.js';
+import {
+  assertStudentControlledProofFileUrl,
+  InvalidStudentProofFileUrlError,
+} from './work-experience-proof-url.util.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import {
   EMAIL_QUEUE,
@@ -58,6 +71,7 @@ import {
   type WorkExperienceManagerReminderJobPayload,
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
@@ -90,6 +104,22 @@ interface RawWorkExperience {
   createdAt: Date;
   updatedAt: Date;
   documents?: RawWorkExperienceDocument[];
+  deliverablesStructured?: unknown;
+  personalContributions?: unknown;
+  structuredResponsibilities?: Array<{
+    id: string;
+    task: string;
+    skillCode?: string | null;
+    personalContribution: string;
+    responsibilityLevel: string;
+    independence?: string | null;
+    tools: string[];
+    decision?: string | null;
+    constraintText?: string | null;
+    outcome?: string | null;
+    artifactId?: string | null;
+    activity?: unknown;
+  }>;
 }
 
 interface RawWorkExperienceDocument {
@@ -123,6 +153,23 @@ import {
 } from './work-experience-document-authenticity.util.js';
 
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
+import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
+import {
+  buildEvidenceFromWorkExperienceRow,
+  extractStructuredMetadata,
+  responsibilityRowsCreateInput,
+  structuredMetadataWriteData,
+  type WorkExperienceWithEvidenceRelations,
+} from './work-experience-evidence.adapter.js';
+import { z } from 'zod';
+
+const WE_PROOF_ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+]);
+const WE_PROOF_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class WorkExperienceService {
@@ -137,7 +184,34 @@ export class WorkExperienceService {
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync?: EvidenceSyncService,
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
+
+  private readonly evidenceInclude = {
+    documents: true,
+    structuredResponsibilities: true,
+  } as const;
+
+  private async syncEvidenceRecord(
+    studentId: string,
+    experienceId: string,
+    overrides?: ReturnType<typeof extractStructuredMetadata>,
+  ): Promise<void> {
+    await this.evidenceSync?.syncWorkExperienceEvidenceRecord(studentId, experienceId, overrides);
+  }
+
+  private async persistStructuredResponsibilities(
+    experienceId: string,
+    items: z.infer<typeof WorkExperienceResponsibilitySchema>[],
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.workExperienceResponsibility.deleteMany({ where: { experienceId } }),
+      ...responsibilityRowsCreateInput(experienceId, items).map((row) =>
+        this.prisma.workExperienceResponsibility.create({ data: row }),
+      ),
+    ]);
+  }
 
   private async resolveOrganization(params: {
     name: string;
@@ -240,6 +314,7 @@ export class WorkExperienceService {
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
       documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
+      evidence: buildEvidenceFromWorkExperienceRow(exp as WorkExperienceWithEvidenceRelations),
     });
   }
 
@@ -257,7 +332,7 @@ export class WorkExperienceService {
   async listForStudent(studentId: string): Promise<WorkExperienceDto[]> {
     const list = await this.prisma.workExperience.findMany({
       where: { studentId },
-      include: { documents: true },
+      include: this.evidenceInclude,
       orderBy: { startDate: 'desc' },
     });
     return list.map((item) => this.mapToDto(item));
@@ -266,7 +341,7 @@ export class WorkExperienceService {
   async getForStudent(studentId: string, id: string): Promise<WorkExperienceDto> {
     const record = await this.prisma.workExperience.findUnique({
       where: { id },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
     if (!record || record.studentId !== studentId) {
       throw new NotFoundException({
@@ -276,6 +351,38 @@ export class WorkExperienceService {
       });
     }
     return this.mapToDto(record);
+  }
+
+  async listStructuredResponsibilities(studentId: string, experienceId: string) {
+    await this.getForStudent(studentId, experienceId);
+    const rows = await this.prisma.workExperienceResponsibility.findMany({
+      where: { experienceId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) =>
+      WorkExperienceResponsibilitySchema.parse({
+        responsibilityId: row.id,
+        task: row.task,
+        skillCode: row.skillCode ?? undefined,
+        personalContribution: row.personalContribution,
+        responsibilityLevel: row.responsibilityLevel,
+        independence: row.independence ?? undefined,
+        tools: row.tools,
+        decision: row.decision ?? undefined,
+        constraint: row.constraintText ?? undefined,
+        outcome: row.outcome ?? undefined,
+        artifactId: row.artifactId,
+        activity: row.activity ?? undefined,
+      }),
+    );
+  }
+
+  async replaceStructuredResponsibilities(studentId: string, experienceId: string, body: unknown) {
+    await this.getForStudent(studentId, experienceId);
+    const items = z.array(WorkExperienceResponsibilitySchema).parse(body);
+    await this.persistStructuredResponsibilities(experienceId, items);
+    await this.syncEvidenceRecord(studentId, experienceId, { structuredResponsibilities: items });
+    return this.listStructuredResponsibilities(studentId, experienceId);
   }
 
   async create(studentId: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -290,20 +397,6 @@ export class WorkExperienceService {
     }
 
     const data = parsed.data;
-
-    const letterValidation = validateWorkExperienceLetterRules({
-      isCurrent: data.isCurrent,
-      endDate: data.endDate,
-      documents: data.documents,
-    });
-    if (!letterValidation.valid) {
-      throw new BadRequestException({
-        error: 'validation_error',
-        message: letterValidation.message || 'Required proof documents are missing.',
-        statusCode: 400,
-        details: { missingDocuments: letterValidation.missingDocuments },
-      });
-    }
 
     const rawName = data.companyName.trim();
     const org = await this.resolveOrganization({
@@ -337,12 +430,30 @@ export class WorkExperienceService {
       }
     }
 
-    await this.assertCompanyPublicIdentity({
-      companyId: data.companyId,
-      companyWebsite: data.companyWebsite,
-      companyLinkedinUrl: data.companyLinkedinUrl,
-      matchedCompanyId,
-    });
+    for (const doc of data.documents ?? []) {
+      this.assertProofFileUrlOrThrow(doc.fileUrl);
+    }
+
+    await this.assertWorkExperienceCompleteness(
+      {
+        companyName: data.companyName,
+        role: data.role,
+        employmentType: data.employmentType,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isCurrent: data.isCurrent,
+        domain: data.domain,
+        responsibilities: data.responsibilities,
+        skillsClaimed: data.skillsClaimed,
+        companyId: matchedCompanyId ?? data.companyId,
+        companyWebsite: data.companyWebsite,
+        companyLinkedinUrl: data.companyLinkedinUrl,
+        documents: data.documents,
+      },
+      { skipDocumentRules: (data.documents ?? []).length === 0 },
+    );
+
+    const structuredMetadata = extractStructuredMetadata(data);
 
     const created = await this.prisma.workExperience.create({
       data: {
@@ -370,6 +481,7 @@ export class WorkExperienceService {
         verifierDesignation: data.verifierDesignation || null,
         verifierPhone: data.verifierPhone || null,
         status: 'SUBMITTED',
+        ...structuredMetadataWriteData(structuredMetadata),
         ...(data.documents && data.documents.length > 0
           ? {
               documents: {
@@ -384,8 +496,17 @@ export class WorkExperienceService {
             }
           : {}),
       },
-      include: { documents: true },
+      include: this.evidenceInclude,
     });
+
+    if (structuredMetadata.structuredResponsibilities?.length) {
+      await this.persistStructuredResponsibilities(
+        created.id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, created.id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
@@ -395,7 +516,11 @@ export class WorkExperienceService {
       reasonCode: null,
     });
 
-    return this.mapToDto(created);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id: created.id },
+      include: this.evidenceInclude,
+    });
+    return this.mapToDto(reloaded ?? created);
   }
 
   async update(studentId: string, id: string, payload: unknown): Promise<WorkExperienceDto> {
@@ -423,28 +548,14 @@ export class WorkExperienceService {
 
     const data = parsed.data;
 
-    const effectiveIsCurrent = data.isCurrent !== undefined ? data.isCurrent : existing.isCurrent;
-    const effectiveEndDate =
-      data.endDate !== undefined
-        ? data.endDate
-        : existing.endDate
-          ? existing.endDate.toISOString()
-          : null;
-    const effectiveDocs =
-      data.documents && data.documents.length > 0 ? data.documents : existing.documents;
-
-    const letterValidation = validateWorkExperienceLetterRules({
-      isCurrent: effectiveIsCurrent,
-      endDate: effectiveEndDate,
-      documents: effectiveDocs,
-    });
-    if (!letterValidation.valid) {
-      throw new BadRequestException({
-        error: 'validation_error',
-        message: letterValidation.message || 'Required proof documents are missing.',
-        statusCode: 400,
-        details: { missingDocuments: letterValidation.missingDocuments },
-      });
+    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
+    const catalog = await this.resolveCatalogCompanyIdentity(effectiveCompanyId);
+    const effectiveValidation = validateWorkExperienceEffectiveUpdate(
+      this.toWorkExperienceValidationInput(existing, catalog),
+      this.toWorkExperienceValidationPatch(data),
+    );
+    if (!effectiveValidation.valid) {
+      this.throwWorkExperienceValidationError(effectiveValidation);
     }
 
     if (
@@ -482,20 +593,9 @@ export class WorkExperienceService {
       updatedCompanyNameRaw = nameToUse.trim();
     }
 
-    const effectiveCompanyWebsite =
-      data.companyWebsite !== undefined ? data.companyWebsite : existing.companyWebsite;
-    const effectiveCompanyLinkedinUrl =
-      data.companyLinkedinUrl !== undefined ? data.companyLinkedinUrl : existing.companyLinkedinUrl;
-    const effectiveCompanyId = data.companyId !== undefined ? data.companyId : existing.companyId;
+    const structuredMetadata = extractStructuredMetadata(data);
 
-    await this.assertCompanyPublicIdentity({
-      companyId: effectiveCompanyId,
-      companyWebsite: effectiveCompanyWebsite,
-      companyLinkedinUrl: effectiveCompanyLinkedinUrl,
-      matchedCompanyId: effectiveCompanyId,
-    });
-
-    const updated = await this.prisma.workExperience.update({
+    await this.prisma.workExperience.update({
       where: { id },
       data: {
         ...(updatedOrgId !== undefined ? { organizationId: updatedOrgId } : {}),
@@ -533,19 +633,35 @@ export class WorkExperienceService {
           ? { verifierDesignation: data.verifierDesignation || null }
           : {}),
         ...(data.verifierPhone !== undefined ? { verifierPhone: data.verifierPhone || null } : {}),
+        ...structuredMetadataWriteData(structuredMetadata),
       },
-      include: { documents: true },
     });
+
+    if (structuredMetadata.structuredResponsibilities !== undefined) {
+      await this.persistStructuredResponsibilities(
+        id,
+        structuredMetadata.structuredResponsibilities,
+      );
+    }
+
+    await this.syncEvidenceRecord(studentId, id, structuredMetadata);
 
     await this.auditPublisher.record({
       actorId: studentId,
       action: 'WORK_EXPERIENCE_UPDATED',
       resourceType: 'WorkExperience',
-      resourceId: updated.id,
+      resourceId: id,
       reasonCode: null,
     });
 
-    return this.mapToDto(updated);
+    const reloaded = await this.prisma.workExperience.findUnique({
+      where: { id },
+      include: this.evidenceInclude,
+    });
+    if (!reloaded) {
+      return this.getForStudent(studentId, id);
+    }
+    return this.mapToDto(reloaded);
   }
 
   async delete(studentId: string, id: string): Promise<void> {
@@ -599,6 +715,8 @@ export class WorkExperienceService {
       });
     }
 
+    this.assertProofFileUrlOrThrow(parsed.data.fileUrl);
+
     const doc = await this.prisma.workExperienceDocument.create({
       data: {
         experienceId: id,
@@ -620,6 +738,69 @@ export class WorkExperienceService {
 
     const checked = await this.runDocumentAuthenticityCheck(existing, doc.id);
     return this.mapDocumentToDto(checked);
+  }
+
+  async uploadProofDocument(
+    studentId: string,
+    experienceId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+    documentTypeRaw: string,
+  ): Promise<WorkExperienceDocumentDto> {
+    if (!this.storageService) {
+      throw new BadRequestException({
+        error: 'storage_unavailable',
+        message: 'Proof document upload is unavailable.',
+        statusCode: 400,
+      });
+    }
+
+    const documentTypeResult = z
+      .enum([
+        'OFFER_LETTER',
+        'EXPERIENCE_LETTER',
+        'PAYSLIP',
+        'RELIEVING_LETTER',
+        'FORM_16',
+        'OTHER',
+      ])
+      .safeParse(documentTypeRaw);
+    if (!documentTypeResult.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Invalid proof document type.',
+        statusCode: 400,
+      });
+    }
+
+    if (!WE_PROOF_ALLOWED_MIME_TYPES.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, JPG, and PNG files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > WE_PROOF_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The proof document must be 5MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `work-experience-proofs/${studentId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    return this.attachDocument(studentId, experienceId, {
+      documentType: documentTypeResult.data,
+      fileUrl: objectKey,
+      fileName: file.fileName,
+      fileSizeBytes: file.buffer.byteLength,
+      mimeType: file.mimeType,
+    });
   }
 
   /**
@@ -825,6 +1006,8 @@ export class WorkExperienceService {
         statusCode: 404,
       });
     }
+
+    await this.assertWorkExperienceCompleteness(experience);
 
     const doc = experience.documents.find((d) => d.id === documentId);
     if (!doc) {
@@ -1071,40 +1254,174 @@ export class WorkExperienceService {
     });
   }
 
-  private async assertCompanyPublicIdentity(params: {
-    companyId?: string | null;
-    companyWebsite?: string | null;
-    companyLinkedinUrl?: string | null;
-    matchedCompanyId?: string | null;
-  }): Promise<void> {
-    let catalogWebsite: string | null = null;
-    let catalogLinkedin: string | null = null;
-    const resolvedCompanyId = params.matchedCompanyId ?? params.companyId ?? null;
-    if (resolvedCompanyId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: resolvedCompanyId },
-      });
-      catalogWebsite = company?.website ?? null;
-      catalogLinkedin = company?.linkedinUrl ?? null;
+  private async resolveCatalogCompanyIdentity(companyId?: string | null): Promise<{
+    catalogCompanyWebsite: string | null;
+    catalogCompanyLinkedinUrl: string | null;
+  }> {
+    if (!companyId) {
+      return { catalogCompanyWebsite: null, catalogCompanyLinkedinUrl: null };
     }
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    return {
+      catalogCompanyWebsite: company?.website ?? null,
+      catalogCompanyLinkedinUrl: company?.linkedinUrl ?? null,
+    };
+  }
 
-    const required = companyRequiresPublicIdentity({
-      companyId: resolvedCompanyId,
-      companyWebsite: params.companyWebsite,
-      catalogCompanyWebsite: catalogWebsite,
-      catalogCompanyLinkedinUrl: catalogLinkedin,
+  private toWorkExperienceValidationInput(
+    exp: RawWorkExperience,
+    catalog?: {
+      catalogCompanyWebsite?: string | null;
+      catalogCompanyLinkedinUrl?: string | null;
+    },
+  ): WorkExperienceValidationInput {
+    return {
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType,
+      startDate: exp.startDate.toISOString(),
+      endDate: exp.endDate ? exp.endDate.toISOString() : null,
+      isCurrent: exp.isCurrent,
+      domain: exp.domain,
+      responsibilities: exp.responsibilities,
+      skillsClaimed: exp.skills ?? [],
+      companyId: exp.companyId,
+      companyWebsite: exp.companyWebsite,
+      companyLinkedinUrl: exp.companyLinkedinUrl,
+      catalogCompanyWebsite: catalog?.catalogCompanyWebsite ?? null,
+      catalogCompanyLinkedinUrl: catalog?.catalogCompanyLinkedinUrl ?? null,
+      documents: (exp.documents ?? []).map((doc) => ({ documentType: doc.documentType })),
+    };
+  }
+
+  private async getWorkExperienceValidationInput(
+    exp: Pick<
+      RawWorkExperience,
+      | 'companyName'
+      | 'role'
+      | 'employmentType'
+      | 'startDate'
+      | 'endDate'
+      | 'isCurrent'
+      | 'domain'
+      | 'responsibilities'
+      | 'skills'
+      | 'companyId'
+      | 'companyWebsite'
+      | 'companyLinkedinUrl'
+    > & {
+      documents?: Array<{ documentType: string }>;
+    },
+  ): Promise<WorkExperienceValidationInput> {
+    const catalog = await this.resolveCatalogCompanyIdentity(exp.companyId);
+    return {
+      companyName: exp.companyName,
+      role: exp.role,
+      employmentType: exp.employmentType,
+      startDate: exp.startDate.toISOString(),
+      endDate: exp.endDate ? exp.endDate.toISOString() : null,
+      isCurrent: exp.isCurrent,
+      domain: exp.domain,
+      responsibilities: exp.responsibilities,
+      skillsClaimed: exp.skills ?? [],
+      companyId: exp.companyId,
+      companyWebsite: exp.companyWebsite,
+      companyLinkedinUrl: exp.companyLinkedinUrl,
+      catalogCompanyWebsite: catalog.catalogCompanyWebsite,
+      catalogCompanyLinkedinUrl: catalog.catalogCompanyLinkedinUrl,
+      documents: (exp.documents ?? []).map((doc) => ({ documentType: doc.documentType })),
+    };
+  }
+
+  private toWorkExperienceValidationPatch(
+    data: Partial<UpdateWorkExperienceDto>,
+  ): Partial<WorkExperienceValidationInput> {
+    const patch: Partial<WorkExperienceValidationInput> = {};
+    if (data.companyName !== undefined) patch.companyName = data.companyName;
+    if (data.role !== undefined) patch.role = data.role;
+    if (data.employmentType !== undefined) patch.employmentType = data.employmentType;
+    if (data.startDate !== undefined) patch.startDate = data.startDate;
+    if (data.endDate !== undefined) patch.endDate = data.endDate;
+    if (data.isCurrent !== undefined) patch.isCurrent = data.isCurrent;
+    if (data.domain !== undefined) patch.domain = data.domain;
+    if (data.responsibilities !== undefined) patch.responsibilities = data.responsibilities;
+    if (data.skillsClaimed !== undefined) patch.skillsClaimed = data.skillsClaimed;
+    if (data.companyId !== undefined) patch.companyId = data.companyId;
+    if (data.companyWebsite !== undefined) patch.companyWebsite = data.companyWebsite;
+    if (data.companyLinkedinUrl !== undefined) patch.companyLinkedinUrl = data.companyLinkedinUrl;
+    if (data.documents !== undefined) patch.documents = data.documents;
+    return patch;
+  }
+
+  private throwWorkExperienceValidationError(result: {
+    valid: boolean;
+    issues: Array<{ path: string; message: string }>;
+  }): never {
+    throw new BadRequestException({
+      error: 'validation_error',
+      message: result.issues[0]?.message ?? 'Invalid work experience submission.',
+      statusCode: 400,
+      details: { issues: result.issues },
     });
-    const result = validateCompanyPublicIdentity({
-      companyWebsite: params.companyWebsite,
-      companyLinkedinUrl: params.companyLinkedinUrl,
-      required,
-    });
-    if (!result.valid) {
+  }
+
+  private assertProofFileUrlOrThrow(fileUrl: string): void {
+    try {
+      assertStudentControlledProofFileUrl(fileUrl);
+    } catch (error) {
+      const message =
+        error instanceof InvalidStudentProofFileUrlError
+          ? error.message
+          : 'Invalid proof document file reference.';
       throw new BadRequestException({
-        error: 'validation_error',
-        message: result.message,
+        error: 'invalid_file_url',
+        message,
         statusCode: 400,
       });
+    }
+  }
+
+  private async assertWorkExperienceCompleteness(
+    input:
+      | WorkExperienceValidationInput
+      | RawWorkExperience
+      | (Pick<
+          RawWorkExperience,
+          | 'companyName'
+          | 'role'
+          | 'employmentType'
+          | 'startDate'
+          | 'endDate'
+          | 'isCurrent'
+          | 'domain'
+          | 'responsibilities'
+          | 'skills'
+          | 'companyId'
+          | 'companyWebsite'
+          | 'companyLinkedinUrl'
+        > & {
+          documents?: Array<{ documentType: string }>;
+        }),
+    options?: { skipDocumentRules?: boolean },
+  ): Promise<void> {
+    const validationInput =
+      'startDate' in input && input.startDate instanceof Date
+        ? await this.getWorkExperienceValidationInput(input as RawWorkExperience)
+        : {
+            ...(input as WorkExperienceValidationInput),
+            ...(await this.resolveCatalogCompanyIdentity(
+              (input as WorkExperienceValidationInput).companyId,
+            )),
+          };
+
+    const result = validateWorkExperienceSubmission(validationInput);
+    const issues = options?.skipDocumentRules
+      ? result.issues.filter((issue) => issue.path !== 'documents')
+      : result.issues;
+    if (issues.length > 0) {
+      this.throwWorkExperienceValidationError({ valid: false, issues });
     }
   }
 
@@ -1144,30 +1461,16 @@ export class WorkExperienceService {
       }
     }
 
-    // 2. HTTP/HTTPS URL
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+    // 2. Object storage key (MinIO/S3 via StorageService)
+    if (this.storageService) {
       try {
-        const res = await fetch(fileUrl);
-        if (!res.ok) {
-          throw new Error(`HTTP fetch failed with status ${res.status}`);
-        }
-        const arrayBuf = await res.arrayBuffer();
-        const buf = Buffer.from(arrayBuf);
-        if (buf.length > MAX_FILE_SIZE_BYTES) {
-          throw new Error('Retrieved file size exceeds 5MB limit');
-        }
-        return buf;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new BadRequestException({
-          error: 'file_retrieval_failed',
-          message: `Proof document file could not be retrieved from remote URL: ${msg}`,
-          statusCode: 400,
-        });
+        return await this.storageService.getObjectBuffer(fileUrl);
+      } catch {
+        // Fall through to local filesystem lookup.
       }
     }
 
-    // 3. Local filesystem path
+    // 4. Local filesystem path
     try {
       const fs = await import('node:fs/promises');
       const path = await import('node:path');
@@ -1267,7 +1570,7 @@ export class WorkExperienceService {
   ): Promise<SendWorkExperienceVerificationResponseDto> {
     const exp = await this.prisma.workExperience.findUnique({
       where: { id: experienceId },
-      include: { student: true, organization: true },
+      include: { student: true, organization: true, documents: true },
     });
 
     if (!exp) {
@@ -1276,6 +1579,7 @@ export class WorkExperienceService {
     if (exp.studentId !== studentId) {
       throw new NotFoundException('Work experience record not found.');
     }
+    await this.assertWorkExperienceCompleteness(exp);
     if (!exp.verifierEmail) {
       throw new BadRequestException(
         'Verifier email is required to send verification. Please update work experience entry with verifier details.',
@@ -1537,6 +1841,8 @@ export class WorkExperienceService {
       },
     });
 
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
+
     const message =
       newStatus === 'VERIFIED'
         ? 'Work experience successfully verified.'
@@ -1577,8 +1883,16 @@ export class WorkExperienceService {
   /**
    * Fetches Ops Dashboard items for tracking candidate work experience verifications.
    */
-  async getOpsDashboard(): Promise<WorkExperienceOpsDashboardItemDto[]> {
+  async getOpsDashboard(user: RequestUser): Promise<WorkExperienceOpsDashboardItemDto[]> {
+    const institutionScope =
+      user.role === 'SUPER_ADMIN'
+        ? {}
+        : user.inst
+          ? { student: { institutionId: user.inst } }
+          : { id: '__none__' };
+
     const experiences = await this.prisma.workExperience.findMany({
+      where: institutionScope,
       include: {
         student: true,
         documents: true,
@@ -1738,6 +2052,8 @@ export class WorkExperienceService {
     if (!exp || exp.studentId !== studentId) {
       throw new NotFoundException('Work experience record not found.');
     }
+
+    await this.assertWorkExperienceCompleteness(exp);
 
     const managerEmail = payload.managerEmail.toLowerCase().trim();
 
@@ -1979,6 +2295,8 @@ export class WorkExperienceService {
         skillRatings: payload.skillRatings ?? null,
       },
     });
+
+    await this.syncEvidenceRecord(exp.studentId, exp.id);
 
     return {
       success: true,

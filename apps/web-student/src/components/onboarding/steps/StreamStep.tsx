@@ -50,9 +50,9 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
           >
-            <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-4" />
+            <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-4" />
           </motion.div>
-          <p className="text-lg font-semibold text-zinc-100">
+          <p className="text-lg font-semibold text-foreground">
             You&apos;re set up for Software Engineering / SDE
           </p>
         </motion.div>
@@ -71,12 +71,14 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-white">Software Engineering / SDE</p>
+                  <p className="text-base font-semibold text-foreground">
+                    Software Engineering / SDE
+                  </p>
                   <span className="rounded-full bg-[#00fad0]/20 border border-[#00fad0]/30 px-2.5 py-0.5 text-[11px] font-semibold text-[#00fad0]">
                     Active
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Core CS fundamentals, full-stack development, algorithms, system design, and
                   testing.
                 </p>
@@ -86,19 +88,19 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
           </motion.div>
 
           {/* DataOps Coming Soon Card */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
+          <div className="rounded-2xl border border-border bg-muted/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0">
-                <Database className="w-6 h-6 text-zinc-500" />
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                <Database className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-zinc-300">DataOps</p>
-                  <span className="rounded-full bg-zinc-800 border border-zinc-700/50 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                  <p className="text-base font-semibold text-muted-foreground">DataOps</p>
+                  <span className="rounded-full bg-muted border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                     Coming Soon
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Data pipelines, ETL workflows, data warehousing, and infrastructure automation.
                 </p>
               </div>
@@ -106,19 +108,19 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
           </div>
 
           {/* AIML Coming Soon Card */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
+          <div className="rounded-2xl border border-border bg-muted/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0">
-                <Cpu className="w-6 h-6 text-zinc-500" />
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                <Cpu className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-zinc-300">AIML</p>
-                  <span className="rounded-full bg-zinc-800 border border-zinc-700/50 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                  <p className="text-base font-semibold text-muted-foreground">AIML</p>
+                  <span className="rounded-full bg-muted border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                     Coming Soon
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Machine learning model development, deep learning, LLM fine-tuning, and MLOps.
                 </p>
               </div>

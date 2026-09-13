@@ -4,11 +4,14 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
   CompleteSkillVerifyRequestSchema,
   CompleteSkillVerifyResponseSchema,
+  CompleteSkillVerifyInterviewRequestSchema,
+  SkillVerifyInterviewDtoSchema,
   REDIS_TTL_SECONDS,
   SKILL_VERIFICATION_STATUSES,
   SMART_TOPICS,
@@ -22,24 +25,42 @@ import {
   readFocusProgress,
   focusProgressFor,
   mergeFocusProgressIntoMetadata,
+  normalizeTracePrompt,
   resolveSkillFocus,
   retryAvailableAtForFocus,
   skillFocusFromMetadata,
   upsertFocusProgress,
   sdeV4FormCodeForCatalogSkill,
+  getSkillBlueprint,
+  SKILL_VERIFICATION_DISCOVERY_TARGET,
+  type AssessmentResult,
+  type SkillEvidenceContext,
+  type AssessmentStage,
   type CompleteSkillVerifyResponse,
+  type GradeSdeSkillFormResponse,
   type PolymorphicAssessmentSessionDto,
+  type RecommendedNextStep,
   type SkillClaimDto,
   type SkillClaimStatus,
   type SkillProficiency,
   type SkillVerifyPrepareDto,
   type SkillVerifySessionDto,
 } from '@smart/contracts';
+import { competencyIdsNeedingTargetedAssessment } from '@smart/scoring-engine';
+import {
+  claimProficiencyFromDemonstrated,
+  hasDemonstratedProficiency,
+} from './verified-proficiency.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { env } from '../../platform/config/env.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
+import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
+import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
+import { ProfileCompletionService } from '../users/profile-completion.service.js';
+import { AssessmentIntelligenceService } from './assessment-intelligence.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
 
@@ -61,9 +82,24 @@ type StoredSession = {
   scoringToken: string;
   items: SkillVerifySessionDto['items'];
   timeMinutes: number;
-  passMarkPercent: number;
+  passMarkPercent?: number;
   expiresAt: string;
   answers: StoredAnswer[];
+  intelligenceEnabled?: boolean;
+  stage?: AssessmentStage;
+  diagnosticScoringToken?: string;
+  diagnosticItems?: SkillVerifySessionDto['items'];
+  diagnosticAnswers?: StoredAnswer[];
+  diagnosticGrade?: GradeSdeSkillFormResponse;
+  pendingCompetencyIds?: string[];
+  pendingAssessmentResult?: AssessmentResult;
+  pendingGrade?: GradeSdeSkillFormResponse;
+  verificationStep?: RecommendedNextStep;
+  interviewPassed?: boolean;
+  interviewExplanation?: string;
+  interviewQuestions?: Array<{ index: number; text: string }>;
+  evidenceContext?: SkillEvidenceContext;
+  targetedSkipReason?: 'ai_unavailable' | 'generation_failed';
 };
 
 function ttlSeconds(expiresAt: string): number {
@@ -76,13 +112,67 @@ function ttlSeconds(expiresAt: string): number {
   );
 }
 
+function normalizeInterviewText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function bindInterviewAnswers(
+  storedQuestions: Array<{ index: number; text: string }>,
+  requestItems: Array<{ index: number; question?: string; answer: string }>,
+): Array<{ index: number; question: string; answer: string }> {
+  if (storedQuestions.length < 3) {
+    throw new BadRequestException({
+      error: 'interview_not_started',
+      message: 'Start the defense interview before submitting answers.',
+      statusCode: 400,
+    });
+  }
+
+  const storedByIndex = new Map(storedQuestions.map((question) => [question.index, question.text]));
+
+  return requestItems.map((item) => {
+    const expectedQuestion = storedByIndex.get(item.index);
+    if (!expectedQuestion) {
+      throw new BadRequestException({
+        error: 'interview_question_mismatch',
+        message: `Interview answer index ${item.index} does not match the active interview.`,
+        statusCode: 400,
+      });
+    }
+    if (
+      item.question !== undefined &&
+      normalizeInterviewText(item.question) !== normalizeInterviewText(expectedQuestion)
+    ) {
+      throw new BadRequestException({
+        error: 'interview_question_mismatch',
+        message: 'Interview answers must correspond to the server-generated questions.',
+        statusCode: 400,
+      });
+    }
+    return {
+      index: item.index,
+      question: expectedQuestion,
+      answer: item.answer,
+    };
+  });
+}
+
 @Injectable()
 export class SkillVerificationService {
+  private readonly logger = new Logger(SkillVerificationService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(EvaluationService) private readonly evaluation: EvaluationService,
+    @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(AssessmentIntelligenceService)
+    private readonly intelligence: AssessmentIntelligenceService,
+    @Inject(VerificationOrchestratorService)
+    private readonly verification: VerificationOrchestratorService,
+    @Inject(ProfileCompletionService)
+    private readonly profileCompletion: ProfileCompletionService,
   ) {}
 
   async start(
@@ -99,6 +189,7 @@ export class SkillVerificationService {
   }
 
   private async assertStartAllowed(userId: string, claimId: string) {
+    await this.profileCompletion.assertCompleteForSkillVerification(userId);
     const claim = await this.loadOwnClaim(userId, claimId);
     const sdeSkillCode = sdeV4FormCodeForCatalogSkill(claim.skill.code);
     if (!sdeSkillCode) {
@@ -147,6 +238,7 @@ export class SkillVerificationService {
 
   private async prepare(user: RequestUser, claimId: string): Promise<SkillVerifyPrepareDto> {
     const { claim, sdeSkillCode } = await this.assertStartAllowed(user.sub, claimId);
+    const evidenceContext = await this.verification.loadEvidenceContext(user.sub, claim.skill.code);
     const sessionId = randomUUID();
     const expiresAt = new Date(
       Date.now() + REDIS_TTL_SECONDS.assessmentSession * 1000,
@@ -163,9 +255,11 @@ export class SkillVerificationService {
       scoringToken: '',
       items: [],
       timeMinutes: 1,
-      passMarkPercent: 80,
       expiresAt,
       answers: [],
+      intelligenceEnabled: env.ASSESSMENT_INTELLIGENCE_V1,
+      stage: env.ASSESSMENT_INTELLIGENCE_V1 ? 'DIAGNOSTIC' : undefined,
+      evidenceContext,
     };
     await this.redis.setex(
       skillVerifyRedisKey(sessionId),
@@ -176,6 +270,7 @@ export class SkillVerificationService {
       sessionId,
       claimId: claim.id,
       expiresAt,
+      evidenceContext,
     });
   }
 
@@ -202,6 +297,10 @@ export class SkillVerificationService {
       }
     }
 
+    const intelligenceEnabled = env.ASSESSMENT_INTELLIGENCE_V1;
+    const evidenceContext =
+      stored?.evidenceContext ??
+      (await this.verification.loadEvidenceContext(user.sub, claim.skill.code));
     const form = await this.evaluation.generateSkillForm(
       {
         skillCode: sdeSkillCode,
@@ -210,6 +309,8 @@ export class SkillVerificationService {
         skillFocus:
           resolveSkillFocus(claim.skill.code, skillFocusFromMetadata(claim.sourceMetadata)) ??
           undefined,
+        stage: intelligenceEnabled ? 'DIAGNOSTIC' : 'FULL',
+        catalogSkillCode: intelligenceEnabled ? claim.skill.code : undefined,
       },
       user.sub,
     );
@@ -234,6 +335,9 @@ export class SkillVerificationService {
       passMarkPercent: form.passMarkPercent,
       expiresAt,
       answers: stored?.answers ?? [],
+      intelligenceEnabled,
+      stage: intelligenceEnabled ? 'DIAGNOSTIC' : undefined,
+      evidenceContext,
     };
     await this.redis.setex(
       skillVerifyRedisKey(nextId),
@@ -309,50 +413,451 @@ export class SkillVerificationService {
       request.integrityTerminated === true ||
       (await this.redis.exists(`proctor:lock:${sessionId}`)) === 1;
     const technicalFailure = request.technicalFailure === true && !integrityTerminated;
-    let grade: CompleteSkillVerifyResponse['grade'] = null;
-    let genuinePass = false;
 
-    if (!technicalFailure && !integrityTerminated) {
-      this.assertNotExpired(stored);
-      grade = await this.evaluation.gradeSkillForm(
-        {
-          skillCode: stored.sdeSkillCode,
-          proficiency: stored.proficiency,
-          scoringToken: stored.scoringToken,
-          responses: stored.items.map((item) => {
-            const answer = stored.answers.find((row) => row.index === item.index);
-            return {
-              index: item.index,
-              selectedKey: answer?.selectedKey,
-              text: answer?.text,
-            };
-          }),
-        },
-        user.sub,
-      );
-      genuinePass = grade.passed;
+    if (technicalFailure || integrityTerminated) {
+      return this.finalizeAttempt({
+        user,
+        sessionId,
+        stored,
+        claim,
+        progress,
+        selected,
+        technicalFailure,
+        integrityTerminated,
+        grade: null,
+        assessmentResult: null,
+        explanation: request.explanation,
+      });
     }
 
-    const event: SkillClaimEvent = integrityTerminated
+    this.assertNotExpired(stored);
+    const stageGrade = await this.gradeStoredItems(stored, user.sub);
+
+    if (stored.intelligenceEnabled && stored.stage === 'DIAGNOSTIC') {
+      stored.diagnosticScoringToken = stored.scoringToken;
+      stored.diagnosticItems = stored.items;
+      stored.diagnosticAnswers = stored.answers;
+      stored.diagnosticGrade = stageGrade;
+      const blueprint = this.intelligence.resolveBlueprint(stored.catalogSkillCode);
+      const competencyIdsByIndex = this.competencyMapFromItems(stored.items);
+      const partialResult = this.intelligence.buildAssessmentResult({
+        catalogSkillCode: stored.catalogSkillCode,
+        attemptId: sessionId,
+        blueprint,
+        grade: stageGrade,
+        competencyIdsByIndex,
+        allowUpwardProbe: true,
+      });
+
+      let targetedSkipReason: 'ai_unavailable' | 'generation_failed' | null = null;
+      if (partialResult.recommendedNextStep === 'TARGETED_ASSESSMENT') {
+        const pendingIds = competencyIdsNeedingTargetedAssessment(partialResult.competencyResults);
+        if (!this.aiGateway.hasCallableProvider()) {
+          targetedSkipReason = 'ai_unavailable';
+          this.logger.warn(
+            `Skipping targeted assessment for session ${sessionId}: no callable AI provider`,
+          );
+        } else {
+          try {
+            const targetedForm = await this.withTargetedGenerationTimeout(
+              this.evaluation.generateSkillForm(
+                {
+                  skillCode: stored.sdeSkillCode,
+                  proficiency: stored.proficiency,
+                  attemptId: sessionId,
+                  skillFocus: stored.skillFocus ?? undefined,
+                  stage: 'TARGETED',
+                  catalogSkillCode: stored.catalogSkillCode,
+                  targetCompetencyIds: pendingIds.slice(0, 3),
+                },
+                user.sub,
+              ),
+              12_000,
+            );
+            stored.stage = 'TARGETED';
+            stored.pendingCompetencyIds = pendingIds;
+            stored.scoringToken = targetedForm.scoringToken;
+            const indexOffset = stored.diagnosticItems?.length ?? 0;
+            stored.items = targetedForm.items.map((item) => ({
+              ...item,
+              index: item.index + indexOffset,
+            }));
+            stored.answers = [];
+            stored.timeMinutes = targetedForm.timeMinutes;
+            stored.expiresAt = new Date(
+              Date.now() + targetedForm.timeMinutes * 60_000,
+            ).toISOString();
+            await this.persistSession(stored);
+            return CompleteSkillVerifyResponseSchema.parse({
+              claim: this.mapClaim(claim),
+              technicalFailure: false,
+              grade: stageGrade,
+              assessmentResult: partialResult,
+              sessionContinues: true,
+              session: this.toDto(stored, partialResult.uncertainties),
+            });
+          } catch (err) {
+            targetedSkipReason = 'generation_failed';
+            const detail = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `Targeted assessment generation failed for session ${sessionId}; finalizing diagnostic-only (${detail})`,
+            );
+          }
+        }
+      }
+      if (targetedSkipReason) {
+        stored.targetedSkipReason = targetedSkipReason;
+      }
+    }
+
+    const mergedGrade =
+      stored.intelligenceEnabled && stored.diagnosticGrade && stored.stage === 'TARGETED'
+        ? this.mergeGrades(stored.diagnosticGrade, stageGrade)
+        : stageGrade;
+
+    const blueprint = stored.intelligenceEnabled
+      ? this.intelligence.resolveBlueprint(stored.catalogSkillCode)
+      : null;
+    const competencyIdsByIndex = stored.intelligenceEnabled
+      ? this.competencyMapFromItems([...(stored.diagnosticItems ?? []), ...stored.items])
+      : new Map<number, readonly string[]>();
+    const assessmentResult =
+      blueprint && stored.intelligenceEnabled
+        ? this.intelligence.buildAssessmentResult({
+            catalogSkillCode: stored.catalogSkillCode,
+            attemptId: sessionId,
+            blueprint,
+            grade: mergedGrade,
+            competencyIdsByIndex,
+            allowUpwardProbe: stored.stage !== 'TARGETED',
+          })
+        : null;
+
+    let genuinePass = mergedGrade.passed;
+    let provisionalSettlement = false;
+    let verifiedProficiency: SkillProficiency | undefined;
+    let verificationSettlement:
+      { decision: 'VERIFIED' | 'PROVISIONAL'; confidence: number; reasons: string[] } | undefined;
+    if (assessmentResult) {
+      if (stored.targetedSkipReason) {
+        assessmentResult.targetedAssessmentSkipped = true;
+        assessmentResult.targetedAssessmentSkipReason = stored.targetedSkipReason;
+      }
+      const demonstrated = assessmentResult.highestAssessmentSupportedProficiency;
+      if (hasDemonstratedProficiency(demonstrated)) {
+        const gate = await this.verification.evaluateClaimVerification({
+          studentId: user.sub,
+          claimId: claim.id,
+          catalogSkillCode: stored.catalogSkillCode,
+          targetProficiency: demonstrated,
+          supportedProficiency: demonstrated,
+          recommendedNextStep: assessmentResult.recommendedNextStep,
+          confidence: assessmentResult.confidence,
+          assessmentComplete: assessmentResult.assessmentComplete,
+          interviewPassed: stored.interviewPassed,
+        });
+        assessmentResult.recommendedNextStep = gate.recommendedNextStep;
+        assessmentResult.requiresInterview = gate.requiresInterview;
+        assessmentResult.requiresEvidenceVerification = gate.requiresEvidence;
+        if (gate.verificationDecision) {
+          assessmentResult.verificationDecision = gate.verificationDecision;
+          assessmentResult.claimConfidence = gate.claimConfidence;
+        }
+        const pendingVerification =
+          assessmentResult.assessmentComplete &&
+          (gate.recommendedNextStep === 'EVIDENCE_VERIFICATION' ||
+            gate.recommendedNextStep === 'INTERVIEW');
+        if (pendingVerification && !gate.canFinalizeClaim) {
+          stored.pendingAssessmentResult = assessmentResult;
+          stored.pendingGrade = mergedGrade;
+          stored.verificationStep = gate.recommendedNextStep;
+          stored.stage = 'COMPLETE';
+          await this.persistSession(stored);
+          return CompleteSkillVerifyResponseSchema.parse({
+            claim: this.mapClaim(claim),
+            technicalFailure: false,
+            grade: mergedGrade,
+            assessmentResult,
+            pendingVerification: true,
+            session: this.toDto(stored),
+          });
+        }
+        const assessmentPassed = this.intelligence.claimPassesFromAssessment(assessmentResult);
+        genuinePass =
+          assessmentPassed && gate.canFinalizeClaim && gate.verificationDecision === 'VERIFIED';
+        provisionalSettlement =
+          assessmentPassed && gate.canFinalizeClaim && gate.verificationDecision === 'PROVISIONAL';
+        if (
+          (genuinePass || provisionalSettlement) &&
+          (gate.verificationDecision === 'VERIFIED' ||
+            gate.verificationDecision === 'PROVISIONAL') &&
+          gate.claimConfidence !== undefined
+        ) {
+          if (genuinePass) {
+            verifiedProficiency = claimProficiencyFromDemonstrated(demonstrated);
+          }
+          verificationSettlement = {
+            decision: gate.verificationDecision,
+            confidence: gate.claimConfidence,
+            reasons: gate.reasons,
+          };
+        }
+      } else {
+        genuinePass = false;
+        assessmentResult.assessmentPassed = false;
+      }
+    }
+
+    return this.finalizeAttempt({
+      user,
+      sessionId,
+      stored,
+      claim,
+      progress,
+      selected,
+      technicalFailure: false,
+      integrityTerminated: false,
+      grade: mergedGrade,
+      assessmentResult,
+      genuinePassOverride: assessmentResult ? genuinePass : undefined,
+      provisionalSettlement: assessmentResult ? provisionalSettlement : undefined,
+      verifiedProficiency,
+      verificationSettlement,
+      explanation: request.explanation,
+    });
+  }
+
+  async startInterview(user: RequestUser, sessionId: string) {
+    this.assertStudent(user);
+    const stored = await this.loadSession(user.sub, sessionId);
+    if (!stored.pendingAssessmentResult) {
+      throw new BadRequestException({
+        error: 'verification_not_pending',
+        message: 'Complete the assessment before starting the defense interview.',
+        statusCode: 400,
+      });
+    }
+    const interviewProficiency = this.interviewProficiency(
+      stored.pendingAssessmentResult.highestAssessmentSupportedProficiency,
+    );
+    const interview = await this.evaluation.generateSkillInterview({
+      skillCode: stored.catalogSkillCode,
+      proficiency: interviewProficiency,
+    });
+    stored.interviewQuestions = interview.questions;
+    await this.persistSession(stored);
+    return SkillVerifyInterviewDtoSchema.parse({
+      sessionId: stored.sessionId,
+      skillCode: stored.catalogSkillCode,
+      proficiency: interviewProficiency,
+      questions: interview.questions,
+    });
+  }
+
+  async completeInterview(user: RequestUser, sessionId: string, body: unknown) {
+    this.assertStudent(user);
+    const request = CompleteSkillVerifyInterviewRequestSchema.parse(body ?? {});
+    const stored = await this.loadSession(user.sub, sessionId);
+    if (!stored.pendingAssessmentResult) {
+      throw new BadRequestException({
+        error: 'verification_not_pending',
+        message: 'No pending verification session.',
+        statusCode: 400,
+      });
+    }
+    const interviewProficiency = this.interviewProficiency(
+      stored.pendingAssessmentResult.highestAssessmentSupportedProficiency,
+    );
+    const gradedItems = bindInterviewAnswers(stored.interviewQuestions ?? [], request.items);
+    const grade = await this.evaluation.gradeSkillInterview({
+      skillCode: stored.catalogSkillCode,
+      proficiency: interviewProficiency,
+      items: gradedItems,
+    });
+    stored.interviewPassed = grade.passed;
+    stored.interviewExplanation = grade.explanation;
+    await this.persistSession(stored);
+    if (!grade.passed) {
+      const claim = await this.loadOwnClaim(user.sub, stored.claimId);
+      const { progress, selected } = this.progressForClaim(
+        claim,
+        stored.skillFocus ?? skillFocusFromMetadata(claim.sourceMetadata),
+      );
+      return this.finalizeAttempt({
+        user,
+        sessionId,
+        stored,
+        claim,
+        progress,
+        selected,
+        technicalFailure: false,
+        integrityTerminated: false,
+        grade: stored.pendingGrade ?? null,
+        assessmentResult: stored.pendingAssessmentResult,
+        genuinePassOverride: false,
+        explanation: grade.explanation,
+      });
+    }
+    return this.finalizeVerification(user, sessionId);
+  }
+
+  async finalizeVerification(
+    user: RequestUser,
+    sessionId: string,
+  ): Promise<CompleteSkillVerifyResponse> {
+    this.assertStudent(user);
+    const stored = await this.loadSession(user.sub, sessionId);
+    if (!stored.pendingAssessmentResult || !stored.pendingGrade) {
+      throw new BadRequestException({
+        error: 'verification_not_pending',
+        message: 'No pending verification to finalize.',
+        statusCode: 400,
+      });
+    }
+    const claim = await this.loadOwnClaim(user.sub, stored.claimId);
+    const demonstrated = stored.pendingAssessmentResult.highestAssessmentSupportedProficiency;
+    if (!hasDemonstratedProficiency(demonstrated)) {
+      throw new BadRequestException({
+        error: 'verification_not_demonstrated',
+        message: 'Assessment did not demonstrate a certifiable proficiency level.',
+        statusCode: 400,
+      });
+    }
+    const gate = await this.verification.evaluateClaimVerification({
+      studentId: user.sub,
+      claimId: claim.id,
+      catalogSkillCode: stored.catalogSkillCode,
+      targetProficiency: demonstrated,
+      supportedProficiency: demonstrated,
+      recommendedNextStep: stored.pendingAssessmentResult.recommendedNextStep,
+      confidence: stored.pendingAssessmentResult.confidence,
+      assessmentComplete: stored.pendingAssessmentResult.assessmentComplete,
+      interviewPassed: stored.interviewPassed,
+    });
+    stored.verificationStep = gate.recommendedNextStep;
+    if (!gate.canFinalizeClaim) {
+      await this.persistSession(stored);
+      return CompleteSkillVerifyResponseSchema.parse({
+        claim: this.mapClaim(claim),
+        technicalFailure: false,
+        grade: stored.pendingGrade,
+        assessmentResult: {
+          ...stored.pendingAssessmentResult,
+          recommendedNextStep: gate.recommendedNextStep,
+          requiresInterview: gate.requiresInterview,
+          requiresEvidenceVerification: gate.requiresEvidence,
+        },
+        pendingVerification: true,
+        session: this.toDto(stored),
+      });
+    }
+    const { progress, selected } = this.progressForClaim(
+      claim,
+      stored.skillFocus ?? skillFocusFromMetadata(claim.sourceMetadata),
+    );
+    const settledAssessmentResult = {
+      ...stored.pendingAssessmentResult,
+      recommendedNextStep: gate.recommendedNextStep,
+      requiresInterview: gate.requiresInterview,
+      requiresEvidenceVerification: gate.requiresEvidence,
+      ...(gate.verificationDecision
+        ? {
+            verificationDecision: gate.verificationDecision,
+            claimConfidence: gate.claimConfidence,
+          }
+        : {}),
+    };
+    const assessmentPassed = this.intelligence.claimPassesFromAssessment(settledAssessmentResult);
+    const canFinalize =
+      assessmentPassed && gate.canFinalizeClaim && gate.verificationDecision === 'VERIFIED';
+    const provisionalSettlement =
+      assessmentPassed && gate.canFinalizeClaim && gate.verificationDecision === 'PROVISIONAL';
+    return this.finalizeAttempt({
+      user,
+      sessionId,
+      stored,
+      claim,
+      progress,
+      selected,
+      technicalFailure: false,
+      integrityTerminated: false,
+      grade: stored.pendingGrade,
+      assessmentResult: settledAssessmentResult,
+      genuinePassOverride: canFinalize,
+      provisionalSettlement,
+      verifiedProficiency: canFinalize ? claimProficiencyFromDemonstrated(demonstrated) : undefined,
+      verificationSettlement:
+        (canFinalize || provisionalSettlement) &&
+        (gate.verificationDecision === 'VERIFIED' || gate.verificationDecision === 'PROVISIONAL') &&
+        gate.claimConfidence !== undefined
+          ? {
+              decision: gate.verificationDecision,
+              confidence: gate.claimConfidence,
+              reasons: gate.reasons,
+            }
+          : undefined,
+    });
+  }
+
+  private interviewProficiency(
+    demonstrated: AssessmentResult['highestAssessmentSupportedProficiency'],
+  ): 'ADVANCED' | 'PROFESSIONAL' {
+    return demonstrated === 'PROFESSIONAL' ? 'PROFESSIONAL' : 'ADVANCED';
+  }
+
+  private async finalizeAttempt(input: {
+    user: RequestUser;
+    sessionId: string;
+    stored: StoredSession;
+    claim: Awaited<ReturnType<SkillVerificationService['loadOwnClaim']>>;
+    progress: ReturnType<SkillVerificationService['progressForClaim']>['progress'];
+    selected: ReturnType<SkillVerificationService['progressForClaim']>['selected'];
+    technicalFailure: boolean;
+    integrityTerminated: boolean;
+    grade: GradeSdeSkillFormResponse | null;
+    assessmentResult: AssessmentResult | null;
+    genuinePassOverride?: boolean;
+    provisionalSettlement?: boolean;
+    verifiedProficiency?: SkillProficiency;
+    verificationSettlement?: {
+      decision: 'VERIFIED' | 'PROVISIONAL';
+      confidence: number;
+      reasons: string[];
+    };
+    explanation?: string;
+  }): Promise<CompleteSkillVerifyResponse> {
+    const genuinePass =
+      input.genuinePassOverride ??
+      (input.grade?.passed === true && !input.technicalFailure && !input.integrityTerminated);
+    const provisionalSettlement = input.provisionalSettlement === true;
+
+    const refreshDays = this.resolveRefreshDays(input.stored.catalogSkillCode);
+    const event: SkillClaimEvent = input.integrityTerminated
       ? { type: 'GENUINE_FAIL' }
-      : technicalFailure
+      : input.technicalFailure
         ? { type: 'TECHNICAL_FAILURE' }
-        : genuinePass
-          ? { type: 'GENUINE_PASS' }
-          : { type: 'GENUINE_FAIL' };
+        : provisionalSettlement
+          ? { type: 'PROVISIONAL_SETTLEMENT' }
+          : genuinePass
+            ? {
+                type: 'GENUINE_PASS',
+                verifiedProficiency: input.verifiedProficiency,
+                refreshDays,
+              }
+            : { type: 'GENUINE_FAIL' };
 
     const transition = applySkillClaimTransition({
       claim: {
-        status: selected.status,
-        proficiency: claim.proficiency,
-        strikes: selected.strikes,
-        lockedUntil: selected.lockedUntil ? new Date(selected.lockedUntil) : null,
+        status: input.selected.status,
+        proficiency: input.claim.proficiency,
+        strikes: input.selected.strikes,
+        lockedUntil: input.selected.lockedUntil ? new Date(input.selected.lockedUntil) : null,
         verifiedUntil: null,
       },
       event,
       now: new Date(),
-      lastGenuineFailureAt: selected.lastGenuineFailureAt
-        ? new Date(selected.lastGenuineFailureAt)
+      lastGenuineFailureAt: input.selected.lastGenuineFailureAt
+        ? new Date(input.selected.lastGenuineFailureAt)
         : null,
     });
     if (!transition.accepted) {
@@ -365,24 +870,29 @@ export class SkillVerificationService {
     }
 
     const explanation =
-      request.explanation ??
-      (integrityTerminated
+      input.explanation ??
+      (input.integrityTerminated
         ? 'Proctoring warning limit reached; attempt recorded as a fail.'
-        : technicalFailure
+        : input.technicalFailure
           ? 'Technical failure recorded; claim status unchanged.'
-          : genuinePass
-            ? 'SDE v4 form cleared the pass bar (assessment-only, no interview).'
-            : 'SDE v4 form did not clear the pass bar.');
+          : input.assessmentResult
+            ? this.buildAssessmentExplanation(
+                input.assessmentResult,
+                genuinePass || provisionalSettlement,
+              )
+            : genuinePass
+              ? 'SDE v4 form cleared the pass bar.'
+              : 'SDE v4 form did not clear the pass bar.');
 
     const nowIso = new Date().toISOString();
     const lastGenuineFailureAt = event.type === 'GENUINE_PASS' ? null : nowIso;
     const nextLockedUntil = transition.next.lockedUntil?.toISOString() ?? null;
-    const nextFocus = upsertFocusProgress(progress, {
-      focus: selected.focus,
+    const nextFocus = upsertFocusProgress(input.progress, {
+      focus: input.selected.focus,
       status: transition.next.status,
       strikes: transition.next.strikes,
       lockedUntil: nextLockedUntil,
-      lastAttemptId: sessionId,
+      lastAttemptId: input.sessionId,
       lastGenuineFailureAt,
       retryAvailableAt: retryAvailableAtForFocus(
         transition.next.status,
@@ -390,42 +900,69 @@ export class SkillVerificationService {
         lastGenuineFailureAt,
       ),
     });
-    const nextMetadata = mergeFocusProgressIntoMetadata(
-      claim.sourceMetadata,
-      selected.focus,
-      nextFocus,
-    );
+    const nextMetadata = {
+      ...mergeFocusProgressIntoMetadata(
+        input.claim.sourceMetadata,
+        input.selected.focus,
+        nextFocus,
+      ),
+      ...(input.verificationSettlement
+        ? {
+            latestVerificationDecision: {
+              decision: input.verificationSettlement.decision,
+              confidence: input.verificationSettlement.confidence,
+              decidedAt: nowIso,
+            },
+          }
+        : {}),
+    };
 
     const [updatedClaim] = await this.prisma.$transaction([
       this.prisma.skillClaim.update({
-        where: { id: claim.id },
+        where: { id: input.claim.id },
         data: {
           status: transition.next.status,
           proficiency: transition.next.proficiency,
           strikes: transition.next.strikes,
           lockedUntil: transition.next.lockedUntil,
           verifiedUntil: transition.next.verifiedUntil,
-          lastAttemptId: sessionId,
+          lastAttemptId: input.sessionId,
+          finalProficiency: input.verifiedProficiency ?? transition.next.proficiency,
+          claimConfidence: input.verificationSettlement?.confidence ?? null,
           sourceMetadata: nextMetadata as never,
         },
         include: { skill: { select: { code: true, name: true } } },
       }),
       this.prisma.skillVerificationAttempt.create({
         data: {
-          claimId: claim.id,
+          claimId: input.claim.id,
           assessmentAttemptId: null,
-          claimedProficiency: claim.proficiency,
-          technicalFailure,
-          passed: technicalFailure ? null : genuinePass,
+          claimedProficiency: input.claim.proficiency,
+          technicalFailure: input.technicalFailure,
+          passed: input.technicalFailure ? null : genuinePass || provisionalSettlement,
           explanation,
-          marksEarned: grade?.marksEarned ?? null,
-          marksTotal: grade?.marksTotal ?? null,
-          scorePercent: grade?.scorePercent ?? null,
+          marksEarned: input.grade?.marksEarned ?? null,
+          marksTotal: input.grade?.marksTotal ?? null,
+          scorePercent: input.grade?.scorePercent ?? null,
+          assessmentResultJson: input.assessmentResult as never,
         },
       }),
+      ...(input.verificationSettlement && (genuinePass || provisionalSettlement)
+        ? [
+            this.prisma.verificationDecision.create({
+              data: {
+                claimId: input.claim.id,
+                decision: input.verificationSettlement.decision,
+                confidence: input.verificationSettlement.confidence,
+                assessmentSummary: explanation,
+                reasons: input.verificationSettlement.reasons,
+              },
+            }),
+          ]
+        : []),
     ]);
 
-    await this.redis.del(skillVerifyRedisKey(sessionId));
+    await this.redis.del(skillVerifyRedisKey(input.sessionId));
 
     const mapped = this.mapClaim(updatedClaim);
     const kafkaStatus = SKILL_VERIFICATION_STATUSES.find((status) => status === mapped.status);
@@ -437,8 +974,8 @@ export class SkillVerificationService {
         source: 'assessment',
         data: SkillVerificationCompletedDataSchema.parse({
           claimId: mapped.claimId,
-          userId: user.sub,
-          skillName: stored.skillName,
+          userId: input.user.sub,
+          skillName: input.stored.skillName,
           status: kafkaStatus,
           detail: explanation,
         }),
@@ -447,9 +984,93 @@ export class SkillVerificationService {
 
     return CompleteSkillVerifyResponseSchema.parse({
       claim: mapped,
-      technicalFailure,
-      grade,
+      technicalFailure: input.technicalFailure,
+      grade: input.grade,
+      assessmentResult: input.assessmentResult,
+      sessionContinues: false,
+      session: null,
     });
+  }
+
+  private buildAssessmentExplanation(result: AssessmentResult, passed: boolean): string {
+    if (passed && result.highestAssessmentSupportedProficiency) {
+      if (result.verificationDecision === 'PROVISIONAL') {
+        return `Provisionally verified at ${result.highestAssessmentSupportedProficiency} with ${result.confidence.toLowerCase()} assessment confidence.`;
+      }
+      return `Competency assessment supports ${result.highestAssessmentSupportedProficiency} with ${result.confidence.toLowerCase()} confidence.`;
+    }
+    if (!result.highestAssessmentSupportedProficiency) {
+      return 'Assessment did not demonstrate the minimum competency bar for this skill.';
+    }
+    if (result.uncertainties.length > 0) {
+      return `Assessment supported ${result.highestAssessmentSupportedProficiency}. Gaps remain in: ${result.uncertainties.join(', ')}.`;
+    }
+    return `Assessment did not demonstrate a certifiable proficiency level for ${result.targetProficiency === SKILL_VERIFICATION_DISCOVERY_TARGET ? 'this skill' : `target ${result.targetProficiency}`}.`;
+  }
+
+  private async gradeStoredItems(
+    stored: StoredSession,
+    userId: string,
+  ): Promise<GradeSdeSkillFormResponse> {
+    const responses = stored.items.map((item) => {
+      const answer = stored.answers.find((row) => row.index === item.index);
+      return {
+        index:
+          stored.stage === 'TARGETED' && stored.diagnosticItems
+            ? item.index - stored.diagnosticItems.length
+            : item.index,
+        selectedKey: answer?.selectedKey,
+        text: answer?.text,
+      };
+    });
+    return this.evaluation.gradeSkillForm(
+      {
+        skillCode: stored.sdeSkillCode,
+        proficiency: stored.proficiency,
+        scoringToken: stored.scoringToken,
+        responses,
+      },
+      userId,
+    );
+  }
+
+  private mergeGrades(
+    diagnostic: GradeSdeSkillFormResponse,
+    targeted: GradeSdeSkillFormResponse,
+  ): GradeSdeSkillFormResponse {
+    const offset = diagnostic.itemResults.length;
+    const itemResults = [
+      ...diagnostic.itemResults,
+      ...targeted.itemResults.map((row) => ({ ...row, index: row.index + offset })),
+    ];
+    const marksEarned = itemResults.reduce((sum, row) => sum + row.marksEarned, 0);
+    const marksTotal = itemResults.reduce((sum, row) => sum + row.marksMax, 0);
+    return {
+      ...targeted,
+      marksEarned,
+      marksTotal,
+      scorePercent: marksTotal > 0 ? (marksEarned / marksTotal) * 100 : 0,
+      itemResults,
+      mcqCorrect: diagnostic.mcqCorrect + targeted.mcqCorrect,
+      mcqTotal: diagnostic.mcqTotal + targeted.mcqTotal,
+      traceCorrect: diagnostic.traceCorrect + targeted.traceCorrect,
+      traceTotal: diagnostic.traceTotal + targeted.traceTotal,
+      passed: targeted.passed,
+    };
+  }
+
+  private competencyMapFromItems(
+    items: SkillVerifySessionDto['items'],
+  ): Map<number, readonly string[]> {
+    return new Map(items.map((item) => [item.index, item.competencyIds ?? []] as const));
+  }
+
+  private async persistSession(stored: StoredSession): Promise<void> {
+    await this.redis.setex(
+      skillVerifyRedisKey(stored.sessionId),
+      ttlSeconds(stored.expiresAt),
+      JSON.stringify(stored),
+    );
   }
 
   private assertStudent(user: RequestUser): void {
@@ -515,8 +1136,34 @@ export class SkillVerificationService {
     return [...byIndex.values()].sort((a, b) => a.index - b.index);
   }
 
-  private toDto(stored: StoredSession): SkillVerifySessionDto {
+  private normalizeSessionItems(
+    items: SkillVerifySessionDto['items'],
+  ): SkillVerifySessionDto['items'] {
+    return items.map((item) =>
+      item.format === 'TRACE' ? { ...item, prompt: normalizeTracePrompt(item.prompt) } : item,
+    );
+  }
+
+  private async withTargetedGenerationTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error('targeted_generation_timeout')), timeoutMs);
+      }),
+    ]);
+  }
+
+  private toDto(stored: StoredSession, pendingCompetencies?: string[]): SkillVerifySessionDto {
     const remaining = Math.max(0, Math.floor((Date.parse(stored.expiresAt) - Date.now()) / 1000));
+    const stageLabel =
+      stored.stage === 'DIAGNOSTIC'
+        ? 'Short diagnostic'
+        : stored.stage === 'TARGETED'
+          ? 'Targeted verification'
+          : undefined;
     return SkillVerifySessionDtoSchema.parse({
       sessionId: stored.sessionId,
       claimId: stored.claimId,
@@ -526,9 +1173,21 @@ export class SkillVerificationService {
       passMarkPercent: stored.passMarkPercent,
       expiresAt: stored.expiresAt,
       serverRemainingSeconds: remaining,
-      items: stored.items,
+      items: this.normalizeSessionItems(stored.items),
       answers: stored.answers,
+      stage: stored.stage,
+      intelligenceEnabled: stored.intelligenceEnabled,
+      stageLabel,
+      pendingCompetencies,
+      pendingVerification: Boolean(stored.pendingAssessmentResult),
+      verificationStep: stored.verificationStep,
+      evidenceContext: stored.evidenceContext,
     });
+  }
+
+  private resolveRefreshDays(catalogSkillCode: string): number | undefined {
+    const blueprint = getSkillBlueprint(catalogSkillCode);
+    return blueprint?.freshnessPolicy?.maxAgeDays;
   }
 
   private mapClaim(row: {
@@ -539,6 +1198,7 @@ export class SkillVerificationService {
     strikes: number;
     lockedUntil: Date | null;
     lastAttemptId: string | null;
+    claimConfidence?: { toNumber(): number } | number | null;
     sourceMetadata?: unknown;
     skill: { code: string };
   }): SkillClaimDto {
@@ -563,6 +1223,21 @@ export class SkillVerificationService {
           selected.lastGenuineFailureAt,
         )
       : null;
+    const metadata = row.sourceMetadata as
+      | {
+          latestVerificationDecision?: {
+            decision: 'VERIFIED' | 'PROVISIONAL' | 'FAILED';
+            confidence: number;
+          };
+        }
+      | null
+      | undefined;
+    const claimConfidence =
+      row.claimConfidence !== null && row.claimConfidence !== undefined
+        ? typeof row.claimConfidence === 'number'
+          ? row.claimConfidence
+          : row.claimConfidence.toNumber()
+        : (metadata?.latestVerificationDecision?.confidence ?? null);
     return SkillClaimDtoSchema.parse({
       claimId: row.id,
       studentId: row.studentId,
@@ -575,6 +1250,8 @@ export class SkillVerificationService {
       skillFocus,
       focusProgress: progress,
       retryAvailableAt,
+      verificationDecision: metadata?.latestVerificationDecision?.decision ?? null,
+      claimConfidence,
     });
   }
 

@@ -59,4 +59,27 @@ export class CandidateEducationController {
   delete(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.service.delete(user.sub, id);
   }
+
+  @Post(':id/documents')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Attach proof document metadata to a candidate education record.' })
+  @ApiResponse({ status: 201, description: 'Education proof document attached.' })
+  attachDocument(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
+    return this.service.attachDocument(user.sub, id, body);
+  }
+
+  @HttpCode(204)
+  @Delete(':id/documents/:documentId')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove proof document attachment from a candidate education record.' })
+  @ApiResponse({ status: 204, description: 'Education proof document removed.' })
+  removeDocument(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+  ) {
+    return this.service.removeDocument(user.sub, id, documentId);
+  }
 }

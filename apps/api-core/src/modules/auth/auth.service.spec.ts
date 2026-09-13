@@ -34,7 +34,8 @@ describe('AuthService refresh rotation', () => {
       },
     };
     const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
-    const auth = new AuthService(prisma as never, jwt as never);
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(prisma as never, jwt as never, storage as never);
     const cookies: string[] = [];
     const reply = {
       setCookie: (_name: string, value: string) => {
@@ -80,7 +81,8 @@ describe('AuthService refresh rotation', () => {
       $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     const jwt = { signAsync: vi.fn(async () => 'rotated.jwt') };
-    const auth = new AuthService(prisma as never, jwt as never);
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(prisma as never, jwt as never, storage as never);
     const request = { cookies: { smart_refresh: raw } };
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -107,7 +109,12 @@ describe('AuthService refresh rotation', () => {
         updateMany: vi.fn(async () => ({ count: 2 })),
       },
     };
-    const auth = new AuthService(prisma as never, { signAsync: vi.fn() } as never);
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
     await expect(
@@ -134,7 +141,12 @@ describe('AuthService refresh rotation', () => {
         ),
       },
     };
-    const auth = new AuthService(prisma as never, { signAsync: vi.fn() } as never);
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
     await expect(auth.login('student@example.com', 'password1', {} as never)).rejects.toMatchObject(
       {
         response: {

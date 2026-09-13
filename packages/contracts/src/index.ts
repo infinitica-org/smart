@@ -20,13 +20,19 @@ export * from './domain/disallowed-email-domains.js';
 export * from './domain/levels.js';
 export * from './domain/tracks.js';
 export * from './domain/rate-limits.js';
+export * from './domain/skill-levels.js';
+export * from './domain/skill-verification.js';
+export * from './domain/skill-taxonomy.js';
 export * from './domain/skills.js';
 export * from './domain/skill-dimensions.js';
 export * from './domain/se-skills.js';
 export * from './domain/signal-consent-scopes.js';
 export * from './domain/sde-v4-bridge.js';
+export * from './domain/skill-assessment-spec.js';
 export * from './domain/skill-focus-progress.js';
+export * from './domain/evidence/index.js';
 export * from './domain/question.js';
+export * from './domain/trace-prompt.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
@@ -61,6 +67,7 @@ export * from './dto/signals.dto.js';
 export * from './dto/raw-signals.dto.js';
 export * from './dto/signal-connections.dto.js';
 export * from './dto/corroboration.dto.js';
+export * from './dto/evidence.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';
@@ -70,4 +77,4 @@ export * from './events/payloads.js';
 export * from './http/routes.js';
 
 /** Contract version. Bumped by the architect when a breaking change lands. */
-export const CONTRACTS_VERSION = '0.2.5' as const;
+export const CONTRACTS_VERSION = '0.2.6' as const;

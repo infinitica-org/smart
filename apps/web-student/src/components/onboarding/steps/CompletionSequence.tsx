@@ -23,7 +23,7 @@ const LOADING_BEATS: LoadingBeat[] = [
     text: 'Verified skills get noticed first — employers filter for the checkmark, not the claim.',
     kind: 'fact',
   },
-  { text: 'Mapping your skills to your track…', kind: 'status' },
+  { text: 'Preparing your dashboard…', kind: 'status' },
   {
     text: 'Your public profile updates itself the moment something new gets verified — no need to resend your link.',
     kind: 'fact',
@@ -110,7 +110,7 @@ export default function CompletionSequence({
           >
             <div className="relative mb-8 h-14 w-14 flex-none">
               <span className="absolute inset-0 animate-ping rounded-full bg-[#00fad0]/20" />
-              <span className="absolute inset-0 rounded-full border-2 border-zinc-800" />
+              <span className="absolute inset-0 rounded-full border-2 border-border" />
               <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#00fad0]" />
             </div>
 
@@ -125,7 +125,9 @@ export default function CompletionSequence({
                   className="flex max-w-md items-center justify-center gap-2.5"
                 >
                   <Lightbulb className="h-5 w-5 flex-none text-[#00fad0]" />
-                  <p className="text-lg leading-relaxed font-medium text-zinc-300">{beat.text}</p>
+                  <p className="text-lg leading-relaxed font-medium text-muted-foreground">
+                    {beat.text}
+                  </p>
                 </motion.div>
               ) : (
                 <motion.p
@@ -134,7 +136,7 @@ export default function CompletionSequence({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.25 }}
-                  className="text-lg font-medium text-zinc-300"
+                  className="text-lg font-medium text-muted-foreground"
                 >
                   {beat?.text}
                 </motion.p>
@@ -150,7 +152,7 @@ export default function CompletionSequence({
                       ? 'w-5 bg-[#00fad0]'
                       : idx < beatIndex
                         ? 'w-1.5 bg-[#00fad0]/40'
-                        : 'w-1.5 bg-zinc-800'
+                        : 'w-1.5 bg-border'
                   }`}
                 />
               ))}
@@ -185,7 +187,7 @@ export default function CompletionSequence({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.6 }}
-              className="mb-2 text-3xl font-bold text-white md:text-4xl"
+              className="mb-2 text-3xl font-bold text-foreground md:text-4xl"
             >
               Welcome{firstName ? `, ${firstName}` : ''}!
             </motion.h1>
@@ -193,7 +195,7 @@ export default function CompletionSequence({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.6 }}
-              className="mb-8 max-w-sm text-zinc-400"
+              className="mb-8 max-w-sm text-muted-foreground"
             >
               Your profile is ready and we&apos;re already matching you with opportunities.
               Let&apos;s take a quick look at where everything lives.

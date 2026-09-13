@@ -40,8 +40,8 @@ function AuthCallbackComponent() {
         storeAccessToken(response.accessToken);
 
         // Redirect logic based on user state (server flags only — not localStorage).
-        // Institution access and stream/track selection are both handled inside
-        // the onboarding wizard itself now, before it ever completes.
+        // Minimal onboarding (interest domain + basic profile) unlocks the dashboard;
+        // track enrollment and full profile building happen progressively after entry.
         const user = response.user;
 
         if (!user.onboardingCompleted) {

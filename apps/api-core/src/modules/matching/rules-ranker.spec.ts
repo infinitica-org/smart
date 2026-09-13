@@ -28,9 +28,9 @@ function specCombine(s: number, p: number, d: number, e: number, l: number): num
   return specDiv(s * 350 + p * 300 + d * 150 + e * 100 + l * 100, 1000);
 }
 
-const SKILL_A = 'PROGRAMMING_FUNDAMENTALS_LOGIC';
-const SKILL_B = 'DATABASE_FUNDAMENTALS';
-const SKILL_C = 'DATA_STRUCTURES_ALGORITHMS';
+const SKILL_A = 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION';
+const SKILL_B = 'SQL_QUERY_OPTIMIZATION';
+const SKILL_C = 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT';
 
 const threeRequired: RankerJob = {
   requiredSkills: [

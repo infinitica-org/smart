@@ -1,12 +1,16 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import type {
+  CandidateResumeStateResponse,
+  UploadProfilePhotoResponse,
+  UploadResumeResponse,
+} from '@smart/contracts';
 import type {
   AuthenticatedUser,
   CandidateOnboardingProfileResponse,
@@ -18,47 +22,39 @@ import type {
 import {
   CandidateOnboardingDraftSchema,
   CandidateOnboardingProfileSchema,
+  CandidateResumeFileSchema,
   CompleteCandidateOnboardingRequestSchema,
   SaveCandidateOnboardingDraftRequestSchema,
-  SkillProficiencySchema,
-  SKILL_DEFINITIONS,
   SMART_TOPICS,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import {
-  AuthService,
-  hashPassword,
-  toAuthenticatedUser,
-  verifyPassword,
-} from '../auth/auth.service.js';
-import { AssessmentService } from '../assessment/assessment.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+import { AuthService, hashPassword, verifyPassword } from '../auth/auth.service.js';
+import { resolveProfilePhotoUrl, toAuthenticatedUserWithPhoto } from './profile-photo.util.js';
 
-/**
- * Case-insensitive catalog skill NAME -> code, restricted to skills that take a
- * single self-declared proficiency (mirrors `candidate-skills-discovered.consumer.ts`'s
- * `SKILL_NAME_TO_CODE`). `LANGUAGE_PROFICIENCY`/`FRONTEND_BACKEND_FRAMEWORK` never
- * appear here by name — the onboarding wizard sends per-item names for those
- * (e.g. "Python", "React") instead of the catalog's family name, so they never
- * resolve to a code and are correctly left onboarding-JSON-only for now.
- */
-const MANDATORY_SKILL_NAME_TO_CODE = new Map(
-  SKILL_DEFINITIONS.filter(
-    (skill) => skill.stream === 'UNIVERSAL' || skill.stream === 'SOFTWARE_DEVELOPMENT',
-  ).map((skill) => [skill.name.toLowerCase(), skill.code]),
-);
+const PROFILE_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+const RESUME_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+]);
+const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class UsersService {
   readonly owner = 'Vishal V';
-  readonly purpose = 'Current user profile, track enrolment, and CN-T01 onboarding completion.';
+  readonly purpose =
+    'Current user profile, track enrolment, and CN-T01 minimal onboarding completion.';
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
-    @Inject(AssessmentService) private readonly assessment: AssessmentService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async getMe(userId: string): Promise<AuthenticatedUser> {
@@ -73,7 +69,59 @@ export class UsersService {
         statusCode: 404,
       });
     }
-    return toAuthenticatedUser(user);
+    return toAuthenticatedUserWithPhoto(this.storage, user);
+  }
+
+  async uploadProfilePhoto(
+    userId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<UploadProfilePhotoResponse> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students may upload a profile photo.',
+        statusCode: 403,
+      });
+    }
+
+    if (!PROFILE_PHOTO_MIME_TYPES.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only JPEG, PNG, and WebP images are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > MAX_PROFILE_PHOTO_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The profile photo must be 2MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storage.upload({
+      buffer: file.buffer,
+      namespace: `profile-photos/${userId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { profilePhotoObjectKey: objectKey },
+    });
+
+    const profilePhotoUrl = await resolveProfilePhotoUrl(this.storage, objectKey);
+    if (!profilePhotoUrl) {
+      throw new BadRequestException({
+        error: 'upload_failed',
+        message: 'The profile photo could not be stored.',
+        statusCode: 400,
+      });
+    }
+
+    return { profilePhotoUrl };
   }
 
   async getOnboarding(userId: string): Promise<CandidateOnboardingProfileResponse> {
@@ -99,6 +147,7 @@ export class UsersService {
       onboardingCompleted: user.onboardingCompleted,
       profile: profile?.success ? profile.data : null,
       draft: draft?.success ? draft.data : null,
+      profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, user.profilePhotoObjectKey),
     };
   }
 
@@ -125,34 +174,143 @@ export class UsersService {
         statusCode: 403,
       });
     }
-    if (user.onboardingCompleted) {
-      throw new ForbiddenException({
-        error: 'forbidden',
-        message: 'Onboarding is already complete; drafts can no longer be saved.',
-        statusCode: 403,
-      });
-    }
-
     const existing =
       user.onboardingDetails && typeof user.onboardingDetails === 'object'
         ? (user.onboardingDetails as Record<string, unknown>)
         : {};
-    const merged = {
-      ...existing,
-      ...parsed.data,
-      savedAt: new Date().toISOString(),
-    };
+    const merged = user.onboardingCompleted
+      ? this.mergeProgressiveProfileDetails(existing, parsed.data)
+      : {
+          ...existing,
+          ...parsed.data,
+          savedAt: new Date().toISOString(),
+        };
 
     await this.prisma.user.update({
       where: { id: userId },
       data: { onboardingDetails: merged as Prisma.InputJsonValue },
     });
 
+    if (user.onboardingCompleted) {
+      return this.getOnboarding(userId);
+    }
+
+    const refreshed = await this.prisma.user.findUnique({ where: { id: userId } });
+
     return {
       onboardingCompleted: false,
       profile: null,
       draft: CandidateOnboardingDraftSchema.parse(merged),
+      profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, refreshed?.profilePhotoObjectKey),
     };
+  }
+
+  async getResumeState(userId: string): Promise<CandidateResumeStateResponse> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students have resume files.',
+        statusCode: 403,
+      });
+    }
+
+    const details =
+      user.onboardingDetails && typeof user.onboardingDetails === 'object'
+        ? (user.onboardingDetails as Record<string, unknown>)
+        : {};
+    const parsed = CandidateResumeFileSchema.safeParse(details.resumeFile);
+    return { resumeFile: parsed.success ? parsed.data : null };
+  }
+
+  async uploadResume(
+    userId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<UploadResumeResponse> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students may upload a resume.',
+        statusCode: 403,
+      });
+    }
+
+    const extOk = /\.(pdf|docx?|txt)$/i.test(file.fileName);
+    if (!RESUME_MIME_TYPES.has(file.mimeType) && !extOk) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, DOCX, DOC, and TXT files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > MAX_RESUME_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The resume must be 5MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storage.upload({
+      buffer: file.buffer,
+      namespace: `resumes/${userId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    const resumeFile = CandidateResumeFileSchema.parse({
+      fileName: file.fileName,
+      objectKey,
+      mimeType: file.mimeType,
+      fileSizeBytes: file.buffer.byteLength,
+      uploadedAt: new Date().toISOString(),
+      lastParsedAt: null,
+    });
+
+    const existing =
+      user.onboardingDetails && typeof user.onboardingDetails === 'object'
+        ? (user.onboardingDetails as Record<string, unknown>)
+        : {};
+    const merged = this.mergeProgressiveProfileDetails(existing, { resumeFile });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardingDetails: merged as Prisma.InputJsonValue },
+    });
+
+    return { resumeFile };
+  }
+
+  private mergeProgressiveProfileDetails(
+    existing: Record<string, unknown>,
+    patch: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const merged: Record<string, unknown> = { ...existing, ...patch };
+
+    if (patch.jobPreferences && typeof patch.jobPreferences === 'object') {
+      const current =
+        existing.jobPreferences && typeof existing.jobPreferences === 'object'
+          ? (existing.jobPreferences as Record<string, unknown>)
+          : {};
+      merged.jobPreferences = {
+        ...current,
+        ...(patch.jobPreferences as Record<string, unknown>),
+      };
+    }
+
+    if (patch.socialVerification && typeof patch.socialVerification === 'object') {
+      const current =
+        existing.socialVerification && typeof existing.socialVerification === 'object'
+          ? (existing.socialVerification as Record<string, unknown>)
+          : {};
+      merged.socialVerification = {
+        ...current,
+        ...(patch.socialVerification as Record<string, unknown>),
+      };
+    }
+
+    return merged;
   }
 
   /**
@@ -231,30 +389,6 @@ export class UsersService {
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
 
-    // Mandatory Core/Niche skills are self-declared during onboarding itself
-    // (not the best-effort async GitHub-derived path below), so every one of
-    // them is guaranteed a real SkillClaim rather than a "best effort" one.
-    // Declared synchronously but tolerantly: a per-skill conflict (already
-    // claimed/locked, e.g. a retried completion call) must never fail the
-    // onboarding completion that already succeeded above.
-    const requestUser = { sub: userId, role: user.role, inst: user.institutionId };
-    for (const entry of request.skills) {
-      if (entry.type !== 'technical') continue;
-      const skillCode = MANDATORY_SKILL_NAME_TO_CODE.get(entry.name.toLowerCase());
-      if (!skillCode) continue;
-      const proficiency = SkillProficiencySchema.safeParse(entry.proficiency);
-      if (!proficiency.success) continue;
-      try {
-        await this.assessment.declareSkillClaim(requestUser, {
-          skillCode,
-          proficiency: proficiency.data,
-        });
-      } catch (error) {
-        if (error instanceof ConflictException || error instanceof ForbiddenException) continue;
-        throw error;
-      }
-    }
-
     const selectedSkillNames = request.skillDiscovery?.selectedSkillNames ?? [];
     // Only the languages the candidate actually kept checked count toward
     // skill derivation — a deselected suggestion (e.g. they unchecked "CSS")
@@ -279,7 +413,7 @@ export class UsersService {
         });
     }
 
-    return toAuthenticatedUser(updated);
+    return toAuthenticatedUserWithPhoto(this.storage, updated);
   }
 
   async enrollTrack(userId: string, body: EnrollTrackRequest): Promise<AuthenticatedUser> {
@@ -308,7 +442,7 @@ export class UsersService {
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
 
-    return toAuthenticatedUser(updated);
+    return toAuthenticatedUserWithPhoto(this.storage, updated);
   }
 
   async changePassword(userId: string, body: ChangePasswordRequest): Promise<void> {

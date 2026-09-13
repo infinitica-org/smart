@@ -4,32 +4,18 @@ import { useEffect, useState } from 'react';
 import { Users, Search, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@smart/ui';
 import {
+  SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   type InstitutionStudentDto,
   type SkillClaimDto,
-  type SkillStream,
 } from '@smart/contracts';
 import { CandidateDetailDrawer } from '../../../components/candidate-detail-drawer';
 import { api } from '../../../lib/api';
-
-function skillStreamFor(code: string): SkillStream {
-  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
-  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
-  return stream;
-}
-
-function streamLabel(stream: string): string {
-  switch (stream) {
-    case 'SOFTWARE_DEVELOPMENT':
-      return 'Software Engineering';
-    case 'DATA_SCIENCE_ANALYTICS':
-      return 'Data & Analytics';
-    case 'AI_ML_ENGINEERING':
-      return 'AI & Machine Learning';
-    default:
-      return stream.replace(/_/g, ' ');
-  }
-}
+import {
+  categoryLabel,
+  categoryNameForSkillCode,
+  skillCategoryFor,
+} from '../../../lib/skill-taxonomy';
 
 export default function CandidatesPage() {
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
@@ -42,7 +28,7 @@ export default function CandidatesPage() {
   // 3. Skills Filter
   // 4. Proficiency Filter
   const [searchQuery, setSearchQuery] = useState('');
-  const [streamFilter, setStreamFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [skillFilter, setSkillFilter] = useState<string>('ALL');
   const [proficiencyFilter, setProficiencyFilter] = useState<string>('ALL');
 
@@ -91,14 +77,12 @@ export default function CandidatesPage() {
     }
 
     const studentClaims = claims.filter((c) => c.studentId === student.userId);
-    const firstClaim = studentClaims[0];
-    const candidateStream = firstClaim
-      ? skillStreamFor(firstClaim.skillCode)
-      : 'SOFTWARE_DEVELOPMENT';
-
-    // 1st Filter: Stream
-    if (streamFilter !== 'ALL' && candidateStream !== streamFilter) {
-      return false;
+    // 1st Filter: skill category
+    if (categoryFilter !== 'ALL') {
+      const hasCategory = studentClaims.some(
+        (claim) => skillCategoryFor(claim.skillCode) === categoryFilter,
+      );
+      if (!hasCategory && studentClaims.length > 0) return false;
     }
 
     // 2nd Filter: Skills
@@ -162,17 +146,19 @@ export default function CandidatesPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* 1st Filter: Stream */}
+          {/* 1st Filter: skill category */}
           <select
-            aria-label="Filter by Candidate Stream"
+            aria-label="Filter by skill category"
             className="bg-zinc-950 text-zinc-300 text-xs rounded-lg border border-zinc-800 px-3 py-2 focus:outline-none focus:border-zinc-600 font-medium cursor-pointer"
-            value={streamFilter}
-            onChange={(e) => setStreamFilter(e.target.value)}
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="ALL">All Streams</option>
-            <option value="SOFTWARE_DEVELOPMENT">Software Engineering</option>
-            <option value="AI_ML_ENGINEERING">AI & Machine Learning</option>
-            <option value="DATA_SCIENCE_ANALYTICS">Data & Analytics</option>
+            <option value="ALL">All Categories</option>
+            {SKILL_CATEGORY_IDS.map((categoryId) => (
+              <option key={categoryId} value={categoryId}>
+                {categoryLabel(categoryId)}
+              </option>
+            ))}
           </select>
 
           {/* 2nd Filter: Skills */}
@@ -212,7 +198,7 @@ export default function CandidatesPage() {
             <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3">Candidate</th>
-                <th className="px-5 py-3">Candidate-Selected Stream</th>
+                <th className="px-5 py-3">Primary Skill Category</th>
                 <th className="px-5 py-3">Onboarding Progress</th>
                 <th className="px-5 py-3">Verification Status</th>
                 <th className="px-5 py-3 text-right">Details</th>
@@ -238,9 +224,9 @@ export default function CandidatesPage() {
                   const studentClaims = claims.filter((c) => c.studentId === student.userId);
                   const verifiedCount = studentClaims.filter((c) => c.status === 'VERIFIED').length;
                   const firstClaim = studentClaims[0];
-                  const streamCode = firstClaim
-                    ? skillStreamFor(firstClaim.skillCode)
-                    : 'SOFTWARE_DEVELOPMENT';
+                  const candidateCategory = firstClaim
+                    ? categoryNameForSkillCode(firstClaim.skillCode)
+                    : categoryLabel('PROGRAMMING_LANGUAGES');
 
                   return (
                     <tr key={student.userId} className="hover:bg-zinc-900/50 transition-colors">
@@ -259,10 +245,10 @@ export default function CandidatesPage() {
                         </div>
                       </td>
 
-                      {/* Read-Only Candidate-Selected Stream */}
+                      {/* Read-only primary skill category */}
                       <td className="px-5 py-3.5">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-zinc-900 text-zinc-200 border border-zinc-800">
-                          {streamLabel(streamCode)}
+                          {candidateCategory}
                         </span>
                       </td>
 

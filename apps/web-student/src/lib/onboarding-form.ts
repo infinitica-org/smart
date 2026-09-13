@@ -46,6 +46,8 @@ export interface OnboardingProfileForm {
     preferredLocations: string[];
   };
   dpdpConsent: boolean;
+  /** Signed profile photo URL after upload; optional during onboarding. */
+  profilePhotoUrl: string;
 }
 
 export const emptySocialVerification = (): SocialVerification => ({ linkedin: null, github: null });
@@ -88,6 +90,7 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     skillDiscovery: emptySkillDiscovery(),
     jobPreferences: emptyJobPreferences(),
     dpdpConsent: false,
+    profilePhotoUrl: '',
   };
 }
 
@@ -171,8 +174,7 @@ export function applyServerDraft(
   // Split technical entries back into the mandatory catalog-skill map (exact
   // name match) vs. the free-form language/framework picks bucket. The two
   // multi-item skill families can't be told apart once flattened server-side,
-  // so both land in `codingProficiencies` on reload — the candidate can freely
-  // re-sort them in the Skills step, which isn't a data-loss risk.
+  // so both land in `codingProficiencies` on reload.
   const technical = validSkills.filter((s) => s.type === 'technical');
   const catalogSkills: Record<string, string> = {};
   const codingProficiencies: { id: string; language: string; proficiency: string }[] = [];
@@ -379,6 +381,8 @@ export function buildCompleteOnboardingRequest(
   }
 
   return {
+    // Stream step currently enrolls TECH_FULLSTACK only; broad domain stays CS & IT.
+    interestDomain: 'CS_IT',
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     gender: form.gender.trim() || undefined,

@@ -9,6 +9,8 @@ import {
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
@@ -25,7 +27,10 @@ const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, trac
  */
 @Injectable()
 export class PublicProfileService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(StorageService) private readonly storage: StorageService,
+  ) {}
 
   /**
    * CN-T09 — once a candidate has claimed a username, their share link uses it
@@ -175,6 +180,7 @@ export class PublicProfileService {
       where: { id: userId },
       select: {
         fullName: true,
+        profilePhotoObjectKey: true,
         primaryTrack: { select: { code: true } },
         showInProgressItems: true,
       },
@@ -229,6 +235,7 @@ export class PublicProfileService {
 
     return {
       fullName: owner.fullName,
+      profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, owner.profilePhotoObjectKey),
       trackName: track?.name ?? null,
       trackCategory: track?.category ?? null,
       skills: skillClaims.map((claim) => ({

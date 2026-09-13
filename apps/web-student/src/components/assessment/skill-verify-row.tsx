@@ -1,33 +1,24 @@
 'use client';
 
 import { Button, VerificationBadge } from '@smart/ui';
-import { skillFocusOptions, type SkillClaimDto, type SkillProficiency } from '@smart/contracts';
-import {
-  PROFICIENCY_LABELS,
-  PROFICIENCY_OPTIONS,
-  formatRetryAt,
-  viewForFocus,
-} from '@/lib/skill-declarations';
+import { skillFocusOptions, type SkillClaimDto } from '@smart/contracts';
+import { formatRetryAt, viewForFocus } from '@/lib/skill-declarations';
 import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
 
 export function SkillVerifyRow({
   skillCode,
   skillName,
   claim,
-  proficiency,
   focus,
   pending,
-  onProficiency,
   onFocus,
   onVerify,
 }: {
   skillCode: string;
   skillName: string;
   claim?: SkillClaimDto;
-  proficiency: SkillProficiency;
   focus: string;
   pending: boolean;
-  onProficiency: (value: SkillProficiency) => void;
   onFocus: (value: string) => void;
   onVerify: () => void;
 }) {
@@ -37,7 +28,7 @@ export function SkillVerifyRow({
   const lockHint = view.status === 'LOCKED' ? `Locked until ${retryLabel}` : `Opens ${retryLabel}`;
 
   return (
-    <li className="grid grid-cols-1 items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-3 lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_9rem_10rem_8.5rem]">
+    <li className="grid grid-cols-1 items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-3 lg:grid-cols-[minmax(12rem,1.5fr)_8.5rem_10rem_8.5rem]">
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <p className="truncate text-sm font-medium text-gray-900">{skillName}</p>
@@ -54,22 +45,6 @@ export function SkillVerifyRow({
       <div className="flex lg:justify-center">
         <VerificationBadge status={view.badge} variant="outline" className="whitespace-nowrap" />
       </div>
-      <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-gray-500">
-        Proficiency
-        <select
-          value={proficiency}
-          disabled={!view.canEditProficiency || pending}
-          onChange={(event) => onProficiency(event.target.value as SkillProficiency)}
-          className={nativeSelectClass}
-          aria-label={`Proficiency for ${skillName}`}
-        >
-          {PROFICIENCY_OPTIONS.map((level) => (
-            <option key={level} value={level} className={nativeOptionClass}>
-              {PROFICIENCY_LABELS[level]}
-            </option>
-          ))}
-        </select>
-      </label>
       {focusOptions.length > 0 ? (
         <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-gray-500">
           Focus

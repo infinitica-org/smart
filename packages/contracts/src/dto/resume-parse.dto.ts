@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SkillProficiencySchema } from '../domain/enums.js';
+import { CandidateResumeFileSchema } from './candidate-onboarding.dto.js';
 
 /**
  * CN-T02 — LLM resume parse for onboarding pre-fill.
@@ -116,3 +117,13 @@ export const ParseResumeResponseSchema = z.object({
   draft: ResumeParseDraftSchema.nullable(),
 });
 export type ParseResumeResponse = z.infer<typeof ParseResumeResponseSchema>;
+
+export const CandidateResumeStateResponseSchema = z.object({
+  resumeFile: CandidateResumeFileSchema.nullable(),
+});
+export type CandidateResumeStateResponse = z.infer<typeof CandidateResumeStateResponseSchema>;
+
+export const UploadResumeResponseSchema = z.object({
+  resumeFile: CandidateResumeFileSchema,
+});
+export type UploadResumeResponse = z.infer<typeof UploadResumeResponseSchema>;

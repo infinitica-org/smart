@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import SkillsPage from './page';
+import SkillRepositoryPage from './page';
 
 const push = vi.fn();
 const listSkillClaimsMock = vi.fn();
 const declareSkillClaimMock = vi.fn();
+
+const profileProgressMock = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
@@ -19,55 +21,228 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
-describe('SkillsPage', () => {
+vi.mock('@/lib/use-profile-progress', () => ({
+  useProfileProgress: () => profileProgressMock(),
+}));
+
+function mockIncompleteProfile() {
+  profileProgressMock.mockReturnValue({
+    loading: false,
+    progress: {
+      percent: 38,
+      completedAreas: ['skills', 'languages', 'education'],
+      incompleteAreas: [
+        'experience',
+        'projects',
+        'certifications',
+        'professionalLinks',
+        'jobPreferences',
+      ],
+      areaStatus: {
+        skills: true,
+        languages: true,
+        education: true,
+        experience: false,
+        projects: false,
+        certifications: false,
+        professionalLinks: false,
+        jobPreferences: false,
+      },
+    },
+    recommendedAction: {
+      id: 'add-experience',
+      title: 'Add work experience',
+      description: 'Share roles that shaped your professional journey.',
+      ctaLabel: 'Add experience',
+      href: '/profile#experience',
+    },
+  });
+}
+
+function mockCompleteProfile() {
+  profileProgressMock.mockReturnValue({
+    loading: false,
+    progress: {
+      percent: 50,
+      completedAreas: ['skills', 'languages', 'education', 'experience'],
+      incompleteAreas: ['projects', 'certifications', 'professionalLinks', 'jobPreferences'],
+      areaStatus: {
+        skills: true,
+        languages: true,
+        education: true,
+        experience: true,
+        projects: false,
+        certifications: false,
+        professionalLinks: false,
+        jobPreferences: false,
+      },
+    },
+    recommendedAction: {
+      id: 'add-project',
+      title: 'Add a project',
+      description: 'Projects are strong evidence of what you have built.',
+      ctaLabel: 'Add project',
+      href: '/profile#projects',
+    },
+  });
+}
+
+async function selectSkill(name: string) {
+  const skillButton = await screen.findByRole('button', { name: new RegExp(name, 'i') });
+  fireEvent.click(skillButton);
+  return skillButton;
+}
+
+describe('SkillRepositoryPage', () => {
   beforeEach(() => {
     push.mockReset();
     listSkillClaimsMock.mockReset();
     declareSkillClaimMock.mockReset();
+    profileProgressMock.mockReset();
+    mockIncompleteProfile();
     listSkillClaimsMock.mockResolvedValue([
       {
         claimId: 'claim-1',
         studentId: 'student-1',
-        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
         proficiency: 'INTERMEDIATE',
         status: 'VERIFIED',
       },
       {
         claimId: 'claim-2',
         studentId: 'student-1',
-        skillCode: 'GIT_VERSION_CONTROL',
+        skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
         proficiency: 'BEGINNER',
         status: 'DECLARED',
       },
     ]);
   });
 
-  it('renders the Skills header and lists real database skill claims', async () => {
-    render(<SkillsPage />);
-    expect(await screen.findByRole('heading', { name: 'Skills' })).toBeDefined();
-    expect(screen.getByText('Programming fundamentals & logic')).toBeDefined();
-    expect(screen.getByText('Git & version control')).toBeDefined();
+  it('renders the Skill Repository heading and catalog skills', async () => {
+    render(<SkillRepositoryPage />);
+    expect(await screen.findByRole('heading', { name: 'Skill Repository' })).toBeDefined();
+    expect(screen.getByText('Python (Application & Backend Development)')).toBeDefined();
+    expect(screen.getByText('JavaScript / TypeScript (Full-Stack Development)')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Not Verified').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Declared').length).toBeGreaterThan(0);
   });
 
-  it('allows starting a skill verification exam for an unverified skill', async () => {
-    declareSkillClaimMock.mockResolvedValue({ claimId: 'claim-2' });
-    render(<SkillsPage />);
-    const startButtons = await screen.findAllByRole('button', { name: /Start/i });
-    expect(startButtons.length).toBeGreaterThan(0);
-    if (!startButtons[0]) throw new Error('Button not found');
-    fireEvent.click(startButtons[0]);
+  it('shows skill details and assessment instructions after selecting a skill', async () => {
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const details = await screen.findByRole('region', { name: 'Skill details' });
+    expect(details).toBeDefined();
+    expect(within(details).getByText('Current status')).toBeDefined();
+    expect(within(details).getByText('Declared')).toBeDefined();
+    expect(within(details).getByText('How we assess you')).toBeDefined();
+    expect(screen.queryByText('Select proficiency')).toBeNull();
+  });
+
+  it('keeps Take Assessment disabled when profile is below 50%', async () => {
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const takeAssessment = await screen.findByRole('button', { name: /Take Assessment/i });
+    expect(takeAssessment.hasAttribute('disabled')).toBe(true);
+    const details = await screen.findByRole('region', { name: 'Skill details' });
+    expect(
+      within(details).getByText(
+        'Reach at least 50% profile completion to unlock skill verification.',
+      ),
+    ).toBeDefined();
+    expect(within(details).getByRole('link', { name: 'Add experience' }).getAttribute('href')).toBe(
+      '/profile#experience',
+    );
+  });
+
+  it('enables Take Assessment when profile is at least 50% complete', async () => {
+    mockCompleteProfile();
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const takeAssessment = await screen.findByRole('button', { name: /Take Assessment/i });
+    expect(takeAssessment.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('navigates to the existing assessment route when Take Assessment is clicked', async () => {
+    mockCompleteProfile();
+    declareSkillClaimMock.mockResolvedValue({
+      claimId: 'claim-2',
+      skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      proficiency: 'BEGINNER',
+      status: 'DECLARED',
+    });
+
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    fireEvent.click(screen.getByRole('button', { name: /Take Assessment/i }));
+
     await waitFor(() => {
+      expect(declareSkillClaimMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+          proficiency: 'BEGINNER',
+        }),
+      );
       expect(push).toHaveBeenCalledWith('/assessments/skills/claim-2');
     });
   });
 
-  it('opens details modal when View Details is clicked', async () => {
-    render(<SkillsPage />);
-    const detailsButtons = await screen.findAllByRole('button', { name: /View Details/i });
-    if (!detailsButtons[0]) throw new Error('Button not found');
-    fireEvent.click(detailsButtons[0]);
-    expect(await screen.findByText('Verification Status:')).toBeDefined();
+  it('keeps Take Assessment disabled for verified skills when profile is below 50%', async () => {
+    render(<SkillRepositoryPage />);
+    await selectSkill('Python');
+
+    const takeAssessment = await screen.findByRole('button', { name: /Practice Assessment/i });
+    expect(takeAssessment.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('preserves verified status display for verified claims', async () => {
+    render(<SkillRepositoryPage />);
+    await selectSkill('Python');
+
+    const details = await screen.findByRole('region', { name: 'Skill details' });
+    expect(within(details).getByText('Verified')).toBeDefined();
+  });
+
+  it('does not list catalog skills until they are added', async () => {
+    render(<SkillRepositoryPage />);
+    await screen.findByText('Python (Application & Backend Development)');
+    expect(screen.queryByText(/High-Performance Services/i)).toBeNull();
+  });
+
+  it('adds a skill from the category picker dialog', async () => {
+    mockCompleteProfile();
+    declareSkillClaimMock.mockResolvedValue({
+      claimId: 'claim-go',
+      skillCode: 'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES',
+      proficiency: 'BEGINNER',
+      status: 'DECLARED',
+    });
+
+    render(<SkillRepositoryPage />);
+    await screen.findByText('Python (Application & Backend Development)');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add skill/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add skill' });
+    fireEvent.change(within(dialog).getByPlaceholderText('Search skills...'), {
+      target: { value: 'High-Performance Services' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: /High-Performance Services/i }));
+
+    await waitFor(() => {
+      expect(declareSkillClaimMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillCode: 'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES',
+          proficiency: 'BEGINNER',
+        }),
+      );
+    });
+    expect(
+      await screen.findByRole('button', {
+        name: /Go \(Golang\) for High-Performance Services/i,
+      }),
+    ).toBeDefined();
   });
 });

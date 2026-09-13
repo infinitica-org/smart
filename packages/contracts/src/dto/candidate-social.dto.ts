@@ -13,8 +13,9 @@ import { z } from 'zod';
  * data is read.
  *
  * Verification is a trust signal only — it never gates onboarding
- * completion. `linkedinUrl` (in `candidate-onboarding.dto.ts`) remains the
- * one mandatory field; everything in this file is optional at every level.
+ * completion. LinkedIn/GitHub URLs and everything in this file are optional
+ * at onboarding completion; they remain available for progressive profile
+ * building after the student enters SMART.
  */
 
 export const LinkedinVerificationSchema = z.object({

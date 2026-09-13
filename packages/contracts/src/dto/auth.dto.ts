@@ -61,10 +61,13 @@ export const AuthenticatedUserSchema = z.object({
   emailVerified: z.boolean(),
   createdAt: IsoDateTimeSchema,
   /**
-   * CN-T01 — server-side gate. Students must complete mandatory onboarding
-   * before /dashboard. Non-students are always true.
+   * CN-T01 — server-side gate. Students must complete minimal onboarding
+   * (interest domain + basic profile + DPDP consent) before /dashboard.
+   * Non-students are always true. Career track enrollment is separate.
    */
   onboardingCompleted: z.boolean(),
+  /** Signed download URL for the candidate profile photo, when uploaded. */
+  profilePhotoUrl: z.string().url().nullable(),
   sessionHold: z
     .object({
       code: SessionHoldCodeSchema,

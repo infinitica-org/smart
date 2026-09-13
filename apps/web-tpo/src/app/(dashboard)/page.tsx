@@ -14,32 +14,13 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
-import {
-  SKILL_DEFINITIONS,
-  type InstitutionStudentDto,
-  type SkillClaimDto,
-  type SkillStream,
-} from '@smart/contracts';
+import { type InstitutionStudentDto, type SkillClaimDto } from '@smart/contracts';
 import { api } from '../../lib/api';
-
-function skillStreamFor(code: string): SkillStream {
-  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
-  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
-  return stream;
-}
-
-function streamLabel(stream: string): string {
-  switch (stream) {
-    case 'SOFTWARE_DEVELOPMENT':
-      return 'Software Engineering';
-    case 'DATA_SCIENCE_ANALYTICS':
-      return 'Data & Analytics';
-    case 'AI_ML_ENGINEERING':
-      return 'AI & Machine Learning';
-    default:
-      return stream.replace(/_/g, ' ');
-  }
-}
+import {
+  categoryLabel,
+  categoryNameForSkillCode,
+  skillCategoryFor,
+} from '../../lib/skill-taxonomy';
 
 export default function DashboardPage() {
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
@@ -81,20 +62,14 @@ export default function DashboardPage() {
     totalProvisioned > 0 ? Math.round((invitesAccepted / totalProvisioned) * 100) : 0;
   const verifiedClaimsCount = claims.filter((c) => c.status === 'VERIFIED').length;
 
-  // Domain Readiness Counter Map
-  const streamCounts: Record<string, number> = {
-    SOFTWARE_DEVELOPMENT: 0,
-    AI_ML_ENGINEERING: 0,
-    DATA_SCIENCE_ANALYTICS: 0,
-  };
+  const categoryCounts = new Map<string, number>();
 
   claims
     .filter((c) => c.status === 'VERIFIED')
     .forEach((claim) => {
-      const stream = skillStreamFor(claim.skillCode);
-      if (streamCounts[stream] !== undefined) {
-        streamCounts[stream] += 1;
-      }
+      const categoryId = skillCategoryFor(claim.skillCode);
+      if (!categoryId) return;
+      categoryCounts.set(categoryId, (categoryCounts.get(categoryId) ?? 0) + 1);
     });
 
   const formattedDate = new Date().toLocaleDateString('en-US', {
@@ -226,7 +201,9 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
             <span className="text-zinc-400 font-medium">Verified Credentials:</span>
-            <span className="font-extrabold text-white">{streamCounts.SOFTWARE_DEVELOPMENT}</span>
+            <span className="font-extrabold text-white">
+              {categoryCounts.get('PROGRAMMING_LANGUAGES') ?? 0}
+            </span>
           </div>
         </div>
 
@@ -243,7 +220,9 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
             <span className="text-zinc-400 font-medium">Verified Credentials:</span>
-            <span className="font-extrabold text-white">{streamCounts.AI_ML_ENGINEERING}</span>
+            <span className="font-extrabold text-white">
+              {categoryCounts.get('AI_ML_DATA_SCIENCE') ?? 0}
+            </span>
           </div>
         </div>
 
@@ -260,7 +239,9 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
             <span className="text-zinc-400 font-medium">Verified Credentials:</span>
-            <span className="font-extrabold text-white">{streamCounts.DATA_SCIENCE_ANALYTICS}</span>
+            <span className="font-extrabold text-white">
+              {categoryCounts.get('DATA_ENGINEERING_BIG_DATA') ?? 0}
+            </span>
           </div>
         </div>
       </div>
@@ -292,7 +273,7 @@ export default function DashboardPage() {
             <thead className="bg-zinc-900 text-zinc-300 font-semibold border-b border-zinc-800 text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3">Candidate</th>
-                <th className="px-5 py-3">Candidate-Selected Stream</th>
+                <th className="px-5 py-3">Primary Skill Category</th>
                 <th className="px-5 py-3">Onboarding Progress</th>
                 <th className="px-5 py-3">Verified Skills</th>
                 <th className="px-5 py-3">Autonomous Status</th>
@@ -303,9 +284,9 @@ export default function DashboardPage() {
                 const studentClaims = claims.filter((c) => c.studentId === student.userId);
                 const verifiedClaims = studentClaims.filter((c) => c.status === 'VERIFIED');
                 const firstClaim = studentClaims[0];
-                const candidateStream = firstClaim
-                  ? skillStreamFor(firstClaim.skillCode)
-                  : 'SOFTWARE_DEVELOPMENT';
+                const candidateCategory = firstClaim
+                  ? categoryNameForSkillCode(firstClaim.skillCode)
+                  : categoryLabel('PROGRAMMING_LANGUAGES');
 
                 return (
                   <tr key={student.userId} className="hover:bg-zinc-900/50 transition-colors">
@@ -315,7 +296,7 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700">
-                        {streamLabel(candidateStream)}
+                        {candidateCategory}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">

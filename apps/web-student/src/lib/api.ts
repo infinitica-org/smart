@@ -81,6 +81,8 @@ let mockEducations: Record<string, unknown>[] = [
     endDate: '2024-06-01',
     current: false,
     grade: '3.9 GPA',
+    status: 'unverified',
+    documents: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -673,7 +675,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     return new Response(
       JSON.stringify({
         sessionId: 'mock-verify-session-id',
-        skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+        skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
         proficiency: 'INTERMEDIATE',
         answers: [],
         remainingSeconds: 1800,
@@ -699,7 +701,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         claim: {
           claimId: crypto.randomUUID(),
           studentId: MOCK_USER_ID,
-          skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC',
+          skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
           proficiency: 'INTERMEDIATE',
           status: isTerminated ? 'LOCKED' : 'VERIFIED',
           strikes: isTerminated ? 1 : 0,

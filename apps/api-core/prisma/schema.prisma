@@ -177,6 +177,7 @@ enum SkillProficiency {
   BEGINNER
   INTERMEDIATE
   ADVANCED
+  PROFESSIONAL
 }
 
 enum SkillClaimStatus {
@@ -325,6 +326,8 @@ model User {
   onboardingCompleted Boolean      @default(false) @map("onboarding_completed")
   /// Structured onboarding profile + consent snapshot (JSON).
   onboardingDetails   Json?        @map("onboarding_details")
+  /// Object storage key for the candidate profile photo (signed URL served at read time).
+  profilePhotoObjectKey String?    @map("profile_photo_object_key")
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
@@ -366,6 +369,13 @@ model User {
   candidateCertificates CandidateCertificate[]
   candidateEducations   CandidateEducation[]
   candidateLanguages    CandidateLanguage[]
+  evidenceRecords       EvidenceRecord[]
+  professionalCredentials ProfessionalCredential[]
+  passiveSignalEvidence PassiveSignalEvidence[]
+  evidenceProfile       CandidateEvidenceProfile?
+
+  careerDomainId        String?                  @map("career_domain_id")
+  targetRoleId          String?                  @map("target_role_id")
 
   @@index([institutionId])
   @@index([batchId])
@@ -842,6 +852,13 @@ model SkillClaim {
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   verificationAttempts SkillVerificationAttempt[]
+  evidenceLinks        SkillClaimEvidenceLink[]
+  verificationDecisions VerificationDecision[]
+  targetProficiency    SkillProficiency?        @map("target_proficiency")
+  finalProficiency     SkillProficiency?        @map("final_proficiency")
+  claimConfidence      Decimal?                 @map("claim_confidence") @db.Decimal(5, 4)
+  interviewId          String?                  @map("interview_id") @db.Uuid
+  evidenceSummary      Json?                    @map("evidence_summary")
 
   @@unique([studentId, skillId])
   @@index([status])
@@ -863,6 +880,7 @@ model SkillVerificationAttempt {
   marksEarned         Decimal?         @map("marks_earned") @db.Decimal(6, 2)
   marksTotal          Decimal?         @map("marks_total") @db.Decimal(6, 2)
   scorePercent        Decimal?         @map("score_percent") @db.Decimal(5, 2)
+  assessmentResultJson Json?             @map("assessment_result_json")
   createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([claimId, createdAt])
@@ -883,6 +901,19 @@ model Project {
   liveUrl   String?       @map("live_url")
   status    ProjectStatus @default(SUBMITTED)
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  projectType       String?  @map("project_type")
+  teamSize          Int?     @map("team_size")
+  candidateRole     String?  @map("candidate_role")
+  targetUsers       String?  @map("target_users")
+  requirements      String?  @db.Text
+  components        Json?
+  decisions         Json?
+  constraints       Json?
+  outcomes          Json?    @map("structured_outcomes")
+  teamContribution  String?  @map("team_contribution") @db.Text
+  ndaStatus         String?  @map("nda_status")
+  skillMappings     ProjectSkillMapping[]
 
   report ProjectVerificationReport?
 
@@ -1161,9 +1192,13 @@ model WorkExperience {
   /// doc_ok && completed_confirmed — computed on each state transition, never auto-set on expiry
   overallVerified     Boolean                          @default(false) @map("overall_verified")
 
-  documents            WorkExperienceDocument[]
-  verificationAttempts WorkExperienceVerificationAttempt[]
-  managerEndorsements  WorkExperienceManagerEndorsement[]
+  documents               WorkExperienceDocument[]
+  verificationAttempts    WorkExperienceVerificationAttempt[]
+  managerEndorsements     WorkExperienceManagerEndorsement[]
+  deliverablesStructured  Json?                              @map("deliverables_structured")
+  personalContributions   Json?                              @map("personal_contributions")
+  employmentVerification  Json?                              @map("employment_verification")
+  structuredResponsibilities WorkExperienceResponsibility[]
 
   @@index([studentId, status])
   @@index([companyId])
@@ -1409,9 +1444,26 @@ model CandidateEducation {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  documents CandidateEducationDocument[]
+
   @@index([studentId])
   @@index([studentId, status])
   @@map("candidate_educations")
+}
+
+model CandidateEducationDocument {
+  id            String             @id @default(uuid()) @db.Uuid
+  educationId   String             @map("education_id") @db.Uuid
+  education     CandidateEducation   @relation(fields: [educationId], references: [id], onDelete: Cascade)
+  documentType  String             @map("document_type")
+  fileUrl       String             @map("file_url")
+  fileName      String             @map("file_name")
+  fileSizeBytes Int                @map("file_size_bytes")
+  mimeType      String             @map("mime_type")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([educationId])
+  @@map("candidate_education_documents")
 }
 
 model CandidateLanguage {
@@ -1425,5 +1477,267 @@ model CandidateLanguage {
 
   @@index([studentId])
   @@map("candidate_languages")
+}
+
+enum EvidenceType {
+  WORK_EXPERIENCE
+  PROJECT
+  CREDENTIAL
+  PASSIVE_SIGNAL
+  ASSESSMENT
+  INTERVIEW
+  ARTIFACT
+  SELF_REPORT
+}
+
+enum EvidenceSource {
+  CANDIDATE
+  EMPLOYER
+  ISSUER
+  PLATFORM
+  SYSTEM
+}
+
+enum EvidenceVerificationStatus {
+  PENDING
+  PROVISIONAL
+  VERIFIED
+  DISPUTED
+  REJECTED
+  EXPIRED
+}
+
+enum VerificationDecisionOutcome {
+  VERIFIED
+  PROVISIONAL
+  FAILED
+}
+
+model CareerDomain {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?  @db.Text
+  skillCodes  String[] @default([]) @map("skill_codes")
+  roleCodes   String[] @default([]) @map("role_codes")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  targetRoles TargetRole[]
+
+  @@map("career_domains")
+}
+
+model TargetRole {
+  id                    String       @id @default(uuid()) @db.Uuid
+  code                  String       @unique
+  name                  String
+  careerDomainId        String       @map("career_domain_id") @db.Uuid
+  careerDomain          CareerDomain @relation(fields: [careerDomainId], references: [id])
+  recommendedSkillCodes String[]     @default([]) @map("recommended_skill_codes")
+  optionalSkillCodes    String[]     @default([]) @map("optional_skill_codes")
+  active                Boolean      @default(true)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([careerDomainId])
+  @@map("target_roles")
+}
+
+model CandidateEvidenceProfile {
+  id                 String   @id @default(uuid()) @db.Uuid
+  studentId          String   @unique @map("student_id") @db.Uuid
+  student            User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  careerDomainId     String?  @map("career_domain_id")
+  targetRoleId       String?  @map("target_role_id")
+  selectedSkillCodes String[] @default([]) @map("selected_skill_codes")
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("candidate_evidence_profiles")
+}
+
+model EvidenceRecord {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  studentId          String                     @map("student_id") @db.Uuid
+  student            User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  evidenceType       EvidenceType               @map("evidence_type")
+  source             EvidenceSource
+  sourceOwner        String?                    @map("source_owner")
+  sourceReference    String?                    @map("source_reference")
+  evidenceDate       String?                    @map("evidence_date")
+  submissionDate     DateTime?                  @map("submission_date") @db.Timestamptz(6)
+  claim              String?                    @db.Text
+  context            String?                    @db.Text
+  provenance         Json?
+  accessibility      String                     @default("PRIVATE")
+  relatedSkillCodes  String[]                   @default([]) @map("related_skill_codes")
+  verificationStatus EvidenceVerificationStatus @default(PENDING) @map("verification_status")
+  evidenceStrength   String?                    @map("evidence_strength")
+  evidenceReliability String?                   @map("evidence_reliability")
+  freshness          Json?
+  sourceEntityId     String?                    @map("source_entity_id") @db.Uuid
+  sourcePayload      Json?                      @map("source_payload")
+  verificationMetadata Json?                    @map("verification_metadata")
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  artifacts     EvidenceArtifact[]
+  claimLinks    SkillClaimEvidenceLink[]
+  contradictions EvidenceContradiction[]
+
+  @@index([studentId, evidenceType])
+  @@index([studentId, verificationStatus])
+  @@map("evidence_records")
+}
+
+model EvidenceArtifact {
+  id                    String         @id @default(uuid()) @db.Uuid
+  evidenceId            String         @map("evidence_id") @db.Uuid
+  evidence              EvidenceRecord @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  artifactType          String         @map("artifact_type")
+  artifactReference     String         @map("artifact_reference")
+  owner                 String?
+  createdDate           String?        @map("created_date")
+  relatedSkillCode      String?        @map("related_skill_code")
+  relatedContribution   String?        @map("related_contribution") @db.Text
+  relatedComponent      String?        @map("related_component")
+  contributionSupported String?        @map("contribution_supported") @db.Text
+  accessibility         String         @default("PRIVATE")
+  integrityStatus       String         @default("UNCHECKED") @map("integrity_status")
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([evidenceId])
+  @@map("evidence_artifacts")
+}
+
+model EvidenceContradiction {
+  id                String         @id @default(uuid()) @db.Uuid
+  evidenceId        String         @map("evidence_id") @db.Uuid
+  evidence          EvidenceRecord @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  relatedEvidenceId String         @map("related_evidence_id") @db.Uuid
+  description       String         @db.Text
+  severity          String
+  detectedAt        DateTime       @map("detected_at") @db.Timestamptz(6)
+
+  @@index([evidenceId])
+  @@map("evidence_contradictions")
+}
+
+model SkillClaimEvidenceLink {
+  id         String         @id @default(uuid()) @db.Uuid
+  claimId    String         @map("claim_id") @db.Uuid
+  claim      SkillClaim     @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  evidenceId String         @map("evidence_id") @db.Uuid
+  evidence   EvidenceRecord @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  weight     Decimal        @default(1) @db.Decimal(5, 4)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([claimId, evidenceId])
+  @@index([evidenceId])
+  @@map("skill_claim_evidence_links")
+}
+
+model VerificationDecision {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  claimId            String                      @map("claim_id") @db.Uuid
+  claim              SkillClaim                  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  evidenceSummary    String?                     @map("evidence_summary") @db.Text
+  assessmentSummary  String?                     @map("assessment_summary") @db.Text
+  interviewSummary   String?                     @map("interview_summary") @db.Text
+  decision           VerificationDecisionOutcome
+  confidence         Decimal                     @db.Decimal(5, 4)
+  reasons            String[]                    @default([])
+  reviewerId         String?                     @map("reviewer_id") @db.Uuid
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([claimId, createdAt])
+  @@map("verification_decisions")
+}
+
+model WorkExperienceResponsibility {
+  id                   String         @id @default(uuid()) @db.Uuid
+  experienceId         String         @map("experience_id") @db.Uuid
+  experience           WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  task                 String         @db.Text
+  skillCode            String?        @map("skill_code")
+  personalContribution String         @map("personal_contribution") @db.Text
+  responsibilityLevel  String         @map("responsibility_level")
+  independence         String?
+  tools                String[]       @default([])
+  decision             String?        @db.Text
+  constraintText       String?        @map("constraint_text") @db.Text
+  outcome              String?        @db.Text
+  artifactId           String?        @map("artifact_id") @db.Uuid
+  activity             Json?
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([experienceId])
+  @@map("work_experience_responsibilities")
+}
+
+model ProjectSkillMapping {
+  id                   String   @id @default(uuid()) @db.Uuid
+  projectId            String   @map("project_id") @db.Uuid
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skillCode            String   @map("skill_code")
+  specificContribution String   @map("specific_contribution") @db.Text
+  componentWorkedOn    String?  @map("component_worked_on")
+  actionsPerformed     String[] @default([]) @map("actions_performed")
+  decisionsMade        String[] @default([]) @map("decisions_made")
+  constraintsHandled   String[] @default([]) @map("constraints_handled")
+  artifactId           String?  @map("artifact_id") @db.Uuid
+  verificationStatus   String   @default("PENDING") @map("verification_status")
+  activity             Json?
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId])
+  @@map("project_skill_mappings")
+}
+
+model ProfessionalCredential {
+  id                   String   @id @default(uuid()) @db.Uuid
+  studentId            String   @map("student_id") @db.Uuid
+  student              User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  issuer               String
+  credentialName       String   @map("credential_name")
+  credentialType       String   @map("credential_type")
+  externalCredentialId String?  @map("external_credential_id")
+  issueDate            String?  @map("issue_date")
+  expiryDate           String?  @map("expiry_date")
+  jurisdiction         String?
+  scope                String?
+  verificationSource   String?  @map("verification_source")
+  status               String   @default("PENDING_VERIFICATION")
+  assessmentType       String?  @map("assessment_type")
+  practicalComponent   Boolean  @default(false) @map("practical_component")
+  coveredTopics        String[] @default([]) @map("covered_topics")
+  coveredSkillCodes    String[] @default([]) @map("covered_skill_codes")
+  applicationEvidence  Json?    @map("application_evidence")
+  verificationMethod   String?  @map("verification_method")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@map("professional_credentials")
+}
+
+model PassiveSignalEvidence {
+  id                    String   @id @default(uuid()) @db.Uuid
+  studentId             String   @map("student_id") @db.Uuid
+  student               User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  source                String
+  accountReference      String   @map("account_reference")
+  activity              Json?
+  activityPeriodStart   DateTime? @map("activity_period_start") @db.Timestamptz(6)
+  activityPeriodEnd     DateTime? @map("activity_period_end") @db.Timestamptz(6)
+  relevantArtifactIds   String[] @default([]) @map("relevant_artifact_ids")
+  skillMappings           Json?    @map("skill_mappings")
+  signalStrength          Decimal? @map("signal_strength") @db.Decimal(5, 4)
+  reliability             String?
+  anomalies               String[] @default([])
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([studentId, source])
+  @@map("passive_signal_evidence")
 }
 

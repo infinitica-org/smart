@@ -50,6 +50,7 @@ describe('onboarding-form', () => {
     expect('error' in result).toBe(false);
     if ('error' in result) return;
     expect(result.dpdpConsent).toBe(true);
+    expect(result.interestDomain).toBe('CS_IT');
     expect(result.linkedinUrl).toBe('https://linkedin.com/in/ada');
     expect(result.education).toEqual([]);
     expect(result.experiences).toEqual([]);
@@ -172,7 +173,7 @@ describe('onboarding-form', () => {
     form.phoneNumber = '9876543210';
     form.linkedinUrl = 'https://www.linkedin.com/in/ada';
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
-    form.catalogSkills = { GIT_VERSION_CONTROL: 'INTERMEDIATE' };
+    form.catalogSkills = { VERSION_CONTROL_CODE_COLLABORATION: 'INTERMEDIATE' };
     form.codingProficiencies = [{ id: 'a', language: 'Python', proficiency: 'ADVANCED' }];
     form.frameworkProficiencies = [{ id: 'b', framework: 'React', proficiency: 'BEGINNER' }];
     form.jobPreferences = {
@@ -188,7 +189,11 @@ describe('onboarding-form', () => {
     expect(result.skills).toEqual(
       expect.arrayContaining([
         { type: 'language', name: 'English', proficiency: 'Fluent' },
-        { type: 'technical', name: 'Git & version control', proficiency: 'INTERMEDIATE' },
+        {
+          type: 'technical',
+          name: 'Version Control & Code Collaboration',
+          proficiency: 'INTERMEDIATE',
+        },
         { type: 'technical', name: 'Python', proficiency: 'ADVANCED' },
         { type: 'technical', name: 'React', proficiency: 'BEGINNER' },
       ]),

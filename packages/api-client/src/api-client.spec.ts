@@ -589,7 +589,10 @@ describe('WE-T03 manager endorsement contracts', () => {
       endDate: null,
       isCurrent: true,
       responsibilities: 'Led frontend platform architecture.',
-      skillsClaimed: ['PROGRAMMING_FUNDAMENTALS_LOGIC', 'LANGUAGE_PROFICIENCY'],
+      skillsClaimed: [
+        'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      ],
       managerEmail: 'boss@acme.com',
       managerName: 'John Boss',
       status: 'PENDING',
@@ -610,8 +613,8 @@ describe('WE-T03 manager endorsement contracts', () => {
     );
     expect(result.candidateName).toBe('Jane Doe');
     expect(result.skillsClaimed).toEqual([
-      'PROGRAMMING_FUNDAMENTALS_LOGIC',
-      'LANGUAGE_PROFICIENCY',
+      'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
     ]);
     expect(result.isExpired).toBe(false);
   });
@@ -631,7 +634,7 @@ describe('WE-T03 manager endorsement contracts', () => {
       'raw-magic-token-123',
       {
         confirmed: true,
-        skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+        skillRatings: [{ skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', rating: 5 }],
         comments: 'Great engineer!',
       },
     );
@@ -642,7 +645,7 @@ describe('WE-T03 manager endorsement contracts', () => {
     expect(calls[0]?.init.method).toBe('POST');
     expect(JSON.parse(calls[0]?.init.body as string)).toEqual({
       confirmed: true,
-      skillRatings: [{ skillCode: 'PROGRAMMING_FUNDAMENTALS_LOGIC', rating: 5 }],
+      skillRatings: [{ skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', rating: 5 }],
       comments: 'Great engineer!',
     });
     expect(result.status).toBe('CONFIRMED');

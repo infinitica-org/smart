@@ -9,6 +9,7 @@ const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '__f
 const financeFile = path.join(dataDir, 'mba-finance-l1.json');
 const analyticsFile = path.join(dataDir, 'mba-business-analytics-l1.json');
 const badItemFile = path.join(fixturesDir, 'bad-item.json');
+const skillTaxonomyFile = path.join(dataDir, 'taxonomies', 'skill.json');
 const infSeV1File = path.join(dataDir, 'taxonomies', 'inf-se-v1.json');
 
 describe('content pipeline', () => {
@@ -39,6 +40,12 @@ describe('content pipeline', () => {
     const report = runValidate([badItemFile]);
     expect(report.ok).toBe(false);
     expect(report.messages.some((m) => m.includes('correctOptionIds'))).toBe(true);
+  });
+
+  it('validates skill.json matches contracts registry (drift guard)', () => {
+    const report = runValidate([skillTaxonomyFile]);
+    expect(report.ok).toBe(true);
+    expect(report.messages).toHaveLength(0);
   });
 
   it('validates inf-se-v1.json matches contracts registry (drift guard)', () => {

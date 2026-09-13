@@ -1,32 +1,32 @@
 import {
+  SKILL_CATEGORIES,
+  SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   hydrateFocusProgress,
   focusProgressFor,
   retryAvailableAtForFocus,
+  type SkillCategoryId,
   type SkillFocusProgress,
   type SkillProficiency,
   resolveSkillFocus,
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
-  type SkillStream,
 } from '@smart/contracts';
+import { canVerifySkills } from './profile-progress';
 
 export const SOFTWARE_IT_DOMAIN_LABEL = 'Software & IT';
 
-export const STREAM_LABELS: Record<SkillStream, string> = {
-  UNIVERSAL: 'Universal Core',
-  SOFTWARE_DEVELOPMENT: 'Software Development',
-  DATA_SCIENCE_ANALYTICS: 'Data Science & Analytics',
-  AI_ML_ENGINEERING: 'AI/ML Engineering',
-};
+export const CATEGORY_LABELS: Record<SkillCategoryId, string> = Object.fromEntries(
+  SKILL_CATEGORY_IDS.map((id) => [id, SKILL_CATEGORIES[id].name]),
+) as Record<SkillCategoryId, string>;
 
-export const PROFICIENCY_OPTIONS: readonly string[] = [
+export const PROFICIENCY_OPTIONS = [
   'BEGINNER',
   'INTERMEDIATE',
   'ADVANCED',
   'PROFESSIONAL',
-] as const;
+] as const satisfies readonly SkillProficiency[];
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
   BEGINNER: 'Beginner',
@@ -35,44 +35,53 @@ export const PROFICIENCY_LABELS: Record<string, string> = {
   PROFESSIONAL: 'Professional',
 };
 
-export function skillsForStream(stream: SkillStream) {
-  return SKILL_DEFINITIONS.filter((s) => s.domain === 'SOFTWARE_IT' && s.stream === stream);
-}
-
-/** INF-05: Universal Core plus the chosen role stream (core loads for every stream). */
-export function mandatorySkillsForStream(stream: SkillStream) {
-  const universal = skillsForStream('UNIVERSAL');
-  if (stream === 'UNIVERSAL') return universal;
-  const seen = new Set(universal.map((skill) => skill.code));
-  const extra = skillsForStream(stream).filter((skill) => {
-    if (seen.has(skill.code)) return false;
-    seen.add(skill.code);
-    return true;
-  });
-  return [...universal, ...extra];
+export function skillsForCategory(categoryId: SkillCategoryId) {
+  return SKILL_DEFINITIONS.filter((skill) => skill.categoryId === categoryId);
 }
 
 export function skillNameForCode(skillCode: string): string {
   return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.name ?? skillCode;
 }
 
+export function categoryNameForCode(skillCode: string): string {
+  return SKILL_DEFINITIONS.find((s) => s.code === skillCode)?.categoryName ?? skillCode;
+}
+
+export const SKILL_VERIFY_STAGE_LABELS = {
+  DIAGNOSTIC: 'Short diagnostic',
+  TARGETED: 'Targeted assessment',
+  COMPLETE: 'Assessment',
+  INTERVIEW: 'Defense interview',
+} as const;
+
+export type SkillVerifyStageLabel = keyof typeof SKILL_VERIFY_STAGE_LABELS;
+
 export function formatSkillVerifyKioskTitle(
   skillCode: string,
-  proficiency: SkillProficiency,
+  stage?: SkillVerifyStageLabel | null,
 ): string {
-  return `${skillNameForCode(skillCode)} · ${PROFICIENCY_LABELS[proficiency]}`;
+  const name = skillNameForCode(skillCode);
+  if (!stage) return name;
+  const label = SKILL_VERIFY_STAGE_LABELS[stage];
+  return label ? `${name} · ${label}` : name;
+}
+
+export function proficiencyLabelForClaim(claim: SkillClaimDto): string | null {
+  if (claim.status === 'VERIFIED' && claim.proficiency) {
+    return PROFICIENCY_LABELS[claim.proficiency] ?? claim.proficiency;
+  }
+  return null;
 }
 
 export function isSdeV4Verifiable(skillCode: string): boolean {
   return sdeV4FormCodeForCatalogSkill(skillCode) !== null;
 }
 
-/**
- * Map persisted SkillClaimStatus onto VerificationBadge statuses.
- * After a sit, fail/retry states show as Not verified; pass shows Verified.
- */
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
+  if (claim.status === 'VERIFIED' && claim.verificationDecision === 'PROVISIONAL') {
+    return 'PROVISIONAL';
+  }
   if (claim.status === 'VERIFIED') return 'VERIFIED';
   if (claim.status === 'BEGINNER_REATTEMPT') return 'NOT_VERIFIED';
   if (claim.status === 'DECLARED' && claim.lastAttemptId) return 'NOT_VERIFIED';
@@ -184,6 +193,8 @@ export function viewForFocus(
   const hasForm = isSdeV4Verifiable(skillCode);
   const canStart =
     hasForm && !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
+  const canEditProficiency =
+    !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT' || !claim);
   const synthetic: SkillClaimDto | undefined = claim
     ? {
         ...claim,
@@ -201,7 +212,7 @@ export function viewForFocus(
     canStart,
     cooling,
     retryAt: cooling ? retryAt : null,
-    canEditProficiency: false,
+    canEditProficiency,
     hasForm,
     blockMessage: synthetic ? skillVerifyBlockMessage(synthetic) : null,
   };
@@ -217,4 +228,65 @@ export function canStartSdeV4Verify(
 
 export function isClaimActive(status: SkillClaimStatus): boolean {
   return status !== 'LOCKED';
+}
+
+export type RepositoryStatusLabel =
+  'Not declared' | 'Declared' | 'Verified' | 'Not verified' | 'Locked' | 'Reattempting';
+
+/** Human-readable repository status for a catalog skill with an optional claim. */
+export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
+  displayLabel: RepositoryStatusLabel;
+  badgeStatus: string | null;
+} {
+  if (!claim) {
+    return { displayLabel: 'Not declared', badgeStatus: null };
+  }
+  const badge = claimToBadgeStatus(claim);
+  if (badge === 'VERIFIED') {
+    return { displayLabel: 'Verified', badgeStatus: 'VERIFIED' };
+  }
+  if (badge === 'DECLARED') {
+    return { displayLabel: 'Declared', badgeStatus: 'DECLARED' };
+  }
+  if (badge === 'NOT_VERIFIED') {
+    return { displayLabel: 'Not verified', badgeStatus: 'NOT_VERIFIED' };
+  }
+  if (badge === 'LOCKED') {
+    return { displayLabel: 'Locked', badgeStatus: 'LOCKED' };
+  }
+  if (claim.status === 'BEGINNER_REATTEMPT') {
+    return { displayLabel: 'Reattempting', badgeStatus: 'BEGINNER_REATTEMPT' };
+  }
+  return { displayLabel: 'Declared', badgeStatus: badge };
+}
+
+export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
+  'Reach at least 50% profile completion to unlock skill verification.';
+
+/** Default claim proficiency for diagnostic-first verification (candidate does not self-select). */
+export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGINNER';
+
+export const SKILL_VERIFICATION_ASSESSMENT_STEPS = [
+  'Start with a short diagnostic — SMART discovers what you can demonstrate; you do not self-rate proficiency.',
+  'Existing projects and work evidence are considered when available, but are not required to begin.',
+  'Targeted questions only appear where competencies are still uncertain — then evidence or interview if your level requires it.',
+  'Your verified badge reflects assessment-supported proficiency plus confidence, not a declared rating.',
+] as const;
+
+export function isProfileCompleteForSkillVerification(percent: number | null | undefined): boolean {
+  return canVerifySkills(percent);
+}
+
+export function canEnableTakeAssessment(params: {
+  profilePercent: number | null | undefined;
+}): boolean {
+  return isProfileCompleteForSkillVerification(params.profilePercent);
+}
+
+/** Block message for Take Assessment — verified skills may still practice. */
+export function takeAssessmentBlockMessage(claim?: SkillClaimDto | null): string | null {
+  if (!claim) return null;
+  const message = skillVerifyBlockMessage(claim);
+  if (message === 'This skill is already verified.') return null;
+  return message;
 }

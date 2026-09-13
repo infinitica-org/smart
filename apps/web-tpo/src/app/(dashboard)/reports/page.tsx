@@ -4,31 +4,17 @@ import { useEffect, useState } from 'react';
 import { BarChart3, Download, Filter, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { Button, Card } from '@smart/ui';
 import {
+  SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   type InstitutionStudentDto,
   type SkillClaimDto,
-  type SkillStream,
 } from '@smart/contracts';
 import { api } from '../../../lib/api';
-
-function skillStreamFor(code: string): SkillStream {
-  const stream = SKILL_DEFINITIONS.find((s) => s.code === code)?.stream;
-  if (!stream || stream === 'UNIVERSAL') return 'SOFTWARE_DEVELOPMENT';
-  return stream;
-}
-
-function streamLabel(stream: string): string {
-  switch (stream) {
-    case 'SOFTWARE_DEVELOPMENT':
-      return 'Software Engineering';
-    case 'DATA_SCIENCE_ANALYTICS':
-      return 'Data & Analytics';
-    case 'AI_ML_ENGINEERING':
-      return 'AI & Machine Learning';
-    default:
-      return stream.replace(/_/g, ' ');
-  }
-}
+import {
+  categoryLabel,
+  categoryNameForSkillCode,
+  skillCategoryFor,
+} from '../../../lib/skill-taxonomy';
 
 export default function ReportsPage() {
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
@@ -39,7 +25,7 @@ export default function ReportsPage() {
   // 1. Candidate Stream Filter
   // 2. Skills Filter (replaced Subjects/Domains with Skills)
   // 3. Proficiency Filter
-  const [streamFilter, setStreamFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [skillFilter, setSkillFilter] = useState<string>('ALL');
   const [proficiencyFilter, setProficiencyFilter] = useState<string>('ALL');
 
@@ -59,13 +45,14 @@ export default function ReportsPage() {
   // Filtered dataset for reporting
   const filteredStudents = students.filter((student) => {
     const studentClaims = claims.filter((c) => c.studentId === student.userId);
-    const firstClaim = studentClaims[0];
-    const candidateStream = firstClaim
-      ? skillStreamFor(firstClaim.skillCode)
-      : 'SOFTWARE_DEVELOPMENT';
 
-    // 1st Filter: Candidate Stream
-    if (streamFilter !== 'ALL' && candidateStream !== streamFilter) return false;
+    // 1st Filter: skill category
+    if (categoryFilter !== 'ALL') {
+      const hasCategory = studentClaims.some(
+        (claim) => skillCategoryFor(claim.skillCode) === categoryFilter,
+      );
+      if (!hasCategory && studentClaims.length > 0) return false;
+    }
 
     // 2nd Filter: Skills
     if (skillFilter !== 'ALL') {
@@ -89,7 +76,7 @@ export default function ReportsPage() {
       'Full Name',
       'Email Address',
       'Batch Name',
-      'Candidate Stream',
+      'Primary Skill Category',
       'Onboarding Status',
       'Verified Credentials Count',
       'Skills List',
@@ -105,9 +92,9 @@ export default function ReportsPage() {
       const studentClaims = claims.filter((c) => c.studentId === student.userId);
       const verifiedClaims = studentClaims.filter((c) => c.status === 'VERIFIED');
       const firstClaim = studentClaims[0];
-      const candidateStream = firstClaim
-        ? skillStreamFor(firstClaim.skillCode)
-        : 'SOFTWARE_DEVELOPMENT';
+      const candidateCategory = firstClaim
+        ? categoryNameForSkillCode(firstClaim.skillCode)
+        : categoryLabel('PROGRAMMING_LANGUAGES');
 
       const skillNames = studentClaims
         .map((c) => SKILL_DEFINITIONS.find((s) => s.code === c.skillCode)?.name ?? c.skillCode)
@@ -118,7 +105,7 @@ export default function ReportsPage() {
         formatCell(student.fullName),
         formatCell(student.email),
         formatCell(student.batchName ?? 'N/A'),
-        formatCell(streamLabel(candidateStream)),
+        formatCell(candidateCategory),
         formatCell(student.inviteStatus === 'ACCEPTED' ? 'Completed' : 'Pending'),
         verifiedClaims.length,
         formatCell(skillNames || 'Enrolled Core Skills'),
@@ -179,17 +166,19 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            {/* 1st Filter: Candidate Streams */}
+            {/* 1st Filter: skill categories */}
             <select
-              aria-label="Filter Report by Candidate Stream"
+              aria-label="Filter report by skill category"
               className="bg-zinc-950 text-zinc-300 text-xs rounded-lg border border-zinc-800 px-3.5 py-2 focus:outline-none focus:border-zinc-600 font-medium cursor-pointer"
-              value={streamFilter}
-              onChange={(e) => setStreamFilter(e.target.value)}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <option value="ALL">All Streams</option>
-              <option value="SOFTWARE_DEVELOPMENT">Software Engineering</option>
-              <option value="AI_ML_ENGINEERING">AI & Machine Learning</option>
-              <option value="DATA_SCIENCE_ANALYTICS">Data & Analytics</option>
+              <option value="ALL">All Categories</option>
+              {SKILL_CATEGORY_IDS.map((categoryId) => (
+                <option key={categoryId} value={categoryId}>
+                  {categoryLabel(categoryId)}
+                </option>
+              ))}
             </select>
 
             {/* 2nd Filter: Skills */}
@@ -245,7 +234,7 @@ export default function ReportsPage() {
               <tr>
                 <th className="px-5 py-3">Candidate</th>
                 <th className="px-5 py-3">Email</th>
-                <th className="px-5 py-3">Stream</th>
+                <th className="px-5 py-3">Category</th>
                 <th className="px-5 py-3">Skills</th>
                 <th className="px-5 py-3">Verification Status</th>
               </tr>
@@ -268,9 +257,9 @@ export default function ReportsPage() {
                   const studentClaims = claims.filter((c) => c.studentId === student.userId);
                   const verifiedCount = studentClaims.filter((c) => c.status === 'VERIFIED').length;
                   const firstClaim = studentClaims[0];
-                  const streamCode = firstClaim
-                    ? skillStreamFor(firstClaim.skillCode)
-                    : 'SOFTWARE_DEVELOPMENT';
+                  const candidateCategory = firstClaim
+                    ? categoryNameForSkillCode(firstClaim.skillCode)
+                    : categoryLabel('PROGRAMMING_LANGUAGES');
 
                   const skillsList = studentClaims
                     .map(
@@ -285,7 +274,7 @@ export default function ReportsPage() {
                       <td className="px-5 py-3.5 font-mono text-zinc-400">{student.email}</td>
                       <td className="px-5 py-3.5">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-zinc-900 text-zinc-200 border border-zinc-800">
-                          {streamLabel(streamCode)}
+                          {candidateCategory}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 font-medium text-zinc-300 max-w-xs truncate">

@@ -116,6 +116,11 @@ const EnvSchema = z.object({
 
   ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 
+  ASSESSMENT_INTELLIGENCE_V1: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+
   /** CN-T07 profile activation policy: SEGMENT_AWARE (default) or STRICT_ALL_THREE. */
   PROFILE_ACTIVATION_POLICY: z.enum(['SEGMENT_AWARE', 'STRICT_ALL_THREE']).default('SEGMENT_AWARE'),
 

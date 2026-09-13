@@ -47,8 +47,8 @@ export function SkillsLearningForm({
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">Skills you&apos;ll practice</h3>
-          <p className="text-xs text-white/45">
+          <h3 className="text-sm font-semibold text-foreground">Skills you&apos;ll practice</h3>
+          <p className="text-xs text-muted-foreground">
             What skills will you practice or demonstrate through this certificate?
           </p>
         </div>
@@ -63,39 +63,41 @@ export function SkillsLearningForm({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
+      <div className="flex flex-col gap-3 border-t border-border pt-6">
         <div>
-          <h3 className="text-sm font-semibold text-white">What you&apos;ll learn</h3>
-          <p className="text-xs text-white/45">What did you learn from this certification?</p>
+          <h3 className="text-sm font-semibold text-foreground">What you&apos;ll learn</h3>
+          <p className="text-xs text-muted-foreground">
+            What did you learn from this certification?
+          </p>
         </div>
         <textarea
           rows={4}
           value={learningDescription}
           onChange={(event) => setLearningDescription(event.target.value)}
           placeholder="Describe what you learned…"
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-[#00fad0]/50 focus:outline-none"
+          className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
         />
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
+      <div className="flex flex-col gap-3 border-t border-border pt-6">
         <div>
-          <h3 className="text-sm font-semibold text-white">Tools you&apos;ll use</h3>
-          <p className="text-xs text-white/45">
+          <h3 className="text-sm font-semibold text-foreground">Tools you&apos;ll use</h3>
+          <p className="text-xs text-muted-foreground">
             Which tools and technologies did you learn or use?
           </p>
         </div>
         <ToolsPicker tools={tools} onChange={setTools} />
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
+      <div className="flex flex-col gap-3 border-t border-border pt-6">
         <div>
-          <h3 className="text-sm font-semibold text-white">Practical Application</h3>
-          <p className="text-xs text-white/45">
+          <h3 className="text-sm font-semibold text-foreground">Practical Application</h3>
+          <p className="text-xs text-muted-foreground">
             Did you apply these skills in a project or practical task?
           </p>
         </div>
         <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm text-white/80">
+          <label className="flex items-center gap-2 text-sm text-foreground/80">
             <input
               type="radio"
               name="practicalApplied"
@@ -104,7 +106,7 @@ export function SkillsLearningForm({
             />
             Yes
           </label>
-          <label className="flex items-center gap-2 text-sm text-white/80">
+          <label className="flex items-center gap-2 text-sm text-foreground/80">
             <input
               type="radio"
               name="practicalApplied"
@@ -116,13 +118,13 @@ export function SkillsLearningForm({
         </div>
         {practicalApplied ? (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-white/45">What did you build or practice?</span>
+            <span className="text-xs text-muted-foreground">What did you build or practice?</span>
             <textarea
               rows={3}
               value={practicalDescription}
               onChange={(event) => setPracticalDescription(event.target.value)}
               placeholder="Describe your project or practical experience…"
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-[#00fad0]/50 focus:outline-none"
+              className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
             />
           </div>
         ) : null}

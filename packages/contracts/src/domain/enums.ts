@@ -74,6 +74,18 @@ export const TRACK_CATEGORIES = ['TECH', 'MBA'] as const;
 export const TrackCategorySchema = z.enum(TRACK_CATEGORIES);
 export type TrackCategory = z.infer<typeof TrackCategorySchema>;
 
+/**
+ * Broad area-of-interest captured at candidate onboarding entry.
+ *
+ * This is intentionally **not** a {@link TrackCode}: it does not enroll the
+ * student in Full Stack / SDE / Finance Analyst tracks or any career role.
+ * Track selection remains a separate progressive step (`primaryTrack` on the
+ * user row via `POST /users/me/enroll-track`).
+ */
+export const INTEREST_DOMAINS = ['CS_IT', 'BUSINESS_MANAGEMENT', 'FINANCE', 'OTHER'] as const;
+export const InterestDomainSchema = z.enum(INTEREST_DOMAINS);
+export type InterestDomain = z.infer<typeof InterestDomainSchema>;
+
 export const TRACK_CODES = [
   // 5 IT tracks
   'TECH_FULLSTACK',
@@ -342,7 +354,12 @@ export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
  * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
  * Silver / Bronze) still come from cut scores — do not invent a parallel score.
  */
-export const SKILL_PROFICIENCIES = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+export const SKILL_PROFICIENCIES = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'PROFESSIONAL',
+] as const;
 export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
 export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 
@@ -430,6 +447,16 @@ export const EXPERIENCE_DOCUMENT_TYPES = [
 ] as const;
 export const ExperienceDocumentTypeSchema = z.enum(EXPERIENCE_DOCUMENT_TYPES);
 export type ExperienceDocumentType = z.infer<typeof ExperienceDocumentTypeSchema>;
+
+/** Education proof document types — mirrors work-experience document attachment pattern. */
+export const EDUCATION_DOCUMENT_TYPES = [
+  'DEGREE_CERTIFICATE',
+  'MARKSHEET',
+  'TRANSCRIPT',
+  'OTHER',
+] as const;
+export const EducationDocumentTypeSchema = z.enum(EDUCATION_DOCUMENT_TYPES);
+export type EducationDocumentType = z.infer<typeof EducationDocumentTypeSchema>;
 
 /** WE-T02 — letter authenticity outcomes after OCR + heuristics (never auto-fraud). */
 export const WORK_EXPERIENCE_DOCUMENT_AUTHENTICITY_STATUSES = [
@@ -531,9 +558,9 @@ export type CertificateVerificationMethod = z.infer<typeof CertificateVerificati
 
 /**
  * Self-assessed proficiency for a certificate's claimed skills. Deliberately
- * separate from `SkillProficiencySchema` (BEGINNER/INTERMEDIATE/ADVANCED only,
- * tied to the SkillClaim verification-threshold framework) — this one adds
- * EXPERT and is purely a candidate self-assessment, never itself a verified claim.
+ * separate from `SkillProficiencySchema` (BEGINNER through PROFESSIONAL on
+ * verified SkillClaims) — this one adds EXPERT and is purely a candidate
+ * self-assessment, never itself a verified claim.
  */
 export const CERTIFICATE_PROFICIENCIES = [
   'BEGINNER',
