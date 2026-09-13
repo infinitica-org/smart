@@ -8,6 +8,8 @@ import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
 
 import { CertificatesSection } from '@/components/profile/CertificatesSection';
 
+import { CredentialsSection } from '@/components/profile/CredentialsSection';
+
 import { EducationSection } from '@/components/profile/EducationSection';
 
 import { JobPreferencesSection } from '@/components/profile/JobPreferencesSection';
@@ -123,6 +125,12 @@ export default function ProfilePage() {
       <div id="certificates" className="scroll-mt-24">
         <ProfileSurface>
           <CertificatesSection />
+        </ProfileSurface>
+      </div>
+
+      <div id="credentials" className="scroll-mt-24">
+        <ProfileSurface>
+          <CredentialsSection />
         </ProfileSurface>
       </div>
 

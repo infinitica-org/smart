@@ -225,6 +225,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /tpo/students/:userId/invite-link": "role.institutionAdmin",
   "POST /tpo/students/:userId/release-hold": "role.institutionAdmin",
   "POST /users/me/credentials": "role.student",
+  "POST /users/me/credentials/:id/document/upload": "role.student",
   "POST /users/me/education": "role.student",
   "POST /users/me/education/:id/documents": "role.student",
   "POST /users/me/evidence": "role.student",

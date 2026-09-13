@@ -109,6 +109,7 @@ export function toProfessionalCredentialDto(
       (row.applicationEvidence as ProfessionalCredentialDto['applicationEvidence']) ?? [],
     verificationMethod:
       (row.verificationMethod as ProfessionalCredentialDto['verificationMethod']) ?? undefined,
+    documentObjectKey: row.documentObjectKey ?? undefined,
   };
 }
 

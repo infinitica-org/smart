@@ -923,6 +923,14 @@ export function evidenceApi(client: SmartApiClient) {
         schema: ProfessionalCredentialDtoSchema,
       }),
 
+    uploadCredentialDocument: (id: string, file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed(`/users/me/credentials/${id}/document/upload`), formData, {
+        schema: ProfessionalCredentialDtoSchema,
+      });
+    },
+
     listPassiveSignals: () =>
       client.get(prefixed('/users/me/passive-signals'), {
         schema: z.array(PassiveSignalEvidenceDtoSchema),
