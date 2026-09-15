@@ -14,6 +14,7 @@ import type {
   TenantEntitlementsDto,
 } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
+import { Badge } from '@smart/ui/badge';
 import { Button } from '@smart/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 import { Switch } from '@smart/ui/switch';
@@ -32,6 +33,7 @@ import {
   StatusBadge,
   TableCell,
   TableRow,
+  VerificationBadge,
   controlButtonClassName,
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
@@ -163,7 +165,6 @@ export default function InstitutionDetailPage() {
           </Link>
         </Button>
       </PageHeader>
-      {institution ? <StatusBadge status={status} /> : null}
       {institution?.heldAt ? (
         <InlineAlert
           tone="danger"
@@ -179,10 +180,29 @@ export default function InstitutionDetailPage() {
       {error ? <InlineAlert tone="danger" title={error} /> : null}
       {message ? <InlineAlert title={message} /> : null}
 
-      <div className="grid grid-cols-2 gap-6 text-sm md:grid-cols-5">
+      {/* Control-center summary: status, verification, and plan at a glance — no tab click needed. */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Status</span>
+            {institution ? <StatusBadge status={status} /> : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Verification</span>
+            {institution ? <VerificationBadge status={institution.verificationStatus} /> : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Plan</span>
+            <Badge variant="outline">{institution?.planCode ?? '—'}</Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-6 text-sm md:grid-cols-3 lg:grid-cols-6">
         {[
           ['Students', institution?.studentCount],
           ['TPO admins', institution?.adminCount],
+          ['Active students (30d)', institution?.activeStudents30d],
           ['Batches', institution?.batchCount],
           ['Invites pending', institution?.invitePendingCount],
           ['Invites accepted', institution?.inviteAcceptedCount],

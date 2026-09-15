@@ -4,6 +4,8 @@ import {
   CompanyModeSchema,
   InstitutionListStatusSchema,
   PlanCodeSchema,
+  SkillClaimStatusSchema,
+  SkillProficiencySchema,
   StudentInviteFilterSchema,
   TenantVerificationStatusSchema,
   UserRoleSchema,
@@ -64,6 +66,13 @@ export const InstitutionDtoSchema = z.object({
   batchCount: z.number().int().nonnegative(),
   invitePendingCount: z.number().int().nonnegative(),
   inviteAcceptedCount: z.number().int().nonnegative(),
+  /**
+   * Usage snapshot: distinct students with at least one assessment Attempt in the
+   * trailing 30 days. A cheap, current-state proxy for tenant activity — not a
+   * time series. Only populated on the single-institution detail response
+   * (`getInstitution`); omitted from list responses to avoid fleet-wide cost.
+   */
+  activeStudents30d: z.number().int().nonnegative().optional(),
   createdAt: IsoDateTimeSchema,
 });
 export type InstitutionDto = z.infer<typeof InstitutionDtoSchema>;
@@ -116,9 +125,31 @@ export const StudentInviteLinkResponseSchema = z.object({
 });
 export type StudentInviteLinkResponse = z.infer<typeof StudentInviteLinkResponseSchema>;
 
-export const GlobalStudentSearchQuerySchema = z.object({
-  q: z.string().trim().min(3).max(200),
-});
+/**
+ * `q` (name/email) stays optional-but-validated so it can be combined with, or
+ * replaced entirely by, the capability filters below — a TPO can search "AWS
+ * skill, ADVANCED, verified" at one institution without typing a name.
+ */
+export const GlobalStudentSearchQuerySchema = z
+  .object({
+    q: z.string().trim().min(3).max(200).optional(),
+    institutionId: UuidSchema.optional(),
+    skillCode: z.string().trim().min(1).max(100).optional(),
+    proficiency: SkillProficiencySchema.optional(),
+    verificationStatus: SkillClaimStatusSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      value.q !== undefined ||
+      value.institutionId !== undefined ||
+      value.skillCode !== undefined ||
+      value.proficiency !== undefined ||
+      value.verificationStatus !== undefined,
+    {
+      message:
+        'Provide a search term or at least one filter (institution, skill, proficiency, verification status).',
+    },
+  );
 export type GlobalStudentSearchQuery = z.infer<typeof GlobalStudentSearchQuerySchema>;
 
 export const GlobalStudentHitDtoSchema = z.object({
@@ -148,6 +179,32 @@ export const SubscriptionPlanDtoSchema = z.object({
   institutionCount: z.number().int().nonnegative(),
 });
 export type SubscriptionPlanDto = z.infer<typeof SubscriptionPlanDtoSchema>;
+
+/** The `FeatureFlag` catalog itself — the flags that exist, independent of any plan or tenant. */
+export const FeatureFlagDtoSchema = z.object({
+  id: UuidSchema,
+  key: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type FeatureFlagDto = z.infer<typeof FeatureFlagDtoSchema>;
+
+export const FeatureFlagOverrideTenantTypeSchema = z.enum(['institution', 'company']);
+export type FeatureFlagOverrideTenantType = z.infer<typeof FeatureFlagOverrideTenantTypeSchema>;
+
+/** A single per-tenant `FeatureFlagOverride` row, joined with the flag and tenant it targets. */
+export const FeatureFlagOverrideDtoSchema = z.object({
+  id: UuidSchema,
+  flagKey: z.string(),
+  flagName: z.string(),
+  tenantType: FeatureFlagOverrideTenantTypeSchema,
+  tenantId: UuidSchema,
+  tenantName: z.string(),
+  enabled: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+});
+export type FeatureFlagOverrideDto = z.infer<typeof FeatureFlagOverrideDtoSchema>;
 
 /* ------------------------------- invitations ------------------------------ */
 
@@ -342,6 +399,10 @@ export const ListAuditLogsQuerySchema = z.object({
   resourceId: z.string().trim().max(80).optional(),
   actorId: UuidSchema.optional(),
   section: AuditLogSectionSchema.optional(),
+  /** Inclusive lower bound on createdAt. */
+  from: IsoDateTimeSchema.optional(),
+  /** Inclusive upper bound on createdAt. */
+  to: IsoDateTimeSchema.optional(),
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 

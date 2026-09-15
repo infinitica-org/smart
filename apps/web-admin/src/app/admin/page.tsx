@@ -7,12 +7,12 @@ import {
   GraduationCap,
   PauseCircle,
   ShieldAlert,
-  BadgeCheck,
   ScrollText,
   ArrowUpRight,
   Users,
+  Sparkles,
 } from 'lucide-react';
-import type { AdminDashboardDto } from '@smart/contracts';
+import type { AdminDashboardDto, AiUsageSummaryDto } from '@smart/contracts';
 import { InlineAlert } from '@/components/admin-ui';
 import { KpiTile, OpsBoard, Panel, PlanMix, TenantMix } from '@/components/dashboard-widgets';
 import { api } from '@/lib/api';
@@ -37,12 +37,19 @@ function LoadingOverview() {
 export default function AdminHomePage() {
   const [data, setData] = useState<AdminDashboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiUsage, setAiUsage] = useState<AiUsageSummaryDto | null>(null);
 
   useEffect(() => {
     api.onboarding
       .dashboard()
       .then(setData)
       .catch(() => setError('Failed to load dashboard.'));
+    // Independent fetch: AI usage isn't part of AdminDashboardDto, and
+    // failing to load it shouldn't block the rest of the dashboard.
+    api.onboarding
+      .aiUsage()
+      .then(setAiUsage)
+      .catch(() => undefined);
   }, []);
 
   if (error) return <InlineAlert tone="danger" title={error} />;
@@ -102,6 +109,19 @@ export default function AdminHomePage() {
           hint="Awaiting review"
           href="/admin/integrity"
         />
+        <Link href="/admin/health" className="block rounded-2xl focus-visible:outline-none">
+          <KpiTile
+            icon={Sparkles}
+            tone="accent"
+            label="AI usage (24h)"
+            value={aiUsage?.last24h.requestCount ?? 0}
+            hint={
+              aiUsage
+                ? `$${aiUsage.last24h.totalCostUsd.toFixed(2)} spent · ${(aiUsage.last24h.fallbackRate * 100).toFixed(0)}% fallback`
+                : 'Loading…'
+            }
+          />
+        </Link>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -180,14 +200,6 @@ export default function AdminHomePage() {
             value: data.institutions.total,
             icon: GraduationCap,
             href: '/admin/institutions',
-          },
-          {
-            id: 'verify',
-            label: 'Verification',
-            hint: 'Waiting on review',
-            value: data.pendingVerifications,
-            icon: BadgeCheck,
-            href: '/admin/verification',
           },
           {
             id: 'integrity',

@@ -36,5 +36,7 @@ export const ProfessionalCredentialSchema = z.object({
   coveredSkills: z.array(TaxonomySkillCodeSchema).max(50).default([]),
   applicationEvidence: z.array(CredentialApplicationEvidenceSchema).max(20).default([]),
   verificationMethod: EvidenceVerificationMethodSchema.optional(),
+  /** Object storage key for an uploaded supporting document (Tier 3 OCR fallback). Never a raw URL. */
+  documentObjectKey: z.string().max(500).nullable().optional(),
 });
 export type ProfessionalCredential = z.infer<typeof ProfessionalCredentialSchema>;

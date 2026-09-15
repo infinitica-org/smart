@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AiHealthDtoSchema, type AiCompletionRequest } from '@smart/contracts';
+import {
+  AiHealthDtoSchema,
+  AiUsageSummaryDtoSchema,
+  type AiCompletionRequest,
+} from '@smart/contracts';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { AiGatewayService } from './ai-gateway.service.js';
+import { AiGatewayUsageService } from './ai-gateway-usage.service.js';
 import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
 const AUDIT_ID = '11111111-1111-4111-8111-111111111111';
@@ -629,7 +634,10 @@ describe('AiGatewayController', () => {
       new AiGatewayAuditService(),
       new AiCircuitBreaker(),
     );
-    const controller = new AiGatewayController(service);
+    const usageService = new AiGatewayUsageService({
+      aiEvaluationAudit: { findMany: vi.fn().mockResolvedValue([]) },
+    } as never);
+    const controller = new AiGatewayController(service, usageService);
 
     const health = await controller.health();
     expect(health.providers).toHaveLength(3);
@@ -642,6 +650,11 @@ describe('AiGatewayController', () => {
     const admin = await controller.adminAiHealth();
     expect(admin.providers).toHaveLength(3);
     expect(AiHealthDtoSchema.safeParse(admin).success).toBe(true);
+
+    const usage = await controller.adminAiUsage();
+    expect(AiUsageSummaryDtoSchema.safeParse(usage).success).toBe(true);
+    expect(usage.last24h.requestCount).toBe(0);
+    expect(usage.errorRateAvailable).toBe(false);
 
     const meta = controller.meta();
     expect(meta.module).toBe('ai-gateway');

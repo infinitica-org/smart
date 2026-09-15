@@ -488,3 +488,89 @@ describe('InstitutionsService.getDashboard', () => {
     expect(dashboard.students.active).toBe(95);
   });
 });
+
+describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)', () => {
+  const studentId = randomUUID();
+  const instId = randomUUID();
+
+  const fakeStudent = {
+    id: studentId,
+    email: 'jane@example.com',
+    fullName: 'Jane Doe',
+    institutionId: instId,
+    institution: { name: 'PSG Tech' },
+    heldAt: null,
+  };
+
+  it('still searches by name/email alone (q only, no filters)', async () => {
+    const prisma = {
+      user: { findMany: vi.fn().mockResolvedValue([fakeStudent]) },
+      invitation: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
+    const hits = await service.searchStudents({ q: 'jane' });
+    expect(hits).toHaveLength(1);
+    const where = (prisma.user.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { fullName: { contains: 'jane', mode: 'insensitive' } },
+      { email: { contains: 'jane', mode: 'insensitive' } },
+    ]);
+    expect(where.skillClaims).toBeUndefined();
+    expect(where.institutionId).toEqual({ not: null });
+  });
+
+  it('ANDs institution, skill, proficiency, and verification-status filters', async () => {
+    const prisma = {
+      user: { findMany: vi.fn().mockResolvedValue([fakeStudent]) },
+      invitation: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
+    const hits = await service.searchStudents({
+      institutionId: instId,
+      skillCode: 'js-fundamentals',
+      proficiency: 'ADVANCED',
+      verificationStatus: 'VERIFIED',
+    });
+    expect(hits).toHaveLength(1);
+    const where = (prisma.user.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].where;
+    expect(where.institutionId).toBe(instId);
+    expect(where.OR).toBeUndefined();
+    expect(where.skillClaims).toEqual({
+      some: {
+        skill: { code: 'js-fundamentals' },
+        proficiency: 'ADVANCED',
+        status: 'VERIFIED',
+      },
+    });
+  });
+
+  it('combines a name search with capability filters', async () => {
+    const prisma = {
+      user: { findMany: vi.fn().mockResolvedValue([fakeStudent]) },
+      invitation: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
+    await service.searchStudents({ q: 'jane', proficiency: 'BEGINNER' });
+    const where = (prisma.user.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { fullName: { contains: 'jane', mode: 'insensitive' } },
+      { email: { contains: 'jane', mode: 'insensitive' } },
+    ]);
+    expect(where.skillClaims).toEqual({ some: { proficiency: 'BEGINNER' } });
+  });
+});
