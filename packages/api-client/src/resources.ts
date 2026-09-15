@@ -81,6 +81,8 @@ import {
   UploadProfilePhotoResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
+  FeatureFlagDtoSchema,
+  FeatureFlagOverrideDtoSchema,
   FetchGithubProfileResponseSchema,
   GetCertificateEndorsementResponseSchema,
   GithubRepoReadmeResponseSchema,
@@ -583,6 +585,14 @@ export function onboardingApi(client: SmartApiClient) {
 
     listPlans: () =>
       client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
+    listFeatureFlags: () =>
+      client.get(prefixed('/admin/feature-flags'), { schema: z.array(FeatureFlagDtoSchema) }),
+
+    listFeatureFlagOverrides: () =>
+      client.get(prefixed('/admin/feature-flag-overrides'), {
+        schema: z.array(FeatureFlagOverrideDtoSchema),
+      }),
 
     updatePlanEntitlements: (planId: string, body: UpdatePlanEntitlementsRequest) =>
       client.patch(prefixed(`/admin/plans/${planId}/entitlements`), body, {

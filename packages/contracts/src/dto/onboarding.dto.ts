@@ -149,6 +149,32 @@ export const SubscriptionPlanDtoSchema = z.object({
 });
 export type SubscriptionPlanDto = z.infer<typeof SubscriptionPlanDtoSchema>;
 
+/** The `FeatureFlag` catalog itself — the flags that exist, independent of any plan or tenant. */
+export const FeatureFlagDtoSchema = z.object({
+  id: UuidSchema,
+  key: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type FeatureFlagDto = z.infer<typeof FeatureFlagDtoSchema>;
+
+export const FeatureFlagOverrideTenantTypeSchema = z.enum(['institution', 'company']);
+export type FeatureFlagOverrideTenantType = z.infer<typeof FeatureFlagOverrideTenantTypeSchema>;
+
+/** A single per-tenant `FeatureFlagOverride` row, joined with the flag and tenant it targets. */
+export const FeatureFlagOverrideDtoSchema = z.object({
+  id: UuidSchema,
+  flagKey: z.string(),
+  flagName: z.string(),
+  tenantType: FeatureFlagOverrideTenantTypeSchema,
+  tenantId: UuidSchema,
+  tenantName: z.string(),
+  enabled: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+});
+export type FeatureFlagOverrideDto = z.infer<typeof FeatureFlagOverrideDtoSchema>;
+
 /* ------------------------------- invitations ------------------------------ */
 
 export const InviteUserRequestSchema = z.object({

@@ -19,6 +19,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /admin/companies/:companyId/entitlements": "role.superAdmin",
   "GET /admin/corroboration/review-flags": "corroboration.adminFlags",
   "GET /admin/dashboard": "role.superAdmin",
+  "GET /admin/feature-flag-overrides": "role.superAdmin",
+  "GET /admin/feature-flags": "role.superAdmin",
   "GET /admin/institutions": "role.superAdmin",
   "GET /admin/institutions/:institutionId": "role.superAdmin",
   "GET /admin/institutions/:institutionId/admins": "role.superAdmin",
