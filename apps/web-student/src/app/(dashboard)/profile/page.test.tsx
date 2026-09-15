@@ -98,6 +98,10 @@ vi.mock('@/components/profile/CertificatesSection', () => ({
   CertificatesSection: () => <div>Certificates section</div>,
 }));
 
+vi.mock('@/components/profile/CredentialsSection', () => ({
+  CredentialsSection: () => <div>Credentials section</div>,
+}));
+
 vi.mock('@/components/profile/ProjectSubmissionForm', () => ({
   ProjectSubmissionForm: () => <div>Projects section</div>,
 }));
@@ -142,6 +146,8 @@ describe('ProfilePage', () => {
       'languages',
 
       'certificates',
+
+      'credentials',
 
       'links',
 

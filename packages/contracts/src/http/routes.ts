@@ -3130,6 +3130,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Create a professional credential with application evidence.',
   },
   {
+    method: 'POST',
+    path: '/users/me/credentials/:id/document/upload',
+    module: 'evidence',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Upload a supporting document for a credential (Tier 3 OCR fallback).',
+  },
+  {
     method: 'GET',
     path: '/users/me/passive-signals',
     module: 'evidence',

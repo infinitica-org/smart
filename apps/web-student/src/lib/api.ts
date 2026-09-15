@@ -107,6 +107,20 @@ let mockLanguages: Record<string, unknown>[] = [
   },
 ];
 
+const mockCredentials: Record<string, unknown>[] = [
+  {
+    credentialId: 'cred-mock-1',
+    issuer: 'Amazon Web Services',
+    credentialName: 'AWS Certified Solutions Architect',
+    credentialType: 'CERTIFICATION',
+    status: 'PENDING_VERIFICATION',
+    practicalComponent: false,
+    coveredTopics: [],
+    coveredSkills: [],
+    applicationEvidence: [],
+  },
+];
+
 const MOCK_L1_ITEMS = [
   {
     itemId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
@@ -407,7 +421,11 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     });
   }
 
-  if (url.includes('/users/me') && method === 'GET') {
+  // Exact literal /users/me only — a plain .includes() check here previously
+  // shadowed every longer /users/me/* sub-route (education, languages,
+  // credentials, …) registered later in this function, since those GETs would
+  // match this condition first and never reach their own handler below.
+  if (/\/users\/me(\?|$)/u.test(url) && method === 'GET') {
     return new Response(JSON.stringify(mockStudentUser()), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -886,6 +904,53 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       const id = match ? match[1] : null;
       mockLanguages = mockLanguages.filter((l) => l.id !== id);
       return new Response(null, { status: 204 });
+    }
+  }
+
+  if (url.includes('/users/me/credentials')) {
+    const uploadMatch = url.match(/\/credentials\/([a-z0-9-]+)\/document\/upload/i);
+    if (uploadMatch && method === 'POST') {
+      const id = uploadMatch[1];
+      const idx = mockCredentials.findIndex((c) => c.credentialId === id);
+      if (idx !== -1) {
+        mockCredentials[idx] = {
+          ...mockCredentials[idx],
+          documentObjectKey: `credential-documents/mock/${crypto.randomUUID()}`,
+        };
+        return new Response(JSON.stringify(mockCredentials[idx]), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+    }
+    if (method === 'GET') {
+      return new Response(JSON.stringify(mockCredentials), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      const newEntry = {
+        credentialId: crypto.randomUUID(),
+        issuer: body.issuer,
+        credentialName: body.credentialName,
+        credentialType: body.credentialType,
+        externalCredentialId: body.externalCredentialId,
+        verificationSource: body.verificationSource,
+        // Mirrors the real API: client-supplied status/verificationMethod are ignored.
+        status: 'PENDING_VERIFICATION',
+        practicalComponent: false,
+        coveredTopics: [],
+        coveredSkills: [],
+        applicationEvidence: [],
+      };
+      mockCredentials.unshift(newEntry);
+      return new Response(JSON.stringify(newEntry), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
   }
 
