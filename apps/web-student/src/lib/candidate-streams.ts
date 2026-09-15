@@ -41,8 +41,11 @@ export const CANDIDATE_STREAMS: readonly CandidateStream[] = [
   },
 ] as const;
 
-export const DEFAULT_CANDIDATE_STREAM =
-  CANDIDATE_STREAMS.find((s) => s.available) ?? CANDIDATE_STREAMS[0];
+const _defaultCandidateStream = CANDIDATE_STREAMS.find((s) => s.available) ?? CANDIDATE_STREAMS[0];
+if (!_defaultCandidateStream) {
+  throw new Error('CANDIDATE_STREAMS must define at least one stream');
+}
+export const DEFAULT_CANDIDATE_STREAM: CandidateStream = _defaultCandidateStream;
 
 export function candidateStreamForTrack(
   trackCode: string | null | undefined,

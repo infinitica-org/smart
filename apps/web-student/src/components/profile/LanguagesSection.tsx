@@ -102,7 +102,7 @@ export function LanguagesSection() {
       await api.users.deleteLanguage(id);
       await fetchLanguages();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to delete language entry.');
+      setFormError((err as Error)?.message || 'Failed to delete language entry.');
     }
   };
 

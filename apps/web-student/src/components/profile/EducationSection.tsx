@@ -136,7 +136,7 @@ export function EducationSection() {
       await api.users.deleteEducation(id);
       await fetchEducation();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to delete education entry.');
+      setFormError((err as Error)?.message || 'Failed to delete education entry.');
     }
   };
 
@@ -163,7 +163,7 @@ export function EducationSection() {
       setFileName('');
       await fetchEducation();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to attach education proof.');
+      setFormError((err as Error)?.message || 'Failed to attach education proof.');
     } finally {
       setUploadingDoc(false);
     }
@@ -175,7 +175,7 @@ export function EducationSection() {
       await api.users.removeEducationDocument(educationId, documentId);
       await fetchEducation();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to remove education proof.');
+      setFormError((err as Error)?.message || 'Failed to remove education proof.');
     }
   };
 

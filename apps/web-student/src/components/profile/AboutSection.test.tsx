@@ -10,7 +10,7 @@ vi.mock('@/lib/use-onboarding', () => ({
 }));
 
 vi.mock('@smart/ui', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@smart/ui')>();
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),

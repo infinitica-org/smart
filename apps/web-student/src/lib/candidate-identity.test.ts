@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest';
 import type { AuthenticatedUser } from '@smart/contracts';
 import { headlineFor } from './candidate-identity';
 
-const baseUser = {
-  id: 'u1',
+const baseUser: AuthenticatedUser = {
+  userId: '00000000-0000-4000-8000-000000000001',
   email: 'student@smart.local',
   fullName: 'Test Student',
   role: 'STUDENT',
+  institutionId: null,
+  institutionName: null,
+  primaryTrack: null,
+  secondaryTrack: null,
+  provider: 'PASSWORD',
+  emailVerified: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
   onboardingCompleted: true,
-} as AuthenticatedUser;
+  profilePhotoUrl: null,
+  sessionHold: null,
+};
 
 describe('headlineFor', () => {
   it('uses the onboarding stream role instead of the certification track name', () => {
@@ -28,6 +37,6 @@ describe('headlineFor', () => {
   });
 
   it('returns SMART candidate when track is unset', () => {
-    expect(headlineFor({ ...baseUser, primaryTrack: null }, [])).toBe('SMART candidate');
+    expect(headlineFor(baseUser, [])).toBe('SMART candidate');
   });
 });
