@@ -19,6 +19,7 @@ import type {
   CreateBatchRequest,
   CreateInstitutionRequest,
   GlobalStudentHitDto,
+  GlobalStudentSearchQuery,
   InstitutionAdminDto,
   InstitutionDto,
   InstitutionStudentDto,
@@ -45,6 +46,9 @@ import type {
   ResolveVerificationRequest,
   UpdatePlanCapacityRequest,
   VerificationQueueItemDto,
+  FeatureFlagDto,
+  FeatureFlagOverrideDto,
+  FeatureFlagOverrideTenantType,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
@@ -150,7 +154,24 @@ export class InstitutionsService {
     if (!dto) {
       throw new Error('Institution DTO mapping returned no rows for an existing institution');
     }
-    return dto;
+    const activeStudents30d = await this.countActiveStudents30d(institutionId);
+    return { ...dto, activeStudents30d };
+  }
+
+  /**
+   * Lightweight usage snapshot for the Institution Control Center: distinct students
+   * with at least one assessment Attempt started in the trailing 30 days. Deliberately
+   * a single current-state number, not a time series — cheap enough for the detail
+   * view, not meant for the institutions list (which stays fleet-wide and unfiltered).
+   */
+  private async countActiveStudents30d(institutionId: string): Promise<number> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const activeStudents = await this.prisma.attempt.groupBy({
+      by: ['userId'],
+      where: { startedAt: { gte: cutoff }, user: { institutionId, role: 'STUDENT' } },
+      _count: { _all: true },
+    });
+    return activeStudents.length;
   }
 
   async updateInstitution(
@@ -340,16 +361,29 @@ export class InstitutionsService {
     return rows.filter((row) => row.inviteStatus === query.inviteStatus);
   }
 
-  async searchStudents(q: string): Promise<GlobalStudentHitDto[]> {
+  async searchStudents(query: GlobalStudentSearchQuery): Promise<GlobalStudentHitDto[]> {
+    const { q, institutionId, skillCode, proficiency, verificationStatus } = query;
+
+    const where: Prisma.UserWhereInput = {
+      role: 'STUDENT',
+      institutionId: institutionId ?? { not: null },
+    };
+    if (q) {
+      where.OR = [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    const skillClaimWhere: Prisma.SkillClaimWhereInput = {};
+    if (skillCode) skillClaimWhere.skill = { code: skillCode };
+    if (proficiency) skillClaimWhere.proficiency = proficiency;
+    if (verificationStatus) skillClaimWhere.status = verificationStatus;
+    if (Object.keys(skillClaimWhere).length > 0) {
+      where.skillClaims = { some: skillClaimWhere };
+    }
+
     const users = await this.prisma.user.findMany({
-      where: {
-        role: 'STUDENT',
-        institutionId: { not: null },
-        OR: [
-          { fullName: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+      where,
       include: { institution: true },
       take: 50,
       orderBy: { fullName: 'asc' },
@@ -471,6 +505,47 @@ export class InstitutionsService {
       });
     }
     return updated;
+  }
+
+  /** The `FeatureFlag` catalog itself — read-only here; flags are seeded, not admin-authored. */
+  async listFeatureFlags(): Promise<FeatureFlagDto[]> {
+    const flags = await this.prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
+    return flags.map((flag) => ({
+      id: flag.id,
+      key: flag.key,
+      name: flag.name,
+      description: flag.description,
+      createdAt: flag.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Every `FeatureFlagOverride` row across every institution and company, for the
+   * consolidated cross-tenant Overrides view. Per-tenant creation/editing still
+   * happens from the institution/company detail pages.
+   */
+  async listFeatureFlagOverrides(): Promise<FeatureFlagOverrideDto[]> {
+    const overrides = await this.prisma.featureFlagOverride.findMany({
+      include: { featureFlag: true, institution: true, company: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return overrides
+      .filter((row) => row.institutionId ?? row.companyId)
+      .map((row) => {
+        const tenantType: FeatureFlagOverrideTenantType = row.institutionId
+          ? 'institution'
+          : 'company';
+        return {
+          id: row.id,
+          flagKey: row.featureFlag.key,
+          flagName: row.featureFlag.name,
+          tenantType,
+          tenantId: (row.institutionId ?? row.companyId) as string,
+          tenantName: row.institution?.name ?? row.company?.name ?? 'Unknown tenant',
+          enabled: row.enabled,
+          createdAt: row.createdAt.toISOString(),
+        };
+      });
   }
 
   async setInstitutionFlagOverride(
@@ -657,6 +732,12 @@ export class InstitutionsService {
     if (query.actorId) where.actorId = query.actorId;
     if (query.section) {
       where.actor = { is: { role: { in: AUDIT_LOG_SECTION_ROLES[query.section] } } };
+    }
+    if (query.from || query.to) {
+      where.createdAt = {
+        ...(query.from ? { gte: new Date(query.from) } : {}),
+        ...(query.to ? { lte: new Date(query.to) } : {}),
+      };
     }
     if (query.q) {
       where.OR = [

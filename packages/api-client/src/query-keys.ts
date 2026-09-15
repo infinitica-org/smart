@@ -72,6 +72,7 @@ export const queryKeys = {
   /* ------------------------------ platform ops ---------------------------- */
   platformHealth: () => ['admin', 'platform-health'] as const,
   aiHealth: () => ['admin', 'ai-health'] as const,
+  aiUsage: () => ['admin', 'ai-usage'] as const,
   integrityQueue: (params: Readonly<Record<string, unknown>>) =>
     ['admin', 'integrity-queue', params] as const,
 } as const;

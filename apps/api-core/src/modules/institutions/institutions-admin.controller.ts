@@ -82,6 +82,16 @@ export class InstitutionsAdminController {
     return this.institutions.listPlans();
   }
 
+  @Get('feature-flags')
+  listFeatureFlags() {
+    return this.institutions.listFeatureFlags();
+  }
+
+  @Get('feature-flag-overrides')
+  listFeatureFlagOverrides() {
+    return this.institutions.listFeatureFlagOverrides();
+  }
+
   @Patch('plans/:planId/entitlements')
   updatePlanEntitlements(
     @Param('planId') planId: string,
@@ -139,7 +149,7 @@ export class InstitutionsAdminController {
   @Get('students/search')
   searchStudents(@Query() query: Record<string, string | undefined>) {
     const parsed = GlobalStudentSearchQuerySchema.parse(compactQuery(query));
-    return this.institutions.searchStudents(parsed.q);
+    return this.institutions.searchStudents(parsed);
   }
 
   @Get('institutions/:institutionId')

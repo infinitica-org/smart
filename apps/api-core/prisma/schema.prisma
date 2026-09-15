@@ -1714,6 +1714,7 @@ model ProfessionalCredential {
   coveredSkillCodes    String[] @default([]) @map("covered_skill_codes")
   applicationEvidence  Json?    @map("application_evidence")
   verificationMethod   String?  @map("verification_method")
+  documentObjectKey    String?  @map("document_object_key")
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -152,6 +152,38 @@ export function SeverityBadge({ severity }: { severity: 'CLEAN' | 'MINOR' | 'MAJ
   );
 }
 
+export function VerificationBadge({
+  status,
+}: {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+}) {
+  if (status === 'APPROVED') {
+    return (
+      <Badge className="bg-accent text-accent-foreground">
+        <CircleCheck />
+        Verified
+      </Badge>
+    );
+  }
+  if (status === 'REJECTED') {
+    return (
+      <Badge variant="destructive">
+        <CircleMinus />
+        Rejected
+      </Badge>
+    );
+  }
+  if (status === 'PENDING') {
+    return (
+      <Badge variant="secondary">
+        <CircleAlert />
+        Pending verification
+      </Badge>
+    );
+  }
+  return <Badge variant="secondary">{status}</Badge>;
+}
+
 export function DataTable({
   headers,
   children,

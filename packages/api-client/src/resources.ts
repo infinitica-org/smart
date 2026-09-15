@@ -10,6 +10,7 @@ import type {
   DeclareSkillClaimRequest,
   FetchGithubProfileRequest,
   GithubRepoReadmeRequest,
+  GlobalStudentSearchQuery,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -59,6 +60,7 @@ import {
   API_PREFIX,
   AdminDashboardDtoSchema,
   AiHealthDtoSchema,
+  AiUsageSummaryDtoSchema,
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
@@ -81,6 +83,8 @@ import {
   UploadProfilePhotoResponseSchema,
   CertificateDtoSchema,
   CompanyDtoSchema,
+  FeatureFlagDtoSchema,
+  FeatureFlagOverrideDtoSchema,
   FetchGithubProfileResponseSchema,
   GetCertificateEndorsementResponseSchema,
   GithubRepoReadmeResponseSchema,
@@ -575,14 +579,22 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
-    searchStudents: (q: string) =>
+    searchStudents: (query: GlobalStudentSearchQuery) =>
       client.get(prefixed('/admin/students/search'), {
         schema: z.array(GlobalStudentHitDtoSchema),
-        query: { q },
+        query,
       }),
 
     listPlans: () =>
       client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
+    listFeatureFlags: () =>
+      client.get(prefixed('/admin/feature-flags'), { schema: z.array(FeatureFlagDtoSchema) }),
+
+    listFeatureFlagOverrides: () =>
+      client.get(prefixed('/admin/feature-flag-overrides'), {
+        schema: z.array(FeatureFlagOverrideDtoSchema),
+      }),
 
     updatePlanEntitlements: (planId: string, body: UpdatePlanEntitlementsRequest) =>
       client.patch(prefixed(`/admin/plans/${planId}/entitlements`), body, {
@@ -633,7 +645,10 @@ export function onboardingApi(client: SmartApiClient) {
       action?: string;
       resourceType?: string;
       resourceId?: string;
+      actorId?: string;
       section?: AuditLogSection;
+      from?: string;
+      to?: string;
     }) =>
       client.get(prefixed('/admin/audit-logs'), {
         schema: z.array(AuditLogDtoSchema),
@@ -731,6 +746,8 @@ export function onboardingApi(client: SmartApiClient) {
       }),
 
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),
+
+    aiUsage: () => client.get(prefixed('/admin/ai-usage'), { schema: AiUsageSummaryDtoSchema }),
 
     holdStudent: (userId: string, body: TenantActionReason) =>
       client.post(prefixed(`/admin/students/${userId}/hold`), body, {
@@ -924,6 +941,14 @@ export function evidenceApi(client: SmartApiClient) {
       client.post(prefixed('/users/me/credentials'), body, {
         schema: ProfessionalCredentialDtoSchema,
       }),
+
+    uploadCredentialDocument: (id: string, file: File | Blob, fileName: string) => {
+      const formData = new FormData();
+      formData.append('file', file, fileName);
+      return client.postForm(prefixed(`/users/me/credentials/${id}/document/upload`), formData, {
+        schema: ProfessionalCredentialDtoSchema,
+      });
+    },
 
     listPassiveSignals: () =>
       client.get(prefixed('/users/me/passive-signals'), {
