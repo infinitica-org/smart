@@ -342,6 +342,10 @@ export const ListAuditLogsQuerySchema = z.object({
   resourceId: z.string().trim().max(80).optional(),
   actorId: UuidSchema.optional(),
   section: AuditLogSectionSchema.optional(),
+  /** Inclusive lower bound on createdAt. */
+  from: IsoDateTimeSchema.optional(),
+  /** Inclusive upper bound on createdAt. */
+  to: IsoDateTimeSchema.optional(),
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
