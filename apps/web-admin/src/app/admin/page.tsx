@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   ScrollText,
   ArrowUpRight,
+  Users,
 } from 'lucide-react';
 import type { AdminDashboardDto } from '@smart/contracts';
 import { InlineAlert } from '@/components/admin-ui';
@@ -19,8 +20,8 @@ import { api } from '@/lib/api';
 function LoadingOverview() {
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
           <div key={index} className="h-32 animate-pulse rounded-2xl bg-card" />
         ))}
       </div>
@@ -53,13 +54,22 @@ export default function AdminHomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5">
         <KpiTile
           icon={GraduationCap}
           tone="accent"
           label="Institutions"
           value={data.institutions.total}
           hint={`${data.institutions.active} active · ${data.institutions.held} held`}
+          href="/admin/institutions"
+        />
+        <KpiTile
+          icon={Users}
+          tone="accent"
+          label="Students"
+          value={data.students.total}
+          hint={`${data.students.active} active · ${data.students.held} held`}
+          href="/admin/users"
         />
         <KpiTile
           icon={PauseCircle}
@@ -67,6 +77,7 @@ export default function AdminHomePage() {
           label="Open holds"
           value={data.openHolds.institutions + data.openHolds.students}
           hint={`${data.openHolds.institutions} tenants · ${data.openHolds.students} students`}
+          href="/admin/institutions"
         />
         <KpiTile
           icon={Building2}
@@ -81,6 +92,7 @@ export default function AdminHomePage() {
           label="Integrity flags"
           value={data.flaggedAttempts}
           hint="Awaiting review"
+          href="/admin/integrity"
         />
       </div>
 

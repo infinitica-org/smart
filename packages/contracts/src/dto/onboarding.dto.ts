@@ -356,6 +356,11 @@ export const AdminDashboardDtoSchema = z.object({
     total: z.number().int().nonnegative(),
     pendingVerification: z.number().int().nonnegative(),
   }),
+  students: z.object({
+    total: z.number().int().nonnegative(),
+    active: z.number().int().nonnegative(),
+    held: z.number().int().nonnegative(),
+  }),
   planMix: z.array(z.object({ code: PlanCodeSchema, count: z.number().int().nonnegative() })),
   openHolds: z.object({
     institutions: z.number().int().nonnegative(),
