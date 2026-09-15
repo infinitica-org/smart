@@ -21,7 +21,12 @@ import {
   controlButtonClassName,
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
-import { formatAuditAction, formatResourceType } from '@/lib/audit-actions';
+import {
+  ALLOWED_AUDIT_METADATA_KEYS,
+  formatAuditAction,
+  formatResourceType,
+  resolveActionFilterValue,
+} from '@/lib/audit-actions';
 
 const SECTIONS: { value: AuditLogSection | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All' },
@@ -86,23 +91,55 @@ function AuditTable({
 }
 
 function MetadataList({ metadata }: { metadata: Record<string, unknown> | null }) {
+  const [showRaw, setShowRaw] = useState(false);
   const entries = metadata ? Object.entries(metadata) : [];
   if (entries.length === 0) {
     return <p className="text-sm text-muted-foreground">No additional details recorded.</p>;
   }
+
+  // Only an explicit allowlist of metadata keys is rendered inline — see
+  // ALLOWED_AUDIT_METADATA_KEYS. Anything else stays behind the raw toggle below so a new key
+  // showing up at some call site six months from now doesn't get silently surfaced to a
+  // SUPER_ADMIN without anyone deciding that on purpose.
+  const visible = entries.filter(([key]) => ALLOWED_AUDIT_METADATA_KEYS.has(key));
+  const hidden = entries.filter(([key]) => !ALLOWED_AUDIT_METADATA_KEYS.has(key));
+
   return (
-    <dl className="grid gap-3">
-      {entries.map(([key, value]) => (
-        <div key={key} className="grid gap-0.5">
-          <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {key}
-          </dt>
-          <dd className="text-sm break-words text-foreground">
-            {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-          </dd>
+    <div className="grid gap-3">
+      {visible.length > 0 ? (
+        <dl className="grid gap-3">
+          {visible.map(([key, value]) => (
+            <div key={key} className="grid gap-0.5">
+              <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {key}
+              </dt>
+              <dd className="text-sm break-words text-foreground">
+                {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {hidden.length > 0 ? (
+        <div className="grid gap-1.5">
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto justify-start px-0 text-muted-foreground"
+            onClick={() => setShowRaw((value) => !value)}
+          >
+            {showRaw ? 'Hide' : 'Show'} {hidden.length} additional field
+            {hidden.length === 1 ? '' : 's'} (raw)
+          </Button>
+          {showRaw ? (
+            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs text-foreground">
+              {JSON.stringify(Object.fromEntries(hidden), null, 2)}
+            </pre>
+          ) : null}
         </div>
-      ))}
-    </dl>
+      ) : null}
+    </div>
   );
 }
 
@@ -174,7 +211,7 @@ export default function AuditPage() {
     setRows(
       await api.onboarding.listAuditLogs({
         q: nextFilters.q.trim() || undefined,
-        action: nextFilters.action.trim() || undefined,
+        action: resolveActionFilterValue(nextFilters.action) || undefined,
         resourceType: nextFilters.resourceType.trim() || undefined,
         resourceId: nextFilters.resourceId.trim() || undefined,
         actorId: nextFilters.actorId.trim() || undefined,
@@ -223,7 +260,7 @@ export default function AuditPage() {
                 <AdminInput
                   value={filters.action}
                   onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
-                  placeholder="e.g. institution.held"
+                  placeholder="e.g. institution.held or Held institution"
                 />
               </Field>
               <Field label="Resource type">

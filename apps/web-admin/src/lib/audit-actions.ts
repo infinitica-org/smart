@@ -78,6 +78,78 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'work_experience.authenticity_approved': 'Approved work experience authenticity',
 };
 
+/**
+ * Explicit allowlist of `AuditLog.metadata` keys that are safe to render verbatim to a
+ * SUPER_ADMIN in the audit detail Sheet. Anything not listed here stays hidden behind the
+ * "N additional fields (raw)" affordance — a new key showing up at a call site does not
+ * automatically become visible; adding it here is a deliberate decision.
+ *
+ * Built the same way as `AUDIT_ACTION_LABELS` above: by enumerating every metadata object
+ * actually passed to `AuditPublisherService.record(...)` / `writeAudit(...)` across api-core
+ * (institutions.service.ts, companies.service.ts, organizations.service.ts, username.service.ts,
+ * blocked-words-admin.service.ts, corroboration.service.ts, signal-ingestion.service.ts,
+ * work-experience.service.ts).
+ *
+ * Deliberately excluded: `verifierEmail` (employer-verification metadata) and `managerEmail`
+ * (manager-endorsement metadata) in work-experience.service.ts — these are third-party contact
+ * addresses collected for the verification workflow, not something an admin needs while
+ * triaging the audit log. They stay visible on the work-experience review screen itself; this
+ * dictionary just avoids giving them a second, easy-to-forget-about home.
+ */
+export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
+  // institutions.service.ts / companies.service.ts
+  'planCode',
+  'key',
+  'enabled',
+  'decision',
+  'institutionId',
+  'candidateCapacity',
+  'entitlements',
+  'reasonCode',
+  'email', // platform_admin.invited — the invited admin's own address, core to that event
+
+  // institutions.service.ts (batch import counts)
+  'imported',
+  'skipped',
+  'existingStudents',
+  'newAccounts',
+  'pendingInvitations',
+
+  // organizations.service.ts
+  'verificationStatus',
+  'verificationReason',
+
+  // username.service.ts / blocked-words-admin.service.ts
+  'profileVisible',
+  'showInProgressItems',
+  'word',
+
+  // corroboration.service.ts
+  'userId',
+  'claimId',
+  'skillCode',
+  'resolutionNote',
+  'passiveScore',
+  'assessmentScore',
+
+  // signal-ingestion.service.ts
+  'sourceId',
+  'externalAccountId',
+  'message',
+
+  // work-experience.service.ts
+  'attemptId',
+  'approved',
+  'comments',
+  'endorsementId',
+  'overallVerified',
+  'skillRatings',
+  'verifierDomain',
+  'companyDomain',
+  'domainMatch',
+  'resolvedDomain',
+]);
+
 /** Title-cases a raw `SCREAMING_SNAKE_CASE` or `dot.snake_case` string as a graceful fallback. */
 function titleCaseFallback(raw: string): string {
   const words = raw
@@ -91,6 +163,26 @@ function titleCaseFallback(raw: string): string {
 /** Renders a raw audit `action` string as a human-readable label, falling back gracefully. */
 export function formatAuditAction(action: string): string {
   return AUDIT_ACTION_LABELS[action] ?? titleCaseFallback(action);
+}
+
+/**
+ * Reverse lookup: human label (lowercased) -> raw action string. Lets the Action filter accept
+ * either representation, since the table now only ever shows the label and an admin filtering
+ * by what they see on screen has no way to get back to the raw `institution.held`-style string.
+ */
+const LABEL_TO_ACTION = new Map<string, string>(
+  Object.entries(AUDIT_ACTION_LABELS).map(([action, label]) => [label.toLowerCase(), action]),
+);
+
+/**
+ * Resolves an Action filter input to the raw action string the API expects. An exact
+ * (case-insensitive) match against a known human label is translated to its raw action;
+ * anything else — including a raw action substring like `institution.` — passes through
+ * unchanged, since the API already filters with a case-insensitive `contains`.
+ */
+export function resolveActionFilterValue(input: string): string {
+  const trimmed = input.trim();
+  return LABEL_TO_ACTION.get(trimmed.toLowerCase()) ?? trimmed;
 }
 
 /** Renders a raw audit `resourceType` string (e.g. `candidate_certificate`, `WorkExperience`). */
