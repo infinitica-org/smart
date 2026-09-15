@@ -15,19 +15,25 @@ export function KpiTile({
   hint,
   icon,
   tone = 'muted',
+  href,
 }: {
   label: string;
   value: number;
   hint?: string;
   icon: LucideIcon;
   tone?: IconTone;
+  /** When set, the whole tile links out to a filtered operational view for this KPI. */
+  href?: string;
 }) {
-  return (
+  const content = (
     <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex items-start justify-between gap-3 rounded-2xl bg-card p-5 text-card-foreground"
+      className={cn(
+        'flex items-start justify-between gap-3 rounded-2xl bg-card p-5 text-card-foreground',
+        href && 'transition-colors hover:bg-secondary',
+      )}
     >
       <div className="space-y-2">
         <p className="text-sm text-card-foreground/70">{label}</p>
@@ -38,6 +44,14 @@ export function KpiTile({
       </div>
       <IconWell icon={icon} tone={tone} />
     </motion.article>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href} prefetch={false} className="block rounded-2xl">
+      {content}
+    </Link>
   );
 }
 

@@ -443,6 +443,52 @@ describe('InstitutionsService Batch Operations', () => {
   });
 });
 
+describe('InstitutionsService.getDashboard', () => {
+  it('excludes students blocked by their own hold or their institution hold/deactivation from "active"', async () => {
+    const prisma = {
+      institution: {
+        count: vi.fn(async (args?: { where?: Record<string, unknown> }) => {
+          const where = args?.where ?? {};
+          if (where.deactivatedAt && !where.heldAt) return 1;
+          if (where.heldAt && where.deactivatedAt === null) return 2;
+          if (where.verificationStatus) return 0;
+          return 10;
+        }),
+      },
+      user: {
+        count: vi.fn(async (args?: { where?: Record<string, unknown> }) => {
+          const where = args?.where ?? {};
+          // tenant-blocked query: own heldAt null, institution held/deactivated
+          if (where.institution) return 3;
+          // own-held query
+          if (where.heldAt) return 2;
+          // total students query
+          return 100;
+        }),
+      },
+      company: {
+        count: vi.fn(async (args?: { where?: Record<string, unknown> }) => (args?.where ? 0 : 5)),
+      },
+      attempt: { count: vi.fn().mockResolvedValue(0) },
+      subscriptionPlan: { findMany: vi.fn().mockResolvedValue([]) },
+      auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      noopRedis as never,
+    );
+
+    const dashboard = await service.getDashboard();
+
+    expect(dashboard.students.total).toBe(100);
+    // 2 held on their own account + 3 blocked only because their institution is held/deactivated
+    expect(dashboard.students.held).toBe(5);
+    expect(dashboard.students.active).toBe(95);
+  });
+});
+
 describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)', () => {
   const studentId = randomUUID();
   const instId = randomUUID();
