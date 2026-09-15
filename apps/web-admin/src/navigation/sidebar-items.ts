@@ -10,8 +10,6 @@ import {
   ShieldBan,
   UserCog,
   Users,
-  Webhook,
-  Gauge,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -73,8 +71,9 @@ export const sidebarItems: NavGroup[] = [
         icon: UserCog,
       },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
-      { id: 'rate-limits', title: 'Rate limits', url: '/admin/rate-limits', icon: Gauge },
-      { id: 'webhooks', title: 'Webhooks', url: '/admin/webhooks', icon: Webhook },
+      // Rate limits / Webhooks are unfinished scaffolds (no data, no backing writes) —
+      // intentionally hidden from nav until they're built out. See admin/rate-limits
+      // and admin/webhooks pages, and the webhooks controller's `_meta` scaffold route.
     ],
   },
 ];
