@@ -10,6 +10,7 @@ import type {
   DeclareSkillClaimRequest,
   FetchGithubProfileRequest,
   GithubRepoReadmeRequest,
+  GlobalStudentSearchQuery,
   ListCompaniesQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -574,10 +575,10 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
-    searchStudents: (q: string) =>
+    searchStudents: (query: GlobalStudentSearchQuery) =>
       client.get(prefixed('/admin/students/search'), {
         schema: z.array(GlobalStudentHitDtoSchema),
-        query: { q },
+        query,
       }),
 
     listPlans: () =>
