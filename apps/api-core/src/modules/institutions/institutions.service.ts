@@ -19,6 +19,7 @@ import type {
   CreateBatchRequest,
   CreateInstitutionRequest,
   GlobalStudentHitDto,
+  GlobalStudentSearchQuery,
   InstitutionAdminDto,
   InstitutionDto,
   InstitutionStudentDto,
@@ -340,16 +341,29 @@ export class InstitutionsService {
     return rows.filter((row) => row.inviteStatus === query.inviteStatus);
   }
 
-  async searchStudents(q: string): Promise<GlobalStudentHitDto[]> {
+  async searchStudents(query: GlobalStudentSearchQuery): Promise<GlobalStudentHitDto[]> {
+    const { q, institutionId, skillCode, proficiency, verificationStatus } = query;
+
+    const where: Prisma.UserWhereInput = {
+      role: 'STUDENT',
+      institutionId: institutionId ?? { not: null },
+    };
+    if (q) {
+      where.OR = [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    const skillClaimWhere: Prisma.SkillClaimWhereInput = {};
+    if (skillCode) skillClaimWhere.skill = { code: skillCode };
+    if (proficiency) skillClaimWhere.proficiency = proficiency;
+    if (verificationStatus) skillClaimWhere.status = verificationStatus;
+    if (Object.keys(skillClaimWhere).length > 0) {
+      where.skillClaims = { some: skillClaimWhere };
+    }
+
     const users = await this.prisma.user.findMany({
-      where: {
-        role: 'STUDENT',
-        institutionId: { not: null },
-        OR: [
-          { fullName: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+      where,
       include: { institution: true },
       take: 50,
       orderBy: { fullName: 'asc' },
