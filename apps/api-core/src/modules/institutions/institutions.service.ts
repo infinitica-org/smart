@@ -162,12 +162,12 @@ export class InstitutionsService {
    */
   private async countActiveStudents30d(institutionId: string): Promise<number> {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const activeAttempts = await this.prisma.attempt.findMany({
+    const activeStudents = await this.prisma.attempt.groupBy({
+      by: ['userId'],
       where: { startedAt: { gte: cutoff }, user: { institutionId, role: 'STUDENT' } },
-      select: { userId: true },
-      distinct: ['userId'],
+      _count: { _all: true },
     });
-    return activeAttempts.length;
+    return activeStudents.length;
   }
 
   async updateInstitution(
