@@ -1,6 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  BadgeCheck,
   Building2,
   CreditCard,
   GraduationCap,
@@ -51,7 +50,6 @@ export const sidebarItems: NavGroup[] = [
     id: 'operations',
     label: 'Operations',
     items: [
-      { id: 'verification', title: 'Verification', url: '/admin/verification', icon: BadgeCheck },
       { id: 'plans', title: 'Pricing & flags', url: '/admin/plans', icon: CreditCard },
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },

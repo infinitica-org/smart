@@ -7,7 +7,6 @@ import {
   GraduationCap,
   PauseCircle,
   ShieldAlert,
-  BadgeCheck,
   ScrollText,
   ArrowUpRight,
 } from 'lucide-react';
@@ -160,14 +159,6 @@ export default function AdminHomePage() {
             value: data.institutions.total,
             icon: GraduationCap,
             href: '/admin/institutions',
-          },
-          {
-            id: 'verify',
-            label: 'Verification',
-            hint: 'Waiting on review',
-            value: data.pendingVerifications,
-            icon: BadgeCheck,
-            href: '/admin/verification',
           },
           {
             id: 'integrity',
