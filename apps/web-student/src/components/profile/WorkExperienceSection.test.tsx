@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithQueryClient } from '@/test/render-with-query-client';
 import { WorkExperienceSection } from './WorkExperienceSection';
 
 const listWorkExperiences = vi.fn();
@@ -109,7 +110,7 @@ function selectCatalogSkill(skillName: string) {
 
 async function openAddExperienceModal() {
   listWorkExperiences.mockResolvedValueOnce([]);
-  const view = render(<WorkExperienceSection />);
+  const view = renderWithQueryClient(<WorkExperienceSection />);
   fireEvent.click(await screen.findByRole('button', { name: /Add/i }));
   return view;
 }
@@ -125,7 +126,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
   });
 
   it('renders ongoing role and displays "Active — pending final documentation" status badge', async () => {
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
     expect(await screen.findByText('Acme Corp')).toBeTruthy();
     expect(screen.getByText('Software Engineer')).toBeTruthy();
     expect(screen.getByText('Active — pending final documentation')).toBeTruthy();
@@ -133,7 +134,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
   it('opens add modal and displays document rule notice for ongoing roles when checkbox is checked', async () => {
     listWorkExperiences.mockResolvedValueOnce([]);
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     const addButton = await screen.findByRole('button', { name: /Add/i });
     fireEvent.click(addButton);
@@ -146,7 +147,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
   it('displays document rule notice for ended roles by default or when current is unchecked', async () => {
     listWorkExperiences.mockResolvedValueOnce([]);
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     const addButton = await screen.findByRole('button', { name: /Add/i });
     fireEvent.click(addButton);
@@ -222,7 +223,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
   });
 
   it('renders student claim status tracker with document proof, document check, employer verification, and status copy (WE-T04)', async () => {
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Student Claim Status Tracker')).toBeTruthy();
     expect(screen.getAllByText('Submitted — Ready for Verification').length).toBeGreaterThan(0);
@@ -245,7 +246,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
       message: 'Verification request restarted successfully.',
     });
 
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Link Expired — Resend or Try Another Verifier')).toBeTruthy();
     expect(
@@ -265,13 +266,13 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
   });
 
   it('shows offer-letter helper and hides validate proof action for offer attachments (S6-VB-01)', async () => {
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
     expect(await screen.findByText(/Offer letters support your claim/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Validate Proof/i })).toBeNull();
   });
 
   it('requires company website and LinkedIn when website is provided (S6-VB-01)', async () => {
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     fireEvent.click(await screen.findByTitle('Edit Experience'));
     expect(await screen.findByText('Edit Work Experience')).toBeTruthy();
@@ -296,7 +297,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     };
     listWorkExperiences.mockResolvedValueOnce([mockEndorsedExp]);
 
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('4. Manager Endorsement Status')).toBeTruthy();
     expect(screen.getByText('CONFIRMED')).toBeTruthy();
@@ -397,7 +398,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   });
 
   it('allows saving a valid complete work experience entry', async () => {
-    render(<WorkExperienceSection />);
+    renderWithQueryClient(<WorkExperienceSection />);
     fireEvent.click(await screen.findByTitle('Edit Experience'));
     expect(await screen.findByText('Edit Work Experience')).toBeTruthy();
 

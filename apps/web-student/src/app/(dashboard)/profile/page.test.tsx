@@ -82,6 +82,10 @@ vi.mock('@/components/profile/AboutSection', () => ({
   AboutSection: () => <div>About section</div>,
 }));
 
+vi.mock('@/components/profile/SkillsSection', () => ({
+  SkillsSection: () => <div>Skills section</div>,
+}));
+
 vi.mock('@/components/profile/EducationSection', () => ({
   EducationSection: () => <div>Education section</div>,
 }));
@@ -130,10 +134,12 @@ describe('ProfilePage', () => {
 
     expect(screen.getByText('Resume section')).toBeTruthy();
 
-    expect(screen.queryByText('Skills section')).toBeNull();
+    expect(screen.getByText('Skills section')).toBeTruthy();
 
     for (const id of [
       'about',
+
+      'skills',
 
       'education',
 
