@@ -598,6 +598,7 @@ export class InstitutionsService {
       deactivated,
       studentsTotal,
       studentsHeld,
+      studentsBlockedByTenant,
       companyTotal,
       companyPending,
       institutionPending,
@@ -610,6 +611,15 @@ export class InstitutionsService {
       this.prisma.institution.count({ where: { deactivatedAt: { not: null } } }),
       this.prisma.user.count({ where: { role: 'STUDENT' } }),
       this.prisma.user.count({ where: { role: 'STUDENT', heldAt: { not: null } } }),
+      // Mirrors resolveSessionHold(): a student can't log in if their own account is
+      // held OR their institution is held/deactivated, even when their own heldAt is null.
+      this.prisma.user.count({
+        where: {
+          role: 'STUDENT',
+          heldAt: null,
+          institution: { OR: [{ heldAt: { not: null } }, { deactivatedAt: { not: null } }] },
+        },
+      }),
       this.prisma.company.count(),
       this.prisma.company.count({ where: { verificationStatus: 'PENDING' } }),
       this.prisma.institution.count({ where: { verificationStatus: 'PENDING' } }),
@@ -645,8 +655,8 @@ export class InstitutionsService {
       companies: { total: companyTotal, pendingVerification: companyPending },
       students: {
         total: studentsTotal,
-        active: studentsTotal - studentsHeld,
-        held: studentsHeld,
+        active: studentsTotal - studentsHeld - studentsBlockedByTenant,
+        held: studentsHeld + studentsBlockedByTenant,
       },
       planMix: plans.map((plan) => ({ code: plan.code, count: plan._count.institutions })),
       openHolds: { institutions: held, students: studentsHeld },

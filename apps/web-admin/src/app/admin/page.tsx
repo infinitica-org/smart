@@ -21,7 +21,7 @@ function LoadingOverview() {
   return (
     <div className="flex flex-col gap-8">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 7 }).map((_, index) => (
           <div key={index} className="h-32 animate-pulse rounded-2xl bg-card" />
         ))}
       </div>
@@ -74,10 +74,18 @@ export default function AdminHomePage() {
         <KpiTile
           icon={PauseCircle}
           tone="inverse"
-          label="Open holds"
-          value={data.openHolds.institutions + data.openHolds.students}
-          hint={`${data.openHolds.institutions} tenants · ${data.openHolds.students} students`}
+          label="Held institutions"
+          value={data.openHolds.institutions}
+          hint="Paused tenant access"
           href="/admin/institutions"
+        />
+        <KpiTile
+          icon={PauseCircle}
+          tone="inverse"
+          label="Held students"
+          value={data.openHolds.students}
+          hint="Paused candidate access"
+          href="/admin/users"
         />
         <KpiTile
           icon={Building2}
@@ -190,10 +198,18 @@ export default function AdminHomePage() {
             href: '/admin/integrity',
           },
           {
-            id: 'holds',
-            label: 'Open holds',
-            hint: 'Paused access',
-            value: data.openHolds.institutions + data.openHolds.students,
+            id: 'holds-institutions',
+            label: 'Held institutions',
+            hint: 'Paused tenant access',
+            value: data.openHolds.institutions,
+            icon: PauseCircle,
+            href: '/admin/institutions',
+          },
+          {
+            id: 'holds-students',
+            label: 'Held students',
+            hint: 'Paused candidate access',
+            value: data.openHolds.students,
             icon: PauseCircle,
             href: '/admin/users',
           },
