@@ -2552,6 +2552,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Provider circuits, token buckets, spend, scoring pause state.',
   },
   {
+    method: 'GET',
+    path: '/admin/ai-usage',
+    module: 'ai-gateway',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'REPORTING',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary: 'Cost, volume, latency and fallback aggregated from ai_evaluation_audits.',
+  },
+  {
     method: 'POST',
     path: '/ai-gateway/complete',
     module: 'ai-gateway',
