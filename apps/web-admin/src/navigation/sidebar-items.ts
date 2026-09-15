@@ -1,6 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  BadgeCheck,
   Building2,
   CreditCard,
   GraduationCap,
@@ -11,8 +10,6 @@ import {
   ShieldBan,
   UserCog,
   Users,
-  Webhook,
-  Gauge,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -51,8 +48,7 @@ export const sidebarItems: NavGroup[] = [
     id: 'operations',
     label: 'Operations',
     items: [
-      { id: 'verification', title: 'Verification', url: '/admin/verification', icon: BadgeCheck },
-      { id: 'plans', title: 'Plans & flags', url: '/admin/plans', icon: CreditCard },
+      { id: 'plans', title: 'Pricing & flags', url: '/admin/plans', icon: CreditCard },
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
@@ -75,8 +71,9 @@ export const sidebarItems: NavGroup[] = [
         icon: UserCog,
       },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
-      { id: 'rate-limits', title: 'Rate limits', url: '/admin/rate-limits', icon: Gauge },
-      { id: 'webhooks', title: 'Webhooks', url: '/admin/webhooks', icon: Webhook },
+      // Rate limits / Webhooks are unfinished scaffolds (no data, no backing writes) —
+      // intentionally hidden from nav until they're built out. See admin/rate-limits
+      // and admin/webhooks pages, and the webhooks controller's `_meta` scaffold route.
     ],
   },
 ];
