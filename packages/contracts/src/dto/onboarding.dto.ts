@@ -9,6 +9,7 @@ import {
   UserRoleSchema,
 } from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IntegrityScoreBandSchema } from './proctoring.dto.js';
 
 /**
  * Institution onboarding, batches, and invitation contracts.
@@ -501,11 +502,15 @@ export const IntegrityQueueItemDtoSchema = z.object({
   status: z.string(),
   startedAt: IsoDateTimeSchema,
   completedAt: IsoDateTimeSchema.nullable(),
+  /** Risk band computed from the attempt's recorded proctoring violations. */
+  severity: IntegrityScoreBandSchema,
+  /** Most recent violation kind on record for this attempt, if any (cheap evidence hint). */
+  flagReason: z.string().nullable(),
 });
 export type IntegrityQueueItemDto = z.infer<typeof IntegrityQueueItemDtoSchema>;
 
 export const ResolveIntegrityRequestSchema = z.object({
-  resolution: z.enum(['CLEAR', 'VOID']),
+  resolution: z.enum(['CLEAR', 'VOID', 'ESCALATE']),
   reason: z.string().trim().min(8).max(500),
 });
 export type ResolveIntegrityRequest = z.infer<typeof ResolveIntegrityRequestSchema>;

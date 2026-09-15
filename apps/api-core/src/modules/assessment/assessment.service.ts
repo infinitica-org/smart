@@ -16,10 +16,13 @@ import {
   type DifficultyTag,
   type DomainCode,
   type IntegrityFlag,
+  type IntegrityQueueItemDto,
   type ItemType,
   type LevelFormat,
   type LevelNumber,
   type NextItemDto,
+  type ProctoringSeverity,
+  type ProctoringViolationKind,
   type SaveDraftRequest,
   type SaveDraftResponse,
   type StartAttemptRequest,
@@ -61,6 +64,7 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Prisma } from '../../generated/prisma/index.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { passThresholdsFor } from '../catalog/skill-pass-thresholds.js';
+import { bandForScore, integrityScore, type StoredViolation } from '../proctoring/risk.js';
 import {
   applySkillClaimTransition,
   type SkillClaimEvent,
@@ -99,6 +103,17 @@ interface AttemptWithLevelAndResponses {
     };
   };
   responses?: unknown[];
+}
+
+interface AttemptWithUserAndEvents {
+  id: string;
+  userId: string;
+  integrityFlag: string;
+  status: string;
+  startedAt: Date;
+  completedAt: Date | null;
+  user: { fullName: string; email: string };
+  events: { detail: unknown; createdAt: Date }[];
 }
 
 @Injectable()
@@ -1431,7 +1446,42 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listIntegrityQueue() {
+  /** Maps a persisted `IntegrityEvent` row (best-effort) into a scorer input. */
+  private toStoredViolation(event: { detail: unknown; createdAt: Date }): StoredViolation | null {
+    const detail = event.detail as { kind?: string; severity?: string } | null;
+    if (!detail?.kind || !detail?.severity) return null;
+    return {
+      kind: detail.kind as ProctoringViolationKind,
+      severity: detail.severity as ProctoringSeverity,
+      ts: event.createdAt.getTime(),
+    };
+  }
+
+  private toIntegrityQueueItem(row: AttemptWithUserAndEvents): IntegrityQueueItemDto {
+    const violations = row.events
+      .map((event) => this.toStoredViolation(event))
+      .filter((v): v is StoredViolation => v !== null);
+    const latestEvent = row.events[0]?.detail as { kind?: string } | null;
+    const flagReason = latestEvent?.kind
+      ? row.events.length > 1
+        ? `${latestEvent.kind} (+${row.events.length - 1} more)`
+        : latestEvent.kind
+      : null;
+    return {
+      attemptId: row.id,
+      userId: row.userId,
+      studentName: row.user.fullName,
+      studentEmail: row.user.email,
+      integrityFlag: row.integrityFlag,
+      status: row.status,
+      startedAt: row.startedAt.toISOString(),
+      completedAt: row.completedAt?.toISOString() ?? null,
+      severity: bandForScore(integrityScore(violations)),
+      flagReason,
+    };
+  }
+
+  async listIntegrityQueue(): Promise<IntegrityQueueItemDto[]> {
     const rows = await this.prisma.attempt.findMany({
       where: {
         status: { not: 'VOIDED' },
@@ -1445,27 +1495,21 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
           ],
         },
       },
-      include: { user: true },
+      include: {
+        user: true,
+        events: { orderBy: { createdAt: 'desc' }, take: 50 },
+      },
       orderBy: { startedAt: 'desc' },
       take: 100,
     });
-    return rows.map((row) => ({
-      attemptId: row.id,
-      userId: row.userId,
-      studentName: row.user.fullName,
-      studentEmail: row.user.email,
-      integrityFlag: row.integrityFlag,
-      status: row.status,
-      startedAt: row.startedAt.toISOString(),
-      completedAt: row.completedAt?.toISOString() ?? null,
-    }));
+    return rows.map((row) => this.toIntegrityQueueItem(row));
   }
 
   async resolveIntegrity(
     attemptId: string,
-    body: { resolution: 'CLEAR' | 'VOID'; reason: string },
+    body: { resolution: 'CLEAR' | 'VOID' | 'ESCALATE'; reason: string },
     actorId: string,
-  ) {
+  ): Promise<IntegrityQueueItemDto> {
     const attempt = await this.prisma.attempt.findUnique({
       where: { id: attemptId },
       include: { user: true },
@@ -1477,27 +1521,33 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         statusCode: 404,
       });
     }
+    const data =
+      body.resolution === 'VOID'
+        ? { status: 'VOIDED' as const }
+        : body.resolution === 'ESCALATE'
+          ? { integrityFlag: 'ESCALATED' as const }
+          : { integrityFlag: 'CLEARED' as const };
     const updated = await this.prisma.attempt.update({
       where: { id: attemptId },
-      data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
-      include: { user: true },
+      data,
+      include: {
+        user: true,
+        events: { orderBy: { createdAt: 'desc' }, take: 50 },
+      },
     });
+    const action =
+      body.resolution === 'VOID'
+        ? 'integrity.voided'
+        : body.resolution === 'ESCALATE'
+          ? 'integrity.escalated'
+          : 'integrity.cleared';
     await this.auditPublisher.record({
       actorId,
-      action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+      action,
       resourceType: 'attempt',
       resourceId: attemptId,
       reasonCode: body.reason,
     });
-    return {
-      attemptId: updated.id,
-      userId: updated.userId,
-      studentName: updated.user.fullName,
-      studentEmail: updated.user.email,
-      integrityFlag: updated.integrityFlag,
-      status: updated.status,
-      startedAt: updated.startedAt.toISOString(),
-      completedAt: updated.completedAt?.toISOString() ?? null,
-    };
+    return this.toIntegrityQueueItem(updated);
   }
 }
