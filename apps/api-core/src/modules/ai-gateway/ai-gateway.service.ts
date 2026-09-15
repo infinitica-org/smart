@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   AiCompletionRequest,
   AiCompletionResponse,
@@ -12,6 +12,7 @@ import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
 import { GoogleAdapter } from './adapters/google.adapter.js';
 import { OpenRouterAdapter } from './adapters/openrouter.adapter.js';
 import { AiGatewayAuditService } from './ai-gateway-audit.service.js';
+import { AiGatewayUsageService } from './ai-gateway-usage.service.js';
 import type { AiProviderAdapter, ModelCompletionResult } from './ai-gateway.interface.js';
 import { AiCircuitBreaker, AiGatewayAllProvidersFailedError } from './circuit-breaker.js';
 
@@ -27,6 +28,13 @@ export class AiGatewayService {
     @Inject(OpenRouterAdapter) private readonly openrouter: OpenRouterAdapter,
     @Inject(AiGatewayAuditService) private readonly audit: AiGatewayAuditService,
     @Inject(AiCircuitBreaker) private readonly circuitBreaker: AiCircuitBreaker,
+    // Optional (and left off every pre-existing test's constructor call) so
+    // getHealth() degrades to monthlySpendUsd: 0 instead of failing when a
+    // caller doesn't wire it up, e.g. a unit test built before this field
+    // existed. Real callers get it for free via ai-gateway.module.ts DI.
+    @Optional()
+    @Inject(AiGatewayUsageService)
+    private readonly usage?: AiGatewayUsageService,
   ) {}
 
   getAdapter(provider: AiProvider): AiProviderAdapter {
@@ -83,6 +91,13 @@ export class AiGatewayService {
 
     const resetDate = new Date(Date.now() + 60_000).toISOString();
 
+    // Real spend, aggregated from `ai_evaluation_audits` (see
+    // AiGatewayUsageService). `usage` is only unset in tests built before
+    // that service existed; production DI always provides it.
+    const monthlySpendUsd = this.usage
+      ? (await this.usage.getUsageSummary()).last30d.totalCostUsd
+      : 0;
+
     return {
       providers: [
         {
@@ -104,6 +119,13 @@ export class AiGatewayService {
           latencyMs: openrouterHealth.latencyMs,
         },
       ],
+      // tokenBucket/queueDepth remain placeholders: they describe *live*
+      // rate-limiter and queue state, not historical completions, and
+      // nothing in the codebase currently instruments either one (see
+      // PR description). `ai_evaluation_audits` — the table this method now
+      // reads for monthlySpendUsd — has no queue or in-flight-request data
+      // to derive them from without new instrumentation, which is out of
+      // scope here.
       tokenBucket: {
         requestsRemaining: 200,
         tokensRemaining: 10_000,
@@ -116,7 +138,7 @@ export class AiGatewayService {
       },
       automatedScoringPaused: false,
       pauseReason: null,
-      monthlySpendUsd: 0,
+      monthlySpendUsd,
       monthlyCeilingUsd: env.AI_MONTHLY_CEILING_USD,
     };
   }

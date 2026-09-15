@@ -58,6 +58,7 @@ import {
   API_PREFIX,
   AdminDashboardDtoSchema,
   AiHealthDtoSchema,
+  AiUsageSummaryDtoSchema,
   AttemptSessionDtoSchema,
   BlobWsPayloadSchema,
   CompleteAttemptResponseSchema,
@@ -729,6 +730,8 @@ export function onboardingApi(client: SmartApiClient) {
       }),
 
     aiHealth: () => client.get(prefixed('/admin/ai-health'), { schema: AiHealthDtoSchema }),
+
+    aiUsage: () => client.get(prefixed('/admin/ai-usage'), { schema: AiUsageSummaryDtoSchema }),
 
     holdStudent: (userId: string, body: TenantActionReason) =>
       client.post(prefixed(`/admin/students/${userId}/hold`), body, {
