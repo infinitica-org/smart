@@ -3,6 +3,8 @@ import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
   PasswordLoginRequestSchema,
+  SsoCallbackRequestSchema,
+  SsoStartRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
@@ -21,6 +23,20 @@ export class AuthController {
   login(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
     const parsed = PasswordLoginRequestSchema.parse(body);
     return this.auth.login(parsed.email, parsed.password, reply);
+  }
+
+  @Public()
+  @Post('sso/start')
+  ssoStart(@Body() body: unknown) {
+    const parsed = SsoStartRequestSchema.parse(body);
+    return this.auth.ssoStart(parsed);
+  }
+
+  @Public()
+  @Post('sso/callback')
+  ssoCallback(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+    const parsed = SsoCallbackRequestSchema.parse(body);
+    return this.auth.ssoCallback(parsed.code, parsed.state, reply);
   }
 
   @Public()

@@ -10,10 +10,18 @@ import {
 } from '@smart/api-client';
 import type { AuthenticatedUser } from '@smart/contracts';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const studentUrl = process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001';
-const tpoUrl = process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002';
-const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003';
+import { resolveWebAuthApiBaseUrl } from './resolve-api-base-url';
+
+const baseUrl = resolveWebAuthApiBaseUrl();
+
+function portalOrigin(envValue: string | undefined, fallback: string): string {
+  const trimmed = envValue?.trim();
+  return (trimmed ? trimmed : fallback).replace(/\/$/u, '');
+}
+
+const studentUrl = portalOrigin(process.env.NEXT_PUBLIC_STUDENT_URL, 'http://localhost:3001');
+const tpoUrl = portalOrigin(process.env.NEXT_PUBLIC_TPO_URL, 'http://localhost:3002');
+const adminUrl = portalOrigin(process.env.NEXT_PUBLIC_ADMIN_URL, 'http://localhost:3003');
 
 const portalOrigins = { student: studentUrl, tpo: tpoUrl, admin: adminUrl };
 

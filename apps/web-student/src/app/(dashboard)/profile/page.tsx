@@ -22,6 +22,8 @@ import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionFor
 
 import { ResumeSection } from '@/components/profile/ResumeSection';
 
+import { SkillsSection } from '@/components/profile/SkillsSection';
+
 import { WorkExperienceSection } from '@/components/profile/WorkExperienceSection';
 
 import { NextActionCard } from '@/components/next-action-card';
@@ -57,7 +59,7 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
       <section className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00967c]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
           My Profile
         </p>
 
@@ -99,6 +101,12 @@ export default function ProfilePage() {
       <div id="about" className="scroll-mt-24">
         <ProfileSurface>
           <AboutSection />
+        </ProfileSurface>
+      </div>
+
+      <div id="skills" className="scroll-mt-24">
+        <ProfileSurface>
+          <SkillsSection />
         </ProfileSurface>
       </div>
 
@@ -198,9 +206,9 @@ function SurfaceHeader({
 
           profilePhotoUrl={user?.profilePhotoUrl}
 
-          className="h-20 w-20 rounded-2xl border border-[#00fad0]/30 bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
+          className="h-20 w-20 rounded-2xl border border-foreground/30 bg-foreground/10 text-2xl font-semibold text-foreground"
 
-          fallbackClassName="rounded-2xl bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
+          fallbackClassName="rounded-2xl bg-foreground/10 text-2xl font-semibold text-foreground"
         />
 
         <div className="flex-1">
@@ -225,7 +233,7 @@ function SurfaceHeader({
           <p className="mt-1 text-sm text-muted-foreground">{headlineFor(user, tracks)}</p>
 
           {!profileLoading && profilePercent !== null ? (
-            <p className="mt-2 text-sm font-medium text-[#00fad0]">
+            <p className="mt-2 text-sm font-medium text-foreground">
               {profilePercent}% profile complete
             </p>
           ) : null}

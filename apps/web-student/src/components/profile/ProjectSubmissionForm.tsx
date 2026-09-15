@@ -5,6 +5,7 @@ import type { GithubRepoSummary, ProjectDto } from '@smart/contracts';
 import { Alert, Button, Input } from '@smart/ui';
 import { GitBranch, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useOnboarding } from '../../lib/use-onboarding';
 import { useFeatureFlag } from '../../lib/entitlements';
 import {
   EMPTY_PROJECT_FORM,
@@ -53,12 +54,10 @@ export function ProjectSubmissionForm() {
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
   const [importNote, setImportNote] = useState<string | null>(null);
 
+  const { data: onboardingData } = useOnboarding();
   useEffect(() => {
-    void api.users
-      .getOnboarding()
-      .then((res) => setGithubLogin(res.profile?.socialVerification?.github?.login ?? null))
-      .catch(() => undefined);
-  }, []);
+    setGithubLogin(onboardingData?.profile?.socialVerification?.github?.login ?? null);
+  }, [onboardingData]);
 
   useEffect(() => {
     void api.projects

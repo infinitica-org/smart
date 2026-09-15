@@ -66,7 +66,19 @@ export function bootstrapAccessTokenFromUrl(): boolean {
 }
 
 export function buildPortalRedirectUrl(baseUrl: string, accessToken: string): string {
-  const url = new URL(baseUrl);
+  const trimmed = baseUrl.trim();
+  if (!trimmed) {
+    throw new Error('Portal redirect URL is not configured.');
+  }
+  const absolute =
+    trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : typeof window !== 'undefined'
+        ? new URL(trimmed, window.location.origin).toString()
+        : trimmed.startsWith('/')
+          ? `http://localhost:3001${trimmed}`
+          : trimmed;
+  const url = new URL(absolute);
   url.searchParams.set('accessToken', accessToken);
   return url.toString();
 }

@@ -2,11 +2,9 @@
  * SMART Theme
  * Tailwind CSS 4
  *
- * MAIN BRAND
+ * MAIN BRAND (monochrome)
  * black   #131313
  * white   #F4F4F4
- * teal    #00FAD0
- * blue    #004C63
  *
  * STATUS
  * green   Success
@@ -45,29 +43,29 @@
   --color-black: #131313;
   --color-white: #f4f4f4;
 
-  --color-teal: #00fad0;
-  --color-blue: #004c63;
+  --color-teal: #131313;
+  --color-blue: #131313;
 
   --color-ink: #131313;
   --color-paper: #f4f4f4;
-  --color-accent: #00fad0;
-  --color-accent-deep: #004c63;
+  --color-accent: #131313;
+  --color-accent-deep: #726f6a;
 
   /* -------------------------
      BRAND SCALE (Button primary/secondary variants)
      ------------------------- */
 
-  --color-brand-50: #e8fffb;
-  --color-brand-100: #c2fef2;
-  --color-brand-200: #8ffce7;
-  --color-brand-300: #99fdea;
-  --color-brand-400: #4dfbdf;
-  --color-brand-500: #00fad0;
-  --color-brand-600: #00b39a;
-  --color-brand-700: #004c63;
-  --color-brand-800: #003a4d;
-  --color-brand-900: #002936;
-  --color-brand-950: #001820;
+  --color-brand-50: #f4f4f4;
+  --color-brand-100: #e4e2dd;
+  --color-brand-200: #cfccc6;
+  --color-brand-300: #b8b5af;
+  --color-brand-400: #8a8782;
+  --color-brand-500: #131313;
+  --color-brand-600: #131313;
+  --color-brand-700: #726f6a;
+  --color-brand-800: #4a4845;
+  --color-brand-900: #2a2927;
+  --color-brand-950: #131313;
 
   /* -------------------------
      STATUS COLORS
@@ -141,8 +139,8 @@
      GRADIENT
      ------------------------- */
 
-  --color-gradient-start: #00fad0;
-  --color-gradient-end: #004c63;
+  --color-gradient-start: #131313;
+  --color-gradient-end: #131313;
 
   /* -------------------------
      TYPOGRAPHY
@@ -215,9 +213,9 @@
 .light {
   --brand-ink: #131313;
   --brand-paper: #f4f4f4;
-  --brand-teal: #00fad0;
-  --brand-teal-deep: #004c63;
-  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
+  --brand-teal: #131313;
+  --brand-teal-deep: #726f6a;
+  --brand-gradient: var(--brand-ink);
   --brand-gray-100: #f1efec;
   --brand-gray-200: #e4e2dd;
   --brand-gray-300: #cfccc6;
@@ -230,31 +228,31 @@
   --card-foreground: var(--brand-ink);
   --popover: #ffffff;
   --popover-foreground: var(--brand-ink);
-  --primary: var(--brand-teal);
-  --primary-foreground: #ffffff;
+  --primary: var(--brand-ink);
+  --primary-foreground: var(--brand-paper);
   --secondary: var(--brand-gray-100);
   --secondary-foreground: var(--brand-ink);
   --muted: var(--brand-gray-100);
   --muted-foreground: var(--brand-gray-600);
-  --accent: var(--brand-teal);
-  --accent-foreground: #ffffff;
+  --accent: var(--brand-ink);
+  --accent-foreground: var(--brand-paper);
   --destructive: oklch(0.63 0.19 25);
   --border: var(--brand-gray-200);
   --input: var(--brand-gray-100);
-  --ring: var(--brand-teal);
-  --chart-1: var(--brand-teal);
-  --chart-2: var(--brand-teal-deep);
+  --ring: var(--brand-ink);
+  --chart-1: var(--brand-ink);
+  --chart-2: var(--brand-gray-600);
   --chart-3: var(--brand-gray-600);
   --chart-4: var(--brand-gray-200);
-  --chart-5: #0f5c63;
+  --chart-5: var(--brand-gray-600);
   --sidebar: #ffffff;
   --sidebar-foreground: var(--brand-ink);
-  --sidebar-primary: var(--brand-teal);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary: var(--brand-ink);
+  --sidebar-primary-foreground: var(--brand-paper);
   --sidebar-accent: var(--brand-gray-100);
-  --sidebar-accent-foreground: var(--brand-teal-deep);
+  --sidebar-accent-foreground: var(--brand-ink);
   --sidebar-border: var(--brand-gray-200);
-  --sidebar-ring: var(--brand-teal);
+  --sidebar-ring: var(--brand-ink);
 
   --surface: var(--card);
   --surface-muted: var(--muted);
@@ -268,15 +266,15 @@
 
   /* Aliases some components reach for directly (code-editor, audio-recorder, Input focus ring). */
   --bg-surface: var(--surface);
-  --brand: var(--brand-teal);
+  --brand: var(--brand-ink);
 }
 
 .dark {
   --brand-ink: #131313;
   --brand-paper: #f4f4f4;
-  --brand-teal: #00fad0;
-  --brand-teal-deep: #004c63;
-  --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
+  --brand-teal: #131313;
+  --brand-teal-deep: #726f6a;
+  --brand-gradient: var(--brand-ink);
   --brand-gray-100: #f1efec;
   --brand-gray-200: #e4e2dd;
   --brand-gray-300: #cfccc6;
@@ -289,31 +287,31 @@
   --card-foreground: #faf9f7;
   --popover: #1f2022;
   --popover-foreground: #faf9f7;
-  --primary: var(--brand-teal);
-  --primary-foreground: #0f1211;
+  --primary: var(--foreground);
+  --primary-foreground: var(--background);
   --secondary: #232426;
   --secondary-foreground: #faf9f7;
   --muted: #232426;
   --muted-foreground: rgb(250 249 247 / 0.55);
-  --accent: var(--brand-teal);
-  --accent-foreground: #0f1211;
+  --accent: var(--foreground);
+  --accent-foreground: var(--background);
   --destructive: oklch(0.7 0.17 25);
   --border: rgb(250 249 247 / 0.1);
   --input: #232426;
-  --ring: var(--brand-teal);
-  --chart-1: var(--brand-teal);
-  --chart-2: #58c7b2;
+  --ring: var(--foreground);
+  --chart-1: var(--foreground);
+  --chart-2: var(--brand-gray-600);
   --chart-3: rgb(250 249 247 / 0.55);
   --chart-4: #2a2b2d;
-  --chart-5: var(--brand-teal-deep);
+  --chart-5: var(--brand-gray-600);
   --sidebar: #1a1b1d;
   --sidebar-foreground: #faf9f7;
-  --sidebar-primary: var(--brand-teal);
-  --sidebar-primary-foreground: #0f1211;
+  --sidebar-primary: var(--foreground);
+  --sidebar-primary-foreground: var(--background);
   --sidebar-accent: #232426;
-  --sidebar-accent-foreground: var(--brand-teal);
+  --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: rgb(250 249 247 / 0.08);
-  --sidebar-ring: var(--brand-teal);
+  --sidebar-ring: var(--foreground);
 
   --surface: var(--card);
   --surface-muted: var(--muted);
@@ -326,7 +324,7 @@
 
   /* Aliases some components reach for directly (code-editor, audio-recorder, Input focus ring). */
   --bg-surface: var(--surface);
-  --brand: var(--brand-teal);
+  --brand: var(--foreground);
 }
 
 
@@ -387,7 +385,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #00fad0;
+    outline: 2px solid var(--foreground);
     outline-offset: 2px;
   }
 
@@ -409,14 +407,11 @@
 
   .brand-gradient,
   .bg-gradient {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
+    background: var(--foreground);
   }
 
   .brand-text {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
+    color: var(--foreground);
   }
 
   .status-green {

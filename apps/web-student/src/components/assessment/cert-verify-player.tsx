@@ -269,7 +269,7 @@ export function CertVerifyPlayer({
           <button
             type="button"
             onClick={() => router.push('/certificates')}
-            className="rounded-lg bg-[#00fad0] px-4 py-2 text-sm font-semibold text-black"
+            className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background"
           >
             Back to Certificates
           </button>

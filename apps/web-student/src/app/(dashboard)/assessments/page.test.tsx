@@ -147,9 +147,7 @@ describe('SkillRepositoryPage', () => {
     expect(takeAssessment.hasAttribute('disabled')).toBe(true);
     const details = await screen.findByRole('region', { name: 'Skill details' });
     expect(
-      within(details).getByText(
-        'Reach at least 50% profile completion to unlock skill verification.',
-      ),
+      within(details).getByText('Complete your profile to unlock skill verification.'),
     ).toBeDefined();
     expect(within(details).getByRole('link', { name: 'Add experience' }).getAttribute('href')).toBe(
       '/profile#experience',

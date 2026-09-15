@@ -277,10 +277,42 @@ describe('WorkExperienceService', () => {
       expect(result.companyName).toBe('Beta Corp');
     });
 
-    it('rejects creating ongoing role without offer letter', async () => {
+    it('allows creating ongoing role without documents when proofs are uploaded after create', async () => {
       const payload = buildValidCreatePayload({ documents: [] });
 
-      await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({
+        id: 'org-deferred-docs',
+        name: 'Acme Corp',
+        domain: 'acme.com',
+        verificationStatus: 'PENDING',
+      });
+      prisma.company.findFirst.mockResolvedValue(null);
+      const experienceId = randomUUID();
+      prisma.workExperience.create.mockResolvedValueOnce({
+        id: experienceId,
+        studentId: mockStudentId,
+        companyName: payload.companyName,
+        role: payload.role,
+        employmentType: payload.employmentType,
+        department: null,
+        domain: payload.domain,
+        workLocation: null,
+        responsibilities: payload.responsibilities,
+        startDate: new Date(payload.startDate),
+        endDate: null,
+        isCurrent: true,
+        status: 'SUBMITTED',
+        skills: payload.skillsClaimed,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [],
+        structuredResponsibilities: [],
+      });
+
+      const result = await service.create(mockStudentId, payload);
+      expect(result.id).toBe(experienceId);
+      expect(result.documents).toEqual([]);
     });
 
     it('rejects creating ended role without offer letter', async () => {

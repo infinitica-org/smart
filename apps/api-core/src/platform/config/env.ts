@@ -95,6 +95,15 @@ const EnvSchema = z.object({
     .string()
     .default('http://localhost:3000/api/v1/users/onboarding/linkedin/callback'),
 
+  /** Login SSO — Google OAuth (OpenID Connect). */
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  /** Login SSO — Microsoft Entra / Azure AD (OpenID Connect). */
+  MICROSOFT_OAUTH_CLIENT_ID: z.string().optional(),
+  MICROSOFT_OAUTH_CLIENT_SECRET: z.string().optional(),
+  /** `common` (default), `organizations`, `consumers`, or a tenant GUID. */
+  MICROSOFT_OAUTH_TENANT: z.string().default('common'),
+
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),

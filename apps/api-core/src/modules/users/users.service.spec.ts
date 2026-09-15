@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { hashPassword } from '../auth/auth.service.js';
 import { UsersService } from './users.service.js';
 
 function studentRow(overrides: Record<string, unknown> = {}) {
@@ -474,5 +475,78 @@ describe('UsersService saveOnboardingDraft', () => {
     expect(result.draft?.firstName).toBe('Ada');
     expect(result.draft?.lastName).toBe('Lovelace');
     expect(result.profilePhotoUrl).toBeNull();
+  });
+});
+
+describe('UsersService changePassword', () => {
+  const auth = { revokeAllForUser: vi.fn() };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const storage = mockStorage();
+  let prisma: {
+    user: {
+      findUnique: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+    };
+  };
+  let service: UsersService;
+
+  beforeEach(() => {
+    auth.revokeAllForUser.mockClear();
+    prisma = {
+      user: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
+    };
+    service = new UsersService(prisma as never, auth as never, outbox as never, storage as never);
+  });
+
+  it('rejects SSO-only accounts without a password hash', async () => {
+    const user = studentRow({ passwordHash: null, provider: 'GOOGLE' });
+    prisma.user.findUnique.mockResolvedValue(user);
+
+    await expect(
+      service.changePassword(user.id, {
+        currentPassword: 'old-password1',
+        newPassword: 'new-password2',
+      }),
+    ).rejects.toMatchObject({
+      response: { error: 'password_not_available' },
+    });
+  });
+
+  it('rejects an incorrect current password', async () => {
+    const passwordHash = await hashPassword('correct-password');
+    const user = studentRow({ passwordHash });
+    prisma.user.findUnique.mockResolvedValue(user);
+
+    await expect(
+      service.changePassword(user.id, {
+        currentPassword: 'wrong-password',
+        newPassword: 'new-password2',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('updates the hash and revokes refresh sessions', async () => {
+    const passwordHash = await hashPassword('correct-password');
+    const user = studentRow({ passwordHash });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue(user);
+
+    await service.changePassword(user.id, {
+      currentPassword: 'correct-password',
+      newPassword: 'new-password2',
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: expect.objectContaining({
+          passwordHash: expect.not.stringMatching(passwordHash),
+        }),
+      }),
+    );
+    expect(auth.revokeAllForUser).toHaveBeenCalledWith(user.id);
   });
 });

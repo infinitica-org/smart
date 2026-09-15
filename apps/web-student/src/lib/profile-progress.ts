@@ -34,10 +34,68 @@ export const PROFILE_AREA_LABELS: Record<ProfileAreaId, string> = {
   jobPreferences: 'Job preferences',
 };
 
+/** Dashboard section grid labels (same 8 areas; skills shown as basic profile details). */
+export const DASHBOARD_AREA_LABELS: Record<ProfileAreaId, string> = {
+  ...PROFILE_AREA_LABELS,
+  skills: 'Basic details',
+  professionalLinks: 'Professional Links',
+  jobPreferences: 'Job Preferences',
+};
+
 const AREA_COUNT = PROFILE_AREA_IDS.length;
 const DISMISSAL_STORAGE_PREFIX = 'smart.profile.next-action.dismissed.';
 export const RECOMMENDED_ACTION_DISMISSAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 50;
+
+/** UI copy — verification unlocks when all eight profile areas are complete (100%). */
+export const PROFILE_VERIFICATION_UNLOCK_MESSAGE =
+  'Complete all profile sections to unlock skill verification.';
+
+export const PROFILE_AREA_HREFS: Record<ProfileAreaId, string> = {
+  skills: '/profile#skills',
+  languages: '/profile#languages',
+  education: '/profile#education',
+  experience: '/profile#experience',
+  projects: '/profile#projects',
+  certifications: '/profile#certificates',
+  professionalLinks: '/profile#links',
+  jobPreferences: '/profile#preferences',
+};
+
+export type ProfileStrengthTier = 'getting_started' | 'building' | 'strong' | 'verification_ready';
+
+export function profileStrengthFromPercent(percent: number): {
+  tier: ProfileStrengthTier;
+  label: string;
+  description: string;
+} {
+  if (percent >= 100) {
+    return {
+      tier: 'verification_ready',
+      label: 'Verification ready',
+      description: 'Your profile is complete. Skill verification is unlocked.',
+    };
+  }
+  if (percent >= 75) {
+    return {
+      tier: 'strong',
+      label: 'Strong',
+      description: 'Finish the remaining sections to unlock skill verification.',
+    };
+  }
+  if (percent >= 50) {
+    return {
+      tier: 'building',
+      label: 'Building',
+      description: 'Complete the remaining sections to build a stronger professional profile.',
+    };
+  }
+  return {
+    tier: 'getting_started',
+    label: 'Getting started',
+    description: 'Complete the remaining sections to build a stronger professional profile.',
+  };
+}
 
 /** True when the eight-area profile completion gate allows skill verification. */
 export function canVerifySkills(percent: number | null | undefined): boolean {
@@ -169,106 +227,129 @@ function firstVerifiableClaim(claims: SkillClaimDto[]): SkillClaimDto | undefine
   return claims.find((claim) => claim.status === 'DECLARED');
 }
 
-export function recommendNextAction(input: ProfileProgressInput): RecommendedAction {
-  if (input.skillClaims.length === 0) {
-    return {
+function isProfileFullyComplete(input: ProfileProgressInput): boolean {
+  return computeProfileCompletion(input).percent >= 100;
+}
+
+function profileSectionActions(input: ProfileProgressInput): RecommendedAction[] {
+  const actions: RecommendedAction[] = [];
+
+  if (!isSkillsAreaComplete(input)) {
+    actions.push({
       id: 'add-skills',
       title: 'Add your skills',
       description: 'Tell SMART what you already know.',
       ctaLabel: 'Add skills',
       href: '/profile#skills',
-    };
+    });
   }
-
-  const verifiable = firstVerifiableClaim(input.skillClaims);
-  if (verifiable) {
-    const skillName = skillNameForCode(verifiable.skillCode);
-    return {
-      id: `verify-skill-${verifiable.claimId}`,
-      title: `Verify ${skillName}`,
-      description: 'Show employers what you can do with evidence-backed verification.',
-      ctaLabel: `Verify ${skillName}`,
-      href: `/assessments/skills/${verifiable.claimId}`,
-    };
-  }
-
-  if (!isEducationAreaComplete(input)) {
-    return {
-      id: 'add-education',
-      title: 'Add education',
-      description: 'Help employers understand your academic background.',
-      ctaLabel: 'Add education',
-      href: '/profile#education',
-    };
-  }
-
-  if (!isProjectsAreaComplete(input)) {
-    return {
-      id: 'add-project',
-      title: 'Add a project',
-      description: 'Projects are strong evidence of what you have built.',
-      ctaLabel: 'Add project',
-      href: '/profile#projects',
-    };
-  }
-
-  if (!isExperienceAreaComplete(input)) {
-    return {
-      id: 'add-experience',
-      title: 'Add work experience',
-      description: 'Share roles that shaped your professional journey.',
-      ctaLabel: 'Add experience',
-      href: '/profile#experience',
-    };
-  }
-
-  if (!isCertificationsAreaComplete(input)) {
-    return {
-      id: 'add-certification',
-      title: 'Add a certification',
-      description: 'External certifications strengthen your profile.',
-      ctaLabel: 'Add certification',
-      href: '/profile#certificates',
-    };
-  }
-
   if (!isLanguagesAreaComplete(input)) {
-    return {
+    actions.push({
       id: 'add-languages',
       title: 'Add languages',
       description: 'Language skills can open more opportunities.',
       ctaLabel: 'Add languages',
       href: '/profile#languages',
-    };
+    });
   }
-
+  if (!isEducationAreaComplete(input)) {
+    actions.push({
+      id: 'add-education',
+      title: 'Complete your Education profile',
+      description:
+        'Add your academic background to strengthen your profile and showcase your qualifications.',
+      ctaLabel: 'Continue to Education',
+      href: '/profile#education',
+    });
+  }
+  if (!isExperienceAreaComplete(input)) {
+    actions.push({
+      id: 'add-experience',
+      title: 'Add work experience',
+      description: 'Share roles that shaped your professional journey.',
+      ctaLabel: 'Add experience',
+      href: '/profile#experience',
+    });
+  }
+  if (!isProjectsAreaComplete(input)) {
+    actions.push({
+      id: 'add-project',
+      title: 'Add a project',
+      description: 'Projects are strong evidence of what you have built.',
+      ctaLabel: 'Add project',
+      href: '/profile#projects',
+    });
+  }
+  if (!isCertificationsAreaComplete(input)) {
+    actions.push({
+      id: 'add-certification',
+      title: 'Add a certification',
+      description: 'External certifications strengthen your profile.',
+      ctaLabel: 'Add certification',
+      href: '/profile#certificates',
+    });
+  }
   if (!isProfessionalLinksAreaComplete(input)) {
-    return {
+    actions.push({
       id: 'add-professional-links',
       title: 'Add professional links',
       description: 'LinkedIn or GitHub helps employers learn more about you.',
       ctaLabel: 'Add links',
       href: '/profile#links',
-    };
+    });
   }
-
   if (!isJobPreferencesAreaComplete(input)) {
-    return {
+    actions.push({
       id: 'add-job-preferences',
       title: 'Add job preferences',
       description: 'Tell SMART where and how you want to work.',
       ctaLabel: 'Add preferences',
       href: '/profile#preferences',
-    };
+    });
   }
 
-  return {
+  return actions;
+}
+
+/** Ordered recommendations: profile sections first, then verification, then public profile. */
+export function recommendNextActionCandidates(input: ProfileProgressInput): RecommendedAction[] {
+  const actions = profileSectionActions(input);
+
+  if (isProfileFullyComplete(input)) {
+    const verifiable = firstVerifiableClaim(input.skillClaims);
+    if (verifiable) {
+      const skillName = skillNameForCode(verifiable.skillCode);
+      actions.push({
+        id: `verify-skill-${verifiable.claimId}`,
+        title: `Verify ${skillName}`,
+        description: 'Show employers what you can do with evidence-backed verification.',
+        ctaLabel: `Verify ${skillName}`,
+        href: `/assessments/skills/${verifiable.claimId}`,
+      });
+    }
+  }
+
+  actions.push({
     id: 'explore-public-profile',
     title: 'Explore your public profile',
     description: 'See how employers will view your SMART profile.',
     ctaLabel: 'View public profile',
     href: '/public-profile',
-  };
+  });
+
+  return actions;
+}
+
+export function recommendNextAction(input: ProfileProgressInput): RecommendedAction {
+  return (
+    recommendNextActionCandidates(input)[0] ?? {
+      id: 'explore-public-profile',
+      title: 'Explore your public profile',
+      description: 'See how employers will view your SMART profile.',
+      ctaLabel: 'View public profile',
+      href: '/public-profile',
+    }
+  );
 }
 
 export function dismissalStorageKey(actionId: string): string {
@@ -308,7 +389,8 @@ export function resolveVisibleRecommendedAction(
   input: ProfileProgressInput,
   nowMs: number = Date.now(),
 ): RecommendedAction | null {
-  const action = recommendNextAction(input);
-  if (isRecommendedActionDismissed(action.id, nowMs)) return null;
-  return action;
+  for (const action of recommendNextActionCandidates(input)) {
+    if (!isRecommendedActionDismissed(action.id, nowMs)) return action;
+  }
+  return null;
 }

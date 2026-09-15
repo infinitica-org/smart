@@ -448,10 +448,11 @@ export class UsersService {
   async changePassword(userId: string, body: ChangePasswordRequest): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.passwordHash) {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'User not found.',
-        statusCode: 404,
+      throw new BadRequestException({
+        error: 'password_not_available',
+        message:
+          'This account does not use a password. Sign in with Google, Microsoft, or your institution SSO.',
+        statusCode: 400,
       });
     }
     if (!(await verifyPassword(body.currentPassword, user.passwordHash))) {

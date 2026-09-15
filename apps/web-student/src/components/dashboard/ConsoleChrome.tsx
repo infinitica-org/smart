@@ -64,7 +64,7 @@ export function KpiPill({
     <div
       className={cn(
         'flex min-w-[140px] flex-1 flex-col gap-2 rounded-xl border px-4 py-3',
-        accent ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-gray-50/50',
+        accent ? 'border-border bg-muted/60' : 'border-gray-200 bg-gray-50/50',
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -74,7 +74,7 @@ export function KpiPill({
         <span
           className={cn(
             'text-lg font-semibold tabular-nums',
-            accent ? 'text-emerald-700' : 'text-gray-900',
+            accent ? 'text-foreground' : 'text-gray-900',
           )}
         >
           {value}
@@ -83,7 +83,7 @@ export function KpiPill({
       {percent != null ? (
         <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
           <div
-            className={cn('h-full rounded-full', accent ? 'bg-emerald-600' : 'bg-gray-700')}
+            className={cn('h-full rounded-full', accent ? 'bg-foreground' : 'bg-gray-700')}
             style={{ width: `${width}%` }}
           />
         </div>

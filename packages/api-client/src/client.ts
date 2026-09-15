@@ -240,8 +240,14 @@ export class SmartApiClient {
     path: string,
     query?: Record<string, string | number | boolean | undefined>,
   ): string {
-    const base = this.options.baseUrl.replace(/\/$/u, '');
-    const url = new URL(`${base}${path.startsWith('/') ? path : `/${path}`}`);
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const trimmedBase = this.options.baseUrl.replace(/\/$/u, '');
+    const url =
+      trimmedBase.length > 0
+        ? new URL(`${trimmedBase}${normalizedPath}`)
+        : typeof window !== 'undefined'
+          ? new URL(normalizedPath, window.location.origin)
+          : new URL(normalizedPath, 'http://localhost:3000');
     for (const [key, value] of Object.entries(query ?? {})) {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }

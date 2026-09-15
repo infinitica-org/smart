@@ -2,13 +2,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutSection } from './AboutSection';
 
-const getOnboarding = vi.fn();
 const saveOnboarding = vi.fn();
+const useOnboarding = vi.fn();
+
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => useOnboarding(),
+}));
+
+vi.mock('@smart/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@smart/ui')>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  };
+});
 
 vi.mock('@/lib/api', () => ({
   api: {
     users: {
-      getOnboarding: () => getOnboarding(),
       saveOnboarding: (...args: unknown[]) => saveOnboarding(...args),
     },
   },
@@ -16,14 +27,18 @@ vi.mock('@/lib/api', () => ({
 
 describe('AboutSection', () => {
   beforeEach(() => {
-    getOnboarding.mockReset();
     saveOnboarding.mockReset();
-    getOnboarding.mockResolvedValue({
-      profile: { about: 'Existing summary.' },
-      draft: null,
-      onboardingCompleted: true,
-    });
     saveOnboarding.mockResolvedValue({});
+    useOnboarding.mockReturnValue({
+      data: {
+        profile: { about: 'Existing summary.' },
+        draft: null,
+        onboardingCompleted: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
   });
 
   it('renders saved about content and supports edit/save/cancel', async () => {

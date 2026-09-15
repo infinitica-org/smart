@@ -5,6 +5,7 @@ import { InvitationsModule } from '../invitations/invitations.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { LinkedinOauthService } from './linkedin-oauth.service.js';
+import { SsoOauthService } from './sso-oauth.service.js';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { LinkedinOauthService } from './linkedin-oauth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LinkedinOauthService],
-  exports: [AuthService, LinkedinOauthService],
+  providers: [AuthService, LinkedinOauthService, SsoOauthService],
+  exports: [AuthService, LinkedinOauthService, SsoOauthService],
 })
 export class AuthModule {}

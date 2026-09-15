@@ -10,6 +10,8 @@ export class RedisService extends Redis implements OnModuleDestroy {
       maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       lazyConnect: true,
+      connectTimeout: 10_000,
+      keepAlive: 30_000,
     });
   }
 

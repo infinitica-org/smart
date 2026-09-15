@@ -152,6 +152,18 @@ describe('S6-VB-01 mandatory Work Experience fields', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('CreateWorkExperienceSchema allows empty documents for deferred proof upload', () => {
+    const clientValidation = validateWorkExperienceSubmission(
+      buildValidOngoingSubmission({ documents: [] }),
+    );
+    expect(clientValidation.valid).toBe(false);
+
+    const apiCreate = CreateWorkExperienceSchema.safeParse(
+      buildValidOngoingSubmission({ documents: [] }),
+    );
+    expect(apiCreate.success).toBe(true);
+  });
+
   it('rejects missing companyName', () => {
     const result = validateWorkExperienceSubmission(
       buildValidOngoingSubmission({ companyName: '' }),

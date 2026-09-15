@@ -1,14 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FileText, GraduationCap, Plus, Pencil, Trash2, Calendar, Upload, X } from 'lucide-react';
 import type { CandidateEducationDocumentDto, CandidateEducationDto } from '@smart/contracts';
+import { queryKeys } from '@smart/api-client';
+import { useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
 
 export function EducationSection() {
-  const [educationList, setEducationList] = useState<CandidateEducationDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: educationList = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.myEducation(),
+    queryFn: () => api.users.listEducation(),
+    staleTime: 60_000,
+  });
+  const error = queryError
+    ? (queryError as Error).message || 'Failed to load education entries.'
+    : null;
 
   // Modal / Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,21 +52,8 @@ export function EducationSection() {
   };
 
   const fetchEducation = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.users.listEducation();
-      setEducationList(res);
-    } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to load education entries.');
-    } finally {
-      setLoading(false);
-    }
+    await refetch();
   };
-
-  useEffect(() => {
-    void fetchEducation();
-  }, []);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -197,7 +196,7 @@ export function EducationSection() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2 text-xs font-semibold text-black hover:bg-[#00fad0]/80 transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Add Education
@@ -230,19 +229,19 @@ export function EducationSection() {
               className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-muted/50 p-5 sm:flex-row sm:items-center"
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#00fad0]/10 text-[#00fad0]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground/10 text-foreground">
                   <GraduationCap className="h-6 w-6" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{edu.institutionName}</h3>
                     {edu.current && (
-                      <span className="rounded-full bg-[#00fad0]/15 px-2 py-0.5 text-[10px] font-semibold text-[#00fad0]">
+                      <span className="rounded-full bg-foreground/15 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                         Current
                       </span>
                     )}
                     {edu.status === 'verified' && (
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
                         Verified
                       </span>
                     )}
@@ -283,7 +282,7 @@ export function EducationSection() {
                       <button
                         type="button"
                         onClick={() => openProofModal(edu.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-[#00fad0] hover:bg-muted"
+                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted"
                       >
                         <Upload className="h-3 w-3" />
                         Add proof
@@ -300,7 +299,7 @@ export function EducationSection() {
                           >
                             <div className="min-w-0">
                               <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                                <FileText className="h-3.5 w-3.5 text-[#00fad0]" />
+                                <FileText className="h-3.5 w-3.5 text-foreground" />
                                 {DOCUMENT_TYPE_LABELS[doc.documentType]}
                               </p>
                               <p className="truncate text-[11px] text-muted-foreground">
@@ -401,7 +400,7 @@ export function EducationSection() {
                 <button
                   type="submit"
                   disabled={uploadingDoc || !fileName}
-                  className="rounded-xl bg-[#00fad0] px-4 py-2 text-xs font-semibold text-black disabled:opacity-50"
+                  className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-50"
                 >
                   {uploadingDoc ? 'Uploading…' : 'Attach proof'}
                 </button>
@@ -445,7 +444,7 @@ export function EducationSection() {
                   value={institutionName}
                   onChange={(e) => setInstitutionName(e.target.value)}
                   placeholder="e.g. Stanford University"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
               </div>
 
@@ -460,7 +459,7 @@ export function EducationSection() {
                     value={degree}
                     onChange={(e) => setDegree(e.target.value)}
                     placeholder="e.g. Bachelor of Science"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
 
@@ -474,7 +473,7 @@ export function EducationSection() {
                     value={fieldOfStudy}
                     onChange={(e) => setFieldOfStudy(e.target.value)}
                     placeholder="e.g. Computer Science"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
               </div>
@@ -486,7 +485,7 @@ export function EducationSection() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
 
@@ -497,7 +496,7 @@ export function EducationSection() {
                     disabled={current}
                     value={current ? '' : endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-[#00fad0] focus:outline-none disabled:opacity-40"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground focus:outline-none disabled:opacity-40"
                   />
                 </div>
               </div>
@@ -508,7 +507,7 @@ export function EducationSection() {
                   id="current-edu"
                   checked={current}
                   onChange={(e) => setCurrent(e.target.checked)}
-                  className="h-4 w-4 rounded border-border bg-background text-[#00fad0] focus:ring-[#00fad0]"
+                  className="h-4 w-4 rounded border-border bg-background text-foreground focus:ring-foreground"
                 />
                 <label htmlFor="current-edu" className="text-xs font-medium text-foreground/80">
                   I am currently studying here
@@ -522,7 +521,7 @@ export function EducationSection() {
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
                   placeholder="e.g. 3.8 GPA or 85%"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
               </div>
 
@@ -537,7 +536,7 @@ export function EducationSection() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-xl bg-[#00fad0] px-4 py-2 text-xs font-semibold text-black hover:bg-[#00fad0]/80 disabled:opacity-50"
+                  className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background hover:bg-foreground/80 disabled:opacity-50"
                 >
                   {submitting ? 'Saving…' : editingId ? 'Update' : 'Create'}
                 </button>

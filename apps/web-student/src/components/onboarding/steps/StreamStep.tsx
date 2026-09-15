@@ -2,9 +2,16 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Code2, CheckCircle2, Database, Cpu } from 'lucide-react';
+import { Code2, CheckCircle2, Database, Cpu, type LucideIcon } from 'lucide-react';
 import { api } from '@/lib/api';
+import { CANDIDATE_STREAMS, DEFAULT_CANDIDATE_STREAM } from '@/lib/candidate-streams';
 import { BackButton, ErrorBanner, PrimaryButton, StepHeading } from '../wizard-ui';
+
+const STREAM_ICONS: Record<(typeof CANDIDATE_STREAMS)[number]['id'], LucideIcon> = {
+  SOFTWARE_ENGINEERING: Code2,
+  DATA_OPS: Database,
+  AIML: Cpu,
+};
 
 interface StreamStepProps {
   onBack: () => void;
@@ -17,7 +24,7 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
   const confirm = async () => {
     setStatus('saving');
     try {
-      await api.auth.enrollTrack({ trackCode: 'TECH_FULLSTACK' });
+      await api.auth.enrollTrack({ trackCode: DEFAULT_CANDIDATE_STREAM.trackCode });
       setStatus('confirmed');
       window.setTimeout(onContinue, 700);
     } catch {
@@ -43,89 +50,73 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
           key="confirmed"
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-14 text-center"
+          className="flex flex-col items-center justify-center rounded-2xl border border-foreground/30 bg-muted/10 px-6 py-14 text-center"
         >
           <motion.div
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
           >
-            <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-4" />
+            <CheckCircle2 className="w-12 h-12 text-foreground mb-4" />
           </motion.div>
           <p className="text-lg font-semibold text-foreground">
-            You&apos;re set up for Software Engineering / SDE
+            You&apos;re set up for {DEFAULT_CANDIDATE_STREAM.title}
           </p>
         </motion.div>
       ) : (
         <div className="flex flex-col gap-4">
-          {/* Active SDE Card */}
-          <motion.div
-            key="picker"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-2xl border-2 border-[#00fad0] bg-[#00fad0]/10 p-5 flex items-center justify-between gap-4 cursor-pointer shadow-lg shadow-[#00fad0]/5"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#00fad0]/20 flex items-center justify-center shrink-0">
-                <Code2 className="w-6 h-6 text-[#00fad0]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-foreground">
-                    Software Engineering / SDE
-                  </p>
-                  <span className="rounded-full bg-[#00fad0]/20 border border-[#00fad0]/30 px-2.5 py-0.5 text-[11px] font-semibold text-[#00fad0]">
-                    Active
-                  </span>
+          {CANDIDATE_STREAMS.map((stream) => {
+            const Icon = STREAM_ICONS[stream.id];
+            if (stream.available) {
+              return (
+                <motion.div
+                  key={stream.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border-2 border-foreground bg-foreground/10 p-5 shadow-lg shadow-foreground/5"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground/20">
+                      <Icon className="h-6 w-6 text-foreground" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-foreground">{stream.title}</p>
+                        <span className="rounded-full border border-foreground/30 bg-foreground/20 px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
+                          Active
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{stream.description}</p>
+                    </div>
+                  </div>
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-foreground" />
+                </motion.div>
+              );
+            }
+            return (
+              <div
+                key={stream.id}
+                className="flex select-none items-center justify-between gap-4 rounded-2xl border border-border bg-muted/50 p-5 opacity-50 cursor-not-allowed"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+                    <Icon className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold text-muted-foreground">
+                        {stream.title}
+                      </p>
+                      <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{stream.description}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Core CS fundamentals, full-stack development, algorithms, system design, and
-                  testing.
-                </p>
               </div>
-            </div>
-            <CheckCircle2 className="w-5 h-5 text-[#00fad0] shrink-0" />
-          </motion.div>
-
-          {/* DataOps Coming Soon Card */}
-          <div className="rounded-2xl border border-border bg-muted/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                <Database className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-muted-foreground">DataOps</p>
-                  <span className="rounded-full bg-muted border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Coming Soon
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Data pipelines, ETL workflows, data warehousing, and infrastructure automation.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* AIML Coming Soon Card */}
-          <div className="rounded-2xl border border-border bg-muted/50 p-5 flex items-center justify-between gap-4 opacity-50 cursor-not-allowed select-none">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                <Cpu className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-muted-foreground">AIML</p>
-                  <span className="rounded-full bg-muted border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Coming Soon
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Machine learning model development, deep learning, LLM fine-tuning, and MLOps.
-                </p>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
 

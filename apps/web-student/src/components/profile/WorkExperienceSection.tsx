@@ -28,7 +28,31 @@ import {
   type WorkExperienceDocumentDto,
   type WorkExperienceProofValidationResult,
 } from '@smart/contracts';
+import { isSmartApiError, queryKeys } from '@smart/api-client';
+import { useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
+
+function workExperienceSaveErrorMessage(err: unknown, fallback: string): string {
+  if (isSmartApiError(err)) {
+    const flattened = err.details as unknown;
+    if (
+      flattened &&
+      typeof flattened === 'object' &&
+      'fieldErrors' in flattened &&
+      flattened.fieldErrors &&
+      typeof flattened.fieldErrors === 'object'
+    ) {
+      const fieldErrors = flattened.fieldErrors as Record<string, string[]>;
+      const firstFieldMessage = Object.values(fieldErrors).flat()[0];
+      if (firstFieldMessage) return firstFieldMessage;
+    }
+    const detailMessage = err.details.find((d) => d.message)?.message;
+    if (detailMessage) return detailMessage;
+    return err.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 import { nativeOptionClass, nativeSelectClass } from '@/lib/native-select';
@@ -104,8 +128,15 @@ function getNextActionGuidance(
 }
 
 export function WorkExperienceSection() {
-  const [experiences, setExperiences] = useState<WorkExperienceDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: experiences = [],
+    isLoading: loading,
+    refetch: refetchExperiences,
+  } = useQuery({
+    queryKey: queryKeys.myWorkExperiences(),
+    queryFn: () => api.users.listWorkExperiences(),
+    staleTime: 60_000,
+  });
   const [error, setError] = useState<string | null>(null);
 
   // Form Modal state
@@ -149,21 +180,8 @@ export function WorkExperienceSection() {
   const [modalNewProofFile, setModalNewProofFile] = useState<File | null>(null);
 
   const fetchExperiences = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.users.listWorkExperiences();
-      setExperiences(res);
-    } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to load work experiences.');
-    } finally {
-      setLoading(false);
-    }
+    await refetchExperiences();
   };
-
-  useEffect(() => {
-    fetchExperiences();
-  }, []);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -359,13 +377,22 @@ export function WorkExperienceSection() {
         await api.users.updateWorkExperience(editingId, payload);
       } else {
         const created = await api.users.createWorkExperience(payload);
-        for (const doc of modalPendingDocs) {
-          await api.users.uploadWorkExperienceProofDocument(
-            created.id,
-            doc.file,
-            doc.file.name,
-            doc.documentType,
-          );
+        try {
+          for (const doc of modalPendingDocs) {
+            await api.users.uploadWorkExperienceProofDocument(
+              created.id,
+              doc.file,
+              doc.file.name,
+              doc.documentType,
+            );
+          }
+        } catch (uploadErr) {
+          try {
+            await api.users.deleteWorkExperience(created.id);
+          } catch {
+            // Best-effort rollback; surface the upload failure to the user.
+          }
+          throw uploadErr;
         }
       }
 
@@ -374,7 +401,7 @@ export function WorkExperienceSection() {
       setIsModalOpen(false);
       await fetchExperiences();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to save work experience entry.');
+      setError(workExperienceSaveErrorMessage(err, 'Failed to save work experience entry.'));
     } finally {
       setSubmitting(false);
     }
@@ -469,7 +496,7 @@ export function WorkExperienceSection() {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-lg font-medium text-foreground">
-            <Briefcase className="h-5 w-5 text-[#00fad0]" />
+            <Briefcase className="h-5 w-5 text-foreground" />
             Work Experience
           </h3>
           <p className="text-xs text-muted-foreground">
@@ -478,7 +505,7 @@ export function WorkExperienceSection() {
         </div>
         <button
           onClick={openAddModal}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2 text-sm font-medium text-black hover:bg-[#00e0ba] transition-colors md:mt-0"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors md:mt-0"
         >
           <Plus className="h-4 w-4" />
           Add Experience
@@ -486,14 +513,14 @@ export function WorkExperienceSection() {
       </div>
 
       {verificationSuccess && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted p-3 text-sm text-foreground">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-800" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-foreground" />
             <span>{verificationSuccess}</span>
           </div>
           <button
             onClick={() => setVerificationSuccess(null)}
-            className="text-emerald-800 hover:text-foreground"
+            className="text-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -509,7 +536,7 @@ export function WorkExperienceSection() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-[#00fad0]" />
+          <Loader2 className="h-6 w-6 animate-spin text-foreground" />
           <span className="ml-2 text-sm">Loading work experience entries...</span>
         </div>
       ) : experiences.length === 0 ? (
@@ -547,13 +574,13 @@ export function WorkExperienceSection() {
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
                         exp.status === 'VERIFIED'
-                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                          ? 'border border-border bg-muted text-foreground'
                           : exp.status === 'PENDING_EMPLOYER'
                             ? 'border border-blue-200 bg-blue-50 text-blue-700'
                             : exp.status === 'EXPIRED'
                               ? 'border border-amber-200 bg-amber-50 text-amber-900'
                               : exp.status === 'SUBMITTED'
-                                ? 'border border-[#00fad0]/30 bg-[#00fad0]/10 text-[#00fad0]'
+                                ? 'border border-foreground/30 bg-foreground/10 text-foreground'
                                 : exp.status === 'REJECTED'
                                   ? 'border border-red-200 bg-red-50 text-red-700'
                                   : 'bg-muted text-muted-foreground'
@@ -564,7 +591,7 @@ export function WorkExperienceSection() {
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1 font-medium text-foreground/80">
-                      <Building2 className="h-3.5 w-3.5 text-[#00fad0]" />
+                      <Building2 className="h-3.5 w-3.5 text-foreground" />
                       {exp.companyName}
                     </span>
                     {exp.workLocation && (
@@ -590,7 +617,7 @@ export function WorkExperienceSection() {
                           : 'N/A'}
                     </span>
                     {(exp.isCurrent || !exp.endDate) && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-0.5 text-[10px] font-medium text-[#00fad0]">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-foreground/30 bg-foreground/10 px-2.5 py-0.5 text-[10px] font-medium text-foreground">
                         Active — pending final documentation
                       </span>
                     )}
@@ -617,7 +644,7 @@ export function WorkExperienceSection() {
 
               {/* Company links */}
               {(exp.companyWebsite || exp.companyLinkedinUrl) && (
-                <div className="flex items-center gap-3 text-xs text-[#00fad0]/80">
+                <div className="flex items-center gap-3 text-xs text-foreground/80">
                   {exp.companyWebsite && (
                     <a
                       href={exp.companyWebsite}
@@ -697,7 +724,7 @@ export function WorkExperienceSection() {
                 if (hasValidated) {
                   docCheckText = 'Validated (AI Check)';
                   docCheckTag = 'Complete';
-                  docCheckStyle = 'bg-emerald-50 text-emerald-800';
+                  docCheckStyle = 'bg-muted text-foreground';
                 } else if (hasManualReview) {
                   docCheckText = 'Needs Manual Review';
                   docCheckTag = 'Review Flagged';
@@ -730,7 +757,7 @@ export function WorkExperienceSection() {
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Student Claim Status Tracker
                       </span>
-                      <span className="text-xs font-medium text-[#00fad0]">
+                      <span className="text-xs font-medium text-foreground">
                         {VERIFICATION_STATUS_LABELS[exp.status] || exp.status}
                       </span>
                     </div>
@@ -748,7 +775,7 @@ export function WorkExperienceSection() {
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                               ruleCheck.valid
-                                ? 'bg-emerald-50 text-emerald-800'
+                                ? 'bg-muted text-foreground'
                                 : 'bg-amber-50 text-amber-900'
                             }`}
                           >
@@ -798,7 +825,7 @@ export function WorkExperienceSection() {
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                               exp.status === 'VERIFIED'
-                                ? 'bg-emerald-50 text-emerald-800'
+                                ? 'bg-muted text-foreground'
                                 : exp.status === 'EXPIRED'
                                   ? 'bg-amber-50 text-amber-900'
                                   : exp.status === 'PENDING_EMPLOYER'
@@ -873,7 +900,7 @@ export function WorkExperienceSection() {
 
                     {/* Next Action Guidance */}
                     <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[11px] text-foreground/80">
-                      <span className="font-semibold text-[#00fad0] shrink-0">Next Action:</span>
+                      <span className="font-semibold text-foreground shrink-0">Next Action:</span>
                       <span>{getNextActionGuidance(exp, ruleCheck)}</span>
                     </div>
                   </div>
@@ -885,7 +912,7 @@ export function WorkExperienceSection() {
                 <div className="mt-1 flex flex-col gap-2 rounded-xl border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-[#00fad0]" />
+                      <CheckCircle2 className="h-4 w-4 text-foreground" />
                       <span>
                         Employer Verifier:{' '}
                         <strong className="text-foreground/80">
@@ -901,7 +928,7 @@ export function WorkExperienceSection() {
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors shrink-0 ${
                           exp.status === 'EXPIRED'
                             ? 'border border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200'
-                            : 'bg-[#00fad0]/10 border-[#00fad0]/30 text-[#00fad0] hover:bg-[#00fad0]/20'
+                            : 'bg-foreground/10 border-foreground/30 text-foreground hover:bg-foreground/20'
                         }`}
                       >
                         {sendingVerificationId === exp.id ? (
@@ -947,7 +974,7 @@ export function WorkExperienceSection() {
                       setDocType('EXPERIENCE_LETTER');
                       setProofFile(null);
                     }}
-                    className="flex items-center gap-1 text-xs text-[#00fad0] hover:underline font-medium"
+                    className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium"
                   >
                     <Upload className="h-3 w-3" />
                     Attach Proof
@@ -975,7 +1002,7 @@ export function WorkExperienceSection() {
                           className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground/80"
                         >
                           <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-[#00fad0] shrink-0" />
+                            <FileText className="h-4 w-4 text-foreground shrink-0" />
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">
@@ -986,7 +1013,7 @@ export function WorkExperienceSection() {
                                 </span>
                               </div>
                               {valState.validationStatus === 'VALIDATED' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-[#00fad0] font-medium mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-foreground font-medium mt-0.5">
                                   <CheckCircle2 className="h-3 w-3" /> ✓ Proof Validated
                                 </span>
                               )}
@@ -1019,7 +1046,7 @@ export function WorkExperienceSection() {
                               <button
                                 onClick={() => handleValidateProof(exp.id, doc.id)}
                                 disabled={isValidating}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-1 text-[11px] font-medium text-[#00fad0] hover:bg-[#00fad0]/20 disabled:opacity-50 transition-colors"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-foreground/30 bg-foreground/10 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-foreground/20 disabled:opacity-50 transition-colors"
                               >
                                 {isValidating ? (
                                   <>
@@ -1069,15 +1096,17 @@ export function WorkExperienceSection() {
               </button>
             </div>
             {/* Rule Explanation Banner (WE-T01) */}
-            <div className="mt-3 rounded-2xl border border-[#00fad0]/25 bg-[#00fad0]/5 p-3.5 text-xs text-foreground/90">
-              <div className="flex items-center gap-2 font-semibold text-[#00fad0]">
+            <div className="mt-3 rounded-2xl border border-foreground/25 bg-foreground/5 p-3.5 text-xs text-foreground/90">
+              <div className="flex items-center gap-2 font-semibold text-foreground">
                 <FileText className="h-4 w-4 shrink-0" />
                 <span>Document Requirement Rules</span>
               </div>
               <p className="mt-1 text-foreground/75 leading-relaxed">
                 {isCurrent ? (
                   <>
-                    <strong className="text-[#00fad0]">Ongoing Role: Offer letter required.</strong>{' '}
+                    <strong className="text-foreground">
+                      Ongoing Role: Offer letter required.
+                    </strong>{' '}
                     Status will display as{' '}
                     <span className="font-semibold text-foreground">
                       Active — pending final documentation
@@ -1125,7 +1154,7 @@ export function WorkExperienceSection() {
                     <span
                       className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
                         modalLetterCheck.valid
-                          ? 'bg-emerald-50 text-emerald-800'
+                          ? 'bg-muted text-foreground'
                           : 'bg-amber-50 text-amber-900'
                       }`}
                     >
@@ -1141,7 +1170,7 @@ export function WorkExperienceSection() {
                           className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <FileText className="h-4 w-4 shrink-0 text-[#00fad0]" />
+                            <FileText className="h-4 w-4 shrink-0 text-foreground" />
                             <span className="truncate font-medium text-foreground">
                               {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:{' '}
                               {doc.fileName}
@@ -1153,10 +1182,10 @@ export function WorkExperienceSection() {
                       {modalPendingDocs.map((doc) => (
                         <div
                           key={doc.localId}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/5 px-3 py-2 text-xs"
+                          className="flex items-center justify-between gap-2 rounded-xl border border-foreground/30 bg-foreground/5 px-3 py-2 text-xs"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <FileText className="h-4 w-4 shrink-0 text-[#00fad0]" />
+                            <FileText className="h-4 w-4 shrink-0 text-foreground" />
                             <span className="truncate font-medium text-foreground">
                               {DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType}:{' '}
                               {doc.file.name}
@@ -1233,13 +1262,13 @@ export function WorkExperienceSection() {
                         onChange={(event) => {
                           setModalNewProofFile(event.target.files?.[0] ?? null);
                         }}
-                        className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-[#00fad0]/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#00fad0]"
+                        className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-foreground/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={addModalPendingDocument}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/10 px-4 py-2.5 text-xs font-semibold text-[#00fad0] hover:bg-[#00fad0]/20"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-foreground/30 bg-foreground/10 px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-foreground/20"
                     >
                       <Upload className="h-3.5 w-3.5" />
                       Add file
@@ -1268,7 +1297,7 @@ export function WorkExperienceSection() {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Acme Corporation"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
 
@@ -1282,7 +1311,7 @@ export function WorkExperienceSection() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     placeholder="e.g. Software Engineer Intern"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
               </div>
@@ -1324,7 +1353,7 @@ export function WorkExperienceSection() {
                     value={workLocation}
                     onChange={(e) => setWorkLocation(e.target.value)}
                     placeholder="e.g. Bangalore, India (or Remote)"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
               </div>
@@ -1347,7 +1376,7 @@ export function WorkExperienceSection() {
                     value={companyWebsite}
                     onChange={(e) => setCompanyWebsite(e.target.value)}
                     placeholder="https://company.com"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
 
@@ -1368,7 +1397,7 @@ export function WorkExperienceSection() {
                     value={companyLinkedinUrl}
                     onChange={(e) => setCompanyLinkedinUrl(e.target.value)}
                     placeholder="https://linkedin.com/company/acme"
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
               </div>
@@ -1383,7 +1412,7 @@ export function WorkExperienceSection() {
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
                 </div>
 
@@ -1396,7 +1425,7 @@ export function WorkExperienceSection() {
                     disabled={isCurrent}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-40 focus:border-[#00fad0] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-40 focus:border-foreground focus:outline-none"
                   />
                 </div>
               </div>
@@ -1407,7 +1436,7 @@ export function WorkExperienceSection() {
                   id="isCurrent"
                   checked={isCurrent}
                   onChange={(e) => setIsCurrent(e.target.checked)}
-                  className="h-4 w-4 rounded border-border bg-background text-[#00fad0] focus:ring-0"
+                  className="h-4 w-4 rounded border-border bg-background text-foreground focus:ring-0"
                 />
                 <label htmlFor="isCurrent" className="text-xs text-foreground/80">
                   I currently work in this role
@@ -1423,7 +1452,7 @@ export function WorkExperienceSection() {
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="e.g. Software Engineering, Business Analytics"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
               </div>
 
@@ -1436,7 +1465,7 @@ export function WorkExperienceSection() {
                   value={responsibilities}
                   onChange={(e) => setResponsibilities(e.target.value)}
                   placeholder="Key responsibilities, projects, and technologies used..."
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
               </div>
 
@@ -1471,7 +1500,7 @@ export function WorkExperienceSection() {
                   value={skillQuery}
                   onChange={(e) => setSkillQuery(e.target.value)}
                   placeholder="Search skills…"
-                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
                 {skillQuery.trim().length >= 2 ? (
                   <ul className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-border bg-card">
@@ -1503,7 +1532,7 @@ export function WorkExperienceSection() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#00fad0]">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
                   Employer Verifier Contact (Optional)
                 </h4>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -1518,7 +1547,7 @@ export function WorkExperienceSection() {
                       value={verifierName}
                       onChange={(e) => setVerifierName(e.target.value)}
                       placeholder="Jane Manager"
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1530,7 +1559,7 @@ export function WorkExperienceSection() {
                       value={verifierEmail}
                       onChange={(e) => setVerifierEmail(e.target.value)}
                       placeholder="jane@company.com"
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1540,7 +1569,7 @@ export function WorkExperienceSection() {
                       value={verifierDesignation}
                       onChange={(e) => setVerifierDesignation(e.target.value)}
                       placeholder="Engineering Lead"
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1557,7 +1586,7 @@ export function WorkExperienceSection() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-5 py-2 text-xs font-medium text-black hover:bg-[#00e0ba] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2 text-xs font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   {editingId ? 'Save Changes' : 'Submit Experience'}
@@ -1622,7 +1651,7 @@ export function WorkExperienceSection() {
                   onChange={(event) => {
                     setProofFile(event.target.files?.[0] ?? null);
                   }}
-                  className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-[#00fad0]/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#00fad0]"
+                  className="mt-1 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-foreground/15 file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   PDF, JPG, or PNG up to 5MB. Files are stored securely for AI proof validation.
@@ -1645,7 +1674,7 @@ export function WorkExperienceSection() {
                 <button
                   type="submit"
                   disabled={uploadingDoc}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-5 py-2 text-xs font-medium text-black hover:bg-[#00e0ba] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2 text-xs font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {uploadingDoc && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Upload Document

@@ -6,10 +6,10 @@ import { OnboardingGate } from '@/components/layout/OnboardingGate';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <OnboardingGate>
-      <div className="flex h-screen flex-col overflow-hidden bg-background font-sans text-foreground">
+      <div className="flex h-screen flex-col overflow-hidden bg-[var(--ds-canvas)] font-sans text-[var(--ds-text)]">
         <Navbar />
-        <main className="relative flex-1 overflow-y-auto px-4 py-7 md:px-10 md:py-9">
-          <div className="relative mx-auto max-w-5xl">{children}</div>
+        <main className="relative flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+          <div className="relative mx-auto max-w-[1400px]">{children}</div>
         </main>
       </div>
     </OnboardingGate>

@@ -35,7 +35,13 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      ssoOauth as never,
+    );
     const cookies: string[] = [];
     const reply = {
       setCookie: (_name: string, value: string) => {
@@ -82,7 +88,13 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'rotated.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      ssoOauth as never,
+    );
     const request = { cookies: { smart_refresh: raw } };
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -110,10 +122,12 @@ describe('AuthService refresh rotation', () => {
       },
     };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
     const auth = new AuthService(
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      ssoOauth as never,
     );
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -142,10 +156,12 @@ describe('AuthService refresh rotation', () => {
       },
     };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
     const auth = new AuthService(
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      ssoOauth as never,
     );
     await expect(auth.login('student@example.com', 'password1', {} as never)).rejects.toMatchObject(
       {
@@ -154,6 +170,95 @@ describe('AuthService refresh rotation', () => {
           message: 'This institution is on hold. You cannot use SMART until it is released.',
         },
       },
+    );
+  });
+});
+
+describe('AuthService SSO provisioning', () => {
+  it('rejects unknown institution domains after OAuth', async () => {
+    const prisma = {
+      institution: {
+        findUnique: vi.fn(async () => null),
+      },
+    };
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      ssoOauth as never,
+    );
+
+    await expect(
+      auth.loginViaSso(
+        {
+          email: 'student@gmail.com',
+          fullName: 'Test Student',
+          provider: 'google',
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({
+      response: { error: 'unknown_institution_domain' },
+    });
+    expect(prisma.institution.findUnique).toHaveBeenCalledWith({
+      where: { domain: 'gmail.com' },
+    });
+  });
+
+  it('provisions a new student and issues a session', async () => {
+    const institutionId = randomUUID();
+    const userId = randomUUID();
+    const institution = { id: institutionId, domain: 'smart.local' };
+    const createdUser = userRow({
+      id: userId,
+      email: 'student@smart.local',
+      institutionId,
+      institution: { name: 'Pilot College', heldAt: null, deactivatedAt: null },
+      provider: 'GOOGLE',
+    });
+
+    const prisma = {
+      institution: { findUnique: vi.fn(async () => institution) },
+      user: {
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async () => createdUser),
+        update: vi.fn(),
+      },
+      refreshToken: {
+        create: vi.fn(async ({ data }: { data: unknown }) => data),
+      },
+    };
+    const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const ssoOauth = { start: vi.fn(), complete: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      ssoOauth as never,
+    );
+    const reply = { setCookie: vi.fn() };
+
+    const result = await auth.loginViaSso(
+      {
+        email: 'student@smart.local',
+        fullName: 'Test Student',
+        provider: 'google',
+      },
+      reply as never,
+    );
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'student@smart.local',
+          role: 'STUDENT',
+          provider: 'GOOGLE',
+          institutionId,
+        }),
+      }),
     );
   });
 });

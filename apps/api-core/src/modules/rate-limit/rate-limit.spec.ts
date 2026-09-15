@@ -133,9 +133,10 @@ describe('RateLimitService', () => {
     await expect(
       service.consume('auth.login', '1.2.3.4', 'PUBLIC', '/auth/login'),
     ).resolves.toMatchObject({ allowed: true, count: 0, retryAfterSeconds: 0 });
-    expect(failOpenOnRedisError('development')).toBe(true);
-    expect(failOpenOnRedisError('test')).toBe(true);
-    expect(failOpenOnRedisError('production')).toBe(false);
+    expect(failOpenOnRedisError('development', 'redis://127.0.0.1:6380')).toBe(true);
+    expect(failOpenOnRedisError('test', 'redis://127.0.0.1:6380')).toBe(true);
+    expect(failOpenOnRedisError('production', 'redis://redis:6379')).toBe(false);
+    expect(failOpenOnRedisError('production', 'redis://127.0.0.1:6380')).toBe(true);
   });
 });
 

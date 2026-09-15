@@ -75,7 +75,7 @@ export function SkillsLearningForm({
           value={learningDescription}
           onChange={(event) => setLearningDescription(event.target.value)}
           placeholder="Describe what you learned…"
-          className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
+          className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
         />
       </div>
 
@@ -124,7 +124,7 @@ export function SkillsLearningForm({
               value={practicalDescription}
               onChange={(event) => setPracticalDescription(event.target.value)}
               placeholder="Describe your project or practical experience…"
-              className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
+              className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
             />
           </div>
         ) : null}

@@ -37,7 +37,7 @@ export function competencyLabel(skillCode: string, competencyId: string): string
 }
 
 export function competencyStatusTone(status: CompetencyStatus): string {
-  if (status === 'DEMONSTRATED') return 'text-emerald-700 dark:text-emerald-400';
+  if (status === 'DEMONSTRATED') return 'text-foreground dark:text-foreground';
   if (status === 'PARTIALLY_DEMONSTRATED') return 'text-amber-700 dark:text-amber-400';
   if (status === 'UNCERTAIN') return 'text-orange-700 dark:text-orange-400';
   if (status === 'NOT_DEMONSTRATED') return 'text-rose-700 dark:text-rose-400';

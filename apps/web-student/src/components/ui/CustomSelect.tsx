@@ -100,7 +100,7 @@ export function CustomSelect({
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-400' : 'text-zinc-400'}`}
+          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-foreground' : 'text-zinc-400'}`}
         />
       </button>
 
@@ -132,7 +132,7 @@ export function CustomSelect({
                     }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
                       isSelected
-                        ? 'bg-emerald-500/10 text-emerald-400 font-bold'
+                        ? 'bg-muted/10 text-foreground font-bold'
                         : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                     } ${optionClassName}`}
                   >

@@ -5,6 +5,7 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  useQueries,
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
@@ -67,4 +68,4 @@ export function useSmartApi(): SmartApi {
   return api;
 }
 
-export { useQuery, useMutation, useQueryClient };
+export { useQuery, useQueries, useMutation, useQueryClient };

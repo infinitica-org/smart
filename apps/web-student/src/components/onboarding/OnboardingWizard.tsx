@@ -3,10 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import type { ResumeParseDraft } from '@smart/contracts';
-
 import { api } from '@/lib/api';
-import ResumeUpload from './steps/ResumeUpload';
 import BasicProfileStep from './steps/BasicProfileStep';
 import StreamStep from './steps/StreamStep';
 import LanguagesStep from './steps/LanguagesStep';
@@ -15,7 +12,6 @@ import JobPreferencesStep from './steps/JobPreferencesStep';
 import UsernameStep from './steps/UsernameStep';
 import CompletionSequence from './steps/CompletionSequence';
 import {
-  applyResumeDraft,
   applyServerDraft,
   buildCompleteOnboardingRequest,
   buildOnboardingDraftPayload,
@@ -70,11 +66,11 @@ function furthestStep(form: OnboardingProfileForm): WizardStepId {
     form.frameworkProficiencies.length > 0;
   if (hasLegacySkillsData) return 'languages';
   if (form.firstName.trim() || form.lastName.trim()) return 'profile';
-  return 'resume';
+  return 'profile';
 }
 
 export default function OnboardingWizard() {
-  const [currentStep, setCurrentStep] = useState<Step>('resume');
+  const [currentStep, setCurrentStep] = useState<Step>('profile');
   const [formData, setFormData] = useState<OnboardingProfileForm>(loadOnboardingDraft);
   const [saving, setSaving] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
@@ -132,14 +128,6 @@ export default function OnboardingWizard() {
     void api.users.saveOnboarding(buildOnboardingDraftPayload(form)).catch(() => {});
   };
 
-  const handleResumeContinue = (draft: ResumeParseDraft | null) => {
-    const next = draft ? applyResumeDraft(formData, draft) : formData;
-    setFormData(next);
-    saveOnboardingDraft(next);
-    persistDraft(next);
-    setCurrentStep('profile');
-  };
-
   const advanceFrom = (step: WizardStepId) => {
     persistDraft(formData);
     setCurrentStep(nextStepAfter(step));
@@ -147,7 +135,7 @@ export default function OnboardingWizard() {
 
   const goBackTo = (step: WizardStepId) => {
     const prev = previousStepBefore(step);
-    setCurrentStep(prev ?? 'resume');
+    if (prev) setCurrentStep(prev);
   };
 
   const handleComplete = async () => {
@@ -175,7 +163,7 @@ export default function OnboardingWizard() {
     return (
       <WizardPage>
         <div className="flex justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#00fad0]/20 border-t-[#00fad0]" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
         </div>
       </WizardPage>
     );
@@ -190,13 +178,11 @@ export default function OnboardingWizard() {
       ) : null}
 
       <motion.div key={currentStep} {...stepMotionProps}>
-        {currentStep === 'resume' && <ResumeUpload onContinue={handleResumeContinue} />}
-
         {currentStep === 'profile' && (
           <BasicProfileStep
             formData={formData}
             updateField={updateField}
-            onBack={() => setCurrentStep('resume')}
+            isFirstWizardStep
             onContinue={() => advanceFrom('profile')}
           />
         )}

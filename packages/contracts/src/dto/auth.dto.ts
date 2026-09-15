@@ -21,13 +21,24 @@ export const PasswordLoginRequestSchema = z.object({
 });
 export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequestSchema>;
 
+/** OAuth IdP keys used by the login UI (distinct from persisted {@link AuthProvider}). */
+export const SSO_OAUTH_PROVIDERS = ['google', 'microsoft'] as const;
+export const SsoOAuthProviderSchema = z.enum(SSO_OAUTH_PROVIDERS);
+export type SsoOAuthProvider = z.infer<typeof SsoOAuthProviderSchema>;
+
 export const SsoStartRequestSchema = z.object({
-  provider: AuthProviderSchema,
+  provider: SsoOAuthProviderSchema,
   /** Institutional email domain, e.g. `psgtech.ac.in`. Resolves the SAML/OIDC tenant. */
   institutionDomain: z.string().max(255).optional(),
   redirectUri: z.url(),
 });
 export type SsoStartRequest = z.infer<typeof SsoStartRequestSchema>;
+
+export const SsoCallbackRequestSchema = z.object({
+  code: z.string().min(1).max(4096),
+  state: z.string().min(1).max(512),
+});
+export type SsoCallbackRequest = z.infer<typeof SsoCallbackRequestSchema>;
 
 export const SsoStartResponseSchema = z.object({
   authorizationUrl: z.url(),

@@ -6,9 +6,14 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import type {
+  AuthTokenResponse,
+  AuthenticatedUser,
+  SsoStartRequest,
+  SsoStartResponse,
+} from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -16,6 +21,8 @@ import { StorageService } from '../../platform/storage/storage.service.js';
 import { resolveSessionHold } from '../../common/session-hold.js';
 import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
+import type { SsoIdentity } from './sso-oauth.service.js';
+import { SsoOauthService } from './sso-oauth.service.js';
 
 const scrypt = promisify(scryptCallback);
 
@@ -51,7 +58,95 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(SsoOauthService) private readonly ssoOauth: SsoOauthService,
   ) {}
+
+  ssoStart(input: SsoStartRequest): Promise<SsoStartResponse> {
+    return this.ssoOauth.start(input);
+  }
+
+  async ssoCallback(code: string, state: string, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const identity = await this.ssoOauth.complete(code, state);
+    return this.loginViaSso(identity, reply);
+  }
+
+  async loginViaSso(identity: SsoIdentity, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const emailDomain = identity.email.split('@')[1]?.toLowerCase();
+    const lookupDomain = identity.institutionDomain ?? emailDomain;
+    if (!lookupDomain) {
+      throw new BadRequestException({
+        error: 'sso_email_invalid',
+        message: 'Could not determine the email domain for this account.',
+        statusCode: 400,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { domain: lookupDomain },
+    });
+    if (!institution) {
+      throw new BadRequestException({
+        error: 'unknown_institution_domain',
+        message: `No institution is registered for "${lookupDomain}". Sign in with your campus email or contact your administrator.`,
+        statusCode: 400,
+      });
+    }
+
+    const authProvider = identity.provider === 'google' ? 'GOOGLE' : 'OIDC';
+    const include = {
+      institution: true,
+      company: true,
+      primaryTrack: true,
+      secondaryTrack: true,
+    } as const;
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: identity.email },
+      include,
+    });
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: identity.email,
+          fullName: identity.fullName,
+          role: 'STUDENT',
+          provider: authProvider,
+          emailVerified: true,
+          institutionId: institution.id,
+        },
+        include,
+      });
+    } else {
+      if (user.institutionId && user.institutionId !== institution.id) {
+        throw new BadRequestException({
+          error: 'sso_institution_mismatch',
+          message:
+            'This email is already linked to a different institution. Contact support if you need to move accounts.',
+          statusCode: 400,
+        });
+      }
+      assertTenantLoginAllowed(user);
+      if (
+        !user.institutionId ||
+        user.provider !== authProvider ||
+        user.fullName !== identity.fullName
+      ) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            institutionId: user.institutionId ?? institution.id,
+            provider: authProvider,
+            emailVerified: true,
+            fullName: identity.fullName,
+          },
+          include,
+        });
+      }
+    }
+
+    return this.issueSession(user, reply);
+  }
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
     const user = await this.prisma.user.findUnique({

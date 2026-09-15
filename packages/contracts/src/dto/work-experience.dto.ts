@@ -326,7 +326,9 @@ export function validateWorkExperienceEffectiveUpdate(
 function applyWorkExperienceSubmissionRefinements(
   data: WorkExperienceValidationInput,
   ctx: z.RefinementCtx,
+  options?: { deferDocumentRulesWhenEmpty?: boolean },
 ): void {
+  const documents = data.documents ?? [];
   const result = validateWorkExperienceSubmission({
     companyName: data.companyName,
     role: data.role,
@@ -340,9 +342,16 @@ function applyWorkExperienceSubmissionRefinements(
     companyId: data.companyId,
     companyWebsite: data.companyWebsite,
     companyLinkedinUrl: data.companyLinkedinUrl,
-    documents: data.documents,
+    documents,
   });
   for (const issue of result.issues) {
+    if (
+      options?.deferDocumentRulesWhenEmpty &&
+      issue.path === 'documents' &&
+      documents.length === 0
+    ) {
+      continue;
+    }
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: issue.message,
@@ -406,7 +415,8 @@ export function validateWorkExperienceLetterRules(params: {
 
 export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.superRefine(
   (data, ctx) => {
-    applyWorkExperienceSubmissionRefinements(data, ctx);
+    // Student portal uploads proof files after create; letter rules apply once documents are sent.
+    applyWorkExperienceSubmissionRefinements(data, ctx, { deferDocumentRulesWhenEmpty: true });
   },
 );
 export type CreateWorkExperienceDto = z.infer<typeof CreateWorkExperienceSchema>;

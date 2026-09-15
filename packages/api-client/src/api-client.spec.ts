@@ -11,6 +11,7 @@ import {
   invalidationGroups,
   isSmartApiError,
   queryKeys,
+  buildPortalRedirectUrl,
 } from './index.js';
 
 /**
@@ -58,6 +59,24 @@ function stubFetch(responses: readonly StubResponse[]): {
 }
 
 describe('request construction', () => {
+  it('resolves same-origin URLs when baseUrl is empty (web-auth dev proxy)', async () => {
+    const originalWindow = globalThis.window;
+    vi.stubGlobal('window', { location: { origin: 'http://localhost:3005' } });
+    try {
+      const { fetchImpl, calls } = stubFetch([{ body: { ok: true } }]);
+      const client = new SmartApiClient({
+        baseUrl: '',
+        fetchImpl,
+      });
+
+      await client.get('/api/v1/users/me', { schema, anonymous: true });
+
+      expect(calls[0]?.url).toBe('http://localhost:3005/api/v1/users/me');
+    } finally {
+      vi.stubGlobal('window', originalWindow);
+    }
+  });
+
   it('sends the bearer token, correlation id, and credentials for the refresh cookie', async () => {
     const { fetchImpl, calls } = stubFetch([{ body: { ok: true } }]);
     const client = new SmartApiClient({
@@ -420,6 +439,20 @@ describe('error surfaces', () => {
 
     expect(expired.requiresLogin).toBe(true);
     expect(forbidden.requiresLogin).toBe(false);
+  });
+});
+
+describe('buildPortalRedirectUrl', () => {
+  it('accepts absolute portal URLs', () => {
+    const url = buildPortalRedirectUrl('http://localhost:3001/dashboard', 'jwt');
+    expect(url).toContain('http://localhost:3001/dashboard');
+    expect(url).toContain('accessToken=jwt');
+  });
+
+  it('resolves relative portal paths against the current origin', () => {
+    const url = buildPortalRedirectUrl('/dashboard', 'jwt');
+    expect(url).toContain('/dashboard');
+    expect(url).toContain('accessToken=jwt');
   });
 });
 

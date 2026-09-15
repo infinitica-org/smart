@@ -93,7 +93,7 @@ export class RateLimitService {
         policy,
       };
     } catch (error) {
-      if (!failOpenOnRedisError(env.NODE_ENV)) throw error;
+      if (!failOpenOnRedisError(env.NODE_ENV, env.REDIS_URL)) throw error;
       logEvent(
         this.logger,
         'warn',
@@ -153,6 +153,13 @@ function isUuid(value: string | null): value is string {
   );
 }
 
-export function failOpenOnRedisError(nodeEnv: string): boolean {
-  return nodeEnv !== 'production';
+export function failOpenOnRedisError(nodeEnv: string, redisUrl: string): boolean {
+  if (nodeEnv !== 'production') return true;
+  try {
+    const host = new URL(redisUrl).hostname;
+    if (host === '127.0.0.1' || host === 'localhost') return true;
+  } catch {
+    // ignore malformed REDIS_URL — fall through to production fail-closed
+  }
+  return false;
 }

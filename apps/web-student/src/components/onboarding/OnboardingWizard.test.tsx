@@ -55,6 +55,22 @@ describe('OnboardingWizard', () => {
     expect(WIZARD_STEP_META.map((step) => step.id)).not.toContain('skills');
   });
 
+  it('starts with profile and does not include a resume upload step', () => {
+    const stepOrder = WIZARD_STEP_META.map((step) => step.id);
+    expect(stepOrder[0]).toBe('profile');
+    expect(stepOrder).not.toContain('resume');
+  });
+
+  it('opens on the profile step for a new candidate', async () => {
+    render(<OnboardingWizard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Let's set up your profile")).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/upload your resume/i)).toBeNull();
+  });
+
   it('hydrates an uploaded profile photo from the onboarding response', async () => {
     getOnboarding.mockResolvedValue({
       draft: { firstName: 'Ada', lastName: 'Lovelace' },

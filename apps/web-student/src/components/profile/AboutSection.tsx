@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Pencil, UserRound } from 'lucide-react';
-import { isSmartApiError } from '@smart/api-client';
+import { isSmartApiError, queryKeys } from '@smart/api-client';
+import { useQueryClient } from '@smart/ui';
 import { api } from '@/lib/api';
+import { useOnboarding } from '@/lib/use-onboarding';
 
 const MAX_ABOUT_LENGTH = 4000;
 
 export function AboutSection() {
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, error: queryError } = useOnboarding();
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,25 +20,19 @@ export function AboutSection() {
   const [draftAbout, setDraftAbout] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    void api.users
-      .getOnboarding()
-      .then((response) => {
-        if (cancelled) return;
-        const about = response.profile?.about ?? response.draft?.about ?? '';
-        setSavedAbout(about);
-        setDraftAbout(about);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load your About section.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!data) return;
+    const about = data.profile?.about ?? data.draft?.about ?? '';
+    setSavedAbout(about);
+    setDraftAbout(about);
+  }, [data]);
+
+  useEffect(() => {
+    if (isError) {
+      setError(
+        isSmartApiError(queryError) ? queryError.message : 'Could not load your About section.',
+      );
+    }
+  }, [isError, queryError]);
 
   const startEditing = () => {
     setDraftAbout(savedAbout);
@@ -61,6 +58,7 @@ export function AboutSection() {
       setDraftAbout(trimmed);
       setEditing(false);
       setSuccess('About section saved.');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.myOnboarding() });
     } catch (err: unknown) {
       setError(isSmartApiError(err) ? err.message : 'Could not save your About section.');
     } finally {
@@ -68,7 +66,7 @@ export function AboutSection() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading About…</p>;
   }
 
@@ -80,7 +78,7 @@ export function AboutSection() {
             id="about-heading"
             className="flex items-center gap-2 text-xl font-semibold text-foreground"
           >
-            <UserRound className="h-5 w-5 text-[#00fad0]" />
+            <UserRound className="h-5 w-5 text-foreground" />
             About
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -105,7 +103,7 @@ export function AboutSection() {
         </p>
       ) : null}
       {success ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
           {success}
         </p>
       ) : null}
@@ -117,7 +115,7 @@ export function AboutSection() {
             onChange={(event) => setDraftAbout(event.target.value.slice(0, MAX_ABOUT_LENGTH))}
             rows={6}
             placeholder="Describe your background, strengths, and what you are looking for next."
-            className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+            className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
           />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
@@ -135,7 +133,7 @@ export function AboutSection() {
                 type="button"
                 disabled={saving}
                 onClick={() => void handleSave()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2 font-semibold text-black hover:bg-[#00fad0]/80 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2 font-semibold text-background hover:bg-foreground/80 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Save

@@ -15,6 +15,13 @@
 export const queryKeys = {
   /* ------------------------------- identity ------------------------------- */
   me: () => ['me'] as const,
+  myOnboarding: () => ['me', 'onboarding'] as const,
+  myEducation: () => ['me', 'education'] as const,
+  myLanguages: () => ['me', 'languages'] as const,
+  myWorkExperiences: () => ['me', 'work-experiences'] as const,
+  mySkillClaims: () => ['me', 'skill-claims'] as const,
+  myProjects: () => ['me', 'projects'] as const,
+  myCandidateCertificates: () => ['me', 'candidate-certificates'] as const,
   myTracks: () => ['me', 'tracks'] as const,
   myNotifications: () => ['me', 'notifications'] as const,
   entitlements: () => ['me', 'entitlements'] as const,
