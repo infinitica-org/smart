@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type {
   CandidateBriefDto,
   CandidateViewReasonCode,
   GlobalStudentHitDto,
+  GlobalStudentSearchQuery,
+  InstitutionDto,
+  SkillClaimStatus,
+  SkillLibraryResponse,
+  SkillProficiency,
 } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import { Search, Users } from 'lucide-react';
@@ -29,8 +34,30 @@ import {
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
 
+const PROFICIENCIES: SkillProficiency[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'];
+const VERIFICATION_STATUSES: SkillClaimStatus[] = [
+  'DECLARED',
+  'VERIFIED',
+  'BEGINNER_REATTEMPT',
+  'LOCKED',
+];
+
+function formatApiError(error: unknown, fallback: string): string {
+  if (isSmartApiError(error) && error.details.length > 0) {
+    return error.details.map((detail) => `${detail.path}: ${detail.message}`).join(' ');
+  }
+  if (isSmartApiError(error)) return error.message;
+  return fallback;
+}
+
 export default function Page() {
   const [q, setQ] = useState('');
+  const [institutionId, setInstitutionId] = useState('');
+  const [skillCode, setSkillCode] = useState('');
+  const [proficiency, setProficiency] = useState<SkillProficiency | ''>('');
+  const [verificationStatus, setVerificationStatus] = useState<SkillClaimStatus | ''>('');
+  const [institutions, setInstitutions] = useState<InstitutionDto[]>([]);
+  const [skillLibrary, setSkillLibrary] = useState<SkillLibraryResponse | null>(null);
   const [hits, setHits] = useState<GlobalStudentHitDto[] | null>(null);
   const [reason, setReason] = useState('');
   const [viewCode, setViewCode] = useState<CandidateViewReasonCode>('support_ticket');
@@ -38,21 +65,58 @@ export default function Page() {
   const [profile, setProfile] = useState<CandidateBriefDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    api.onboarding
+      .listInstitutions()
+      .then(setInstitutions)
+      .catch((err) => setError(formatApiError(err, 'Failed to load institutions.')));
+    api.catalog
+      .skillLibrary()
+      .then(setSkillLibrary)
+      .catch((err) => setError(formatApiError(err, 'Failed to load the skill library.')));
+  }, []);
+
+  function buildQuery(): GlobalStudentSearchQuery | null {
+    const trimmed = q.trim();
+    const hasFilter =
+      institutionId !== '' || skillCode !== '' || proficiency !== '' || verificationStatus !== '';
+    if (trimmed.length === 0 && !hasFilter) {
+      setError('Enter a search term or choose at least one filter.');
+      return null;
+    }
+    if (trimmed.length > 0 && trimmed.length < 3) {
+      setError('Enter at least 3 characters to search by name or email.');
+      return null;
+    }
+    return {
+      q: trimmed || undefined,
+      institutionId: institutionId || undefined,
+      skillCode: skillCode || undefined,
+      proficiency: proficiency || undefined,
+      verificationStatus: verificationStatus || undefined,
+    };
+  }
+
   async function onSearch(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    const query = q.trim();
-    if (query.length < 3) {
+    const query = buildQuery();
+    if (!query) {
       setHits(null);
-      setError('Enter at least 3 characters to search.');
       return;
     }
     try {
       setHits(await api.onboarding.searchStudents(query));
     } catch (err) {
       setHits(null);
-      setError(isSmartApiError(err) ? err.message : 'Search failed. Use at least 3 characters.');
+      setError(formatApiError(err, 'Search failed. Use at least 3 characters or add a filter.'));
     }
+  }
+
+  async function refresh() {
+    const query = buildQuery();
+    if (!query) return;
+    setHits(await api.onboarding.searchStudents(query));
   }
 
   return (
@@ -60,14 +124,15 @@ export default function Page() {
       <PageHeader
         icon={Users}
         title="Global student search"
-        description="Lookup by name or email. Opening a profile requires a reason code and is audit-logged."
+        description="Search by name/email, institution, skill, proficiency, or verification status. Opening a profile requires a reason code and is audit-logged."
       />
       {error ? <InlineAlert tone="danger" title={error} /> : null}
       <Card>
         <CardHeader>
           <CardTitle>Search</CardTitle>
           <CardDescription>
-            Use at least 3 characters. Hold/release also needs a reason.
+            Combine a name/email search with capability filters, or leave the search box empty and
+            filter only. Hold/release also needs a reason.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -77,8 +142,61 @@ export default function Page() {
                 <AdminInput
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="At least 3 characters"
+                  placeholder="Name or email (optional with filters)"
                 />
+              </Field>
+              <Field label="Institution">
+                <NativeSelect
+                  value={institutionId}
+                  onChange={(e) => setInstitutionId(e.target.value)}
+                >
+                  <option value="">All institutions</option>
+                  {institutions.map((institution) => (
+                    <option key={institution.institutionId} value={institution.institutionId}>
+                      {institution.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field label="Skill">
+                <NativeSelect value={skillCode} onChange={(e) => setSkillCode(e.target.value)}>
+                  <option value="">All skills</option>
+                  {skillLibrary?.categories.map((category) => (
+                    <optgroup key={category.id} label={category.name}>
+                      {category.skills.map((skill) => (
+                        <option key={skill.code} value={skill.code}>
+                          {skill.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field label="Proficiency">
+                <NativeSelect
+                  value={proficiency}
+                  onChange={(e) => setProficiency(e.target.value as SkillProficiency | '')}
+                >
+                  <option value="">Any proficiency</option>
+                  {PROFICIENCIES.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field label="Verification status">
+                <NativeSelect
+                  value={verificationStatus}
+                  onChange={(e) => setVerificationStatus(e.target.value as SkillClaimStatus | '')}
+                >
+                  <option value="">Any status</option>
+                  {VERIFICATION_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </NativeSelect>
               </Field>
               <Button type="submit" className={controlButtonClassName}>
                 <Search data-icon="inline-start" />
@@ -171,7 +289,7 @@ export default function Page() {
                             reason: reason.trim(),
                           });
                         }
-                        setHits(await api.onboarding.searchStudents(q.trim()));
+                        await refresh();
                       } catch (err) {
                         setError(isSmartApiError(err) ? err.message : 'Hold update failed.');
                       }
