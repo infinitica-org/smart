@@ -733,6 +733,12 @@ export class InstitutionsService {
     if (query.section) {
       where.actor = { is: { role: { in: AUDIT_LOG_SECTION_ROLES[query.section] } } };
     }
+    if (query.from || query.to) {
+      where.createdAt = {
+        ...(query.from ? { gte: new Date(query.from) } : {}),
+        ...(query.to ? { lte: new Date(query.to) } : {}),
+      };
+    }
     if (query.q) {
       where.OR = [
         { action: { contains: query.q, mode: 'insensitive' } },

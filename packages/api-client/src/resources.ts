@@ -644,7 +644,10 @@ export function onboardingApi(client: SmartApiClient) {
       action?: string;
       resourceType?: string;
       resourceId?: string;
+      actorId?: string;
       section?: AuditLogSection;
+      from?: string;
+      to?: string;
     }) =>
       client.get(prefixed('/admin/audit-logs'), {
         schema: z.array(AuditLogDtoSchema),
