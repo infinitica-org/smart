@@ -34,7 +34,18 @@ import {
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
 
-const PROFICIENCIES: SkillProficiency[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'];
+// Record<SkillProficiency, true> (not a plain `SkillProficiency[]` literal) so TS
+// flags both directions if `SkillProficiency` ever changes: a removed value makes
+// this an excess-property error, a new value makes it a missing-property error.
+// A plain array annotation only catches typos in existing entries, not that kind
+// of drift.
+const PROFICIENCY_MEMBERS: Record<SkillProficiency, true> = {
+  BEGINNER: true,
+  INTERMEDIATE: true,
+  ADVANCED: true,
+  PROFESSIONAL: true,
+};
+const PROFICIENCIES = Object.keys(PROFICIENCY_MEMBERS) as SkillProficiency[];
 const VERIFICATION_STATUSES: SkillClaimStatus[] = [
   'DECLARED',
   'VERIFIED',
