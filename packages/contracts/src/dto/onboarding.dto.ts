@@ -509,6 +509,16 @@ export const IntegrityQueueItemDtoSchema = z.object({
 });
 export type IntegrityQueueItemDto = z.infer<typeof IntegrityQueueItemDtoSchema>;
 
+/**
+ * `PENDING` is the original flagged/under-review queue awaiting a decision.
+ * `ESCALATED` is the durable destination for attempts an admin has escalated
+ * — escalation has no dedicated RBAC route or notification, so this filter
+ * is what keeps escalated cases visible/reviewable instead of disappearing
+ * from the queue the way Dismiss/Void do.
+ */
+export const IntegrityQueueStatusSchema = z.enum(['PENDING', 'ESCALATED']);
+export type IntegrityQueueStatus = z.infer<typeof IntegrityQueueStatusSchema>;
+
 export const ResolveIntegrityRequestSchema = z.object({
   resolution: z.enum(['CLEAR', 'VOID', 'ESCALATE']),
   reason: z.string().trim().min(8).max(500),

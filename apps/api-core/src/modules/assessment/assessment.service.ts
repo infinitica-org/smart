@@ -17,6 +17,7 @@ import {
   type DomainCode,
   type IntegrityFlag,
   type IntegrityQueueItemDto,
+  type IntegrityQueueStatus,
   type ItemType,
   type LevelFormat,
   type LevelNumber,
@@ -1457,14 +1458,73 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  private toIntegrityQueueItem(row: AttemptWithUserAndEvents): IntegrityQueueItemDto {
-    const violations = row.events
+  /**
+   * `ProctoringService.record()` persists both genuine violations and
+   * transient technical noise (NETWORK_LOSS, HEARTBEAT_LOST, CAMERA_STATIC,
+   * TECHNICAL_INTERRUPTION — see TECHNICAL_VIOLATION_KINDS) into the same
+   * `IntegrityEvent` table, tagging each row's `detail.classified` as
+   * `'INTEGRITY'` or `'TECHNICAL'`. Only the former should ever surface as
+   * evidence to an admin or feed the severity score.
+   */
+  private isClassifiedIntegrityEvent(event: { detail: unknown }): boolean {
+    const detail = event.detail as { classified?: string } | null;
+    return detail?.classified === 'INTEGRITY';
+  }
+
+  /**
+   * True (uncapped) count of classified `INTEGRITY` events per attempt.
+   *
+   * `listIntegrityQueue`/`resolveIntegrity` only fetch the 50 most recent
+   * `IntegrityEvent` rows per attempt (see `toIntegrityQueueItem`) to keep
+   * `risk.ts`'s O(n^2) pairwise scoring bounded — see the comment on
+   * `toIntegrityQueueItem` for why that cap is kept for scoring. The "+N
+   * more" count shown to admins must not inherit that cap, so it is sourced
+   * from this separate, uncapped `count`/`groupBy` query instead.
+   */
+  private async classifiedIntegrityEventCounts(attemptIds: string[]): Promise<Map<string, number>> {
+    if (attemptIds.length === 0) return new Map();
+    const counts = await this.prisma.integrityEvent.groupBy({
+      by: ['attemptId'],
+      where: {
+        attemptId: { in: attemptIds },
+        detail: { path: ['classified'], equals: 'INTEGRITY' },
+      },
+      _count: { _all: true },
+    });
+    return new Map(counts.map((c) => [c.attemptId, c._count._all]));
+  }
+
+  private async classifiedIntegrityEventCount(attemptId: string): Promise<number> {
+    return this.prisma.integrityEvent.count({
+      where: { attemptId, detail: { path: ['classified'], equals: 'INTEGRITY' } },
+    });
+  }
+
+  private toIntegrityQueueItem(
+    row: AttemptWithUserAndEvents,
+    totalClassifiedEventCount: number,
+  ): IntegrityQueueItemDto {
+    // Filter to classified INTEGRITY events only: a technical event landing
+    // first (e.g. NETWORK_LOSS) must never become the "evidence hint" an
+    // admin reads before choosing Escalate or Confirm, and it must not
+    // inflate the severity score either.
+    const classifiedEvents = row.events.filter((event) => this.isClassifiedIntegrityEvent(event));
+    // Scoring intentionally still uses only the capped (take: 50, most
+    // recent) slice of classified events fetched by the caller, not the
+    // uncapped `totalClassifiedEventCount`. risk.ts's integrityScore() does
+    // pairwise O(n^2) comparisons across the event set, so scoring against
+    // every historical event for attempts with hundreds/thousands of them
+    // would be a real performance risk, and the 50 most recent events are
+    // the most relevant signal for a *current* severity read anyway. This
+    // is a deliberate tradeoff, not an oversight.
+    const violations = classifiedEvents
       .map((event) => this.toStoredViolation(event))
       .filter((v): v is StoredViolation => v !== null);
-    const latestEvent = row.events[0]?.detail as { kind?: string } | null;
+    const latestEvent = classifiedEvents[0]?.detail as { kind?: string } | null;
+    const moreCount = Math.max(0, totalClassifiedEventCount - (latestEvent ? 1 : 0));
     const flagReason = latestEvent?.kind
-      ? row.events.length > 1
-        ? `${latestEvent.kind} (+${row.events.length - 1} more)`
+      ? moreCount > 0
+        ? `${latestEvent.kind} (+${moreCount} more)`
         : latestEvent.kind
       : null;
     return {
@@ -1481,19 +1541,33 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async listIntegrityQueue(): Promise<IntegrityQueueItemDto[]> {
-    const rows = await this.prisma.attempt.findMany({
-      where: {
-        status: { not: 'VOIDED' },
-        integrityFlag: {
-          in: [
+  /**
+   * `status` picks which attempts show up:
+   *  - `'PENDING'` (default): the original flagged/under-review queue, i.e.
+   *    attempts still awaiting a Dismiss/Confirm/Escalate decision.
+   *  - `'ESCALATED'`: attempts an admin has already escalated. Escalation
+   *    has no dedicated RBAC route or notification (out of scope for
+   *    S6-VV-64); this view is its durable destination so escalated cases
+   *    stay visible/reviewable instead of vanishing from the queue exactly
+   *    like Dismiss/Void do.
+   */
+  async listIntegrityQueue(
+    status: IntegrityQueueStatus = 'PENDING',
+  ): Promise<IntegrityQueueItemDto[]> {
+    const integrityFlagFilter: IntegrityFlag[] =
+      status === 'ESCALATED'
+        ? ['ESCALATED']
+        : [
             'FLAGGED_TIMING',
             'FLAGGED_PROCTOR',
             'FLAGGED_SIMILARITY',
             'FLAGGED_AUDIO',
             'UNDER_REVIEW',
-          ],
-        },
+          ];
+    const rows = await this.prisma.attempt.findMany({
+      where: {
+        status: { not: 'VOIDED' },
+        integrityFlag: { in: integrityFlagFilter },
       },
       include: {
         user: true,
@@ -1502,7 +1576,8 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       orderBy: { startedAt: 'desc' },
       take: 100,
     });
-    return rows.map((row) => this.toIntegrityQueueItem(row));
+    const counts = await this.classifiedIntegrityEventCounts(rows.map((row) => row.id));
+    return rows.map((row) => this.toIntegrityQueueItem(row, counts.get(row.id) ?? 0));
   }
 
   async resolveIntegrity(
@@ -1548,6 +1623,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       resourceId: attemptId,
       reasonCode: body.reason,
     });
-    return this.toIntegrityQueueItem(updated);
+    const totalClassifiedEventCount = await this.classifiedIntegrityEventCount(attemptId);
+    return this.toIntegrityQueueItem(updated, totalClassifiedEventCount);
   }
 }
