@@ -64,6 +64,13 @@ export const InstitutionDtoSchema = z.object({
   batchCount: z.number().int().nonnegative(),
   invitePendingCount: z.number().int().nonnegative(),
   inviteAcceptedCount: z.number().int().nonnegative(),
+  /**
+   * Usage snapshot: distinct students with at least one assessment Attempt in the
+   * trailing 30 days. A cheap, current-state proxy for tenant activity — not a
+   * time series. Only populated on the single-institution detail response
+   * (`getInstitution`); omitted from list responses to avoid fleet-wide cost.
+   */
+  activeStudents30d: z.number().int().nonnegative().optional(),
   createdAt: IsoDateTimeSchema,
 });
 export type InstitutionDto = z.infer<typeof InstitutionDtoSchema>;

@@ -150,7 +150,24 @@ export class InstitutionsService {
     if (!dto) {
       throw new Error('Institution DTO mapping returned no rows for an existing institution');
     }
-    return dto;
+    const activeStudents30d = await this.countActiveStudents30d(institutionId);
+    return { ...dto, activeStudents30d };
+  }
+
+  /**
+   * Lightweight usage snapshot for the Institution Control Center: distinct students
+   * with at least one assessment Attempt started in the trailing 30 days. Deliberately
+   * a single current-state number, not a time series — cheap enough for the detail
+   * view, not meant for the institutions list (which stays fleet-wide and unfiltered).
+   */
+  private async countActiveStudents30d(institutionId: string): Promise<number> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const activeAttempts = await this.prisma.attempt.findMany({
+      where: { startedAt: { gte: cutoff }, user: { institutionId, role: 'STUDENT' } },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    return activeAttempts.length;
   }
 
   async updateInstitution(
