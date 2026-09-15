@@ -10,6 +10,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "DELETE /users/me/work-experiences/:id": "role.student",
   "DELETE /users/me/work-experiences/:id/documents/:documentId": "role.student",
   "GET /admin/ai-health": "role.superAdmin",
+  "GET /admin/ai-usage": "role.superAdmin",
   "GET /admin/audit-logs": "role.superAdmin",
   "GET /admin/blocked-words": "role.superAdmin",
   "GET /admin/candidate-certificates/queue": "read.adminQueue",
