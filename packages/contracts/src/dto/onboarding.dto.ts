@@ -4,6 +4,8 @@ import {
   CompanyModeSchema,
   InstitutionListStatusSchema,
   PlanCodeSchema,
+  SkillClaimStatusSchema,
+  SkillProficiencySchema,
   StudentInviteFilterSchema,
   TenantVerificationStatusSchema,
   UserRoleSchema,
@@ -116,9 +118,31 @@ export const StudentInviteLinkResponseSchema = z.object({
 });
 export type StudentInviteLinkResponse = z.infer<typeof StudentInviteLinkResponseSchema>;
 
-export const GlobalStudentSearchQuerySchema = z.object({
-  q: z.string().trim().min(3).max(200),
-});
+/**
+ * `q` (name/email) stays optional-but-validated so it can be combined with, or
+ * replaced entirely by, the capability filters below — a TPO can search "AWS
+ * skill, ADVANCED, verified" at one institution without typing a name.
+ */
+export const GlobalStudentSearchQuerySchema = z
+  .object({
+    q: z.string().trim().min(3).max(200).optional(),
+    institutionId: UuidSchema.optional(),
+    skillCode: z.string().trim().min(1).max(100).optional(),
+    proficiency: SkillProficiencySchema.optional(),
+    verificationStatus: SkillClaimStatusSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      value.q !== undefined ||
+      value.institutionId !== undefined ||
+      value.skillCode !== undefined ||
+      value.proficiency !== undefined ||
+      value.verificationStatus !== undefined,
+    {
+      message:
+        'Provide a search term or at least one filter (institution, skill, proficiency, verification status).',
+    },
+  );
 export type GlobalStudentSearchQuery = z.infer<typeof GlobalStudentSearchQuerySchema>;
 
 export const GlobalStudentHitDtoSchema = z.object({
