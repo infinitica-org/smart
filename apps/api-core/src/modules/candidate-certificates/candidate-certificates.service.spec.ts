@@ -50,7 +50,7 @@ function setup() {
           baseCertificateRow({ status: 'DECLARED', certificateFileUrl: null, skills: [] }),
         );
       }),
-      update: vi.fn(),
+      update: vi.fn().mockResolvedValue(baseCertificateRow()),
     },
     candidateCertificateSkill: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -92,6 +92,7 @@ function setup() {
     recheckActivationAfterVoid: vi.fn().mockResolvedValue(undefined),
   };
   const dedup = new CredentialDedupService(prisma as never);
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
@@ -99,6 +100,7 @@ function setup() {
     emailQueue as never,
     verificationService as never,
     dedup,
+    outbox as never,
     publicProfileService as never,
   );
   return {
@@ -107,6 +109,7 @@ function setup() {
     auditPublisher,
     emailQueue,
     verificationService,
+    outbox,
     publicProfileService,
     dedup,
     service,
@@ -338,7 +341,7 @@ describe('CandidateCertificatesService', () => {
   });
 
   it('approving an endorsement verifies the certificate via ENDORSEMENT', async () => {
-    const { prisma, service } = setup();
+    const { prisma, service, outbox } = setup();
     prisma.certificateEndorsement.findUnique.mockResolvedValue({
       id: randomUUID(),
       status: 'PENDING',
@@ -355,6 +358,30 @@ describe('CandidateCertificatesService', () => {
       }),
     );
     expect(result.status).toBe('APPROVED');
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'smart.credential.verified',
+        data: expect.objectContaining({ sourceId: 'EXTERNALCERT', entityId: certificateId }),
+      }),
+    );
+  });
+
+  it('does not publish smart.credential.verified when an endorsement is rejected', async () => {
+    const { prisma, service, outbox } = setup();
+    prisma.certificateEndorsement.findUnique.mockResolvedValue({
+      id: randomUUID(),
+      status: 'PENDING',
+      expiresAt: new Date('2100-01-01T00:00:00.000Z'),
+      candidateCertificateId: certificateId,
+      endorserName: 'Jane Manager',
+    });
+
+    await service.submitEndorsementDecision('some-token', {
+      approved: false,
+      comments: 'Not accurate',
+    });
+
+    expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
   it('rejecting an endorsement rejects the certificate with no verification method', async () => {
@@ -438,6 +465,29 @@ describe('CandidateCertificatesService', () => {
       await expect(
         service.voidCertificate(randomUUID(), randomUUID(), { reason: 'Does not matter here.' }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('adminApprove', () => {
+    it('publishes smart.credential.verified when a super admin force-approves a certificate', async () => {
+      const { prisma, service, outbox } = setup();
+      prisma.candidateCertificate.update.mockResolvedValue(baseCertificateRow());
+      prisma.candidateCertificate.findUniqueOrThrow.mockResolvedValue(
+        baseCertificateRow({ status: 'VERIFIED' }),
+      );
+
+      await service.adminApprove(certificateId, { reason: 'Manually confirmed with issuer.' });
+
+      expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topic: 'smart.credential.verified',
+          data: expect.objectContaining({
+            userId: candidateId,
+            sourceId: 'EXTERNALCERT',
+            entityId: certificateId,
+          }),
+        }),
+      );
     });
   });
 });

@@ -32,12 +32,14 @@ import {
 import { certRetryAvailableAt } from '../assessment/cert-assessment-state-machine.js';
 import { env } from '../../platform/config/env.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import type { EmailJobPayload, EmailQueueJobData } from '../../platform/mailer/mailer.types.js';
 import { EMAIL_QUEUE } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { CertificateSourceVerificationService } from './verification/certificate-source-verification.service.js';
 import { CredentialDedupService } from './verification/credential-dedup.service.js';
+import { publishCredentialVerified } from './verification/credential-verified-publisher.js';
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
 import { generateInviteToken, hashInviteToken } from '../invitations/invite-token.util.js';
 import type {
@@ -62,6 +64,7 @@ export class CandidateCertificatesService {
     @Inject(CertificateSourceVerificationService)
     private readonly verificationService: CertificateSourceVerificationService,
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
   ) {}
 
@@ -447,7 +450,7 @@ export class CandidateCertificatesService {
     }
 
     const decisionStatus = body.approved ? 'APPROVED' : 'REJECTED';
-    await this.prisma.$transaction([
+    const [, updatedCert] = await this.prisma.$transaction([
       this.prisma.certificateEndorsement.update({
         where: { id: endorsement.id },
         data: { status: decisionStatus, comments: body.comments, respondedAt: new Date() },
@@ -460,6 +463,13 @@ export class CandidateCertificatesService {
         },
       }),
     ]);
+    if (body.approved) {
+      await publishCredentialVerified(this.outbox, 'candidate-certificates', {
+        userId: updatedCert.candidateId,
+        sourceId: 'EXTERNALCERT',
+        entityId: updatedCert.id,
+      });
+    }
     await this.addEvent(
       endorsement.candidateCertificateId,
       body.approved ? 'VERIFIED' : 'REJECTED',
@@ -532,12 +542,17 @@ export class CandidateCertificatesService {
     id: string,
     body: AdminCertificateReviewRequest,
   ): Promise<CandidateCertificateDto> {
-    await this.prisma.candidateCertificate.update({
+    const approved = await this.prisma.candidateCertificate.update({
       where: { id },
       data: {
         sourceStatus: 'source_verified',
         status: 'VERIFIED',
       },
+    });
+    await publishCredentialVerified(this.outbox, 'candidate-certificates', {
+      userId: approved.candidateId,
+      sourceId: 'EXTERNALCERT',
+      entityId: approved.id,
     });
     await this.addEvent(
       id,
