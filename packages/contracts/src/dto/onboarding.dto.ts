@@ -11,6 +11,7 @@ import {
   UserRoleSchema,
 } from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IntegrityScoreBandSchema } from './proctoring.dto.js';
 
 /**
  * Institution onboarding, batches, and invitation contracts.
@@ -567,11 +568,25 @@ export const IntegrityQueueItemDtoSchema = z.object({
   status: z.string(),
   startedAt: IsoDateTimeSchema,
   completedAt: IsoDateTimeSchema.nullable(),
+  /** Risk band computed from the attempt's recorded proctoring violations. */
+  severity: IntegrityScoreBandSchema,
+  /** Most recent violation kind on record for this attempt, if any (cheap evidence hint). */
+  flagReason: z.string().nullable(),
 });
 export type IntegrityQueueItemDto = z.infer<typeof IntegrityQueueItemDtoSchema>;
 
+/**
+ * `PENDING` is the original flagged/under-review queue awaiting a decision.
+ * `ESCALATED` is the durable destination for attempts an admin has escalated
+ * — escalation has no dedicated RBAC route or notification, so this filter
+ * is what keeps escalated cases visible/reviewable instead of disappearing
+ * from the queue the way Dismiss/Void do.
+ */
+export const IntegrityQueueStatusSchema = z.enum(['PENDING', 'ESCALATED']);
+export type IntegrityQueueStatus = z.infer<typeof IntegrityQueueStatusSchema>;
+
 export const ResolveIntegrityRequestSchema = z.object({
-  resolution: z.enum(['CLEAR', 'VOID']),
+  resolution: z.enum(['CLEAR', 'VOID', 'ESCALATE']),
   reason: z.string().trim().min(8).max(500),
 });
 export type ResolveIntegrityRequest = z.infer<typeof ResolveIntegrityRequestSchema>;
