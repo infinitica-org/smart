@@ -11,7 +11,7 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { QLIX_POLL_QUEUE } from '../../platform/queue/queue.names.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
-import { QlixClient } from './qlix-client.js';
+import { QlixClient, type QlixCheckResult } from './qlix-client.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { routeQlixResult } from './project-verify.heuristics.js';
 import { encodeReportExplanation, type StoredReportMeta } from './project-verify.mapper.js';
@@ -110,13 +110,7 @@ export class QlixPollService {
 
   private async finalizeCheck(
     payload: QlixPollJobPayload,
-    result: {
-      checkId: string;
-      status: string;
-      similarityIndex?: number | null;
-      aiLikelihood?: number | null;
-      agentReview?: { verdict?: { summary?: string } } | null;
-    },
+    result: QlixCheckResult,
     timedOut = false,
   ): Promise<void> {
     const similarity = result.similarityIndex ?? 0;
