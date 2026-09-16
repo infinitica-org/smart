@@ -13,6 +13,7 @@ import { enterAssessmentFullscreen } from '../../lib/proctoring/fullscreen';
 import type { FaceCheckResult } from '../../lib/proctoring/face-check';
 import { FaceLiveCheck } from './face-live-check';
 import { isGoogleChrome } from '../../lib/proctoring/chromium';
+import { uploadProctoringSnapshot } from '../../lib/proctoring/proctoring-snapshot-upload';
 import { skillVerifyRuleItems } from '../../lib/proctoring/skill-verify-rules';
 
 export function OnboardingGate({
@@ -90,13 +91,27 @@ export function OnboardingGate({
           setFaceEpoch((n) => n + 1);
           return;
         }
-        await api.proctoring.enrollFace(attemptId);
-        await api.proctoring.liveness({
+        const enrollUpload = await uploadProctoringSnapshot(attemptId, streamRef.current);
+        const enroll = await api.proctoring.enrollFace({
+          attemptId,
+          objectKey: enrollUpload.ok ? enrollUpload.objectKey : undefined,
+        });
+        if (!enroll.enrolled) {
+          setMessage(enroll.message);
+          setFaceEpoch((n) => n + 1);
+          return;
+        }
+        const liveness = await api.proctoring.liveness({
           attemptId,
           challenge: 'BLINK',
           yawDelta: 0.1,
           earDelta: 0.05,
         });
+        if (!liveness.isLive) {
+          setMessage(liveness.message);
+          setFaceEpoch((n) => n + 1);
+          return;
+        }
         await finish(streamRef.current);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : 'Face check failed.');
@@ -142,13 +157,25 @@ export function OnboardingGate({
         setMessage(precheck.message);
         return;
       }
-      await api.proctoring.enrollFace(attemptId);
-      await api.proctoring.liveness({
+      const enrollUpload = await uploadProctoringSnapshot(attemptId, streamRef.current);
+      const enroll = await api.proctoring.enrollFace({
+        attemptId,
+        objectKey: enrollUpload.ok ? enrollUpload.objectKey : undefined,
+      });
+      if (!enroll.enrolled) {
+        setMessage(enroll.message);
+        return;
+      }
+      const liveness = await api.proctoring.liveness({
         attemptId,
         challenge: 'BLINK',
         yawDelta: 0.1,
         earDelta: 0.05,
       });
+      if (!liveness.isLive) {
+        setMessage(liveness.message);
+        return;
+      }
       if (!streamRef.current) {
         throw new Error('Camera stream missing after onboarding.');
       }

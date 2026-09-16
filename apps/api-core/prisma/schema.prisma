@@ -899,9 +899,11 @@ model Project {
   outcome   String
   loomUrl   String?       @map("loom_url")
   githubUrl String?       @map("github_url")
-  liveUrl   String?       @map("live_url")
-  status    ProjectStatus @default(SUBMITTED)
-  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  liveUrl     String?       @map("live_url")
+  snapshotSha String?       @map("snapshot_sha")
+  qlixCheckId String?       @map("qlix_check_id")
+  status      ProjectStatus @default(SUBMITTED)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   projectType       String?  @map("project_type")
   teamSize          Int?     @map("team_size")

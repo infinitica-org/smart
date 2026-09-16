@@ -1,0 +1,69 @@
+# Skills in Database
+
+- Accessibility (a11y)
+- Agile Delivery
+- Algorithms & Performance
+- Android Development
+- API Design
+- API Testing
+- Application Security
+- AR / VR Development
+- AWS
+- Azure
+- Big Data Processing
+- Blockchain Development
+- C# / .NET
+- C++
+- CI/CD
+- Cloud Security
+- Computer Vision
+- Configuration Management
+- Containers & Kubernetes
+- Cross-Platform Mobile
+- Database Performance Tuning
+- Data Modeling
+- Deep Learning
+- ETL / ELT
+- FinOps
+- Frontend Frameworks
+- Frontend Performance
+- Git & Version Control
+- GitOps
+- Go
+- Google Cloud (GCP)
+- Identity & Access Management
+- Infrastructure as Code
+- iOS Development
+- IoT Development
+- Java
+- JavaScript / TypeScript
+- Kotlin
+- Linux Administration
+- LLM Engineering
+- Machine Learning
+- MLOps
+- Networking
+- NLP
+- NoSQL Databases
+- Observability
+- Penetration Testing
+- Performance Testing
+- Python
+- Quality Engineering
+- R
+- Relational Databases
+- Rust
+- Scala
+- Security Operations
+- Service Mesh & API Gateway
+- SQL
+- Stakeholder Collaboration
+- State Management
+- Statistics & A/B Testing
+- Stream Processing
+- Swift
+- Technical Documentation
+- Technical Leadership
+- Technical Project Management
+- Test Automation
+- Virtualization

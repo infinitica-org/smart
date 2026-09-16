@@ -204,6 +204,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /placement/match": "placement.match",
   "POST /placement/openings": "placement.opening",
   "POST /placement/outcomes": "role.placementStaff",
+  "POST /proctoring/:attemptId/snapshot-upload-url": "proctoring.media",
   "POST /proctoring/calibrate-voice": "proctoring.media",
   "POST /proctoring/checkpoint": "proctoring.media",
   "POST /proctoring/consent": "proctoring.media",

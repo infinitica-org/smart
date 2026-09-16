@@ -5,6 +5,7 @@ import {
   PROJECT_VERIFY_TECH_AGE_YEARS,
   PROJECT_VERIFY_WEIGHTS,
   type GithubRepoSnapshot,
+  type ProjectExclusionReason,
   type ProjectStatus,
   type ProjectVerifyFlag,
 } from '@smart/contracts';
@@ -99,6 +100,69 @@ export function routeProjectVerification(input: {
     return { status: 'UNDER_REVIEW', routedToReview: true };
   }
   return { status: 'VERIFIED', routedToReview: false };
+}
+
+export function routeQlixResult(input: {
+  similarityIndex: number;
+  aiLikelihood: number | null;
+  analyzedTokens: number;
+  failed: boolean;
+  timedOut: boolean;
+  thresholds: {
+    similarityHardFail: number;
+    similarityBorderline: number;
+    aiLikelihoodFlag: number;
+    minTokens: number;
+  };
+}): {
+  opensInterviewGate: boolean;
+  routedToReview: boolean;
+  exclusionReason: ProjectExclusionReason | null;
+  flags: ProjectVerifyFlag[];
+} {
+  const flags: ProjectVerifyFlag[] = [];
+  if (input.timedOut) flags.push('QLIX_POLL_TIMEOUT');
+  if (input.failed || input.timedOut) {
+    return {
+      opensInterviewGate: false,
+      routedToReview: true,
+      exclusionReason: 'VERIFICATION_INCOMPLETE',
+      flags,
+    };
+  }
+  if (input.similarityIndex > input.thresholds.similarityHardFail) {
+    return {
+      opensInterviewGate: false,
+      routedToReview: true,
+      exclusionReason: 'SOURCE_OVERLAP_ELEVATED',
+      flags,
+    };
+  }
+  if (input.similarityIndex > input.thresholds.similarityBorderline) {
+    return {
+      opensInterviewGate: false,
+      routedToReview: true,
+      exclusionReason: null,
+      flags,
+    };
+  }
+  if (input.analyzedTokens > 0 && input.analyzedTokens < input.thresholds.minTokens) {
+    return {
+      opensInterviewGate: false,
+      routedToReview: true,
+      exclusionReason: 'INSUFFICIENT_COMPLEXITY_FOR_VERIFICATION',
+      flags,
+    };
+  }
+  if (input.aiLikelihood !== null && input.aiLikelihood >= input.thresholds.aiLikelihoodFlag) {
+    flags.push('QLIX_AUTHORSHIP_ELEVATED');
+  }
+  return {
+    opensInterviewGate: true,
+    routedToReview: false,
+    exclusionReason: null,
+    flags,
+  };
 }
 
 export function collectFlags(input: {

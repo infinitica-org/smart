@@ -55,8 +55,8 @@ describe('processing state', () => {
       interviewStatus: 'NOT_REQUIRED' as const,
       interviewCompletedAt: null,
     });
-    expect(copy.title).toBe('Processing');
-    expect(copy.body).toMatch(/queued for verification/i);
+    expect(copy.title).toBe('Verifying');
+    expect(copy.body).toMatch(/integrity verification is running/i);
   });
 });
 

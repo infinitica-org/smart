@@ -85,6 +85,15 @@ const EnvSchema = z.object({
    */
   GITHUB_API_TOKEN: z.string().optional(),
 
+  QLIX_API_KEY: z.string().optional(),
+  QLIX_BASE_URL: z.string().default('https://qlix.exora.solutions/api/v1'),
+  QLIX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(10_000),
+  QLIX_POLL_HARD_CAP_MS: z.coerce.number().int().positive().default(1_800_000),
+  QLIX_SIMILARITY_HARD_FAIL: z.coerce.number().min(0).max(100).default(50),
+  QLIX_SIMILARITY_BORDERLINE: z.coerce.number().min(0).max(100).default(30),
+  QLIX_AI_LIKELIHOOD_FLAG: z.coerce.number().min(0).max(100).default(60),
+  QLIX_MIN_ANALYZED_TOKENS: z.coerce.number().int().nonnegative().default(5_000),
+
   /**
    * CN-T01 LinkedIn identity verification. LinkedIn has no public profile-
    * scraping API, so verification is the compliant "Sign in with LinkedIn"
@@ -122,6 +131,7 @@ const EnvSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
   PROCTORING_CV_URL: z.string().default('http://127.0.0.1:8091'),
+  PROCTORING_CV_PROVIDER: z.enum(['stub', 'real']).default('stub'),
 
   ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 

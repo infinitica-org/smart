@@ -106,8 +106,8 @@ export function processingStateCopy(project: ProjectDto): {
   if (project.status === 'SUBMITTED' && !project.report) {
     return {
       tone: 'info',
-      title: 'Processing',
-      body: 'Your project is queued for verification. This page will update when scoring finishes — this is not a silent wait.',
+      title: 'Verifying',
+      body: 'Integrity verification is running. This page will update when it finishes — then complete the ownership interview.',
     };
   }
   if (needsOwnershipInterview(project)) {

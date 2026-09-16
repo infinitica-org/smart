@@ -123,7 +123,7 @@ describe('ProjectSubmissionForm', () => {
     expect(screen.getByText(/Fix the highlighted template fields/i)).toBeTruthy();
   });
 
-  it('queues create, shows an explicit Processing state, and offers to submit another', async () => {
+  it('queues create, shows an explicit Verifying state, and offers to submit another', async () => {
     create.mockResolvedValueOnce(busTracker);
 
     renderForm();
@@ -136,9 +136,9 @@ describe('ProjectSubmissionForm', () => {
       title: 'Campus bus tracker',
       loomUrl: 'https://www.loom.com/share/abc123',
     });
-    // Both the processing Alert and the project's own status badge say "Processing".
-    await waitFor(() => expect(screen.getAllByText(/^Processing$/i).length).toBe(2));
-    expect(screen.getByText(/queued for verification/i)).toBeTruthy();
+    // Both the verifying Alert and the project's own status badge say "Verifying".
+    await waitFor(() => expect(screen.getAllByText(/^Verifying$/i).length).toBe(2));
+    expect(screen.getByText(/integrity verification is running/i)).toBeTruthy();
     expect(screen.queryByText(/^Submitting…$/i)).toBeNull();
 
     // The form is not locked — a second project can be started right away.
@@ -148,7 +148,7 @@ describe('ProjectSubmissionForm', () => {
     ).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));
     // The list entry's own status badge survives — only the processing Alert is dismissed.
-    expect(screen.getAllByText(/^Processing$/i).length).toBe(1);
+    expect(screen.getAllByText(/^Verifying$/i).length).toBe(1);
   });
 
   it('lists every submitted project with a top-stack summary', async () => {

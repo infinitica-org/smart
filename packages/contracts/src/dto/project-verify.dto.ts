@@ -1,6 +1,7 @@
 ﻿import { z } from 'zod';
 import {
   GithubSnapshotUnavailableReasonSchema,
+  ProjectExclusionReasonSchema,
   ProjectStatusSchema,
   ProjectVerifyFlagSchema,
 } from '../domain/enums.js';
@@ -199,6 +200,7 @@ export const ProjectDtoSchema = z.object({
   interviewRequired: z.boolean(),
   interviewStatus: ProjectInterviewStatusSchema,
   interviewCompletedAt: IsoDateTimeSchema.nullable(),
+  exclusionReason: ProjectExclusionReasonSchema.nullable().optional(),
 });
 export type ProjectDto = z.infer<typeof ProjectDtoSchema>;
 

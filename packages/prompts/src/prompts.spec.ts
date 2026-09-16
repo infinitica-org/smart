@@ -211,6 +211,8 @@ describe('rendered grading prompts', () => {
   it('registers project-defense examiner and grader prompts', () => {
     expect(PROMPT_REGISTRY.has('project-defense-examiner@1')).toBe(true);
     expect(PROMPT_REGISTRY.has('project-defense-grader@1')).toBe(true);
+    const qlixDigest =
+      'similarityIndex=15\naiLikelihood=45\nsuspicion=medium\nElevated AI patterns.';
     const examiner = renderPrompt(projectDefenseExaminerTemplate, {
       projectTitle: 'Bus tracker',
       projectSummary: 'Problem: buses\nApproach: websockets',
@@ -219,13 +221,43 @@ describe('rendered grading prompts', () => {
       verifyFlags: ['SNAPSHOT_UNAVAILABLE'],
       verifyGaps: ['No CI config detected'],
       snapshotDigest: 'digest',
+      qlixReportDigest: qlixDigest,
       transcript: [{ role: 'CANDIDATE', text: 'I built the websocket ingest.' }],
       secondsRemaining: 420,
     });
     expect(examiner.temperature).toBeGreaterThan(0);
     expect(examiner.system).toContain('skills and concepts');
+    expect(examiner.system).toContain('QLIX integrity findings');
     expect(examiner.user).toContain('SECONDS REMAINING');
+    expect(examiner.user).toContain('QLIX_INTEGRITY:');
+    expect(examiner.user).toContain('similarityIndex=15');
     expect(projectDefenseGraderTemplate.temperature).toBe(0);
+
+    const grader = renderPrompt(projectDefenseGraderTemplate, {
+      projectTitle: 'Bus tracker',
+      projectSummary: 'Problem: buses\nApproach: websockets',
+      stack: 'TypeScript',
+      verifyFlags: ['QLIX_AUTHORSHIP_ELEVATED'],
+      qlixReportDigest: qlixDigest,
+      transcript: [{ role: 'CANDIDATE', text: 'I built the websocket ingest.' }],
+      weights: { depthOfUnderstanding: 0.4, ownershipAndOriginality: 0.35, defenseQuality: 0.25 },
+    });
+    expect(grader.user).toContain('QLIX_INTEGRITY:');
+    expect(grader.user).toContain('similarityIndex=15');
+
+    const withoutQlix = renderPrompt(projectDefenseExaminerTemplate, {
+      projectTitle: 'Bus tracker',
+      projectSummary: 'Problem: buses\nApproach: websockets',
+      stack: 'TypeScript',
+      declaredArtefacts: [],
+      verifyFlags: [],
+      verifyGaps: [],
+      snapshotDigest: 'digest',
+      qlixReportDigest: null,
+      transcript: [],
+      secondsRemaining: 420,
+    });
+    expect(withoutQlix.user).not.toContain('QLIX_INTEGRITY:');
   });
 });
 

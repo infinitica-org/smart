@@ -20,6 +20,7 @@ export const ProjectDefenseExaminerVariables = z.object({
   verifyFlags: z.array(ProjectVerifyFlagSchema).max(10).default([]),
   verifyGaps: z.array(z.string().max(500)).max(10).default([]),
   snapshotDigest: z.string().max(16_000),
+  qlixReportDigest: z.string().max(8_000).nullable().optional(),
   transcript: z
     .array(z.object({ role: z.enum(['EXAMINER', 'CANDIDATE']), text: z.string() }))
     .default([]),
@@ -64,7 +65,8 @@ export const projectDefenseExaminerTemplate: PromptTemplate<
       'Rules:',
       '- When transcript is empty, ask one opening question that names the project title and one declared stack skill — never a generic walk-through script.',
       '- Ask exactly one follow-up question per turn — short, spoken-friendly (under 30 words when possible).',
-      '- Every question must tie to something concrete: the project title, stack, artefacts, verify flags, or their last answer.',
+      '- Every question must tie to something concrete: the project title, stack, artefacts, verify flags, QLIX integrity findings, or their last answer.',
+      '- Use QLIX integrity findings as factual probe hints only; do not treat them as proof of guilt or auto-reject. Live answers are the primary evidence.',
       '- Probe SKILLS_APPLICATION first: pick a technology from their declared stack and ask where/how they used it in this project.',
       '- Then probe DEPTH (implementation detail), OWNERSHIP (what they personally wrote), TRADEOFFS, and FAILURE_MODES.',
       '- Reference a specific detail from their last answer when possible — no generic textbook questions.',
@@ -85,6 +87,9 @@ export const projectDefenseExaminerTemplate: PromptTemplate<
       variables.verifyFlags.length > 0 ? `FLAGS: ${variables.verifyFlags.join(', ')}` : '',
       variables.verifyGaps.length > 0 ? `GAPS: ${variables.verifyGaps.join('; ')}` : '',
       `DIGEST: ${untrusted(variables.snapshotDigest.slice(0, 8_000))}`,
+      variables.qlixReportDigest?.trim()
+        ? `QLIX_INTEGRITY: ${untrusted(variables.qlixReportDigest.slice(0, 8_000))}`
+        : '',
       '',
       variables.transcript.map((t) => `${t.role}: ${t.text}`).join('\n\n'),
       '',
@@ -100,6 +105,7 @@ export const ProjectDefenseGraderVariables = z.object({
   projectSummary: z.string().min(20),
   stack: z.string().min(1),
   verifyFlags: z.array(ProjectVerifyFlagSchema).max(10).default([]),
+  qlixReportDigest: z.string().max(8_000).nullable().optional(),
   transcript: z.array(z.object({ role: z.enum(['EXAMINER', 'CANDIDATE']), text: z.string() })),
   weights: z.object({
     depthOfUnderstanding: z.number(),
@@ -149,6 +155,7 @@ export const projectDefenseGraderTemplate: PromptTemplate<
       NO_TIER_AUTHORITY,
       NO_INFLATION,
       'Flag ownershipConcern only on positive evidence. Never auto-reject.',
+      'Use QLIX integrity findings as contextual probe hints only; live interview answers are the primary evidence.',
       INJECTION_GUARD,
       jsonOnly(GRADER_SHAPE),
     ].join('\n'),
@@ -157,6 +164,9 @@ export const projectDefenseGraderTemplate: PromptTemplate<
       `DECLARED STACK: ${variables.stack}`,
       `SUMMARY: ${variables.projectSummary}`,
       variables.verifyFlags.length > 0 ? `FLAGS: ${variables.verifyFlags.join(', ')}` : '',
+      variables.qlixReportDigest?.trim()
+        ? `QLIX_INTEGRITY: ${untrusted(variables.qlixReportDigest.slice(0, 8_000))}`
+        : '',
       untrusted(variables.transcript.map((t) => `${t.role}: ${t.text}`).join('\n\n')),
     ]
       .filter(Boolean)

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -50,7 +51,12 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
-import { toReportDto, type ProjectRow } from './project-verify.mapper.js';
+import {
+  decodeReportMeta,
+  snapshotDigest,
+  toReportDto,
+  type ProjectRow,
+} from './project-verify.mapper.js';
 import { ProctoringService } from '../proctoring/proctoring.service.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { resolveInterviewFinalTurn } from './project-defense-interview-policy.js';
@@ -497,6 +503,7 @@ export class ProjectDefenseService {
           verifyFlags: session.context.verifyFlags,
           verifyGaps: session.context.verifyGaps,
           snapshotDigest: session.context.snapshotDigest,
+          qlixReportDigest: session.context.qlixReportDigest ?? null,
           transcript: [],
           secondsRemaining,
         },
@@ -535,6 +542,7 @@ export class ProjectDefenseService {
           verifyFlags: session.context.verifyFlags,
           verifyGaps: session.context.verifyGaps,
           snapshotDigest: session.context.snapshotDigest,
+          qlixReportDigest: session.context.qlixReportDigest ?? null,
           transcript: session.turns.map((t) => ({ role: t.role, text: t.text })),
           secondsRemaining,
         },
@@ -569,6 +577,7 @@ export class ProjectDefenseService {
           projectSummary: session.context.projectSummary,
           stack: session.context.stack,
           verifyFlags: session.context.verifyFlags,
+          qlixReportDigest: session.context.qlixReportDigest ?? null,
           transcript: session.turns.map((t) => ({ role: t.role, text: t.text })),
           weights: PROJECT_DEFENSE_RUBRIC_WEIGHTS,
         },
@@ -620,6 +629,10 @@ export class ProjectDefenseService {
     if (project.githubUrl) artefacts.push(`GitHub: ${project.githubUrl}`);
     if (project.loomUrl) artefacts.push(`Loom walkthrough linked`);
 
+    const { meta } = decodeReportMeta(project.report!.explanation);
+    const repos = meta?.snapshotRepos ?? [];
+    const snapshotOk = repos.some((repo) => repo.ok);
+
     return ProjectDefenseContextSchema.parse({
       projectId: project.id,
       projectTitle: project.title,
@@ -628,10 +641,8 @@ export class ProjectDefenseService {
       declaredArtefacts: artefacts,
       verifyFlags: report.flags,
       verifyGaps: [],
-      snapshotDigest: project.githubUrl
-        ? `GitHub linked: ${project.githubUrl}. Automated digest pending full snapshot pipeline.`
-        : 'No GitHub snapshot available.',
-      qlixReportDigest: null,
+      snapshotDigest: snapshotDigest(repos, snapshotOk),
+      qlixReportDigest: meta?.qlixReportDigest ?? null,
     });
   }
 
@@ -661,6 +672,13 @@ export class ProjectDefenseService {
   private async assertInterviewAllowed(projectId: string, userId: string): Promise<void> {
     const project = await this.loadOwnedProject(projectId, userId);
     const interview = await this.interviewGate.getState(projectId);
+    if (project.qlixCheckId && !project.report) {
+      throw new ConflictException({
+        error: 'verification_in_progress',
+        message: 'Integrity verification is still running. Try again shortly.',
+        statusCode: 409,
+      });
+    }
     if (!project.report) {
       throw new BadRequestException({
         error: 'verify_pending',

@@ -1,22 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import {
-  PROJECT_VERIFY_PROMPT_REF,
-  SMART_TOPICS,
-  type ProjectGithubSnapshot,
-} from '@smart/contracts';
-import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { PROJECT_VERIFY_PROMPT_REF } from '@smart/contracts';
+import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import {
-  encodeReportExplanation,
-  placeholderSnapshot,
-  type StoredReportMeta,
-} from './project-verify.mapper.js';
-import { routeProjectVerification } from './project-verify.heuristics.js';
+import { GithubApiClient } from '../integrations/github/github-api.client.js';
+import { QlixClient } from './qlix-client.js';
+import { QlixPollService } from './qlix-poll.service.js';
+import { buildProjectGithubSnapshot } from './project-github-snapshot.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
+import { encodeReportExplanation, type StoredReportMeta } from './project-verify.mapper.js';
 
 /**
  * Runs automated project verification when a project is submitted.
- * Writes a verification report and opens the mandatory ownership interview gate.
+ * Submits to QLIX and enqueues polling — interview gate opens after QLIX pass.
  */
 @Injectable()
 export class ProjectVerifyRunnerService {
@@ -24,7 +19,9 @@ export class ProjectVerifyRunnerService {
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(QlixClient) private readonly qlix: QlixClient,
+    @Inject(QlixPollService) private readonly pollService: QlixPollService,
+    @Inject(GithubApiClient) private readonly github: GithubApiClient,
     @Inject(ProjectInterviewGateService)
     private readonly interviewGate: ProjectInterviewGateService,
   ) {}
@@ -41,57 +38,131 @@ export class ProjectVerifyRunnerService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project || project.studentId !== studentId) return;
 
-    const snapshot: ProjectGithubSnapshot = placeholderSnapshot(projectId, studentId, []);
-    const confidence = project.githubUrl ? 0.75 : 0.55;
-    const flags: StoredReportMeta['flags'] = project.githubUrl ? [] : ['SNAPSHOT_UNAVAILABLE'];
-    const meta: StoredReportMeta = {
-      qualityScore: 72,
-      duplicateScore: 10,
-      confidence,
-      flags,
-      promptRef: PROJECT_VERIFY_PROMPT_REF,
-      auditId: null,
-    };
-    const explanation = encodeReportExplanation(
-      'Automated verification completed. Complete the voice ownership interview to finalize verification.',
-      meta,
-    );
-    const routed = routeProjectVerification({ confidence, flags });
+    if (project.qlixCheckId) {
+      this.logger.debug(`Project ${projectId} QLIX poll already in flight`);
+      return;
+    }
 
-    await this.prisma.projectVerificationReport.create({
-      data: {
-        projectId,
-        score: 72,
-        relevanceScore: 75,
-        plagiarismFlag: false,
-        techAgeFlag: false,
-        explanation,
-        routedToReview: routed.routedToReview,
-      },
+    if (!project.githubUrl) {
+      await this.failWithoutGithub(projectId);
+      return;
+    }
+
+    const { snapshot, snapshotSha } = await buildProjectGithubSnapshot({
+      projectId,
+      studentId,
+      githubUrl: project.githubUrl,
+      github: this.github,
+      githubApiToken: env.GITHUB_API_TOKEN,
     });
+
+    if (!snapshotSha) {
+      await this.failSnapshotUnavailable(projectId);
+      return;
+    }
+
+    await this.pollService.cacheSnapshot(projectId, snapshot);
+
+    const idempotencyKey = `${projectId}:${snapshotSha}`;
+    let checkId: string;
+    try {
+      const submitted = await this.qlix.submitCheck({
+        githubUrl: project.githubUrl,
+        title: project.title,
+        idempotencyKey,
+      });
+      checkId = submitted.checkId;
+    } catch (error) {
+      this.qlix.logUnavailable(error instanceof Error ? error.message : 'submit failed');
+      await this.failQlixUnavailable(projectId);
+      return;
+    }
 
     await this.prisma.project.update({
       where: { id: projectId },
-      data: { status: 'SUBMITTED' },
+      data: { snapshotSha, qlixCheckId: checkId },
     });
 
-    await this.interviewGate.markVerifyComplete(projectId);
+    await this.pollService.enqueuePoll({
+      projectId,
+      studentId,
+      checkId,
+      startedAtMs: Date.now(),
+    });
 
-    await this.outbox.enqueueEnvelope({
-      topic: SMART_TOPICS.projectVerifyCompleted,
-      partitionKey: projectId,
-      eventType: SMART_TOPICS.projectVerifyCompleted,
-      source: 'evaluation',
+    this.logger.log(`Project ${projectId} submitted to QLIX check ${checkId}`);
+  }
+
+  private async writeReviewReport(
+    projectId: string,
+    meta: StoredReportMeta,
+    explanation: string,
+  ): Promise<void> {
+    await this.prisma.projectVerificationReport.create({
       data: {
         projectId,
-        score: 72,
-        confidence,
-        routedToReview: routed.routedToReview,
-        flags,
+        score: 0,
+        relevanceScore: 0,
+        plagiarismFlag: false,
+        techAgeFlag: false,
+        explanation: encodeReportExplanation(explanation, meta),
+        routedToReview: true,
       },
     });
+    await this.prisma.project.update({
+      where: { id: projectId },
+      data: { status: 'UNDER_REVIEW' },
+    });
+  }
 
-    this.logger.log(`Project ${projectId} verified; ownership interview required`);
-    void snapshot;
+  private async failWithoutGithub(projectId: string): Promise<void> {
+    await this.writeReviewReport(
+      projectId,
+      {
+        qualityScore: 0,
+        duplicateScore: 0,
+        confidence: 0.2,
+        flags: ['SNAPSHOT_UNAVAILABLE'],
+        promptRef: PROJECT_VERIFY_PROMPT_REF,
+        auditId: null,
+        exclusionReason: 'VERIFICATION_INCOMPLETE',
+        qlixStatus: 'FAILED',
+      },
+      'GitHub URL is required for automated project verification.',
+    );
+  }
+
+  private async failSnapshotUnavailable(projectId: string): Promise<void> {
+    await this.writeReviewReport(
+      projectId,
+      {
+        qualityScore: 0,
+        duplicateScore: 0,
+        confidence: 0.2,
+        flags: ['SNAPSHOT_UNAVAILABLE'],
+        promptRef: PROJECT_VERIFY_PROMPT_REF,
+        auditId: null,
+        exclusionReason: 'VERIFICATION_INCOMPLETE',
+        qlixStatus: 'FAILED',
+      },
+      'Could not pin a GitHub snapshot for this repository.',
+    );
+  }
+
+  private async failQlixUnavailable(projectId: string): Promise<void> {
+    await this.writeReviewReport(
+      projectId,
+      {
+        qualityScore: 0,
+        duplicateScore: 0,
+        confidence: 0.2,
+        flags: ['LLM_UNAVAILABLE'],
+        promptRef: PROJECT_VERIFY_PROMPT_REF,
+        auditId: null,
+        exclusionReason: 'VERIFICATION_INCOMPLETE',
+        qlixStatus: 'FAILED',
+      },
+      'Automated integrity verification could not be completed.',
+    );
   }
 }

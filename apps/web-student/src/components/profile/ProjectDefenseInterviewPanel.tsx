@@ -82,6 +82,7 @@ export function ProjectDefenseInterviewPanel({
   const intentionalLeaveRef = useRef(false);
   const sttModeRef = useRef<ProjectDefenseSttMode>('browser');
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [typedAnswer, setTypedAnswer] = useState('');
   const { prepareMicForSpeech, warningCount, liveKind } = useProctorLive();
   const prevWarningCountRef = useRef(0);
 
@@ -178,13 +179,21 @@ export function ProjectDefenseInterviewPanel({
     });
 
     if (!capture) {
-      setError('Microphone access is required. Allow the mic and try again.');
+      setError(
+        'Could not open the microphone. Allow mic access in your browser, or type your answer below.',
+      );
       setPhase('ready');
       return;
     }
 
     captureRef.current = capture;
   }, [cleanupCapture, prepareMicForSpeech, secondsRemaining]);
+
+  const promptForAnswer = useCallback(async () => {
+    setTypedAnswer('');
+    setError(null);
+    setPhase('ready');
+  }, []);
 
   const askThenListen = useCallback(
     async (text: string, audioUrl: string | null | undefined) => {
@@ -196,9 +205,9 @@ export function ProjectDefenseInterviewPanel({
       if (secondsRemaining !== null && secondsRemaining <= 0) return;
       await waitBeforeListening();
       if (interviewAbortRef.current) return;
-      await startListening();
+      await promptForAnswer();
     },
-    [secondsRemaining, startListening],
+    [promptForAnswer, secondsRemaining],
   );
 
   /** Closing statement from the examiner — play it, then grade; do not reopen the mic. */
@@ -233,7 +242,7 @@ export function ProjectDefenseInterviewPanel({
             setError(upload.message);
             submittingRef.current = false;
             if (secondsRemaining !== null && secondsRemaining > 0) {
-              await startListening();
+              await promptForAnswer();
             }
             return;
           }
@@ -242,12 +251,12 @@ export function ProjectDefenseInterviewPanel({
         if (!transcript.trim() && !(serverStt && audioObjectKey)) {
           setError(
             serverStt
-              ? 'We did not receive your recording. The mic will open again — speak clearly when you are ready.'
-              : 'We did not catch any speech. The mic will open again — speak clearly when you are ready.',
+              ? 'We did not receive your recording. Tap Start speaking or type your answer below.'
+              : 'We did not catch any speech. Tap Start speaking or type your answer below.',
           );
           submittingRef.current = false;
           if (secondsRemaining !== null && secondsRemaining > 0) {
-            await startListening();
+            await promptForAnswer();
           }
           return;
         }
@@ -301,7 +310,7 @@ export function ProjectDefenseInterviewPanel({
         if (timeUp && hasSpokenRef.current) {
           await completeInterview();
         } else if (!rateLimited && secondsRemaining !== null && secondsRemaining > 0) {
-          await startListening();
+          await promptForAnswer();
         }
       }
     },
@@ -310,10 +319,18 @@ export function ProjectDefenseInterviewPanel({
       completeInterview,
       playClosingThenComplete,
       project.projectId,
+      promptForAnswer,
       secondsRemaining,
-      startListening,
     ],
   );
+
+  const submitTypedAnswer = useCallback(async () => {
+    const text = typedAnswer.trim();
+    if (!text || submittingRef.current || completingRef.current) return;
+    cleanupCapture();
+    setError(null);
+    await submitTurn(text, new Blob([], { type: 'audio/webm' }));
+  }, [cleanupCapture, submitTurn, typedAnswer]);
 
   const finishListening = useCallback(async () => {
     const capture = captureRef.current;
@@ -470,7 +487,7 @@ export function ProjectDefenseInterviewPanel({
         : phase === 'processing'
           ? 'Thinking about your answer…'
           : phase === 'ready'
-            ? 'Opening mic…'
+            ? 'Tap Start speaking when you are ready'
             : 'Starting interview…';
 
   return (
@@ -610,6 +627,42 @@ export function ProjectDefenseInterviewPanel({
           </div>
 
           <div className="flex shrink-0 flex-col gap-3 border-t border-[var(--surface-border)] pt-4">
+            {phase === 'ready' ? (
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={() => void startListening()}
+                >
+                  <Mic className="mr-2 h-5 w-5" />
+                  Start speaking
+                </Button>
+                <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Mic not working?</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
+                    Type your answer instead — same as speaking your response aloud.
+                  </p>
+                  <textarea
+                    className="mt-3 min-h-[6rem] w-full rounded-md border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                    value={typedAnswer}
+                    onChange={(event) => setTypedAnswer(event.target.value)}
+                    placeholder="Describe your answer in your own words…"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3"
+                    disabled={typedAnswer.trim().length < 8}
+                    onClick={() => void submitTypedAnswer()}
+                  >
+                    Submit typed answer
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {phase === 'listening' ? (
               <Button
                 type="button"
@@ -622,15 +675,21 @@ export function ProjectDefenseInterviewPanel({
               </Button>
             ) : null}
 
-            {error && phase !== 'processing' && phase !== 'listening' ? (
+            {error && phase !== 'processing' && phase !== 'listening' && phase !== 'ready' ? (
               <div className="space-y-3">
                 <Alert tone="danger" title="Could not continue">
                   {error}
                 </Alert>
-                <Button type="button" variant="secondary" onClick={() => void startListening()}>
+                <Button type="button" variant="secondary" onClick={() => void promptForAnswer()}>
                   Try again
                 </Button>
               </div>
+            ) : null}
+
+            {error && phase === 'ready' ? (
+              <Alert tone="warning" title="Microphone issue">
+                {error}
+              </Alert>
             ) : null}
           </div>
         </main>

@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectDefenseService } from './project-defense.service.js';
 
@@ -19,6 +23,8 @@ const projectRow = {
   githubUrl: 'https://github.com/alice/bus',
   liveUrl: null,
   status: 'SUBMITTED',
+  qlixCheckId: null,
+  snapshotSha: null,
   createdAt: new Date(),
   report: {
     id: randomUUID(),
@@ -111,6 +117,17 @@ function setup() {
 describe('ProjectDefenseService', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('rejects prepare while QLIX verification is still running', async () => {
+    const { service, prisma } = setup();
+    prisma.project.findUnique.mockResolvedValueOnce({
+      ...projectRow,
+      qlixCheckId: 'check-1',
+      report: null,
+    });
+
+    await expect(service.prepare(projectId, userId)).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('prepare reserves a session without starting the interview clock', async () => {
     const { service, interviewGate, redisStore } = setup();
     const prepared = await service.prepare(projectId, userId);
@@ -154,6 +171,47 @@ describe('ProjectDefenseService', () => {
     expect(res.session.turns).toHaveLength(1);
     expect(res.session.turns[0]?.role).toBe('EXAMINER');
     expect(gateway.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes qlixReportDigest to the examiner when stored on the verify report', async () => {
+    const { service, gateway, prisma } = setup();
+    const qlixReportDigest =
+      'similarityIndex=15\naiLikelihood=45\nsuspicion=medium\nElevated AI patterns detected.';
+    prisma.project.findUnique.mockResolvedValue({
+      ...projectRow,
+      report: {
+        ...projectRow.report,
+        explanation: `ok\n---smart-verify---\n${JSON.stringify({
+          qualityScore: 72,
+          duplicateScore: 15,
+          confidence: 0.85,
+          flags: ['QLIX_AUTHORSHIP_ELEVATED'],
+          promptRef: 'project-verify@1',
+          auditId: null,
+          qlixReportDigest,
+        })}`,
+      },
+    });
+    gateway.complete.mockResolvedValueOnce({
+      output: {
+        question:
+          'For Bus tracker, can you explain the elevated AI patterns QLIX flagged in your websocket code?',
+        probes: 'OWNERSHIP',
+        isFinalTurn: false,
+      },
+      auditId: randomUUID(),
+    });
+
+    await service.prepare(projectId, userId);
+    await service.start(projectId, userId);
+
+    expect(gateway.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          qlixReportDigest,
+        }),
+      }),
+    );
   });
 
   it('prepare clears a prior attempt so the next start is fresh', async () => {

@@ -10,6 +10,8 @@ import {
 import {
   BlobWsPayloadSchema,
   DEFAULT_VIOLATION_SEVERITY,
+  PROCTORING_CHECKPOINT_DEDUP_MS,
+  PROCTORING_SNAPSHOT_KEY_PREFIX,
   PROCTORING_WARNING_LIMIT_DEFAULT,
   REDIS_TTL_SECONDS,
   SMART_TOPICS,
@@ -18,6 +20,7 @@ import {
   type IntegrityFlag,
   type IntegrityScoreBand,
   type ProctoringCheckpointRequest,
+  type ProctoringCheckpointResponse,
   type ProctoringConsentRequest,
   type ProctoringEnrollResponse,
   type ProctoringEventClass,
@@ -30,17 +33,20 @@ import {
   type ProctoringPrecheckRequest,
   type ProctoringPrecheckResponse,
   type ProctoringSeverity,
+  type ProctoringSnapshotUploadResponse,
   type ProctoringViolationKind,
   type ProctoringViolationRequest,
   type ProctoringVoiceResponse,
   type ProctoringWarningSnapshot,
 } from '@smart/contracts';
 import { integrityFlags } from '@smart/observability';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { env } from '../../platform/config/env.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+import { analyzeProctoringSnapshot } from './cv-client.js';
 import { randomNonce, signViolation, signaturesMatch } from './hmac.js';
 import { bandForScore, integrityScore, type StoredViolation } from './risk.js';
 
@@ -59,8 +65,12 @@ const FP = (id: string) => `proctor:fp:${id}`;
 const BLOB = (id: string) => `proctor:blob:${id}`;
 const LOCK = (id: string) => `proctor:lock:${id}`;
 const ONBOARD = (id: string) => `proctor:onboard:${id}`;
+const ENROLL_YAW = (id: string) => `proctor:enroll:yaw:${id}`;
+const CV_PROCESSED = (objectKey: string) => `proctor:cv:processed:${objectKey}`;
 const EVENTS = (id: string) => `proctor:events:${id}`;
 const HB_ZSET = 'proctor:heartbeats';
+
+const SNAPSHOT_UPLOAD_TTL_SECONDS = 15 * 60;
 
 type OnboardState = {
   consentAt: string | null;
@@ -94,6 +104,7 @@ export class ProctoringService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async assertAttemptOwner(userId: string, attemptId: string): Promise<ProctorSubject> {
@@ -362,43 +373,183 @@ export class ProctoringService {
     return { status: 'recorded' as const, fuzzyMismatch: mismatch };
   }
 
-  async checkpoint(userId: string, body: ProctoringCheckpointRequest) {
-    await this.assertAttemptOwner(userId, body.attemptId);
-    await this.ping(userId, body.attemptId);
-    await this.outbox.enqueueEnvelope({
-      topic: SMART_TOPICS.proctoringSnapshotReady,
-      partitionKey: body.attemptId,
-      eventType: SMART_TOPICS.proctoringSnapshotReady,
-      source: 'proctoring',
-      data: { attemptId: body.attemptId, objectKey: body.objectKey },
+  async createSnapshotUploadUrl(
+    userId: string,
+    attemptId: string,
+  ): Promise<ProctoringSnapshotUploadResponse> {
+    await this.assertAttemptOwner(userId, attemptId);
+    const objectKey = `${PROCTORING_SNAPSHOT_KEY_PREFIX}${attemptId}/${randomUUID()}.jpg`;
+    const uploadUrl = await this.storage.getSignedUploadUrl({
+      objectKey,
+      contentType: 'image/jpeg',
     });
-    return { queued: true as const };
+    return { uploadUrl, objectKey, expiresInSeconds: SNAPSHOT_UPLOAD_TTL_SECONDS };
   }
 
-  async applyCheckpointKinds(attemptId: string, kinds: ProctoringViolationKind[]): Promise<void> {
+  private assertValidSnapshotObjectKey(attemptId: string, objectKey: string): void {
+    const prefix = `${PROCTORING_SNAPSHOT_KEY_PREFIX}${attemptId}/`;
+    if (!objectKey.startsWith(prefix) || objectKey.includes('..')) {
+      throw new BadRequestException({
+        error: 'invalid_object_key',
+        message: 'Snapshot objectKey must belong to this attempt.',
+        statusCode: 400,
+      });
+    }
+    if (env.PROCTORING_FULL && objectKey.startsWith('stub:')) {
+      throw new BadRequestException({
+        error: 'invalid_object_key',
+        message: 'Stub snapshot keys are not accepted when proctoring is enabled.',
+        statusCode: 400,
+      });
+    }
+  }
+
+  async checkpoint(
+    userId: string,
+    body: ProctoringCheckpointRequest,
+  ): Promise<ProctoringCheckpointResponse> {
+    const subject = await this.assertAttemptOwner(userId, body.attemptId);
+    this.assertValidSnapshotObjectKey(body.attemptId, body.objectKey);
+    await this.ping(userId, body.attemptId);
+
+    const analyzed = env.PROCTORING_CV_PROVIDER !== 'stub';
+    const analysis = analyzed
+      ? await analyzeProctoringSnapshot(body.objectKey)
+      : { violations: [] };
+    const detected = analysis.violations;
+    const { newViolations, snapshot } = await this.applyCheckpointKinds(
+      body.attemptId,
+      detected,
+      subject.integrityFlag,
+      subject.persistAttempt,
+    );
+    await this.markSnapshotProcessed(body.objectKey);
+
+    void this.outbox
+      .enqueueEnvelope({
+        topic: SMART_TOPICS.proctoringSnapshotReady,
+        partitionKey: body.attemptId,
+        eventType: SMART_TOPICS.proctoringSnapshotReady,
+        source: 'proctoring',
+        data: { attemptId: body.attemptId, objectKey: body.objectKey },
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `proctoring snapshot audit enqueue failed: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      });
+
+    return {
+      attemptId: body.attemptId,
+      analyzed,
+      detected,
+      newViolations,
+      warningCount: snapshot.warningCount,
+      warningLimit: snapshot.warningLimit,
+      locked: snapshot.locked,
+    };
+  }
+
+  async isSnapshotProcessed(objectKey: string): Promise<boolean> {
+    await this.ensureRedis();
+    return (await this.redis.exists(CV_PROCESSED(objectKey))) === 1;
+  }
+
+  async markSnapshotProcessed(objectKey: string): Promise<void> {
+    await this.ensureRedis();
+    await this.redis.setex(CV_PROCESSED(objectKey), SNAPSHOT_UPLOAD_TTL_SECONDS, '1');
+  }
+
+  async applyCheckpointKinds(
+    attemptId: string,
+    kinds: ProctoringViolationKind[],
+    integrityFlag?: IntegrityFlag,
+    persistAttempt?: boolean,
+  ): Promise<{
+    newViolations: ProctoringViolationKind[];
+    snapshot: ProctoringWarningSnapshot;
+  }> {
     const attempt = await this.prisma.attempt.findUnique({ where: { id: attemptId } });
     if (attempt?.status === 'IN_PROGRESS') {
-      if (kinds.length === 0) {
-        await this.publishBlob(attemptId, { type: 'blob_state', state: 'pass_cue' });
-        return;
-      }
-      for (const kind of kinds) {
-        const snap = await this.record(attemptId, attempt.integrityFlag as IntegrityFlag, kind);
-        if (snap.locked) break;
-      }
-      return;
+      return this.recordCheckpointKinds(
+        attemptId,
+        kinds,
+        attempt.integrityFlag as IntegrityFlag,
+        true,
+      );
     }
     await this.ensureRedis();
     const skillSession = await this.redis.get(skillVerifyRedisKey(attemptId));
-    if (!skillSession) return;
-    if (kinds.length === 0) {
+    if (!skillSession) {
+      const snapshot = await this.buildWarningSnapshot(attemptId, integrityFlag ?? 'CLEAN');
+      return { newViolations: [], snapshot };
+    }
+    return this.recordCheckpointKinds(
+      attemptId,
+      kinds,
+      integrityFlag ?? 'CLEAN',
+      persistAttempt ?? false,
+    );
+  }
+
+  private async recordCheckpointKinds(
+    attemptId: string,
+    kinds: ProctoringViolationKind[],
+    integrityFlag: IntegrityFlag,
+    persistAttempt: boolean,
+  ): Promise<{
+    newViolations: ProctoringViolationKind[];
+    snapshot: ProctoringWarningSnapshot;
+  }> {
+    const deduped = await this.dedupeCheckpointKinds(attemptId, kinds);
+    if (deduped.length === 0) {
       await this.publishBlob(attemptId, { type: 'blob_state', state: 'pass_cue' });
-      return;
+      const snapshot = await this.buildWarningSnapshot(attemptId, integrityFlag);
+      return { newViolations: [], snapshot };
     }
-    for (const kind of kinds) {
-      const snap = await this.record(attemptId, 'CLEAN', kind, undefined, undefined, false);
-      if (snap.locked) break;
+    let snapshot = await this.buildWarningSnapshot(attemptId, integrityFlag);
+    for (const kind of deduped) {
+      snapshot = await this.record(
+        attemptId,
+        integrityFlag,
+        kind,
+        undefined,
+        undefined,
+        persistAttempt,
+      );
+      if (snapshot.locked) break;
     }
+    return { newViolations: deduped, snapshot };
+  }
+
+  private async dedupeCheckpointKinds(
+    attemptId: string,
+    kinds: ProctoringViolationKind[],
+  ): Promise<ProctoringViolationKind[]> {
+    const events = await this.loadEvents(attemptId);
+    const cutoff = Date.now() - PROCTORING_CHECKPOINT_DEDUP_MS;
+    const recent = new Set(events.filter((event) => event.ts >= cutoff).map((event) => event.kind));
+    return kinds.filter((kind) => !recent.has(kind));
+  }
+
+  private async buildWarningSnapshot(
+    attemptId: string,
+    integrityFlag: IntegrityFlag,
+  ): Promise<ProctoringWarningSnapshot> {
+    await this.ensureRedis();
+    const warningCount = Number((await this.redis.get(WARN(attemptId))) ?? '0');
+    const locked = (await this.redis.exists(LOCK(attemptId))) === 1;
+    const events = await this.loadEvents(attemptId);
+    const score = integrityScore(events);
+    return {
+      attemptId,
+      warningCount,
+      warningLimit: PROCTORING_WARNING_LIMIT_DEFAULT,
+      locked,
+      integrityScore: score,
+      integrityBand: bandForScore(score),
+      integrityFlag,
+    };
   }
 
   async sweepStaleHeartbeats(): Promise<number> {
@@ -460,12 +611,39 @@ export class ProctoringService {
     };
   }
 
-  async enrollFace(userId: string, attemptId: string): Promise<ProctoringEnrollResponse> {
+  async enrollFace(
+    userId: string,
+    attemptId: string,
+    objectKey?: string,
+  ): Promise<ProctoringEnrollResponse> {
     await this.assertAttemptOwner(userId, attemptId);
+    if (objectKey) {
+      this.assertValidSnapshotObjectKey(attemptId, objectKey);
+      const analysis = await analyzeProctoringSnapshot(objectKey);
+      if ((analysis.faceCount ?? 0) !== 1) {
+        return { enrolled: false, message: 'Enrollment frame must show exactly one face.' };
+      }
+      if (analysis.violations.length > 0) {
+        return { enrolled: false, message: 'Fix camera setup before enrolling your face.' };
+      }
+      if (analysis.yaw !== undefined) {
+        await this.ensureRedis();
+        await this.redis.setex(
+          ENROLL_YAW(attemptId),
+          REDIS_TTL_SECONDS.proctoringWarning,
+          String(analysis.yaw),
+        );
+      }
+    }
     const state = await this.readOnboard(attemptId);
     state.faceEnrolled = true;
     await this.writeOnboard(attemptId, state);
-    return { enrolled: true, message: 'Face baseline stored (stub provider).' };
+    return {
+      enrolled: true,
+      message: objectKey
+        ? 'Face baseline stored from enrollment snapshot.'
+        : 'Face baseline stored.',
+    };
   }
 
   async liveness(
@@ -473,8 +651,23 @@ export class ProctoringService {
     body: ProctoringLivenessRequest,
   ): Promise<ProctoringLivenessResponse> {
     await this.assertAttemptOwner(userId, body.attemptId);
-    const isLive =
-      body.challenge === 'BLINK' ? body.earDelta >= 0.04 : Math.abs(body.yawDelta) >= 0.06;
+    let isLive = false;
+    if (body.objectKey) {
+      this.assertValidSnapshotObjectKey(body.attemptId, body.objectKey);
+      const analysis = await analyzeProctoringSnapshot(body.objectKey);
+      const yaw = analysis.yaw ?? 0;
+      await this.ensureRedis();
+      const baselineRaw = await this.redis.get(ENROLL_YAW(body.attemptId));
+      const baseline = baselineRaw ? Number(baselineRaw) : 0;
+      const delta = yaw - baseline;
+      if (body.challenge === 'TURN_LEFT') isLive = delta <= -12;
+      else if (body.challenge === 'TURN_RIGHT') isLive = delta >= 12;
+      else isLive = Math.abs(delta) >= 8 || (analysis.violations.length === 0 && yaw !== 0);
+    } else {
+      const earDelta = body.earDelta ?? 0;
+      const yawDelta = body.yawDelta ?? 0;
+      isLive = body.challenge === 'BLINK' ? earDelta >= 0.04 : Math.abs(yawDelta) >= 0.06;
+    }
     const state = await this.readOnboard(body.attemptId);
     if (isLive) state.livenessPassed = true;
     await this.writeOnboard(body.attemptId, state);
@@ -582,6 +775,8 @@ export class ProctoringService {
       NO_FACE: 'Keep your face visible to the camera.',
       MULTIPLE_FACES: 'Only one person should be in frame.',
       HEARTBEAT_LOST: 'Connection check failed — stay on this page.',
+      PHONE_DETECTED: 'Remove phones and secondary devices from view.',
+      FOREIGN_OBJECT_DETECTED: 'Remove extra people, devices, and objects from the camera view.',
     };
     return map[kind] ?? 'Please follow the assessment rules.';
   }

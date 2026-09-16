@@ -37,6 +37,13 @@ vi.mock('../../lib/proctoring/chromium', () => ({
   isGoogleChrome: () => mocks.chromium(),
 }));
 
+vi.mock('../../lib/proctoring/proctoring-snapshot-upload', () => ({
+  uploadProctoringSnapshot: vi.fn().mockResolvedValue({
+    ok: true,
+    objectKey: 'proctoring/attempt/enroll.jpg',
+  }),
+}));
+
 vi.mock('./face-live-check', () => ({
   FaceLiveCheck: ({ onPassed }: { onPassed: (sample: FaceCheckResult) => void }) => (
     <button
@@ -235,7 +242,12 @@ describe('OnboardingGate', () => {
     expect(mocks.precheck).toHaveBeenCalledWith(
       expect.objectContaining({ attemptId: ATTEMPT, faceCentered: true, brightness: 140 }),
     );
-    expect(mocks.enrollFace).toHaveBeenCalledWith(ATTEMPT);
+    expect(mocks.enrollFace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptId: ATTEMPT,
+        objectKey: 'proctoring/attempt/enroll.jpg',
+      }),
+    );
     expect(mocks.liveness).toHaveBeenCalledWith(
       expect.objectContaining({ attemptId: ATTEMPT, challenge: 'BLINK' }),
     );

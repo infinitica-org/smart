@@ -138,6 +138,7 @@ import {
   ParseResumeResponseSchema,
   UploadResumeResponseSchema,
   ProctoringEnrollResponseSchema,
+  ProctoringSnapshotUploadResponseSchema,
   ProctoringLivenessResponseSchema,
   ProctoringNonceResponseSchema,
   ProctoringOnboardingStatusSchema,
@@ -1143,6 +1144,10 @@ export function proctoringApi(client: SmartApiClient) {
       ),
     fingerprint: (body: unknown) => client.post(prefixed('/proctoring/fingerprint'), body),
     checkpoint: (body: unknown) => client.post(prefixed('/proctoring/checkpoint'), body),
+    snapshotUploadUrl: (attemptId: string, body: unknown) =>
+      client.post(prefixed(`/proctoring/${attemptId}/snapshot-upload-url`), body, {
+        schema: ProctoringSnapshotUploadResponseSchema,
+      }),
     consent: (body: unknown) =>
       client.post(prefixed('/proctoring/consent'), body, {
         schema: ProctoringOnboardingStatusSchema,
@@ -1151,14 +1156,10 @@ export function proctoringApi(client: SmartApiClient) {
       client.post(prefixed('/proctoring/precheck'), body, {
         schema: ProctoringPrecheckResponseSchema,
       }),
-    enrollFace: (attemptId: string) =>
-      client.post(
-        prefixed('/proctoring/enroll-face'),
-        { attemptId },
-        {
-          schema: ProctoringEnrollResponseSchema,
-        },
-      ),
+    enrollFace: (body: unknown) =>
+      client.post(prefixed('/proctoring/enroll-face'), body, {
+        schema: ProctoringEnrollResponseSchema,
+      }),
     liveness: (body: unknown) =>
       client.post(prefixed('/proctoring/liveness'), body, {
         schema: ProctoringLivenessResponseSchema,

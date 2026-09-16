@@ -28,6 +28,9 @@ export const PROCTORING_VIOLATION_KINDS = [
   'LIVENESS_FAILURE',
   'CAMERA_STATIC',
   'TECHNICAL_INTERRUPTION',
+  /** @deprecated Prefer FOREIGN_OBJECT_DETECTED — kept for legacy events. */
+  'PHONE_DETECTED',
+  'FOREIGN_OBJECT_DETECTED',
 ] as const;
 export const ProctoringViolationKindSchema = z.enum(PROCTORING_VIOLATION_KINDS);
 export type ProctoringViolationKind = z.infer<typeof ProctoringViolationKindSchema>;
@@ -70,6 +73,8 @@ export const DEFAULT_VIOLATION_SEVERITY: Record<ProctoringViolationKind, Proctor
   LIVENESS_FAILURE: 'high',
   CAMERA_STATIC: 'medium',
   TECHNICAL_INTERRUPTION: 'medium',
+  PHONE_DETECTED: 'high',
+  FOREIGN_OBJECT_DETECTED: 'high',
 };
 
 export const PROCTORING_WARNING_LIMIT_DEFAULT = 5;
@@ -160,8 +165,10 @@ export type ProctoringEnrollResponse = z.infer<typeof ProctoringEnrollResponseSc
 export const ProctoringLivenessRequestSchema = z.object({
   attemptId: UuidSchema,
   challenge: z.enum(['TURN_LEFT', 'TURN_RIGHT', 'BLINK']),
-  yawDelta: z.number(),
-  earDelta: z.number(),
+  /** Legacy client-reported deltas; ignored when objectKey is present. */
+  yawDelta: z.number().optional(),
+  earDelta: z.number().optional(),
+  objectKey: z.string().min(8).max(512).optional(),
 });
 export type ProctoringLivenessRequest = z.infer<typeof ProctoringLivenessRequestSchema>;
 
@@ -183,6 +190,49 @@ export const ProctoringCheckpointRequestSchema = z.object({
   objectKey: z.string().min(8).max(512),
 });
 export type ProctoringCheckpointRequest = z.infer<typeof ProctoringCheckpointRequestSchema>;
+
+export const PROCTORING_SNAPSHOT_KEY_PREFIX = 'proctoring/' as const;
+
+/** JPEG dimensions uploaded for server CV (16:9). */
+export const PROCTORING_SNAPSHOT_WIDTH = 640;
+export const PROCTORING_SNAPSHOT_HEIGHT = 360;
+/** ~60 snapshots/min — sync checkpoint analyzes inline; scale CV sidecar horizontally. */
+export const PROCTORING_SNAPSHOT_INTERVAL_MS = 1_000;
+/** Server CV: suppress repeat kinds until this window elapses (≈ two snapshot cycles). */
+export const PROCTORING_CHECKPOINT_DEDUP_MS = 2_000;
+
+export const ProctoringCheckpointResponseSchema = z.object({
+  attemptId: UuidSchema,
+  analyzed: z.boolean(),
+  /** Raw kinds from CV before dedup. */
+  detected: z.array(ProctoringViolationKindSchema),
+  /** Integrity kinds recorded this checkpoint (after dedup). */
+  newViolations: z.array(ProctoringViolationKindSchema),
+  warningCount: z.number().int().nonnegative(),
+  warningLimit: z.number().int().positive(),
+  locked: z.boolean(),
+});
+export type ProctoringCheckpointResponse = z.infer<typeof ProctoringCheckpointResponseSchema>;
+
+export const ProctoringSnapshotUploadRequestSchema = z.object({
+  contentType: z.literal('image/jpeg'),
+});
+export type ProctoringSnapshotUploadRequest = z.infer<typeof ProctoringSnapshotUploadRequestSchema>;
+
+export const ProctoringSnapshotUploadResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+  objectKey: z.string().min(8).max(512),
+  expiresInSeconds: z.number().int().positive(),
+});
+export type ProctoringSnapshotUploadResponse = z.infer<
+  typeof ProctoringSnapshotUploadResponseSchema
+>;
+
+export const ProctoringEnrollRequestSchema = z.object({
+  attemptId: UuidSchema,
+  objectKey: z.string().min(8).max(512).optional(),
+});
+export type ProctoringEnrollRequest = z.infer<typeof ProctoringEnrollRequestSchema>;
 
 export const ProctoringPingResponseSchema = z.object({
   status: z.literal('ok'),

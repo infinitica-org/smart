@@ -589,9 +589,23 @@ export const PROJECT_VERIFY_FLAGS = [
   'LOW_CONFIDENCE',
   'LLM_UNAVAILABLE',
   'STACK_LANGUAGE_MISMATCH',
+  'QLIX_AUTHORSHIP_ELEVATED',
+  'QLIX_POLL_TIMEOUT',
 ] as const;
 export const ProjectVerifyFlagSchema = z.enum(PROJECT_VERIFY_FLAGS);
 export type ProjectVerifyFlag = z.infer<typeof ProjectVerifyFlagSchema>;
+
+export const PROJECT_EXCLUSION_REASONS = [
+  'SOURCE_OVERLAP_ELEVATED',
+  'INDEPENDENT_AUTHORSHIP_UNVERIFIED',
+  'INSUFFICIENT_COMPLEXITY_FOR_VERIFICATION',
+  'PROVENANCE_INCONSISTENT',
+  'COMPETENCY_NOT_DEMONSTRATED',
+  'VERIFICATION_INCOMPLETE',
+  'MANUAL_REVIEW_DECLINED',
+] as const;
+export const ProjectExclusionReasonSchema = z.enum(PROJECT_EXCLUSION_REASONS);
+export type ProjectExclusionReason = z.infer<typeof ProjectExclusionReasonSchema>;
 
 export const GITHUB_SNAPSHOT_UNAVAILABLE_REASONS = [
   'oauth_missing',

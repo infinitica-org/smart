@@ -3,11 +3,13 @@ export const AUDIO_EVALUATION_QUEUE = 'audio_evaluation' as const;
 export const PDF_GENERATION_QUEUE = 'pdf_generation' as const;
 export const AUDIT_LOG_PURGE_QUEUE = 'audit_log_purge' as const;
 export const CREDENTIAL_VERIFICATION_QUEUE = 'credential_verification' as const;
+export const QLIX_POLL_QUEUE = 'qlix_poll' as const;
 
 export const SANDBOX_EXECUTION_DLQ = 'sandbox_execution.dlq' as const;
 export const AUDIO_EVALUATION_DLQ = 'audio_evaluation.dlq' as const;
 export const PDF_GENERATION_DLQ = 'pdf_generation.dlq' as const;
 export const CREDENTIAL_VERIFICATION_DLQ = 'credential_verification.dlq' as const;
+export const QLIX_POLL_DLQ = 'qlix_poll.dlq' as const;
 
 /** Rolling retention window for `audit_logs` — rows older than this are hard-deleted daily. */
 export const AUDIT_LOG_RETENTION_DAYS = 20;
