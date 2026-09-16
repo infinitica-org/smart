@@ -1,4 +1,5 @@
 import type {
+  CandidateAcademicScores,
   CandidateOnboardingDraft,
   CandidateOnboardingJobPreferences,
   CompleteCandidateOnboardingRequest,
@@ -45,6 +46,12 @@ export interface OnboardingProfileForm {
     currentLocation: string;
     preferredLocations: string[];
   };
+  /** CGPA (0-10) and 10th/12th percentages (0-100) — all optional, string inputs. */
+  academicScores: {
+    cgpa: string;
+    sscPercentage: string;
+    hscPercentage: string;
+  };
   dpdpConsent: boolean;
   /** Signed profile photo URL after upload; optional during onboarding. */
   profilePhotoUrl: string;
@@ -62,6 +69,12 @@ export const emptyJobPreferences = (): OnboardingProfileForm['jobPreferences'] =
   expectedCtcLakhs: '',
   currentLocation: '',
   preferredLocations: [],
+});
+
+export const emptyAcademicScores = (): OnboardingProfileForm['academicScores'] => ({
+  cgpa: '',
+  sscPercentage: '',
+  hscPercentage: '',
 });
 
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
@@ -89,6 +102,7 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     socialVerification: emptySocialVerification(),
     skillDiscovery: emptySkillDiscovery(),
     jobPreferences: emptyJobPreferences(),
+    academicScores: emptyAcademicScores(),
     dpdpConsent: false,
     profilePhotoUrl: '',
   };
@@ -215,6 +229,15 @@ export function applyServerDraft(
             jobPreferences.preferredLocations ?? form.jobPreferences.preferredLocations,
         }
       : form.jobPreferences,
+    academicScores: draft.academicScores
+      ? {
+          cgpa: draft.academicScores.cgpa?.toString() ?? form.academicScores.cgpa,
+          sscPercentage:
+            draft.academicScores.sscPercentage?.toString() ?? form.academicScores.sscPercentage,
+          hscPercentage:
+            draft.academicScores.hscPercentage?.toString() ?? form.academicScores.hscPercentage,
+        }
+      : form.academicScores,
     socialVerification: draft.socialVerification
       ? { ...emptySocialVerification(), ...draft.socialVerification }
       : form.socialVerification,
@@ -277,6 +300,25 @@ function buildSkillsPayload(
   ];
 }
 
+/** All three fields are optional — omit any that were left blank or don't parse as numbers. */
+function buildAcademicScoresPayload(
+  form: OnboardingProfileForm,
+): CandidateAcademicScores | undefined {
+  const cgpa = form.academicScores.cgpa.trim() ? Number(form.academicScores.cgpa) : undefined;
+  const sscPercentage = form.academicScores.sscPercentage.trim()
+    ? Number(form.academicScores.sscPercentage)
+    : undefined;
+  const hscPercentage = form.academicScores.hscPercentage.trim()
+    ? Number(form.academicScores.hscPercentage)
+    : undefined;
+  const result: CandidateAcademicScores = {
+    ...(cgpa !== undefined && !Number.isNaN(cgpa) ? { cgpa } : {}),
+    ...(sscPercentage !== undefined && !Number.isNaN(sscPercentage) ? { sscPercentage } : {}),
+    ...(hscPercentage !== undefined && !Number.isNaN(hscPercentage) ? { hscPercentage } : {}),
+  };
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function buildJobPreferencesPayload(
   form: OnboardingProfileForm,
 ): CandidateOnboardingJobPreferences | undefined {
@@ -312,6 +354,7 @@ export function buildOnboardingDraftPayload(
     experiences: [],
     skills: buildSkillsPayload(form),
     jobPreferences: buildJobPreferencesPayload(form),
+    academicScores: buildAcademicScoresPayload(form),
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: form.dpdpConsent,
@@ -395,6 +438,7 @@ export function buildCompleteOnboardingRequest(
     experiences: [],
     skills: buildSkillsPayload(form),
     jobPreferences,
+    academicScores: buildAcademicScoresPayload(form),
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: true,

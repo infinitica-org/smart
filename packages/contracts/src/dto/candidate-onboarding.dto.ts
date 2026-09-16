@@ -56,6 +56,18 @@ export const CandidateOnboardingSkillSchema = z.object({
 });
 export type CandidateOnboardingSkill = z.infer<typeof CandidateOnboardingSkillSchema>;
 
+/**
+ * S6-VV-75 — CGPA/10th/12th scores. Denormalized onto `User` (not
+ * `CandidateEducation`) since matching needs a single indexable value per
+ * student; all optional to preserve the progressive-onboarding model.
+ */
+export const CandidateAcademicScoresSchema = z.object({
+  cgpa: z.number().min(0).max(10).optional(),
+  sscPercentage: z.number().min(0).max(100).optional(),
+  hscPercentage: z.number().min(0).max(100).optional(),
+});
+export type CandidateAcademicScores = z.infer<typeof CandidateAcademicScoresSchema>;
+
 export const WORK_MODES = ['FULL_TIME', 'PART_TIME', 'REMOTE', 'HYBRID'] as const;
 export const WorkModeSchema = z.enum(WORK_MODES);
 export type WorkMode = z.infer<typeof WorkModeSchema>;
@@ -112,6 +124,8 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   skills: z.array(CandidateOnboardingSkillSchema).max(40).default([]),
   /** Progressive profile — optional at onboarding completion. */
   jobPreferences: CandidateOnboardingJobPreferencesSchema.optional(),
+  /** Progressive profile — optional at onboarding completion. */
+  academicScores: CandidateAcademicScoresSchema.optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   /** DPDP consent must be explicitly accepted to complete onboarding. */
@@ -149,6 +163,7 @@ export const CandidateOnboardingDraftSchema = z.object({
   experiences: z.array(CandidateOnboardingExperienceSchema.partial()).max(30).optional(),
   skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
   jobPreferences: CandidateOnboardingJobPreferencesSchema.partial().optional(),
+  academicScores: CandidateAcademicScoresSchema.partial().optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   dpdpConsent: z.boolean().optional(),

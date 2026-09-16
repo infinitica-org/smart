@@ -332,6 +332,13 @@ model User {
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
+  /// S6-VV-75 — CGPA on a 0-10 scale, collected during onboarding; denormalized onto User (not
+  /// CandidateEducation) because matching needs a single indexable value per student.
+  cgpa                Decimal?     @map("cgpa") @db.Decimal(4, 2)
+  /// S6-VV-75 — 10th/SSC exam percentage (0-100).
+  sscPercentage       Decimal?     @map("ssc_percentage") @db.Decimal(5, 2)
+  /// S6-VV-75 — 12th/HSC exam percentage (0-100).
+  hscPercentage       Decimal?     @map("hsc_percentage") @db.Decimal(5, 2)
   /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
   username             String?        @map("username")
   /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.

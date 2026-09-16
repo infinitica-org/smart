@@ -68,6 +68,10 @@ export const AuthenticatedUserSchema = z.object({
   onboardingCompleted: z.boolean(),
   /** Signed download URL for the candidate profile photo, when uploaded. */
   profilePhotoUrl: z.string().url().nullable(),
+  /** S6-VV-75 — CGPA (0-10) and 10th/12th percentages, set during onboarding or profile edit. */
+  cgpa: z.number().min(0).max(10).nullable(),
+  sscPercentage: z.number().min(0).max(100).nullable(),
+  hscPercentage: z.number().min(0).max(100).nullable(),
   sessionHold: z
     .object({
       code: SessionHoldCodeSchema,
