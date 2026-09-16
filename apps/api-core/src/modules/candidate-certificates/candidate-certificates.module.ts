@@ -15,6 +15,7 @@ import {
 import { Tier1IssuerRegistry } from './verification/tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from './verification/tier2-public-url-verifier.js';
 import { Tier3OcrVerifier } from './verification/tier3-ocr-verifier.js';
+import { CredentialDedupService } from './verification/credential-dedup.service.js';
 import { PublicProfileModule } from '../public-profile/public-profile.module.js';
 
 @Module({
@@ -36,6 +37,7 @@ import { PublicProfileModule } from '../public-profile/public-profile.module.js'
     MicrosoftAdapter,
     Tier2PublicUrlVerifier,
     Tier3OcrVerifier,
+    CredentialDedupService,
   ],
 })
 export class CandidateCertificatesModule {}

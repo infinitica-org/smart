@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CandidateCertificatesService } from './candidate-certificates.service.js';
+import { CredentialDedupService } from './verification/credential-dedup.service.js';
 
 const candidateId = randomUUID();
 const otherCandidateId = randomUUID();
@@ -37,7 +43,7 @@ function setup() {
   const prisma = {
     candidateCertificate: {
       create: vi.fn(),
-      findMany: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn().mockImplementation((_args?: { where?: { id?: string } }) => {
         return Promise.resolve(
@@ -58,6 +64,9 @@ function setup() {
       create: vi.fn().mockResolvedValue({}),
       findUnique: vi.fn(),
       update: vi.fn().mockResolvedValue({}),
+    },
+    professionalCredential: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
     user: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({ fullName: 'Ada Lovelace' }),
@@ -82,12 +91,14 @@ function setup() {
   const publicProfileService = {
     recheckActivationAfterVoid: vi.fn().mockResolvedValue(undefined),
   };
+  const dedup = new CredentialDedupService(prisma as never);
   const service = new CandidateCertificatesService(
     prisma as never,
     storage as never,
     auditPublisher as never,
     emailQueue as never,
     verificationService as never,
+    dedup,
     publicProfileService as never,
   );
   return {
@@ -97,6 +108,7 @@ function setup() {
     emailQueue,
     verificationService,
     publicProfileService,
+    dedup,
     service,
   };
 }
@@ -154,6 +166,21 @@ describe('CandidateCertificatesService', () => {
     expect(dto.status).toBe('DECLARED');
     expect(dto.certificateNumber).toBe('AWS-123456');
     expect(dto.verificationUrl).toBe('https://www.credly.com/org/aws/badge/123');
+  });
+
+  it('refuses to declare a certificate that duplicates an existing one for the same candidate', async () => {
+    const { prisma, service } = setup();
+    prisma.candidateCertificate.findMany.mockResolvedValue([
+      baseCertificateRow({ id: 'existing-cert' }),
+    ]);
+
+    await expect(
+      service.create(candidateId, {
+        title: baseCertificateRow().title as string,
+        issuer: baseCertificateRow().issuer as string,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.candidateCertificate.create).not.toHaveBeenCalled();
   });
 
   it('rejects an upload with a disallowed mime type', async () => {
