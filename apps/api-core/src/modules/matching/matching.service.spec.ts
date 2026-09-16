@@ -57,7 +57,14 @@ function verifiedStudent(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setup(options: { opening?: unknown; jd?: unknown; students?: unknown[] } = {}) {
+function setup(
+  options: {
+    opening?: unknown;
+    jd?: unknown;
+    students?: unknown[];
+    matchRun?: unknown;
+  } = {},
+) {
   const prisma = {
     jobOpening: {
       findFirst: vi
@@ -70,10 +77,55 @@ function setup(options: { opening?: unknown; jd?: unknown; students?: unknown[] 
     user: {
       findMany: vi.fn().mockResolvedValue(options.students ?? [verifiedStudent()]),
     },
+    matchRun: {
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({
+          id: randomUUID(),
+          status: 'PENDING',
+          ...data,
+        }),
+      ),
+      findUnique: vi.fn().mockResolvedValue(options.matchRun ?? null),
+      findFirst: vi.fn().mockResolvedValue(options.matchRun ?? null),
+      update: vi
+        .fn()
+        .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...(options.matchRun as Record<string, unknown>), ...data }),
+        ),
+    },
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-  const service = new MatchingService(prisma as never, outbox as never);
-  return { prisma, service, outbox, controller: new PlacementMatchController(service) };
+  const matchRunQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const service = new MatchingService(prisma as never, outbox as never, matchRunQueue as never);
+  return {
+    prisma,
+    service,
+    outbox,
+    matchRunQueue,
+    controller: new PlacementMatchController(service),
+  };
+}
+
+function matchRunRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: randomUUID(),
+    institutionId,
+    jdId: openingId,
+    requestedById: actorId,
+    batchIds: [],
+    minCgpa: null,
+    requiredSkillCodes: [],
+    limit: 50,
+    status: 'PENDING',
+    errorMessage: null,
+    eligiblePoolCount: null,
+    suggestedCount: null,
+    shortlistId: null,
+    resultSnapshot: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    completedAt: null,
+    ...overrides,
+  };
 }
 
 describe('SE-T05 match authorization', () => {
@@ -200,6 +252,137 @@ describe('SE-T05 POST /placement/match', () => {
       controller.match(tpoAdmin as never, { jdId: 'not-a-uuid' }),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('reports the pre-ranking eligible pool size alongside the ranked candidates', async () => {
+    const { controller } = setup();
+
+    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+
+    expect(dto.eligiblePoolCount).toBe(1);
+  });
+});
+
+describe('S6-VV-76 async match runs', () => {
+  it('creates a PENDING MatchRun row and enqueues the background job', async () => {
+    const { service, prisma, matchRunQueue } = setup();
+
+    const result = await service.createMatchRun(institutionId, actorId, {
+      jdId: openingId,
+      batchIds: ['b1', 'b2'],
+      minCgpa: 8,
+      requiredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
+      limit: 50,
+    } as never);
+
+    expect(result.status).toBe('PENDING');
+    expect(prisma.matchRun.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        institutionId,
+        jdId: openingId,
+        requestedById: actorId,
+        batchIds: ['b1', 'b2'],
+        minCgpa: 8,
+        requiredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
+        limit: 50,
+      }),
+    });
+    expect(matchRunQueue.add).toHaveBeenCalledWith('run-match', { matchRunId: result.runId });
+  });
+
+  it('scopes the eligible pool to every listed batch (OR across batches, via `in`)', async () => {
+    const { service, prisma } = setup();
+
+    await service.createMatchRun(institutionId, actorId, {
+      jdId: openingId,
+      batchIds: ['batch-a', 'batch-b'],
+      limit: 50,
+    } as never);
+    const [{ data: run }] = prisma.matchRun.create.mock.calls[0];
+    prisma.matchRun.findUnique.mockResolvedValueOnce(matchRunRow(run));
+
+    await service.runMatchRun('run-1');
+
+    expect(prisma.user.findMany.mock.calls[0][0].where.batchId).toEqual({
+      in: ['batch-a', 'batch-b'],
+    });
+  });
+
+  it('requires every listed skill to be VERIFIED (AND), not just any one', async () => {
+    const { service, prisma } = setup();
+    prisma.matchRun.findUnique.mockResolvedValueOnce(
+      matchRunRow({ requiredSkillCodes: ['SKILL_A', 'SKILL_B'] }),
+    );
+
+    await service.runMatchRun('run-1');
+
+    expect(prisma.user.findMany.mock.calls[0][0].where.AND).toEqual([
+      { skillClaims: { some: { status: 'VERIFIED', skill: { code: 'SKILL_A' } } } },
+      { skillClaims: { some: { status: 'VERIFIED', skill: { code: 'SKILL_B' } } } },
+    ]);
+  });
+
+  it('excludes students with no CGPA on file once a minCgpa filter is set', async () => {
+    const { service, prisma } = setup();
+    prisma.matchRun.findUnique.mockResolvedValueOnce(matchRunRow({ minCgpa: 8 }));
+
+    await service.runMatchRun('run-1');
+
+    expect(prisma.user.findMany.mock.calls[0][0].where.cgpa).toEqual({ gte: 8 });
+  });
+
+  it('runs PENDING -> RUNNING -> SUCCEEDED and persists eligiblePoolCount/suggestedCount', async () => {
+    const { service, prisma } = setup();
+    prisma.matchRun.findUnique.mockResolvedValueOnce(matchRunRow());
+
+    await service.runMatchRun('run-1');
+
+    const statuses = prisma.matchRun.update.mock.calls.map(
+      ([{ data }]: [{ data: Record<string, unknown> }]) => data.status,
+    );
+    expect(statuses).toEqual(['RUNNING', 'SUCCEEDED']);
+    const finalUpdate = prisma.matchRun.update.mock.calls[1][0].data;
+    expect(finalUpdate.eligiblePoolCount).toBe(1);
+    expect(finalUpdate.suggestedCount).toBe(1);
+  });
+
+  it('records FAILED with the error message and rethrows so the DLQ path still fires', async () => {
+    const { service, prisma } = setup({ opening: null, jd: null });
+    prisma.matchRun.findUnique.mockResolvedValueOnce(matchRunRow());
+
+    await expect(service.runMatchRun('run-1')).rejects.toBeInstanceOf(NotFoundException);
+
+    const finalUpdate = prisma.matchRun.update.mock.calls.at(-1)?.[0].data;
+    expect(finalUpdate.status).toBe('FAILED');
+    expect(finalUpdate.errorMessage).toBeTruthy();
+  });
+
+  it('is a no-op when the referenced MatchRun row no longer exists', async () => {
+    const { service, prisma } = setup();
+    prisma.matchRun.findUnique.mockResolvedValueOnce(null);
+
+    await service.runMatchRun('missing-run');
+
+    expect(prisma.matchRun.update).not.toHaveBeenCalled();
+  });
+
+  it('returns a run scoped to its own institution', async () => {
+    const { service, prisma } = setup({ matchRun: matchRunRow({ status: 'SUCCEEDED' }) });
+
+    const dto = await service.getMatchRun(institutionId, 'run-1');
+
+    expect(dto.status).toBe('SUCCEEDED');
+    expect(prisma.matchRun.findFirst).toHaveBeenCalledWith({
+      where: { id: 'run-1', institutionId },
+    });
+  });
+
+  it('404s a match run owned by another institution', async () => {
+    const { service } = setup({ matchRun: null });
+
+    await expect(service.getMatchRun(otherInstitutionId, 'run-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });
 

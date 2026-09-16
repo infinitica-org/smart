@@ -70,7 +70,14 @@ export type JobDescriptionDto = z.infer<typeof JobDescriptionDtoSchema>;
 
 export const MatchRequestSchema = z.object({
   jdId: UuidSchema,
+  /** @deprecated use `batchIds` — kept for one release, merged server-side as `batchIds ?? [cohortId]`. */
   cohortId: UuidSchema.optional(),
+  /** S6-VV-76 — one or more Batches to scope the eligible pool to. Replaces `cohortId`. */
+  batchIds: z.array(UuidSchema).max(20).optional(),
+  /** S6-VV-76 — pool-scoping filter: excludes students with no CGPA on file when set. */
+  minCgpa: z.number().min(0).max(10).optional(),
+  /** S6-VV-76 — pool-scoping filter: student must hold every listed skill VERIFIED (AND). */
+  requiredSkillCodes: z.array(TaxonomySkillCodeSchema).max(20).optional(),
   /** Hard filters applied before cosine ranking. */
   filters: z
     .object({
@@ -133,8 +140,36 @@ export const ShortlistDtoSchema = z.object({
   generatedAt: IsoDateTimeSchema,
   candidates: z.array(CandidateMatchDtoSchema),
   totalCandidatesConsidered: z.number().int(),
+  /** S6-VV-76 — pre-ranking eligible-pool size (post batch/CGPA/skill filters). */
+  eligiblePoolCount: z.number().int(),
 });
 export type ShortlistDto = z.infer<typeof ShortlistDtoSchema>;
+
+/* ------------------------------ async match runs ---------------------------- */
+
+export const MatchRunStatusSchema = z.enum(['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED']);
+export type MatchRunStatus = z.infer<typeof MatchRunStatusSchema>;
+
+/** S6-VV-76 — polling response for an async, batch-scoped match run. */
+export const MatchRunDtoSchema = z.object({
+  runId: UuidSchema,
+  jdId: UuidSchema,
+  status: MatchRunStatusSchema,
+  eligiblePoolCount: z.number().int().nullable(),
+  suggestedCount: z.number().int().nullable(),
+  errorMessage: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  completedAt: IsoDateTimeSchema.nullable(),
+  /** Populated only once `status` is `SUCCEEDED`. */
+  shortlist: ShortlistDtoSchema.nullable(),
+});
+export type MatchRunDto = z.infer<typeof MatchRunDtoSchema>;
+
+export const CreateMatchRunResponseSchema = z.object({
+  runId: UuidSchema,
+  status: MatchRunStatusSchema,
+});
+export type CreateMatchRunResponse = z.infer<typeof CreateMatchRunResponseSchema>;
 
 /* ---------------------------- placement outcomes --------------------------- */
 

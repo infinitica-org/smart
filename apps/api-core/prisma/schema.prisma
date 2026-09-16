@@ -252,6 +252,7 @@ model Institution {
   invitations          Invitation[]
   jobDescriptions      JobDescription[]
   jobOpenings          JobOpening[]
+  matchRuns            MatchRun[]
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
 
@@ -372,6 +373,7 @@ model User {
   communicationProfile  CommunicationProfile?
   auditLogs             AuditLog[]
   jobOpeningsCreated    JobOpening[]           @relation("JobOpeningCreatedBy")
+  matchRunsRequested    MatchRun[]             @relation("MatchRunRequestedBy")
   notifications         Notification[]
   workExperiences       WorkExperience[]
   candidateCertificates CandidateCertificate[]
@@ -981,6 +983,38 @@ model JobOpeningSkill {
 
   @@unique([openingId, skillId])
   @@map("job_opening_skills")
+}
+
+/**
+ * S6-VV-76 — an async, batch-scoped candidate-matching job. `jdId` deliberately has no FK
+ * relation: it may point at a `JobOpening` or a legacy `JobDescription` row (see
+ * `MatchingService.resolveJob`), so it stays a plain UUID like `MatchRequest.jdId` already does.
+ */
+model MatchRun {
+  id                 String      @id @default(uuid()) @db.Uuid
+  institutionId      String      @map("institution_id") @db.Uuid
+  institution        Institution @relation(fields: [institutionId], references: [id])
+  jdId               String      @map("jd_id") @db.Uuid
+  requestedById      String      @map("requested_by_id") @db.Uuid
+  requestedBy        User        @relation("MatchRunRequestedBy", fields: [requestedById], references: [id])
+  batchIds           String[]    @map("batch_ids") @db.Uuid
+  minCgpa            Decimal?    @map("min_cgpa") @db.Decimal(4, 2)
+  requiredSkillCodes String[]    @map("required_skill_codes")
+  limit              Int
+  /// PENDING | RUNNING | SUCCEEDED | FAILED — plain String, matching this repo's existing
+  /// convention for job-status fields (e.g. ProfessionalCredential.status) rather than an enum.
+  status             String      @default("PENDING")
+  errorMessage       String?     @map("error_message")
+  eligiblePoolCount  Int?        @map("eligible_pool_count")
+  suggestedCount     Int?        @map("suggested_count")
+  shortlistId        String?     @map("shortlist_id") @db.Uuid
+  /// Cached ShortlistDto so the polling GET can read the finished result without re-ranking.
+  resultSnapshot     Json?       @map("result_snapshot")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt        DateTime?   @map("completed_at") @db.Timestamptz(6)
+
+  @@index([institutionId, jdId])
+  @@map("match_runs")
 }
 
 model Application {
