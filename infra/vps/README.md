@@ -18,10 +18,10 @@ break-glass / first-time setup.
 
 ## 1. DNS (A records)
 
-| Host                                                                                                                 | → IP    |
-| ---------------------------------------------------------------------------------------------------------------------- | ------- |
-| `becomesmart.online`, `www.` (CNAME → apex), `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`, `db.`             | kvm4 IP |
-| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.`, `dev.db.`    | kvm2 IP |
+| Host                                                                                                                | → IP    |
+| ------------------------------------------------------------------------------------------------------------------- | ------- |
+| `becomesmart.online`, `www.` (CNAME → apex), `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`, `db.`          | kvm4 IP |
+| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.`, `dev.db.` | kvm2 IP |
 
 ## 2. Server setup (each VPS) — one-time
 
