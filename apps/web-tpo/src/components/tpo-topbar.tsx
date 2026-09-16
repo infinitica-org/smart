@@ -3,37 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Search,
-  Menu,
-  X,
-  LogOut,
-  LayoutDashboard,
-  Users,
-  UserPlus,
-  BarChart3,
-  Settings,
-  type LucideIcon,
-} from 'lucide-react';
+import { Search, Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, SmartLogo } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
 import { signOut } from '../lib/auth';
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  isNew?: boolean;
-}
-
-const mainNav: NavItem[] = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Candidates', href: '/students', icon: Users },
-  { name: 'Onboarding', href: '/provisioning', icon: UserPlus },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Settings', href: '/settings', icon: Settings },
-];
+import { TPO_NAV, isNavItemActive, isNavLinkActive } from '../lib/tpo-nav';
+import { sectionLabelClass } from '../lib/tpo-ui';
 
 const ROLE_LABELS: Record<string, string> = {
   INSTITUTION_ADMIN: 'Institution Admin',
@@ -50,7 +26,9 @@ export function TpoTopbar() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [placementOpen, setPlacementOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const placementRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -83,6 +61,9 @@ export function TpoTopbar() {
       if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
         setSearchOpen(false);
       }
+      if (placementRef.current && !placementRef.current.contains(event.target as Node)) {
+        setPlacementOpen(false);
+      }
     }
     document.addEventListener('mousedown', onOutsideClick);
     return () => document.removeEventListener('mousedown', onOutsideClick);
@@ -94,7 +75,10 @@ export function TpoTopbar() {
         event.preventDefault();
         searchInputRef.current?.focus();
       }
-      if (event.key === 'Escape') setSearchOpen(false);
+      if (event.key === 'Escape') {
+        setSearchOpen(false);
+        setPlacementOpen(false);
+      }
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -150,38 +134,89 @@ export function TpoTopbar() {
   const hasResults = candidateResults.length > 0 || openingResults.length > 0;
 
   return (
-    <header className="h-16 bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800 text-zinc-100 shrink-0 font-sans sticky top-0 z-40 px-4 lg:px-8 flex items-center justify-between shadow-md">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 font-sans text-[var(--ds-text)] lg:px-8">
       {/* Brand / Logo */}
       <div className="flex items-center gap-6 shrink-0">
         <Link href="/" className="flex items-center gap-2.5 group">
           <SmartLogo
             kind="wordmark"
-            tone="on-dark"
+            tone="on-light"
             className="h-6 w-auto group-hover:opacity-90 transition-opacity"
             title="SMART"
           />
-          <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-800 text-white border border-zinc-700">
+          <span className="hidden sm:inline-block rounded-md border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--ds-text)]">
             PRO
           </span>
         </Link>
 
         {/* Desktop Navbar Navigation Links */}
         <nav className="hidden xl:flex items-center gap-1">
-          {mainNav.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? pathname === '/' || pathname === '/dashboard'
-                : pathname.startsWith(item.href);
+          {TPO_NAV.map((item) => {
+            const isActive = isNavItemActive(pathname, item);
+            const itemClassName = `flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] ${
+              isActive
+                ? 'border-[var(--tpo-accent-border)] bg-[var(--ds-nav-active-bg)] text-[var(--ds-text)]'
+                : 'border-transparent text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)]'
+            }`;
+
+            if (item.kind === 'group') {
+              return (
+                <div key={item.name} ref={placementRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPlacementOpen((v) => !v)}
+                    aria-expanded={placementOpen}
+                    aria-haspopup="menu"
+                    className={itemClassName}
+                  >
+                    <span>{item.name}</span>
+                    <ChevronDown
+                      strokeWidth={1.75}
+                      className={`size-3.5 transition-transform ${placementOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {placementOpen && (
+                    <div
+                      role="menu"
+                      aria-label={item.name}
+                      className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 text-[var(--ds-text)] shadow-lg"
+                    >
+                      {item.children.map((child) => {
+                        const childActive = isNavLinkActive(pathname, child.href);
+
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            role="menuitem"
+                            aria-current={childActive ? 'page' : undefined}
+                            onClick={() => setPlacementOpen(false)}
+                            className={`block rounded-lg px-3 py-2 transition-colors ${
+                              childActive
+                                ? 'bg-[var(--ds-nav-active-bg)] text-[var(--ds-text)]'
+                                : 'text-[var(--ds-text)] hover:bg-[var(--ds-surface-hover)]'
+                            }`}
+                          >
+                            <span className="block text-xs font-semibold">{child.name}</span>
+                            <span className="block text-[11px] font-medium text-[var(--ds-text-muted)]">
+                              {child.description}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-[#00fad0]/20 text-[#00fad0] border border-[#00fad0]/40 shadow-[0_0_12px_rgba(0,250,208,0.15)]'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
-                }`}
+                aria-current={isActive ? 'page' : undefined}
+                className={itemClassName}
               >
                 <span>{item.name}</span>
                 {item.isNew && (
@@ -202,7 +237,7 @@ export function TpoTopbar() {
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
             <Search
               strokeWidth={1.75}
-              className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400 group-focus-within:text-white transition-colors pointer-events-none"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ds-text-subtle)] transition-colors group-focus-within:text-[var(--ds-text-secondary)]"
             />
             <input
               ref={searchInputRef}
@@ -211,30 +246,28 @@ export function TpoTopbar() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => hasResults && setSearchOpen(true)}
               placeholder="Search candidates, JDs..."
-              className="w-56 lg:w-64 bg-zinc-900 text-zinc-100 text-xs rounded-lg py-2 pl-9 pr-12 border border-zinc-800 focus:outline-none focus:border-zinc-600 font-medium placeholder:text-zinc-500 transition-all"
+              className="w-56 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] py-2 pl-9 pr-12 text-xs font-medium text-[var(--ds-text)] transition-all placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--tpo-accent-border)] focus:bg-[var(--ds-surface)] focus:outline-none lg:w-64"
             />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:flex items-center pointer-events-none">
-              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold font-mono text-zinc-400 bg-zinc-800 border border-zinc-700 rounded">
+            <div className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center lg:flex">
+              <kbd className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--ds-text-muted)]">
                 ⌘K
               </kbd>
             </div>
           </form>
 
           {searchOpen && query.trim().length >= MIN_SEARCH_CHARS && (
-            <div className="absolute top-full mt-2 right-0 w-[360px] rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-xl shadow-2xl overflow-hidden z-50 p-1.5 text-zinc-100">
+            <div className="absolute right-0 top-full z-50 mt-2 w-[360px] overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 text-[var(--ds-text)] shadow-lg">
               {searching ? (
-                <p className="p-4 text-xs text-zinc-400 font-medium">Searching…</p>
+                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">Searching…</p>
               ) : !hasResults ? (
-                <p className="p-4 text-xs text-zinc-400 font-medium">
+                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">
                   No matches for &quot;{query}&quot;. Press Enter to view search roster.
                 </p>
               ) : (
                 <>
                   {candidateResults.length > 0 && (
                     <div className="py-1">
-                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                        Candidates
-                      </p>
+                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Candidates</p>
                       {candidateResults.map((candidate) => (
                         <button
                           key={candidate.userId}
@@ -242,28 +275,30 @@ export function TpoTopbar() {
                           onClick={() =>
                             goTo(`/students?q=${encodeURIComponent(candidate.fullName)}`)
                           }
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 text-xs font-semibold text-zinc-100 truncate flex items-center justify-between transition-colors"
+                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-semibold text-[var(--ds-text)] transition-colors hover:bg-[var(--ds-surface-hover)]"
                         >
                           <span>{candidate.fullName}</span>
-                          <span className="text-zinc-400 font-normal">{candidate.email}</span>
+                          <span className="font-normal text-[var(--ds-text-muted)]">
+                            {candidate.email}
+                          </span>
                         </button>
                       ))}
                     </div>
                   )}
                   {openingResults.length > 0 && (
-                    <div className="py-1 border-t border-zinc-800">
-                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                        Job openings
-                      </p>
+                    <div className="border-t border-[var(--ds-border-subtle)] py-1">
+                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Job openings</p>
                       {openingResults.map((opening) => (
                         <button
                           key={opening.openingId}
                           type="button"
                           onClick={() => goTo('/placements')}
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 text-xs font-semibold text-zinc-100 truncate flex items-center justify-between transition-colors"
+                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-semibold text-[var(--ds-text)] transition-colors hover:bg-[var(--ds-surface-hover)]"
                         >
                           <span>{opening.roleTitle}</span>
-                          <span className="text-zinc-400 font-normal">{opening.companyName}</span>
+                          <span className="font-normal text-[var(--ds-text-muted)]">
+                            {opening.companyName}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -274,44 +309,44 @@ export function TpoTopbar() {
           )}
         </div>
 
-        <div className="w-px h-5 bg-zinc-800 hidden md:block mx-1"></div>
+        <div className="mx-1 hidden h-5 w-px bg-[var(--ds-border)] md:block"></div>
 
         {/* User Profile */}
         <div ref={profileRef} className="relative">
           <button
             type="button"
             onClick={() => setProfileOpen((v) => !v)}
-            className="flex items-center gap-2.5 p-1 pl-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all group"
+            className="group flex items-center gap-2.5 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 pl-3 transition-all hover:bg-[var(--ds-surface-hover)]"
           >
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <span className="text-xs font-bold text-white leading-tight">
+            <div className="hidden flex-col items-end text-right sm:flex">
+              <span className="text-xs font-bold leading-tight text-[var(--ds-text)]">
                 {user?.fullName ?? 'Pilot TPO'}
               </span>
-              <span className="text-[10px] font-medium text-zinc-400 leading-tight">
+              <span className="text-[10px] font-medium leading-tight text-[var(--ds-text-muted)]">
                 {user ? (ROLE_LABELS[user.role] ?? user.role) : 'Institution Admin'}
               </span>
             </div>
-            <Avatar className="size-7.5 rounded-lg border border-zinc-700 bg-zinc-800 text-white text-xs font-bold flex items-center justify-center">
-              <AvatarFallback className="bg-zinc-800 text-white font-bold text-xs">
+            <Avatar className="flex size-7.5 items-center justify-center rounded-lg border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] text-xs font-bold text-[var(--ds-text)]">
+              <AvatarFallback className="bg-[var(--tpo-accent-tint)] text-xs font-bold text-[var(--ds-text)]">
                 {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-xl shadow-2xl overflow-hidden z-50 p-1 text-zinc-100">
-              <div className="px-3 py-2.5 border-b border-zinc-800">
-                <p className="text-xs font-bold text-white truncate">
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 text-[var(--ds-text)] shadow-lg">
+              <div className="border-b border-[var(--ds-border-subtle)] px-3 py-2.5">
+                <p className="truncate text-xs font-bold text-[var(--ds-text)]">
                   {user?.fullName ?? 'Pilot TPO'}
                 </p>
-                <p className="text-[11px] text-zinc-400 truncate">
+                <p className="truncate text-[11px] text-[var(--ds-text-muted)]">
                   {user?.email ?? 'tpo@institution.edu'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-400 hover:bg-rose-950/40 transition-colors mt-1"
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--ds-coral)] transition-colors hover:bg-[#fef4f4]"
               >
                 <LogOut strokeWidth={1.75} className="size-3.5" /> Sign out
               </button>
@@ -324,7 +359,7 @@ export function TpoTopbar() {
           type="button"
           onClick={() => setMobileMenuOpen((v) => !v)}
           aria-label="Toggle navigation"
-          className="xl:hidden p-2 text-zinc-400 hover:text-white transition-colors rounded-lg bg-zinc-900 border border-zinc-800"
+          className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] p-2 text-[var(--ds-text-secondary)] transition-colors hover:text-[var(--ds-text)] xl:hidden"
         >
           {mobileMenuOpen ? (
             <X strokeWidth={1.75} className="size-5" />
@@ -336,33 +371,61 @@ export function TpoTopbar() {
 
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 w-full bg-zinc-950 border-b border-zinc-800 p-4 shadow-2xl xl:hidden z-50 flex flex-col gap-2">
-          {mainNav.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? pathname === '/' || pathname === '/dashboard'
-                : pathname.startsWith(item.href);
+        <div className="absolute left-0 top-full z-50 flex w-full flex-col gap-2 border-b border-[var(--ds-border)] bg-[var(--ds-surface)] p-4 shadow-lg xl:hidden">
+          {TPO_NAV.map((item) => {
+            const isActive = isNavItemActive(pathname, item);
+            const iconClass = isActive
+              ? 'size-4 text-[var(--ds-text)]'
+              : 'size-4 text-[var(--ds-text-muted)]';
+            const rowClass = (active: boolean) =>
+              `rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-colors ${
+                active
+                  ? 'border-[var(--tpo-accent-border)] bg-[var(--ds-nav-active-bg)] font-semibold text-[var(--ds-text)]'
+                  : 'border-transparent text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)]'
+              }`;
+
+            if (item.kind === 'group') {
+              return (
+                <div key={item.name} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-[var(--ds-text)]">
+                    <item.icon strokeWidth={1.75} className={iconClass} />
+                    <span>{item.name}</span>
+                  </div>
+                  <div className="ml-6 flex flex-col gap-1 border-l border-[var(--ds-border-subtle)] pl-3">
+                    {item.children.map((child) => {
+                      const childActive = isNavLinkActive(pathname, child.href);
+
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          aria-current={childActive ? 'page' : undefined}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={rowClass(childActive)}
+                        >
+                          {child.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-[#00fad0]/20 text-[#00fad0] font-semibold border border-[#00fad0]/40'
-                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
-                }`}
+                className={`flex items-center justify-between ${rowClass(isActive)}`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon
-                    strokeWidth={1.75}
-                    className={isActive ? 'size-4 text-[#00fad0]' : 'size-4 text-zinc-400'}
-                  />
+                  <item.icon strokeWidth={1.75} className={iconClass} />
                   <span>{item.name}</span>
                 </div>
                 {item.isNew && (
-                  <span className="bg-emerald-500 text-zinc-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md">
+                  <span className="rounded-md bg-[var(--tpo-accent)] px-1.5 py-0.5 text-[10px] font-extrabold text-[var(--ds-text)]">
                     NEW
                   </span>
                 )}

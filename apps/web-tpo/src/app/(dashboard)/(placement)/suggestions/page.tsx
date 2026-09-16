@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CandidateSuggestionsWorkspace } from '../../../components/candidate-suggestions-workspace';
+import { CandidateSuggestionsWorkspace } from '@/components/candidate-suggestions-workspace';
 
 function SuggestionsPageContent() {
   const searchParams = useSearchParams();

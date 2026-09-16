@@ -1,10 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
+import { SEND_TO_COMPANY_STAGE } from '@smart/contracts';
 import type { ApplicationConfidenceDto, ApplicationDto, JobOpeningDto } from '@smart/contracts';
-import { Alert, Button, Card } from '@smart/ui';
+import { Alert, Button } from '@smart/ui';
 import { applicationsApi, openingsApi } from '../lib/api';
+import { stageBadgeClass } from '../lib/ats-stage-ui';
+import {
+  cardClass,
+  cardCompactClass,
+  labelClass,
+  mutedTextClass,
+  secondaryButtonClass,
+  sectionLabelClass,
+  selectClass,
+} from '../lib/tpo-ui';
+import { PlacementEmptyState } from './placement/PlacementEmptyState';
+import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
 function errorMessage(caught: unknown, fallback: string): string {
   if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
@@ -16,6 +30,8 @@ type ReviewRow = {
   confidence: ApplicationConfidenceDto | null;
   confidenceError: string | null;
 };
+
+const openingSelectClass = `${selectClass} min-w-[240px]`;
 
 export function ConfidenceReviewWorkspace() {
   const [openings, setOpenings] = useState<JobOpeningDto[]>([]);
@@ -57,7 +73,8 @@ export function ConfidenceReviewWorkspace() {
     try {
       const listed = await applicationsApi.listForOpening(openingId);
       const reviewable = listed.applications.filter(
-        (application) => application.stage === 'SHORTLISTED' || application.stage === 'INTERVIEW',
+        (application) =>
+          application.stage === 'SHORTLISTED' || application.stage === SEND_TO_COMPANY_STAGE,
       );
       const next = await Promise.all(
         reviewable.map(async (application) => {
@@ -107,7 +124,7 @@ export function ConfidenceReviewWorkspace() {
       setNotice({
         tone: 'success',
         title: 'Sent to company',
-        message: `${updated.studentName ?? 'Candidate'} is now in the Interviewing ATS column.`,
+        message: `${updated.studentName ?? 'Candidate'} is now in the AI-Verified ATS column.`,
       });
     } catch (caught) {
       setNotice({
@@ -121,54 +138,47 @@ export function ConfidenceReviewWorkspace() {
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--surface-border)] pb-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">
-            TPO Concierge · AC-T06
-          </p>
-          <h1 className="text-2xl font-bold text-[var(--text)]">
-            Confidence review & send to company
-          </h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            Review the SE-T02 pass/fail result and explanation, then send a shortlisted candidate to
-            the company ATS. No score is calculated here.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <span>Job opening:</span>
-            <select
-              aria-label="Select Job Opening"
-              className="h-10 min-w-[240px] rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] px-3 text-sm font-normal shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              value={selectedOpeningId}
-              onChange={(event) => setSelectedOpeningId(event.target.value)}
-              disabled={loadingOpenings || openings.length === 0}
+    <>
+      <PlacementPageHeader
+        eyebrow="Placement · Pipeline"
+        title="Confidence review & send to company"
+        description="Review the SE-T02 pass/fail result and explanation, then send a shortlisted candidate to the company ATS. No score is calculated here."
+        actions={
+          <>
+            <label className={`flex items-center gap-2 ${labelClass}`}>
+              <span>Job opening:</span>
+              <select
+                aria-label="Select Job Opening"
+                className={openingSelectClass}
+                value={selectedOpeningId}
+                onChange={(event) => setSelectedOpeningId(event.target.value)}
+                disabled={loadingOpenings || openings.length === 0}
+              >
+                {openings.length === 0 ? (
+                  <option value="">No openings found</option>
+                ) : (
+                  openings.map((opening) => (
+                    <option key={opening.openingId} value={opening.openingId}>
+                      {opening.roleTitle} ({opening.companyName})
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              onClick={() => {
+                void loadOpenings();
+                if (selectedOpeningId) void loadRows(selectedOpeningId);
+              }}
+              disabled={loadingOpenings || loadingRows}
             >
-              {openings.length === 0 ? (
-                <option value="">No openings found</option>
-              ) : (
-                openings.map((opening) => (
-                  <option key={opening.openingId} value={opening.openingId}>
-                    {opening.roleTitle} ({opening.companyName})
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void loadOpenings();
-              if (selectedOpeningId) void loadRows(selectedOpeningId);
-            }}
-            disabled={loadingOpenings || loadingRows}
-          >
-            Refresh
-          </Button>
-        </div>
-      </header>
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       {error ? (
         <Alert tone="danger" title="Review workspace error">
@@ -183,43 +193,48 @@ export function ConfidenceReviewWorkspace() {
       ) : null}
 
       {selectedOpening ? (
-        <div className="flex flex-wrap gap-6 rounded-lg border border-[var(--surface-border)] bg-[var(--surface)] p-4 text-xs text-[var(--text-muted)]">
+        <div className={`${cardCompactClass} flex flex-wrap gap-x-8 gap-y-3`}>
           <div>
-            <span className="font-semibold text-[var(--text)]">Role:</span>{' '}
-            {selectedOpening.roleTitle}
+            <p className={sectionLabelClass}>Role</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
+              {selectedOpening.roleTitle}
+            </p>
           </div>
           <div>
-            <span className="font-semibold text-[var(--text)]">Company:</span>{' '}
-            {selectedOpening.companyName}
+            <p className={sectionLabelClass}>Company</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
+              {selectedOpening.companyName}
+            </p>
           </div>
         </div>
       ) : null}
 
       {loadingOpenings || loadingRows ? (
         <div role="status" className="flex flex-col gap-4">
-          <p className="text-sm text-[var(--text-muted)]">Loading shortlisted candidates…</p>
+          <p className={`text-sm ${mutedTextClass}`}>Loading shortlisted candidates…</p>
           {[1, 2].map((slot) => (
-            <div
-              key={slot}
-              className="h-36 animate-pulse rounded-xl border border-[var(--surface-border)] bg-slate-100 dark:bg-slate-900"
-            />
+            <div key={slot} className={`${cardClass} h-36 animate-pulse`} />
           ))}
         </div>
       ) : !selectedOpeningId ? (
-        <p className="rounded-lg border border-dashed border-[var(--surface-border)] p-8 text-center text-sm text-[var(--text-muted)]">
-          Select a job opening to review shortlisted candidates.
-        </p>
+        <PlacementEmptyState
+          icon={ShieldCheck}
+          title="Nothing to review"
+          description="Select a job opening to review shortlisted candidates."
+        />
       ) : rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--surface-border)] p-8 text-center text-sm text-[var(--text-muted)]">
-          No shortlisted or sent candidates for this opening.
-        </p>
+        <PlacementEmptyState
+          icon={ShieldCheck}
+          title="Nothing to review"
+          description="Shortlisted candidates requiring confidence review will appear here."
+        />
       ) : (
         <section
           aria-label="Shortlisted candidates for confidence review"
           className="flex flex-col gap-4"
         >
           {rows.map(({ application, confidence, confidenceError }) => {
-            const alreadySent = application.stage === 'INTERVIEW';
+            const alreadySent = application.stage === SEND_TO_COMPANY_STAGE;
             const canSend = Boolean(confidence?.complete) && !alreadySent && !confidenceError;
             const resultLabel =
               confidence?.passed === true
@@ -229,26 +244,24 @@ export function ConfidenceReviewWorkspace() {
                   : 'Unavailable';
 
             return (
-              <Card
+              <article
                 key={application.applicationId}
-                className="flex flex-col gap-3 border border-[var(--surface-border)] p-5 shadow-sm"
+                className={`${cardClass} flex flex-col gap-3`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-base font-semibold text-[var(--text)]">
+                    <h2 className="text-base font-semibold text-[var(--ds-text)]">
                       {application.studentName ?? 'Candidate'}
                     </h2>
-                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                    <p className={`mt-0.5 text-xs ${mutedTextClass}`}>
                       {application.studentEmail ?? application.studentId}
                       {application.primaryTrackCode ? ` · ${application.primaryTrackCode}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-[var(--surface-border)] px-2.5 py-1 text-xs font-semibold">
-                      {application.stage}
-                    </span>
+                    <span className={stageBadgeClass(application.stage)}>{application.stage}</span>
                     {alreadySent ? (
-                      <span className="rounded-full border border-brand-300 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-200">
+                      <span className="inline-flex items-center rounded-full border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--ds-text)]">
                         Sent to company
                       </span>
                     ) : null}
@@ -260,17 +273,15 @@ export function ConfidenceReviewWorkspace() {
                     {confidenceError}
                   </Alert>
                 ) : !confidence ? (
-                  <p className="text-sm text-[var(--text-muted)]">Loading confidence result…</p>
+                  <p className={`text-sm ${mutedTextClass}`}>Loading confidence result…</p>
                 ) : (
-                  <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-subtle)] p-3">
-                    <p className="mb-1 text-xs font-medium uppercase tracking-wider text-brand-700 dark:text-brand-300">
-                      SE-T02 confidence result
-                    </p>
-                    <p className="text-sm font-semibold text-[var(--text)]">{resultLabel}</p>
+                  <div className="rounded-xl border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] p-3">
+                    <p className={`mb-1 ${sectionLabelClass}`}>SE-T02 confidence result</p>
+                    <p className="text-sm font-semibold text-[var(--ds-text)]">{resultLabel}</p>
                     {confidence.explanation ? (
-                      <p className="mt-1 text-sm text-[var(--text)]">{confidence.explanation}</p>
+                      <p className="mt-1 text-sm text-[var(--ds-text)]">{confidence.explanation}</p>
                     ) : (
-                      <p className="mt-1 text-sm text-[var(--text-muted)]">
+                      <p className={`mt-1 text-sm ${mutedTextClass}`}>
                         {confidence.sendBlockedReason ?? 'No explanation is on file.'}
                       </p>
                     )}
@@ -282,7 +293,7 @@ export function ConfidenceReviewWorkspace() {
                   !alreadySent &&
                   !confidenceError &&
                   !confidence?.sendBlockedReason ? (
-                    <p className="text-xs text-[var(--text-muted)]">
+                    <p className={`text-xs ${mutedTextClass}`}>
                       A complete SE-T02 result is required before sending.
                     </p>
                   ) : (
@@ -300,11 +311,11 @@ export function ConfidenceReviewWorkspace() {
                         : 'Send to Company'}
                   </Button>
                 </div>
-              </Card>
+              </article>
             );
           })}
         </section>
       )}
-    </main>
+    </>
   );
 }

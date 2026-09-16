@@ -59,21 +59,28 @@ function renderEmpty() {
   render(<OpeningsWorkspace />);
 }
 
+function goToStep(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: label }));
+}
+
 async function fillValidForm() {
-  await screen.findByText(/No job openings yet/);
+  await screen.findByLabelText('Company name');
   fireEvent.change(screen.getByLabelText('Company name'), {
     target: { value: 'Infinitica Labs' },
   });
   fireEvent.change(screen.getByLabelText('Role title'), {
     target: { value: 'Backend Engineer' },
   });
-  fireEvent.change(screen.getByLabelText('Maximum years experience'), {
-    target: { value: '5' },
-  });
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Coimbatore' } });
+  goToStep('Job Details');
   fireEvent.change(screen.getByLabelText('Category (optional)'), {
     target: { value: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN' },
   });
+  goToStep('Eligibility');
+  fireEvent.change(screen.getByLabelText('Maximum years experience'), {
+    target: { value: '5' },
+  });
+  goToStep('Requirements');
   fireEvent.click(
     await screen.findByRole('checkbox', {
       name: /Algorithmic Complexity & Performance Optimization/,
@@ -132,6 +139,7 @@ describe('CO-T01 TPO opening workspace', () => {
     renderEmpty();
     await screen.findByText(/No job openings yet/);
     expect(screen.getByRole('button', { name: 'Create opening' })).toHaveProperty('disabled', true);
+    goToStep('Requirements');
     fireEvent.click(
       screen.getByRole('checkbox', { name: /Algorithmic Complexity & Performance Optimization/ }),
     );
@@ -169,6 +177,7 @@ describe('CO-T01 TPO opening workspace', () => {
   it('validates experience range and headcount with the shared contract', async () => {
     renderEmpty();
     await fillValidForm();
+    goToStep('Eligibility');
     fireEvent.change(screen.getByLabelText('Minimum years experience'), {
       target: { value: '6' },
     });
@@ -186,6 +195,7 @@ describe('CO-T01 TPO opening workspace', () => {
     fireEvent.change(screen.getByLabelText('Maximum years experience'), {
       target: { value: '2' },
     });
+    goToStep('Job Details');
     fireEvent.change(screen.getByLabelText('Headcount'), { target: { value: '0' } });
     submitForm();
     expect(await screen.findByText(/expected number to be >=1/)).toBeDefined();
@@ -234,6 +244,7 @@ describe('CO-T01 TPO opening workspace', () => {
     submitForm();
 
     expect(await screen.findByText('Taxonomy is not seeded')).toBeDefined();
+    goToStep('Company & Role');
     expect((screen.getByLabelText('Company name') as HTMLInputElement).value).toBe(
       'Infinitica Labs',
     );
@@ -272,6 +283,74 @@ describe('CO-T01 TPO opening workspace', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Close inspection' }));
       expect(screen.queryByText('Required Taxonomy Skills')).toBeNull();
+    });
+
+    it('keeps form values when moving between posting steps', async () => {
+      renderEmpty();
+      await screen.findByLabelText('Company name');
+      fireEvent.change(screen.getByLabelText('Company name'), {
+        target: { value: 'Infinitica Labs' },
+      });
+      goToStep('About Company');
+      expect(screen.getByText(/Not saved/)).toBeDefined();
+      goToStep('Company & Role');
+      expect((screen.getByLabelText('Company name') as HTMLInputElement).value).toBe(
+        'Infinitica Labs',
+      );
+    });
+
+    it('updates the live preview from supported fields only', async () => {
+      renderEmpty();
+      await screen.findByLabelText('Company name');
+      fireEvent.change(screen.getByLabelText('Company name'), {
+        target: { value: 'Infinitica Labs' },
+      });
+      fireEvent.change(screen.getByLabelText('Role title'), {
+        target: { value: 'Backend Engineer' },
+      });
+      expect(screen.getByRole('complementary', { name: 'Live job preview' }).textContent).toContain(
+        'Infinitica Labs',
+      );
+      expect(screen.getByRole('complementary', { name: 'Live job preview' }).textContent).toContain(
+        'Backend Engineer',
+      );
+      expect(screen.getByText(/will not appear here/)).toBeDefined();
+    });
+
+    it('moves between steps with Previous and Save & Continue', async () => {
+      renderEmpty();
+      await screen.findByText('Step 1 of 8');
+      expect(screen.getByLabelText('Company name')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Save & Continue' }));
+      expect(screen.getByText('Step 2 of 8')).toBeDefined();
+      expect(screen.getByText('About Company')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+      expect(screen.getByText('Step 1 of 8')).toBeDefined();
+      expect(screen.getByLabelText('Company name')).toBeDefined();
+    });
+
+    it('shows the review step from current form state', async () => {
+      renderEmpty();
+      await fillValidForm();
+      goToStep('Review & Publish');
+      expect(screen.getByText('Review & Publish')).toBeDefined();
+      expect(screen.getAllByText('Infinitica Labs').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Algorithmic Complexity/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('does not collect unsupported company, hiring, or drive fields', async () => {
+      renderEmpty();
+      await screen.findByLabelText('Company name');
+      goToStep('About Company');
+      expect(screen.getByText(/Not saved/)).toBeDefined();
+      expect(screen.queryByLabelText('About the Company')).toBeNull();
+      expect(screen.queryByLabelText('Salary Details')).toBeNull();
+      goToStep('Hiring Process');
+      expect(screen.queryByLabelText('Drive SPOC')).toBeNull();
+      goToStep('Drive Details');
+      expect(screen.queryByLabelText('Drive Date')).toBeNull();
+      expect(screen.queryByLabelText('Last Date to Apply')).toBeNull();
     });
 
     it('filters visible openings by search query', async () => {
