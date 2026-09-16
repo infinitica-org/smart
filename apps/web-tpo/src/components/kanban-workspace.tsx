@@ -1,66 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Columns3, Inbox } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import type { ApplicationDto, AtsStage, JobOpeningDto } from '@smart/contracts';
-import { Alert, Button, Card } from '@smart/ui';
+import { Alert } from '@smart/ui';
 import { applicationsApi, openingsApi } from '../lib/api';
+import { ATS_STAGE_ORDER } from '../lib/ats-stage-ui';
+import {
+  accentChipClass,
+  cardCompactClass,
+  labelClass,
+  secondaryButtonClass,
+  sectionLabelClass,
+} from '../lib/tpo-ui';
+import { PlacementEmptyState } from './placement/PlacementEmptyState';
+import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
-const KANBAN_STAGES: Array<{
-  id: AtsStage;
-  label: string;
-  description: string;
-  headerColor: string;
-}> = [
-  {
-    id: 'APPLIED',
-    label: 'Applied / New Matches',
-    description: 'Candidates who applied or matched this opening',
-    headerColor: 'border-t-brand-500 bg-brand-50/50 dark:bg-brand-950/20',
-  },
-  {
-    id: 'SHORTLISTED',
-    label: 'Shortlisted',
-    description: 'Selected candidates for preliminary review',
-    headerColor: 'border-t-blue-500 bg-blue-50/50 dark:bg-blue-950/20',
-  },
-  {
-    id: 'AI_VERIFIED',
-    label: 'AI-Verified',
-    description: 'Passed AI confidence check and sent to the company',
-    headerColor: 'border-t-teal-500 bg-teal-50/50 dark:bg-teal-950/20',
-  },
-  {
-    id: 'INTERVIEW',
-    label: 'Interviewing',
-    description: 'Active candidates undergoing interviews',
-    headerColor: 'border-t-amber-500 bg-amber-50/50 dark:bg-amber-950/20',
-  },
-  {
-    id: 'OFFER',
-    label: 'Offer',
-    description: 'Candidates with job offer extended',
-    headerColor: 'border-t-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
-  },
-  {
-    id: 'HIRED',
-    label: 'Hired',
-    description: 'Candidates who accepted the offer',
-    headerColor: 'border-t-green-500 bg-green-50/50 dark:bg-green-950/20',
-  },
-  {
-    id: 'REJECTED',
-    label: 'Rejected',
-    description: 'Candidates not selected for this opening',
-    headerColor: 'border-t-rose-500 bg-rose-50/50 dark:bg-rose-950/20',
-  },
-  {
-    id: 'WITHDRAWN',
-    label: 'Withdrawn',
-    description: 'Candidates who withdrew application',
-    headerColor: 'border-t-slate-400 bg-slate-50/50 dark:bg-slate-900/20',
-  },
-];
+const selectClass =
+  'rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] font-semibold text-[var(--ds-text)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)] disabled:opacity-50';
+
+const countPillClass =
+  'inline-flex min-w-[22px] justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--ds-text-secondary)]';
+
+/** Fixed-width columns in a scroller: eight grid columns beside the placement sidebar collapse to ~140px. */
+const columnWidthClass = 'w-[260px] shrink-0';
+
+const boardScrollerClass = '-mx-4 overflow-x-auto px-4 pb-2 select-none md:mx-0 md:px-0';
 
 function errorMessage(caught: unknown, fallback: string): string {
   if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
@@ -160,56 +126,48 @@ export function KanbanWorkspace() {
   const selectedOpening = openings.find((o) => o.openingId === selectedOpeningId);
 
   return (
-    <main className="mx-auto max-w-[1400px] space-y-6 p-6 font-sans select-none pb-12">
-      {/* Header Bar */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#004C63]/10 text-[#004C63] text-xs font-bold mb-2 border border-[#004C63]/20">
-            TPO Concierge · ATS
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">
-            Candidate ATS Kanban Board
-          </h1>
-          <p className="mt-1 text-xs md:text-sm text-slate-500 font-medium">
-            Manage candidate progression dynamically across placement pipeline recruitment stages.
-          </p>
-        </div>
+    <>
+      <PlacementPageHeader
+        eyebrow="Placement · Pipeline"
+        title="Candidate ATS"
+        description="Move candidates across placement stages. Drag a card or use the stage selector on the card."
+        actions={
+          <>
+            <label className={`flex items-center gap-2 ${labelClass}`}>
+              <span>Opening</span>
+              <select
+                aria-label="Select Job Opening"
+                className={`${selectClass} h-9 min-w-[240px] px-2.5 text-xs`}
+                value={selectedOpeningId}
+                onChange={(e) => setSelectedOpeningId(e.target.value)}
+                disabled={loadingOpenings || openings.length === 0}
+              >
+                {openings.length === 0 ? (
+                  <option value="">No openings found</option>
+                ) : (
+                  openings.map((opening) => (
+                    <option key={opening.openingId} value={opening.openingId}>
+                      {opening.roleTitle} ({opening.companyName})
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-            <span>Opening:</span>
-            <select
-              aria-label="Select Job Opening"
-              className="h-10 min-w-[240px] rounded-xl border border-slate-200/90 bg-slate-50 px-3.5 text-xs font-semibold text-slate-900 shadow-xs focus:outline-none focus:border-[#004C63] focus:bg-white transition-all"
-              value={selectedOpeningId}
-              onChange={(e) => setSelectedOpeningId(e.target.value)}
-              disabled={loadingOpenings || openings.length === 0}
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              onClick={() => {
+                void loadOpenings();
+                if (selectedOpeningId) void loadApplications(selectedOpeningId);
+              }}
+              disabled={loadingOpenings || loadingApps}
             >
-              {openings.length === 0 ? (
-                <option value="">No openings found</option>
-              ) : (
-                openings.map((opening) => (
-                  <option key={opening.openingId} value={opening.openingId}>
-                    {opening.roleTitle} ({opening.companyName})
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs shadow-xs"
-            onClick={() => {
-              void loadOpenings();
-              if (selectedOpeningId) void loadApplications(selectedOpeningId);
-            }}
-            disabled={loadingOpenings || loadingApps}
-          >
-            Refresh
-          </Button>
-        </div>
-      </header>
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       {error ? (
         <Alert tone="danger" title="ATS Kanban Error">
@@ -218,180 +176,177 @@ export function KanbanWorkspace() {
       ) : null}
 
       {selectedOpening ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 text-xs text-slate-600 font-medium shadow-xs flex flex-wrap gap-6 items-center">
-          <div>
-            <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block text-slate-400">
-              Role
-            </span>
-            <span className="font-bold text-slate-900 text-sm">{selectedOpening.roleTitle}</span>
+        <div className={`${cardCompactClass} flex flex-wrap items-center gap-x-8 gap-y-4`}>
+          <div className="min-w-0">
+            <p className={sectionLabelClass}>Role</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
+              {selectedOpening.roleTitle}
+            </p>
           </div>
-          <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-          <div>
-            <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block text-slate-400">
-              Company
-            </span>
-            <span className="font-bold text-slate-900 text-sm">{selectedOpening.companyName}</span>
+          <div className="min-w-0">
+            <p className={sectionLabelClass}>Company</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
+              {selectedOpening.companyName}
+            </p>
           </div>
-          <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-          <div>
-            <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block text-slate-400">
-              Headcount
-            </span>
-            <span className="font-bold text-slate-900 text-sm">
+          <div className="min-w-0">
+            <p className={sectionLabelClass}>Headcount</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
               {selectedOpening.headcount} position(s)
-            </span>
+            </p>
           </div>
-          <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-          <div>
-            <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block text-slate-400">
-              Location
-            </span>
-            <span className="font-bold text-slate-900 text-sm">{selectedOpening.location}</span>
+          <div className="min-w-0">
+            <p className={sectionLabelClass}>Location</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ds-text)]">
+              {selectedOpening.location}
+            </p>
           </div>
-          <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-          <div>
-            <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block text-slate-400">
-              Total Applicants
-            </span>
-            <span className="font-bold text-[#004C63] text-sm">
-              {applications.length} candidates
-            </span>
+          <div className="min-w-0">
+            <p className={sectionLabelClass}>Total Applicants</p>
+            <p className="mt-1">
+              <span className={accentChipClass}>{applications.length} candidates</span>
+            </p>
           </div>
         </div>
       ) : null}
 
       {loadingApps || loadingOpenings ? (
-        <div role="status" className="grid grid-cols-1 gap-4 md:grid-cols-4 lg:grid-cols-8">
-          {KANBAN_STAGES.map((column) => (
-            <div
-              key={column.id}
-              className="flex flex-col gap-3 rounded-2xl border border-dashed border-slate-200 p-4 bg-white/50"
-            >
-              <div className="h-5 w-24 animate-pulse rounded bg-slate-200" />
-              <div className="h-20 animate-pulse rounded-xl bg-slate-100" />
-            </div>
-          ))}
-        </div>
-      ) : !selectedOpeningId ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-sm font-medium text-slate-500 bg-white">
-          Select a job opening above to view the candidate Kanban pipeline.
-        </div>
-      ) : (
-        <section
-          aria-label="Kanban columns"
-          className="grid grid-cols-1 gap-4 md:grid-cols-4 lg:grid-cols-8"
-        >
-          {KANBAN_STAGES.map((column) => {
-            const columnApps = applications.filter((app) => app.stage === column.id);
-            return (
+        <div role="status" className={boardScrollerClass}>
+          <div className="flex gap-4">
+            {ATS_STAGE_ORDER.map((column) => (
               <div
                 key={column.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedAppId) {
-                    void handleMoveStage(draggedAppId, column.id);
-                  }
-                }}
-                className={`flex flex-col rounded-2xl border border-slate-200/80 bg-slate-50/50 transition-all ${
-                  draggedAppId ? 'hover:border-[#004C63] hover:bg-[#F0FDFA]/50' : ''
-                }`}
+                className={`${columnWidthClass} flex flex-col gap-3 rounded-2xl border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface)] p-4`}
               >
+                <div className="h-5 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                <div className="h-20 animate-pulse rounded-xl bg-[var(--ds-surface-muted)]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !selectedOpeningId ? (
+        <PlacementEmptyState
+          icon={Columns3}
+          title="No pipeline yet"
+          description="Shortlist candidates from Candidate Suggestions to populate the ATS pipeline."
+        />
+      ) : (
+        <div className={boardScrollerClass}>
+          <section aria-label="Kanban columns" className="flex gap-4">
+            {ATS_STAGE_ORDER.map((column) => {
+              const columnApps = applications.filter((app) => app.stage === column.id);
+              return (
                 <div
-                  className={`border-t-4 rounded-t-2xl p-3 border-b border-slate-200/70 bg-white ${column.headerColor}`}
+                  key={column.id}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedAppId) {
+                      void handleMoveStage(draggedAppId, column.id);
+                    }
+                  }}
+                  className={`${columnWidthClass} flex flex-col overflow-hidden rounded-2xl border bg-[var(--ds-surface-muted)] transition ${
+                    draggedAppId
+                      ? 'border-[var(--tpo-accent-border)] hover:border-[var(--tpo-accent)] hover:bg-[var(--tpo-accent-tint)]'
+                      : 'border-[var(--ds-border)]'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
-                      {column.label}
-                    </h2>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-700 border border-slate-200">
-                      {columnApps.length}
-                    </span>
+                  <div aria-hidden="true" className={`h-[3px] w-full ${column.railClass}`} />
+                  <div className="flex items-center justify-between gap-2 border-b border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-3 py-2.5">
+                    <h2 className={sectionLabelClass}>{column.label}</h2>
+                    <span className={countPillClass}>{columnApps.length}</span>
                   </div>
-                </div>
 
-                <div className="flex flex-1 flex-col gap-3 p-3 min-h-[380px]">
-                  {columnApps.length === 0 ? (
-                    <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs font-medium text-slate-400">
-                      No candidates
-                    </div>
-                  ) : (
-                    columnApps.map((app) => {
-                      const isUpdating = updatingId === app.applicationId;
-                      return (
-                        <Card
-                          key={app.applicationId}
-                          draggable={!isUpdating}
-                          onDragStart={(e) => {
-                            setDraggedAppId(app.applicationId);
-                            e.dataTransfer.setData('text/plain', app.applicationId);
-                          }}
-                          onDragEnd={() => setDraggedAppId(null)}
-                          className={`cursor-grab p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-xs transition-all hover:shadow-md hover:border-slate-300 active:cursor-grabbing ${
-                            isUpdating ? 'opacity-50 pointer-events-none' : ''
-                          } ${draggedAppId === app.applicationId ? 'ring-2 ring-[#004C63] opacity-60' : ''}`}
-                        >
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-start justify-between gap-1.5">
-                              <span className="font-bold text-xs text-slate-900 leading-tight">
-                                {app.studentName ?? `Student ${app.studentId.slice(0, 8)}`}
-                              </span>
-                              {app.matchScore !== null ? (
-                                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200 shrink-0">
-                                  {Math.round(app.matchScore * 100)}% Match
+                  <div className="flex min-h-[340px] flex-1 flex-col gap-2.5 p-2.5">
+                    {columnApps.length === 0 ? (
+                      <PlacementEmptyState
+                        size="compact"
+                        icon={Inbox}
+                        title="No candidates"
+                        description=""
+                      />
+                    ) : (
+                      columnApps.map((app) => {
+                        const isUpdating = updatingId === app.applicationId;
+                        return (
+                          <div
+                            key={app.applicationId}
+                            draggable={!isUpdating}
+                            onDragStart={(e) => {
+                              setDraggedAppId(app.applicationId);
+                              e.dataTransfer.setData('text/plain', app.applicationId);
+                            }}
+                            onDragEnd={() => setDraggedAppId(null)}
+                            className={`cursor-grab rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-3 shadow-[var(--ds-card-shadow)] transition hover:border-[var(--tpo-accent-border)] hover:bg-[var(--ds-surface-hover)] active:cursor-grabbing ${
+                              isUpdating ? 'pointer-events-none opacity-50' : ''
+                            } ${
+                              draggedAppId === app.applicationId
+                                ? 'opacity-60 ring-2 ring-[var(--tpo-accent)]'
+                                : ''
+                            }`}
+                          >
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-start justify-between gap-1.5">
+                                <span className="text-xs leading-tight font-semibold text-[var(--ds-text)]">
+                                  {app.studentName ?? `Student ${app.studentId.slice(0, 8)}`}
                                 </span>
-                              ) : null}
-                            </div>
-
-                            {app.studentEmail ? (
-                              <p className="text-[11px] font-medium text-slate-500 truncate">
-                                {app.studentEmail}
-                              </p>
-                            ) : null}
-
-                            {app.primaryTrackCode ? (
-                              <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200/60">
-                                  {app.primaryTrackCode}
-                                </span>
+                                {app.matchScore !== null ? (
+                                  <span className="shrink-0 rounded-full border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-text)]">
+                                    {Math.round(app.matchScore * 100)}% Match
+                                  </span>
+                                ) : null}
                               </div>
-                            ) : null}
 
-                            {/* Dropdown selector for quick stage change */}
-                            <div className="mt-1.5 flex items-center justify-between pt-2 border-t border-slate-100">
-                              <label className="text-[10px] font-bold text-slate-400 flex items-center gap-1 w-full justify-between">
-                                <span>Move Stage:</span>
-                                <select
-                                  aria-label={`Change stage for ${app.studentName ?? app.studentId}`}
-                                  className="rounded-lg border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 focus:outline-none focus:border-[#004C63]"
-                                  value={app.stage}
-                                  onChange={(e) =>
-                                    void handleMoveStage(
-                                      app.applicationId,
-                                      e.target.value as AtsStage,
-                                    )
-                                  }
-                                  disabled={isUpdating}
-                                >
-                                  {KANBAN_STAGES.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                      {s.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
+                              {app.studentEmail ? (
+                                <p className="truncate text-[11px] text-[var(--ds-text-muted)]">
+                                  {app.studentEmail}
+                                </p>
+                              ) : null}
+
+                              {app.primaryTrackCode ? (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ds-text-secondary)]">
+                                    {app.primaryTrackCode}
+                                  </span>
+                                </div>
+                              ) : null}
+
+                              {/* Dropdown selector for quick stage change */}
+                              <div className="flex items-center justify-between border-t border-[var(--ds-border-subtle)] pt-2">
+                                <label className="flex w-full items-center justify-between gap-1 text-[10px] font-semibold text-[var(--ds-text-subtle)]">
+                                  <span>Move Stage</span>
+                                  <select
+                                    aria-label={`Change stage for ${app.studentName ?? app.studentId}`}
+                                    className={`${selectClass} max-w-[140px] px-1.5 py-0.5 text-[11px]`}
+                                    value={app.stage}
+                                    onChange={(e) =>
+                                      void handleMoveStage(
+                                        app.applicationId,
+                                        e.target.value as AtsStage,
+                                      )
+                                    }
+                                    disabled={isUpdating}
+                                  >
+                                    {ATS_STAGE_ORDER.map((s) => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
                             </div>
                           </div>
-                        </Card>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </section>
+              );
+            })}
+          </section>
+        </div>
       )}
-    </main>
+    </>
   );
 }
