@@ -7,7 +7,15 @@ import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './comm
  * Owner: Ramansh (S6-RM-10).
  */
 
-export const SIGNAL_SOURCE_IDS = ['GITHUB', 'HACKERRANK', 'LEETCODE', 'RESUME', 'MANUAL'] as const;
+export const SIGNAL_SOURCE_IDS = [
+  'GITHUB',
+  'HACKERRANK',
+  'LEETCODE',
+  'RESUME',
+  'MANUAL',
+  'EXTERNALCERT',
+  'PROFESSIONALCREDENTIAL',
+] as const;
 export type SignalSourceId = (typeof SIGNAL_SOURCE_IDS)[number];
 
 export const SignalSourceIdSchema = z.enum(SIGNAL_SOURCE_IDS);

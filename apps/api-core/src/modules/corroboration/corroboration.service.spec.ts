@@ -20,9 +20,16 @@ function createStore(overrides: Partial<CorroborationRedisStore> = {}): Corrobor
 
   const store = {
     savePassiveSignal: vi.fn(async (signal) => {
-      passive.set(signal.userId, signal);
+      passive.set(`${signal.userId}:${signal.sourceId}`, signal);
     }),
-    getPassiveSignal: vi.fn(async (userId) => (passive.get(userId) as never) ?? null),
+    getPassiveSignal: vi.fn(
+      async (userId, sourceId) => (passive.get(`${userId}:${sourceId}`) as never) ?? null,
+    ),
+    getAllPassiveSignals: vi.fn(async (userId) =>
+      [...passive.entries()]
+        .filter(([key]) => key.startsWith(`${userId}:`))
+        .map(([, signal]) => signal),
+    ),
     getSnapshot: vi.fn(async (userId) => (snapshots.get(userId) as never) ?? null),
     saveSnapshot: vi.fn(async (snapshot) => {
       snapshots.set(snapshot.userId, snapshot);
@@ -150,6 +157,44 @@ describe('CorroborationService', () => {
     expect(store.savePassiveSignal).toHaveBeenCalled();
     expect(store.saveSnapshot).toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).toHaveBeenCalled();
+  });
+
+  it('fuses signals from multiple sources for the same user instead of overwriting', async () => {
+    const store = createStore();
+    const { service } = createService(store);
+
+    await service.ingestPassiveSignal(passiveSignal);
+    await service.ingestPassiveSignal({
+      ...passiveSignal,
+      sourceId: 'PROFESSIONALCREDENTIAL',
+      consentScope: 'credential.candidate.declared',
+      entries: [
+        {
+          dimension: {
+            taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+            dimensionKey: 'SQL_QUERY_OPTIMIZATION',
+            skillCode: 'SQL_QUERY_OPTIMIZATION',
+          },
+          sourceId: 'PROFESSIONALCREDENTIAL',
+          score: 0.9,
+          confidence: 0.6,
+        },
+      ],
+    });
+
+    const allSignals = await store.getAllPassiveSignals(USER_A);
+    expect(allSignals.map((s) => s.sourceId).sort()).toEqual(['GITHUB', 'PROFESSIONALCREDENTIAL']);
+
+    const lastSnapshotCall = store.saveSnapshot.mock.calls.at(-1)?.[0];
+    const dimensionKeys = lastSnapshotCall.readouts.map(
+      (r: { dimension: { dimensionKey: string } }) => r.dimension.dimensionKey,
+    );
+    expect(dimensionKeys).toEqual(
+      expect.arrayContaining([
+        'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        'SQL_QUERY_OPTIMIZATION',
+      ]),
+    );
   });
 
   it('creates one review flag and audits creation on contradiction', async () => {

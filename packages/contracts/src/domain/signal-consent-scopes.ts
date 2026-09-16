@@ -13,6 +13,8 @@ export const PASSIVE_SIGNAL_SOURCE_IDS = [
   'LEETCODE',
   'RESUME',
   'MANUAL',
+  'EXTERNALCERT',
+  'PROFESSIONALCREDENTIAL',
 ] as const;
 export type PassiveSignalSourceId = (typeof PASSIVE_SIGNAL_SOURCE_IDS)[number];
 
@@ -23,6 +25,9 @@ export const SIGNAL_CONSENT_SCOPES: Readonly<Record<PassiveSignalSourceId, reado
   LEETCODE: ['leetcode.profile.public'],
   RESUME: ['resume.upload.explicit'],
   MANUAL: ['manual.admin.attested'],
+  // Candidate declared and verified the credential themselves — no third-party OAuth grant to scope.
+  EXTERNALCERT: ['certificate.candidate.declared'],
+  PROFESSIONALCREDENTIAL: ['credential.candidate.declared'],
 };
 
 const ALL_SCOPES = new Set(Object.values(SIGNAL_CONSENT_SCOPES).flatMap((scopes) => scopes));
