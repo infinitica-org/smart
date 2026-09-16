@@ -28,3 +28,10 @@
 	}
 	reverse_proxy prisma-studio:5555
 }
+
+{$DB_HOST} {
+	basic_auth {
+		{$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_HASH}
+	}
+	reverse_proxy adminer:8080
+}
