@@ -1,11 +1,13 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { EvidenceVerificationMethod } from '@smart/contracts';
 import type { Prisma } from '../../../generated/prisma/index.js';
+import { KafkaOutboxService } from '../../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../../platform/prisma/prisma.service.js';
 import { Tier1IssuerRegistry } from '../../candidate-certificates/verification/tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from '../../candidate-certificates/verification/tier2-public-url-verifier.js';
 import { Tier3OcrVerifier } from '../../candidate-certificates/verification/tier3-ocr-verifier.js';
 import type { TierVerificationResult } from '../../candidate-certificates/verification/tier1-issuer-adapter.js';
+import { publishCredentialVerified } from '../../candidate-certificates/verification/credential-verified-publisher.js';
 import { EvidenceReconciliationService } from '../evidence-reconciliation.service.js';
 
 /**
@@ -40,6 +42,7 @@ export class CredentialVerificationService {
     @Inject(Tier1IssuerRegistry) private readonly tier1Registry: Tier1IssuerRegistry,
     @Inject(Tier2PublicUrlVerifier) private readonly tier2Verifier: Tier2PublicUrlVerifier,
     @Inject(Tier3OcrVerifier) private readonly tier3Verifier: Tier3OcrVerifier,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   async runVerification(credentialId: string): Promise<void> {
@@ -148,6 +151,14 @@ export class CredentialVerificationService {
         ...(result.status === 'VERIFIED' ? { verificationMethod } : {}),
       },
     });
+
+    if (result.status === 'VERIFIED') {
+      await publishCredentialVerified(this.outbox, 'evidence', {
+        userId: studentId,
+        sourceId: 'PROFESSIONALCREDENTIAL',
+        entityId: credentialId,
+      });
+    }
 
     const evidenceRecord = await this.prisma.evidenceRecord.findFirst({
       where: { studentId, evidenceType: 'CREDENTIAL', sourceEntityId: credentialId },
