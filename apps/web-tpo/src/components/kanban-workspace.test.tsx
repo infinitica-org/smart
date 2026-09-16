@@ -56,7 +56,7 @@ describe('CO-T02 ATS Kanban Workspace', () => {
 
     render(<KanbanWorkspace />);
 
-    expect(await screen.findByText('Candidate ATS Kanban Board')).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Candidate ATS' })).toBeDefined();
     expect(await screen.findByText('Aarav Sharma')).toBeDefined();
     expect(screen.getByText('aarav@example.com')).toBeDefined();
     expect(screen.getByText('92% Match')).toBeDefined();

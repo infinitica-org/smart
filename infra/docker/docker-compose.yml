@@ -229,6 +229,24 @@ services:
       postgres:
         condition: service_healthy
 
+  # Adminer — lightweight SQL browser, alternative to Prisma Studio for raw
+  # queries/table admin. Reachable at db.<domain> via Caddy (same Basic Auth
+  # gate as Prisma Studio — DB_BASIC_AUTH_USER/HASH — plus the Postgres login
+  # itself). Not started under the bare laptop profile-less stack; only when
+  # the `apps` profile (VPS stacks) is up, matching the other web services.
+  adminer:
+    image: adminer:4-standalone
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["apps"]
+
   api:
     build:
       context: ../..
@@ -417,6 +435,7 @@ services:
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
       API_HOST: ${API_HOST:-api.localhost}
       STUDIO_HOST: ${STUDIO_HOST:-studio.localhost}
+      DB_HOST: ${DB_HOST:-db.localhost}
       DB_BASIC_AUTH_USER: ${DB_BASIC_AUTH_USER:-admin}
       DB_BASIC_AUTH_HASH: ${DB_BASIC_AUTH_HASH:-}
     volumes:
@@ -431,6 +450,7 @@ services:
       - web-verify
       - web-auth
       - prisma-studio
+      - adminer
     # Only one stack per host should enable profile `vps` (binds :80/:443).
     profiles: ["vps"]
 

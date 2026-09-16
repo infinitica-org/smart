@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   ACTIVE_TAXONOMY_VERSION,
+  getSkillDefinition,
   SKILL_DEFINITIONS,
+  type CertificateProficiency,
   type HackerrankSolvedByTag,
   type LanguageBreakdownEntry,
   type LeetcodeTagStat,
@@ -111,6 +113,44 @@ export class SkillDimensionResolver {
       this.upsertDimensionEntry(byDimension, mapping, 'LEETCODE', score, confidence);
     }
     return [...byDimension.values()];
+  }
+
+  /** CandidateCertificate skills: proficiency drives score, confidence is passed in (tier-derived). */
+  resolveCandidateCertificateSkills(
+    skills: readonly { skillCode: string; selfAssessedProficiency: CertificateProficiency }[],
+    scoreByProficiency: Readonly<Record<CertificateProficiency, number>>,
+    confidence: number,
+  ): readonly VectorizedSignalEntry[] {
+    const entries: VectorizedSignalEntry[] = [];
+    for (const skill of skills) {
+      if (!getSkillDefinition(skill.skillCode)) continue;
+      entries.push({
+        dimension: this.toDimension(skill.skillCode, skill.skillCode),
+        sourceId: 'EXTERNALCERT',
+        score: scoreByProficiency[skill.selfAssessedProficiency],
+        confidence,
+      });
+    }
+    return entries;
+  }
+
+  /** ProfessionalCredential skills: flat coveredSkillCodes, no per-skill proficiency. */
+  resolveProfessionalCredentialSkills(
+    skillCodes: readonly string[],
+    score: number,
+    confidence: number,
+  ): readonly VectorizedSignalEntry[] {
+    const entries: VectorizedSignalEntry[] = [];
+    for (const skillCode of skillCodes) {
+      if (!getSkillDefinition(skillCode)) continue;
+      entries.push({
+        dimension: this.toDimension(skillCode, skillCode),
+        sourceId: 'PROFESSIONALCREDENTIAL',
+        score,
+        confidence,
+      });
+    }
+    return entries;
   }
 
   private lookupTagMapping(

@@ -12,7 +12,8 @@ import { resolveSignalWeight } from './default-weights.js';
 import { DEFAULT_CORROBORATION_POLICY, type CorroborationPolicy } from './policy.js';
 
 export interface FuseSignalsInput {
-  readonly passiveX: VectorizedSignal | null;
+  /** One signal, several (one per source), or none — all are fused together per dimension. */
+  readonly passiveX: VectorizedSignal | readonly VectorizedSignal[] | null;
   readonly assessmentY: AssessmentPerformanceVector | null;
   readonly weights: SignalWeightModel;
   readonly policy?: CorroborationPolicy;
@@ -93,9 +94,15 @@ function shouldFlagContradiction(
  */
 export function fuseSignals(input: FuseSignalsInput): FuseSignalsResult {
   const policy = input.policy ?? DEFAULT_CORROBORATION_POLICY;
-  const passiveMap = input.passiveX
-    ? aggregatePassiveByDimension(input.passiveX.entries, input.weights)
-    : new Map();
+  const passiveSignals = input.passiveX
+    ? Array.isArray(input.passiveX)
+      ? input.passiveX
+      : [input.passiveX as VectorizedSignal]
+    : [];
+  const passiveMap = aggregatePassiveByDimension(
+    passiveSignals.flatMap((signal) => signal.entries),
+    input.weights,
+  );
   const assessmentMap = input.assessmentY
     ? assessmentByDimension(input.assessmentY.entries)
     : new Map();

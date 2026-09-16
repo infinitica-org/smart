@@ -113,6 +113,49 @@ describe('fuseSignals', () => {
     );
   });
 
+  it('fuses multiple passive signals (array input) instead of only using one source', () => {
+    const result = fuseSignals({
+      passiveX: [
+        {
+          userId: '00000000-0000-4000-8000-000000000001',
+          sourceId: 'GITHUB',
+          taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+          encodedAt: '2026-09-11T00:00:00.000Z',
+          entries: [
+            {
+              dimension: dim('PYTHON_APPLICATION_BACKEND_DEVELOPMENT'),
+              sourceId: 'GITHUB',
+              score: 0.6,
+              confidence: 0.8,
+            },
+          ],
+        },
+        {
+          userId: '00000000-0000-4000-8000-000000000001',
+          sourceId: 'PROFESSIONALCREDENTIAL',
+          taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+          encodedAt: '2026-09-11T00:00:00.000Z',
+          entries: [
+            {
+              dimension: dim('SQL_QUERY_OPTIMIZATION'),
+              sourceId: 'PROFESSIONALCREDENTIAL',
+              score: 0.9,
+              confidence: 0.6,
+            },
+          ],
+        },
+      ],
+      assessmentY: null,
+      weights: DEFAULT_SIGNAL_WEIGHT_MODEL,
+    });
+
+    const dimensionKeys = result.readouts.map((r) => r.dimension.dimensionKey).sort();
+    expect(dimensionKeys).toEqual([
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      'SQL_QUERY_OPTIMIZATION',
+    ]);
+  });
+
   it('does not flag when assessment failed even with low passive', () => {
     const result = fuseSignals({
       passiveX: {

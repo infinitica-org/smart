@@ -23,6 +23,7 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import {
   toEvidenceRecordDto,
@@ -50,6 +51,7 @@ export class EvidenceService {
     @Inject(StorageService) private readonly storageService: StorageService,
     @InjectQueue(CREDENTIAL_VERIFICATION_QUEUE)
     private readonly credentialVerificationQueue: Queue<CredentialVerificationJobPayload>,
+    @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
   ) {}
 
   async listEvidence(
@@ -258,6 +260,13 @@ export class EvidenceService {
 
   async createCredential(studentId: string, body: unknown): Promise<ProfessionalCredentialDto> {
     const input = ProfessionalCredentialSchema.omit({ credentialId: true }).parse(body);
+
+    await this.dedup.assertNoDuplicate(studentId, {
+      issuer: input.issuer,
+      title: input.credentialName,
+      identifierNumber: input.externalCredentialId,
+    });
+
     const row = await this.prisma.professionalCredential.create({
       data: {
         studentId,

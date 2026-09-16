@@ -33,6 +33,7 @@ export const SMART_TOPICS = {
   signalIngested: 'smart.signal.ingested',
   signalEncoded: 'smart.signal.encoded',
   corroborationUpdated: 'smart.corroboration.updated',
+  credentialVerified: 'smart.credential.verified',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -303,6 +304,22 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     partitionKey: 'userId',
     purpose:
       'Trust-weighted competency readout refreshed. Never promotes SkillClaim status; may carry review flags.',
+  },
+  {
+    topic: SMART_TOPICS.credentialVerified,
+    producerOwner: 'Ramansh',
+    // Emitted from candidate-certificates (endorsement/admin/assessment paths) and
+    // evidence (professional credential auto-verification) — the shared payload
+    // shape is owned by whoever's on this TopicSpec, per any of those modules.
+    producerModule: 'candidate-certificates',
+    consumerModules: ['signal-encoder'],
+    partitions: 3,
+    retentionHours: 168,
+    partitionKey: 'userId',
+    purpose:
+      'A CandidateCertificate or ProfessionalCredential reached a verified status. ' +
+      'signal-encoder consumes to vectorize it as an EXTERNALCERT/PROFESSIONALCREDENTIAL ' +
+      'passive signal and feed corroboration fusion.',
   },
 ] as const;
 

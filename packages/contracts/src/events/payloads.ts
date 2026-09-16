@@ -466,6 +466,18 @@ export const CorroborationUpdatedEventSchema = envelopeSchema(
 );
 export type CorroborationUpdatedEvent = z.infer<typeof CorroborationUpdatedEventSchema>;
 
+/** entityId is the candidate_certificates or professional_credentials row id, per sourceId. */
+export const CredentialVerifiedDataSchema = z.object({
+  userId: UuidSchema,
+  sourceId: z.enum(['EXTERNALCERT', 'PROFESSIONALCREDENTIAL']),
+  entityId: UuidSchema,
+});
+export const CredentialVerifiedEventSchema = envelopeSchema(
+  SMART_TOPICS.credentialVerified,
+  CredentialVerifiedDataSchema,
+);
+export type CredentialVerifiedEvent = z.infer<typeof CredentialVerifiedEventSchema>;
+
 /* -------------------------------------------------------------------------- */
 /*                              topic → schema map                            */
 /* -------------------------------------------------------------------------- */
@@ -500,6 +512,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.signalIngested]: SignalIngestedEventSchema,
   [SMART_TOPICS.signalEncoded]: SignalEncodedEventSchema,
   [SMART_TOPICS.corroborationUpdated]: CorroborationUpdatedEventSchema,
+  [SMART_TOPICS.credentialVerified]: CredentialVerifiedEventSchema,
 } as const;
 
 export type SmartEvent =

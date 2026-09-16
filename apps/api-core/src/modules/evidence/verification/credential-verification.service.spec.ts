@@ -13,6 +13,7 @@ function buildService(
   },
 ) {
   const reconciliation = { reconcileForStudent: vi.fn().mockResolvedValue(undefined) };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   return {
     service: new CredentialVerificationService(
       mockPrisma as any,
@@ -20,8 +21,10 @@ function buildService(
       overrides?.tier1 ?? new Tier1IssuerRegistry(),
       overrides?.tier2 ?? new Tier2PublicUrlVerifier(),
       overrides?.tier3 ?? new Tier3OcrVerifier(),
+      outbox as any,
     ),
     reconciliation,
+    outbox,
   };
 }
 
@@ -61,7 +64,7 @@ describe('CredentialVerificationService', () => {
       reason: 'Verified public registry page',
     });
 
-    const { service, reconciliation } = buildService(mockPrisma, { tier2 });
+    const { service, reconciliation, outbox } = buildService(mockPrisma, { tier2 });
     await service.runVerification('cred-1');
 
     expect(mockPrisma.professionalCredential.update).toHaveBeenCalledWith({
@@ -73,6 +76,16 @@ describe('CredentialVerificationService', () => {
       data: expect.objectContaining({ verificationStatus: 'VERIFIED' }),
     });
     expect(reconciliation.reconcileForStudent).toHaveBeenCalledWith('student-1');
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'smart.credential.verified',
+        data: expect.objectContaining({
+          userId: 'student-1',
+          sourceId: 'PROFESSIONALCREDENTIAL',
+          entityId: 'cred-1',
+        }),
+      }),
+    );
   });
 
   it('rejects the evidence record but leaves the credential status untouched on FAILED', async () => {
@@ -95,7 +108,7 @@ describe('CredentialVerificationService', () => {
       reason: 'Registry page contradicts the claimed credential.',
     });
 
-    const { service } = buildService(mockPrisma, { tier2 });
+    const { service, outbox } = buildService(mockPrisma, { tier2 });
     await service.runVerification('cred-1');
 
     expect(mockPrisma.professionalCredential.update).toHaveBeenCalledWith({
@@ -106,6 +119,7 @@ describe('CredentialVerificationService', () => {
       where: { id: 'evidence-1' },
       data: expect.objectContaining({ verificationStatus: 'REJECTED' }),
     });
+    expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
   it('skips automated verification for DEGREE credentials', async () => {

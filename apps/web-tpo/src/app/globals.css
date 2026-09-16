@@ -1,7 +1,49 @@
 @import '@smart/ui/styles.css';
 
+/*
+ * TPO console surfaces. Neutral scale is ported from the student profile
+ * workspace (apps/web-student/src/app/globals.css) so both consoles read as one
+ * product; the accent is SMART teal #00FAD0.
+ */
 :root {
   color-scheme: light;
+
+  --ds-canvas: #f8fafc;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f5f7fa;
+  --ds-surface-hover: #f8fafc;
+  --ds-border: #e4e7ec;
+  --ds-border-subtle: #eef1f4;
+  --ds-border-inner: #e7ebef;
+  --ds-text: #101828;
+  --ds-text-secondary: #475467;
+  --ds-text-muted: #667085;
+  --ds-text-subtle: #98a2b3;
+  --ds-icon: #344054;
+  --ds-link: #006bff;
+  --ds-coral: #e5484d;
+  --ds-coral-border: #f0d9d9;
+  --ds-success: #4ead68;
+  --ds-progress-track: #eef1f4;
+  --ds-empty-icon: #b7c2d0;
+  --ds-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.03);
+  --ds-chip-bg: #ffffff;
+
+  /* Readable teal type — same tokens as the student profile workspace. */
+  --ds-green: #008f7a;
+  --ds-green-hover: #007a68;
+  --ds-green-soft: #e8f7f3;
+  --ds-nav-active-bg: #eaf8f5;
+
+  /*
+   * #00FAD0 is ~1.4:1 on white, so it carries fills, rails, rings and active
+   * rails only. Type on an accent fill uses --ds-text; active nav type uses
+   * --ds-green so it stays readable.
+   */
+  --tpo-accent: #00fad0;
+  --tpo-accent-hover: #29ffd9;
+  --tpo-accent-tint: #e8fffb;
+  --tpo-accent-border: #86f5e2;
 }
 
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
