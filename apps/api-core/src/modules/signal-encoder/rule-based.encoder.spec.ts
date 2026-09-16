@@ -74,4 +74,86 @@ describe('RuleBasedEncoder', () => {
     expect(dsa?.score).toBeGreaterThan(0);
     expect(dsa?.confidence).toBeLessThanOrEqual(0.2);
   });
+
+  it('encodes a candidate certificate with proficiency-driven score and tier-calibrated confidence', () => {
+    const vector = encoder.encodeCandidateCertificate({
+      userId: '00000000-0000-4000-8000-000000000004',
+      skills: [
+        { skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT', selfAssessedProficiency: 'EXPERT' },
+      ],
+      verificationTier: 'TIER_1_ISSUER_API',
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    expect(vector.sourceId).toBe('EXTERNALCERT');
+    expect(vector.consentScope).toBe('certificate.candidate.declared');
+    const entry = vector.entries.find(
+      (e) => e.dimension.dimensionKey === 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+    );
+    expect(entry?.score).toBeCloseTo(0.95, 2);
+    expect(entry?.confidence).toBeCloseTo(0.85, 2);
+  });
+
+  it('down-ranks a Tier 3 OCR-verified certificate to a low confidence', () => {
+    const vector = encoder.encodeCandidateCertificate({
+      userId: '00000000-0000-4000-8000-000000000004',
+      skills: [
+        { skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT', selfAssessedProficiency: 'EXPERT' },
+      ],
+      verificationTier: 'TIER_3_OCR_HEURISTIC',
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    const entry = vector.entries[0];
+    expect(entry?.score).toBeCloseTo(0.95, 2);
+    expect(entry?.confidence).toBeCloseTo(0.35, 2);
+  });
+
+  it('skips certificate skills that are not valid taxonomy codes', () => {
+    const vector = encoder.encodeCandidateCertificate({
+      userId: '00000000-0000-4000-8000-000000000004',
+      skills: [{ skillCode: 'NOT_A_REAL_SKILL_CODE', selfAssessedProficiency: 'EXPERT' }],
+      verificationTier: 'TIER_1_ISSUER_API',
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    expect(vector.entries).toHaveLength(0);
+  });
+
+  it('encodes a professional credential with issuer-verified confidence', () => {
+    const vector = encoder.encodeProfessionalCredential({
+      userId: '00000000-0000-4000-8000-000000000005',
+      coveredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
+      verificationMethod: 'ISSUER',
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    expect(vector.sourceId).toBe('PROFESSIONALCREDENTIAL');
+    expect(vector.consentScope).toBe('credential.candidate.declared');
+    const entry = vector.entries.find((e) => e.dimension.dimensionKey === 'SQL_QUERY_OPTIMIZATION');
+    expect(entry?.score).toBeCloseTo(0.75, 2);
+    expect(entry?.confidence).toBeCloseTo(0.85, 2);
+  });
+
+  it('down-ranks a document/OCR-verified professional credential', () => {
+    const vector = encoder.encodeProfessionalCredential({
+      userId: '00000000-0000-4000-8000-000000000005',
+      coveredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
+      verificationMethod: 'DOCUMENT',
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    expect(vector.entries[0]?.confidence).toBeCloseTo(0.35, 2);
+  });
+
+  it('treats an unverified/self-attested credential as low confidence', () => {
+    const vector = encoder.encodeProfessionalCredential({
+      userId: '00000000-0000-4000-8000-000000000005',
+      coveredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
+      verificationMethod: null,
+      encodedAt: '2026-09-16T00:00:00.000Z',
+    });
+
+    expect(vector.entries[0]?.confidence).toBeCloseTo(0.3, 2);
+  });
 });
