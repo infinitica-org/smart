@@ -78,10 +78,10 @@ describe('skill-declarations helpers', () => {
   it('coerces optional focus-progress timestamps to null', () => {
     const rows = progressForClaim(
       claim({
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
+        skillCode: 'RESTFUL_GRAPHQL_API_DESIGN',
         focusProgress: [
           {
-            focus: 'APIs',
+            focus: 'REST',
             status: 'DECLARED',
             strikes: 0,
             lockedUntil: null,

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -45,6 +46,10 @@ import { bandForScore, integrityScore, type StoredViolation } from './risk.js';
 
 function skillVerifyRedisKey(attemptId: string): string {
   return `session:skill-verify:${attemptId}`;
+}
+
+function projectDefenseRedisKey(sessionId: string): string {
+  return `project:defense:session:${sessionId}`;
 }
 
 const WARN = (id: string) => `proctor:warn:${id}`;
@@ -125,6 +130,25 @@ export class ProctoringService {
         id: attemptId,
         userId,
         status: 'IN_PROGRESS',
+        integrityFlag: 'CLEAN',
+        persistAttempt: false,
+      };
+    }
+
+    const defenseRaw = await this.redis.get(projectDefenseRedisKey(attemptId));
+    if (defenseRaw) {
+      const stored = JSON.parse(defenseRaw) as { userId?: string; status?: string };
+      if (stored.userId !== userId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Not your attempt.',
+          statusCode: 403,
+        });
+      }
+      return {
+        id: attemptId,
+        userId,
+        status: stored.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
         integrityFlag: 'CLEAN',
         persistAttempt: false,
       };
@@ -478,6 +502,30 @@ export class ProctoringService {
     if (!env.PROCTORING_FULL) return false;
     await this.ensureRedis();
     return (await this.redis.exists(LOCK(attemptId))) === 1;
+  }
+
+  /** Defense interviews must pass onboarding and not be integrity-locked. */
+  async assertInterviewReady(userId: string, attemptId: string): Promise<void> {
+    if (!env.PROCTORING_FULL || env.NODE_ENV === 'test') return;
+
+    await this.assertAttemptOwner(userId, attemptId);
+
+    if (await this.isProctorLocked(attemptId)) {
+      throw new ForbiddenException({
+        error: 'proctor_locked',
+        message: 'This interview session was locked due to integrity violations.',
+        statusCode: 403,
+      });
+    }
+
+    const state = await this.onboarding(userId, attemptId);
+    if (!state.onboardingPassed) {
+      throw new BadRequestException({
+        error: 'proctoring_required',
+        message: 'Complete proctoring setup before continuing the interview.',
+        statusCode: 400,
+      });
+    }
   }
 
   private async loadEvents(attemptId: string): Promise<StoredViolation[]> {

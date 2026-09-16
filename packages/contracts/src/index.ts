@@ -1,12 +1,12 @@
-/**
- * @smart/contracts — the SMART integration boundary.
+﻿/**
+ * @smart/contracts â€” the SMART integration boundary.
  *
  * Every cross-module type, every HTTP DTO and every Kafka payload lives here.
  * Nothing in this package imports from an app or another workspace package: it
  * is a leaf, deliberately, so it can never create a dependency cycle between
  * two engineers' modules.
  *
- * CHANGE PROCESS (TEAM.md §4.1)
+ * CHANGE PROCESS (TEAM.md Â§4.1)
  *   1. The consumer opens a PR adding/changing the schema here.
  *   2. Tino reviews and merges it, usually the same day at the 17:00 board.
  *   3. Producer and consumer then implement in parallel against the merged type.
@@ -56,6 +56,7 @@ export * from './dto/public-candidate-profile.dto.js';
 export * from './dto/resume-parse.dto.js';
 export * from './dto/notification.dto.js';
 export * from './dto/project-verify.dto.js';
+export * from './dto/project-defense.dto.js';
 export * from './dto/work-experience.dto.js';
 export * from './dto/work-experience-proof.dto.js';
 export * from './dto/work-experience-letter-authenticity.dto.js';

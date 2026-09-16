@@ -194,8 +194,8 @@ describe('route registry', () => {
 });
 
 describe('skill taxonomy (skill@1)', () => {
-  it('defines 81 skills across 14 categories', () => {
-    expect(SKILL_DEFINITIONS).toHaveLength(81);
+  it('defines 67 skills across 14 categories', () => {
+    expect(SKILL_DEFINITIONS).toHaveLength(67);
     expect(new Set(SKILL_DEFINITIONS.map((skill) => skill.categoryId)).size).toBe(14);
   });
 
@@ -484,8 +484,8 @@ describe('SDE v4 skill-verify assessment routes', () => {
 
   it('seeds legacy claim status onto the last-used focus only', () => {
     const rows = hydrateFocusProgress({
-      skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-      metadata: { skillFocus: 'APIs' },
+      skillCode: 'RESTFUL_GRAPHQL_API_DESIGN',
+      metadata: { skillFocus: 'REST' },
       status: 'BEGINNER_REATTEMPT',
       strikes: 1,
       lockedUntil: null,
@@ -493,7 +493,7 @@ describe('SDE v4 skill-verify assessment routes', () => {
       lastGenuineFailureAt: '2026-09-05T05:00:00.000Z',
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.focus).toBe('APIs');
+    expect(rows[0]?.focus).toBe('REST');
     expect(rows[0]?.status).toBe('BEGINNER_REATTEMPT');
     expect(focusProgressFor(rows, 'TCP/UDP')).toBeNull();
   });

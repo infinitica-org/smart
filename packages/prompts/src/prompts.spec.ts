@@ -29,6 +29,8 @@ import {
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
   projectVerifyTemplate,
+  projectDefenseExaminerTemplate,
+  projectDefenseGraderTemplate,
 } from './index.js';
 
 /**
@@ -204,6 +206,26 @@ describe('rendered grading prompts', () => {
     expect(rendered.promptRef).toBe(PROJECT_VERIFY_PROMPT_REF);
     expect(rendered.system).toContain('Do not say Gold');
     expect(rendered.system).toContain('Never recommend rejecting');
+  });
+
+  it('registers project-defense examiner and grader prompts', () => {
+    expect(PROMPT_REGISTRY.has('project-defense-examiner@1')).toBe(true);
+    expect(PROMPT_REGISTRY.has('project-defense-grader@1')).toBe(true);
+    const examiner = renderPrompt(projectDefenseExaminerTemplate, {
+      projectTitle: 'Bus tracker',
+      projectSummary: 'Problem: buses\nApproach: websockets',
+      stack: 'TypeScript',
+      declaredArtefacts: ['package.json'],
+      verifyFlags: ['SNAPSHOT_UNAVAILABLE'],
+      verifyGaps: ['No CI config detected'],
+      snapshotDigest: 'digest',
+      transcript: [{ role: 'CANDIDATE', text: 'I built the websocket ingest.' }],
+      secondsRemaining: 420,
+    });
+    expect(examiner.temperature).toBeGreaterThan(0);
+    expect(examiner.system).toContain('skills and concepts');
+    expect(examiner.user).toContain('SECONDS REMAINING');
+    expect(projectDefenseGraderTemplate.temperature).toBe(0);
   });
 });
 

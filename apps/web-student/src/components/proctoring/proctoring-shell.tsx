@@ -306,6 +306,15 @@ export function ProctoringShell({
     else if (fallback) fallback.srcObject = mediaRef.current;
   }, [cameraEnabled, ready, previewHosted]);
 
+  const prepareMicForSpeech = useCallback(() => {
+    const stream = mediaRef.current;
+    if (!stream) return;
+    for (const track of stream.getAudioTracks()) {
+      track.stop();
+      stream.removeTrack(track);
+    }
+  }, []);
+
   if (!enabled) return children;
   if (!mounted) return null;
 
@@ -317,6 +326,7 @@ export function ProctoringShell({
     warningCount: warnings.count,
     warningLimit: warnings.limit,
     bindPreview,
+    prepareMicForSpeech,
   };
   const kiosk = (
     <ProctorLiveProvider value={liveValue}>
@@ -349,10 +359,10 @@ export function ProctoringShell({
         ) : (
           <>
             <div
-              className={hideExam ? 'hidden' : 'relative flex h-full min-h-full flex-col'}
+              className={hideExam ? 'hidden' : 'relative flex h-full min-h-full w-full flex-col'}
               aria-hidden={hideExam}
             >
-              <div className="min-h-0 flex-1">{children}</div>
+              <div className="flex min-h-0 w-full flex-1 flex-col">{children}</div>
               {cameraEnabled && !previewHosted ? (
                 <video
                   ref={fallbackPreviewRef}

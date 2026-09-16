@@ -2,27 +2,34 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutSection } from './AboutSection';
 
-const getOnboarding = vi.fn();
 const saveOnboarding = vi.fn();
+const invalidateOnboarding = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   api: {
     users: {
-      getOnboarding: () => getOnboarding(),
       saveOnboarding: (...args: unknown[]) => saveOnboarding(...args),
     },
   },
 }));
 
-describe('AboutSection', () => {
-  beforeEach(() => {
-    getOnboarding.mockReset();
-    saveOnboarding.mockReset();
-    getOnboarding.mockResolvedValue({
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => ({
+    data: {
       profile: { about: 'Existing summary.' },
       draft: null,
       onboardingCompleted: true,
-    });
+    },
+    isLoading: false,
+    isError: false,
+  }),
+  useInvalidateOnboarding: () => invalidateOnboarding,
+}));
+
+describe('AboutSection', () => {
+  beforeEach(() => {
+    saveOnboarding.mockReset();
+    invalidateOnboarding.mockReset();
     saveOnboarding.mockResolvedValue({});
   });
 

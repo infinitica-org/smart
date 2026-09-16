@@ -145,6 +145,12 @@ import {
   ProctoringVoiceResponseSchema,
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
+  AbandonProjectDefenseResponseSchema,
+  PrepareProjectDefenseResponseSchema,
+  StartProjectDefenseResponseSchema,
+  ProjectDefenseAudioUploadResponseSchema,
+  ProjectDefenseReplyResponseSchema,
+  CompleteProjectDefenseResponseSchema,
   SaveDraftResponseSchema,
   RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
@@ -1223,6 +1229,36 @@ export function projectsApi(client: SmartApiClient) {
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+
+    prepareDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/prepare`), undefined, {
+        schema: PrepareProjectDefenseResponseSchema,
+      }),
+
+    startDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/start`), undefined, {
+        schema: StartProjectDefenseResponseSchema,
+      }),
+
+    abandonDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/abandon`), undefined, {
+        schema: AbandonProjectDefenseResponseSchema,
+      }),
+
+    defenseAudioUploadUrl: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/audio-upload-url`), body, {
+        schema: ProjectDefenseAudioUploadResponseSchema,
+      }),
+
+    defenseReply: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/reply`), body, {
+        schema: ProjectDefenseReplyResponseSchema,
+      }),
+
+    completeDefense: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/complete`), body, {
+        schema: CompleteProjectDefenseResponseSchema,
+      }),
   };
 }
 

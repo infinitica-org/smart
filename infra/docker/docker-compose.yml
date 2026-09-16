@@ -9,6 +9,7 @@ x-app-env: &app-env
   JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-now!!}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:3005,http://localhost}
   S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://127.0.0.1:9000}
   S3_REGION: ${S3_REGION:-us-east-1}
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
@@ -155,6 +156,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-smart}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-smartsecret}
+      # Community MinIO: global CORS only (per-bucket mc cors set requires AIStor).
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_API_CORS_ALLOW_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001,https://dev.app.becomesmart.online}
       # Metrics scraped in-network only (127.0.0.1-bound Prometheus) — public
       # auth mode is acceptable here, but do not expose this port beyond that.
       MINIO_PROMETHEUS_AUTH_TYPE: public

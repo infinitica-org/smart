@@ -6,11 +6,13 @@ import { isSmartApiError } from '@smart/api-client';
 import { LightSelect } from '@/components/ui/LightSelect';
 import { CITY_OPTIONS } from '@/lib/onboarding-form';
 import { api } from '@/lib/api';
+import { useInvalidateOnboarding, useOnboarding } from '@/lib/use-onboarding';
 
 const MAX_PREFERRED_LOCATIONS = 3;
 
 export function JobPreferencesSection() {
-  const [loading, setLoading] = useState(true);
+  const { data: onboarding, isLoading, isError } = useOnboarding();
+  const invalidateOnboarding = useInvalidateOnboarding();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -20,27 +22,17 @@ export function JobPreferencesSection() {
   const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    void api.users
-      .getOnboarding()
-      .then((response) => {
-        if (cancelled) return;
-        const prefs = response.profile?.jobPreferences ?? response.draft?.jobPreferences;
-        if (!prefs) return;
-        setExpectedCtcLakhs(prefs.expectedCtcLakhs?.toString() ?? '');
-        setCurrentLocation(prefs.currentLocation ?? '');
-        setPreferredLocations(prefs.preferredLocations ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load saved job preferences.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!onboarding || saving) return;
+    const prefs = onboarding.profile?.jobPreferences ?? onboarding.draft?.jobPreferences;
+    if (!prefs) return;
+    setExpectedCtcLakhs(prefs.expectedCtcLakhs?.toString() ?? '');
+    setCurrentLocation(prefs.currentLocation ?? '');
+    setPreferredLocations(prefs.preferredLocations ?? []);
+  }, [onboarding, saving]);
+
+  useEffect(() => {
+    if (isError) setError('Could not load saved job preferences.');
+  }, [isError]);
 
   const togglePreferredLocation = (city: string) => {
     setPreferredLocations((current) => {
@@ -77,6 +69,7 @@ export function JobPreferencesSection() {
           preferredWorkModes: ['FULL_TIME', 'HYBRID'],
         },
       });
+      invalidateOnboarding();
       setSuccess('Job preferences saved.');
     } catch (err: unknown) {
       setError(isSmartApiError(err) ? err.message : 'Could not save job preferences.');
@@ -115,7 +108,7 @@ export function JobPreferencesSection() {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading job preferences…</p>;
   }
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SkillClaimDto } from '@smart/contracts';
 import { api } from '@/lib/api';
+import { useOnboarding } from '@/lib/use-onboarding';
 import {
   computeProfileCompletion,
   dismissRecommendedAction,
@@ -30,6 +31,11 @@ export interface UseProfileProgressResult {
 }
 
 export function useProfileProgress(): UseProfileProgressResult {
+  const {
+    data: onboardingData,
+    isLoading: onboardingLoading,
+    isError: onboardingError,
+  } = useOnboarding();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState<ProfileProgressInput | null>(null);
@@ -42,6 +48,11 @@ export function useProfileProgress(): UseProfileProgressResult {
   }, []);
 
   useEffect(() => {
+    if (onboardingLoading) {
+      setLoading(true);
+      return undefined;
+    }
+
     let cancelled = false;
 
     const load = async () => {
@@ -49,7 +60,6 @@ export function useProfileProgress(): UseProfileProgressResult {
       setError(null);
 
       const [
-        onboardingRes,
         skillClaimsRes,
         educationRes,
         experiencesRes,
@@ -57,7 +67,6 @@ export function useProfileProgress(): UseProfileProgressResult {
         projectsRes,
         certificatesRes,
       ] = await Promise.allSettled([
-        api.users.getOnboarding(),
         api.assessment.listSkillClaims(),
         api.users.listEducation(),
         api.users.listWorkExperiences(),
@@ -68,10 +77,11 @@ export function useProfileProgress(): UseProfileProgressResult {
 
       if (cancelled) return;
 
-      const onboarding =
-        onboardingRes.status === 'fulfilled'
-          ? onboardingRes.value
-          : { profile: null, draft: null, onboardingCompleted: true };
+      const onboarding = onboardingData ?? {
+        profile: null,
+        draft: null,
+        onboardingCompleted: true,
+      };
       const claims = skillClaimsRes.status === 'fulfilled' ? skillClaimsRes.value : [];
       const education = educationRes.status === 'fulfilled' ? educationRes.value : [];
       const experiences = experiencesRes.status === 'fulfilled' ? experiencesRes.value : [];
@@ -92,14 +102,14 @@ export function useProfileProgress(): UseProfileProgressResult {
       };
 
       const failures = [
-        onboardingRes,
+        onboardingError ? { status: 'rejected' as const } : null,
         skillClaimsRes,
         educationRes,
         experiencesRes,
         languagesRes,
         projectsRes,
         certificatesRes,
-      ].filter((result) => result.status === 'rejected');
+      ].filter((result) => result?.status === 'rejected');
 
       setInput(nextInput);
       setSkillClaims(claims);
@@ -117,7 +127,7 @@ export function useProfileProgress(): UseProfileProgressResult {
     return () => {
       cancelled = true;
     };
-  }, [refreshToken]);
+  }, [onboardingData, onboardingError, onboardingLoading, refreshToken]);
 
   const progress = useMemo(() => (input ? computeProfileCompletion(input) : null), [input]);
 

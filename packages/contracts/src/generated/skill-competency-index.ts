@@ -8,7 +8,7 @@ import type { SkillBlueprint } from '../domain/evidence/skill-blueprint.js';
 export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = {
   'PYTHON_APPLICATION_BACKEND_DEVELOPMENT': {
     skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
-    name: 'Python (Application & Backend Development)',
+    name: 'Python',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -111,10 +111,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d', 'e74fb14e-7e33-41fd-a709-4c23f24656be', '296c4b35-7619-482c-aa9c-5d9b980598d3', 'a12803b7-ad4b-48a4-a042-5a948daaf7ef', '445faf5d-334e-473a-adda-495be6fb6350', 'ce43fb80-9697-44ea-af6a-bbdc7f60c0e4' ], criticalCompetencyIds: [ '445faf5d-334e-473a-adda-495be6fb6350', 'ce43fb80-9697-44ea-af6a-bbdc7f60c0e4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Python (Application & Backend Development)',
-      INTERMEDIATE: 'Independent execution of bounded Python (Application & Backend Development) tasks',
-      ADVANCED: 'Owns Python (Application & Backend Development) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Python (Application & Backend Development) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Python',
+      INTERMEDIATE: 'Independent execution of bounded Python tasks',
+      ADVANCED: 'Owns Python components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Python at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -126,7 +126,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT': {
     skillCode: 'JAVA_ENTERPRISE_APPLICATION_DEVELOPMENT',
-    name: 'Java (Enterprise Application Development)',
+    name: 'Java',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -229,10 +229,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a', '55b9fc11-2d27-4b66-acb5-7e831a446065', 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab', '841483d9-ef92-4e64-ab32-569f940bb9fe', '8c670f60-16cb-4b16-aa36-374f69b4ff1c', '61a02bdd-fdd8-45d6-aa3a-ae11f6e1f4bc' ], criticalCompetencyIds: [ '8c670f60-16cb-4b16-aa36-374f69b4ff1c', '61a02bdd-fdd8-45d6-aa3a-ae11f6e1f4bc' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Java (Enterprise Application Development)',
-      INTERMEDIATE: 'Independent execution of bounded Java (Enterprise Application Development) tasks',
-      ADVANCED: 'Owns Java (Enterprise Application Development) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Java (Enterprise Application Development) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Java',
+      INTERMEDIATE: 'Independent execution of bounded Java tasks',
+      ADVANCED: 'Owns Java components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Java at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -244,7 +244,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT': {
     skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
-    name: 'JavaScript / TypeScript (Full-Stack Development)',
+    name: 'JavaScript / TypeScript',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -347,10 +347,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2', '5ac9bf05-7872-4116-a62a-d2f7a1e1d6d2', '00b56ff3-f3c2-4693-a868-c7d571a16e98', '87983fe0-51c8-4676-afdc-390fc141a694', '231ce1dd-97aa-4ceb-a76a-36bedceee509', '166f8955-9fb1-4904-a46d-f866b3a2adbe' ], criticalCompetencyIds: [ '231ce1dd-97aa-4ceb-a76a-36bedceee509', '166f8955-9fb1-4904-a46d-f866b3a2adbe' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of JavaScript / TypeScript (Full-Stack Development)',
-      INTERMEDIATE: 'Independent execution of bounded JavaScript / TypeScript (Full-Stack Development) tasks',
-      ADVANCED: 'Owns JavaScript / TypeScript (Full-Stack Development) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for JavaScript / TypeScript (Full-Stack Development) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of JavaScript / TypeScript',
+      INTERMEDIATE: 'Independent execution of bounded JavaScript / TypeScript tasks',
+      ADVANCED: 'Owns JavaScript / TypeScript components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for JavaScript / TypeScript at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -362,7 +362,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES': {
     skillCode: 'GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES',
-    name: 'Go (Golang) for High-Performance Services',
+    name: 'Go',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -465,10 +465,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5', 'f5e4e54f-72ae-4fd0-ab16-ffbeaff5b0f9', '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d', '80d946f1-6cf6-4c10-af29-a5f91235cd00', '44915f9f-185e-433f-a98d-5034c23acf5b', '12cf4c61-47b1-4165-a91d-c91e3c11812a' ], criticalCompetencyIds: [ '44915f9f-185e-433f-a98d-5034c23acf5b', '12cf4c61-47b1-4165-a91d-c91e3c11812a' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Go (Golang) for High-Performance Services',
-      INTERMEDIATE: 'Independent execution of bounded Go (Golang) for High-Performance Services tasks',
-      ADVANCED: 'Owns Go (Golang) for High-Performance Services components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Go (Golang) for High-Performance Services at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Go',
+      INTERMEDIATE: 'Independent execution of bounded Go tasks',
+      ADVANCED: 'Owns Go components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Go at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -480,7 +480,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'C_NET_ENTERPRISE_DEVELOPMENT': {
     skillCode: 'C_NET_ENTERPRISE_DEVELOPMENT',
-    name: 'C# / .NET Enterprise Development',
+    name: 'C# / .NET',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -583,10 +583,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9', '43da0926-e990-4cbb-a2c7-239080001e3b', '09de4f38-32d7-488a-a0cb-20404ea45748', '524faa52-acc8-47d5-a456-ec5b469c6d71', '90e1b076-77d3-4a3b-a082-d36e11a21e2c', '81178f98-8408-444e-abf8-4fc6a34f023e' ], criticalCompetencyIds: [ '90e1b076-77d3-4a3b-a082-d36e11a21e2c', '81178f98-8408-444e-abf8-4fc6a34f023e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of C# / .NET Enterprise Development',
-      INTERMEDIATE: 'Independent execution of bounded C# / .NET Enterprise Development tasks',
-      ADVANCED: 'Owns C# / .NET Enterprise Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for C# / .NET Enterprise Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of C# / .NET',
+      INTERMEDIATE: 'Independent execution of bounded C# / .NET tasks',
+      ADVANCED: 'Owns C# / .NET components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for C# / .NET at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -598,7 +598,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'C_SYSTEMS_PERFORMANCE_ENGINEERING': {
     skillCode: 'C_SYSTEMS_PERFORMANCE_ENGINEERING',
-    name: 'C++ (Systems & Performance Engineering)',
+    name: 'C++',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -701,10 +701,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c', '66630e84-70ec-453b-ae76-a5b56b2d87dc', '18163587-8eba-49be-a27f-578540cc297d', 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b', '30463732-2f0c-4c5c-afcc-09540ef0e3c2', '862a2b48-9ce2-416c-aec9-cb94c6c929c7' ], criticalCompetencyIds: [ '30463732-2f0c-4c5c-afcc-09540ef0e3c2', '862a2b48-9ce2-416c-aec9-cb94c6c929c7' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of C++ (Systems & Performance Engineering)',
-      INTERMEDIATE: 'Independent execution of bounded C++ (Systems & Performance Engineering) tasks',
-      ADVANCED: 'Owns C++ (Systems & Performance Engineering) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for C++ (Systems & Performance Engineering) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of C++',
+      INTERMEDIATE: 'Independent execution of bounded C++ tasks',
+      ADVANCED: 'Owns C++ components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for C++ at org scale',
     },
     assessmentBlueprint: 'SDE_DSA',
     evidenceRequirements: [
@@ -716,7 +716,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'RUST_FOR_SYSTEMS_RELIABILITY_ENGINEERING': {
     skillCode: 'RUST_FOR_SYSTEMS_RELIABILITY_ENGINEERING',
-    name: 'Rust for Systems & Reliability Engineering',
+    name: 'Rust',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -819,10 +819,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6', '9f01b32e-50e5-454d-a824-4ea4542a6974', '3c30312d-b65c-4e18-abeb-5087328b4238', '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f', '0f189776-19c9-413e-ac54-39c7295a848f', '34f90e80-dc77-45f8-a6bc-e78ac30490dc' ], criticalCompetencyIds: [ '0f189776-19c9-413e-ac54-39c7295a848f', '34f90e80-dc77-45f8-a6bc-e78ac30490dc' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Rust for Systems & Reliability Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Rust for Systems & Reliability Engineering tasks',
-      ADVANCED: 'Owns Rust for Systems & Reliability Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Rust for Systems & Reliability Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Rust',
+      INTERMEDIATE: 'Independent execution of bounded Rust tasks',
+      ADVANCED: 'Owns Rust components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Rust at org scale',
     },
     assessmentBlueprint: 'SDE_DSA',
     evidenceRequirements: [
@@ -834,7 +834,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'KOTLIN_FOR_ANDROID_BACKEND_SERVICES': {
     skillCode: 'KOTLIN_FOR_ANDROID_BACKEND_SERVICES',
-    name: 'Kotlin for Android & Backend Services',
+    name: 'Kotlin',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -937,10 +937,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3', '72dd82c4-c48b-40c6-aa12-9f421eec1e39', 'e7fa81ec-d6dc-4f08-a853-f87b3848027e', '33103905-d651-443f-af00-0e955b02458e', '9b41709e-3b31-4559-ad31-01bfb0fb2571', 'a5dd9346-9463-4973-aa63-812db202f7fb' ], criticalCompetencyIds: [ '9b41709e-3b31-4559-ad31-01bfb0fb2571', 'a5dd9346-9463-4973-aa63-812db202f7fb' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Kotlin for Android & Backend Services',
-      INTERMEDIATE: 'Independent execution of bounded Kotlin for Android & Backend Services tasks',
-      ADVANCED: 'Owns Kotlin for Android & Backend Services components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Kotlin for Android & Backend Services at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Kotlin',
+      INTERMEDIATE: 'Independent execution of bounded Kotlin tasks',
+      ADVANCED: 'Owns Kotlin components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Kotlin at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -952,7 +952,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'SWIFT_FOR_IOS_MACOS_DEVELOPMENT': {
     skillCode: 'SWIFT_FOR_IOS_MACOS_DEVELOPMENT',
-    name: 'Swift for iOS/macOS Development',
+    name: 'Swift',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -1055,10 +1055,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12', '7cc3c174-1540-445d-afe0-0ccf7ba64a28', '25552444-2ebd-45b2-a331-2db27f651a6d', 'ac9e0816-d68d-4093-a711-c56a4266de54', 'ca8cd5fc-62de-4aaa-a12e-af294601b74c', '0e773219-6973-4174-a90f-06656d31b5e2' ], criticalCompetencyIds: [ 'ca8cd5fc-62de-4aaa-a12e-af294601b74c', '0e773219-6973-4174-a90f-06656d31b5e2' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Swift for iOS/macOS Development',
-      INTERMEDIATE: 'Independent execution of bounded Swift for iOS/macOS Development tasks',
-      ADVANCED: 'Owns Swift for iOS/macOS Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Swift for iOS/macOS Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Swift',
+      INTERMEDIATE: 'Independent execution of bounded Swift tasks',
+      ADVANCED: 'Owns Swift components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Swift at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -1070,7 +1070,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'SQL_QUERY_OPTIMIZATION': {
     skillCode: 'SQL_QUERY_OPTIMIZATION',
-    name: 'SQL & Query Optimization',
+    name: 'SQL',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -1173,10 +1173,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2', 'b1d1b1b7-b86e-4cba-aab2-b3e0649b1d08', '5c027d64-473c-40a6-a86a-de01e173abe0', '7c5483db-6e7d-4594-a2f2-be324f580ff7', 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa', 'a50adaaf-86ba-46fa-a0e6-fdacc998d503' ], criticalCompetencyIds: [ 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa', 'a50adaaf-86ba-46fa-a0e6-fdacc998d503' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of SQL & Query Optimization',
-      INTERMEDIATE: 'Independent execution of bounded SQL & Query Optimization tasks',
-      ADVANCED: 'Owns SQL & Query Optimization components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for SQL & Query Optimization at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of SQL',
+      INTERMEDIATE: 'Independent execution of bounded SQL tasks',
+      ADVANCED: 'Owns SQL components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for SQL at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -1188,7 +1188,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'R_FOR_STATISTICAL_COMPUTING': {
     skillCode: 'R_FOR_STATISTICAL_COMPUTING',
-    name: 'R for Statistical Computing',
+    name: 'R',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -1291,10 +1291,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e', 'a6a4090c-3d72-46bc-a41a-50c8a169cd42', 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c', 'd331c76a-0ab6-4944-a9d5-fc52a809d301', '72a26ba6-7c55-49d8-a33b-782bbec401fe', '9bb640be-ae86-4883-ac63-4ba5da9761e9' ], criticalCompetencyIds: [ '72a26ba6-7c55-49d8-a33b-782bbec401fe', '9bb640be-ae86-4883-ac63-4ba5da9761e9' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of R for Statistical Computing',
-      INTERMEDIATE: 'Independent execution of bounded R for Statistical Computing tasks',
-      ADVANCED: 'Owns R for Statistical Computing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for R for Statistical Computing at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of R',
+      INTERMEDIATE: 'Independent execution of bounded R tasks',
+      ADVANCED: 'Owns R components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for R at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -1306,7 +1306,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'SCALA_FOR_DISTRIBUTED_DATA_SYSTEMS': {
     skillCode: 'SCALA_FOR_DISTRIBUTED_DATA_SYSTEMS',
-    name: 'Scala for Distributed Data Systems',
+    name: 'Scala',
     domain: 'SOFTWARE_IT',
     category: 'Programming Languages',
     prerequisites: [],
@@ -1409,10 +1409,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb', 'c47314dd-e908-4289-a4ae-4b74a6797f2b', '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e', 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f', 'c57d90eb-e7bc-4fd1-a606-93b7453415c9', 'e927bd50-6051-4e0b-a945-395921333e74' ], criticalCompetencyIds: [ 'c57d90eb-e7bc-4fd1-a606-93b7453415c9', 'e927bd50-6051-4e0b-a945-395921333e74' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Scala for Distributed Data Systems',
-      INTERMEDIATE: 'Independent execution of bounded Scala for Distributed Data Systems tasks',
-      ADVANCED: 'Owns Scala for Distributed Data Systems components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Scala for Distributed Data Systems at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Scala',
+      INTERMEDIATE: 'Independent execution of bounded Scala tasks',
+      ADVANCED: 'Owns Scala components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Scala at org scale',
     },
     assessmentBlueprint: 'SDE_DSA',
     evidenceRequirements: [
@@ -1422,363 +1422,9 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
     roleMappings: [],
   },
-  'DISTRIBUTED_SYSTEMS_DESIGN': {
-    skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-    name: 'Distributed Systems Design',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'f629788e-7c3d-46d2-aacf-b883c43b9d31',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Distributed systems fundamentals & CAP',
-        observableBehaviours: [
-          'Explains distributed systems fundamentals & cap accurately under assessment conditions',
-          'Applies distributed systems fundamentals & cap to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates distributed systems fundamentals & cap in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '46b5e5dd-f47a-45f9-a8fb-93fadf3f9169',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Consistency models & replication',
-        observableBehaviours: [
-          'Explains consistency models & replication accurately under assessment conditions',
-          'Applies consistency models & replication to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates consistency models & replication in timed assessment items',
-        ],
-        prerequisites: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31' ],
-        role: 'core',
-      },
-      {
-        competencyId: '5015d2e2-53f9-4e11-a6fa-352cbb513cde',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Partitioning, sharding & load balancing',
-        observableBehaviours: [
-          'Explains partitioning, sharding & load balancing accurately under assessment conditions',
-          'Applies partitioning, sharding & load balancing to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates partitioning, sharding & load balancing in timed assessment items',
-        ],
-        prerequisites: [ '46b5e5dd-f47a-45f9-a8fb-93fadf3f9169' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'e279418c-5f72-4202-afc5-dd8493329367',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Fault tolerance & failure detection',
-        observableBehaviours: [
-          'Explains fault tolerance & failure detection accurately under assessment conditions',
-          'Applies fault tolerance & failure detection to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates fault tolerance & failure detection in timed assessment items',
-        ],
-        prerequisites: [ '5015d2e2-53f9-4e11-a6fa-352cbb513cde' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '33d95d2e-abb4-4252-aea5-bec5a0bfaae8',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Distributed transactions & consensus',
-        observableBehaviours: [
-          'Explains distributed transactions & consensus accurately under assessment conditions',
-          'Applies distributed transactions & consensus to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates distributed transactions & consensus in timed assessment items',
-        ],
-        prerequisites: [ 'e279418c-5f72-4202-afc5-dd8493329367' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '79deced3-89e1-4778-ae4e-6ddf6cc88e09',
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
-        capability: 'Large-scale system architecture trade-offs',
-        observableBehaviours: [
-          'Explains large-scale system architecture trade-offs accurately under assessment conditions',
-          'Applies large-scale system architecture trade-offs to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates large-scale system architecture trade-offs in timed assessment items',
-        ],
-        prerequisites: [ '33d95d2e-abb4-4252-aea5-bec5a0bfaae8' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31' ], criticalCompetencyIds: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31', '46b5e5dd-f47a-45f9-a8fb-93fadf3f9169', '5015d2e2-53f9-4e11-a6fa-352cbb513cde' ], criticalCompetencyIds: [ '5015d2e2-53f9-4e11-a6fa-352cbb513cde' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31', '46b5e5dd-f47a-45f9-a8fb-93fadf3f9169', '5015d2e2-53f9-4e11-a6fa-352cbb513cde', 'e279418c-5f72-4202-afc5-dd8493329367', '33d95d2e-abb4-4252-aea5-bec5a0bfaae8' ], criticalCompetencyIds: [ 'e279418c-5f72-4202-afc5-dd8493329367', '33d95d2e-abb4-4252-aea5-bec5a0bfaae8' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f629788e-7c3d-46d2-aacf-b883c43b9d31', '46b5e5dd-f47a-45f9-a8fb-93fadf3f9169', '5015d2e2-53f9-4e11-a6fa-352cbb513cde', 'e279418c-5f72-4202-afc5-dd8493329367', '33d95d2e-abb4-4252-aea5-bec5a0bfaae8', '79deced3-89e1-4778-ae4e-6ddf6cc88e09' ], criticalCompetencyIds: [ '33d95d2e-abb4-4252-aea5-bec5a0bfaae8', '79deced3-89e1-4778-ae4e-6ddf6cc88e09' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Distributed Systems Design',
-      INTERMEDIATE: 'Independent execution of bounded Distributed Systems Design tasks',
-      ADVANCED: 'Owns Distributed Systems Design components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Distributed Systems Design at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION': {
-    skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-    name: 'Microservices Architecture & Service Decomposition',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '84b878bb-caa6-4cb0-a496-74ccc74e2a91',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Microservices principles & bounded contexts',
-        observableBehaviours: [
-          'Explains microservices principles & bounded contexts accurately under assessment conditions',
-          'Applies microservices principles & bounded contexts to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates microservices principles & bounded contexts in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '62b700b6-a466-4a07-ae00-7f35afdcd98d',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Service decomposition & domain boundaries',
-        observableBehaviours: [
-          'Explains service decomposition & domain boundaries accurately under assessment conditions',
-          'Applies service decomposition & domain boundaries to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates service decomposition & domain boundaries in timed assessment items',
-        ],
-        prerequisites: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91' ],
-        role: 'core',
-      },
-      {
-        competencyId: '168652ac-eff2-4827-ae40-bb9b773b7b6d',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Inter-service communication patterns',
-        observableBehaviours: [
-          'Explains inter-service communication patterns accurately under assessment conditions',
-          'Applies inter-service communication patterns to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates inter-service communication patterns in timed assessment items',
-        ],
-        prerequisites: [ '62b700b6-a466-4a07-ae00-7f35afdcd98d' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '2e7ff1b9-fdb3-458d-a9d2-f1a9ff881cab',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Data ownership & sagas/choreography',
-        observableBehaviours: [
-          'Explains data ownership & sagas/choreography accurately under assessment conditions',
-          'Applies data ownership & sagas/choreography to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates data ownership & sagas/choreography in timed assessment items',
-        ],
-        prerequisites: [ '168652ac-eff2-4827-ae40-bb9b773b7b6d' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '70de5a96-664f-4938-aa03-b3a65dbfe8ff',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Observability & resilience in microservices',
-        observableBehaviours: [
-          'Explains observability & resilience in microservices accurately under assessment conditions',
-          'Applies observability & resilience in microservices to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates observability & resilience in microservices in timed assessment items',
-        ],
-        prerequisites: [ '2e7ff1b9-fdb3-458d-a9d2-f1a9ff881cab' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '53e68b5f-3763-452a-aff7-36b817585e88',
-        skillCode: 'MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION',
-        capability: 'Microservices platform architecture',
-        observableBehaviours: [
-          'Explains microservices platform architecture accurately under assessment conditions',
-          'Applies microservices platform architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates microservices platform architecture in timed assessment items',
-        ],
-        prerequisites: [ '70de5a96-664f-4938-aa03-b3a65dbfe8ff' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91' ], criticalCompetencyIds: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91', '62b700b6-a466-4a07-ae00-7f35afdcd98d', '168652ac-eff2-4827-ae40-bb9b773b7b6d' ], criticalCompetencyIds: [ '168652ac-eff2-4827-ae40-bb9b773b7b6d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91', '62b700b6-a466-4a07-ae00-7f35afdcd98d', '168652ac-eff2-4827-ae40-bb9b773b7b6d', '2e7ff1b9-fdb3-458d-a9d2-f1a9ff881cab', '70de5a96-664f-4938-aa03-b3a65dbfe8ff' ], criticalCompetencyIds: [ '2e7ff1b9-fdb3-458d-a9d2-f1a9ff881cab', '70de5a96-664f-4938-aa03-b3a65dbfe8ff' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '84b878bb-caa6-4cb0-a496-74ccc74e2a91', '62b700b6-a466-4a07-ae00-7f35afdcd98d', '168652ac-eff2-4827-ae40-bb9b773b7b6d', '2e7ff1b9-fdb3-458d-a9d2-f1a9ff881cab', '70de5a96-664f-4938-aa03-b3a65dbfe8ff', '53e68b5f-3763-452a-aff7-36b817585e88' ], criticalCompetencyIds: [ '70de5a96-664f-4938-aa03-b3a65dbfe8ff', '53e68b5f-3763-452a-aff7-36b817585e88' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Microservices Architecture & Service Decomposition',
-      INTERMEDIATE: 'Independent execution of bounded Microservices Architecture & Service Decomposition tasks',
-      ADVANCED: 'Owns Microservices Architecture & Service Decomposition components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Microservices Architecture & Service Decomposition at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'EVENT_DRIVEN_ARCHITECTURE': {
-    skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-    name: 'Event-Driven Architecture',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '7b202a40-b087-4544-aa1c-979d44f85a7a',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Event-driven fundamentals & messaging basics',
-        observableBehaviours: [
-          'Explains event-driven fundamentals & messaging basics accurately under assessment conditions',
-          'Applies event-driven fundamentals & messaging basics to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates event-driven fundamentals & messaging basics in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '3204d7d2-9c50-4892-ae9c-cab06dfc57e6',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Event schemas, versioning & contracts',
-        observableBehaviours: [
-          'Explains event schemas, versioning & contracts accurately under assessment conditions',
-          'Applies event schemas, versioning & contracts to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates event schemas, versioning & contracts in timed assessment items',
-        ],
-        prerequisites: [ '7b202a40-b087-4544-aa1c-979d44f85a7a' ],
-        role: 'core',
-      },
-      {
-        competencyId: 'b42d8cbd-9682-43bf-a208-0847f38298c8',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Pub/sub, queues & stream processing',
-        observableBehaviours: [
-          'Explains pub/sub, queues & stream processing accurately under assessment conditions',
-          'Applies pub/sub, queues & stream processing to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates pub/sub, queues & stream processing in timed assessment items',
-        ],
-        prerequisites: [ '3204d7d2-9c50-4892-ae9c-cab06dfc57e6' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'd43864ac-d482-43c7-a962-883df5b10060',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Event sourcing & CQRS patterns',
-        observableBehaviours: [
-          'Explains event sourcing & cqrs patterns accurately under assessment conditions',
-          'Applies event sourcing & cqrs patterns to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates event sourcing & cqrs patterns in timed assessment items',
-        ],
-        prerequisites: [ 'b42d8cbd-9682-43bf-a208-0847f38298c8' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'c6016180-a8cf-4186-a55d-6fcd2142f686',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Reliability, ordering & idempotency',
-        observableBehaviours: [
-          'Explains reliability, ordering & idempotency accurately under assessment conditions',
-          'Applies reliability, ordering & idempotency to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates reliability, ordering & idempotency in timed assessment items',
-        ],
-        prerequisites: [ 'd43864ac-d482-43c7-a962-883df5b10060' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '9b612140-b502-4369-a5fb-ca9b89f21c55',
-        skillCode: 'EVENT_DRIVEN_ARCHITECTURE',
-        capability: 'Event platform architecture at scale',
-        observableBehaviours: [
-          'Explains event platform architecture at scale accurately under assessment conditions',
-          'Applies event platform architecture at scale to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates event platform architecture at scale in timed assessment items',
-        ],
-        prerequisites: [ 'c6016180-a8cf-4186-a55d-6fcd2142f686' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '7b202a40-b087-4544-aa1c-979d44f85a7a' ], criticalCompetencyIds: [ '7b202a40-b087-4544-aa1c-979d44f85a7a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '7b202a40-b087-4544-aa1c-979d44f85a7a', '3204d7d2-9c50-4892-ae9c-cab06dfc57e6', 'b42d8cbd-9682-43bf-a208-0847f38298c8' ], criticalCompetencyIds: [ 'b42d8cbd-9682-43bf-a208-0847f38298c8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '7b202a40-b087-4544-aa1c-979d44f85a7a', '3204d7d2-9c50-4892-ae9c-cab06dfc57e6', 'b42d8cbd-9682-43bf-a208-0847f38298c8', 'd43864ac-d482-43c7-a962-883df5b10060', 'c6016180-a8cf-4186-a55d-6fcd2142f686' ], criticalCompetencyIds: [ 'd43864ac-d482-43c7-a962-883df5b10060', 'c6016180-a8cf-4186-a55d-6fcd2142f686' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '7b202a40-b087-4544-aa1c-979d44f85a7a', '3204d7d2-9c50-4892-ae9c-cab06dfc57e6', 'b42d8cbd-9682-43bf-a208-0847f38298c8', 'd43864ac-d482-43c7-a962-883df5b10060', 'c6016180-a8cf-4186-a55d-6fcd2142f686', '9b612140-b502-4369-a5fb-ca9b89f21c55' ], criticalCompetencyIds: [ 'c6016180-a8cf-4186-a55d-6fcd2142f686', '9b612140-b502-4369-a5fb-ca9b89f21c55' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Event-Driven Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Event-Driven Architecture tasks',
-      ADVANCED: 'Owns Event-Driven Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Event-Driven Architecture at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
   'RESTFUL_GRAPHQL_API_DESIGN': {
     skillCode: 'RESTFUL_GRAPHQL_API_DESIGN',
-    name: 'RESTful & GraphQL API Design',
+    name: 'API Design',
     domain: 'SOFTWARE_IT',
     category: 'Software Architecture & System Design',
     prerequisites: [],
@@ -1881,366 +1527,12 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2', 'bf0de8e5-8c77-4279-ae95-78c122120b53', '474ddc4f-b186-45f8-a428-8bee5cbd20e1', 'fa7f9bba-3acf-4709-aa6c-4beb6f500494', '3565d9b9-545a-4ef0-a091-d9be39fd7824', '1e9b00db-b684-4832-a51d-c63b6af6c427' ], criticalCompetencyIds: [ '3565d9b9-545a-4ef0-a091-d9be39fd7824', '1e9b00db-b684-4832-a51d-c63b6af6c427' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of RESTful & GraphQL API Design',
-      INTERMEDIATE: 'Independent execution of bounded RESTful & GraphQL API Design tasks',
-      ADVANCED: 'Owns RESTful & GraphQL API Design components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for RESTful & GraphQL API Design at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of API Design',
+      INTERMEDIATE: 'Independent execution of bounded API Design tasks',
+      ADVANCED: 'Owns API Design components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for API Design at org scale',
     },
     assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE': {
-    skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-    name: 'Scalable System & High-Availability Architecture',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '4b1fd4b1-1af7-460a-ab7e-dac67b605a99',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'Scalability patterns & capacity planning',
-        observableBehaviours: [
-          'Explains scalability patterns & capacity planning accurately under assessment conditions',
-          'Applies scalability patterns & capacity planning to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates scalability patterns & capacity planning in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '3fe83ef1-7f58-448b-a27e-acff4c1c877f',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'Load balancing & auto-scaling',
-        observableBehaviours: [
-          'Explains load balancing & auto-scaling accurately under assessment conditions',
-          'Applies load balancing & auto-scaling to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates load balancing & auto-scaling in timed assessment items',
-        ],
-        prerequisites: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99' ],
-        role: 'core',
-      },
-      {
-        competencyId: '21744fdf-365c-41ab-a3f1-632940ef7e17',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'High availability & disaster recovery',
-        observableBehaviours: [
-          'Explains high availability & disaster recovery accurately under assessment conditions',
-          'Applies high availability & disaster recovery to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates high availability & disaster recovery in timed assessment items',
-        ],
-        prerequisites: [ '3fe83ef1-7f58-448b-a27e-acff4c1c877f' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '82e17407-79d1-4df8-a5ac-be1d5853e378',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'Caching layers & CDN strategies',
-        observableBehaviours: [
-          'Explains caching layers & cdn strategies accurately under assessment conditions',
-          'Applies caching layers & cdn strategies to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates caching layers & cdn strategies in timed assessment items',
-        ],
-        prerequisites: [ '21744fdf-365c-41ab-a3f1-632940ef7e17' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '6dc8d0d1-45e8-4a44-a572-22873a31bce7',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'Chaos engineering & failure injection',
-        observableBehaviours: [
-          'Explains chaos engineering & failure injection accurately under assessment conditions',
-          'Applies chaos engineering & failure injection to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates chaos engineering & failure injection in timed assessment items',
-        ],
-        prerequisites: [ '82e17407-79d1-4df8-a5ac-be1d5853e378' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '98529f8d-63b4-42cd-a86d-6fffcab851b7',
-        skillCode: 'SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE',
-        capability: 'HA architecture for mission-critical systems',
-        observableBehaviours: [
-          'Explains ha architecture for mission-critical systems accurately under assessment conditions',
-          'Applies ha architecture for mission-critical systems to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates ha architecture for mission-critical systems in timed assessment items',
-        ],
-        prerequisites: [ '6dc8d0d1-45e8-4a44-a572-22873a31bce7' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99' ], criticalCompetencyIds: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99', '3fe83ef1-7f58-448b-a27e-acff4c1c877f', '21744fdf-365c-41ab-a3f1-632940ef7e17' ], criticalCompetencyIds: [ '21744fdf-365c-41ab-a3f1-632940ef7e17' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99', '3fe83ef1-7f58-448b-a27e-acff4c1c877f', '21744fdf-365c-41ab-a3f1-632940ef7e17', '82e17407-79d1-4df8-a5ac-be1d5853e378', '6dc8d0d1-45e8-4a44-a572-22873a31bce7' ], criticalCompetencyIds: [ '82e17407-79d1-4df8-a5ac-be1d5853e378', '6dc8d0d1-45e8-4a44-a572-22873a31bce7' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4b1fd4b1-1af7-460a-ab7e-dac67b605a99', '3fe83ef1-7f58-448b-a27e-acff4c1c877f', '21744fdf-365c-41ab-a3f1-632940ef7e17', '82e17407-79d1-4df8-a5ac-be1d5853e378', '6dc8d0d1-45e8-4a44-a572-22873a31bce7', '98529f8d-63b4-42cd-a86d-6fffcab851b7' ], criticalCompetencyIds: [ '6dc8d0d1-45e8-4a44-a572-22873a31bce7', '98529f8d-63b4-42cd-a86d-6fffcab851b7' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Scalable System & High-Availability Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Scalable System & High-Availability Architecture tasks',
-      ADVANCED: 'Owns Scalable System & High-Availability Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Scalable System & High-Availability Architecture at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'DOMAIN_DRIVEN_DESIGN_DDD': {
-    skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-    name: 'Domain-Driven Design (DDD)',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'a5f214d0-bafd-49a9-a807-a322a2fbbfef',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'DDD strategic design & ubiquitous language',
-        observableBehaviours: [
-          'Explains ddd strategic design & ubiquitous language accurately under assessment conditions',
-          'Applies ddd strategic design & ubiquitous language to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates ddd strategic design & ubiquitous language in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: 'a4c7382d-d52d-431e-a5bb-435aaec0777a',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'Bounded contexts & context mapping',
-        observableBehaviours: [
-          'Explains bounded contexts & context mapping accurately under assessment conditions',
-          'Applies bounded contexts & context mapping to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates bounded contexts & context mapping in timed assessment items',
-        ],
-        prerequisites: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef' ],
-        role: 'core',
-      },
-      {
-        competencyId: '01c1a03e-961e-4eba-a5bf-b39c0959c9b0',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'Aggregates, entities & value objects',
-        observableBehaviours: [
-          'Explains aggregates, entities & value objects accurately under assessment conditions',
-          'Applies aggregates, entities & value objects to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates aggregates, entities & value objects in timed assessment items',
-        ],
-        prerequisites: [ 'a4c7382d-d52d-431e-a5bb-435aaec0777a' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'c82ad4d3-d6b2-4cd7-ac6c-f8b10a76dfc0',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'Domain events & application services',
-        observableBehaviours: [
-          'Explains domain events & application services accurately under assessment conditions',
-          'Applies domain events & application services to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates domain events & application services in timed assessment items',
-        ],
-        prerequisites: [ '01c1a03e-961e-4eba-a5bf-b39c0959c9b0' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '94f7c576-3dc3-4427-a49d-97666f0349e8',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'Tactical patterns in codebases',
-        observableBehaviours: [
-          'Explains tactical patterns in codebases accurately under assessment conditions',
-          'Applies tactical patterns in codebases to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates tactical patterns in codebases in timed assessment items',
-        ],
-        prerequisites: [ 'c82ad4d3-d6b2-4cd7-ac6c-f8b10a76dfc0' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '00c174fd-0f17-4900-a7fc-dbf93e25d288',
-        skillCode: 'DOMAIN_DRIVEN_DESIGN_DDD',
-        capability: 'DDD-driven system modernization',
-        observableBehaviours: [
-          'Explains ddd-driven system modernization accurately under assessment conditions',
-          'Applies ddd-driven system modernization to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates ddd-driven system modernization in timed assessment items',
-        ],
-        prerequisites: [ '94f7c576-3dc3-4427-a49d-97666f0349e8' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef' ], criticalCompetencyIds: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef', 'a4c7382d-d52d-431e-a5bb-435aaec0777a', '01c1a03e-961e-4eba-a5bf-b39c0959c9b0' ], criticalCompetencyIds: [ '01c1a03e-961e-4eba-a5bf-b39c0959c9b0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef', 'a4c7382d-d52d-431e-a5bb-435aaec0777a', '01c1a03e-961e-4eba-a5bf-b39c0959c9b0', 'c82ad4d3-d6b2-4cd7-ac6c-f8b10a76dfc0', '94f7c576-3dc3-4427-a49d-97666f0349e8' ], criticalCompetencyIds: [ 'c82ad4d3-d6b2-4cd7-ac6c-f8b10a76dfc0', '94f7c576-3dc3-4427-a49d-97666f0349e8' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'a5f214d0-bafd-49a9-a807-a322a2fbbfef', 'a4c7382d-d52d-431e-a5bb-435aaec0777a', '01c1a03e-961e-4eba-a5bf-b39c0959c9b0', 'c82ad4d3-d6b2-4cd7-ac6c-f8b10a76dfc0', '94f7c576-3dc3-4427-a49d-97666f0349e8', '00c174fd-0f17-4900-a7fc-dbf93e25d288' ], criticalCompetencyIds: [ '94f7c576-3dc3-4427-a49d-97666f0349e8', '00c174fd-0f17-4900-a7fc-dbf93e25d288' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Domain-Driven Design (DDD)',
-      INTERMEDIATE: 'Independent execution of bounded Domain-Driven Design (DDD) tasks',
-      ADVANCED: 'Owns Domain-Driven Design (DDD) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Domain-Driven Design (DDD) at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'DESIGN_PATTERNS_CLEAN_ARCHITECTURE': {
-    skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-    name: 'Design Patterns & Clean Architecture',
-    domain: 'SOFTWARE_IT',
-    category: 'Software Architecture & System Design',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'GoF patterns & when to apply them',
-        observableBehaviours: [
-          'Explains gof patterns & when to apply them accurately under assessment conditions',
-          'Applies gof patterns & when to apply them to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates gof patterns & when to apply them in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '378c28ba-93e7-46f6-a05e-ed66d3586c9a',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'SOLID principles in practice',
-        observableBehaviours: [
-          'Explains solid principles in practice accurately under assessment conditions',
-          'Applies solid principles in practice to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates solid principles in practice in timed assessment items',
-        ],
-        prerequisites: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77' ],
-        role: 'core',
-      },
-      {
-        competencyId: '341c179c-3b95-497f-a3e2-22f498503331',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'Clean/hexagonal architecture layers',
-        observableBehaviours: [
-          'Explains clean/hexagonal architecture layers accurately under assessment conditions',
-          'Applies clean/hexagonal architecture layers to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates clean/hexagonal architecture layers in timed assessment items',
-        ],
-        prerequisites: [ '378c28ba-93e7-46f6-a05e-ed66d3586c9a' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'ab7f3cee-66e2-42e6-aa5d-6813c2de36e2',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'Dependency inversion & testability',
-        observableBehaviours: [
-          'Explains dependency inversion & testability accurately under assessment conditions',
-          'Applies dependency inversion & testability to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates dependency inversion & testability in timed assessment items',
-        ],
-        prerequisites: [ '341c179c-3b95-497f-a3e2-22f498503331' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'a23d07c9-747d-4823-a2c6-f872f540caaa',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'Refactoring to patterns under constraints',
-        observableBehaviours: [
-          'Explains refactoring to patterns under constraints accurately under assessment conditions',
-          'Applies refactoring to patterns under constraints to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates refactoring to patterns under constraints in timed assessment items',
-        ],
-        prerequisites: [ 'ab7f3cee-66e2-42e6-aa5d-6813c2de36e2' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '77eea8f7-52df-4774-a451-f558c6e86d0d',
-        skillCode: 'DESIGN_PATTERNS_CLEAN_ARCHITECTURE',
-        capability: 'Architecture governance & code quality',
-        observableBehaviours: [
-          'Explains architecture governance & code quality accurately under assessment conditions',
-          'Applies architecture governance & code quality to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates architecture governance & code quality in timed assessment items',
-        ],
-        prerequisites: [ 'a23d07c9-747d-4823-a2c6-f872f540caaa' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77' ], criticalCompetencyIds: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77', '378c28ba-93e7-46f6-a05e-ed66d3586c9a', '341c179c-3b95-497f-a3e2-22f498503331' ], criticalCompetencyIds: [ '341c179c-3b95-497f-a3e2-22f498503331' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77', '378c28ba-93e7-46f6-a05e-ed66d3586c9a', '341c179c-3b95-497f-a3e2-22f498503331', 'ab7f3cee-66e2-42e6-aa5d-6813c2de36e2', 'a23d07c9-747d-4823-a2c6-f872f540caaa' ], criticalCompetencyIds: [ 'ab7f3cee-66e2-42e6-aa5d-6813c2de36e2', 'a23d07c9-747d-4823-a2c6-f872f540caaa' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6b8409ed-8ba7-4b5b-a1d3-552c593a8d77', '378c28ba-93e7-46f6-a05e-ed66d3586c9a', '341c179c-3b95-497f-a3e2-22f498503331', 'ab7f3cee-66e2-42e6-aa5d-6813c2de36e2', 'a23d07c9-747d-4823-a2c6-f872f540caaa', '77eea8f7-52df-4774-a451-f558c6e86d0d' ], criticalCompetencyIds: [ 'a23d07c9-747d-4823-a2c6-f872f540caaa', '77eea8f7-52df-4774-a451-f558c6e86d0d' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Design Patterns & Clean Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Design Patterns & Clean Architecture tasks',
-      ADVANCED: 'Owns Design Patterns & Clean Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Design Patterns & Clean Architecture at org scale',
-    },
-    assessmentBlueprint: 'SDE_OOP',
     evidenceRequirements: [
       { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
       { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
@@ -2250,7 +1542,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION': {
     skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
-    name: 'Algorithmic Complexity & Performance Optimization',
+    name: 'Algorithms & Performance',
     domain: 'SOFTWARE_IT',
     category: 'Software Architecture & System Design',
     prerequisites: [],
@@ -2353,10 +1645,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2', '5fbbf941-e7f0-446c-a5fe-0b3fc40a7f21', '099b1472-62d1-4258-a452-b4ad122f09b1', 'feef8103-9da5-45c9-a8ab-f88801ccc467', '489be34f-7c5e-4447-a80b-21d508d5d873', '7e9bb7c3-659a-4981-ad5a-c6739e80343a' ], criticalCompetencyIds: [ '489be34f-7c5e-4447-a80b-21d508d5d873', '7e9bb7c3-659a-4981-ad5a-c6739e80343a' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Algorithmic Complexity & Performance Optimization',
-      INTERMEDIATE: 'Independent execution of bounded Algorithmic Complexity & Performance Optimization tasks',
-      ADVANCED: 'Owns Algorithmic Complexity & Performance Optimization components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Algorithmic Complexity & Performance Optimization at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Algorithms & Performance',
+      INTERMEDIATE: 'Independent execution of bounded Algorithms & Performance tasks',
+      ADVANCED: 'Owns Algorithms & Performance components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Algorithms & Performance at org scale',
     },
     assessmentBlueprint: 'SDE_DSA',
     evidenceRequirements: [
@@ -2368,7 +1660,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'API_GATEWAY_SERVICE_MESH_MANAGEMENT': {
     skillCode: 'API_GATEWAY_SERVICE_MESH_MANAGEMENT',
-    name: 'API Gateway & Service Mesh Management',
+    name: 'Service Mesh & API Gateway',
     domain: 'SOFTWARE_IT',
     category: 'Software Architecture & System Design',
     prerequisites: [],
@@ -2471,10 +1763,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4aaa74c4-1082-4524-ae02-9f2d848b9268', '5f557d3b-718a-4d5e-ab7a-3bbbb34ea89b', '51bce87b-e0ac-4101-a530-d5608377dcfa', 'd01c189d-b413-4b9e-af20-e7291c6af06a', '8a96e539-d7d1-4e48-acb7-126b113dd10a', 'e13b34b4-d839-49cb-aa53-3ce7bba08dc9' ], criticalCompetencyIds: [ '8a96e539-d7d1-4e48-acb7-126b113dd10a', 'e13b34b4-d839-49cb-aa53-3ce7bba08dc9' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of API Gateway & Service Mesh Management',
-      INTERMEDIATE: 'Independent execution of bounded API Gateway & Service Mesh Management tasks',
-      ADVANCED: 'Owns API Gateway & Service Mesh Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for API Gateway & Service Mesh Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Service Mesh & API Gateway',
+      INTERMEDIATE: 'Independent execution of bounded Service Mesh & API Gateway tasks',
+      ADVANCED: 'Owns Service Mesh & API Gateway components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Service Mesh & API Gateway at org scale',
     },
     assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
     evidenceRequirements: [
@@ -2486,7 +1778,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'AMAZON_WEB_SERVICES_AWS_ARCHITECTURE': {
     skillCode: 'AMAZON_WEB_SERVICES_AWS_ARCHITECTURE',
-    name: 'Amazon Web Services (AWS) Architecture',
+    name: 'AWS',
     domain: 'SOFTWARE_IT',
     category: 'Cloud Platforms',
     prerequisites: [],
@@ -2589,10 +1881,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de', '664456d4-b6f5-44b6-a52a-f9d8d21d3e41', 'c1aa820c-2274-44e4-aa40-8b65fa87032b', 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e', '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c', '36330b42-a81f-4f02-ac02-c024bc63d3bd' ], criticalCompetencyIds: [ '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c', '36330b42-a81f-4f02-ac02-c024bc63d3bd' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Amazon Web Services (AWS) Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Amazon Web Services (AWS) Architecture tasks',
-      ADVANCED: 'Owns Amazon Web Services (AWS) Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Amazon Web Services (AWS) Architecture at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of AWS',
+      INTERMEDIATE: 'Independent execution of bounded AWS tasks',
+      ADVANCED: 'Owns AWS components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for AWS at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -2604,7 +1896,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'MICROSOFT_AZURE_CLOUD_ENGINEERING': {
     skillCode: 'MICROSOFT_AZURE_CLOUD_ENGINEERING',
-    name: 'Microsoft Azure Cloud Engineering',
+    name: 'Azure',
     domain: 'SOFTWARE_IT',
     category: 'Cloud Platforms',
     prerequisites: [],
@@ -2707,10 +1999,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487', '73f3d6ae-91b3-4e0c-a97d-5bab77191cb9', 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd', '68f5370c-b7de-4e73-a528-26a14f9ea0de', 'e24a1d07-982e-4005-a7f3-f27db80ef1b4', '0568590a-f17e-4dba-acdb-c16c47b72d63' ], criticalCompetencyIds: [ 'e24a1d07-982e-4005-a7f3-f27db80ef1b4', '0568590a-f17e-4dba-acdb-c16c47b72d63' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Microsoft Azure Cloud Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Microsoft Azure Cloud Engineering tasks',
-      ADVANCED: 'Owns Microsoft Azure Cloud Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Microsoft Azure Cloud Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Azure',
+      INTERMEDIATE: 'Independent execution of bounded Azure tasks',
+      ADVANCED: 'Owns Azure components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Azure at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -2722,7 +2014,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'GOOGLE_CLOUD_PLATFORM_GCP_ENGINEERING': {
     skillCode: 'GOOGLE_CLOUD_PLATFORM_GCP_ENGINEERING',
-    name: 'Google Cloud Platform (GCP) Engineering',
+    name: 'Google Cloud (GCP)',
     domain: 'SOFTWARE_IT',
     category: 'Cloud Platforms',
     prerequisites: [],
@@ -2825,246 +2117,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e', 'ab8c33e1-6631-4c51-ae70-229d916dce95', '934624d8-e287-4dc6-a91e-e1bde4d63772', '6f22da75-930f-417c-ac65-775308a532b4', 'b5ec7473-f6a9-4500-a23b-596e72a08df0', 'e24a0bff-3ebe-4f22-a4ee-fec6468ccc85' ], criticalCompetencyIds: [ 'b5ec7473-f6a9-4500-a23b-596e72a08df0', 'e24a0bff-3ebe-4f22-a4ee-fec6468ccc85' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Google Cloud Platform (GCP) Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Google Cloud Platform (GCP) Engineering tasks',
-      ADVANCED: 'Owns Google Cloud Platform (GCP) Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Google Cloud Platform (GCP) Engineering at org scale',
-    },
-    assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY': {
-    skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-    name: 'Multi-Cloud & Hybrid Cloud Strategy',
-    domain: 'SOFTWARE_IT',
-    category: 'Cloud Platforms',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Multi-cloud drivers & vendor neutrality',
-        observableBehaviours: [
-          'Explains multi-cloud drivers & vendor neutrality accurately under assessment conditions',
-          'Applies multi-cloud drivers & vendor neutrality to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates multi-cloud drivers & vendor neutrality in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '49f9607f-87a3-4c4f-add7-bc92bf60f1ef',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Hybrid connectivity & identity federation',
-        observableBehaviours: [
-          'Explains hybrid connectivity & identity federation accurately under assessment conditions',
-          'Applies hybrid connectivity & identity federation to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates hybrid connectivity & identity federation in timed assessment items',
-        ],
-        prerequisites: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d' ],
-        role: 'core',
-      },
-      {
-        competencyId: 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Portable workloads & abstraction layers',
-        observableBehaviours: [
-          'Explains portable workloads & abstraction layers accurately under assessment conditions',
-          'Applies portable workloads & abstraction layers to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates portable workloads & abstraction layers in timed assessment items',
-        ],
-        prerequisites: [ '49f9607f-87a3-4c4f-add7-bc92bf60f1ef' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '5a01ee37-926c-4f02-a5eb-26490418cab7',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Cross-cloud networking & data sync',
-        observableBehaviours: [
-          'Explains cross-cloud networking & data sync accurately under assessment conditions',
-          'Applies cross-cloud networking & data sync to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates cross-cloud networking & data sync in timed assessment items',
-        ],
-        prerequisites: [ 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'a963b501-e89d-4337-a007-a0c9b381c505',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Governance, compliance & cost across clouds',
-        observableBehaviours: [
-          'Explains governance, compliance & cost across clouds accurately under assessment conditions',
-          'Applies governance, compliance & cost across clouds to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates governance, compliance & cost across clouds in timed assessment items',
-        ],
-        prerequisites: [ '5a01ee37-926c-4f02-a5eb-26490418cab7' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '6849c0f2-e501-42cf-afb6-856712f700c8',
-        skillCode: 'MULTI_CLOUD_HYBRID_CLOUD_STRATEGY',
-        capability: 'Multi-cloud reference architecture',
-        observableBehaviours: [
-          'Explains multi-cloud reference architecture accurately under assessment conditions',
-          'Applies multi-cloud reference architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates multi-cloud reference architecture in timed assessment items',
-        ],
-        prerequisites: [ 'a963b501-e89d-4337-a007-a0c9b381c505' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d' ], criticalCompetencyIds: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d', '49f9607f-87a3-4c4f-add7-bc92bf60f1ef', 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d' ], criticalCompetencyIds: [ 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d', '49f9607f-87a3-4c4f-add7-bc92bf60f1ef', 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d', '5a01ee37-926c-4f02-a5eb-26490418cab7', 'a963b501-e89d-4337-a007-a0c9b381c505' ], criticalCompetencyIds: [ '5a01ee37-926c-4f02-a5eb-26490418cab7', 'a963b501-e89d-4337-a007-a0c9b381c505' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'bd54df5e-1f6b-472f-aaed-77c7ed39da7d', '49f9607f-87a3-4c4f-add7-bc92bf60f1ef', 'f0e6b95c-1dbc-4e29-a31c-9faed5599b6d', '5a01ee37-926c-4f02-a5eb-26490418cab7', 'a963b501-e89d-4337-a007-a0c9b381c505', '6849c0f2-e501-42cf-afb6-856712f700c8' ], criticalCompetencyIds: [ 'a963b501-e89d-4337-a007-a0c9b381c505', '6849c0f2-e501-42cf-afb6-856712f700c8' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Multi-Cloud & Hybrid Cloud Strategy',
-      INTERMEDIATE: 'Independent execution of bounded Multi-Cloud & Hybrid Cloud Strategy tasks',
-      ADVANCED: 'Owns Multi-Cloud & Hybrid Cloud Strategy components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Multi-Cloud & Hybrid Cloud Strategy at org scale',
-    },
-    assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'SERVERLESS_ARCHITECTURE': {
-    skillCode: 'SERVERLESS_ARCHITECTURE',
-    name: 'Serverless Architecture',
-    domain: 'SOFTWARE_IT',
-    category: 'Cloud Platforms',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'a552d2fa-c223-43cc-a4dd-df88b06292ca',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'Serverless compute models & FaaS basics',
-        observableBehaviours: [
-          'Explains serverless compute models & faas basics accurately under assessment conditions',
-          'Applies serverless compute models & faas basics to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates serverless compute models & faas basics in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: 'acdbdb99-1fbf-4683-a9d5-6abccf2b3212',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'Event triggers, cold starts & concurrency',
-        observableBehaviours: [
-          'Explains event triggers, cold starts & concurrency accurately under assessment conditions',
-          'Applies event triggers, cold starts & concurrency to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates event triggers, cold starts & concurrency in timed assessment items',
-        ],
-        prerequisites: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca' ],
-        role: 'core',
-      },
-      {
-        competencyId: 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'API Gateway + Lambda/BFF patterns',
-        observableBehaviours: [
-          'Explains api gateway + lambda/bff patterns accurately under assessment conditions',
-          'Applies api gateway + lambda/bff patterns to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates api gateway + lambda/bff patterns in timed assessment items',
-        ],
-        prerequisites: [ 'acdbdb99-1fbf-4683-a9d5-6abccf2b3212' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'a19e956f-e6b1-4d0d-ac07-dad50ed7376f',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'State management & durable workflows',
-        observableBehaviours: [
-          'Explains state management & durable workflows accurately under assessment conditions',
-          'Applies state management & durable workflows to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates state management & durable workflows in timed assessment items',
-        ],
-        prerequisites: [ 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '3cac0d13-4cd6-4985-a69a-7be587ae11e6',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'Observability, security & cost controls',
-        observableBehaviours: [
-          'Explains observability, security & cost controls accurately under assessment conditions',
-          'Applies observability, security & cost controls to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates observability, security & cost controls in timed assessment items',
-        ],
-        prerequisites: [ 'a19e956f-e6b1-4d0d-ac07-dad50ed7376f' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '43cb3793-89f2-4334-a511-6e40021d4ae4',
-        skillCode: 'SERVERLESS_ARCHITECTURE',
-        capability: 'Serverless platform architecture',
-        observableBehaviours: [
-          'Explains serverless platform architecture accurately under assessment conditions',
-          'Applies serverless platform architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates serverless platform architecture in timed assessment items',
-        ],
-        prerequisites: [ '3cac0d13-4cd6-4985-a69a-7be587ae11e6' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca' ], criticalCompetencyIds: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca', 'acdbdb99-1fbf-4683-a9d5-6abccf2b3212', 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62' ], criticalCompetencyIds: [ 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca', 'acdbdb99-1fbf-4683-a9d5-6abccf2b3212', 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62', 'a19e956f-e6b1-4d0d-ac07-dad50ed7376f', '3cac0d13-4cd6-4985-a69a-7be587ae11e6' ], criticalCompetencyIds: [ 'a19e956f-e6b1-4d0d-ac07-dad50ed7376f', '3cac0d13-4cd6-4985-a69a-7be587ae11e6' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'a552d2fa-c223-43cc-a4dd-df88b06292ca', 'acdbdb99-1fbf-4683-a9d5-6abccf2b3212', 'bd7f82a9-7fa4-42e7-a635-fa147f25ba62', 'a19e956f-e6b1-4d0d-ac07-dad50ed7376f', '3cac0d13-4cd6-4985-a69a-7be587ae11e6', '43cb3793-89f2-4334-a511-6e40021d4ae4' ], criticalCompetencyIds: [ '3cac0d13-4cd6-4985-a69a-7be587ae11e6', '43cb3793-89f2-4334-a511-6e40021d4ae4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Serverless Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Serverless Architecture tasks',
-      ADVANCED: 'Owns Serverless Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Serverless Architecture at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Google Cloud (GCP)',
+      INTERMEDIATE: 'Independent execution of bounded Google Cloud (GCP) tasks',
+      ADVANCED: 'Owns Google Cloud (GCP) components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Google Cloud (GCP) at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3076,7 +2132,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CLOUD_COST_OPTIMIZATION_FINOPS': {
     skillCode: 'CLOUD_COST_OPTIMIZATION_FINOPS',
-    name: 'Cloud Cost Optimization (FinOps)',
+    name: 'FinOps',
     domain: 'SOFTWARE_IT',
     category: 'Cloud Platforms',
     prerequisites: [],
@@ -3179,10 +2235,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '79a89926-c659-4020-a4de-133d0fdb0c74', 'b07ddba3-e0d2-424a-aa0f-ec96a6c82e09', '25e6afb3-ac42-4478-a7e6-64017a1444db', '75b47594-08ac-47f5-a28a-954757782e1f', 'e456a1c2-8075-40b6-a324-5b23fc68d5bc', 'ad5e8e95-2a49-44d4-a4e5-802265a10176' ], criticalCompetencyIds: [ 'e456a1c2-8075-40b6-a324-5b23fc68d5bc', 'ad5e8e95-2a49-44d4-a4e5-802265a10176' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Cloud Cost Optimization (FinOps)',
-      INTERMEDIATE: 'Independent execution of bounded Cloud Cost Optimization (FinOps) tasks',
-      ADVANCED: 'Owns Cloud Cost Optimization (FinOps) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Cloud Cost Optimization (FinOps) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of FinOps',
+      INTERMEDIATE: 'Independent execution of bounded FinOps tasks',
+      ADVANCED: 'Owns FinOps components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for FinOps at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3194,7 +2250,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'INFRASTRUCTURE_AS_CODE_IAC': {
     skillCode: 'INFRASTRUCTURE_AS_CODE_IAC',
-    name: 'Infrastructure as Code (IaC)',
+    name: 'Infrastructure as Code',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -3297,10 +2353,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '22948563-4a9a-41dd-ae08-dec3dd2c4691', '7c356eab-d512-4314-aed7-847b41af345a', '20ade58a-16b2-4f24-a0c3-ff359dd79c8a', '9a0bdf28-f8a1-4e27-a077-aa7f7b8d382a', 'e827083c-ae5a-4665-a7d5-d2cf0b4d1dc6', 'b8ebadad-9b4b-482c-a8de-e6b8df96fcf0' ], criticalCompetencyIds: [ 'e827083c-ae5a-4665-a7d5-d2cf0b4d1dc6', 'b8ebadad-9b4b-482c-a8de-e6b8df96fcf0' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Infrastructure as Code (IaC)',
-      INTERMEDIATE: 'Independent execution of bounded Infrastructure as Code (IaC) tasks',
-      ADVANCED: 'Owns Infrastructure as Code (IaC) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Infrastructure as Code (IaC) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Infrastructure as Code',
+      INTERMEDIATE: 'Independent execution of bounded Infrastructure as Code tasks',
+      ADVANCED: 'Owns Infrastructure as Code components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Infrastructure as Code at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3312,7 +2368,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CI_CD_PIPELINE_ENGINEERING': {
     skillCode: 'CI_CD_PIPELINE_ENGINEERING',
-    name: 'CI/CD Pipeline Engineering',
+    name: 'CI/CD',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -3415,10 +2471,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489', 'b6e1cc6b-0c0c-486f-a3c8-eb37bdee2bb9', '561c4f4f-3d74-4468-aae0-bca2f28b6b27', '06361992-cf4b-4723-ada0-ea8e0fa7662a', 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6', '4d099e04-e6b6-47c9-a181-9adc981fd1be' ], criticalCompetencyIds: [ 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6', '4d099e04-e6b6-47c9-a181-9adc981fd1be' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of CI/CD Pipeline Engineering',
-      INTERMEDIATE: 'Independent execution of bounded CI/CD Pipeline Engineering tasks',
-      ADVANCED: 'Owns CI/CD Pipeline Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for CI/CD Pipeline Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of CI/CD',
+      INTERMEDIATE: 'Independent execution of bounded CI/CD tasks',
+      ADVANCED: 'Owns CI/CD components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for CI/CD at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3430,7 +2486,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CONTAINERIZATION_ORCHESTRATION': {
     skillCode: 'CONTAINERIZATION_ORCHESTRATION',
-    name: 'Containerization & Orchestration',
+    name: 'Containers & Kubernetes',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -3533,128 +2589,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52', 'dad490b0-2a89-4e03-ad82-0b7580037bba', '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0', '8dbc0a02-5313-444f-a3bb-25f60362a998', '8ed6de3e-b6b1-470d-ada3-4b98218f96e4', '42fcbad3-816d-4ad0-a995-2e0eab648421' ], criticalCompetencyIds: [ '8ed6de3e-b6b1-470d-ada3-4b98218f96e4', '42fcbad3-816d-4ad0-a995-2e0eab648421' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Containerization & Orchestration',
-      INTERMEDIATE: 'Independent execution of bounded Containerization & Orchestration tasks',
-      ADVANCED: 'Owns Containerization & Orchestration components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Containerization & Orchestration at org scale',
-    },
-    assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'SITE_RELIABILITY_ENGINEERING_SRE': {
-    skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-    name: 'Site Reliability Engineering (SRE)',
-    domain: 'SOFTWARE_IT',
-    category: 'DevOps & Infrastructure',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '268e734e-822f-44c9-a15c-592101e4afec',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'SRE principles, SLI/SLO/SLA & error budgets',
-        observableBehaviours: [
-          'Explains sre principles, sli/slo/sla & error budgets accurately under assessment conditions',
-          'Applies sre principles, sli/slo/sla & error budgets to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates sre principles, sli/slo/sla & error budgets in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '28f39d20-fa16-4693-a943-65e6d728cf03',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'Incident response & blameless postmortems',
-        observableBehaviours: [
-          'Explains incident response & blameless postmortems accurately under assessment conditions',
-          'Applies incident response & blameless postmortems to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates incident response & blameless postmortems in timed assessment items',
-        ],
-        prerequisites: [ '268e734e-822f-44c9-a15c-592101e4afec' ],
-        role: 'core',
-      },
-      {
-        competencyId: '3bbeb1d8-b5a7-442f-adb9-a8277434e459',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'Toil reduction & automation',
-        observableBehaviours: [
-          'Explains toil reduction & automation accurately under assessment conditions',
-          'Applies toil reduction & automation to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates toil reduction & automation in timed assessment items',
-        ],
-        prerequisites: [ '28f39d20-fa16-4693-a943-65e6d728cf03' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '9cb22fff-95de-405b-a509-97be8d3b8b7f',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'Capacity planning & reliability testing',
-        observableBehaviours: [
-          'Explains capacity planning & reliability testing accurately under assessment conditions',
-          'Applies capacity planning & reliability testing to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates capacity planning & reliability testing in timed assessment items',
-        ],
-        prerequisites: [ '3bbeb1d8-b5a7-442f-adb9-a8277434e459' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '1c8ce413-d58c-4853-afc3-a53c0ffccb65',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'On-call practices & runbook design',
-        observableBehaviours: [
-          'Explains on-call practices & runbook design accurately under assessment conditions',
-          'Applies on-call practices & runbook design to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates on-call practices & runbook design in timed assessment items',
-        ],
-        prerequisites: [ '9cb22fff-95de-405b-a509-97be8d3b8b7f' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '450778fe-fe62-4f92-ae1d-3042b47626e4',
-        skillCode: 'SITE_RELIABILITY_ENGINEERING_SRE',
-        capability: 'SRE operating model at scale',
-        observableBehaviours: [
-          'Explains sre operating model at scale accurately under assessment conditions',
-          'Applies sre operating model at scale to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates sre operating model at scale in timed assessment items',
-        ],
-        prerequisites: [ '1c8ce413-d58c-4853-afc3-a53c0ffccb65' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '268e734e-822f-44c9-a15c-592101e4afec' ], criticalCompetencyIds: [ '268e734e-822f-44c9-a15c-592101e4afec' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '268e734e-822f-44c9-a15c-592101e4afec', '28f39d20-fa16-4693-a943-65e6d728cf03', '3bbeb1d8-b5a7-442f-adb9-a8277434e459' ], criticalCompetencyIds: [ '3bbeb1d8-b5a7-442f-adb9-a8277434e459' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '268e734e-822f-44c9-a15c-592101e4afec', '28f39d20-fa16-4693-a943-65e6d728cf03', '3bbeb1d8-b5a7-442f-adb9-a8277434e459', '9cb22fff-95de-405b-a509-97be8d3b8b7f', '1c8ce413-d58c-4853-afc3-a53c0ffccb65' ], criticalCompetencyIds: [ '9cb22fff-95de-405b-a509-97be8d3b8b7f', '1c8ce413-d58c-4853-afc3-a53c0ffccb65' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '268e734e-822f-44c9-a15c-592101e4afec', '28f39d20-fa16-4693-a943-65e6d728cf03', '3bbeb1d8-b5a7-442f-adb9-a8277434e459', '9cb22fff-95de-405b-a509-97be8d3b8b7f', '1c8ce413-d58c-4853-afc3-a53c0ffccb65', '450778fe-fe62-4f92-ae1d-3042b47626e4' ], criticalCompetencyIds: [ '1c8ce413-d58c-4853-afc3-a53c0ffccb65', '450778fe-fe62-4f92-ae1d-3042b47626e4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Site Reliability Engineering (SRE)',
-      INTERMEDIATE: 'Independent execution of bounded Site Reliability Engineering (SRE) tasks',
-      ADVANCED: 'Owns Site Reliability Engineering (SRE) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Site Reliability Engineering (SRE) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Containers & Kubernetes',
+      INTERMEDIATE: 'Independent execution of bounded Containers & Kubernetes tasks',
+      ADVANCED: 'Owns Containers & Kubernetes components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Containers & Kubernetes at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3666,7 +2604,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'OBSERVABILITY_MONITORING': {
     skillCode: 'OBSERVABILITY_MONITORING',
-    name: 'Observability & Monitoring',
+    name: 'Observability',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -3769,10 +2707,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308', '014964e9-65ff-4ce2-abfd-3dce2a5477c2', 'fd681316-5926-4a65-acc2-9bb966a9a52d', 'c88d8912-077d-4417-a600-3f9418c8f960', 'ec3c5b55-f195-432e-a323-4912facdc253', 'bb9d437a-cd6b-414b-a128-e5f88b083a24' ], criticalCompetencyIds: [ 'ec3c5b55-f195-432e-a323-4912facdc253', 'bb9d437a-cd6b-414b-a128-e5f88b083a24' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Observability & Monitoring',
-      INTERMEDIATE: 'Independent execution of bounded Observability & Monitoring tasks',
-      ADVANCED: 'Owns Observability & Monitoring components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Observability & Monitoring at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Observability',
+      INTERMEDIATE: 'Independent execution of bounded Observability tasks',
+      ADVANCED: 'Owns Observability components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Observability at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3784,7 +2722,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CONFIGURATION_MANAGEMENT_AUTOMATION': {
     skillCode: 'CONFIGURATION_MANAGEMENT_AUTOMATION',
-    name: 'Configuration Management & Automation',
+    name: 'Configuration Management',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -3887,10 +2825,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '1a6bca74-1b8c-49f1-a39f-bcef45bce588', 'abc68a75-34f7-4917-a9ce-4efa00b7185d', '6407c321-19f9-469e-ac60-68c3223a03fa', '121f07b4-3a97-42b7-aec9-d6809b554b6d', 'f5198740-92fa-4c32-a76e-ae07aca10c19', 'fe1917ab-aa9c-4907-a18c-27c6a1c2bcf2' ], criticalCompetencyIds: [ 'f5198740-92fa-4c32-a76e-ae07aca10c19', 'fe1917ab-aa9c-4907-a18c-27c6a1c2bcf2' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Configuration Management & Automation',
-      INTERMEDIATE: 'Independent execution of bounded Configuration Management & Automation tasks',
-      ADVANCED: 'Owns Configuration Management & Automation components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Configuration Management & Automation at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Configuration Management',
+      INTERMEDIATE: 'Independent execution of bounded Configuration Management tasks',
+      ADVANCED: 'Owns Configuration Management components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Configuration Management at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -3902,7 +2840,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'GITOPS_CONTINUOUS_DELIVERY': {
     skillCode: 'GITOPS_CONTINUOUS_DELIVERY',
-    name: 'GitOps & Continuous Delivery',
+    name: 'GitOps',
     domain: 'SOFTWARE_IT',
     category: 'DevOps & Infrastructure',
     prerequisites: [],
@@ -4005,10 +2943,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6', '3b5bf0ea-0f34-4eb8-a8f3-09171bc4ea9f', '34f7d912-b26c-4164-ade6-9c355f90a754', 'f08bed64-ef4d-47f9-aade-3a019b06b5de', '4a0af11a-63ee-4701-a273-ac9817c1ba64', 'bc7b36dc-c7fc-4caf-a442-aa302b235575' ], criticalCompetencyIds: [ '4a0af11a-63ee-4701-a273-ac9817c1ba64', 'bc7b36dc-c7fc-4caf-a442-aa302b235575' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of GitOps & Continuous Delivery',
-      INTERMEDIATE: 'Independent execution of bounded GitOps & Continuous Delivery tasks',
-      ADVANCED: 'Owns GitOps & Continuous Delivery components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for GitOps & Continuous Delivery at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of GitOps',
+      INTERMEDIATE: 'Independent execution of bounded GitOps tasks',
+      ADVANCED: 'Owns GitOps components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for GitOps at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -4020,7 +2958,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION': {
     skillCode: 'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
-    name: 'Relational Database Design & Administration',
+    name: 'Relational Databases',
     domain: 'SOFTWARE_IT',
     category: 'Databases & Data Management',
     prerequisites: [],
@@ -4123,10 +3061,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e', '1a2e6480-e1a0-465b-a0e1-59a1ab0f71a3', '4a499265-1e92-4cc9-ad05-b9c5f5d4368b', 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85', '73715340-dd7c-46bc-a562-eea795f27638', '9394f57d-6e16-4c97-ae3b-f04dc8c51be4' ], criticalCompetencyIds: [ '73715340-dd7c-46bc-a562-eea795f27638', '9394f57d-6e16-4c97-ae3b-f04dc8c51be4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Relational Database Design & Administration',
-      INTERMEDIATE: 'Independent execution of bounded Relational Database Design & Administration tasks',
-      ADVANCED: 'Owns Relational Database Design & Administration components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Relational Database Design & Administration at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Relational Databases',
+      INTERMEDIATE: 'Independent execution of bounded Relational Databases tasks',
+      ADVANCED: 'Owns Relational Databases components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Relational Databases at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -4138,7 +3076,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'NOSQL_DATABASE_ENGINEERING': {
     skillCode: 'NOSQL_DATABASE_ENGINEERING',
-    name: 'NoSQL Database Engineering',
+    name: 'NoSQL Databases',
     domain: 'SOFTWARE_IT',
     category: 'Databases & Data Management',
     prerequisites: [],
@@ -4241,10 +3179,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6', '0c9330b8-4c84-46b2-a020-cda094233c28', 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2', 'f925237b-777d-449d-a122-2e3a602191b9', '786284a6-8ba0-4eb3-a811-40614c7a5f69', '3dc0641b-1ef8-411f-a889-055fb5cd395f' ], criticalCompetencyIds: [ '786284a6-8ba0-4eb3-a811-40614c7a5f69', '3dc0641b-1ef8-411f-a889-055fb5cd395f' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of NoSQL Database Engineering',
-      INTERMEDIATE: 'Independent execution of bounded NoSQL Database Engineering tasks',
-      ADVANCED: 'Owns NoSQL Database Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for NoSQL Database Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of NoSQL Databases',
+      INTERMEDIATE: 'Independent execution of bounded NoSQL Databases tasks',
+      ADVANCED: 'Owns NoSQL Databases components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for NoSQL Databases at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -4256,7 +3194,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'DATA_MODELING_NORMALIZATION': {
     skillCode: 'DATA_MODELING_NORMALIZATION',
-    name: 'Data Modeling & Normalization',
+    name: 'Data Modeling',
     domain: 'SOFTWARE_IT',
     category: 'Databases & Data Management',
     prerequisites: [],
@@ -4359,10 +3297,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6', 'd293f932-5ea8-4fd5-aa52-3b46eceefac1', '18ea278b-63de-402c-aed7-32dd6474ed79', '080ea3ee-b76b-4042-a6ff-970af8e1cb1c', 'e3f8b8a5-689a-4780-afe3-e369d4793837', '59e411e5-9b42-4337-ad96-9af7e6ca054b' ], criticalCompetencyIds: [ 'e3f8b8a5-689a-4780-afe3-e369d4793837', '59e411e5-9b42-4337-ad96-9af7e6ca054b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Data Modeling & Normalization',
-      INTERMEDIATE: 'Independent execution of bounded Data Modeling & Normalization tasks',
-      ADVANCED: 'Owns Data Modeling & Normalization components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Data Modeling & Normalization at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Data Modeling',
+      INTERMEDIATE: 'Independent execution of bounded Data Modeling tasks',
+      ADVANCED: 'Owns Data Modeling components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Data Modeling at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -4374,7 +3312,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'DATABASE_PERFORMANCE_TUNING_INDEXING': {
     skillCode: 'DATABASE_PERFORMANCE_TUNING_INDEXING',
-    name: 'Database Performance Tuning & Indexing',
+    name: 'Database Performance Tuning',
     domain: 'SOFTWARE_IT',
     category: 'Databases & Data Management',
     prerequisites: [],
@@ -4477,128 +3415,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1', '0598f60f-052b-444c-a85f-5d405063a6fd', '8b7380dd-f7fd-4c91-a5e6-b987f658162c', '607bec2a-dd04-4376-ade0-37b649a91bb0', 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9', '39607d51-686e-40cc-a552-44c3e255965e' ], criticalCompetencyIds: [ 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9', '39607d51-686e-40cc-a552-44c3e255965e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Database Performance Tuning & Indexing',
-      INTERMEDIATE: 'Independent execution of bounded Database Performance Tuning & Indexing tasks',
-      ADVANCED: 'Owns Database Performance Tuning & Indexing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Database Performance Tuning & Indexing at org scale',
-    },
-    assessmentBlueprint: 'SDE_DATABASE_SQL',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'DATA_WAREHOUSING': {
-    skillCode: 'DATA_WAREHOUSING',
-    name: 'Data Warehousing',
-    domain: 'SOFTWARE_IT',
-    category: 'Databases & Data Management',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'a07369ba-3a8e-424f-a535-2e58b76d6229',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'Warehouse fundamentals & Kimball/Inmon approaches',
-        observableBehaviours: [
-          'Explains warehouse fundamentals & kimball/inmon approaches accurately under assessment conditions',
-          'Applies warehouse fundamentals & kimball/inmon approaches to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates warehouse fundamentals & kimball/inmon approaches in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: 'acbb87cc-53f4-40dd-add2-dbd600255268',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'ETL/ELT into warehouse layers',
-        observableBehaviours: [
-          'Explains etl/elt into warehouse layers accurately under assessment conditions',
-          'Applies etl/elt into warehouse layers to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates etl/elt into warehouse layers in timed assessment items',
-        ],
-        prerequisites: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229' ],
-        role: 'core',
-      },
-      {
-        competencyId: 'ce4ce96d-b053-4ca2-a162-389d12a39c64',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'Fact/dimension design & aggregations',
-        observableBehaviours: [
-          'Explains fact/dimension design & aggregations accurately under assessment conditions',
-          'Applies fact/dimension design & aggregations to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates fact/dimension design & aggregations in timed assessment items',
-        ],
-        prerequisites: [ 'acbb87cc-53f4-40dd-add2-dbd600255268' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'bab901b4-680c-4665-a63b-dd56895e650e',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'Incremental loads & late-arriving data',
-        observableBehaviours: [
-          'Explains incremental loads & late-arriving data accurately under assessment conditions',
-          'Applies incremental loads & late-arriving data to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates incremental loads & late-arriving data in timed assessment items',
-        ],
-        prerequisites: [ 'ce4ce96d-b053-4ca2-a162-389d12a39c64' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '96856424-6a33-43eb-a9ae-ea23b18561fe',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'Query performance & materialized views',
-        observableBehaviours: [
-          'Explains query performance & materialized views accurately under assessment conditions',
-          'Applies query performance & materialized views to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates query performance & materialized views in timed assessment items',
-        ],
-        prerequisites: [ 'bab901b4-680c-4665-a63b-dd56895e650e' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'ba045124-58c3-4f33-a629-7e82db5ab9e9',
-        skillCode: 'DATA_WAREHOUSING',
-        capability: 'Modern warehouse architecture (cloud DW)',
-        observableBehaviours: [
-          'Explains modern warehouse architecture (cloud dw) accurately under assessment conditions',
-          'Applies modern warehouse architecture (cloud dw) to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates modern warehouse architecture (cloud dw) in timed assessment items',
-        ],
-        prerequisites: [ '96856424-6a33-43eb-a9ae-ea23b18561fe' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229' ], criticalCompetencyIds: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229', 'acbb87cc-53f4-40dd-add2-dbd600255268', 'ce4ce96d-b053-4ca2-a162-389d12a39c64' ], criticalCompetencyIds: [ 'ce4ce96d-b053-4ca2-a162-389d12a39c64' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229', 'acbb87cc-53f4-40dd-add2-dbd600255268', 'ce4ce96d-b053-4ca2-a162-389d12a39c64', 'bab901b4-680c-4665-a63b-dd56895e650e', '96856424-6a33-43eb-a9ae-ea23b18561fe' ], criticalCompetencyIds: [ 'bab901b4-680c-4665-a63b-dd56895e650e', '96856424-6a33-43eb-a9ae-ea23b18561fe' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'a07369ba-3a8e-424f-a535-2e58b76d6229', 'acbb87cc-53f4-40dd-add2-dbd600255268', 'ce4ce96d-b053-4ca2-a162-389d12a39c64', 'bab901b4-680c-4665-a63b-dd56895e650e', '96856424-6a33-43eb-a9ae-ea23b18561fe', 'ba045124-58c3-4f33-a629-7e82db5ab9e9' ], criticalCompetencyIds: [ '96856424-6a33-43eb-a9ae-ea23b18561fe', 'ba045124-58c3-4f33-a629-7e82db5ab9e9' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Data Warehousing',
-      INTERMEDIATE: 'Independent execution of bounded Data Warehousing tasks',
-      ADVANCED: 'Owns Data Warehousing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Data Warehousing at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Database Performance Tuning',
+      INTERMEDIATE: 'Independent execution of bounded Database Performance Tuning tasks',
+      ADVANCED: 'Owns Database Performance Tuning components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Database Performance Tuning at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -4610,7 +3430,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'ETL_ELT_PIPELINE_DEVELOPMENT': {
     skillCode: 'ETL_ELT_PIPELINE_DEVELOPMENT',
-    name: 'ETL/ELT Pipeline Development',
+    name: 'ETL / ELT',
     domain: 'SOFTWARE_IT',
     category: 'Data Engineering & Big Data',
     prerequisites: [],
@@ -4713,10 +3533,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d', 'a558d9a0-6d57-4a77-adb3-6cbe2c25ec1d', '80e2350d-8c73-4135-a04d-465597d26e94', '67de1155-013f-484c-aaa8-295a50830ba3', 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef', 'de53778e-fcb4-4ed6-afee-8e3319738bce' ], criticalCompetencyIds: [ 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef', 'de53778e-fcb4-4ed6-afee-8e3319738bce' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of ETL/ELT Pipeline Development',
-      INTERMEDIATE: 'Independent execution of bounded ETL/ELT Pipeline Development tasks',
-      ADVANCED: 'Owns ETL/ELT Pipeline Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for ETL/ELT Pipeline Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of ETL / ELT',
+      INTERMEDIATE: 'Independent execution of bounded ETL / ELT tasks',
+      ADVANCED: 'Owns ETL / ELT components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for ETL / ELT at org scale',
     },
     assessmentBlueprint: 'SDE_DATABASE_SQL',
     evidenceRequirements: [
@@ -4728,7 +3548,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'BIG_DATA_PROCESSING_FRAMEWORKS': {
     skillCode: 'BIG_DATA_PROCESSING_FRAMEWORKS',
-    name: 'Big Data Processing Frameworks',
+    name: 'Big Data Processing',
     domain: 'SOFTWARE_IT',
     category: 'Data Engineering & Big Data',
     prerequisites: [],
@@ -4831,10 +3651,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda', 'dfebf3ea-e653-4ce6-af9e-5bcbeb1e25c4', '0bf396fc-95ed-4fb0-aabe-ec036e3475ec', '5b382661-4df2-4f4a-ab13-c95c565a6ed4', '991988eb-03cc-4b55-a34f-d631e8f9c191', '96d8508d-2010-46b0-acd8-5896cf456417' ], criticalCompetencyIds: [ '991988eb-03cc-4b55-a34f-d631e8f9c191', '96d8508d-2010-46b0-acd8-5896cf456417' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Big Data Processing Frameworks',
-      INTERMEDIATE: 'Independent execution of bounded Big Data Processing Frameworks tasks',
-      ADVANCED: 'Owns Big Data Processing Frameworks components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Big Data Processing Frameworks at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Big Data Processing',
+      INTERMEDIATE: 'Independent execution of bounded Big Data Processing tasks',
+      ADVANCED: 'Owns Big Data Processing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Big Data Processing at org scale',
     },
     assessmentBlueprint: 'SDE_DSA',
     evidenceRequirements: [
@@ -4846,7 +3666,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'STREAM_PROCESSING_MESSAGING_SYSTEMS': {
     skillCode: 'STREAM_PROCESSING_MESSAGING_SYSTEMS',
-    name: 'Stream Processing & Messaging Systems',
+    name: 'Stream Processing',
     domain: 'SOFTWARE_IT',
     category: 'Data Engineering & Big Data',
     prerequisites: [],
@@ -4949,246 +3769,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '2640591b-f6db-49e9-ada3-8d42b670306b', 'd61371b7-6483-43d9-a19c-1131f6ae0a6f', '55447b91-30d9-454d-a147-433c5447ae45', 'f3f60a92-af8e-4dc8-ab58-da8b8e4a2c0d', '9ea4f59b-f182-4b9e-aa5c-5f9590999e46', 'ca1b48ce-0fa8-454c-a81f-e6cd4560d4e2' ], criticalCompetencyIds: [ '9ea4f59b-f182-4b9e-aa5c-5f9590999e46', 'ca1b48ce-0fa8-454c-a81f-e6cd4560d4e2' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Stream Processing & Messaging Systems',
-      INTERMEDIATE: 'Independent execution of bounded Stream Processing & Messaging Systems tasks',
-      ADVANCED: 'Owns Stream Processing & Messaging Systems components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Stream Processing & Messaging Systems at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'DATA_LAKE_LAKEHOUSE_ARCHITECTURE': {
-    skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-    name: 'Data Lake & Lakehouse Architecture',
-    domain: 'SOFTWARE_IT',
-    category: 'Data Engineering & Big Data',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Data lake vs warehouse vs lakehouse concepts',
-        observableBehaviours: [
-          'Explains data lake vs warehouse vs lakehouse concepts accurately under assessment conditions',
-          'Applies data lake vs warehouse vs lakehouse concepts to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates data lake vs warehouse vs lakehouse concepts in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: 'ece52e33-68c6-4f3e-adfe-86798532a95c',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Object storage layouts & open table formats',
-        observableBehaviours: [
-          'Explains object storage layouts & open table formats accurately under assessment conditions',
-          'Applies object storage layouts & open table formats to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates object storage layouts & open table formats in timed assessment items',
-        ],
-        prerequisites: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1' ],
-        role: 'core',
-      },
-      {
-        competencyId: 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Medallion/bronze-silver-gold layering',
-        observableBehaviours: [
-          'Explains medallion/bronze-silver-gold layering accurately under assessment conditions',
-          'Applies medallion/bronze-silver-gold layering to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates medallion/bronze-silver-gold layering in timed assessment items',
-        ],
-        prerequisites: [ 'ece52e33-68c6-4f3e-adfe-86798532a95c' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '92f392f8-788f-46cb-aa09-753a4cd519a0',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Catalog, governance & access control',
-        observableBehaviours: [
-          'Explains catalog, governance & access control accurately under assessment conditions',
-          'Applies catalog, governance & access control to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates catalog, governance & access control in timed assessment items',
-        ],
-        prerequisites: [ 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '3a943f14-1afd-4379-a5e4-f051ab36d4ea',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Query engines & performance on lakehouse',
-        observableBehaviours: [
-          'Explains query engines & performance on lakehouse accurately under assessment conditions',
-          'Applies query engines & performance on lakehouse to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates query engines & performance on lakehouse in timed assessment items',
-        ],
-        prerequisites: [ '92f392f8-788f-46cb-aa09-753a4cd519a0' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'ab890048-4968-46d9-ac88-df13f0359940',
-        skillCode: 'DATA_LAKE_LAKEHOUSE_ARCHITECTURE',
-        capability: 'Modern lakehouse reference architecture',
-        observableBehaviours: [
-          'Explains modern lakehouse reference architecture accurately under assessment conditions',
-          'Applies modern lakehouse reference architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates modern lakehouse reference architecture in timed assessment items',
-        ],
-        prerequisites: [ '3a943f14-1afd-4379-a5e4-f051ab36d4ea' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1' ], criticalCompetencyIds: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1', 'ece52e33-68c6-4f3e-adfe-86798532a95c', 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1' ], criticalCompetencyIds: [ 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1', 'ece52e33-68c6-4f3e-adfe-86798532a95c', 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1', '92f392f8-788f-46cb-aa09-753a4cd519a0', '3a943f14-1afd-4379-a5e4-f051ab36d4ea' ], criticalCompetencyIds: [ '92f392f8-788f-46cb-aa09-753a4cd519a0', '3a943f14-1afd-4379-a5e4-f051ab36d4ea' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'c75a9c5d-6a75-4000-aa6e-bc86a518acb1', 'ece52e33-68c6-4f3e-adfe-86798532a95c', 'c007de29-e318-4c26-ae37-3a1c9b0b9ea1', '92f392f8-788f-46cb-aa09-753a4cd519a0', '3a943f14-1afd-4379-a5e4-f051ab36d4ea', 'ab890048-4968-46d9-ac88-df13f0359940' ], criticalCompetencyIds: [ '3a943f14-1afd-4379-a5e4-f051ab36d4ea', 'ab890048-4968-46d9-ac88-df13f0359940' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Data Lake & Lakehouse Architecture',
-      INTERMEDIATE: 'Independent execution of bounded Data Lake & Lakehouse Architecture tasks',
-      ADVANCED: 'Owns Data Lake & Lakehouse Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Data Lake & Lakehouse Architecture at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'DATA_GOVERNANCE_QUALITY_ENGINEERING': {
-    skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-    name: 'Data Governance & Quality Engineering',
-    domain: 'SOFTWARE_IT',
-    category: 'Data Engineering & Big Data',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '6348e987-48a5-4306-a499-6837f76471c3',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Data governance frameworks & stewardship',
-        observableBehaviours: [
-          'Explains data governance frameworks & stewardship accurately under assessment conditions',
-          'Applies data governance frameworks & stewardship to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates data governance frameworks & stewardship in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '09a5ce7b-a8db-4dc3-a255-224d900e0851',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Data quality dimensions & profiling',
-        observableBehaviours: [
-          'Explains data quality dimensions & profiling accurately under assessment conditions',
-          'Applies data quality dimensions & profiling to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates data quality dimensions & profiling in timed assessment items',
-        ],
-        prerequisites: [ '6348e987-48a5-4306-a499-6837f76471c3' ],
-        role: 'core',
-      },
-      {
-        competencyId: '4921eb04-d2a0-419b-ac6a-b4e21511bb3a',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Lineage, catalog & metadata management',
-        observableBehaviours: [
-          'Explains lineage, catalog & metadata management accurately under assessment conditions',
-          'Applies lineage, catalog & metadata management to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates lineage, catalog & metadata management in timed assessment items',
-        ],
-        prerequisites: [ '09a5ce7b-a8db-4dc3-a255-224d900e0851' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: 'e4e16856-615a-4e58-a8ad-966a201d433f',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Privacy, PII masking & compliance (GDPR)',
-        observableBehaviours: [
-          'Explains privacy, pii masking & compliance (gdpr) accurately under assessment conditions',
-          'Applies privacy, pii masking & compliance (gdpr) to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates privacy, pii masking & compliance (gdpr) in timed assessment items',
-        ],
-        prerequisites: [ '4921eb04-d2a0-419b-ac6a-b4e21511bb3a' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '4f7d2b84-39d0-4479-a01e-6c128d6fecd2',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Quality SLAs, alerting & remediation',
-        observableBehaviours: [
-          'Explains quality slas, alerting & remediation accurately under assessment conditions',
-          'Applies quality slas, alerting & remediation to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates quality slas, alerting & remediation in timed assessment items',
-        ],
-        prerequisites: [ 'e4e16856-615a-4e58-a8ad-966a201d433f' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '7d0baacd-7d11-43db-afe6-442a7e804f08',
-        skillCode: 'DATA_GOVERNANCE_QUALITY_ENGINEERING',
-        capability: 'Enterprise data governance operating model',
-        observableBehaviours: [
-          'Explains enterprise data governance operating model accurately under assessment conditions',
-          'Applies enterprise data governance operating model to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates enterprise data governance operating model in timed assessment items',
-        ],
-        prerequisites: [ '4f7d2b84-39d0-4479-a01e-6c128d6fecd2' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '6348e987-48a5-4306-a499-6837f76471c3' ], criticalCompetencyIds: [ '6348e987-48a5-4306-a499-6837f76471c3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '6348e987-48a5-4306-a499-6837f76471c3', '09a5ce7b-a8db-4dc3-a255-224d900e0851', '4921eb04-d2a0-419b-ac6a-b4e21511bb3a' ], criticalCompetencyIds: [ '4921eb04-d2a0-419b-ac6a-b4e21511bb3a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '6348e987-48a5-4306-a499-6837f76471c3', '09a5ce7b-a8db-4dc3-a255-224d900e0851', '4921eb04-d2a0-419b-ac6a-b4e21511bb3a', 'e4e16856-615a-4e58-a8ad-966a201d433f', '4f7d2b84-39d0-4479-a01e-6c128d6fecd2' ], criticalCompetencyIds: [ 'e4e16856-615a-4e58-a8ad-966a201d433f', '4f7d2b84-39d0-4479-a01e-6c128d6fecd2' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6348e987-48a5-4306-a499-6837f76471c3', '09a5ce7b-a8db-4dc3-a255-224d900e0851', '4921eb04-d2a0-419b-ac6a-b4e21511bb3a', 'e4e16856-615a-4e58-a8ad-966a201d433f', '4f7d2b84-39d0-4479-a01e-6c128d6fecd2', '7d0baacd-7d11-43db-afe6-442a7e804f08' ], criticalCompetencyIds: [ '4f7d2b84-39d0-4479-a01e-6c128d6fecd2', '7d0baacd-7d11-43db-afe6-442a7e804f08' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Data Governance & Quality Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Data Governance & Quality Engineering tasks',
-      ADVANCED: 'Owns Data Governance & Quality Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Data Governance & Quality Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Stream Processing',
+      INTERMEDIATE: 'Independent execution of bounded Stream Processing tasks',
+      ADVANCED: 'Owns Stream Processing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Stream Processing at org scale',
     },
     assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
     evidenceRequirements: [
@@ -5200,7 +3784,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT': {
     skillCode: 'MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT',
-    name: 'Machine Learning Model Development & Deployment',
+    name: 'Machine Learning',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5303,10 +3887,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb', '9f34278c-3072-48b9-a7fe-0df558ff113a', 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45', '19187728-5d06-4ca3-a2e6-61442c80c53a', '48a48609-58c2-47bf-ae36-7f7e68a49cd5', 'a52a6009-3a52-42b9-afa7-96eb0556b3d6' ], criticalCompetencyIds: [ '48a48609-58c2-47bf-ae36-7f7e68a49cd5', 'a52a6009-3a52-42b9-afa7-96eb0556b3d6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Machine Learning Model Development & Deployment',
-      INTERMEDIATE: 'Independent execution of bounded Machine Learning Model Development & Deployment tasks',
-      ADVANCED: 'Owns Machine Learning Model Development & Deployment components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Machine Learning Model Development & Deployment at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Machine Learning',
+      INTERMEDIATE: 'Independent execution of bounded Machine Learning tasks',
+      ADVANCED: 'Owns Machine Learning components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Machine Learning at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -5318,7 +3902,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING': {
     skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
-    name: 'Deep Learning & Neural Network Engineering',
+    name: 'Deep Learning',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5421,10 +4005,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f', 'e75fc9b2-fba8-42c0-a336-7e9b7b0f425d', '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8', 'f091950d-dc16-4ca2-a766-2584e14a1426', '1ce2a779-f70e-4e6a-a409-5f1860a74228', '1e0a9fd0-e41b-4e12-a70c-b12d6ca30a4d' ], criticalCompetencyIds: [ '1ce2a779-f70e-4e6a-a409-5f1860a74228', '1e0a9fd0-e41b-4e12-a70c-b12d6ca30a4d' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Deep Learning & Neural Network Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Deep Learning & Neural Network Engineering tasks',
-      ADVANCED: 'Owns Deep Learning & Neural Network Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Deep Learning & Neural Network Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Deep Learning',
+      INTERMEDIATE: 'Independent execution of bounded Deep Learning tasks',
+      ADVANCED: 'Owns Deep Learning components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Deep Learning at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -5436,7 +4020,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'NATURAL_LANGUAGE_PROCESSING_NLP': {
     skillCode: 'NATURAL_LANGUAGE_PROCESSING_NLP',
-    name: 'Natural Language Processing (NLP)',
+    name: 'NLP',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5539,10 +4123,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181', 'd3194ee5-7889-459d-a773-ed37d90e8c02', '70e1a8ee-469e-4648-a57b-96ca4d30654b', '3835522b-2d4c-44c5-a90e-9b942355e4c3', '3ddea190-abce-490c-a79a-c9f905c080f2', '430efde4-e291-4077-ade4-3fcf0b707b4e' ], criticalCompetencyIds: [ '3ddea190-abce-490c-a79a-c9f905c080f2', '430efde4-e291-4077-ade4-3fcf0b707b4e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Natural Language Processing (NLP)',
-      INTERMEDIATE: 'Independent execution of bounded Natural Language Processing (NLP) tasks',
-      ADVANCED: 'Owns Natural Language Processing (NLP) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Natural Language Processing (NLP) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of NLP',
+      INTERMEDIATE: 'Independent execution of bounded NLP tasks',
+      ADVANCED: 'Owns NLP components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for NLP at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -5554,7 +4138,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'LARGE_LANGUAGE_MODEL_LLM_APPLICATION_ENGINEERING': {
     skillCode: 'LARGE_LANGUAGE_MODEL_LLM_APPLICATION_ENGINEERING',
-    name: 'Large Language Model (LLM) Application Engineering',
+    name: 'LLM Engineering',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5657,10 +4241,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99', 'dcd55a20-e027-4bfa-a040-62596fb059f9', '550da4be-333c-469b-a37f-2ab42b0676d6', '573f57eb-d22d-4012-a764-ecd4f2a70f1c', '2779d61d-0783-4197-ac50-d24a667a0fb0', '39fa9d9d-9422-4a16-aff5-63d2e86e6fdf' ], criticalCompetencyIds: [ '2779d61d-0783-4197-ac50-d24a667a0fb0', '39fa9d9d-9422-4a16-aff5-63d2e86e6fdf' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Large Language Model (LLM) Application Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Large Language Model (LLM) Application Engineering tasks',
-      ADVANCED: 'Owns Large Language Model (LLM) Application Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Large Language Model (LLM) Application Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of LLM Engineering',
+      INTERMEDIATE: 'Independent execution of bounded LLM Engineering tasks',
+      ADVANCED: 'Owns LLM Engineering components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for LLM Engineering at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -5672,7 +4256,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'MLOPS_MODEL_LIFECYCLE_MANAGEMENT': {
     skillCode: 'MLOPS_MODEL_LIFECYCLE_MANAGEMENT',
-    name: 'MLOps & Model Lifecycle Management',
+    name: 'MLOps',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5775,10 +4359,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261', '04f9c438-709b-40ec-a490-450a2f18574b', '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27', '9d1204ad-a9cb-464f-a8ed-47faa33b452f', 'b10c3723-136a-4c94-a49d-662e0ff06383', '031b377e-7d41-45f3-adae-fa053dfd605d' ], criticalCompetencyIds: [ 'b10c3723-136a-4c94-a49d-662e0ff06383', '031b377e-7d41-45f3-adae-fa053dfd605d' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of MLOps & Model Lifecycle Management',
-      INTERMEDIATE: 'Independent execution of bounded MLOps & Model Lifecycle Management tasks',
-      ADVANCED: 'Owns MLOps & Model Lifecycle Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for MLOps & Model Lifecycle Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of MLOps',
+      INTERMEDIATE: 'Independent execution of bounded MLOps tasks',
+      ADVANCED: 'Owns MLOps components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for MLOps at org scale',
     },
     assessmentBlueprint: 'SDE_DEPLOYMENT_CICD',
     evidenceRequirements: [
@@ -5790,7 +4374,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'COMPUTER_VISION_ENGINEERING': {
     skillCode: 'COMPUTER_VISION_ENGINEERING',
-    name: 'Computer Vision Engineering',
+    name: 'Computer Vision',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -5893,10 +4477,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6', 'ef0e51e9-26d7-408e-acbb-cfe096f9a880', 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585', '55ab40ac-b992-4e74-a89e-944173e41c30', '1e240bc3-4134-4179-a793-d3362a2ac3be', 'da5b0aaa-1150-4b79-a52f-40b59a38a890' ], criticalCompetencyIds: [ '1e240bc3-4134-4179-a793-d3362a2ac3be', 'da5b0aaa-1150-4b79-a52f-40b59a38a890' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Computer Vision Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Computer Vision Engineering tasks',
-      ADVANCED: 'Owns Computer Vision Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Computer Vision Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Computer Vision',
+      INTERMEDIATE: 'Independent execution of bounded Computer Vision tasks',
+      ADVANCED: 'Owns Computer Vision components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Computer Vision at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -5908,7 +4492,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'STATISTICAL_ANALYSIS_EXPERIMENTATION': {
     skillCode: 'STATISTICAL_ANALYSIS_EXPERIMENTATION',
-    name: 'Statistical Analysis & Experimentation',
+    name: 'Statistics & A/B Testing',
     domain: 'SOFTWARE_IT',
     category: 'AI, ML & Data Science',
     prerequisites: [],
@@ -6011,10 +4595,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed', '36ca22e9-c1a7-4669-acf1-72006357d4c7', 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2', 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5', 'b9203bab-2916-4911-ad6f-71c0a4a80263', '81af7e4f-c8fd-4fa1-acc2-47f5f84e32b0' ], criticalCompetencyIds: [ 'b9203bab-2916-4911-ad6f-71c0a4a80263', '81af7e4f-c8fd-4fa1-acc2-47f5f84e32b0' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Statistical Analysis & Experimentation',
-      INTERMEDIATE: 'Independent execution of bounded Statistical Analysis & Experimentation tasks',
-      ADVANCED: 'Owns Statistical Analysis & Experimentation components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Statistical Analysis & Experimentation at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Statistics & A/B Testing',
+      INTERMEDIATE: 'Independent execution of bounded Statistics & A/B Testing tasks',
+      ADVANCED: 'Owns Statistics & A/B Testing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Statistics & A/B Testing at org scale',
     },
     assessmentBlueprint: 'SDE_PROGRAMMING_FUNDAMENTALS',
     evidenceRequirements: [
@@ -6026,7 +4610,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'APPLICATION_SECURITY_APPSEC': {
     skillCode: 'APPLICATION_SECURITY_APPSEC',
-    name: 'Application Security (AppSec)',
+    name: 'Application Security',
     domain: 'SOFTWARE_IT',
     category: 'Cybersecurity',
     prerequisites: [],
@@ -6129,10 +4713,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649', 'd9a187a5-1f52-4d8b-af81-f99fb44d8c97', '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5', 'f866f404-7b32-4886-a6d9-9c9720220af5', '91661917-0146-4fd3-addf-6a2322275a6f', '374bbe65-6916-45fc-a9a7-a0e2f4b7ac52' ], criticalCompetencyIds: [ '91661917-0146-4fd3-addf-6a2322275a6f', '374bbe65-6916-45fc-a9a7-a0e2f4b7ac52' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Application Security (AppSec)',
-      INTERMEDIATE: 'Independent execution of bounded Application Security (AppSec) tasks',
-      ADVANCED: 'Owns Application Security (AppSec) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Application Security (AppSec) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Application Security',
+      INTERMEDIATE: 'Independent execution of bounded Application Security tasks',
+      ADVANCED: 'Owns Application Security components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Application Security at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6144,7 +4728,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CLOUD_SECURITY_ENGINEERING': {
     skillCode: 'CLOUD_SECURITY_ENGINEERING',
-    name: 'Cloud Security Engineering',
+    name: 'Cloud Security',
     domain: 'SOFTWARE_IT',
     category: 'Cybersecurity',
     prerequisites: [],
@@ -6247,10 +4831,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef', 'f3ac6e30-2128-478d-a38c-a068b60c85f9', '0c0bff0f-339d-4536-a287-a52002a0fa6b', 'd441c829-9780-4f42-a8f2-33f4dab6e509', '3eee9333-8912-4732-a566-2fd728a481e6', '31988b85-20ca-4238-a41e-471eb67da82f' ], criticalCompetencyIds: [ '3eee9333-8912-4732-a566-2fd728a481e6', '31988b85-20ca-4238-a41e-471eb67da82f' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Cloud Security Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Cloud Security Engineering tasks',
-      ADVANCED: 'Owns Cloud Security Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Cloud Security Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Cloud Security',
+      INTERMEDIATE: 'Independent execution of bounded Cloud Security tasks',
+      ADVANCED: 'Owns Cloud Security components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Cloud Security at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6262,7 +4846,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'IDENTITY_ACCESS_MANAGEMENT_IAM': {
     skillCode: 'IDENTITY_ACCESS_MANAGEMENT_IAM',
-    name: 'Identity & Access Management (IAM)',
+    name: 'Identity & Access Management',
     domain: 'SOFTWARE_IT',
     category: 'Cybersecurity',
     prerequisites: [],
@@ -6365,10 +4949,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'e3853803-337c-4f3c-a306-896b3fed8f32', '5a1a0823-7cbe-4c5b-adb1-d90ca140e93a', 'b9ce6758-e7d4-4f3d-a0a6-32d688ab7e76', '20fcc900-9c7e-43d2-a64f-2b91da370f79', 'a095d5fe-431b-431e-a49d-8d03ab3d8305', 'b6f0c872-2cb0-4107-ab82-594e9810a2b1' ], criticalCompetencyIds: [ 'a095d5fe-431b-431e-a49d-8d03ab3d8305', 'b6f0c872-2cb0-4107-ab82-594e9810a2b1' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Identity & Access Management (IAM)',
-      INTERMEDIATE: 'Independent execution of bounded Identity & Access Management (IAM) tasks',
-      ADVANCED: 'Owns Identity & Access Management (IAM) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Identity & Access Management (IAM) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Identity & Access Management',
+      INTERMEDIATE: 'Independent execution of bounded Identity & Access Management tasks',
+      ADVANCED: 'Owns Identity & Access Management components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Identity & Access Management at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6380,7 +4964,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'PENETRATION_TESTING_VULNERABILITY_ASSESSMENT': {
     skillCode: 'PENETRATION_TESTING_VULNERABILITY_ASSESSMENT',
-    name: 'Penetration Testing & Vulnerability Assessment',
+    name: 'Penetration Testing',
     domain: 'SOFTWARE_IT',
     category: 'Cybersecurity',
     prerequisites: [],
@@ -6483,10 +5067,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0', '48665b91-f9c2-43e2-afb4-8662851ab517', 'f62a26f8-55ce-41d9-a589-47b487d506d8', '1c6b676d-1189-47bc-a744-5c6f440f6c6a', 'f58e8cb8-7c94-455e-acee-904ed9ebf063', '6635d459-a4f3-4838-abe2-4b02d4026c44' ], criticalCompetencyIds: [ 'f58e8cb8-7c94-455e-acee-904ed9ebf063', '6635d459-a4f3-4838-abe2-4b02d4026c44' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Penetration Testing & Vulnerability Assessment',
-      INTERMEDIATE: 'Independent execution of bounded Penetration Testing & Vulnerability Assessment tasks',
-      ADVANCED: 'Owns Penetration Testing & Vulnerability Assessment components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Penetration Testing & Vulnerability Assessment at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Penetration Testing',
+      INTERMEDIATE: 'Independent execution of bounded Penetration Testing tasks',
+      ADVANCED: 'Owns Penetration Testing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Penetration Testing at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6498,7 +5082,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'SECURITY_OPERATIONS_INCIDENT_RESPONSE': {
     skillCode: 'SECURITY_OPERATIONS_INCIDENT_RESPONSE',
-    name: 'Security Operations & Incident Response',
+    name: 'Security Operations',
     domain: 'SOFTWARE_IT',
     category: 'Cybersecurity',
     prerequisites: [],
@@ -6601,128 +5185,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '285d0637-9fb5-4a16-aa42-952d0f22c844', '8f4a2525-6fb2-4e13-aa74-691221f0a319', '74c09317-50c2-441e-a918-c2a8cd3ba57d', '70edd1e4-76dc-4bad-aa1f-2c940699b273', '1cfb58d6-01fc-482a-a4cf-265d9922b53c', '2ea0deba-0b4d-4a44-a4ba-4e3400cab43c' ], criticalCompetencyIds: [ '1cfb58d6-01fc-482a-a4cf-265d9922b53c', '2ea0deba-0b4d-4a44-a4ba-4e3400cab43c' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Security Operations & Incident Response',
-      INTERMEDIATE: 'Independent execution of bounded Security Operations & Incident Response tasks',
-      ADVANCED: 'Owns Security Operations & Incident Response components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Security Operations & Incident Response at org scale',
-    },
-    assessmentBlueprint: 'SDE_TESTING',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
-  'COMPLIANCE_RISK_MANAGEMENT': {
-    skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-    name: 'Compliance & Risk Management',
-    domain: 'SOFTWARE_IT',
-    category: 'Cybersecurity',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: '5a83ac56-09b7-4e0d-a754-44a1cf77fb50',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'Compliance frameworks (SOC2, ISO 27001, PCI)',
-        observableBehaviours: [
-          'Explains compliance frameworks (soc2, iso 27001, pci) accurately under assessment conditions',
-          'Applies compliance frameworks (soc2, iso 27001, pci) to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates compliance frameworks (soc2, iso 27001, pci) in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '2bb960ab-9f0d-4932-a0e4-a9a89d704bcd',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'Risk assessment & control mapping',
-        observableBehaviours: [
-          'Explains risk assessment & control mapping accurately under assessment conditions',
-          'Applies risk assessment & control mapping to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates risk assessment & control mapping in timed assessment items',
-        ],
-        prerequisites: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50' ],
-        role: 'core',
-      },
-      {
-        competencyId: '112cfa69-b070-4105-a186-696f3cf90475',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'Policy management & audit evidence collection',
-        observableBehaviours: [
-          'Explains policy management & audit evidence collection accurately under assessment conditions',
-          'Applies policy management & audit evidence collection to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates policy management & audit evidence collection in timed assessment items',
-        ],
-        prerequisites: [ '2bb960ab-9f0d-4932-a0e4-a9a89d704bcd' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '3d0c0211-d7bb-4b0f-ad5b-c655917bc02a',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'Vendor risk & third-party assessments',
-        observableBehaviours: [
-          'Explains vendor risk & third-party assessments accurately under assessment conditions',
-          'Applies vendor risk & third-party assessments to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates vendor risk & third-party assessments in timed assessment items',
-        ],
-        prerequisites: [ '112cfa69-b070-4105-a186-696f3cf90475' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '42ff8d9a-4e79-428a-a400-41be923c89cf',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'Continuous compliance monitoring',
-        observableBehaviours: [
-          'Explains continuous compliance monitoring accurately under assessment conditions',
-          'Applies continuous compliance monitoring to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates continuous compliance monitoring in timed assessment items',
-        ],
-        prerequisites: [ '3d0c0211-d7bb-4b0f-ad5b-c655917bc02a' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'e1e7c3ca-0294-4cec-a943-fc3182c4d4b5',
-        skillCode: 'COMPLIANCE_RISK_MANAGEMENT',
-        capability: 'GRC program architecture',
-        observableBehaviours: [
-          'Explains grc program architecture accurately under assessment conditions',
-          'Applies grc program architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates grc program architecture in timed assessment items',
-        ],
-        prerequisites: [ '42ff8d9a-4e79-428a-a400-41be923c89cf' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50' ], criticalCompetencyIds: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50', '2bb960ab-9f0d-4932-a0e4-a9a89d704bcd', '112cfa69-b070-4105-a186-696f3cf90475' ], criticalCompetencyIds: [ '112cfa69-b070-4105-a186-696f3cf90475' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50', '2bb960ab-9f0d-4932-a0e4-a9a89d704bcd', '112cfa69-b070-4105-a186-696f3cf90475', '3d0c0211-d7bb-4b0f-ad5b-c655917bc02a', '42ff8d9a-4e79-428a-a400-41be923c89cf' ], criticalCompetencyIds: [ '3d0c0211-d7bb-4b0f-ad5b-c655917bc02a', '42ff8d9a-4e79-428a-a400-41be923c89cf' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5a83ac56-09b7-4e0d-a754-44a1cf77fb50', '2bb960ab-9f0d-4932-a0e4-a9a89d704bcd', '112cfa69-b070-4105-a186-696f3cf90475', '3d0c0211-d7bb-4b0f-ad5b-c655917bc02a', '42ff8d9a-4e79-428a-a400-41be923c89cf', 'e1e7c3ca-0294-4cec-a943-fc3182c4d4b5' ], criticalCompetencyIds: [ '42ff8d9a-4e79-428a-a400-41be923c89cf', 'e1e7c3ca-0294-4cec-a943-fc3182c4d4b5' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Compliance & Risk Management',
-      INTERMEDIATE: 'Independent execution of bounded Compliance & Risk Management tasks',
-      ADVANCED: 'Owns Compliance & Risk Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Compliance & Risk Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Security Operations',
+      INTERMEDIATE: 'Independent execution of bounded Security Operations tasks',
+      ADVANCED: 'Owns Security Operations components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Security Operations at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6734,7 +5200,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'TEST_AUTOMATION_ENGINEERING': {
     skillCode: 'TEST_AUTOMATION_ENGINEERING',
-    name: 'Test Automation Engineering',
+    name: 'Test Automation',
     domain: 'SOFTWARE_IT',
     category: 'Testing, QA & Reliability',
     prerequisites: [],
@@ -6837,10 +5303,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'd0c95367-1df4-4091-a22f-f12f6d2f9923', '808747bb-165d-444d-a340-6e30ca494552', '5887283d-6f72-4767-aaca-b1a0d6a9867d', '72604293-5003-4d19-a5a0-1848543703b7', '85f2c5a2-3971-4808-a16b-a26143122643', '4f67bab4-4e03-45fa-a28f-446541f541ca' ], criticalCompetencyIds: [ '85f2c5a2-3971-4808-a16b-a26143122643', '4f67bab4-4e03-45fa-a28f-446541f541ca' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Test Automation Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Test Automation Engineering tasks',
-      ADVANCED: 'Owns Test Automation Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Test Automation Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Test Automation',
+      INTERMEDIATE: 'Independent execution of bounded Test Automation tasks',
+      ADVANCED: 'Owns Test Automation components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Test Automation at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6852,7 +5318,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'PERFORMANCE_LOAD_TESTING': {
     skillCode: 'PERFORMANCE_LOAD_TESTING',
-    name: 'Performance & Load Testing',
+    name: 'Performance Testing',
     domain: 'SOFTWARE_IT',
     category: 'Testing, QA & Reliability',
     prerequisites: [],
@@ -6955,10 +5421,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086', 'd47729ab-55c1-4c67-a297-8b993c1589d3', '127658bd-56c3-4df9-a9d2-19ddfc00d140', '6abc6339-4d19-4995-a593-2cf71c18adff', '338e2b35-92de-49c1-a7ee-bf5068b12ee8', 'a0e9aff9-320a-4a60-a0d8-53b0c137a997' ], criticalCompetencyIds: [ '338e2b35-92de-49c1-a7ee-bf5068b12ee8', 'a0e9aff9-320a-4a60-a0d8-53b0c137a997' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Performance & Load Testing',
-      INTERMEDIATE: 'Independent execution of bounded Performance & Load Testing tasks',
-      ADVANCED: 'Owns Performance & Load Testing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Performance & Load Testing at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Performance Testing',
+      INTERMEDIATE: 'Independent execution of bounded Performance Testing tasks',
+      ADVANCED: 'Owns Performance Testing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Performance Testing at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -6970,7 +5436,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CONTINUOUS_TESTING_QUALITY_ENGINEERING': {
     skillCode: 'CONTINUOUS_TESTING_QUALITY_ENGINEERING',
-    name: 'Continuous Testing & Quality Engineering',
+    name: 'Quality Engineering',
     domain: 'SOFTWARE_IT',
     category: 'Testing, QA & Reliability',
     prerequisites: [],
@@ -7073,10 +5539,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4', '24cb47ae-92da-43f7-a9bd-2dda8da776dc', '622ed24b-aae8-47f2-a0e5-68aa6618d8d9', 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1', '6cac7101-0d6f-44cd-a376-8e531397321b', '9d59519b-f98e-4320-a73a-b104fae0b3c6' ], criticalCompetencyIds: [ '6cac7101-0d6f-44cd-a376-8e531397321b', '9d59519b-f98e-4320-a73a-b104fae0b3c6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Continuous Testing & Quality Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Continuous Testing & Quality Engineering tasks',
-      ADVANCED: 'Owns Continuous Testing & Quality Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Continuous Testing & Quality Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Quality Engineering',
+      INTERMEDIATE: 'Independent execution of bounded Quality Engineering tasks',
+      ADVANCED: 'Owns Quality Engineering components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Quality Engineering at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -7088,7 +5554,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'API_CONTRACT_TESTING': {
     skillCode: 'API_CONTRACT_TESTING',
-    name: 'API & Contract Testing',
+    name: 'API Testing',
     domain: 'SOFTWARE_IT',
     category: 'Testing, QA & Reliability',
     prerequisites: [],
@@ -7191,10 +5657,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d', '5b26d97b-6985-4a05-a7ca-0db8e30d7772', 'bf405e31-148c-47ed-a49c-8c224ef6f058', 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4', '9c90c509-8ad8-4685-ade0-a6451edfb1b2', 'f1890350-b7b1-4580-addf-30aad92a7716' ], criticalCompetencyIds: [ '9c90c509-8ad8-4685-ade0-a6451edfb1b2', 'f1890350-b7b1-4580-addf-30aad92a7716' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of API & Contract Testing',
-      INTERMEDIATE: 'Independent execution of bounded API & Contract Testing tasks',
-      ADVANCED: 'Owns API & Contract Testing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for API & Contract Testing at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of API Testing',
+      INTERMEDIATE: 'Independent execution of bounded API Testing tasks',
+      ADVANCED: 'Owns API Testing components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for API Testing at org scale',
     },
     assessmentBlueprint: 'SDE_TESTING',
     evidenceRequirements: [
@@ -7206,7 +5672,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'NATIVE_ANDROID_DEVELOPMENT': {
     skillCode: 'NATIVE_ANDROID_DEVELOPMENT',
-    name: 'Native Android Development',
+    name: 'Android Development',
     domain: 'SOFTWARE_IT',
     category: 'Mobile Development',
     prerequisites: [],
@@ -7309,10 +5775,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825', '34ca8370-6e25-4b8c-ad5b-4b93b765856e', 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b', '558d5481-7e77-4f26-afae-e839237d942c', '9a37c9c9-065a-451a-a03f-3438945a97db', '228c3ffb-aee0-4748-a9c6-da271c000d9b' ], criticalCompetencyIds: [ '9a37c9c9-065a-451a-a03f-3438945a97db', '228c3ffb-aee0-4748-a9c6-da271c000d9b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Native Android Development',
-      INTERMEDIATE: 'Independent execution of bounded Native Android Development tasks',
-      ADVANCED: 'Owns Native Android Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Native Android Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Android Development',
+      INTERMEDIATE: 'Independent execution of bounded Android Development tasks',
+      ADVANCED: 'Owns Android Development components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Android Development at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7324,7 +5790,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'NATIVE_IOS_DEVELOPMENT': {
     skillCode: 'NATIVE_IOS_DEVELOPMENT',
-    name: 'Native iOS Development',
+    name: 'iOS Development',
     domain: 'SOFTWARE_IT',
     category: 'Mobile Development',
     prerequisites: [],
@@ -7427,10 +5893,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8', '298d9508-e368-426b-a33e-645a56700d84', 'a9236013-1d1c-4198-aeae-d3661cf320af', '941908ec-8b23-45e9-a67f-ef6284af372e', 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d', 'cb7067aa-cb5f-49f5-a196-48af6b834c69' ], criticalCompetencyIds: [ 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d', 'cb7067aa-cb5f-49f5-a196-48af6b834c69' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Native iOS Development',
-      INTERMEDIATE: 'Independent execution of bounded Native iOS Development tasks',
-      ADVANCED: 'Owns Native iOS Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Native iOS Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of iOS Development',
+      INTERMEDIATE: 'Independent execution of bounded iOS Development tasks',
+      ADVANCED: 'Owns iOS Development components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for iOS Development at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7442,7 +5908,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CROSS_PLATFORM_MOBILE_DEVELOPMENT': {
     skillCode: 'CROSS_PLATFORM_MOBILE_DEVELOPMENT',
-    name: 'Cross-Platform Mobile Development',
+    name: 'Cross-Platform Mobile',
     domain: 'SOFTWARE_IT',
     category: 'Mobile Development',
     prerequisites: [],
@@ -7545,10 +6011,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '520f2a64-779e-4750-adc5-5c3738ae90be', 'edc38970-c929-447a-a820-5748c020a4cd', 'c02e7cfb-d038-44c0-a4aa-e5ec7474ca81', '785b9715-9848-43e2-ad23-a55efff2c262', 'bc4ba118-614f-4b9e-a891-f5a07c8a07d2', 'd2660205-2649-4aed-a8ca-989b58b9e657' ], criticalCompetencyIds: [ 'bc4ba118-614f-4b9e-a891-f5a07c8a07d2', 'd2660205-2649-4aed-a8ca-989b58b9e657' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Cross-Platform Mobile Development',
-      INTERMEDIATE: 'Independent execution of bounded Cross-Platform Mobile Development tasks',
-      ADVANCED: 'Owns Cross-Platform Mobile Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Cross-Platform Mobile Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Cross-Platform Mobile',
+      INTERMEDIATE: 'Independent execution of bounded Cross-Platform Mobile tasks',
+      ADVANCED: 'Owns Cross-Platform Mobile components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Cross-Platform Mobile at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7560,7 +6026,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'MODERN_FRONTEND_FRAMEWORKS': {
     skillCode: 'MODERN_FRONTEND_FRAMEWORKS',
-    name: 'Modern Frontend Frameworks',
+    name: 'Frontend Frameworks',
     domain: 'SOFTWARE_IT',
     category: 'Frontend & Web Development',
     prerequisites: [],
@@ -7663,10 +6129,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083', 'd622fc73-8b07-4b1e-abc7-be5f838d3457', '56e38307-f46b-43ba-a84f-fe367ba6f420', 'a712895f-5d09-4896-aae0-c08b6dcfc98c', '0c2df9ba-8b33-4a19-ad55-f68e4836f402', 'c4b6d9f7-b6ee-45d1-aab4-db22b393b424' ], criticalCompetencyIds: [ '0c2df9ba-8b33-4a19-ad55-f68e4836f402', 'c4b6d9f7-b6ee-45d1-aab4-db22b393b424' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Modern Frontend Frameworks',
-      INTERMEDIATE: 'Independent execution of bounded Modern Frontend Frameworks tasks',
-      ADVANCED: 'Owns Modern Frontend Frameworks components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Modern Frontend Frameworks at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Frontend Frameworks',
+      INTERMEDIATE: 'Independent execution of bounded Frontend Frameworks tasks',
+      ADVANCED: 'Owns Frontend Frameworks components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Frontend Frameworks at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7678,7 +6144,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'FRONTEND_PERFORMANCE_ENGINEERING': {
     skillCode: 'FRONTEND_PERFORMANCE_ENGINEERING',
-    name: 'Frontend Performance Engineering',
+    name: 'Frontend Performance',
     domain: 'SOFTWARE_IT',
     category: 'Frontend & Web Development',
     prerequisites: [],
@@ -7781,10 +6247,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8', '2155138c-e65d-4323-ab70-85d02b1664f9', 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0', '4a3fd88d-091a-4cb1-a8da-458ab41411e8', 'bf1ff996-edf7-4ae9-a188-e878444fe8b3', '09c6ff7a-1ea0-4df0-a411-c2a9895db7d8' ], criticalCompetencyIds: [ 'bf1ff996-edf7-4ae9-a188-e878444fe8b3', '09c6ff7a-1ea0-4df0-a411-c2a9895db7d8' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Frontend Performance Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Frontend Performance Engineering tasks',
-      ADVANCED: 'Owns Frontend Performance Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Frontend Performance Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Frontend Performance',
+      INTERMEDIATE: 'Independent execution of bounded Frontend Performance tasks',
+      ADVANCED: 'Owns Frontend Performance components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Frontend Performance at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7796,7 +6262,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'STATE_MANAGEMENT_COMPONENT_ARCHITECTURE': {
     skillCode: 'STATE_MANAGEMENT_COMPONENT_ARCHITECTURE',
-    name: 'State Management & Component Architecture',
+    name: 'State Management',
     domain: 'SOFTWARE_IT',
     category: 'Frontend & Web Development',
     prerequisites: [],
@@ -7899,10 +6365,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5', '022a06ed-00ba-4d08-acae-4b90890e7865', 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f', 'b20726d5-c3a8-433c-afaf-eb1b346fa089', '410bee6e-c1ac-4e54-adad-33ca3ae15589', '7d4f64c0-fabd-41e1-a7f5-4ae4178eb519' ], criticalCompetencyIds: [ '410bee6e-c1ac-4e54-adad-33ca3ae15589', '7d4f64c0-fabd-41e1-a7f5-4ae4178eb519' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of State Management & Component Architecture',
-      INTERMEDIATE: 'Independent execution of bounded State Management & Component Architecture tasks',
-      ADVANCED: 'Owns State Management & Component Architecture components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for State Management & Component Architecture at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of State Management',
+      INTERMEDIATE: 'Independent execution of bounded State Management tasks',
+      ADVANCED: 'Owns State Management components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for State Management at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -7914,7 +6380,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'ACCESSIBILITY_ENGINEERING_A11Y': {
     skillCode: 'ACCESSIBILITY_ENGINEERING_A11Y',
-    name: 'Accessibility Engineering (a11y)',
+    name: 'Accessibility (a11y)',
     domain: 'SOFTWARE_IT',
     category: 'Frontend & Web Development',
     prerequisites: [],
@@ -8017,10 +6483,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4a6db4ae-c89d-47ff-a8b1-1487ecec590f', 'e4778949-b010-4ccd-ada7-c97332c91398', '23e6b94a-f61b-4e80-ab16-51eee2ca81dd', 'c48e8c40-9a4d-4dfa-a01d-f1f2ee968fe1', '1d3eff1d-78cd-4519-a12d-232fa33ba0af', '790ee11d-7e2f-420b-a94a-2e21740c3d5a' ], criticalCompetencyIds: [ '1d3eff1d-78cd-4519-a12d-232fa33ba0af', '790ee11d-7e2f-420b-a94a-2e21740c3d5a' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Accessibility Engineering (a11y)',
-      INTERMEDIATE: 'Independent execution of bounded Accessibility Engineering (a11y) tasks',
-      ADVANCED: 'Owns Accessibility Engineering (a11y) components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Accessibility Engineering (a11y) at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Accessibility (a11y)',
+      INTERMEDIATE: 'Independent execution of bounded Accessibility (a11y) tasks',
+      ADVANCED: 'Owns Accessibility (a11y) components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Accessibility (a11y) at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -8032,7 +6498,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'NETWORK_ARCHITECTURE_PROTOCOLS': {
     skillCode: 'NETWORK_ARCHITECTURE_PROTOCOLS',
-    name: 'Network Architecture & Protocols',
+    name: 'Networking',
     domain: 'SOFTWARE_IT',
     category: 'Networking & Systems Administration',
     prerequisites: [],
@@ -8135,10 +6601,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3', 'b677998d-e93b-4dd6-a825-c2438e0c8cec', '05b01edc-5930-4bab-abf2-d4af7e4f989c', '25aee8d9-0fe0-4034-ab61-2b4056979083', 'f8f90021-7fc9-4d76-aec9-16421a1d13b1', '3536939e-ce0d-4238-a207-d7880306e433' ], criticalCompetencyIds: [ 'f8f90021-7fc9-4d76-aec9-16421a1d13b1', '3536939e-ce0d-4238-a207-d7880306e433' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Network Architecture & Protocols',
-      INTERMEDIATE: 'Independent execution of bounded Network Architecture & Protocols tasks',
-      ADVANCED: 'Owns Network Architecture & Protocols components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Network Architecture & Protocols at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Networking',
+      INTERMEDIATE: 'Independent execution of bounded Networking tasks',
+      ADVANCED: 'Owns Networking components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Networking at org scale',
     },
     assessmentBlueprint: 'SDE_COMPUTER_NETWORKS',
     evidenceRequirements: [
@@ -8150,7 +6616,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'LINUX_SYSTEMS_ADMINISTRATION': {
     skillCode: 'LINUX_SYSTEMS_ADMINISTRATION',
-    name: 'Linux Systems Administration',
+    name: 'Linux Administration',
     domain: 'SOFTWARE_IT',
     category: 'Networking & Systems Administration',
     prerequisites: [],
@@ -8253,10 +6719,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166', 'dfa8bbd1-62d6-43e0-a863-ab4f5057a06e', '02e86911-21e1-4a86-a6c2-9c81ed840b0a', '04b24364-0898-4c1c-aae8-5d8033ceb792', '42f35839-d362-4fd0-a4db-3dff09e72804', '177101d2-a11d-4859-af0c-afd77511062b' ], criticalCompetencyIds: [ '42f35839-d362-4fd0-a4db-3dff09e72804', '177101d2-a11d-4859-af0c-afd77511062b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Linux Systems Administration',
-      INTERMEDIATE: 'Independent execution of bounded Linux Systems Administration tasks',
-      ADVANCED: 'Owns Linux Systems Administration components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Linux Systems Administration at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Linux Administration',
+      INTERMEDIATE: 'Independent execution of bounded Linux Administration tasks',
+      ADVANCED: 'Owns Linux Administration components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Linux Administration at org scale',
     },
     assessmentBlueprint: 'SDE_OPERATING_SYSTEMS',
     evidenceRequirements: [
@@ -8268,7 +6734,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'VIRTUALIZATION_HYPERVISOR_MANAGEMENT': {
     skillCode: 'VIRTUALIZATION_HYPERVISOR_MANAGEMENT',
-    name: 'Virtualization & Hypervisor Management',
+    name: 'Virtualization',
     domain: 'SOFTWARE_IT',
     category: 'Networking & Systems Administration',
     prerequisites: [],
@@ -8371,10 +6837,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '0e1664a6-13cf-424b-a5b2-0b8b1d937acf', '73250d34-e341-4fb8-a39b-4beff2239cf5', '3a77b255-750a-49a9-a21c-766ecb6b098b', '8251ac3a-3520-443c-a63a-32d3070e1542', 'b02c60a2-63eb-4878-a117-06f5d1472afe', '068cce14-96e8-46f7-af92-92334ad12b57' ], criticalCompetencyIds: [ 'b02c60a2-63eb-4878-a117-06f5d1472afe', '068cce14-96e8-46f7-af92-92334ad12b57' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Virtualization & Hypervisor Management',
-      INTERMEDIATE: 'Independent execution of bounded Virtualization & Hypervisor Management tasks',
-      ADVANCED: 'Owns Virtualization & Hypervisor Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Virtualization & Hypervisor Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Virtualization',
+      INTERMEDIATE: 'Independent execution of bounded Virtualization tasks',
+      ADVANCED: 'Owns Virtualization components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Virtualization at org scale',
     },
     assessmentBlueprint: 'SDE_OPERATING_SYSTEMS',
     evidenceRequirements: [
@@ -8386,7 +6852,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'BLOCKCHAIN_SMART_CONTRACT_DEVELOPMENT': {
     skillCode: 'BLOCKCHAIN_SMART_CONTRACT_DEVELOPMENT',
-    name: 'Blockchain & Smart Contract Development',
+    name: 'Blockchain Development',
     domain: 'SOFTWARE_IT',
     category: 'Emerging Technology',
     prerequisites: [],
@@ -8489,10 +6955,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f', '3a8af3d1-5416-403f-ade3-8a9747fe2cd2', 'a8967bde-76db-42be-ac0f-627f0a3d7eda', 'b8ce245a-62c3-4261-abb3-d913baf248d8', '4f5deb16-237e-4f4d-a438-454aed18c2d1', 'cb02f918-46be-4829-a088-21791d1aee06' ], criticalCompetencyIds: [ '4f5deb16-237e-4f4d-a438-454aed18c2d1', 'cb02f918-46be-4829-a088-21791d1aee06' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Blockchain & Smart Contract Development',
-      INTERMEDIATE: 'Independent execution of bounded Blockchain & Smart Contract Development tasks',
-      ADVANCED: 'Owns Blockchain & Smart Contract Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Blockchain & Smart Contract Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Blockchain Development',
+      INTERMEDIATE: 'Independent execution of bounded Blockchain Development tasks',
+      ADVANCED: 'Owns Blockchain Development components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Blockchain Development at org scale',
     },
     assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
     evidenceRequirements: [
@@ -8504,7 +6970,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'INTERNET_OF_THINGS_IOT_ENGINEERING': {
     skillCode: 'INTERNET_OF_THINGS_IOT_ENGINEERING',
-    name: 'Internet of Things (IoT) Engineering',
+    name: 'IoT Development',
     domain: 'SOFTWARE_IT',
     category: 'Emerging Technology',
     prerequisites: [],
@@ -8607,10 +7073,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b', 'e0954ffe-8e12-4710-a0ae-583b477c03a8', 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc', '32f84915-7734-4616-a3cf-e358b5c688b1', '8aea9d04-8af3-4f01-a937-8788d86a737a', 'ec007ee2-e8bc-4d95-a4e6-de54bcdf3507' ], criticalCompetencyIds: [ '8aea9d04-8af3-4f01-a937-8788d86a737a', 'ec007ee2-e8bc-4d95-a4e6-de54bcdf3507' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Internet of Things (IoT) Engineering',
-      INTERMEDIATE: 'Independent execution of bounded Internet of Things (IoT) Engineering tasks',
-      ADVANCED: 'Owns Internet of Things (IoT) Engineering components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Internet of Things (IoT) Engineering at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of IoT Development',
+      INTERMEDIATE: 'Independent execution of bounded IoT Development tasks',
+      ADVANCED: 'Owns IoT Development components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for IoT Development at org scale',
     },
     assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
     evidenceRequirements: [
@@ -8622,7 +7088,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'AUGMENTED_VIRTUAL_REALITY_DEVELOPMENT': {
     skillCode: 'AUGMENTED_VIRTUAL_REALITY_DEVELOPMENT',
-    name: 'Augmented & Virtual Reality Development',
+    name: 'AR / VR Development',
     domain: 'SOFTWARE_IT',
     category: 'Emerging Technology',
     prerequisites: [],
@@ -8725,10 +7191,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704', '51c0ee1a-a92d-433e-a3cf-c6d7c81313c0', 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338', '24b43bd4-db2a-4cf8-afdb-69d061f3126c', '53b35de6-e7de-45a7-a29d-3816af75de84', '67a88ae6-8923-4755-a415-cfc6354c46b6' ], criticalCompetencyIds: [ '53b35de6-e7de-45a7-a29d-3816af75de84', '67a88ae6-8923-4755-a415-cfc6354c46b6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Augmented & Virtual Reality Development',
-      INTERMEDIATE: 'Independent execution of bounded Augmented & Virtual Reality Development tasks',
-      ADVANCED: 'Owns Augmented & Virtual Reality Development components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Augmented & Virtual Reality Development at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of AR / VR Development',
+      INTERMEDIATE: 'Independent execution of bounded AR / VR Development tasks',
+      ADVANCED: 'Owns AR / VR Development components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for AR / VR Development at org scale',
     },
     assessmentBlueprint: 'SDE_WEB_FRAMEWORKS',
     evidenceRequirements: [
@@ -8738,127 +7204,9 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
     roleMappings: [],
   },
-  'EDGE_COMPUTING': {
-    skillCode: 'EDGE_COMPUTING',
-    name: 'Edge Computing',
-    domain: 'SOFTWARE_IT',
-    category: 'Emerging Technology',
-    prerequisites: [],
-    competencyModel: [
-      {
-        competencyId: 'd537adc2-72c0-400d-a981-fed796fe6fee',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Edge computing drivers & topology patterns',
-        observableBehaviours: [
-          'Explains edge computing drivers & topology patterns accurately under assessment conditions',
-          'Applies edge computing drivers & topology patterns to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates edge computing drivers & topology patterns in timed assessment items',
-        ],
-        prerequisites: [],
-        role: 'core',
-      },
-      {
-        competencyId: '1e1b0ddb-f502-4347-a00a-958f37a70aae',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Latency-sensitive workload placement',
-        observableBehaviours: [
-          'Explains latency-sensitive workload placement accurately under assessment conditions',
-          'Applies latency-sensitive workload placement to bounded practical problems',
-        ],
-        difficulty: 'BEGINNER',
-        assessmentCriteria: [
-          'Demonstrates latency-sensitive workload placement in timed assessment items',
-        ],
-        prerequisites: [ 'd537adc2-72c0-400d-a981-fed796fe6fee' ],
-        role: 'core',
-      },
-      {
-        competencyId: '534dcb68-4899-4040-a2d9-d6e10fedf665',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Edge orchestration & offline-first sync',
-        observableBehaviours: [
-          'Explains edge orchestration & offline-first sync accurately under assessment conditions',
-          'Applies edge orchestration & offline-first sync to bounded practical problems',
-        ],
-        difficulty: 'INTERMEDIATE',
-        assessmentCriteria: [
-          'Demonstrates edge orchestration & offline-first sync in timed assessment items',
-        ],
-        prerequisites: [ '1e1b0ddb-f502-4347-a00a-958f37a70aae' ],
-        role: 'supporting',
-      },
-      {
-        competencyId: '13dd0023-23ad-40a1-a3a4-5a02680fb6ab',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Security & updates at the edge',
-        observableBehaviours: [
-          'Explains security & updates at the edge accurately under assessment conditions',
-          'Applies security & updates at the edge to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates security & updates at the edge in timed assessment items',
-        ],
-        prerequisites: [ '534dcb68-4899-4040-a2d9-d6e10fedf665' ],
-        role: 'critical',
-      },
-      {
-        competencyId: 'cbe3aa80-db99-4486-a3c9-5e90311e8af2',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Observability across edge-cloud boundaries',
-        observableBehaviours: [
-          'Explains observability across edge-cloud boundaries accurately under assessment conditions',
-          'Applies observability across edge-cloud boundaries to bounded practical problems',
-        ],
-        difficulty: 'ADVANCED',
-        assessmentCriteria: [
-          'Demonstrates observability across edge-cloud boundaries in timed assessment items',
-        ],
-        prerequisites: [ '13dd0023-23ad-40a1-a3a4-5a02680fb6ab' ],
-        role: 'critical',
-      },
-      {
-        competencyId: '845a0a31-df60-4fb6-a692-fd07ef490e43',
-        skillCode: 'EDGE_COMPUTING',
-        capability: 'Edge platform reference architecture',
-        observableBehaviours: [
-          'Explains edge platform reference architecture accurately under assessment conditions',
-          'Applies edge platform reference architecture to bounded practical problems',
-        ],
-        difficulty: 'PROFESSIONAL',
-        assessmentCriteria: [
-          'Demonstrates edge platform reference architecture in timed assessment items',
-        ],
-        prerequisites: [ 'cbe3aa80-db99-4486-a3c9-5e90311e8af2' ],
-        role: 'critical',
-      }
-    ],
-    proficiencyRequirements: [
-      { level: 'BEGINNER', requiredCompetencyIds: [ 'd537adc2-72c0-400d-a981-fed796fe6fee' ], criticalCompetencyIds: [ 'd537adc2-72c0-400d-a981-fed796fe6fee' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'd537adc2-72c0-400d-a981-fed796fe6fee', '1e1b0ddb-f502-4347-a00a-958f37a70aae', '534dcb68-4899-4040-a2d9-d6e10fedf665' ], criticalCompetencyIds: [ '534dcb68-4899-4040-a2d9-d6e10fedf665' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
-      { level: 'ADVANCED', requiredCompetencyIds: [ 'd537adc2-72c0-400d-a981-fed796fe6fee', '1e1b0ddb-f502-4347-a00a-958f37a70aae', '534dcb68-4899-4040-a2d9-d6e10fedf665', '13dd0023-23ad-40a1-a3a4-5a02680fb6ab', 'cbe3aa80-db99-4486-a3c9-5e90311e8af2' ], criticalCompetencyIds: [ '13dd0023-23ad-40a1-a3a4-5a02680fb6ab', 'cbe3aa80-db99-4486-a3c9-5e90311e8af2' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
-      { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'd537adc2-72c0-400d-a981-fed796fe6fee', '1e1b0ddb-f502-4347-a00a-958f37a70aae', '534dcb68-4899-4040-a2d9-d6e10fedf665', '13dd0023-23ad-40a1-a3a4-5a02680fb6ab', 'cbe3aa80-db99-4486-a3c9-5e90311e8af2', '845a0a31-df60-4fb6-a692-fd07ef490e43' ], criticalCompetencyIds: [ 'cbe3aa80-db99-4486-a3c9-5e90311e8af2', '845a0a31-df60-4fb6-a692-fd07ef490e43' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
-    ],
-    proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Edge Computing',
-      INTERMEDIATE: 'Independent execution of bounded Edge Computing tasks',
-      ADVANCED: 'Owns Edge Computing components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Edge Computing at org scale',
-    },
-    assessmentBlueprint: 'SDE_SYSTEM_DESIGN',
-    evidenceRequirements: [
-      { evidenceType: 'WORK_EXPERIENCE', minimumCount: 1, description: 'Demonstrated on-the-job use' },
-      { evidenceType: 'PROJECT', minimumCount: 1, description: 'Personal contribution in a project' },
-    ],
-    freshnessPolicy: { maxAgeDays: 730, staleClass: 'STALE', refreshRequired: true },
-    roleMappings: [],
-  },
   'AGILE_DELIVERY_LEADERSHIP': {
     skillCode: 'AGILE_DELIVERY_LEADERSHIP',
-    name: 'Agile Delivery Leadership',
+    name: 'Agile Delivery',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -8961,10 +7309,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '27db1309-31e4-477b-a52b-ec8233d56f04', '711089ce-cad4-4441-a76e-75c39e5f6cfa', '4f377d5f-2d72-41f8-a821-df02cae8fef3', 'fcc22453-02d6-4346-aa97-e99492d90e4f', '0e3221c7-9fb3-4042-a823-2e1e50c86ce6', '5e3c51c8-f8e5-46a4-aef7-00623b28cca2' ], criticalCompetencyIds: [ '0e3221c7-9fb3-4042-a823-2e1e50c86ce6', '5e3c51c8-f8e5-46a4-aef7-00623b28cca2' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Agile Delivery Leadership',
-      INTERMEDIATE: 'Independent execution of bounded Agile Delivery Leadership tasks',
-      ADVANCED: 'Owns Agile Delivery Leadership components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Agile Delivery Leadership at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Agile Delivery',
+      INTERMEDIATE: 'Independent execution of bounded Agile Delivery tasks',
+      ADVANCED: 'Owns Agile Delivery components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Agile Delivery at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [
@@ -8976,7 +7324,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'TECHNICAL_PROGRAM_PROJECT_MANAGEMENT': {
     skillCode: 'TECHNICAL_PROGRAM_PROJECT_MANAGEMENT',
-    name: 'Technical Program & Project Management',
+    name: 'Technical Project Management',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -9079,10 +7427,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '473fc7cd-12b7-4388-adb6-aafa5192e9f8', '6f0e860b-8a8c-41ea-ac93-2d9de76485ca', '63c4afd7-3c7f-484b-acb6-7f6c28276163', 'd8c7bea5-ec3f-41e4-af67-2cdd7f480e8b', '5361375c-13c1-4ec4-adc1-41f102b74dbd', '766b40fb-8a82-4888-a199-ad4eb0d2eb61' ], criticalCompetencyIds: [ '5361375c-13c1-4ec4-adc1-41f102b74dbd', '766b40fb-8a82-4888-a199-ad4eb0d2eb61' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Technical Program & Project Management',
-      INTERMEDIATE: 'Independent execution of bounded Technical Program & Project Management tasks',
-      ADVANCED: 'Owns Technical Program & Project Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Technical Program & Project Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Technical Project Management',
+      INTERMEDIATE: 'Independent execution of bounded Technical Project Management tasks',
+      ADVANCED: 'Owns Technical Project Management components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Technical Project Management at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [
@@ -9094,7 +7442,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'VERSION_CONTROL_CODE_COLLABORATION': {
     skillCode: 'VERSION_CONTROL_CODE_COLLABORATION',
-    name: 'Version Control & Code Collaboration',
+    name: 'Git & Version Control',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -9197,10 +7545,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d', 'c66f5149-7600-4f00-adfa-64c80eda79c4', '3881361d-f02b-4394-ae53-f116f3a75f0e', '36bb440b-6de2-49ae-a52a-3018b7749129', '914698df-ad0a-4d68-af51-757f2e5e37f1', '9898d4a7-7dfe-4202-af42-f8c7b4e8312b' ], criticalCompetencyIds: [ '914698df-ad0a-4d68-af51-757f2e5e37f1', '9898d4a7-7dfe-4202-af42-f8c7b4e8312b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Version Control & Code Collaboration',
-      INTERMEDIATE: 'Independent execution of bounded Version Control & Code Collaboration tasks',
-      ADVANCED: 'Owns Version Control & Code Collaboration components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Version Control & Code Collaboration at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Git & Version Control',
+      INTERMEDIATE: 'Independent execution of bounded Git & Version Control tasks',
+      ADVANCED: 'Owns Git & Version Control components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Git & Version Control at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [
@@ -9212,7 +7560,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'TECHNICAL_DOCUMENTATION_KNOWLEDGE_MANAGEMENT': {
     skillCode: 'TECHNICAL_DOCUMENTATION_KNOWLEDGE_MANAGEMENT',
-    name: 'Technical Documentation & Knowledge Management',
+    name: 'Technical Documentation',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -9315,10 +7663,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '0f80d30f-6138-413a-a8d7-c4c7ecfee19b', 'a685e4a2-5534-48be-ab82-1122b715cf9e', '9ba32a0b-54a1-4f13-a17e-311ac3f53bef', 'c2cdb406-49a5-4a8a-a677-39d426beb1d4', '9806960e-4680-4258-a3f3-b9fbd2a032c2', '0be9efe5-31df-4299-abaa-c7d6e4942454' ], criticalCompetencyIds: [ '9806960e-4680-4258-a3f3-b9fbd2a032c2', '0be9efe5-31df-4299-abaa-c7d6e4942454' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Technical Documentation & Knowledge Management',
-      INTERMEDIATE: 'Independent execution of bounded Technical Documentation & Knowledge Management tasks',
-      ADVANCED: 'Owns Technical Documentation & Knowledge Management components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Technical Documentation & Knowledge Management at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Technical Documentation',
+      INTERMEDIATE: 'Independent execution of bounded Technical Documentation tasks',
+      ADVANCED: 'Owns Technical Documentation components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Technical Documentation at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [
@@ -9330,7 +7678,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'CROSS_FUNCTIONAL_STAKEHOLDER_COLLABORATION': {
     skillCode: 'CROSS_FUNCTIONAL_STAKEHOLDER_COLLABORATION',
-    name: 'Cross-Functional & Stakeholder Collaboration',
+    name: 'Stakeholder Collaboration',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -9433,10 +7781,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6cf67170-98a4-4198-aebd-151d68568b8d', '2b9a5dca-eb4f-457f-ad09-7d57068c7e90', 'e073da2f-4728-4571-a4f0-1f7996ebb8af', '5a76a53b-14ee-4b4e-a6a1-255451185bdc', '77c552bb-44c9-4452-a391-5e57f96a3d41', '7a6e8a9a-3da6-4758-ab0d-4c600c8ccb2c' ], criticalCompetencyIds: [ '77c552bb-44c9-4452-a391-5e57f96a3d41', '7a6e8a9a-3da6-4758-ab0d-4c600c8ccb2c' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Cross-Functional & Stakeholder Collaboration',
-      INTERMEDIATE: 'Independent execution of bounded Cross-Functional & Stakeholder Collaboration tasks',
-      ADVANCED: 'Owns Cross-Functional & Stakeholder Collaboration components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Cross-Functional & Stakeholder Collaboration at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Stakeholder Collaboration',
+      INTERMEDIATE: 'Independent execution of bounded Stakeholder Collaboration tasks',
+      ADVANCED: 'Owns Stakeholder Collaboration components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Stakeholder Collaboration at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [
@@ -9448,7 +7796,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
   },
   'MENTORSHIP_TECHNICAL_LEADERSHIP': {
     skillCode: 'MENTORSHIP_TECHNICAL_LEADERSHIP',
-    name: 'Mentorship & Technical Leadership',
+    name: 'Technical Leadership',
     domain: 'SOFTWARE_IT',
     category: 'Delivery, Process & Tooling',
     prerequisites: [],
@@ -9551,10 +7899,10 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '04b7bfbe-e335-4c72-a19f-883840242239', '44c76362-5270-4171-a27d-7f28d5012bf3', 'd3c87f4e-3e8e-4adf-abe5-47f7643de712', 'a2ddc490-cdff-4f7e-a2d0-565155489fd0', '6a78806e-f7b9-4c67-aeaa-6c9d50db0fa7', '79267031-0c50-412e-ad67-d502c99cd1c9' ], criticalCompetencyIds: [ '6a78806e-f7b9-4c67-aeaa-6c9d50db0fa7', '79267031-0c50-412e-ad67-d502c99cd1c9' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
-      BEGINNER: 'Conceptual understanding with supervised application of Mentorship & Technical Leadership',
-      INTERMEDIATE: 'Independent execution of bounded Mentorship & Technical Leadership tasks',
-      ADVANCED: 'Owns Mentorship & Technical Leadership components end-to-end with trade-off reasoning',
-      PROFESSIONAL: 'Sets standards and architecture for Mentorship & Technical Leadership at org scale',
+      BEGINNER: 'Conceptual understanding with supervised application of Technical Leadership',
+      INTERMEDIATE: 'Independent execution of bounded Technical Leadership tasks',
+      ADVANCED: 'Owns Technical Leadership components end-to-end with trade-off reasoning',
+      PROFESSIONAL: 'Sets standards and architecture for Technical Leadership at org scale',
     },
     assessmentBlueprint: 'SDE_GIT',
     evidenceRequirements: [

@@ -121,7 +121,7 @@ describe('SkillRepositoryPage', () => {
   it('renders the Skill Repository heading and catalog skills', async () => {
     render(<SkillRepositoryPage />);
     expect(await screen.findByRole('heading', { name: 'Skill Repository' })).toBeDefined();
-    expect(screen.getByText('Python (Application & Backend Development)')).toBeDefined();
+    expect(screen.getByText('Python')).toBeDefined();
     expect(screen.getByText('JavaScript / TypeScript (Full-Stack Development)')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Declared').length).toBeGreaterThan(0);
@@ -208,7 +208,7 @@ describe('SkillRepositoryPage', () => {
 
   it('does not list catalog skills until they are added', async () => {
     render(<SkillRepositoryPage />);
-    await screen.findByText('Python (Application & Backend Development)');
+    await screen.findByText('Python');
     expect(screen.queryByText(/High-Performance Services/i)).toBeNull();
   });
 
@@ -222,7 +222,7 @@ describe('SkillRepositoryPage', () => {
     });
 
     render(<SkillRepositoryPage />);
-    await screen.findByText('Python (Application & Backend Development)');
+    await screen.findByText('Python');
 
     fireEvent.click(screen.getByRole('button', { name: /Add skill/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Add skill' });

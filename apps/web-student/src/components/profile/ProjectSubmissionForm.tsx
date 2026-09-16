@@ -6,16 +6,19 @@ import { Alert, Button, Input } from '@smart/ui';
 import { GitBranch, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useFeatureFlag } from '../../lib/entitlements';
+import { useOnboarding } from '../../lib/use-onboarding';
 import {
   EMPTY_PROJECT_FORM,
   buildCreateProjectRequest,
   fieldErrorsFromZod,
   isProcessingStatus,
   isZodLikeError,
+  needsOwnershipInterview,
   processingStateCopy,
   topStackTags,
   type ProjectFormFields,
 } from '../../lib/project-submission';
+import { ProjectDefenseInterviewDialog } from './ProjectDefenseInterviewDialog';
 
 const POLL_MS = 4_000;
 /** CreateProjectRequestSchema caps template fields at 8,000 chars. */
@@ -31,6 +34,7 @@ const STATUS_BADGE_TONE: Record<'info' | 'success' | 'warning' | 'danger', strin
 
 export function ProjectSubmissionForm() {
   const canSubmitProjects = useFeatureFlag('project_verification');
+  const { data: onboarding } = useOnboarding();
   const [fields, setFields] = useState<ProjectFormFields>(EMPTY_PROJECT_FORM);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProjectFormFields, string>>>(
     {},
@@ -54,11 +58,8 @@ export function ProjectSubmissionForm() {
   const [importNote, setImportNote] = useState<string | null>(null);
 
   useEffect(() => {
-    void api.users
-      .getOnboarding()
-      .then((res) => setGithubLogin(res.profile?.socialVerification?.github?.login ?? null))
-      .catch(() => undefined);
-  }, []);
+    setGithubLogin(onboarding?.profile?.socialVerification?.github?.login ?? null);
+  }, [onboarding]);
 
   useEffect(() => {
     void api.projects
@@ -69,7 +70,7 @@ export function ProjectSubmissionForm() {
 
   /** A student can have several projects in flight — poll the whole list, not just the last one. */
   useEffect(() => {
-    if (!projects?.some((p) => isProcessingStatus(p.status))) return undefined;
+    if (!projects?.some((p) => isProcessingStatus(p))) return undefined;
     const timer = window.setInterval(() => {
       void api.projects
         .listMine()
@@ -253,6 +254,9 @@ export function ProjectSubmissionForm() {
                         </span>
                       ))}
                   </div>
+                  {needsOwnershipInterview(p) ? (
+                    <ProjectDefenseInterviewDialog project={p} />
+                  ) : null}
                 </li>
               );
             })}

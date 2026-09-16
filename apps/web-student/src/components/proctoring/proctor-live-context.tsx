@@ -10,6 +10,8 @@ export type ProctorLiveValue = {
   warningCount: number;
   warningLimit: number;
   bindPreview: RefCallback<HTMLVideoElement>;
+  /** Stop proctoring mic tracks so the interview can use speech capture. */
+  prepareMicForSpeech: () => void;
 };
 
 const ProctorLiveContext = createContext<ProctorLiveValue>({
@@ -19,6 +21,7 @@ const ProctorLiveContext = createContext<ProctorLiveValue>({
   warningCount: 0,
   warningLimit: PROCTORING_WARNING_LIMIT_DEFAULT,
   bindPreview: () => undefined,
+  prepareMicForSpeech: () => undefined,
 });
 
 export function ProctorLiveProvider({

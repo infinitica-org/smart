@@ -169,6 +169,26 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'High-cost LLM audio/defense evaluation; caps spend per candidate.',
   },
   {
+    key: 'evaluation.projectDefense',
+    scope: 'USER',
+    limit: 24,
+    windowSeconds: 900,
+    burst: 6,
+    redisKey: 'rl:proj_defense:{id}',
+    rationale:
+      'Project ownership voice interview: start, up to six LLM reply turns, and complete within one 15-minute session.',
+  },
+  {
+    key: 'evaluation.projectDefenseUpload',
+    scope: 'USER',
+    limit: 12,
+    windowSeconds: 900,
+    burst: 6,
+    redisKey: 'rl:proj_defense_upload:{id}',
+    rationale:
+      'Presigned audio upload URLs per defense turn; separate bucket so uploads do not consume the LLM reply budget.',
+  },
+  {
     key: 'ai.gateway',
     scope: 'SERVICE_WORKER',
     limit: 200,
@@ -343,11 +363,12 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
   {
     key: 'proctoring.media',
     scope: 'ATTEMPT',
-    limit: 12,
+    limit: 20,
     windowSeconds: 60,
-    burst: 3,
+    burst: 6,
     redisKey: 'rl:proctor:media:{id}',
-    rationale: 'Onboarding frames, voice clips, and checkpoint object keys.',
+    rationale:
+      'Onboarding consent/precheck/enroll/liveness plus checkpoints; face-check retries must not 429 mid-setup.',
   },
   {
     key: 'evaluation.cognitiveProfile',

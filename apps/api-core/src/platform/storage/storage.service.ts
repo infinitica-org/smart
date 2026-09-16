@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env.js';
 
@@ -28,6 +29,9 @@ export class StorageService implements OnModuleInit {
     region: env.S3_REGION,
     credentials: { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY },
     forcePathStyle: true, // required for MinIO
+    // Browser PUT uploads break when the presigner adds SDK checksum headers the client cannot match.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 
   /**
@@ -75,11 +79,25 @@ export class StorageService implements OnModuleInit {
 
   /** Time-limited GET URL — the bucket stays private, nothing is served publicly by default. */
   async getSignedDownloadUrl(objectKey: string): Promise<string> {
-    return getSignedUrl(
+    const signed = await getSignedUrl(
       this.client,
       new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }),
       { expiresIn: SIGNED_URL_TTL_SECONDS },
     );
+    return rewriteSignedUrlForBrowser(signed);
+  }
+
+  /** Presigned PUT for direct client upload (project defense audio, L3, etc.). */
+  async getSignedUploadUrl(params: { objectKey: string; contentType: string }): Promise<string> {
+    const commandInput: PutObjectCommandInput = {
+      Bucket: env.S3_BUCKET,
+      Key: params.objectKey,
+      ContentType: params.contentType,
+    };
+    const signed = await getSignedUrl(this.client, new PutObjectCommand(commandInput), {
+      expiresIn: SIGNED_URL_TTL_SECONDS,
+    });
+    return rewriteSignedUrlForBrowser(signed);
   }
 
   /** Downloads an object buffer by key. */
@@ -95,4 +113,17 @@ export class StorageService implements OnModuleInit {
 
 function sanitizeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(-100);
+}
+
+/** Presigns against the internal endpoint; browsers need the public host (MinIO on localhost, R2 in prod). */
+export function rewriteSignedUrlForBrowser(signedUrl: string): string {
+  const publicBase = env.S3_PUBLIC_ENDPOINT?.trim() || env.S3_ENDPOINT;
+  if (publicBase === env.S3_ENDPOINT) return signedUrl;
+
+  const internal = new URL(env.S3_ENDPOINT);
+  const pub = new URL(publicBase);
+  return signedUrl.replace(
+    `${internal.protocol}//${internal.host}`,
+    `${pub.protocol}//${pub.host}`,
+  );
 }

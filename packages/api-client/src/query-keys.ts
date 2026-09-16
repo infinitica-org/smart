@@ -15,6 +15,7 @@
 export const queryKeys = {
   /* ------------------------------- identity ------------------------------- */
   me: () => ['me'] as const,
+  onboarding: () => ['me', 'onboarding'] as const,
   myTracks: () => ['me', 'tracks'] as const,
   myNotifications: () => ['me', 'notifications'] as const,
   entitlements: () => ['me', 'entitlements'] as const,
@@ -102,4 +103,5 @@ export const invalidationGroups = {
   onCertificateIssued: () => [queryKeys.myCertificates(), ['analytics'] as const],
   onJdParsed: (jdId: string) => [queryKeys.jobDescription(jdId), ['placement'] as const],
   onTrackEnrolled: () => [queryKeys.me(), queryKeys.myTracks(), queryKeys.catalog()],
+  onOnboardingSaved: () => [queryKeys.onboarding()],
 } as const;

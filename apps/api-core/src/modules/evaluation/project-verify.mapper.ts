@@ -7,6 +7,7 @@ import {
   type GithubRepoSnapshot,
   type ProjectDto,
   type ProjectGithubSnapshot,
+  type ProjectInterviewState,
   type ProjectReviewQueueItemDto,
   type ProjectVerificationReportDto,
 } from '@smart/contracts';
@@ -155,7 +156,7 @@ export function toReportDto(row: ReportRow): ProjectVerificationReportDto {
   });
 }
 
-export function toProjectDto(row: ProjectRow): ProjectDto {
+export function toProjectDto(row: ProjectRow, interview?: ProjectInterviewState): ProjectDto {
   return ProjectDtoSchema.parse({
     projectId: row.id,
     studentId: row.studentId,
@@ -170,6 +171,9 @@ export function toProjectDto(row: ProjectRow): ProjectDto {
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     report: row.report ? toReportDto(row.report) : null,
+    interviewRequired: interview?.interviewRequired ?? false,
+    interviewStatus: interview?.interviewStatus ?? 'NOT_REQUIRED',
+    interviewCompletedAt: interview?.interviewCompletedAt ?? null,
   });
 }
 

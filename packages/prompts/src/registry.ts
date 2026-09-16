@@ -18,6 +18,10 @@ import {
   proficiencyShortAnswerTemplate,
 } from './templates/proficiency-grading.js';
 import { projectVerifyTemplate } from './templates/project-verify.js';
+import {
+  projectDefenseExaminerTemplate,
+  projectDefenseGraderTemplate,
+} from './templates/project-defense.js';
 import { certAgendaGenerateTemplate } from './templates/cert-agenda.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 import { workExperienceLetterAuthenticityTemplate } from './templates/work-experience-letter-authenticity.js';
@@ -68,6 +72,8 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   proficiencyCodingDesignRubricTemplate,
   proficiencyDebugScenarioTemplate,
   projectVerifyTemplate,
+  projectDefenseExaminerTemplate,
+  projectDefenseGraderTemplate,
   certAgendaGenerateTemplate,
   workExperienceProofParseTemplate,
   workExperienceLetterAuthenticityTemplate,

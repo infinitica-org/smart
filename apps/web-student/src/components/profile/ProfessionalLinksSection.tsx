@@ -8,34 +8,26 @@ import {
   type OnboardingProfileForm,
 } from '@/lib/onboarding-form';
 import { api } from '@/lib/api';
+import { useInvalidateOnboarding, useOnboarding } from '@/lib/use-onboarding';
 import SocialVerification from '@/components/onboarding/steps/SocialVerification';
 
 export function ProfessionalLinksSection() {
-  const [loading, setLoading] = useState(true);
+  const { data: onboarding, isLoading, isError } = useOnboarding();
+  const invalidateOnboarding = useInvalidateOnboarding();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState<OnboardingProfileForm>(emptyOnboardingForm());
 
   useEffect(() => {
-    let cancelled = false;
-    void api.users
-      .getOnboarding()
-      .then((response) => {
-        if (cancelled) return;
-        const next = applyServerDraft(emptyOnboardingForm(), response.profile ?? response.draft);
-        setFormData(next);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load saved professional links.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!onboarding || saving) return;
+    const next = applyServerDraft(emptyOnboardingForm(), onboarding.profile ?? onboarding.draft);
+    setFormData(next);
+  }, [onboarding, saving]);
+
+  useEffect(() => {
+    if (isError) setError('Could not load saved professional links.');
+  }, [isError]);
 
   const updateField = <K extends keyof OnboardingProfileForm>(
     field: K,
@@ -54,6 +46,7 @@ export function ProfessionalLinksSection() {
         githubUrl: formData.githubUrl.trim() || undefined,
         socialVerification: formData.socialVerification,
       });
+      invalidateOnboarding();
       setSuccess('Professional links saved.');
     } catch (err: unknown) {
       setError(isSmartApiError(err) ? err.message : 'Could not save professional links.');
@@ -62,7 +55,7 @@ export function ProfessionalLinksSection() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading professional links…</p>;
   }
 

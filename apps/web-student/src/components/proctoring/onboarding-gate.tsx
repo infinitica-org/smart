@@ -90,6 +90,13 @@ export function OnboardingGate({
           setFaceEpoch((n) => n + 1);
           return;
         }
+        await api.proctoring.enrollFace(attemptId);
+        await api.proctoring.liveness({
+          attemptId,
+          challenge: 'BLINK',
+          yawDelta: 0.1,
+          earDelta: 0.05,
+        });
         await finish(streamRef.current);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : 'Face check failed.');

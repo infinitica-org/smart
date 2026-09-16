@@ -163,4 +163,19 @@ describe('ProctoringService', () => {
     expect(prisma.attempt.update).not.toHaveBeenCalled();
     expect(prisma.integrityEvent.create).not.toHaveBeenCalled();
   });
+
+  it('accepts a project-defense Redis session for proctoring ingest', async () => {
+    prisma.attempt.findUnique.mockResolvedValue(null);
+    redis.get.mockImplementation(async (key: string) => {
+      if (String(key).includes('project:defense:session')) {
+        return JSON.stringify({ userId: USER, status: 'ACTIVE' });
+      }
+      if (String(key).includes('hmac')) return 'hmac-secret-value-hmac-secret';
+      return null;
+    });
+
+    const subject = await service.assertAttemptOwner(USER, ATTEMPT);
+    expect(subject.id).toBe(ATTEMPT);
+    expect(subject.persistAttempt).toBe(false);
+  });
 });

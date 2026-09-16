@@ -3,13 +3,32 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectSubmissionForm } from './ProjectSubmissionForm';
 
-const create = vi.fn();
-const get = vi.fn();
-const listMine = vi.fn();
-const getOnboarding = vi.fn();
-const listGithubRepos = vi.fn();
-const githubRepoReadme = vi.fn();
-const studentEntitlements = vi.fn();
+const {
+  create,
+  get,
+  listMine,
+  listGithubRepos,
+  githubRepoReadme,
+  studentEntitlements,
+  useOnboardingMock,
+} = vi.hoisted(() => ({
+  create: vi.fn(),
+  get: vi.fn(),
+  listMine: vi.fn(),
+  listGithubRepos: vi.fn(),
+  githubRepoReadme: vi.fn(),
+  studentEntitlements: vi.fn(),
+  useOnboardingMock: vi.fn(() => ({
+    data: { profile: { socialVerification: null }, draft: null, onboardingCompleted: true },
+    isLoading: false,
+    isError: false,
+  })),
+}));
+
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => useOnboardingMock(),
+  useInvalidateOnboarding: () => vi.fn(),
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -19,7 +38,6 @@ vi.mock('@/lib/api', () => ({
       listMine: (...args: unknown[]) => listMine(...args),
     },
     users: {
-      getOnboarding: (...args: unknown[]) => getOnboarding(...args),
       listGithubRepos: (...args: unknown[]) => listGithubRepos(...args),
       githubRepoReadme: (...args: unknown[]) => githubRepoReadme(...args),
     },
@@ -54,6 +72,9 @@ const busTracker = {
   status: 'SUBMITTED',
   createdAt: '2026-09-02T10:00:00.000Z',
   report: null,
+  interviewRequired: false,
+  interviewStatus: 'NOT_REQUIRED',
+  interviewCompletedAt: null,
 };
 
 const validFill = () => {
@@ -78,7 +99,12 @@ describe('ProjectSubmissionForm', () => {
     create.mockReset();
     get.mockReset();
     listMine.mockReset().mockResolvedValue({ projects: [] });
-    getOnboarding.mockReset().mockResolvedValue({ profile: { socialVerification: null } });
+    useOnboardingMock.mockReset();
+    useOnboardingMock.mockReturnValue({
+      data: { profile: { socialVerification: null }, draft: null, onboardingCompleted: true },
+      isLoading: false,
+      isError: false,
+    });
     listGithubRepos.mockReset();
     githubRepoReadme.mockReset();
     studentEntitlements.mockReset().mockResolvedValue({
@@ -167,8 +193,16 @@ describe('ProjectSubmissionForm', () => {
   });
 
   it('imports a picked repo, prefilling title, stack, GitHub link, and README as the approach', async () => {
-    getOnboarding.mockResolvedValue({
-      profile: { socialVerification: { github: { login: 'octocat', verified: true } } },
+    useOnboardingMock.mockReturnValue({
+      data: {
+        profile: {
+          socialVerification: { github: { login: 'octocat', verified: true } },
+        } as never,
+        draft: null,
+        onboardingCompleted: true,
+      },
+      isLoading: false,
+      isError: false,
     });
     listGithubRepos.mockResolvedValueOnce({
       repos: [
@@ -185,8 +219,6 @@ describe('ProjectSubmissionForm', () => {
     githubRepoReadme.mockResolvedValueOnce({ readme: '# Bus tracker\n\nTracks buses live.' });
 
     renderForm();
-    await waitFor(() => expect(getOnboarding).toHaveBeenCalledTimes(1));
-
     fireEvent.click(await screen.findByRole('button', { name: /Import from GitHub/i }));
     await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
 

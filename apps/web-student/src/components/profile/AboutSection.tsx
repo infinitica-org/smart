@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { Loader2, Pencil, UserRound } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '@/lib/api';
+import { useInvalidateOnboarding, useOnboarding } from '@/lib/use-onboarding';
 
 const MAX_ABOUT_LENGTH = 4000;
 
 export function AboutSection() {
-  const [loading, setLoading] = useState(true);
+  const { data: onboarding, isLoading, isError } = useOnboarding();
+  const invalidateOnboarding = useInvalidateOnboarding();
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,25 +19,17 @@ export function AboutSection() {
   const [draftAbout, setDraftAbout] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    void api.users
-      .getOnboarding()
-      .then((response) => {
-        if (cancelled) return;
-        const about = response.profile?.about ?? response.draft?.about ?? '';
-        setSavedAbout(about);
-        setDraftAbout(about);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load your About section.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!onboarding) return;
+    const about = onboarding.profile?.about ?? onboarding.draft?.about ?? '';
+    setSavedAbout(about);
+    if (!editing) {
+      setDraftAbout(about);
+    }
+  }, [editing, onboarding]);
+
+  useEffect(() => {
+    if (isError) setError('Could not load your About section.');
+  }, [isError]);
 
   const startEditing = () => {
     setDraftAbout(savedAbout);
@@ -57,6 +51,7 @@ export function AboutSection() {
     try {
       const trimmed = draftAbout.trim();
       await api.users.saveOnboarding({ about: trimmed || undefined });
+      invalidateOnboarding();
       setSavedAbout(trimmed);
       setDraftAbout(trimmed);
       setEditing(false);
@@ -68,7 +63,7 @@ export function AboutSection() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading About…</p>;
   }
 

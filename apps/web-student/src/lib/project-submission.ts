@@ -62,8 +62,15 @@ export function fieldErrorsFromZod(error: { issues: { path: PropertyKey[]; messa
   return map;
 }
 
-export function isProcessingStatus(status: ProjectStatus): boolean {
-  return status === 'SUBMITTED';
+export function isProcessingStatus(project: Pick<ProjectDto, 'status' | 'report'>): boolean {
+  return project.status === 'SUBMITTED' && !project.report;
+}
+
+export function needsOwnershipInterview(project: ProjectDto): boolean {
+  return (
+    project.interviewRequired &&
+    (project.interviewStatus === 'PENDING' || project.interviewStatus === 'IN_PROGRESS')
+  );
 }
 
 export interface StackTagCount {
@@ -96,11 +103,18 @@ export function processingStateCopy(project: ProjectDto): {
   title: string;
   body: string;
 } {
-  if (project.status === 'SUBMITTED') {
+  if (project.status === 'SUBMITTED' && !project.report) {
     return {
       tone: 'info',
       title: 'Processing',
       body: 'Your project is queued for verification. This page will update when scoring finishes — this is not a silent wait.',
+    };
+  }
+  if (needsOwnershipInterview(project)) {
+    return {
+      tone: 'warning',
+      title: 'Interview required',
+      body: 'Automated verification finished. Complete the voice ownership interview when you are ready.',
     };
   }
   if (project.status === 'UNDER_REVIEW') {

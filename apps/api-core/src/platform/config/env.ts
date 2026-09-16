@@ -70,6 +70,8 @@ const EnvSchema = z.object({
   INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
+  /** Browser-reachable S3/MinIO base URL for presigned PUT/GET (defaults to S3_ENDPOINT). */
+  S3_PUBLIC_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('smart'),
   S3_ACCESS_KEY: z.string().default('smart'),
@@ -101,6 +103,13 @@ const EnvSchema = z.object({
   OPENROUTER_MODEL: z.string().optional(),
   AI_PRIMARY_PROVIDER: z.enum(['ANTHROPIC', 'GOOGLE', 'OPENROUTER']).optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
+
+  /** stub = client Web Speech transcript + browser TTS; whisper/google when wired. */
+  SPEECH_STT_PROVIDER: z.enum(['stub', 'whisper', 'google']).default('stub'),
+  SPEECH_TTS_PROVIDER: z.enum(['stub', 'google', 'openai']).default('stub'),
+  /** OpenAI Whisper API — used when SPEECH_STT_PROVIDER=whisper. */
+  OPENAI_API_KEY: z.string().optional(),
+  SPEECH_WHISPER_MODEL: z.string().default('whisper-1'),
 
   CREDLY_API_KEY: z.string().optional(),
   ACCREDIBLE_API_KEY: z.string().optional(),
