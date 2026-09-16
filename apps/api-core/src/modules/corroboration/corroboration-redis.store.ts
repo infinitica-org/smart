@@ -24,8 +24,13 @@ function flagKey(flagId: string): string {
   return `corroboration:flag:${flagId}`;
 }
 
-function passiveKey(userId: string): string {
-  return `corroboration:passive:${userId}`;
+function passiveKey(userId: string, sourceId: string): string {
+  return `corroboration:passive:${userId}:${sourceId}`;
+}
+
+/** Registry of sourceIds ever stored for a user, so getAllPassiveSignals can find them. */
+function passiveSourcesKey(userId: string): string {
+  return `corroboration:passive-sources:${userId}`;
 }
 
 function claimFlagKey(claimId: string, skillCode: string): string {
@@ -49,15 +54,41 @@ function outboxDebounceKey(userId: string): string {
 export class CorroborationRedisStore {
   constructor(@Inject(RedisService) private readonly redis: RedisService) {}
 
+  /**
+   * Persists one source's passive signal. Sources are stored independently (not
+   * merged into a single per-user slot) so e.g. a credential signal never clobbers
+   * an existing GitHub signal for the same user — fusion reads all of them together
+   * via getAllPassiveSignals.
+   */
   async savePassiveSignal(signal: VectorizedSignal): Promise<void> {
-    await this.redis.setex(passiveKey(signal.userId), SNAPSHOT_TTL_SECONDS, JSON.stringify(signal));
+    await this.redis
+      .multi()
+      .setex(
+        passiveKey(signal.userId, signal.sourceId),
+        SNAPSHOT_TTL_SECONDS,
+        JSON.stringify(signal),
+      )
+      .sadd(passiveSourcesKey(signal.userId), signal.sourceId)
+      .expire(passiveSourcesKey(signal.userId), SNAPSHOT_TTL_SECONDS)
+      .exec();
   }
 
-  async getPassiveSignal(userId: string): Promise<VectorizedSignal | null> {
-    const raw = await this.redis.get(passiveKey(userId));
+  async getPassiveSignal(userId: string, sourceId: string): Promise<VectorizedSignal | null> {
+    const raw = await this.redis.get(passiveKey(userId, sourceId));
     if (!raw) return null;
     const parsed = VectorizedSignalSchema.safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : null;
+  }
+
+  /** All passive signals stored for a user, across every source that has ever ingested one. */
+  async getAllPassiveSignals(userId: string): Promise<VectorizedSignal[]> {
+    const sourceIds = await this.redis.smembers(passiveSourcesKey(userId));
+    if (sourceIds.length === 0) return [];
+
+    const signals = await Promise.all(
+      sourceIds.map((sourceId) => this.getPassiveSignal(userId, sourceId)),
+    );
+    return signals.filter((signal): signal is VectorizedSignal => signal !== null);
   }
 
   async getSnapshot(userId: string): Promise<CorroborationSnapshot | null> {
