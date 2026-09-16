@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import {
   CandidateMatchDtoSchema,
+  CreateMatchRunResponseSchema,
   JdThresholdVectorSchema,
+  MatchRunDtoSchema,
   PlacementMatchedDataSchema,
   SKILL_CODE_SET,
   ShortlistDtoSchema,
@@ -10,13 +14,17 @@ import {
   TIER_RANK,
   TrackCodeSchema,
   type CertifiableTier,
+  type CreateMatchRunResponse,
   type LevelNumber,
   type MatchRequest,
+  type MatchRunDto,
   type ShortlistDto,
   type TrackCode,
 } from '@smart/contracts';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { MATCH_RUN_QUEUE } from '../../platform/queue/queue.names.js';
 import {
   PROFICIENCY_RANK,
   rankCandidates,
@@ -27,6 +35,28 @@ import {
 
 const FALLBACK_TRACK: TrackCode = 'TECH_FULLSTACK';
 
+/**
+ * Internal shape shared by the sync `match()` path and the async `runMatchRun()` path — kept
+ * separate from the public `MatchRequest` contract type since `runMatchRun` rebuilds this from
+ * a persisted `MatchRun` row rather than a fresh request body.
+ */
+interface RunMatchingParams {
+  jdId: string;
+  batchIds: string[];
+  minCgpa?: number;
+  requiredSkillCodes: string[];
+  filters?: MatchRequest['filters'];
+  limit: number;
+}
+
+/** Prisma returns `MatchRun.minCgpa` as a `Decimal`; duck-type rather than import generated internals. */
+type Decimalish = { toNumber?: () => number } | number;
+
+function decimalToNumber(value: Decimalish | null): number | undefined {
+  if (value === null) return undefined;
+  return typeof value === 'number' ? value : value.toNumber?.();
+}
+
 @Injectable()
 export class MatchingService {
   readonly owner = 'Ramansh';
@@ -35,9 +65,114 @@ export class MatchingService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @InjectQueue(MATCH_RUN_QUEUE) private readonly matchRunQueue: Queue<{ matchRunId: string }>,
   ) {}
 
+  /** @deprecated use `createMatchRun` + polling — kept for one release for backward compat. */
   async match(institutionId: string, request: MatchRequest): Promise<ShortlistDto> {
+    return this.runMatching(institutionId, {
+      jdId: request.jdId,
+      batchIds: request.batchIds ?? (request.cohortId ? [request.cohortId] : []),
+      minCgpa: request.minCgpa,
+      requiredSkillCodes: request.requiredSkillCodes ?? [],
+      filters: request.filters,
+      limit: request.limit,
+    });
+  }
+
+  /** S6-VV-76 — creates a PENDING `MatchRun` row and enqueues the background job. */
+  async createMatchRun(
+    institutionId: string,
+    userId: string,
+    request: MatchRequest,
+  ): Promise<CreateMatchRunResponse> {
+    await this.resolveJob(institutionId, request.jdId); // fail fast on an unknown/foreign jdId
+
+    const batchIds = request.batchIds ?? (request.cohortId ? [request.cohortId] : []);
+    const run = await this.prisma.matchRun.create({
+      data: {
+        institutionId,
+        jdId: request.jdId,
+        requestedById: userId,
+        batchIds,
+        minCgpa: request.minCgpa ?? null,
+        requiredSkillCodes: request.requiredSkillCodes ?? [],
+        limit: request.limit,
+      },
+    });
+
+    await this.matchRunQueue.add('run-match', { matchRunId: run.id });
+
+    return CreateMatchRunResponseSchema.parse({ runId: run.id, status: run.status });
+  }
+
+  /** Invoked by `MatchRunProcessor`. Never throws without first recording `FAILED` on the row. */
+  async runMatchRun(matchRunId: string): Promise<void> {
+    const run = await this.prisma.matchRun.findUnique({ where: { id: matchRunId } });
+    if (!run) return;
+
+    await this.prisma.matchRun.update({ where: { id: matchRunId }, data: { status: 'RUNNING' } });
+
+    try {
+      const shortlist = await this.runMatching(run.institutionId, {
+        jdId: run.jdId,
+        batchIds: run.batchIds,
+        minCgpa: decimalToNumber(run.minCgpa),
+        requiredSkillCodes: run.requiredSkillCodes,
+        limit: run.limit,
+      });
+
+      await this.prisma.matchRun.update({
+        where: { id: matchRunId },
+        data: {
+          status: 'SUCCEEDED',
+          eligiblePoolCount: shortlist.eligiblePoolCount,
+          suggestedCount: shortlist.candidates.length,
+          shortlistId: shortlist.shortlistId,
+          resultSnapshot: shortlist as unknown as Prisma.InputJsonValue,
+          completedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      await this.prisma.matchRun.update({
+        where: { id: matchRunId },
+        data: {
+          status: 'FAILED',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          completedAt: new Date(),
+        },
+      });
+      // Rethrow so DlqAwareProcessor's 'failed' handler still DLQs once retries exhaust.
+      throw error;
+    }
+  }
+
+  async getMatchRun(institutionId: string, runId: string): Promise<MatchRunDto> {
+    const run = await this.prisma.matchRun.findFirst({ where: { id: runId, institutionId } });
+    if (!run) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Match run not found.',
+        statusCode: 404,
+      });
+    }
+    return MatchRunDtoSchema.parse({
+      runId: run.id,
+      jdId: run.jdId,
+      status: run.status,
+      eligiblePoolCount: run.eligiblePoolCount,
+      suggestedCount: run.suggestedCount,
+      errorMessage: run.errorMessage,
+      createdAt: run.createdAt.toISOString(),
+      completedAt: run.completedAt?.toISOString() ?? null,
+      shortlist: run.resultSnapshot as ShortlistDto | null,
+    });
+  }
+
+  private async runMatching(
+    institutionId: string,
+    request: RunMatchingParams,
+  ): Promise<ShortlistDto> {
     const job = await this.resolveJob(institutionId, request.jdId);
 
     const students = await this.prisma.user.findMany({
@@ -45,7 +180,17 @@ export class MatchingService {
         institutionId,
         role: 'STUDENT',
         skillClaims: { some: { status: 'VERIFIED' } },
-        ...(request.cohortId ? { batchId: request.cohortId } : {}),
+        ...(request.batchIds.length ? { batchId: { in: request.batchIds } } : {}),
+        ...(request.minCgpa !== undefined ? { cgpa: { gte: request.minCgpa } } : {}),
+        // Every required skill must be held VERIFIED (AND) — a single `some` with `in: [...]`
+        // would only require ANY one of them, which under-filters the pool.
+        ...(request.requiredSkillCodes.length
+          ? {
+              AND: request.requiredSkillCodes.map((code) => ({
+                skillClaims: { some: { status: 'VERIFIED' as const, skill: { code } } },
+              })),
+            }
+          : {}),
         ...(request.filters?.trackCodes?.length
           ? { primaryTrack: { code: { in: request.filters.trackCodes } } }
           : {}),
@@ -133,6 +278,7 @@ export class MatchingService {
       generatedAt,
       candidates,
       totalCandidatesConsidered: pool.length,
+      eligiblePoolCount: filtered.length,
     });
   }
 
