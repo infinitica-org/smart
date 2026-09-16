@@ -37,21 +37,22 @@ const openingRow = {
   ],
 };
 
+/** Shape of one row returned by the raw-SQL eligible-pool query (S6-VV-76 perf follow-up). */
 function verifiedStudent(overrides: Record<string, unknown> = {}) {
   return {
     id: studentId,
     fullName: 'Pilot Student',
-    primaryTrack: { code: 'TECH_FULLSTACK' },
-    certificates: [],
-    skillClaims: [
+    primaryTrackCode: 'TECH_FULLSTACK',
+    certificateId: null,
+    highestLevelCleared: null,
+    headlineTier: null,
+    skills: [
       {
+        code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+        domain: 'SOFTWARE_IT',
         proficiency: 'INTERMEDIATE',
-        skill: { code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', domain: 'SOFTWARE_IT' },
       },
-      {
-        proficiency: 'BEGINNER',
-        skill: { code: 'SQL_QUERY_OPTIMIZATION', domain: 'SOFTWARE_IT' },
-      },
+      { code: 'SQL_QUERY_OPTIMIZATION', domain: 'SOFTWARE_IT', proficiency: 'BEGINNER' },
     ],
     ...overrides,
   };
@@ -74,9 +75,7 @@ function setup(
     jobDescription: {
       findFirst: vi.fn().mockResolvedValue(options.jd === undefined ? null : options.jd),
     },
-    user: {
-      findMany: vi.fn().mockResolvedValue(options.students ?? [verifiedStudent()]),
-    },
+    $queryRaw: vi.fn().mockResolvedValue(options.students ?? [verifiedStudent()]),
     matchRun: {
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({
@@ -191,11 +190,10 @@ describe('SE-T05 POST /placement/match', () => {
       id: openingId,
       institutionId,
     });
-    expect(prisma.user.findMany.mock.calls[0][0].where).toMatchObject({
-      institutionId,
-      role: 'STUDENT',
-      skillClaims: { some: { status: 'VERIFIED' } },
-    });
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    expect(sqlArg.values).toContain(institutionId);
+    expect(sqlArg.sql).toContain("u.role = 'STUDENT'");
+    expect(sqlArg.sql).toContain("status = 'VERIFIED'");
   });
 
   it('hides an opening owned by another institution behind not-found', async () => {
@@ -216,22 +214,18 @@ describe('SE-T05 POST /placement/match', () => {
 
     expect(dto.candidates).toEqual([]);
     expect(dto.totalCandidatesConsidered).toBe(0);
-    expect(prisma.user.findMany.mock.calls[0][0].where.skillClaims).toEqual({
-      some: { status: 'VERIFIED' },
-    });
+    expect(prisma.$queryRaw.mock.calls[0][0].sql).toContain("status = 'VERIFIED'");
   });
 
   it('keeps a verified-but-partial student on the list', async () => {
     const { controller } = setup({
       students: [
         verifiedStudent({
-          skillClaims: [
+          skills: [
             {
+              code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+              domain: 'SOFTWARE_IT',
               proficiency: 'INTERMEDIATE',
-              skill: {
-                code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
-                domain: 'SOFTWARE_IT',
-              },
             },
           ],
         }),
@@ -290,7 +284,7 @@ describe('S6-VV-76 async match runs', () => {
     expect(matchRunQueue.add).toHaveBeenCalledWith('run-match', { matchRunId: result.runId });
   });
 
-  it('scopes the eligible pool to every listed batch (OR across batches, via `in`)', async () => {
+  it('scopes the eligible pool to every listed batch (via `batch_id = ANY(...)`)', async () => {
     const { service, prisma } = setup();
 
     await service.createMatchRun(institutionId, actorId, {
@@ -303,9 +297,9 @@ describe('S6-VV-76 async match runs', () => {
 
     await service.runMatchRun('run-1');
 
-    expect(prisma.user.findMany.mock.calls[0][0].where.batchId).toEqual({
-      in: ['batch-a', 'batch-b'],
-    });
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    expect(sqlArg.sql).toContain('u.batch_id = ANY');
+    expect(sqlArg.values).toContainEqual(['batch-a', 'batch-b']);
   });
 
   it('requires every listed skill to be VERIFIED (AND), not just any one', async () => {
@@ -316,10 +310,12 @@ describe('S6-VV-76 async match runs', () => {
 
     await service.runMatchRun('run-1');
 
-    expect(prisma.user.findMany.mock.calls[0][0].where.AND).toEqual([
-      { skillClaims: { some: { status: 'VERIFIED', skill: { code: 'SKILL_A' } } } },
-      { skillClaims: { some: { status: 'VERIFIED', skill: { code: 'SKILL_B' } } } },
-    ]);
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    // One EXISTS(...) fragment per required skill — not a single IN(...), which would only
+    // require ANY one of them.
+    const existsCount = (sqlArg.sql.match(/sk_req\.code = \?/g) ?? []).length;
+    expect(existsCount).toBe(2);
+    expect(sqlArg.values).toEqual(expect.arrayContaining(['SKILL_A', 'SKILL_B']));
   });
 
   it('excludes students with no CGPA on file once a minCgpa filter is set', async () => {
@@ -328,7 +324,9 @@ describe('S6-VV-76 async match runs', () => {
 
     await service.runMatchRun('run-1');
 
-    expect(prisma.user.findMany.mock.calls[0][0].where.cgpa).toEqual({ gte: 8 });
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    expect(sqlArg.sql).toContain('u.cgpa >=');
+    expect(sqlArg.values).toContain(8);
   });
 
   it('runs PENDING -> RUNNING -> SUCCEEDED and persists eligiblePoolCount/suggestedCount', async () => {
