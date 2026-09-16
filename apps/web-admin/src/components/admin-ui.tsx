@@ -126,6 +126,32 @@ export function StatusBadge({ status }: { status: 'Active' | 'On hold' | 'Deacti
   return <Badge variant="secondary">{status}</Badge>;
 }
 
+/** Renders a `risk.ts` integrity score band (CLEAN/MINOR/MAJOR) as a colored badge. */
+export function SeverityBadge({ severity }: { severity: 'CLEAN' | 'MINOR' | 'MAJOR' | string }) {
+  if (severity === 'MAJOR') {
+    return (
+      <Badge variant="destructive">
+        <CircleAlert />
+        High
+      </Badge>
+    );
+  }
+  if (severity === 'MINOR') {
+    return (
+      <Badge className="bg-accent text-accent-foreground">
+        <CircleMinus />
+        Medium
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary">
+      <CircleCheck />
+      Low
+    </Badge>
+  );
+}
+
 export function VerificationBadge({
   status,
 }: {

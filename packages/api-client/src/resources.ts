@@ -30,6 +30,7 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
+  IntegrityQueueStatus,
   SaveDraftRequest,
   StartAttemptRequest,
   CompleteCertVerifyRequest,
@@ -704,9 +705,10 @@ export function onboardingApi(client: SmartApiClient) {
         schema: VerificationQueueItemDtoSchema,
       }),
 
-    integrityQueue: () =>
+    integrityQueue: (status?: IntegrityQueueStatus) =>
       client.get(prefixed('/admin/integrity-queue'), {
         schema: z.array(IntegrityQueueItemDtoSchema),
+        query: { status },
       }),
 
     resolveIntegrity: (attemptId: string, body: ResolveIntegrityRequest) =>
