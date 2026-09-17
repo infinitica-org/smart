@@ -34,7 +34,7 @@ describe('SkillVerifyPlayer', () => {
     prepareSkillVerifyMock.mockRejectedValue(
       new SmartApiError({
         error: 'profile_incomplete',
-        message: 'Reach at least 50% profile completion to unlock skill verification.',
+        message: 'Complete your profile to unlock skill verification.',
         statusCode: 403,
       }),
     );
@@ -42,9 +42,7 @@ describe('SkillVerifyPlayer', () => {
     render(<SkillVerifyPlayer claimId="22222222-2222-4222-8222-222222222222" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Reach at least 50% profile completion to unlock skill verification.'),
-      ).toBeDefined();
+      expect(screen.getByText('Complete your profile to unlock skill verification.')).toBeDefined();
     });
     expect(screen.getByRole('link', { name: 'Complete your profile' }).getAttribute('href')).toBe(
       '/profile',

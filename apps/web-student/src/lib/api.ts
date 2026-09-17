@@ -1,5 +1,7 @@
 import {
   SmartApiClient,
+  buildLoginUrl,
+  clearAccessToken,
   createSmartApi,
   createRefreshAccessToken,
   getAccessToken,
@@ -8,6 +10,14 @@ import { TRACK_CODES } from '@smart/contracts';
 import { isMockApiEnabled } from './l1-mcq';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const authAppUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
+
+function onSessionUnauthorized(): void {
+  clearAccessToken();
+  if (typeof window !== 'undefined') {
+    window.location.href = buildLoginUrl(authAppUrl, window.location.href);
+  }
+}
 /** Opt-in only. Live api-core is the default unless this is exactly "true". */
 const IS_MOCK_ENV = isMockApiEnabled(process.env.NEXT_PUBLIC_MOCK_API);
 const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
@@ -397,6 +407,49 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         profile: mockOnboardingProfile,
         draft: mockOnboardingCompleted ? null : mockOnboardingDraft,
         onboardingCompleted: mockOnboardingCompleted,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/onboarding/github/list-repos') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { login?: string };
+    const login = (body.login ?? 'octocat').trim() || 'octocat';
+    const now = new Date().toISOString();
+    return new Response(
+      JSON.stringify({
+        repos: [
+          {
+            id: 9001,
+            fullName: `${login}/smart-demo`,
+            description: 'Mock repo for local GitHub import',
+            htmlUrl: `https://github.com/${login}/smart-demo`,
+            stars: 4,
+            primaryLanguage: 'TypeScript',
+            updatedAt: now,
+          },
+          {
+            id: 9002,
+            fullName: `${login}/portfolio`,
+            description: 'Sample portfolio project',
+            htmlUrl: `https://github.com/${login}/portfolio`,
+            stars: 2,
+            primaryLanguage: 'JavaScript',
+            updatedAt: now,
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (url.includes('/users/me/github/repo-readme') && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { fullName?: string };
+    const fullName = body.fullName ?? 'octocat/smart-demo';
+    const title = fullName.split('/')[1] ?? fullName;
+    return new Response(
+      JSON.stringify({
+        readme: `# ${title}\n\nMock README loaded for ${fullName} in local mock API mode.`,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -990,6 +1043,7 @@ export const apiClient = new SmartApiClient({
   fetchImpl: IS_MOCK_ENV ? (mockFetch as typeof fetch) : undefined,
   getAccessToken,
   refreshAccessToken: createRefreshAccessToken(() => api.auth.refresh()),
+  onUnauthorized: onSessionUnauthorized,
 });
 
 export const api = createSmartApi(apiClient);

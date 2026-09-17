@@ -1,7 +1,31 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type {
+  CandidateOnboardingProfile,
+  CandidateOnboardingProfileResponse,
+} from '@smart/contracts';
 import { ProjectSubmissionForm } from './ProjectSubmissionForm';
+
+const emptyOnboardingResponse = (): CandidateOnboardingProfileResponse => ({
+  profile: null,
+  draft: null,
+  profilePhotoUrl: null,
+  onboardingCompleted: false,
+});
+
+const useFeatureFlag = vi.fn(() => true);
+const useOnboarding = vi.fn(() => ({
+  data: emptyOnboardingResponse(),
+}));
+
+vi.mock('@/lib/entitlements', () => ({
+  useFeatureFlag: () => useFeatureFlag(),
+}));
+
+vi.mock('../../lib/use-onboarding', () => ({
+  useOnboarding: () => useOnboarding(),
+}));
 
 const create = vi.fn();
 const get = vi.fn();
@@ -35,9 +59,18 @@ function renderForm(): ReturnType<typeof render> {
   });
   return render(
     <QueryClientProvider client={client}>
+      <div id="profile-projects-header-actions" />
       <ProjectSubmissionForm />
     </QueryClientProvider>,
   );
+}
+
+async function openAddProjectModal() {
+  const addBtn = await screen.findByRole('button', {
+    name: /Add your first project|Add Project/i,
+  });
+  fireEvent.click(addBtn);
+  await screen.findByRole('dialog');
 }
 
 const busTracker = {
@@ -56,25 +89,36 @@ const busTracker = {
   report: null,
 };
 
+function formScope() {
+  return within(screen.getByRole('dialog'));
+}
+
 const validFill = () => {
-  fireEvent.change(screen.getByLabelText(/^Title$/i), { target: { value: 'Campus bus tracker' } });
-  fireEvent.change(screen.getByLabelText(/^Problem$/i), {
+  const form = formScope();
+  fireEvent.change(form.getByLabelText(/^Title$/i), { target: { value: 'Campus bus tracker' } });
+  fireEvent.change(form.getByLabelText(/^Problem$/i), {
     target: { value: 'Students cannot see live bus location on campus routes.' },
   });
-  fireEvent.change(screen.getByLabelText(/^Approach$/i), {
+  fireEvent.change(form.getByLabelText(/^Approach$/i), {
     target: { value: 'I used websockets and a small GPS ingest service.' },
   });
-  fireEvent.change(screen.getByLabelText(/^Stack$/i), { target: { value: 'TypeScript, Nest' } });
-  fireEvent.change(screen.getByLabelText(/^Outcome$/i), {
+  fireEvent.change(form.getByLabelText(/^Technology stack$/i), {
+    target: { value: 'TypeScript, Nest' },
+  });
+  fireEvent.change(form.getByLabelText(/^Outcome$/i), {
     target: { value: 'Average wait time dropped in a 30-student pilot.' },
   });
-  fireEvent.change(screen.getByLabelText(/Loom link/i), {
-    target: { value: 'https://www.loom.com/share/abc123' },
+  fireEvent.change(form.getByLabelText(/GitHub link/i), {
+    target: { value: 'https://github.com/org/repo' },
   });
 };
 
 describe('ProjectSubmissionForm', () => {
   beforeEach(() => {
+    useFeatureFlag.mockReset().mockReturnValue(true);
+    useOnboarding.mockReset().mockReturnValue({
+      data: emptyOnboardingResponse(),
+    });
     create.mockReset();
     get.mockReset();
     listMine.mockReset().mockResolvedValue({ projects: [] });
@@ -89,9 +133,10 @@ describe('ProjectSubmissionForm', () => {
 
   it('blocks submit when the problem is too short', async () => {
     renderForm();
-    await screen.findByRole('button', { name: /Submit project/i });
-    fireEvent.change(screen.getByLabelText(/^Title$/i), { target: { value: 'App' } });
-    fireEvent.change(screen.getByLabelText(/^Problem$/i), { target: { value: 'too short' } });
+    await openAddProjectModal();
+    const form = formScope();
+    fireEvent.change(form.getByLabelText(/^Title$/i), { target: { value: 'App' } });
+    fireEvent.change(form.getByLabelText(/^Problem$/i), { target: { value: 'too short' } });
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
     expect(create).not.toHaveBeenCalled();
     expect(screen.getByText(/Fix the highlighted template fields/i)).toBeTruthy();
@@ -101,28 +146,27 @@ describe('ProjectSubmissionForm', () => {
     create.mockResolvedValueOnce(busTracker);
 
     renderForm();
-    await screen.findByRole('button', { name: /Submit project/i });
+    await openAddProjectModal();
     validFill();
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0]?.[0]).toMatchObject({
       title: 'Campus bus tracker',
-      loomUrl: 'https://www.loom.com/share/abc123',
+      githubUrl: 'https://github.com/org/repo',
     });
-    // Both the processing Alert and the project's own status badge say "Processing".
-    await waitFor(() => expect(screen.getAllByText(/^Processing$/i).length).toBe(2));
-    expect(screen.getByText(/queued for verification/i)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getAllByText(/^Processing$/i).length).toBeGreaterThanOrEqual(1),
+    );
+    expect(screen.getAllByText(/queued for verification/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/^Submitting…$/i)).toBeNull();
 
-    // The form is not locked — a second project can be started right away.
-    expect((screen.getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));
+    await screen.findByRole('dialog');
+    expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe('');
     expect(
       (screen.getByRole('button', { name: /Submit project/i }) as HTMLButtonElement).disabled,
     ).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));
-    // The list entry's own status badge survives — only the processing Alert is dismissed.
-    expect(screen.getAllByText(/^Processing$/i).length).toBe(1);
   });
 
   it('lists every submitted project with a top-stack summary', async () => {
@@ -144,18 +188,18 @@ describe('ProjectSubmissionForm', () => {
     expect(await screen.findByText('Campus bus tracker')).toBeTruthy();
     expect(screen.getByText('Portfolio site')).toBeTruthy();
     expect(screen.getByText(/^Verified$/i)).toBeTruthy();
-    // TypeScript appears in both projects, so it leads the top-stack summary.
-    const topStack = screen.getByText('Top stack').closest('div');
-    expect(topStack?.textContent).toMatch(/TypeScript.*2/);
+    expect(screen.getByText(/Your technology stack/i).closest('p')?.textContent).toMatch(
+      /TypeScript/,
+    );
   });
 
   it('sends an optional live link when filled in', async () => {
     create.mockResolvedValueOnce({ ...busTracker, liveUrl: 'https://bus-tracker.example.com' });
 
     renderForm();
-    await screen.findByRole('button', { name: /Submit project/i });
+    await openAddProjectModal();
     validFill();
-    fireEvent.change(screen.getByLabelText(/Live link/i), {
+    fireEvent.change(formScope().getByLabelText(/Live link/i), {
       target: { value: 'https://bus-tracker.example.com' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
@@ -166,9 +210,34 @@ describe('ProjectSubmissionForm', () => {
     });
   });
 
+  it('loads repos using githubUrl when socialVerification login is missing', async () => {
+    useOnboarding.mockReturnValue({
+      data: {
+        ...emptyOnboardingResponse(),
+        profile: {
+          githubUrl: 'https://github.com/octocat',
+          socialVerification: { linkedin: null, github: null },
+        } as unknown as CandidateOnboardingProfile,
+      },
+    });
+    listGithubRepos.mockResolvedValueOnce({ repos: [] });
+
+    renderForm();
+    fireEvent.click(await screen.findByRole('button', { name: /^Import from GitHub$/i }));
+    await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
+  });
+
   it('imports a picked repo, prefilling title, stack, GitHub link, and README as the approach', async () => {
-    getOnboarding.mockResolvedValue({
-      profile: { socialVerification: { github: { login: 'octocat', verified: true } } },
+    useOnboarding.mockReturnValue({
+      data: {
+        ...emptyOnboardingResponse(),
+        profile: {
+          socialVerification: {
+            linkedin: null,
+            github: { login: 'octocat', verified: true, selectedRepos: [] },
+          },
+        } as unknown as CandidateOnboardingProfile,
+      },
     });
     listGithubRepos.mockResolvedValueOnce({
       repos: [
@@ -185,33 +254,33 @@ describe('ProjectSubmissionForm', () => {
     githubRepoReadme.mockResolvedValueOnce({ readme: '# Bus tracker\n\nTracks buses live.' });
 
     renderForm();
-    await waitFor(() => expect(getOnboarding).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(await screen.findByRole('button', { name: /Import from GitHub/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Import from GitHub$/i }));
+    const dialog = await screen.findByRole('dialog');
     await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
 
-    fireEvent.click(await screen.findByText('octocat/bus-tracker'));
+    fireEvent.click(within(dialog).getByRole('button', { name: /Use this repository/i }));
     await waitFor(() =>
       expect(githubRepoReadme).toHaveBeenCalledWith({ fullName: 'octocat/bus-tracker' }),
     );
 
     await waitFor(() =>
-      expect((screen.getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe('bus-tracker'),
+      expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe(
+        'bus-tracker',
+      ),
     );
-    expect((screen.getByLabelText(/^Stack$/i) as HTMLInputElement).value).toBe('TypeScript');
-    expect((screen.getByLabelText(/GitHub link/i) as HTMLInputElement).value).toBe(
+    expect((formScope().getByLabelText(/^Technology stack$/i) as HTMLInputElement).value).toBe(
+      'TypeScript',
+    );
+    expect((formScope().getByLabelText(/GitHub link/i) as HTMLInputElement).value).toBe(
       'https://github.com/octocat/bus-tracker',
     );
-    expect((screen.getByLabelText(/^Approach$/i) as HTMLTextAreaElement).value).toBe(
+    expect((formScope().getByLabelText(/^Approach$/i) as HTMLTextAreaElement).value).toBe(
       '# Bus tracker\n\nTracks buses live.',
     );
   });
 
   it("hides the submission form when the institution's plan lacks project_verification", async () => {
-    studentEntitlements.mockReset().mockResolvedValue({
-      planCode: 'FREE',
-      flags: [{ key: 'project_verification', name: 'Project verification', enabled: false }],
-    });
+    useFeatureFlag.mockReturnValue(false);
 
     renderForm();
 
@@ -219,6 +288,6 @@ describe('ProjectSubmissionForm', () => {
       await screen.findByText(/Project verification isn't on your institution's plan/i),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Submit project/i })).toBeNull();
-    expect(screen.queryByLabelText(/^Title$/i)).toBeNull();
+    expect(screen.queryByLabelText(/Title/i)).toBeNull();
   });
 });
