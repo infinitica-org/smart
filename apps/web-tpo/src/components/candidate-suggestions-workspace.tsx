@@ -160,6 +160,7 @@ export function CandidateSuggestionsWorkspace({
       minCgpa: parsedCgpa !== undefined && !Number.isNaN(parsedCgpa) ? parsedCgpa : undefined,
       requiredSkillCodes: requiredSkillCodes.length > 0 ? requiredSkillCodes : undefined,
       limit: 50,
+      minSkillCoverage: 0.6,
     });
   }
 
