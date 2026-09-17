@@ -492,8 +492,8 @@ export const ATS_STAGES = [
 export const AtsStageSchema = z.enum(ATS_STAGES);
 export type AtsStage = z.infer<typeof AtsStageSchema>;
 
-/** How a match score was produced. V1 ships RULES; HYBRID is optional cosine. */
-export const MATCH_METHODS = ['RULES', 'HYBRID'] as const;
+/** How a match score was produced. SKILL_CAPABILITY is the default ranker; RULES is legacy rollback. */
+export const MATCH_METHODS = ['RULES', 'SKILL_CAPABILITY', 'HYBRID'] as const;
 export const MatchMethodSchema = z.enum(MATCH_METHODS);
 export type MatchMethod = z.infer<typeof MatchMethodSchema>;
 

@@ -100,6 +100,8 @@ describe('prompt registry', () => {
       'defense-grader@1',
       'capstone-review@1',
       'jd-parse@1',
+      'jd-skill-extract@1',
+      'match-narrative@1',
       'resume-parse@1',
       'skill-interview-grader@1',
       'project-verify@1',

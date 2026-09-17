@@ -82,7 +82,8 @@ function setup(
   };
 
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-  const service = new PlacementService(prisma as never, outbox as never);
+  const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const service = new PlacementService(prisma as never, outbox as never, jdParseQueue as never);
   const controller = new PlacementController(service);
   return { prisma, outbox, service, controller };
 }

@@ -4,6 +4,8 @@ import { barsL3Template } from './templates/bars-grading.js';
 import { defenseExaminerTemplate, defenseGraderTemplate } from './templates/l4-defense.js';
 import { capstoneReviewTemplate } from './templates/capstone-review.js';
 import { jdParseTemplate } from './templates/jd-parsing.js';
+import { jdSkillExtractTemplate } from './templates/jd-skill-extract.js';
+import { matchNarrativeTemplate } from './templates/match-narrative.js';
 import { resumeParseTemplate } from './templates/resume-parsing.js';
 import { itemDraftTemplate } from './templates/item-authoring.js';
 import { gapNarrativeTemplate } from './templates/gap-report.js';
@@ -63,6 +65,8 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   defenseGraderTemplate,
   capstoneReviewTemplate,
   jdParseTemplate,
+  jdSkillExtractTemplate,
+  matchNarrativeTemplate,
   resumeParseTemplate,
   itemDraftTemplate,
   gapNarrativeTemplate,

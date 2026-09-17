@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ConflictException,
@@ -11,6 +12,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import {
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
@@ -18,7 +20,9 @@ import {
   CandidateApplicationDtoSchema,
   EmploymentTypeSchema,
   JobOpeningAttachedDocumentSchema,
+  JdSkillExtractVectorSchema,
   JobOpeningDtoSchema,
+  ParseOpeningJdResponseSchema,
   PlacementRecordDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
@@ -42,6 +46,7 @@ import type {
   ListJobOpeningsResponse,
   ListMyApplicationsResponse,
   PlacementRecordDto,
+  ParseOpeningJdResponse,
   RecordOutcomeRequest,
   SkillProficiency,
 } from '@smart/contracts';
@@ -50,6 +55,7 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { JD_PARSE_QUEUE } from '../../platform/queue/queue.names.js';
 
 const JOB_OPENING_DOC_MAX_BYTES = 10 * 1024 * 1024;
 const JOB_OPENING_LOGO_MAX_BYTES = 2 * 1024 * 1024;
@@ -83,6 +89,11 @@ interface OpeningRow {
   lastDateToApply: Date | null;
   status: string;
   createdAt: Date;
+  rawText?: string | null;
+  jdParseStatus?: string;
+  parseConfidence?: unknown;
+  parsedAt?: Date | null;
+  parsedRequirements?: unknown;
   requiredSkills: { minProficiency: string; skill: { code: string } }[];
 }
 
@@ -186,6 +197,7 @@ export class PlacementService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
+    @InjectQueue(JD_PARSE_QUEUE) private readonly jdParseQueue: Queue<{ openingId: string }>,
   ) {}
 
   async uploadOpeningDocument(
@@ -355,13 +367,65 @@ export class PlacementService {
           employmentType: body.employmentType,
           headcount: body.headcount ?? 1,
           ...openingExtendedFields(body),
+          rawText: body.rawText?.trim() || null,
           requiredSkills: { create: requirements },
         },
         include: { requiredSkills: { include: { skill: { select: { code: true } } } } },
       });
     });
 
+    if (body.rawText?.trim()) {
+      await this.jdParseQueue.add('parse-opening-jd', { openingId: row.id });
+    }
+
     return this.toJobOpeningDtoAsync(row as OpeningRow);
+  }
+
+  async parseOpeningJd(institutionId: string, openingId: string): Promise<ParseOpeningJdResponse> {
+    const opening = await this.prisma.jobOpening.findFirst({
+      where: { id: openingId, institutionId },
+      select: {
+        id: true,
+        rawText: true,
+        jdParseStatus: true,
+        parseConfidence: true,
+        parsedRequirements: true,
+      },
+    });
+    if (!opening) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+    if (!opening.rawText?.trim()) {
+      throw new UnprocessableEntityException({
+        error: 'validation_error',
+        message: 'This opening has no job description text to parse.',
+        statusCode: 422,
+      });
+    }
+
+    await this.prisma.jobOpening.update({
+      where: { id: openingId },
+      data: { jdParseStatus: 'PENDING' },
+    });
+    await this.jdParseQueue.add('parse-opening-jd', { openingId });
+
+    const extracted = opening.parsedRequirements
+      ? JdSkillExtractVectorSchema.safeParse(opening.parsedRequirements)
+      : null;
+
+    return ParseOpeningJdResponseSchema.parse({
+      openingId,
+      jdParseStatus: 'PENDING',
+      parseConfidence:
+        opening.parseConfidence === null || opening.parseConfidence === undefined
+          ? null
+          : Number(opening.parseConfidence),
+      extractedRequirements: extracted?.success ? extracted.data : null,
+    });
   }
 
   async listOpenings(
@@ -857,6 +921,9 @@ export function toJobOpeningDto(
   row: OpeningRow,
   options: { companyLogoUrl?: string } = {},
 ): JobOpeningDto {
+  const extracted = row.parsedRequirements
+    ? JdSkillExtractVectorSchema.safeParse(row.parsedRequirements)
+    : null;
   const parsed = JobOpeningDtoSchema.safeParse({
     openingId: row.id,
     institutionId: row.institutionId,
@@ -887,6 +954,14 @@ export function toJobOpeningDto(
     lastDateToApply: row.lastDateToApply ? calendarDateToIso(row.lastDateToApply) : undefined,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
+    rawText: row.rawText ?? undefined,
+    jdParseStatus: row.jdParseStatus ?? undefined,
+    parseConfidence:
+      row.parseConfidence === null || row.parseConfidence === undefined
+        ? null
+        : Number(row.parseConfidence),
+    parsedAt: row.parsedAt?.toISOString() ?? null,
+    extractedRequirements: extracted?.success ? extracted.data : null,
   });
   if (!parsed.success) {
     throw new InternalServerErrorException({

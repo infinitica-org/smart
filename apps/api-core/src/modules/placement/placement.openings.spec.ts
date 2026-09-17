@@ -109,7 +109,8 @@ function setup(options: { seededCodes?: string[]; rows?: unknown[]; row?: unknow
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-  const service = new PlacementService(prisma as never, outbox as never);
+  const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const service = new PlacementService(prisma as never, outbox as never, jdParseQueue as never);
   return { prisma, service, controller: new PlacementController(service) };
 }
 

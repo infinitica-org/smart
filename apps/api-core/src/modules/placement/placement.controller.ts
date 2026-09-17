@@ -28,6 +28,7 @@ import {
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
+  type ParseOpeningJdResponse,
   type PlacementRecordDto,
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
@@ -220,6 +221,18 @@ export class PlacementController {
     @Param('openingId') openingId: string,
   ): Promise<JobOpeningDto> {
     return this.service.getOpening(requireInstitutionId(user), openingId);
+  }
+
+  @Post('openings/:openingId/parse-jd')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Re-parse JD text into skill@1 requirements (async).' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Parse job enqueued or status returned.' })
+  async parseOpeningJd(
+    @CurrentUser() user: RequestUser,
+    @Param('openingId') openingId: string,
+  ): Promise<ParseOpeningJdResponse> {
+    return this.service.parseOpeningJd(requireInstitutionId(user), openingId);
   }
 
   @Get('openings/:openingId/applications')

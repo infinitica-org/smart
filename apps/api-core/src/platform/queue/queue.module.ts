@@ -20,6 +20,8 @@ import {
   QLIX_RECALIBRATION_DLQ,
   QLIX_RECALIBRATION_QUEUE,
   DEFAULT_JOB_OPTIONS,
+  JD_PARSE_DLQ,
+  JD_PARSE_QUEUE,
   MATCH_RUN_DLQ,
   MATCH_RUN_QUEUE,
   PDF_GENERATION_DLQ,
@@ -38,6 +40,7 @@ const queues = [
   { name: QLIX_POLL_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: QLIX_RECALIBRATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: MATCH_RUN_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: JD_PARSE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: SANDBOX_EXECUTION_DLQ },
   { name: AUDIO_EVALUATION_DLQ },
   { name: PDF_GENERATION_DLQ },
@@ -45,6 +48,7 @@ const queues = [
   { name: QLIX_POLL_DLQ },
   { name: QLIX_RECALIBRATION_DLQ },
   { name: MATCH_RUN_DLQ },
+  { name: JD_PARSE_DLQ },
 ];
 
 @Global()

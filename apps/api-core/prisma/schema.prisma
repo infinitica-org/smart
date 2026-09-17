@@ -1026,6 +1026,11 @@ model JobOpening {
   driveSpoc              String?      @map("drive_spoc")
   driveDate              DateTime?    @map("drive_date") @db.Date
   lastDateToApply        DateTime?    @map("last_date_to_apply") @db.Date
+  rawText            String?          @map("raw_text")
+  jdParseStatus      JdParseStatus    @default(PENDING) @map("jd_parse_status")
+  parseConfidence    Decimal?         @map("parse_confidence") @db.Decimal(4, 3)
+  parsedAt           DateTime?        @map("parsed_at") @db.Timestamptz(6)
+  parsedRequirements Json?            @map("parsed_requirements")
   status             JobOpeningStatus @default(DRAFT)
   createdById        String           @map("created_by_id") @db.Uuid
   createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
@@ -1067,6 +1072,7 @@ model MatchRun {
   minCgpa            Decimal?    @map("min_cgpa") @db.Decimal(4, 2)
   requiredSkillCodes String[]    @map("required_skill_codes")
   limit              Int
+  minSkillCoverage   Decimal?    @map("min_skill_coverage") @db.Decimal(4, 3)
   /// PENDING | RUNNING | SUCCEEDED | FAILED — plain String, matching this repo's existing
   /// convention for job-status fields (e.g. ProfessionalCredential.status) rather than an enum.
   status             String      @default("PENDING")

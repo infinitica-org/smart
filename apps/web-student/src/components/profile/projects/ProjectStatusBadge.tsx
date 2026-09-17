@@ -2,7 +2,7 @@
 
 import type { ProjectDto } from '@smart/contracts';
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
-import { processingStateCopy } from '@/lib/project-submission';
+import { needsOwnershipInterview, processingStateCopy } from '@/lib/project-submission';
 
 const TONE_CLASS: Record<'info' | 'success' | 'warning' | 'danger', string> = {
   info: 'border-sky-200 bg-sky-50 text-sky-900',
@@ -20,10 +20,12 @@ export function ProjectStatusBadge({ project }: { project: ProjectDto }) {
         ? 'warning'
         : copy.tone;
 
+  const awaitingVerify = project.status === 'SUBMITTED' && !needsOwnershipInterview(project);
+
   const Icon =
     project.status === 'VERIFIED'
       ? CheckCircle2
-      : project.status === 'SUBMITTED'
+      : awaitingVerify
         ? Loader2
         : project.status === 'REJECTED'
           ? AlertCircle
@@ -34,7 +36,7 @@ export function ProjectStatusBadge({ project }: { project: ProjectDto }) {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${TONE_CLASS[tone]}`}
     >
       <Icon
-        className={`h-3 w-3 shrink-0 ${project.status === 'SUBMITTED' ? 'animate-spin' : ''}`}
+        className={`h-3 w-3 shrink-0 ${awaitingVerify ? 'animate-spin' : ''}`}
         aria-hidden="true"
       />
       {copy.title}

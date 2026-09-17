@@ -235,11 +235,13 @@ export type CertificateIssuedEvent = z.infer<typeof CertificateIssuedEventSchema
 
 export const PlacementMatchedDataSchema = z.object({
   shortlistId: UuidSchema,
+  runId: UuidSchema.optional(),
   jdId: UuidSchema,
   institutionId: UuidSchema,
   companyName: z.string(),
   roleTitle: z.string(),
   matchedCount: z.number().int(),
+  matchMethod: z.enum(['RULES', 'SKILL_CAPABILITY', 'HYBRID']).optional(),
   /** Identifiers only; the webhook dispatcher hydrates what the partner may see. */
   studentIds: z.array(UuidSchema),
   generatedAt: IsoDateTimeSchema,

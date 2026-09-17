@@ -4,7 +4,8 @@ import type { ProjectDto } from '@smart/contracts';
 import { ExternalLink, GitBranch, Loader2, X } from 'lucide-react';
 import { ProjectStatusBadge } from '@/components/profile/projects/ProjectStatusBadge';
 import { parseStackTags } from '@/components/profile/projects/project-presenters';
-import { processingStateCopy } from '@/lib/project-submission';
+import { ProjectDefenseInterviewDialog } from '@/components/profile/ProjectDefenseInterviewDialog';
+import { needsOwnershipInterview, processingStateCopy } from '@/lib/project-submission';
 
 type ProjectDetailModalProps = {
   project: ProjectDto | null;
@@ -131,6 +132,10 @@ export function ProjectDetailModal({ project, loading, onClose }: ProjectDetailM
                 ) : null}
               </div>
             </section>
+
+            {needsOwnershipInterview(project) ? (
+              <ProjectDefenseInterviewDialog project={project} />
+            ) : null}
 
             <section className="rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)]/50 p-4">
               <h4 className="text-sm font-semibold text-[var(--ds-text)]">Verification</h4>
