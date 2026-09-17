@@ -18,6 +18,13 @@ export const queryKeys = {
   myTracks: () => ['me', 'tracks'] as const,
   myNotifications: () => ['me', 'notifications'] as const,
   entitlements: () => ['me', 'entitlements'] as const,
+  myOnboarding: () => ['me', 'onboarding'] as const,
+  mySkillClaims: () => ['me', 'skill-claims'] as const,
+  myEducation: () => ['me', 'education'] as const,
+  myWorkExperiences: () => ['me', 'work-experiences'] as const,
+  myLanguages: () => ['me', 'languages'] as const,
+  myProjects: () => ['me', 'projects'] as const,
+  myCandidateCertificates: () => ['me', 'candidate-certificates'] as const,
 
   /* -------------------------------- catalog ------------------------------- */
   catalog: () => ['catalog'] as const,
