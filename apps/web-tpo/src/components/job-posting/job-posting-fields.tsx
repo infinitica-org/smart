@@ -93,6 +93,47 @@ export function JobPostingSelectField({
   );
 }
 
+export function JobPostingTextArea({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder,
+  rows = 5,
+}: {
+  label: string;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  required?: boolean;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const id = fieldId(label);
+  return (
+    <label className="grid gap-1.5" htmlFor={id}>
+      <span className={labelClass}>
+        {label}
+        {required ? (
+          <span className="text-[var(--ds-coral)]" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        ) : null}
+      </span>
+      <textarea
+        id={id}
+        aria-label={label}
+        className={`${inputClass} min-h-[120px] resize-y py-3`}
+        rows={rows}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
 export function UnsupportedFieldNotice({
   title,
   description,

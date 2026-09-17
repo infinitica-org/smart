@@ -18,4 +18,10 @@ describe('SmartLogo', () => {
     const diamond = container.querySelector('path');
     expect(diamond?.getAttribute('fill')).toBe('#00fad0');
   });
+
+  it('renders a black mark on light backgrounds when tone is on-light', () => {
+    const { container } = render(<SmartLogo kind="mark" tone="on-light" />);
+    const diamond = container.querySelector('path');
+    expect(diamond?.getAttribute('fill')).toBe('#131313');
+  });
 });

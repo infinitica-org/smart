@@ -25,7 +25,6 @@ import {
   tableHeadCellClass,
   tableRowClass,
 } from '../lib/tpo-ui';
-import { JobPostingWizard } from './job-posting/JobPostingWizard';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
@@ -45,7 +44,6 @@ function errorMessage(caught: unknown, fallback: string): string {
 
 export function OpeningsWorkspace() {
   const [openings, setOpenings] = useState<JobOpeningDto[]>([]);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'create'>('create');
   const [statusFilter, setStatusFilter] = useState<JobOpeningStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
@@ -116,26 +114,13 @@ export function OpeningsWorkspace() {
     <>
       <PlacementPageHeader
         eyebrow="Placement · Job Management"
-        title="Job Openings"
-        description="Create a structured placement opportunity and track every opening for your institution."
+        title="Listed Openings"
+        description="Search, filter, and inspect every structured opening for your institution."
         actions={
           <>
-            <button
-              type="button"
-              aria-pressed={activeTab === 'inbox'}
-              className={activeTab === 'inbox' ? primaryButtonClass : secondaryButtonClass}
-              onClick={() => setActiveTab('inbox')}
-            >
-              JD Inbox ({openings.length})
-            </button>
-            <button
-              type="button"
-              aria-pressed={activeTab === 'create'}
-              className={activeTab === 'create' ? primaryButtonClass : secondaryButtonClass}
-              onClick={() => setActiveTab('create')}
-            >
-              Post structured JD
-            </button>
+            <Link href="/openings/create" className={primaryButtonClass}>
+              Create Job Posting
+            </Link>
             <button
               type="button"
               className={secondaryButtonClass}
@@ -148,8 +133,6 @@ export function OpeningsWorkspace() {
           </>
         }
       />
-
-      {activeTab === 'create' ? <JobPostingWizard onCreated={() => loadOpenings()} /> : null}
 
       <section aria-labelledby="opening-list-heading" className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

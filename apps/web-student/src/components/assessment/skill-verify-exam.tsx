@@ -219,13 +219,13 @@ export function SkillVerifyExam({
       {stageNotice ? (
         <div
           role="status"
-          className="mx-6 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[#00fad0]/30 bg-[#00fad0]/10 px-4 py-3 text-sm text-foreground"
+          className="mx-6 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-foreground/30 bg-foreground/10 px-4 py-3 text-sm text-foreground"
         >
           <p>{stageNotice}</p>
           {onDismissStageNotice ? (
             <button
               type="button"
-              className="shrink-0 text-xs font-semibold text-[#00967c] hover:underline"
+              className="shrink-0 text-xs font-semibold text-foreground hover:underline"
               onClick={onDismissStageNotice}
             >
               Dismiss

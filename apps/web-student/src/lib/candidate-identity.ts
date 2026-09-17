@@ -2,6 +2,7 @@ import { queryKeys } from '@smart/api-client';
 import type { AuthenticatedUser, TrackDto } from '@smart/contracts';
 import { useQuery } from '@smart/ui';
 import { api } from './api';
+import { headlineRoleForPrimaryTrack } from './candidate-streams';
 
 /** The signed-in candidate — the one real source for name/role/track everywhere in the console. */
 export function useCurrentUser() {
@@ -29,12 +30,14 @@ export function trackNameFor(tracks: TrackDto[] | undefined, code: string | null
   return tracks.find((track) => track.code === code)?.name ?? null;
 }
 
-/** A short, real headline for the profile/dashboard header — never a fabricated job title. */
+/** Dashboard/profile subtitle — stream label from onboarding, not the catalog track title. */
 export function headlineFor(
   user: AuthenticatedUser | undefined,
   tracks: TrackDto[] | undefined,
 ): string {
   if (!user) return '';
+  const streamRole = headlineRoleForPrimaryTrack(user.primaryTrack);
+  if (streamRole) return `${streamRole} candidate`;
   const trackName = trackNameFor(tracks, user.primaryTrack);
   return trackName ? `${trackName} candidate` : 'SMART candidate';
 }

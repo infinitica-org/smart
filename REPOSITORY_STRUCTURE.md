@@ -1,255 +1,246 @@
-# SMART — Proposed Repository Structure & System Architecture Blueprint
+# SMART — Repository Structure & Architecture Reference
 
-> **Version:** v1.0 — Monorepo & Technology Stack Blueprint  
-> **Last Updated:** 2026-08-20  
-> **Maintainer:** Infinitica Engineering Team  
-> **Purpose:** Standardized repository layout, open-source technology selection, NestJS vs. Effect.ts backend evaluation, and microservices architecture specification for the SMART platform.
+> **Status:** Adopted
+> **Maintainer:** System Architect
+> **Purpose:** Authoritative reference for the SMART monorepo layout, technology stack, and the rationale behind the primary architectural decisions. For backend module boundaries and service topology, see [`SERVICES_VIEW.md`](./SERVICES_VIEW.md). For per-module and per-engineer ownership, see [`TEAM.md`](./TEAM.md).
 
 ---
 
 ## 1. Executive Summary & Architectural Decisions
 
-SMART is engineered to support **1 million active candidates** with high throughput, strict rate-limiting, real-time code execution, Claude AI evaluation, and public certificate verification. To ensure developer productivity, code reusability, and modular scalability, SMART adopts a **Turborepo Monorepo Architecture**.
+SMART is a role-specific readiness certification platform designed to support high-volume candidate throughput, strict API rate-limiting, real-time code execution, LLM-based evaluation, and public certificate verification. To maximize code reuse, enforce typed boundaries between services, and keep local and CI builds fast, the platform is organized as a **Turborepo-managed pnpm workspace monorepo**.
 
 ### 1.1 Key Stack Choices
 
-- **Frontend Framework:** **Next.js 14 (App Router)** — React, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, and Zustand.
-- **Backend Framework Choice:** **NestJS (TypeScript)** as the primary backend framework, with **Effect.ts** utilized as an isolated functional sub-module.
-- **Infrastructure Stack:** 100% Open-Source frameworks (Apache Kafka, Redis/Valkey, PostgreSQL + pgvector, MinIO, Kong, Prometheus, Grafana).
+- **Frontend framework:** Next.js 16 (App Router) across all web portals, using React, TypeScript, Tailwind CSS, shadcn/ui (via Radix primitives), and TanStack Query for server-state caching.
+- **Backend framework:** NestJS 11 on the Fastify adapter (`apps/api-core`), deployed as a single modular monolith, with Effect.ts adopted as a functional core for specific computation- and pipeline-heavy code paths.
+- **Infrastructure:** PostgreSQL 16 with `pgvector`, Redis 7, Redpanda (Kafka-API-compatible event streaming), S3-compatible object storage (MinIO locally, Cloudflare R2 in production), and Caddy as the reverse proxy / TLS termination layer.
+- **AI evaluation layer:** A provider-agnostic AI gateway (`apps/api-core/src/modules/ai-gateway`) is the sole point of contact with large language model providers; all other modules are prohibited from importing LLM SDKs directly (see [ADR-0005](./docs/adr/0005-ai-failover.md)).
 
 ---
 
-## 2. Backend Framework Evaluation: NestJS vs. Effect.ts
+## 2. Backend Framework Rationale: NestJS with an Effect.ts Functional Core
 
-We evaluated **NestJS** and **Effect.ts** to determine the optimal backend foundation for SMART's microservices and API layer.
+An evaluation was conducted between NestJS and Effect.ts to determine the primary backend foundation for SMART's API and domain modules.
 
-### 2.1 Framework Comparison Matrix
+### 2.1 Framework Comparison
 
-| Evaluation Criteria                 | NestJS (TypeScript)                                                                                                  | Effect.ts (Effect.js)                                                                                    | SMART Engineering Decision                                                                            |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Architecture & Structure**        | Enterprise Modular Monolith / Microservices with out-of-the-box Domain-Driven Design (DDD).                          | Functional programming paradigm with explicit Effect types, fiber concurrency, and algebraic data types. | **NestJS** provides a standardized, maintainable architecture for a multi-developer engineering team. |
-| **Kafka & Microservice Transports** | Native `@nestjs/microservices` package supporting Apache Kafka, Redis, NATS, and gRPC out-of-the-box.                | Requires custom wrapper code and third-party boilerplate to connect Kafka event consumers and producers. | **NestJS** wins for instant, production-tested Kafka event-driven integration.                        |
-| **Database & ORM Integration**      | Seamless integration with **Prisma ORM** / TypeORM, supporting PostgreSQL 16 and `pgvector`.                         | Requires Schema / Equinox integrations or raw SQL client wrappers.                                       | **NestJS + Prisma** provides instant migrations, type-safe queries, and seeding.                      |
-| **Job Queue & Async Workers**       | First-class `@nestjs/bullmq` integration for Redis-backed background workers (L2 code sandbox, L3 audio evaluation). | Custom fiber-based queues require building queue persistence from scratch.                               | **NestJS + BullMQ** provides robust Redis job queues with retries and dead-letter queues.             |
-| **Security & Middleware**           | Built-in Guards, Interceptors, Pipes, and Middleware for JWT Auth, RBAC, and Redis Sliding Window Rate Limiting.     | Pure functional error handling, but requires custom middleware wrappers for standard HTTP servers.       | **NestJS** provides immediate security, rate-limiting, and middleware capabilities.                   |
-| **OpenAPI / Swagger Generation**    | Automated `@nestjs/swagger` decorator generation, exporting OpenAPI specs to Next.js clients.                        | Manual API contract generation or third-party schema mapping.                                            | **NestJS** ensures frontend-backend contract synchronicity.                                           |
-| **Mathematical / Scoring Engine**   | Standard imperative TypeScript code.                                                                                 | Exceptional for pure functional mathematical pipelines with zero unhandled exceptions.                   | **Effect.ts** is ideal for pure algorithmic calculations (IRT & Angoff cut-scores).                   |
+| Evaluation Criteria                 | NestJS (TypeScript)                                                                                                   | Effect.ts                                                                                                 | Engineering Decision                                                                                   |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Architecture & structure**         | Modular-monolith-friendly, with conventions for dependency injection, module boundaries, and domain organization.        | Functional paradigm built on explicit effect types, fiber-based concurrency, and algebraic data types.       | NestJS gives the multi-engineer team a standardized, maintainable module structure.                        |
+| **Kafka / event transports**         | Native `@nestjs/microservices` support for Kafka, Redis, NATS, and gRPC transports.                                      | Requires custom wrapper code to integrate event producers and consumers.                                     | NestJS is used for production-tested, low-friction Kafka integration via `kafkajs`.                        |
+| **Database & ORM integration**       | Integrates directly with Prisma against PostgreSQL 16 and `pgvector`.                                                    | Requires custom schema or raw SQL client wrappers.                                                           | NestJS + Prisma provides type-safe queries, migrations, and seeding out of the box.                        |
+| **Job queues & async workers**       | First-class BullMQ integration for Redis-backed background workers (evaluation, sandboxed code execution, notifications).| Queue persistence and retry semantics would need to be built from first principles.                          | NestJS + BullMQ supplies retries and dead-letter handling with minimal custom code.                        |
+| **Security & middleware**            | Built-in guards, interceptors, pipes, and middleware for JWT authentication, RBAC, and Redis sliding-window rate limits. | Pure functional error handling, but standard HTTP middleware requires custom wrapping.                       | NestJS provides immediate, conventional security and rate-limiting primitives.                             |
+| **Mathematical / scoring pipelines** | Standard imperative TypeScript.                                                                                          | Well suited to pure, composable mathematical pipelines with explicit, typed error handling.                  | Effect.ts is used for the psychometric scoring engine, where correctness and composability matter most.   |
 
-### 2.2 Final Backend Architecture Recommendation
+### 2.2 Adopted Backend Architecture
 
-> **Decision: Hybrid Enterprise Architecture**
->
-> 1. **Primary Backend Framework:** **NestJS 10 (Fastify Adapter)**  
->    NestJS serves as the API gateway, microservice host, authentication provider, database broker, Kafka consumer/producer, and Redis rate-limiting middleware.
-> 2. **Functional Sub-Package (`packages/scoring-engine`):** **Effect.ts**  
->    Effect.ts is embedded as an internal, pure-functional TypeScript library within `packages/scoring-engine` for executing Item Response Theory (IRT) estimation, Angoff standard deviation confidence band calculations, and BARS mode-consensus matrix math cleanly without side effects.
+NestJS 11 (Fastify adapter) is the primary backend framework. It serves as the API surface, authentication provider, database access layer, Kafka consumer/producer host, and Redis-backed rate-limiting middleware for `apps/api-core`.
+
+Effect.ts is embedded as the functional core of `packages/scoring-engine`, where it drives Item Response Theory (IRT) estimation, Angoff cut-score calculations, and inter-rater reliability statistics (Cohen's kappa, Cronbach's alpha) without side effects. It is also used selectively within a small number of `api-core` services (assessment and evaluation) where a composable, explicitly-typed effect pipeline simplifies orchestration of multi-step, fallible operations. Its use outside `packages/scoring-engine` remains the exception rather than the default and is subject to architecture review.
 
 ---
 
-## 3. 100% Open-Source Technology Stack Table
+## 3. Technology Stack
 
-All components in the SMART platform leverage open-source frameworks and technologies:
+All infrastructure components are open-source or self-hostable, with the exception of the managed AI provider APIs and (in production) object storage.
 
-| Layer / Subsystem                | Technology Choice                                | License / Hosting    | Function & Purpose in SMART                                                                            |
-| -------------------------------- | ------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Frontend UI**                  | Next.js 14 (App Router)                          | MIT                  | Server-side rendering, responsive UI dashboards, and static certificate pages.                         |
-| **Styling & Components**         | Tailwind CSS + shadcn/ui                         | MIT                  | Design system, accessible components, and modern dark-mode aesthetic.                                  |
-| **State & API Queries**          | Zustand + TanStack Query                         | MIT                  | Client-side assessment state and asynchronous server state caching.                                    |
-| **Primary Backend Core**         | NestJS 10 (Fastify Node.js)                      | MIT                  | Enterprise REST API, microservices, auth, guard middleware, and WebSocket handlers.                    |
-| **Functional Math Sub-Module**   | Effect.ts (Effect 3.x)                           | MIT                  | Pure functional IRT scoring engine and Angoff confidence band calculations.                            |
-| **Primary AI Engine**            | Anthropic Claude 5 Sonnet & 4.7                  | Anthropic API        | **Claude 5 Sonnet** (BARS grading, L3/L4 defense, JD parsing); **Claude 4.7** (rapid item extraction). |
-| **Fallback AI Engine**           | Google Gemini 2.5 API (Pro / Flash)              | Google API           | High-availability automatic fallback engine for Anthropic API rate limits or outages.                  |
-| **Event Streaming / Bus**        | Apache Kafka (Redpanda / Strimzi)                | Apache 2.0           | Asynchronous event streaming (assessment submitted, evaluation completed, certificate issued).         |
-| **In-Memory Cache & Rate Limit** | Redis 7 / Valkey                                 | BSD / BSD-3          | Session cache, sliding window rate limiting (Lua scripts), and BullMQ queue backend.                   |
-| **Relational DB & Vector**       | PostgreSQL 16 + `pgvector` (self-hosted, Docker) | PostgreSQL License   | Core relational storage (`students`, `attempts`, `responses`, `certificates`) + vector cosine search.  |
-| **Object Storage**               | Cloudflare R2 (S3-compatible)                    | Cloudflare           | Zero-egress S3-compatible cloud object storage for candidate audio defenses and PDF certificates.      |
-| **Reverse Proxy & Gateway**      | Cloudflare Workers + Kong Gateway                | Apache 2.0 / Managed | Edge SSL termination, DDoS protection, and initial IP rate limiting.                                   |
-| **Observability & Metrics**      | Prometheus + Grafana + Loki                      | Apache 2.0 / AGPLv3  | Open-source LGTM stack for container metrics, rate-limit violation tracking, and logs.                 |
+| Layer / Subsystem            | Technology                                                              | Function & Purpose in SMART                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| **Frontend UI**                | Next.js 16 (App Router)                                                   | Server-side rendering, portal dashboards, and public certificate pages.                                              |
+| **Styling & components**       | Tailwind CSS + shadcn/ui (Radix primitives)                               | Shared design system and accessible component primitives, distributed via `packages/ui`.                            |
+| **Server-state caching**       | TanStack Query                                                            | Client-side caching and synchronization of server state across portals.                                              |
+| **Primary backend core**       | NestJS 11 (Fastify)                                                       | Modular-monolith REST API, authentication, guard middleware, and background workers.                                 |
+| **Functional scoring core**    | Effect.ts                                                                 | Pure functional psychometric engine (IRT, Angoff cut-scores, reliability statistics) in `packages/scoring-engine`.  |
+| **AI evaluation gateway**      | Anthropic Claude (primary), Google Gemini (fallback), OpenRouter (aggregation path) | Role-based model routing (primary reasoning, fast extraction, fallback reasoning/extraction, embeddings) behind a single internal gateway module, with circuit-breaker failover. |
+| **Prompt management**          | `packages/prompts`                                                        | Versioned, guardrail-enforced LLM prompt registry; every AI-produced grade cites the prompt reference used.          |
+| **Event streaming / bus**      | Redpanda (Kafka-API-compatible)                                           | Asynchronous domain events (assessment submitted, evaluation completed, certificate issued, and others).             |
+| **In-memory cache & rate limit** | Redis 7                                                                 | Session cache, sliding-window rate limiting (Lua scripts), and BullMQ queue backend.                                 |
+| **Relational DB & vector store** | PostgreSQL 16 + `pgvector` (self-hosted, containerized)                 | Core relational storage and vector similarity search over candidate/skill signals.                                   |
+| **ORM & migrations**           | Prisma                                                                    | Schema definition, migrations, and seeding for `apps/api-core`.                                                      |
+| **Object storage**             | MinIO (local/CI), Cloudflare R2 in production, via AWS SDK v3 (S3-compatible) | Storage for proctoring artifacts, candidate media, and generated certificates.                                       |
+| **Reverse proxy / edge**       | Caddy                                                                     | Host-based routing and TLS termination in front of the API and each web portal.                                      |
+| **Observability**              | Prometheus, Grafana, Grafana Loki, Grafana Tempo, Grafana Alloy           | Metrics collection, dashboards, log aggregation, and distributed tracing.                                            |
 
----
+### 3.1 Capacity Planning & Cache Invalidation Strategy
 
-### 3.1 RAM Memory Sizing & Cache Invalidation Strategy
+Because Redis memory footprint directly informs cache-node sizing, SMART maintains an explicit memory budget and invalidation model for planning purposes. The figures below are an illustrative sizing model for a representative peak-load scenario (50,000 concurrent candidates) and should be re-derived against observed production metrics rather than treated as fixed limits.
 
-Because RAM capacity directly governs machine sizing and server costs under peak load (50,000 active test takers), SMART defines a strict Redis memory inventory and invalidation protocol:
+**Indicative RAM inventory at peak concurrency:**
 
-#### RAM Inventory Breakdown (@ 50,000 Peak Concurrent Candidates)
+- **Active assessment sessions** (`session:assessment:{id}`): ~2.5 KB/user, TTL 2 hours.
+- **Rate-limit sliding-window logs** (`rl:{role}:{id}`): ~200 B/key, TTL 60 seconds.
+- **Auth tokens** (`auth:token:{user_id}`): ~800 B/user, TTL 15 minutes.
+- **Active item-bank forms** (`items:form:{track_id}`): ~45 KB/form, TTL 24 hours.
+- **Public verification payloads** (`verify:cert:{id}`): ~4 KB/certificate, TTL 1 hour.
+- **BullMQ background queues** (`bull:queue:*`): stream buffers, sized to sustained job throughput.
 
-- **Active Assessment Sessions (`session:assessment:{id}`)**: 2.5 KB/user × 50,000 = **125 MB** (TTL: 2 hours).
-- **Rate Limit Sliding Window Logs (`rl:{role}:{id}`)**: 200 B/key × 100,000 = **20 MB** (TTL: 60 seconds).
-- **User Auth Tokens (`auth:token:{user_id}`)**: 800 B/user × 50,000 = **40 MB** (TTL: 15 minutes).
-- **L1 Active Item Bank Forms (`items:form:{track_id}`)**: 45 KB/form × 100 = **4.5 MB** (TTL: 24 hours).
-- **Public Verification Payloads (`verify:cert:{id}`)**: 4 KB/cert × 20,000 = **80 MB** (TTL: 1 hour).
-- **BullMQ Background Queues (`bull:queue:*`)**: Stream buffers = **50 MB**.
-- **Total Estimated RAM Memory Load**: **~331.8 MB** (Provisioned Node: 2 GB Redis Cluster with `volatile-lru` eviction).
+**Invalidation strategy:**
 
-#### Invalidation Plan
-
-1. **Passive Eviction**: All cached keys enforce mandatory TTL expiration.
-2. **Event-Driven Invalidation**: Kafka topics (`smart.assessment.submitted`, `smart.track.updated`) issue immediate Redis `DEL` commands to purge stale assessment and cut-score caches.
-3. **Eviction Policy**: Set strictly to `volatile-lru` to protect active session keys with TTL while purging expired volatile keys under memory pressure.
+1. **Passive eviction** — every cached key carries a mandatory TTL.
+2. **Event-driven invalidation** — Kafka/Redpanda topics (e.g. `smart.assessment.submitted`, `smart.track.updated`) trigger immediate Redis deletions to purge stale assessment and cut-score caches.
+3. **Eviction policy** — `volatile-lru`, so that active session keys are protected under memory pressure while other volatile keys are purged first.
 
 ---
 
-## 4. Proposed Turborepo Monorepo Repository Structure
+## 4. Monorepo Repository Structure
 
 ```
-smart-platform/
-├── .github/                        # CI/CD Workflows & Automation
+smart/
+├── .github/                        # CI/CD workflows and repository automation
+│   ├── actions/
+│   │   └── setup-node-pnpm/        # Composite action: pnpm + Node toolchain setup
+│   ├── ISSUE_TEMPLATE/
 │   ├── workflows/
-│   │   ├── ci-lint-test.yml        # PR validation (ESLint, Prettier, PyTest, Jest)
-│   │   ├── cd-build-deploy.yml     # Automated Docker build & K8s deployment
-│   │   └── security-scan.yml       # OWASP & dependency vulnerability scanner
-│   └── CODEOWNERS                  # Code ownership definitions per module
+│   │   ├── ci.yml                  # Lint, typecheck, unit test pipeline
+│   │   ├── content-validate.yml    # Domain content / blueprint validation
+│   │   ├── deploy-dev.yml          # Deployment to the development environment
+│   │   ├── deploy-prod.yml         # Deployment to the production environment
+│   │   └── perf.yml                # Manually-triggered load/stress/soak pipeline
+│   ├── CODEOWNERS                  # Per-path code ownership (see CONTRIBUTING.md)
+│   └── PULL_REQUEST_TEMPLATE.md
 │
-├── apps/                           # Application Services & Portals
-│   ├── web-student/                # Next.js 14 Student Portal & Assessment Engine UI
-│   │   ├── src/
-│   │   │   ├── app/                # App Router pages (Dashboard, Assessment, Results)
-│   │   │   ├── components/         # Assessment delivery player, audio recorder UI
-│   │   │   ├── hooks/              # Custom React hooks (Timer, MediaRecorder)
-│   │   │   ├── store/              # Zustand active test state store
-│   │   │   └── lib/                # API client SDK & contract handlers
-│   │   ├── public/                 # Static assets, fonts, icons
-│   │   ├── package.json
-│   │   └── next.config.mjs
+├── apps/                           # Deployable applications and services
+│   ├── api-core/                   # NestJS 11 (Fastify) modular-monolith API
+│   │   └── src/
+│   │       ├── main.ts             # Entry point (Fastify bootstrap, Swagger, Kafka listeners)
+│   │       ├── app.module.ts       # Root module composition
+│   │       ├── modules/            # Domain modules (auth, assessment, evaluation, ai-gateway,
+│   │       │                       #   placement, certificate, rate-limit, proctoring, matching,
+│   │       │                       #   institutions, notifications, webhooks, and others —
+│   │       │                       #   see SERVICES_VIEW.md for the complete module map)
+│   │       ├── platform/           # Cross-cutting infrastructure: Prisma, Redis, Kafka, queue,
+│   │       │                       #   storage, mailer, config, health, audit
+│   │       └── common/             # Guards, interceptors, filters, decorators
 │   │
-│   ├── web-tpo/                    # Next.js 14 Placement Office (TPO) Portal
-│   │   ├── src/
-│   │   │   ├── app/                # Cohort readiness, shortlists, gap report UI
-│   │   │   ├── components/         # Analytics charts, candidate table, filter bar
-│   │   │   └── lib/                # TPO API SDK
-│   │   ├── package.json
-│   │   └── next.config.mjs
+│   ├── proctoring-cv/              # Python HTTP sidecar for proctoring signal analysis
 │   │
-│   ├── web-admin/                  # Next.js 14 Super Admin Platform Control Center
-│   │   ├── src/
-│   │   │   ├── app/                # System status, rate-limit overrides, panel config
-│   │   │   └── components/         # Global health dashboards, user management
-│   │   └── package.json
-│   │
-│   ├── web-verify/                 # Next.js 14 Public Certificate Verification App
-│   │   ├── src/
-│   │   │   ├── app/                # verify.smart.com/cert/[id] verification view
-│   │   │   └── components/         # Tier Trail matrix, confidence note, QR validator
-│   │   └── package.json
-│   │
-│   └── api-core/                   # NestJS Enterprise Backend Monolith / Microservices
-│       ├── src/
-│       │   ├── main.ts             # Entry point (Fastify + Swagger + Kafka Listeners)
-│       │   ├── app.module.ts       # Root NestJS module importing sub-modules
-│       │   ├── modules/
-│       │   │   ├── auth/           # Clerk JWT Authentication & RBAC Guards
-│       │   │   ├── assessment/     # L1–L5 Delivery, Timer & Integrity Service
-│       │   │   ├── sandbox/        # Isolated Docker Code Runner Service
-│       │   │   ├── claude-proxy/   # Claude 5 Sonnet / 4.7 API Token Bucket Proxy
-│       │   │   ├── evaluation/     # BARS Mode-Consensus Audio/Video Grading
-│       │   │   ├── placement/      # JD NLP Parsing & Vector Matching Engine
-│       │   │   ├── certificate/    # PDF & Dynamic QR Code Generation Service
-│       │   │   └── rate-limiter/   # Redis Sliding Window Lua Rate Limit Guard
-│       │   ├── kafka/              # Kafka Event Producers, Consumers & Handlers
-│       │   ├── database/           # Prisma Schemas, Migrations & Seed Scripts
-│       │   └── common/             # Interceptors, Filters, DTOs, Decorators
-│       ├── package.json
-│       └── nest-cli.json
+│   ├── web-admin/                  # Next.js 16 — platform administration console
+│   ├── web-auth/                   # Next.js 16 — authentication and invitation portal
+│   ├── web-company/                # Next.js 16 — employer/company portal (early scaffold;
+│   │                               #   configuration files only at present, not yet a
+│   │                               #   package.json-bearing workspace member)
+│   ├── web-student/                # Next.js 16 — candidate assessment portal
+│   ├── web-tpo/                    # Next.js 16 — training & placement office console
+│   └── web-verify/                 # Next.js 16 — public certificate verification portal
 │
-├── packages/                       # Shared Internal Libraries & Packages
-│   ├── ui/                         # Shared React UI Component Library
-│   │   ├── src/                    # shadcn/ui components, buttons, modals, cards
-│   │   └── package.json
-│   │
-│   ├── contracts/                  # Shared API Contracts, DTOs & OpenAPI Schemas
-│   │   ├── src/                    # Zod schemas, TypeScript types, OpenAPI specs
-│   │   └── package.json
-│   │
-│   ├── scoring-engine/             # Effect.ts Functional Mathematical Scoring Engine
-│   │   ├── src/                    # IRT estimations, Angoff SD confidence calculations
-│   │   └── package.json
-│   │
-│   └── config/                     # Shared Tooling Configurations
-│       ├── eslint/                 # Shared ESLint rules
-│       ├── typescript/             # Base tsconfig.json templates
-│       └── tailwind/               # Shared Tailwind CSS themes & tokens
+├── packages/                       # Shared internal libraries
+│   ├── api-client/                 # Typed HTTP client for the SMART API (contract-validated)
+│   ├── config-eslint/              # Shared ESLint 9 flat config (`@smart/eslint-config`)
+│   ├── config-next/                # Shared Next.js configuration (`@smart/next-config`)
+│   ├── config-tailwind/            # Shared Tailwind CSS 4 theme tokens (`@smart/tailwind-config`)
+│   ├── config-typescript/          # Shared base tsconfig (`@smart/tsconfig`)
+│   ├── contracts/                  # Cross-module contracts: domain enums, DTOs, Zod schemas,
+│   │                               #   Kafka event payloads — the integration boundary
+│   ├── observability/              # Structured logging, PII redaction, correlation IDs,
+│   │                               #   Prometheus metric registry
+│   ├── prompts/                    # Versioned LLM prompt registry with output guardrails
+│   ├── scoring-engine/             # Effect.ts psychometric scoring engine (IRT, Angoff, reliability)
+│   └── ui/                         # Shared React component library and design system
 │
-├── docker/                         # Docker & Local Container Environment
-│   ├── docker-compose.yml          # Local development stack (Postgres, Redis, Kafka, MinIO)
-│   ├── docker-compose.prod.yml     # Production overlay configuration
-│   ├── Dockerfile.next             # Multi-stage Dockerfile for Next.js web apps
-│   ├── Dockerfile.nest             # Multi-stage Dockerfile for NestJS API core
-│   └── nginx/                      # Local NGINX reverse proxy & SSL config
+├── infra/                          # Infrastructure-as-code and local/production environment
+│   ├── docker/                     # docker-compose.yml, Caddyfile, per-service Dockerfiles
+│   ├── helm/                       # Helm chart scaffolding
+│   ├── k8s/                        # Kubernetes manifest scaffolding
+│   ├── observability/              # Prometheus, Grafana, Alloy, and Tempo configuration
+│   └── vps/                        # Single-VPS deployment configuration
 │
-├── kubernetes/                     # Production K8s Helm Charts & Deployment Manifests
-│   ├── helm/
-│   │   └── smart-platform/         # Helm charts for API core, Web apps, Kafka Workers
-│   └── manifests/                  # Base K8s deployment, service, and ingress manifests
+├── docs/                           # Documentation
+│   ├── adr/                        # Architecture Decision Records
+│   ├── delivery/                   # Process docs: branching policy, local dev guide,
+│   │                               #   definition of done, engineer onboarding
+│   ├── engineering/                # Engineering notes and tracked technical debt
+│   ├── product/                    # Product requirements and roadmap
+│   └── SMART_Blueprint_<Role>.md   # Per-role certification blueprint documents
 │
-├── docs/                           # Master Documentation Folder
-│   ├── SMART_Master_Technical_Framework.md
-│   ├── SMART_Proposed_Repo_Structure.md
-│   └── blueprints/                 # All 10 Role Blueprint Markdown Files
+├── tools/                          # Internal tooling
+│   ├── backlog/
+│   ├── content-pipeline/           # Assessment content authoring/validation pipeline
+│   └── load-tests/                 # k6-based load, stress, spike, and soak test suites
 │
-├── ARCHITECTURE.md                 # Primary Master System Architecture Specification
-├── REPOSITORY_STRUCTURE.md         # Repository Structure Specification (This Document)
-├── turbo.json                      # Turborepo Build Pipeline & Caching Config
-├── package.json                    # Monorepo Root Package Specs & Workspace Scripts
-├── README.md                       # Repository Onboarding & Developer Guide
-└── .gitignore                      # Git Ignore Rules
+├── tests/
+│   └── e2e/                        # End-to-end test suite
+│
+├── scripts/                        # Bootstrap, doctor, and workspace maintenance scripts
+├── ARCHITECTURE.md                 # Primary system architecture specification
+├── SERVICES_VIEW.md                # Backend module boundaries and service topology
+├── REPOSITORY_STRUCTURE.md         # This document
+├── TEAM.md                         # Ownership by path (personal-name exception per CONTRIBUTING.md)
+├── CONTRIBUTING.md                 # Contribution and repository conventions
+├── turbo.json                      # Turborepo pipeline and caching configuration
+├── package.json                    # Workspace root scripts and shared devDependencies
+├── pnpm-workspace.yaml             # Workspace package globs and dependency catalog
+└── README.md                       # Repository onboarding guide
 ```
 
 ---
 
-## 5. Microservice Communications & Kafka Event Blueprint
+## 5. Event-Driven Communication
 
-NestJS microservices communicate asynchronously via **Apache Kafka** event streams:
+Domain modules within `apps/api-core` communicate asynchronously through Redpanda (Kafka-API-compatible) event streams. Representative topics include:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       KAFKA EVENT-DRIVEN MESSAGING                          │
-│                                                                             │
-│  [Assessment Module] ──▶ Topic: smart.assessment.submitted ──┐              │
-│                                                              │              │
-│  [Claude Proxy]      ◄── Topic: smart.eval.requested ────────┤              │
-│  [Evaluation Module] ──▶ Topic: smart.eval.completed ────────┤              │
-│                                                              ▼              │
-│  [Certificate Mod]   ◄── Topic: smart.certificate.issued ────┴┐             │
-│                                                                ▼            │
-│  [Placement Mod]     ◄── Topic: smart.placement.matched ── [PostgreSQL 16] │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                    EVENT-DRIVEN MESSAGING (Redpanda)                      │
+│                                                                           │
+│  [Assessment module] ──▶ smart.assessment.submitted ──┐                  │
+│                                                        │                  │
+│  [AI Gateway]         ◄── smart.eval.requested ───────┤                  │
+│  [Evaluation module]  ──▶ smart.eval.completed ───────┤                  │
+│                                                        ▼                  │
+│  [Certificate module] ◄── (issues) smart.certificate.issued ─┐           │
+│                                                                ▼          │
+│  [Placement module]   ◄── smart.placement.matched ── [PostgreSQL 16]     │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.1 Key Kafka Topics & Payloads
+### 5.1 Representative Kafka Topics
 
-1. `smart.assessment.submitted`: Emitted by `assessment` module when a candidate completes L1–L5.
-   - Payload: `{ attempt_id, student_id, level_id, raw_responses, submitted_at }`
-2. `smart.eval.requested`: Triggers async LLM grading via `claude-proxy`.
-   - Payload: `{ response_id, audio_s3_url, prompt_template_id, competency_id }`
-3. `smart.eval.completed`: Emitted by `evaluation` module after Claude 5 Sonnet BARS scoring.
-   - Payload: `{ response_id, assigned_tier, bars_score, justification, cohens_kappa }`
-4. `smart.certificate.issued`: Emitted when candidate completes final tier trail.
-   - Payload: `{ certificate_id, student_id, track_id, headline_tier, verification_url }`
+1. `smart.assessment.submitted` — emitted by the assessment module when a candidate completes an assessment level.
+2. `smart.eval.requested` — triggers asynchronous LLM-based grading via the AI gateway.
+3. `smart.eval.completed` — emitted by the evaluation module once grading resolves.
+4. `smart.certificate.issued` — emitted when a candidate completes a certification track.
+5. `smart.placement.matched` / `smart.track.updated` — consumed by the placement module for matching and cut-score cache invalidation.
+
+The complete, authoritative topic and payload catalog is defined in `packages/contracts/src/events`; this section is illustrative rather than exhaustive.
 
 ---
 
 ## 6. Local Development Quickstart
 
-To run the complete SMART stack locally:
+The commands below reflect the scripts defined in the workspace root `package.json`.
 
 ```bash
-# 1. Clone repository & install dependencies
-git clone https://github.com/infinitica/smart-platform.git
-cd smart-platform
-npm install
+# 1. Clone the repository and install dependencies
+git clone <repository-url>
+cd smart
 
-# 2. Start local open-source infrastructure (Postgres, Redis, Kafka, MinIO)
-docker compose -f docker/docker-compose.yml up -d
+# 2. One-command bootstrap: installs dependencies, builds shared packages,
+#    starts local infrastructure (Postgres, Redis, Redpanda, MinIO, Mailpit),
+#    and runs migrations/seeding
+pnpm bootstrap
 
-# 3. Run database migrations & seed items
-npm run db:migrate
-npm run db:seed
+# — or, step by step —
 
-# 4. Start Turborepo development server (Next.js apps + NestJS API)
-npm run dev
+# 2a. Install dependencies
+pnpm install
+
+# 2b. Start local infrastructure (Postgres, Redis, Redpanda, MinIO)
+pnpm infra:up
+
+# 2c. Run database migrations and seed data
+pnpm db:migrate
+pnpm db:seed
+
+# 3. Start the development servers
+pnpm dev          # all apps, via Turborepo
+pnpm dev:api      # apps/api-core only
+pnpm dev:web      # all web-* portals only
 ```
+
+Additional workspace scripts of note: `pnpm doctor` (environment diagnostics), `pnpm infra:down` / `pnpm infra:reset` (tear down local infrastructure), and the `pnpm stress:*` family (k6-driven load, stress, spike, and soak testing against the local or a target stack). The full script list is defined in the root `package.json`.
 
 ---
 
-_This specification establishes the official monorepo design, open-source technology stack, and NestJS + Effect.ts architectural foundation for SMART._
+_This document establishes the adopted monorepo layout, technology stack, and NestJS + Effect.ts backend architecture for SMART. It is kept in sync with the actual repository structure; discrepancies should be corrected in the same change that introduces them._

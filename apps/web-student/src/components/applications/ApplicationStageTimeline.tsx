@@ -27,8 +27,8 @@ export function ApplicationStageTimeline({
               <div
                 className={cn(
                   'h-1.5 rounded-full',
-                  terminal ? 'bg-white/10' : reached ? 'bg-[#00FAD0]' : 'bg-white/10',
-                  current && 'shadow-[0_0_10px_rgba(0,250,208,0.45)]',
+                  terminal ? 'bg-white/10' : reached ? 'bg-foreground' : 'bg-white/10',
+                  current && 'shadow-[0_0_10px_rgba(19,19,19,0.45)]',
                 )}
                 data-reached={reached ? 'true' : 'false'}
               />
@@ -36,7 +36,7 @@ export function ApplicationStageTimeline({
                 <p
                   className={cn(
                     'mt-1.5 hidden truncate text-[10px] sm:block',
-                    current ? 'text-[#00FAD0]' : 'text-white/30',
+                    current ? 'text-foreground' : 'text-white/30',
                   )}
                 >
                   {ATS_STAGE_LABELS[column]}
@@ -47,7 +47,7 @@ export function ApplicationStageTimeline({
         })}
       </div>
       {terminal ? (
-        <p className="mt-2 text-xs font-semibold text-[#00FAD0]">{ATS_STAGE_LABELS[stage]}</p>
+        <p className="mt-2 text-xs font-semibold text-foreground">{ATS_STAGE_LABELS[stage]}</p>
       ) : null}
     </div>
   );

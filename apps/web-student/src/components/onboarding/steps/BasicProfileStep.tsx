@@ -23,7 +23,8 @@ interface BasicProfileStepProps {
     field: K,
     value: OnboardingProfileForm[K],
   ) => void;
-  onBack: () => void;
+  onBack?: () => void;
+  isFirstWizardStep?: boolean;
   onContinue: () => void;
 }
 
@@ -40,6 +41,7 @@ export default function BasicProfileStep({
   formData,
   updateField,
   onBack,
+  isFirstWizardStep = false,
   onContinue,
 }: BasicProfileStepProps) {
   const [tab, setTab] = useState<SubTab>('profile');
@@ -91,7 +93,7 @@ export default function BasicProfileStep({
     const previousTab = SUB_TABS[tabIndex - 1];
     if (previousTab) {
       setTab(previousTab.id);
-    } else {
+    } else if (onBack) {
       onBack();
     }
   };
@@ -111,13 +113,13 @@ export default function BasicProfileStep({
               onClick={() => setTab(t.id)}
               className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 isActive
-                  ? 'bg-[#00fad0] font-bold text-black shadow-md shadow-[#00fad0]/20'
+                  ? 'bg-foreground font-bold text-background shadow-md shadow-foreground/20'
                   : isCompleted
                     ? 'bg-muted text-foreground hover:bg-muted/80'
                     : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {isCompleted && !isActive && <CheckCircle2 className="h-3 w-3 text-[#00fad0]" />}
+              {isCompleted && !isActive && <CheckCircle2 className="h-3 w-3 text-foreground" />}
               {t.label}
             </button>
           );
@@ -236,7 +238,7 @@ export default function BasicProfileStep({
                 type="checkbox"
                 checked={formData.dpdpConsent}
                 onChange={(e) => updateField('dpdpConsent', e.target.checked)}
-                className="mt-0.5 rounded border-border bg-muted text-[#00fad0] focus:ring-[#00fad0]"
+                className="mt-0.5 rounded border-border bg-muted text-foreground focus:ring-foreground"
               />
               <span className="text-sm text-foreground">
                 I consent to SMART processing my personal data as described in the{' '}
@@ -245,7 +247,7 @@ export default function BasicProfileStep({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="rounded px-0.5 font-semibold text-[#00fad0] underline hover:text-[#7dffe6] focus:outline-none focus:ring-2 focus:ring-[#00fad0]"
+                  className="rounded px-0.5 font-semibold text-foreground underline hover:text-foreground focus:outline-none focus:ring-2 focus:ring-foreground"
                   aria-label="View DPDP Act 2023 consent terms and data privacy policy sheet"
                 >
                   DPDP Act 2023 consent terms
@@ -257,8 +259,10 @@ export default function BasicProfileStep({
         )}
       </motion.div>
 
-      <div className="mt-10 flex justify-between">
-        <BackButton onClick={goBack} />
+      <div
+        className={`mt-10 flex ${tabIndex > 0 || !isFirstWizardStep ? 'justify-between' : 'justify-end'}`}
+      >
+        {tabIndex > 0 || !isFirstWizardStep ? <BackButton onClick={goBack} /> : null}
         <PrimaryButton onClick={goNext}>Continue</PrimaryButton>
       </div>
     </div>

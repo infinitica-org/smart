@@ -1,149 +1,140 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { VerificationBadge, useQuery } from '@smart/ui';
-import { api } from '@/lib/api';
 import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
-import { firstNameOf, headlineFor, useCurrentUser, useTracks } from '@/lib/candidate-identity';
-import { claimToBadgeStatus, skillNameForCode } from '@/lib/skill-declarations';
+import { ProfileProgressPanel } from '@/components/profile/ProfileProgressPanel';
+import { ProfileCompletionHeroCard } from '@/components/dashboard/ProfileCompletionHeroCard';
+import { WhyCompleteProfileCard } from '@/components/dashboard/WhyCompleteProfileCard';
+import { VerifiedSkillsPanel } from '@/components/dashboard/VerifiedSkillsPanel';
+import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
+import { NextActionCard } from '@/components/next-action-card';
 import { ProductTour } from '@/components/tour/ProductTour';
+import { firstNameOf, useCurrentUser } from '@/lib/candidate-identity';
+import { dashboardStatusChips } from '@/lib/dashboard-status-chips';
+import { dashboardTimeEyebrow } from '@/lib/dashboard-greeting';
 import { DASHBOARD_TOUR_STEPS } from '@/lib/tour-steps';
 import { consumeTourAutostart } from '@/lib/tour';
-import { NextActionCard } from '@/components/next-action-card';
-import { ProfileProgressPanel } from '@/components/profile/ProfileProgressPanel';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 
 export default function DashboardPage() {
   const { data: user } = useCurrentUser();
-  const { data: tracks } = useTracks();
-  const { data: claims } = useQuery({
-    queryKey: ['me', 'skill-claims'] as const,
-    queryFn: () => api.assessment.listSkillClaims(),
-  });
   const {
     loading: profileLoading,
     error: profileError,
     progress,
+    input,
+    skillClaims,
     visibleRecommendedAction,
     dismissRecommendedAction,
   } = useProfileProgress();
   const [autoStartTour] = useState(consumeTourAutostart);
 
-  const verifiedClaims = (claims ?? []).filter((claim) => claim.status === 'VERIFIED');
   const firstName = firstNameOf(user?.fullName);
+  const profilePercent = progress?.percent ?? null;
+  const timeEyebrow = useMemo(() => dashboardTimeEyebrow(), []);
+  const statusChips = useMemo(() => dashboardStatusChips(input), [input]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[900px] pb-16 pt-2">
-      <div className="relative z-10 space-y-8">
+    <div className="mx-auto w-full max-w-[1400px] pb-6 pt-1">
+      <div className="space-y-5 md:space-y-6">
         <section aria-labelledby="home-greeting">
           <div
             data-tour="candidate-card"
-            className="flex flex-col gap-4 sm:flex-row sm:items-center"
+            className="grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start"
           >
-            <CandidateAvatar
-              fullName={user?.fullName}
-              profilePhotoUrl={user?.profilePhotoUrl}
-              className="h-16 w-16 shrink-0 border-2 border-[#00fad0]/30 bg-[#00fad0]/10 text-lg font-semibold text-[#00967c]"
-              fallbackClassName="bg-[#00fad0]/10 text-lg font-semibold text-[#00967c]"
-            />
-            <div className="min-w-0">
-              <h1
-                id="home-greeting"
-                className="font-display text-3xl font-medium tracking-tight text-foreground md:text-4xl"
-              >
-                Welcome back{firstName ? `, ${firstName}` : ''}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">{headlineFor(user, tracks)}</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Your home base for building your SMART profile and showcasing verified skills.
-              </p>
+            <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start">
+              <CandidateAvatar
+                fullName={user?.fullName}
+                profilePhotoUrl={user?.profilePhotoUrl}
+                className="h-24 w-24 shrink-0 border border-[var(--ds-border)] bg-[var(--ds-surface)] text-lg font-semibold text-[var(--ds-text)] md:h-[6.5rem] md:w-[6.5rem]"
+                fallbackClassName="bg-[var(--ds-surface-muted)] text-lg font-semibold text-[var(--ds-text)]"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--ds-text-muted)]">
+                  {timeEyebrow}
+                </p>
+                <h1
+                  id="home-greeting"
+                  className="mt-1 text-[2rem] font-semibold tracking-tight text-[var(--ds-text)] md:text-[2.375rem] md:leading-tight"
+                >
+                  Welcome back{firstName ? `, ${firstName}` : ''}
+                </h1>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--ds-text-muted)] md:text-[15px]">
+                  Build your verified professional profile and unlock new opportunities.
+                </p>
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {statusChips.map((chip) => {
+                    const Icon = chip.icon;
+                    return (
+                      <li key={chip.label}>
+                        <span className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-chip-bg)] px-3.5 py-2.5 text-sm text-[var(--ds-icon)]">
+                          <Icon className="h-4 w-4 text-[var(--ds-green)]" aria-hidden="true" />
+                          {chip.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
+
+            <ProfileCompletionHeroCard
+              percent={profilePercent}
+              areaStatus={progress?.areaStatus ?? null}
+              loading={profileLoading}
+            />
           </div>
         </section>
 
-        <section aria-label="Profile completion" className="space-y-4">
+        {profileError ? (
+          <p
+            role="alert"
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            {profileError}
+          </p>
+        ) : null}
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:gap-6">
           <ProfileProgressPanel
-            percent={progress?.percent ?? null}
+            percent={profilePercent}
             areaStatus={progress?.areaStatus ?? null}
             loading={profileLoading}
             showChecklist
+            variant="dashboard"
           />
-          <p className="text-sm text-muted-foreground">
-            Reach at least 50% profile completion to unlock skill verification.
-          </p>
+          <WhyCompleteProfileCard />
+        </div>
 
-          {profileError ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {profileError}
-            </p>
-          ) : null}
-
-          {visibleRecommendedAction ? (
-            <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
-          ) : null}
-
-          <Link
-            href="/profile"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#00967c] transition hover:text-[#00fad0]"
-          >
-            Continue building your profile
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </section>
-
-        <section
-          aria-labelledby="verified-skills-heading"
-          data-tour="skills-panel"
-          className="surface-panel rounded-[28px] p-6 md:p-7"
-        >
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00967c]">
-                Verified Skills
-              </p>
-              <h2
-                id="verified-skills-heading"
-                className="mt-1 text-xl font-medium text-foreground md:text-2xl"
-              >
-                Skills you have verified
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Only evidence-backed skills appear here. Declare and verify more in the Skill
-                Repository.
-              </p>
-            </div>
-            <Link
-              href="/assessments"
-              data-tour="manage-skills-link"
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#00967c] transition hover:text-[#00fad0]"
-            >
-              Browse Skill Repository
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+          <div>
+            {visibleRecommendedAction ? (
+              <NextActionCard
+                action={visibleRecommendedAction}
+                onLater={dismissRecommendedAction}
+              />
+            ) : (
+              <section className="flex h-full min-h-[12rem] flex-col justify-center rounded-[14px] border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface)] p-6 text-center">
+                <p className="text-sm font-semibold text-[var(--ds-text)]">You&apos;re on track</p>
+                <p className="mt-1 text-sm text-[var(--ds-text-muted)]">
+                  No recommended action right now. Continue completing your profile sections above.
+                </p>
+                <Link
+                  href="/profile"
+                  className="mt-4 inline-flex items-center justify-center gap-2 text-sm font-semibold text-[var(--ds-link)]"
+                >
+                  View profile
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </section>
+            )}
           </div>
+          <VerifiedSkillsPanel claims={profileLoading ? undefined : skillClaims} />
+        </div>
 
-          {!claims ? (
-            <p className="text-sm text-muted-foreground">Loading verified skills…</p>
-          ) : verifiedClaims.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No verified skills yet. Finish your profile, then pick a skill in the Skill Repository
-              to start verification.
-            </p>
-          ) : (
-            <ul className="flex flex-wrap gap-2">
-              {verifiedClaims.map((claim) => (
-                <li key={claim.claimId}>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-2 text-[13px] text-foreground">
-                    <span className="font-medium">{skillNameForCode(claim.skillCode)}</span>
-                    <VerificationBadge status={claimToBadgeStatus(claim)} variant="outline" />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <DashboardFooter />
       </div>
       <ProductTour steps={DASHBOARD_TOUR_STEPS} autoStart={autoStartTour} />
     </div>

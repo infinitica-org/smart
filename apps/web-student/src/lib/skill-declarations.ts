@@ -261,7 +261,7 @@ export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
 }
 
 export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
-  'Reach at least 50% profile completion to unlock skill verification.';
+  'Complete your profile to unlock skill verification.';
 
 /** Default claim proficiency for diagnostic-first verification (candidate does not self-select). */
 export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGINNER';
