@@ -6,20 +6,14 @@ import {
   isNavItemActive,
   isNavLinkActive,
   isPlacementRoute,
+  isPlacementTopNavActive,
 } from './tpo-nav';
-import type { TpoNavItem } from './tpo-nav';
 
-function navItem(name: string): TpoNavItem {
-  const item = TPO_NAV.find((entry) => entry.name === name);
-  if (!item) throw new Error(`No TPO nav item named ${name}`);
-  return item;
-}
-
-const placementGroup = navItem('Placement');
-const candidatesItem = navItem('Candidates');
+const placementLink = TPO_NAV.find((item) => item.name === 'Placement');
+const candidatesItem = TPO_NAV.find((item) => item.name === 'Candidates');
 
 describe('TPO_NAV', () => {
-  it('keeps the existing top-level items and slots Placement before Reports', () => {
+  it('keeps top-level items with Placement as a direct link to the company repository', () => {
     expect(TPO_NAV.map((item) => item.name)).toEqual([
       'Dashboard',
       'Candidates',
@@ -28,20 +22,23 @@ describe('TPO_NAV', () => {
       'Reports',
       'Settings',
     ]);
+    expect(placementLink).toMatchObject({ kind: 'link', href: '/companies' });
   });
 
-  it('groups the six existing placement routes under Placement', () => {
+  it('lists placement sidebar routes including company repository', () => {
     expect(PLACEMENT_NAV.map((link) => [link.name, link.href])).toEqual([
-      ['Openings', '/openings'],
+      ['Create Job Posting', '/openings/create'],
+      ['Listed Openings', '/openings'],
       ['Suggestions', '/suggestions'],
       ['Opportunities', '/opportunities'],
       ['ATS', '/ats'],
       ['Review', '/review'],
+      ['Company Repository', '/companies'],
       ['Company Dashboard', '/company'],
     ]);
   });
 
-  it('groups sidebar items without inventing an overview route', () => {
+  it('groups sidebar items under four sections', () => {
     expect(PLACEMENT_NAV_GROUPS.map((group) => group.groupLabel)).toEqual([
       'Job Management',
       'Candidate Discovery',
@@ -51,10 +48,7 @@ describe('TPO_NAV', () => {
   });
 
   it('never links the student-facing applications view', () => {
-    const hrefs = TPO_NAV.flatMap((item) =>
-      item.kind === 'group' ? item.children.map((child) => child.href) : [item.href],
-    );
-
+    const hrefs = TPO_NAV.map((item) => (item.kind === 'link' ? item.href : '')).filter(Boolean);
     expect(hrefs).not.toContain('/applications');
   });
 });
@@ -71,32 +65,36 @@ describe('isNavLinkActive', () => {
     expect(isNavLinkActive('/suggestions/abc', '/suggestions')).toBe(true);
   });
 
+  it('does not treat /openings/create as listed openings', () => {
+    expect(isNavLinkActive('/openings/create', '/openings')).toBe(false);
+    expect(isNavLinkActive('/openings/create', '/openings/create')).toBe(true);
+  });
+
   it('does not match routes that merely share a prefix', () => {
     expect(isNavLinkActive('/atsomething', '/ats')).toBe(false);
     expect(isNavLinkActive('/reports', '/review')).toBe(false);
   });
 });
 
-describe('isNavItemActive', () => {
-  it.each(PLACEMENT_NAV.map((link) => link.href))('marks Placement active on %s', (href) => {
-    expect(isNavItemActive(href, placementGroup)).toBe(true);
+describe('isPlacementTopNavActive', () => {
+  it('is active on the repository landing and placement shell routes', () => {
+    expect(isPlacementTopNavActive('/companies')).toBe(true);
+    expect(isPlacementTopNavActive('/openings/create')).toBe(true);
+    expect(isPlacementTopNavActive('/students')).toBe(false);
   });
+});
 
-  it.each(['/', '/students', '/provisioning', '/reports', '/settings'])(
-    'leaves Placement inactive on %s',
-    (pathname) => {
-      expect(isNavItemActive(pathname, placementGroup)).toBe(false);
-    },
-  );
-
+describe('isNavItemActive', () => {
   it('keeps leaf items matching their own route', () => {
+    if (!candidatesItem || candidatesItem.kind !== 'link')
+      throw new Error('Candidates nav missing');
     expect(isNavItemActive('/students', candidatesItem)).toBe(true);
     expect(isNavItemActive('/ats', candidatesItem)).toBe(false);
   });
 });
 
 describe('isPlacementRoute', () => {
-  it.each(PLACEMENT_NAV.map((link) => link.href))('is true for %s', (href) => {
+  it.each([...PLACEMENT_NAV.map((link) => link.href), '/companies'])('is true for %s', (href) => {
     expect(isPlacementRoute(href)).toBe(true);
   });
 

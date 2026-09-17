@@ -1,26 +1,29 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { isSmartApiError } from '@smart/api-client';
 import {
   EMPLOYMENT_TYPES,
-  SKILL_CATEGORIES,
-  SKILL_CATEGORY_IDS,
+  PLACEMENT_CITY_OPTIONS,
   SKILL_DEFINITIONS,
   SKILL_PROFICIENCIES,
-  SKILL_TAXONOMY_DOMAINS,
-  type SkillCategoryId,
+  type JobOpeningAttachedDocument,
   type SkillProficiency,
 } from '@smart/contracts';
 import { Button } from '@smart/ui';
 import { openingsApi } from '../../lib/api';
 import {
   EMPTY_JOB_POSTING_FORM,
+  JOB_POSTING_DOMAIN_OPTIONS,
   JOB_POSTING_STEPS,
   buildCreateOpeningPayload,
+  clearJobPostingDraft,
   isCreateOpeningPayload,
   labelFor,
+  loadJobPostingDraft,
+  saveJobPostingDraft,
   skillNameFor,
+  type JobPostingCompanyLogo,
   type JobPostingFormState,
   type JobPostingStepId,
 } from '../../lib/job-posting';
@@ -35,12 +38,14 @@ import {
   sectionTitleClass,
   subtleTextClass,
 } from '../../lib/tpo-ui';
+import { JobPostingAttachedDocuments } from './JobPostingAttachedDocuments';
+import { JobPostingCompanyLogoField } from './JobPostingCompanyLogo';
 import { JobPostingPreview } from './JobPostingPreview';
 import { JobPostingStepper } from './JobPostingStepper';
 import {
   JobPostingSelectField,
+  JobPostingTextArea,
   JobPostingTextField,
-  UnsupportedFieldNotice,
 } from './job-posting-fields';
 
 function errorMessage(caught: unknown, fallback: string): string {
@@ -52,46 +57,67 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
   const [step, setStep] = useState<JobPostingStepId>('company-role');
   const [form, setForm] = useState<JobPostingFormState>(EMPTY_JOB_POSTING_FORM);
   const [skills, setSkills] = useState<Map<string, SkillProficiency>>(new Map());
-  const [skillQuery, setSkillQuery] = useState('');
+  const [skillToAdd, setSkillToAdd] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState<string | null>(null);
+  const [attachedDocuments, setAttachedDocuments] = useState<JobOpeningAttachedDocument[]>([]);
+  const [companyLogo, setCompanyLogo] = useState<JobPostingCompanyLogo | null>(null);
+
+  useEffect(() => {
+    const draft = loadJobPostingDraft();
+    if (draft) {
+      setForm(draft.form);
+      setSkills(draft.skills);
+      setAttachedDocuments(draft.attachedDocuments);
+      setCompanyLogo(draft.companyLogo);
+    }
+  }, []);
 
   const stepIndex = JOB_POSTING_STEPS.findIndex((item) => item.id === step);
-  const visibleSkills = useMemo(
-    () =>
-      SKILL_DEFINITIONS.filter((skill) => {
-        if (form.categoryId && skill.categoryId !== form.categoryId) return false;
-        if (!skillQuery.trim()) return true;
-        const query = skillQuery.toLowerCase();
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          skill.categoryName.toLowerCase().includes(query)
-        );
-      }),
-    [form.categoryId, skillQuery],
+
+  const addableSkills = useMemo(
+    () => SKILL_DEFINITIONS.filter((skill) => !skills.has(skill.code)),
+    [skills],
   );
 
-  function updateSkill(code: string, selected: boolean) {
-    setSkills((current) => {
-      const next = new Map(current);
-      if (selected) next.set(code, 'BEGINNER');
-      else next.delete(code);
-      return next;
-    });
+  function updateForm(patch: Partial<JobPostingFormState>) {
+    setForm((current) => ({ ...current, ...patch }));
   }
 
   function go(delta: number) {
+    saveJobPostingDraft(form, skills, attachedDocuments, companyLogo);
     const next = JOB_POSTING_STEPS[stepIndex + delta];
     if (next) setStep(next.id);
   }
 
+  function handleSaveDraft() {
+    saveJobPostingDraft(form, skills, attachedDocuments, companyLogo);
+    setDraftSaved('Draft saved on this device. Server draft is created when you post the opening.');
+    window.setTimeout(() => setDraftSaved(null), 4000);
+  }
+
+  function addSkillFromDropdown() {
+    if (!skillToAdd || skills.has(skillToAdd)) return;
+    setSkills(new Map(skills).set(skillToAdd, 'BEGINNER'));
+    setSkillToAdd('');
+  }
+
+  function removeSkill(code: string) {
+    const next = new Map(skills);
+    next.delete(code);
+    setSkills(next);
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step !== 'review') return;
+
     setFormError(null);
     setSuccess(null);
 
-    const parsed = buildCreateOpeningPayload(form, skills);
+    const parsed = buildCreateOpeningPayload(form, skills, attachedDocuments, companyLogo);
     if (!isCreateOpeningPayload(parsed)) {
       setFormError(parsed.error.issues[0]?.message ?? 'Check the opening details.');
       return;
@@ -102,9 +128,12 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
       await openingsApi.create(parsed.data);
       setForm(EMPTY_JOB_POSTING_FORM);
       setSkills(new Map());
-      setSkillQuery('');
+      setSkillToAdd('');
+      setAttachedDocuments([]);
+      setCompanyLogo(null);
       setStep('company-role');
-      setSuccess('Job opening created in Draft status.');
+      clearJobPostingDraft();
+      setSuccess('Job opening saved in Draft status.');
       await onCreated();
     } catch (caught) {
       setFormError(errorMessage(caught, 'Could not create the job opening.'));
@@ -118,28 +147,32 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs text-[var(--ds-text-muted)]">
-            Placement <span className="mx-1 text-[var(--ds-text-subtle)]">›</span> Openings{' '}
-            <span className="mx-1 text-[var(--ds-text-subtle)]">›</span> Create Job Posting
+            Placement <span className="mx-1 text-[var(--ds-text-subtle)]">›</span> Create Job
+            Posting
           </p>
           <h2 className="mt-2 text-[28px] font-semibold tracking-tight text-[var(--ds-text)]">
             Create Job Posting
           </h2>
           <p className={`mt-1 text-sm ${mutedTextClass}`}>
-            Build a complete placement opportunity for students. Created openings start as Draft —
-            there is no publish API.
+            Build a complete placement opportunity. Posting creates a Draft opening — there is no
+            separate publish API.
           </p>
         </div>
         <Button
-          type="submit"
+          type="button"
           variant="ghost"
-          isLoading={submitting}
-          disabled={skills.size === 0}
-          className={primaryButtonClass}
+          className={secondaryButtonClass}
+          onClick={handleSaveDraft}
         >
-          Create opening
+          Save draft
         </Button>
       </div>
 
+      {draftSaved ? (
+        <p role="status" className="text-sm font-medium text-[var(--tpo-accent)]">
+          {draftSaved}
+        </p>
+      ) : null}
       {formError ? (
         <div role="alert" className={errorNoticeClass}>
           <p className="font-semibold">Opening not created</p>
@@ -163,82 +196,98 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Company & Role</h2>
               <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                Basic information about the organization and role. Institution and creator come from
-                your TPO session.
+                Basic organization and role information for students.
               </p>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <JobPostingTextField
                   label="Company name"
                   value={form.companyName}
-                  onChange={(event) => setForm({ ...form, companyName: event.target.value })}
+                  onChange={(event) => updateForm({ companyName: event.target.value })}
                   required
                   placeholder="e.g. Infinitica Labs"
                 />
                 <JobPostingTextField
                   label="Role title"
                   value={form.roleTitle}
-                  onChange={(event) => setForm({ ...form, roleTitle: event.target.value })}
+                  onChange={(event) => updateForm({ roleTitle: event.target.value })}
                   required
                   placeholder="e.g. Backend Engineer"
                 />
-                <JobPostingTextField
+                <JobPostingSelectField
                   label="Location"
                   value={form.location}
-                  onChange={(event) => setForm({ ...form, location: event.target.value })}
-                  required
-                  placeholder="e.g. Coimbatore"
+                  onChange={(location) => updateForm({ location })}
+                  options={PLACEMENT_CITY_OPTIONS}
+                  emptyLabel="Select city"
                 />
                 <JobPostingSelectField
                   label="Job type"
                   value={form.employmentType}
-                  onChange={(employmentType) => setForm({ ...form, employmentType })}
+                  onChange={(employmentType) => updateForm({ employmentType })}
                   options={EMPLOYMENT_TYPES}
                 />
                 <JobPostingSelectField
                   label="Job domain"
                   value={form.domain}
-                  onChange={(domain) => setForm({ ...form, domain })}
-                  options={SKILL_TAXONOMY_DOMAINS}
+                  onChange={(domain) => updateForm({ domain })}
+                  options={[...JOB_POSTING_DOMAIN_OPTIONS]}
+                  emptyLabel="Select domain"
+                  optionLabel={(id) => labelFor(id)}
                 />
+                <JobPostingCompanyLogoField logo={companyLogo} onChange={setCompanyLogo} />
               </div>
             </section>
           ) : null}
 
           {step === 'about-company' ? (
-            <UnsupportedFieldNotice
-              title="About Company"
-              description="The current JobOpening model stores company name only. These details are not collected because they would disappear on submit."
-              fields={[
-                'About the Company',
-                'What the Company Offers',
-                'Additional company details',
-              ]}
-            />
+            <section className={cardClass}>
+              <h2 className={sectionTitleClass}>About the Company</h2>
+              <div className="mt-5 flex flex-col gap-4">
+                <JobPostingTextArea
+                  label="About the Company"
+                  value={form.aboutCompany}
+                  onChange={(event) => updateForm({ aboutCompany: event.target.value })}
+                  placeholder="Tell students about the company, its mission, culture, products, and work environment..."
+                  rows={6}
+                />
+                <JobPostingTextArea
+                  label="What the Company Offers"
+                  value={form.companyOffers}
+                  onChange={(event) => updateForm({ companyOffers: event.target.value })}
+                  placeholder="Benefits, learning opportunities, perks, career growth, work culture..."
+                  rows={4}
+                />
+                <JobPostingTextArea
+                  label="Additional Company Details"
+                  value={form.additionalCompanyDetails}
+                  onChange={(event) => updateForm({ additionalCompanyDetails: event.target.value })}
+                  placeholder="Any additional information students should know about the company..."
+                  rows={4}
+                />
+              </div>
+            </section>
           ) : null}
 
-          {step === 'job-details' ? (
+          {step === 'role-details' ? (
             <section className={cardClass}>
-              <h2 className={sectionTitleClass}>Job Details</h2>
-              <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                Remaining structured opening fields. There is no free-text job description column.
-              </p>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <JobPostingSelectField
-                  label="Category (optional)"
-                  value={form.categoryId}
-                  onChange={(categoryId) => setForm({ ...form, categoryId })}
-                  options={SKILL_CATEGORY_IDS}
-                  emptyLabel="All categories"
-                  optionLabel={(id) => SKILL_CATEGORIES[id as SkillCategoryId]?.name ?? id}
+              <h2 className={sectionTitleClass}>Role Details</h2>
+              <div className="mt-5 flex flex-col gap-4">
+                <JobPostingTextArea
+                  label="Role Details"
+                  value={form.roleDetails}
+                  onChange={(event) => updateForm({ roleDetails: event.target.value })}
+                  placeholder="Describe responsibilities, expectations, and day-to-day work..."
+                  rows={8}
                 />
                 <JobPostingTextField
-                  label="Headcount"
-                  type="number"
-                  min={1}
-                  max={10_000}
-                  value={form.headcount}
-                  onChange={(event) => setForm({ ...form, headcount: event.target.value })}
-                  required
+                  label="Salary Details"
+                  value={form.salaryDetails}
+                  onChange={(event) => updateForm({ salaryDetails: event.target.value })}
+                  placeholder="e.g. 6–8 LPA (CTC)"
+                />
+                <JobPostingAttachedDocuments
+                  documents={attachedDocuments}
+                  onChange={setAttachedDocuments}
                 />
               </div>
             </section>
@@ -248,72 +297,101 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             <section className={cardClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className={sectionTitleClass}>Required skills</h2>
+                  <h2 className={sectionTitleClass}>Requirements</h2>
                   <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                    Select at least one taxonomy skill and its minimum proficiency. The optional
-                    category on Job Details narrows this list.
+                    Experience range and required taxonomy skills with minimum proficiency.
                   </p>
                 </div>
+                <button type="button" className={primaryButtonClass} onClick={() => go(1)}>
+                  Save & Continue
+                </button>
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <JobPostingTextField
+                  label="Minimum years experience"
+                  type="number"
+                  min={0}
+                  max={40}
+                  value={form.minYearsExperience}
+                  onChange={(event) => updateForm({ minYearsExperience: event.target.value })}
+                  required
+                />
+                <JobPostingTextField
+                  label="Maximum years experience"
+                  type="number"
+                  min={0}
+                  max={40}
+                  value={form.maxYearsExperience}
+                  onChange={(event) => updateForm({ maxYearsExperience: event.target.value })}
+                  required
+                />
+              </div>
+              <div className="mt-6 flex flex-wrap items-end gap-3">
+                <label className="grid min-w-[220px] flex-1 gap-1.5">
+                  <span className="text-sm font-semibold text-[var(--ds-text)]">
+                    Add required skill
+                  </span>
+                  <select
+                    aria-label="Add required skill"
+                    className={inputClass}
+                    value={skillToAdd}
+                    onChange={(event) => setSkillToAdd(event.target.value)}
+                  >
+                    <option value="">Select a skill…</option>
+                    {addableSkills.map((skill) => (
+                      <option key={skill.code} value={skill.code}>
+                        {skill.name} ({skill.categoryName})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  disabled={!skillToAdd}
+                  onClick={addSkillFromDropdown}
+                >
+                  Add skill
+                </button>
                 <span className={accentChipClass}>{skills.size} selected</span>
               </div>
-              {skills.size > 0 ? (
-                <ul className="mt-4 flex flex-wrap gap-2">
-                  {[...skills].map(([code]) => (
-                    <li key={code} className={accentChipClass}>
-                      {skillNameFor(code)}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <label className="mt-5 grid gap-1.5">
-                <span className="sr-only">Search skills</span>
-                <input
-                  className={inputClass}
-                  value={skillQuery}
-                  onChange={(event) => setSkillQuery(event.target.value)}
-                  placeholder="Search skills or category…"
-                />
-              </label>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {visibleSkills.map((skill) => {
-                  const proficiency = skills.get(skill.code);
-                  return (
-                    <div
-                      key={skill.code}
-                      className={`rounded-xl border p-3.5 transition ${
-                        proficiency
-                          ? 'border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)]'
-                          : 'border-[var(--ds-border)] bg-[var(--ds-surface-muted)] hover:bg-[var(--ds-surface-hover)]'
-                      }`}
-                    >
-                      <label className="flex cursor-pointer items-start gap-2.5 text-sm font-semibold text-[var(--ds-text)]">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--ds-border)] accent-[var(--tpo-accent)]"
-                          checked={proficiency !== undefined}
-                          onChange={(event) => updateSkill(skill.code, event.target.checked)}
-                        />
-                        <span>
-                          {skill.name}
-                          <span
-                            className={`mt-0.5 block text-[11px] font-normal ${subtleTextClass}`}
+              <div className="mt-4 max-h-96 overflow-y-auto rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+                {skills.size === 0 ? (
+                  <p className={`text-sm ${mutedTextClass}`}>Add at least one skill to continue.</p>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {[...skills].map(([code, proficiency]) => (
+                      <li
+                        key={code}
+                        className="rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-[var(--ds-text)]">
+                              {skillNameFor(code)}
+                            </p>
+                            <p className={`text-[11px] ${subtleTextClass}`}>
+                              {SKILL_DEFINITIONS.find((s) => s.code === code)?.categoryName}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-[var(--ds-coral)]"
+                            onClick={() => removeSkill(code)}
                           >
-                            {skill.categoryName}
-                          </span>
-                        </span>
-                      </label>
-                      {proficiency ? (
+                            Remove
+                          </button>
+                        </div>
                         <label className="mt-3 grid gap-1.5">
-                          <span className="sr-only">Minimum proficiency for {skill.name}</span>
+                          <span className="sr-only">
+                            Minimum proficiency for {skillNameFor(code)}
+                          </span>
                           <select
                             className={inputClass}
                             value={proficiency}
                             onChange={(event) =>
                               setSkills(
-                                new Map(skills).set(
-                                  skill.code,
-                                  event.target.value as SkillProficiency,
-                                ),
+                                new Map(skills).set(code, event.target.value as SkillProficiency),
                               )
                             }
                           >
@@ -324,108 +402,85 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                             ))}
                           </select>
                         </label>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ) : null}
-
-          {step === 'eligibility' ? (
-            <section className={cardClass}>
-              <h2 className={sectionTitleClass}>Eligibility</h2>
-              <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                Experience range is the only eligibility the JobOpening contract stores.
-              </p>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <JobPostingTextField
-                  label="Minimum years experience"
-                  type="number"
-                  min={0}
-                  max={40}
-                  value={form.minYearsExperience}
-                  onChange={(event) => setForm({ ...form, minYearsExperience: event.target.value })}
-                  required
-                />
-                <JobPostingTextField
-                  label="Maximum years experience"
-                  type="number"
-                  min={0}
-                  max={40}
-                  value={form.maxYearsExperience}
-                  onChange={(event) => setForm({ ...form, maxYearsExperience: event.target.value })}
-                  required
-                />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </section>
           ) : null}
 
           {step === 'hiring-process' ? (
-            <UnsupportedFieldNotice
-              title="Hiring Process"
-              description="Round details, interview process, and Drive SPOC are not fields on JobOpening."
-              fields={['Round Details', 'Hiring Details', 'Drive SPOC']}
-            />
+            <section className={cardClass}>
+              <h2 className={sectionTitleClass}>Hiring Process</h2>
+              <div className="mt-5 flex flex-col gap-4">
+                <JobPostingTextArea
+                  label="Round Details"
+                  value={form.roundDetails}
+                  onChange={(event) => updateForm({ roundDetails: event.target.value })}
+                  placeholder={
+                    'Round 1 — Online Assessment\nRound 2 — Technical Interview\nRound 3 — HR Interview'
+                  }
+                  rows={5}
+                />
+                <JobPostingTextArea
+                  label="Hiring Details"
+                  value={form.hiringDetails}
+                  onChange={(event) => updateForm({ hiringDetails: event.target.value })}
+                  placeholder="Describe the hiring process, selection stages, interview format, assessment process, and other recruitment details..."
+                  rows={6}
+                />
+                <JobPostingTextField
+                  label="Drive SPOC"
+                  value={form.driveSpoc}
+                  onChange={(event) => updateForm({ driveSpoc: event.target.value })}
+                  placeholder="Placement / company point of contact for this drive"
+                />
+              </div>
+            </section>
           ) : null}
 
           {step === 'drive-details' ? (
-            <UnsupportedFieldNotice
-              title="Drive Details"
-              description="Drive date and last date to apply are not fields on JobOpening. Location already lives on Company & Role."
-              fields={['Drive Date', 'Last Date to Apply', 'Drive SPOC']}
-            />
+            <section className={cardClass}>
+              <h2 className={sectionTitleClass}>Drive Details</h2>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <JobPostingTextField
+                  label="Drive Date"
+                  type="date"
+                  value={form.driveDate}
+                  onChange={(event) => updateForm({ driveDate: event.target.value })}
+                />
+                <JobPostingTextField
+                  label="Last Date to Apply"
+                  type="date"
+                  value={form.lastDateToApply}
+                  onChange={(event) => updateForm({ lastDateToApply: event.target.value })}
+                />
+              </div>
+              {form.driveSpoc.trim() ? (
+                <p className={`mt-4 text-sm ${mutedTextClass}`}>
+                  Drive SPOC:{' '}
+                  <span className="font-semibold text-[var(--ds-text)]">
+                    {form.driveSpoc.trim()}
+                  </span>{' '}
+                  (edit on Hiring Process)
+                </p>
+              ) : null}
+            </section>
           ) : null}
 
           {step === 'review' ? (
             <section className={cardClass}>
-              <h2 className={sectionTitleClass}>Review & Publish</h2>
+              <h2 className={sectionTitleClass}>Review & Post</h2>
               <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                Confirm the fields that POST /placement/openings will persist. Status will be Draft
-                — there is no separate publish action.
+                Confirm details before posting. Status will be Draft.
               </p>
-              <div className="mt-5 grid gap-5">
-                <ReviewGroup title="Company">
-                  <ReviewItem label="Company" value={form.companyName || '—'} />
-                  <ReviewItem label="Location" value={form.location || '—'} />
-                </ReviewGroup>
-                <ReviewGroup title="Role">
-                  <ReviewItem label="Role" value={form.roleTitle || '—'} />
-                  <ReviewItem label="Domain" value={labelFor(form.domain)} />
-                  <ReviewItem label="Job type" value={labelFor(form.employmentType)} />
-                  <ReviewItem label="Headcount" value={form.headcount || '—'} />
-                  <ReviewItem
-                    label="Category"
-                    value={
-                      form.categoryId
-                        ? (SKILL_CATEGORIES[form.categoryId as SkillCategoryId]?.name ??
-                          form.categoryId)
-                        : 'All categories'
-                    }
-                  />
-                </ReviewGroup>
-                <ReviewGroup title="Eligibility">
-                  <ReviewItem
-                    label="Experience"
-                    value={`${form.minYearsExperience}–${form.maxYearsExperience} years`}
-                  />
-                </ReviewGroup>
-                <ReviewGroup title="Requirements">
-                  <ReviewItem
-                    label="Required skills"
-                    value={
-                      skills.size === 0
-                        ? 'None selected'
-                        : [...skills]
-                            .map(
-                              ([code, proficiency]) =>
-                                `${skillNameFor(code)} (${labelFor(proficiency)})`,
-                            )
-                            .join(', ')
-                    }
-                  />
-                </ReviewGroup>
-              </div>
+              <ReviewSections
+                form={form}
+                skills={skills}
+                attachedDocuments={attachedDocuments}
+                companyLogo={companyLogo}
+              />
             </section>
           ) : null}
 
@@ -436,23 +491,103 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
               onClick={() => go(-1)}
               disabled={stepIndex === 0}
             >
-              Previous
+              ← Previous
             </button>
             {stepIndex < JOB_POSTING_STEPS.length - 1 ? (
               <button type="button" className={primaryButtonClass} onClick={() => go(1)}>
-                Save & Continue
+                Save & Continue →
               </button>
             ) : (
-              <p className={`text-sm ${mutedTextClass}`}>
-                Submit with Create opening. Status will be Draft.
-              </p>
+              <button
+                type="submit"
+                className={primaryButtonClass}
+                disabled={submitting || skills.size === 0}
+              >
+                {submitting ? 'Posting…' : 'Post Job →'}
+              </button>
             )}
           </div>
         </div>
 
-        <JobPostingPreview form={form} skills={skills} />
+        <JobPostingPreview
+          form={form}
+          skills={skills}
+          attachedDocuments={attachedDocuments}
+          companyLogo={companyLogo}
+        />
       </div>
     </form>
+  );
+}
+
+function ReviewSections({
+  form,
+  skills,
+  attachedDocuments,
+  companyLogo,
+}: {
+  form: JobPostingFormState;
+  skills: ReadonlyMap<string, SkillProficiency>;
+  attachedDocuments: readonly JobOpeningAttachedDocument[];
+  companyLogo: JobPostingCompanyLogo | null;
+}) {
+  return (
+    <div className="mt-5 grid gap-5">
+      <ReviewGroup title="Company & Role">
+        <ReviewItem label="Company" value={form.companyName || '—'} />
+        <ReviewItem label="Role" value={form.roleTitle || '—'} />
+        <ReviewItem label="Location" value={form.location || '—'} />
+        <ReviewItem label="Job type" value={labelFor(form.employmentType)} />
+        <ReviewItem label="Domain" value={labelFor(form.domain)} />
+        <ReviewItem label="Company logo" value={companyLogo?.fileName ?? '—'} />
+      </ReviewGroup>
+      <ReviewGroup title="About the Company">
+        <ReviewItem label="About" value={form.aboutCompany.trim() || '—'} fullWidth />
+        <ReviewItem label="Offers" value={form.companyOffers.trim() || '—'} fullWidth />
+        <ReviewItem
+          label="Additional"
+          value={form.additionalCompanyDetails.trim() || '—'}
+          fullWidth
+        />
+      </ReviewGroup>
+      <ReviewGroup title="Role Details">
+        <ReviewItem label="Description" value={form.roleDetails.trim() || '—'} fullWidth />
+        <ReviewItem label="Salary" value={form.salaryDetails.trim() || '—'} />
+        <ReviewItem
+          label="Documents"
+          value={
+            attachedDocuments.length === 0
+              ? 'None'
+              : attachedDocuments.map((doc) => doc.fileName).join(', ')
+          }
+          fullWidth
+        />
+      </ReviewGroup>
+      <ReviewGroup title="Requirements">
+        <ReviewItem
+          label="Experience"
+          value={`${form.minYearsExperience}–${form.maxYearsExperience} years`}
+        />
+        <ReviewItem
+          label="Skills"
+          value={
+            skills.size === 0
+              ? 'None'
+              : [...skills].map(([code, p]) => `${skillNameFor(code)} (${labelFor(p)})`).join(', ')
+          }
+          fullWidth
+        />
+      </ReviewGroup>
+      <ReviewGroup title="Hiring Process">
+        <ReviewItem label="Rounds" value={form.roundDetails.trim() || '—'} fullWidth />
+        <ReviewItem label="Hiring details" value={form.hiringDetails.trim() || '—'} fullWidth />
+        <ReviewItem label="Drive SPOC" value={form.driveSpoc.trim() || '—'} />
+      </ReviewGroup>
+      <ReviewGroup title="Drive Details">
+        <ReviewItem label="Drive date" value={form.driveDate || '—'} />
+        <ReviewItem label="Last date to apply" value={form.lastDateToApply || '—'} />
+      </ReviewGroup>
+    </div>
   );
 }
 
@@ -467,13 +602,23 @@ function ReviewGroup({ title, children }: { title: string; children: React.React
   );
 }
 
-function ReviewItem({ label, value }: { label: string; value: string }) {
+function ReviewItem({
+  label,
+  value,
+  fullWidth,
+}: {
+  label: string;
+  value: string;
+  fullWidth?: boolean;
+}) {
   return (
-    <div>
+    <div className={fullWidth ? 'sm:col-span-2' : undefined}>
       <dt className="text-[10px] font-semibold uppercase tracking-[0.11em] text-[var(--ds-text-subtle)]">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-semibold text-[var(--ds-text)]">{value}</dd>
+      <dd className="mt-1 whitespace-pre-wrap text-sm font-semibold text-[var(--ds-text)]">
+        {value}
+      </dd>
     </div>
   );
 }

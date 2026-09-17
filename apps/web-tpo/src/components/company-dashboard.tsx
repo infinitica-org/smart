@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { isSmartApiError } from '@smart/api-client';
 import type { ApplicationDto, JobOpeningDto } from '@smart/contracts';
 import { Alert } from '@smart/ui';
 import { applicationsApi, openingsApi } from '../lib/api';
+import { tpoApiErrorMessage } from '../lib/api-errors';
 import {
   PIPELINE_LABELS,
   activeOpenings,
@@ -24,11 +24,6 @@ import {
   surfaceClass,
 } from '../lib/tpo-ui';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
-
-function errorMessage(caught: unknown, fallback: string): string {
-  if (isSmartApiError(caught) || caught instanceof Error) return caught.message;
-  return fallback;
-}
 
 function TotalCard({ label, value, hint }: { label: string; value: number; hint: string }) {
   return (
@@ -71,13 +66,13 @@ export function CompanyDashboard() {
         setApplications(lists.flatMap((list) => list.applications));
       } catch (caught) {
         setApplications(null);
-        setPipelineError(errorMessage(caught, 'Could not load applications.'));
+        setPipelineError(tpoApiErrorMessage(caught, 'Could not load applications.'));
       }
     } catch (caught) {
       setOpenings(null);
       setApplications(null);
-      setOpeningsError(errorMessage(caught, 'Could not load job openings.'));
-      setPipelineError(errorMessage(caught, 'Could not load job openings.'));
+      setOpeningsError(tpoApiErrorMessage(caught, 'Could not load job openings.'));
+      setPipelineError(tpoApiErrorMessage(caught, 'Could not load job openings.'));
     }
 
     setLoading(false);
@@ -95,9 +90,9 @@ export function CompanyDashboard() {
   return (
     <>
       <PlacementPageHeader
-        eyebrow="Placement · Company"
+        eyebrow="Placement · Insights"
         title="Company dashboard"
-        description="Live openings and ATS snapshot for this institution. JWT institution scope is enforced by the CO-T01 and CO-T02 APIs — this page never sends a client institution id."
+        description="A live view of active drives, fresh matches, and pipeline momentum across your campus recruiters."
         actions={
           <button
             type="button"
@@ -123,17 +118,17 @@ export function CompanyDashboard() {
             <TotalCard
               label="Active openings"
               value={openingsError ? 0 : active.length}
-              hint="JobOpeningStatus.OPEN from /placement/openings"
+              hint="Roles currently open to students"
             />
             <TotalCard
               label="New matches"
               value={pipelineError ? 0 : newMatchCount}
-              hint="AtsStage.APPLIED — CO-T02 Applied / New Matches"
+              hint="Candidates who recently applied"
             />
             <TotalCard
               label="Pipeline candidates"
               value={pipelineError ? 0 : (applications?.length ?? 0)}
-              hint="Applications from /placement/openings/:id/applications"
+              hint="Everyone in your ATS funnel"
             />
           </section>
 
@@ -155,8 +150,8 @@ export function CompanyDashboard() {
               {openingsError
                 ? null
                 : active.length === 0
-                  ? 'Only JobOpeningStatus.OPEN is counted. CO-T01 create writes DRAFT and there is no publish API on this ticket.'
-                  : 'Live CO-T01 rows with status OPEN.'}
+                  ? 'Published drives appear here once an opening is live for students.'
+                  : 'Openings accepting applications right now.'}
             </p>
             {openingsError ? null : active.length === 0 ? (
               <div className="mt-4">
@@ -184,7 +179,7 @@ export function CompanyDashboard() {
                     <div>
                       <p className="font-medium text-[var(--ds-text)]">{opening.roleTitle}</p>
                       <p className={mutedTextClass}>
-                        {opening.companyName} · {opening.location} · {opening.headcount} headcount
+                        {opening.companyName} · {opening.location}
                       </p>
                     </div>
                     <Link href="/ats" className={secondaryButtonSmClass}>
@@ -199,7 +194,7 @@ export function CompanyDashboard() {
           <section aria-label="Pipeline overview" className={cardClass}>
             <h2 className={sectionTitleClass}>Pipeline overview</h2>
             <p className={`mt-1 text-sm ${mutedTextClass}`}>
-              Canonical AtsStage counts from CO-T02.
+              Where candidates sit across each hiring stage.
             </p>
             {pipelineError ? null : !stageCounts || applications?.length === 0 ? (
               <p className={`mt-4 text-sm ${mutedTextClass}`}>
@@ -222,8 +217,7 @@ export function CompanyDashboard() {
           <section aria-label="Recent matches" className={cardClass}>
             <h2 className={sectionTitleClass}>Recent matches</h2>
             <p className={`mt-1 text-sm ${mutedTextClass}`}>
-              Newest Application.createdAt rows joined to the CO-T01 opening. SE-T05 ranked
-              suggestions are not persisted until shortlist.
+              The latest students matched to your open roles.
             </p>
             {pipelineError ? null : recent.length === 0 ? (
               <p className={`mt-4 text-sm ${mutedTextClass}`}>No recent matches yet.</p>

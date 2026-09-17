@@ -2,26 +2,24 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_JOB_POSTING_FORM,
   JOB_POSTING_STEPS,
-  UNSUPPORTED_JOB_POSTING_FIELDS,
   buildCreateOpeningPayload,
   isCreateOpeningPayload,
 } from './job-posting';
 
 describe('job posting payload', () => {
-  it('exposes eight UI steps without adding an overview route', () => {
+  it('exposes seven wizard steps without job-details or eligibility steps', () => {
     expect(JOB_POSTING_STEPS.map((step) => step.id)).toEqual([
       'company-role',
       'about-company',
-      'job-details',
+      'role-details',
       'requirements',
-      'eligibility',
       'hiring-process',
       'drive-details',
       'review',
     ]);
   });
 
-  it('builds the existing create-opening payload from wizard state', () => {
+  it('builds the create-opening payload including logo storage key and attachments', () => {
     const parsed = buildCreateOpeningPayload(
       {
         ...EMPTY_JOB_POSTING_FORM,
@@ -30,33 +28,33 @@ describe('job posting payload', () => {
         location: 'Coimbatore',
         minYearsExperience: '2',
         maxYearsExperience: '5',
-        headcount: '3',
-        categoryId: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
+        aboutCompany: 'About copy',
+        driveSpoc: 'tpo@campus.edu',
       },
       new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'ADVANCED']]),
+      [
+        {
+          documentId: '33333333-3333-4333-8333-333333333333',
+          fileName: 'jd.pdf',
+          fileUrl: 'job-opening-docs/inst/jd.pdf',
+          mimeType: 'application/pdf',
+          fileSizeBytes: 1024,
+        },
+      ],
+      {
+        storageKey: 'job-opening-logos/inst/logo.png',
+        previewUrl: 'https://signed.example/logo.png',
+        fileName: 'logo.png',
+      },
     );
 
     expect(isCreateOpeningPayload(parsed)).toBe(true);
     if (!isCreateOpeningPayload(parsed)) return;
-    expect(parsed.data).toEqual({
-      companyName: 'Infinitica Labs',
-      roleTitle: 'Backend Engineer',
-      domain: 'SOFTWARE_IT',
-      categoryId: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
-      minYearsExperience: 2,
-      maxYearsExperience: 5,
-      location: 'Coimbatore',
-      employmentType: 'FULL_TIME',
-      headcount: 3,
-      requiredSkills: [
-        {
-          skillCode: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
-          minProficiency: 'ADVANCED',
-        },
-      ],
+    expect(parsed.data).toMatchObject({
+      companyLogoStorageKey: 'job-opening-logos/inst/logo.png',
+      attachedDocuments: [expect.objectContaining({ fileName: 'jd.pdf' })],
     });
-    expect(parsed.data).not.toHaveProperty('salary');
-    expect(parsed.data).not.toHaveProperty('driveDate');
+    expect('companyLogoUrl' in parsed.data).toBe(false);
   });
 
   it('rejects an inverted experience range with the shared contract', () => {
@@ -70,13 +68,10 @@ describe('job posting payload', () => {
         maxYearsExperience: '2',
       },
       new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'BEGINNER']]),
+      [],
+      null,
     );
 
     expect(parsed.success).toBe(false);
-  });
-
-  it('lists unsupported requested fields so the UI cannot pretend they persist', () => {
-    expect(UNSUPPORTED_JOB_POSTING_FIELDS).toContain('Salary Details');
-    expect(UNSUPPORTED_JOB_POSTING_FIELDS).toContain('Drive Date');
   });
 });
