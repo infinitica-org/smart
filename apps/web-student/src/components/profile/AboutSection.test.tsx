@@ -3,7 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutSection } from './AboutSection';
 
 const saveOnboarding = vi.fn();
-const invalidateOnboarding = vi.fn();
+const useOnboarding = vi.fn();
+
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => useOnboarding(),
+}));
+
+vi.mock('@smart/ui', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  };
+});
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -13,24 +25,20 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
-vi.mock('@/lib/use-onboarding', () => ({
-  useOnboarding: () => ({
-    data: {
-      profile: { about: 'Existing summary.' },
-      draft: null,
-      onboardingCompleted: true,
-    },
-    isLoading: false,
-    isError: false,
-  }),
-  useInvalidateOnboarding: () => invalidateOnboarding,
-}));
-
 describe('AboutSection', () => {
   beforeEach(() => {
     saveOnboarding.mockReset();
-    invalidateOnboarding.mockReset();
     saveOnboarding.mockResolvedValue({});
+    useOnboarding.mockReturnValue({
+      data: {
+        profile: { about: 'Existing summary.' },
+        draft: null,
+        onboardingCompleted: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
   });
 
   it('renders saved about content and supports edit/save/cancel', async () => {
@@ -56,5 +64,29 @@ describe('AboutSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByText('Existing summary.')).toBeDefined();
     expect(screen.queryByDisplayValue('Temporary draft.')).toBeNull();
+  });
+
+  it('hides summary helper copy when professional summary exists', () => {
+    render(<AboutSection presentation="summary" />);
+    expect(
+      screen.queryByText(
+        /Share a short summary about yourself, your skills, and what you're looking for/i,
+      ),
+    ).toBeNull();
+  });
+
+  it('shows summary helper copy only when summary is empty', () => {
+    useOnboarding.mockReturnValue({
+      data: { profile: { about: '' }, draft: null, onboardingCompleted: true },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+    render(<AboutSection presentation="summary" />);
+    expect(
+      screen.getByText(
+        /Share a short summary about yourself, your skills, and what you're looking for/i,
+      ),
+    ).toBeDefined();
   });
 });

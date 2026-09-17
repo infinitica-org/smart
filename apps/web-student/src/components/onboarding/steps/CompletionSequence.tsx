@@ -109,9 +109,9 @@ export default function CompletionSequence({
             className="flex flex-col items-center"
           >
             <div className="relative mb-8 h-14 w-14 flex-none">
-              <span className="absolute inset-0 animate-ping rounded-full bg-[#00fad0]/20" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-foreground/20" />
               <span className="absolute inset-0 rounded-full border-2 border-border" />
-              <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#00fad0]" />
+              <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-foreground" />
             </div>
 
             <AnimatePresence mode="wait">
@@ -124,7 +124,7 @@ export default function CompletionSequence({
                   transition={{ duration: 0.3 }}
                   className="flex max-w-md items-center justify-center gap-2.5"
                 >
-                  <Lightbulb className="h-5 w-5 flex-none text-[#00fad0]" />
+                  <Lightbulb className="h-5 w-5 flex-none text-foreground" />
                   <p className="text-lg leading-relaxed font-medium text-muted-foreground">
                     {beat.text}
                   </p>
@@ -149,9 +149,9 @@ export default function CompletionSequence({
                   key={item.text}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === beatIndex
-                      ? 'w-5 bg-[#00fad0]'
+                      ? 'w-5 bg-foreground'
                       : idx < beatIndex
-                        ? 'w-1.5 bg-[#00fad0]/40'
+                        ? 'w-1.5 bg-foreground/40'
                         : 'w-1.5 bg-border'
                   }`}
                 />
@@ -170,14 +170,14 @@ export default function CompletionSequence({
               initial={{ scale: 0.4, opacity: 0, rotate: -8 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 140, damping: 16, delay: 0.2 }}
-              className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10"
+              className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-foreground/30 bg-muted/10"
             >
-              <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+              <CheckCircle2 className="h-10 w-10 text-foreground" />
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.8, type: 'spring', stiffness: 180, damping: 14 }}
-                className="absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#00fad0] text-zinc-950 shadow-lg shadow-[#00fad0]/30"
+                className="absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-background shadow-lg shadow-foreground/30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
               </motion.span>

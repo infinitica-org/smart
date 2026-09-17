@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, MapPin } from 'lucide-react';
-import { isSmartApiError } from '@smart/api-client';
+import { isSmartApiError, queryKeys } from '@smart/api-client';
+import { useQueryClient } from '@smart/ui';
 import { LightSelect } from '@/components/ui/LightSelect';
 import { CITY_OPTIONS } from '@/lib/onboarding-form';
 import { api } from '@/lib/api';
-import { useInvalidateOnboarding, useOnboarding } from '@/lib/use-onboarding';
+import { profilePrimaryButtonClass } from '@/lib/profile-ui-classes';
+import { useOnboarding } from '@/lib/use-onboarding';
 
 const MAX_PREFERRED_LOCATIONS = 3;
 
 export function JobPreferencesSection() {
-  const { data: onboarding, isLoading, isError } = useOnboarding();
-  const invalidateOnboarding = useInvalidateOnboarding();
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, error: queryError } = useOnboarding();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -22,17 +24,21 @@ export function JobPreferencesSection() {
   const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
-    if (!onboarding || saving) return;
-    const prefs = onboarding.profile?.jobPreferences ?? onboarding.draft?.jobPreferences;
+    if (!data) return;
+    const prefs = data.profile?.jobPreferences ?? data.draft?.jobPreferences;
     if (!prefs) return;
     setExpectedCtcLakhs(prefs.expectedCtcLakhs?.toString() ?? '');
     setCurrentLocation(prefs.currentLocation ?? '');
     setPreferredLocations(prefs.preferredLocations ?? []);
-  }, [onboarding, saving]);
+  }, [data]);
 
   useEffect(() => {
-    if (isError) setError('Could not load saved job preferences.');
-  }, [isError]);
+    if (isError) {
+      setError(
+        isSmartApiError(queryError) ? queryError.message : 'Could not load saved job preferences.',
+      );
+    }
+  }, [isError, queryError]);
 
   const togglePreferredLocation = (city: string) => {
     setPreferredLocations((current) => {
@@ -69,8 +75,8 @@ export function JobPreferencesSection() {
           preferredWorkModes: ['FULL_TIME', 'HYBRID'],
         },
       });
-      invalidateOnboarding();
       setSuccess('Job preferences saved.');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.myOnboarding() });
     } catch (err: unknown) {
       setError(isSmartApiError(err) ? err.message : 'Could not save job preferences.');
     } finally {
@@ -127,7 +133,7 @@ export function JobPreferencesSection() {
         </p>
       ) : null}
       {success ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
           {success}
         </p>
       ) : null}
@@ -142,7 +148,7 @@ export function JobPreferencesSection() {
           value={expectedCtcLakhs}
           onChange={(e) => setExpectedCtcLakhs(e.target.value)}
           placeholder="e.g. 8"
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[#00fad0]"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
         />
       </div>
 
@@ -187,7 +193,7 @@ export function JobPreferencesSection() {
                 onClick={() => togglePreferredLocation(city)}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                   selected
-                    ? 'border-[#00fad0] bg-[#00fad0]/10 text-[#00fad0]'
+                    ? 'border-foreground bg-foreground/10 text-foreground'
                     : 'border-border text-muted-foreground hover:bg-muted'
                 }`}
               >
@@ -202,7 +208,7 @@ export function JobPreferencesSection() {
         type="button"
         onClick={() => void handleSave()}
         disabled={saving}
-        className="rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-[#131313] disabled:opacity-60"
+        className={profilePrimaryButtonClass}
       >
         {saving ? 'Saving…' : 'Save preferences'}
       </button>

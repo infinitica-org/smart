@@ -1,9 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Logger,
+  Optional,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -13,11 +17,14 @@ import {
   ApplicationStageChangedDataSchema,
   CandidateApplicationDtoSchema,
   EmploymentTypeSchema,
+  JobOpeningAttachedDocumentSchema,
   JobOpeningDtoSchema,
   PlacementRecordDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
   SkillTaxonomyDomainSchema,
+  UploadJobOpeningDocumentResponseSchema,
+  UploadJobOpeningLogoResponseSchema,
 } from '@smart/contracts';
 import type {
   ApplicationConfidenceDto,
@@ -26,7 +33,10 @@ import type {
   CandidateApplicationDto,
   CreateApplicationRequest,
   CreateJobOpeningRequest,
+  JobOpeningAttachedDocument,
   JobOpeningDto,
+  UploadJobOpeningDocumentResponse,
+  UploadJobOpeningLogoResponse,
   ListApplicationsResponse,
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
@@ -35,8 +45,16 @@ import type {
   RecordOutcomeRequest,
   SkillProficiency,
 } from '@smart/contracts';
+import { z } from 'zod';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+
+const JOB_OPENING_DOC_MAX_BYTES = 10 * 1024 * 1024;
+const JOB_OPENING_LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const JOB_OPENING_DOC_MIME = new Set(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']);
+const JOB_OPENING_LOGO_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png']);
 
 /** Row shape the DTO mapper needs; `stream` has no column and is never persisted. */
 interface OpeningRow {
@@ -45,14 +63,84 @@ interface OpeningRow {
   companyName: string;
   roleTitle: string;
   domainCode: string | null;
+  categoryCode: string | null;
   minYearsExperience: number | null;
   maxYearsExperience: number | null;
   location: string | null;
   employmentType: string | null;
   headcount: number | null;
+  companyLogoUrl: string | null;
+  attachedDocuments: unknown;
+  aboutCompany: string | null;
+  companyOffers: string | null;
+  additionalCompanyDetails: string | null;
+  roleDetails: string | null;
+  salaryDetails: string | null;
+  roundDetails: string | null;
+  hiringDetails: string | null;
+  driveSpoc: string | null;
+  driveDate: Date | null;
+  lastDateToApply: Date | null;
   status: string;
   createdAt: Date;
   requiredSkills: { minProficiency: string; skill: { code: string } }[];
+}
+
+function calendarDateToIso(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function isoDateToCalendarDate(iso: string): Date {
+  return new Date(`${iso}T00:00:00.000Z`);
+}
+
+function parseAttachedDocuments(raw: unknown): JobOpeningAttachedDocument[] | null {
+  if (raw === null || raw === undefined) return null;
+  const parsed = z.array(JobOpeningAttachedDocumentSchema).safeParse(raw);
+  if (!parsed.success) return null;
+  return parsed.data;
+}
+
+/** Coerce legacy rows so list/get does not 500 the whole institution when one field is null. */
+function normalizeOpeningRow(row: OpeningRow): OpeningRow {
+  const domain = SkillTaxonomyDomainSchema.safeParse(row.domainCode);
+  const employmentType = EmploymentTypeSchema.safeParse(row.employmentType);
+  const minYears = row.minYearsExperience ?? 0;
+  const maxYears = row.maxYearsExperience ?? minYears;
+
+  return {
+    ...row,
+    domainCode: domain.success ? domain.data : 'SOFTWARE_IT',
+    location: row.location?.trim() ? row.location.trim() : 'Unspecified',
+    employmentType: employmentType.success ? employmentType.data : 'FULL_TIME',
+    minYearsExperience: minYears,
+    maxYearsExperience: maxYears < minYears ? minYears : maxYears,
+  };
+}
+
+function attachedDocumentsForCreate(
+  body: CreateJobOpeningRequest,
+): Prisma.InputJsonValue | undefined {
+  if (!body.attachedDocuments?.length) return undefined;
+  return body.attachedDocuments as Prisma.InputJsonValue;
+}
+
+function openingExtendedFields(body: CreateJobOpeningRequest) {
+  return {
+    categoryCode: body.categoryId ?? null,
+    companyLogoUrl: body.companyLogoStorageKey ?? null,
+    attachedDocuments: attachedDocumentsForCreate(body),
+    aboutCompany: body.aboutCompany ?? null,
+    companyOffers: body.companyOffers ?? null,
+    additionalCompanyDetails: body.additionalCompanyDetails ?? null,
+    roleDetails: body.roleDetails ?? null,
+    salaryDetails: body.salaryDetails ?? null,
+    roundDetails: body.roundDetails ?? null,
+    hiringDetails: body.hiringDetails ?? null,
+    driveSpoc: body.driveSpoc ?? null,
+    driveDate: body.driveDate ? isoDateToCalendarDate(body.driveDate) : null,
+    lastDateToApply: body.lastDateToApply ? isoDateToCalendarDate(body.lastDateToApply) : null,
+  };
 }
 
 /** Persisted application row; `matchScore` arrives as a Prisma `Decimal`. */
@@ -92,11 +180,131 @@ const SHORTLIST_STAGE = 'SHORTLISTED' as const;
 export class PlacementService {
   readonly owner = 'Vedika G';
   readonly purpose = 'JD records, shortlists, outcome ingestion.';
+  private readonly logger = new Logger(PlacementService.name);
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
+
+  async uploadOpeningDocument(
+    institutionId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+    labelRaw?: string,
+  ): Promise<UploadJobOpeningDocumentResponse> {
+    if (!this.storageService) {
+      throw new BadRequestException({
+        error: 'storage_unavailable',
+        message: 'Document upload is unavailable in this environment.',
+        statusCode: 400,
+      });
+    }
+
+    if (!JOB_OPENING_DOC_MIME.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, JPG, and PNG files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > JOB_OPENING_DOC_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Each attachment must be 10MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const label = labelRaw?.trim();
+    const objectKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `job-opening-docs/${institutionId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    return UploadJobOpeningDocumentResponseSchema.parse({
+      documentId: randomUUID(),
+      fileName: file.fileName,
+      fileUrl: objectKey,
+      mimeType: file.mimeType,
+      fileSizeBytes: file.buffer.byteLength,
+      ...(label ? { label } : {}),
+    });
+  }
+
+  async uploadOpeningLogo(
+    institutionId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<UploadJobOpeningLogoResponse> {
+    if (!this.storageService) {
+      throw new BadRequestException({
+        error: 'storage_unavailable',
+        message: 'Logo upload is unavailable in this environment.',
+        statusCode: 400,
+      });
+    }
+
+    if (!JOB_OPENING_LOGO_MIME.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only JPG and PNG logo images are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > JOB_OPENING_LOGO_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The logo must be 2MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const storageKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `job-opening-logos/${institutionId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    const previewUrl = await this.storageService.getSignedDownloadUrl(storageKey);
+
+    return UploadJobOpeningLogoResponseSchema.parse({
+      storageKey,
+      previewUrl,
+      fileName: file.fileName,
+      mimeType: file.mimeType,
+    });
+  }
+
+  private async resolveCompanyLogoUrl(objectKey: string | null): Promise<string | undefined> {
+    if (!objectKey || !this.storageService) return undefined;
+    try {
+      return await this.storageService.getSignedDownloadUrl(objectKey);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async toJobOpeningDtoAsync(row: OpeningRow): Promise<JobOpeningDto> {
+    const normalized = normalizeOpeningRow(row);
+    const companyLogoUrl = await this.resolveCompanyLogoUrl(normalized.companyLogoUrl);
+    return toJobOpeningDto(normalized, { companyLogoUrl });
+  }
+
+  private async mapOpeningRowSafely(row: OpeningRow): Promise<JobOpeningDto | null> {
+    try {
+      return await this.toJobOpeningDtoAsync(row);
+    } catch (error) {
+      this.logger.warn(
+        `Skipping job opening ${row.id} for institution ${row.institutionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
+  }
 
   async createOpening(
     institutionId: string,
@@ -145,14 +353,15 @@ export class PlacementService {
           maxYearsExperience: body.maxYearsExperience,
           location: body.location,
           employmentType: body.employmentType,
-          headcount: body.headcount,
+          headcount: body.headcount ?? 1,
+          ...openingExtendedFields(body),
           requiredSkills: { create: requirements },
         },
         include: { requiredSkills: { include: { skill: { select: { code: true } } } } },
       });
     });
 
-    return toJobOpeningDto(row);
+    return this.toJobOpeningDtoAsync(row as OpeningRow);
   }
 
   async listOpenings(
@@ -164,7 +373,8 @@ export class PlacementService {
       orderBy: { createdAt: 'desc' },
       include: { requiredSkills: { include: { skill: { select: { code: true } } } } },
     });
-    return { openings: rows.map((row) => toJobOpeningDto(row)) };
+    const mapped = await Promise.all(rows.map((row) => this.mapOpeningRowSafely(row)));
+    return { openings: mapped.filter((opening): opening is JobOpeningDto => opening !== null) };
   }
 
   async getOpening(institutionId: string, openingId: string): Promise<JobOpeningDto> {
@@ -180,7 +390,7 @@ export class PlacementService {
         statusCode: 404,
       });
     }
-    return toJobOpeningDto(row);
+    return this.toJobOpeningDtoAsync(row);
   }
 
   /**
@@ -643,13 +853,17 @@ export function toApplicationDto(row: ApplicationRow): ApplicationDto {
  * form (no experience range, no taxonomy skills) is a data-integrity fault
  * rather than something to fabricate a value for.
  */
-export function toJobOpeningDto(row: OpeningRow): JobOpeningDto {
+export function toJobOpeningDto(
+  row: OpeningRow,
+  options: { companyLogoUrl?: string } = {},
+): JobOpeningDto {
   const parsed = JobOpeningDtoSchema.safeParse({
     openingId: row.id,
     institutionId: row.institutionId,
     companyName: row.companyName,
     roleTitle: row.roleTitle,
     domain: row.domainCode,
+    categoryId: row.categoryCode ?? undefined,
     requiredSkills: row.requiredSkills.map((requirement) => ({
       skillCode: requirement.skill.code,
       minProficiency: requirement.minProficiency,
@@ -658,7 +872,19 @@ export function toJobOpeningDto(row: OpeningRow): JobOpeningDto {
     maxYearsExperience: row.maxYearsExperience,
     location: row.location,
     employmentType: row.employmentType,
-    headcount: row.headcount,
+    headcount: row.headcount ?? 1,
+    companyLogoUrl: options.companyLogoUrl,
+    attachedDocuments: parseAttachedDocuments(row.attachedDocuments) ?? undefined,
+    aboutCompany: row.aboutCompany ?? undefined,
+    companyOffers: row.companyOffers ?? undefined,
+    additionalCompanyDetails: row.additionalCompanyDetails ?? undefined,
+    roleDetails: row.roleDetails ?? undefined,
+    salaryDetails: row.salaryDetails ?? undefined,
+    roundDetails: row.roundDetails ?? undefined,
+    hiringDetails: row.hiringDetails ?? undefined,
+    driveSpoc: row.driveSpoc ?? undefined,
+    driveDate: row.driveDate ? calendarDateToIso(row.driveDate) : undefined,
+    lastDateToApply: row.lastDateToApply ? calendarDateToIso(row.lastDateToApply) : undefined,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
   });

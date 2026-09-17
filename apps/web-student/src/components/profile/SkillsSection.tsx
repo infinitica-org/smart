@@ -132,7 +132,7 @@ export function SkillsSection() {
         </p>
         <Link
           href="/assessments"
-          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#00967c] hover:underline"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-foreground hover:underline"
         >
           Open Skill Repository
         </Link>

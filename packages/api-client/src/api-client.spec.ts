@@ -428,7 +428,13 @@ describe('query keys', () => {
     expect(queryKeys.attemptSession('a-1')).toStrictEqual(['attempt', 'a-1', 'session']);
     expect(queryKeys.nextItem('a-1')[0]).toBe('attempt');
     expect(queryKeys.myApplications()).toStrictEqual(['me', 'applications']);
-    expect(queryKeys.onboarding()).toStrictEqual(['me', 'onboarding']);
+    expect(queryKeys.myOnboarding()).toStrictEqual(['me', 'onboarding']);
+    expect(queryKeys.mySkillClaims()).toStrictEqual(['me', 'skill-claims']);
+    expect(queryKeys.myEducation()).toStrictEqual(['me', 'education']);
+    expect(queryKeys.myWorkExperiences()).toStrictEqual(['me', 'work-experiences']);
+    expect(queryKeys.myLanguages()).toStrictEqual(['me', 'languages']);
+    expect(queryKeys.myProjects()).toStrictEqual(['me', 'projects']);
+    expect(queryKeys.myCandidateCertificates()).toStrictEqual(['me', 'candidate-certificates']);
   });
 
   it('invalidates every surface that a completed attempt changes', () => {

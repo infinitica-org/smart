@@ -30,7 +30,7 @@ export default function InterviewsPage() {
       </div>
 
       <p className="text-center text-xs text-muted-foreground/70">
-        <Link href="/dashboard" className="text-[#00967c] hover:underline">
+        <Link href="/dashboard" className="text-foreground hover:underline">
           Back to dashboard
         </Link>
       </p>

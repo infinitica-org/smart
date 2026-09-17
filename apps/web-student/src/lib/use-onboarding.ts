@@ -1,22 +1,14 @@
-import { useCallback } from 'react';
-import { invalidationGroups, queryKeys } from '@smart/api-client';
-import { useQuery, useQueryClient } from '@smart/ui';
-import { api } from './api';
+'use client';
 
-/** Shared onboarding draft/profile — one request serves every profile section. */
+import { queryKeys } from '@smart/api-client';
+import { useQuery } from '@smart/ui';
+import { api } from '@/lib/api';
+
+/** Shared onboarding payload — dedupes parallel profile-section fetches. */
 export function useOnboarding() {
   return useQuery({
-    queryKey: queryKeys.onboarding(),
+    queryKey: queryKeys.myOnboarding(),
     queryFn: () => api.users.getOnboarding(),
     staleTime: 60_000,
   });
-}
-
-export function useInvalidateOnboarding() {
-  const queryClient = useQueryClient();
-  return useCallback(() => {
-    for (const queryKey of invalidationGroups.onOnboardingSaved()) {
-      void queryClient.invalidateQueries({ queryKey });
-    }
-  }, [queryClient]);
 }

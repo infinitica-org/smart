@@ -27,7 +27,7 @@ function ToggleSwitch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-12 flex-none rounded-full transition-colors duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-50 ${
-        checked ? 'bg-[#00fad0]' : 'bg-gray-200 dark:bg-white/10'
+        checked ? 'bg-foreground' : 'bg-gray-200 dark:bg-white/10'
       }`}
     >
       <span
@@ -158,7 +158,7 @@ export function VisibilitySettingsCard() {
           <div>
             <p className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
               {visibility?.profileVisible ? (
-                <Eye className="h-4 w-4 text-[#00967c] dark:text-[#00fad0]" />
+                <Eye className="h-4 w-4 text-foreground dark:text-foreground" />
               ) : (
                 <Lock className="h-4 w-4 text-gray-400" />
               )}
@@ -222,7 +222,7 @@ export function VisibilitySettingsCard() {
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
                     usernameStatus.status === 'ACTIVE'
-                      ? 'bg-[#00fad0]/10 text-[#00967c] dark:text-[#00fad0]'
+                      ? 'bg-foreground/10 text-foreground dark:text-foreground'
                       : 'bg-gray-200 text-gray-500 dark:bg-white/10 dark:text-gray-400'
                   }`}
                 >
@@ -257,14 +257,14 @@ export function VisibilitySettingsCard() {
                       setUsernameError(null);
                     }}
                     placeholder="your-handle"
-                    className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-8 text-sm text-gray-900 outline-none focus:border-[#00fad0] focus:ring-2 focus:ring-[#00fad0]/30 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                    className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-8 text-sm text-gray-900 outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/30 dark:border-white/10 dark:bg-white/5 dark:text-white"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => void reserveUsername()}
                   disabled={usernameState === 'saving' || usernameInput.trim().length === 0}
-                  className="flex flex-none items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black shadow-sm hover:bg-[#7dffe6] disabled:opacity-50"
+                  className="flex flex-none items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-sm hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {usernameState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Claim it

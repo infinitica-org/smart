@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithQueryClient } from '@/test/render-with-query-client';
 import { EducationSection } from './EducationSection';
 
 const listEducation = vi.fn();
@@ -49,7 +50,7 @@ describe('EducationSection', () => {
   });
 
   it('renders education items correctly', async () => {
-    render(<EducationSection />);
+    renderWithQueryClient(<EducationSection />);
     expect(await screen.findByText('MIT')).toBeTruthy();
     expect(screen.getByText('Bachelor of Science in Computer Science')).toBeTruthy();
     expect(screen.getByText('Grade / Score: 4.0 GPA')).toBeTruthy();
@@ -59,7 +60,7 @@ describe('EducationSection', () => {
     listEducation.mockResolvedValueOnce([]).mockResolvedValueOnce([mockEduItem]);
     createEducation.mockResolvedValueOnce(mockEduItem);
 
-    render(<EducationSection />);
+    renderWithQueryClient(<EducationSection />);
     const addButton = await screen.findByRole('button', { name: /Add Education/i });
     fireEvent.click(addButton);
 
@@ -116,7 +117,7 @@ describe('EducationSection', () => {
       },
     ]);
 
-    render(<EducationSection />);
+    renderWithQueryClient(<EducationSection />);
     expect(await screen.findByText('No proof uploaded yet.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Add proof/i }));
 

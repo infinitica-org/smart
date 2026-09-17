@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Menu, X, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Menu, X, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, SmartLogo } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
 import { signOut } from '../lib/auth';
-import { TPO_NAV, isNavItemActive, isNavLinkActive } from '../lib/tpo-nav';
+import { TPO_NAV, isNavItemActive, isPlacementTopNavActive } from '../lib/tpo-nav';
 import { sectionLabelClass } from '../lib/tpo-ui';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -26,9 +26,7 @@ export function TpoTopbar() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [placementOpen, setPlacementOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const placementRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -61,9 +59,6 @@ export function TpoTopbar() {
       if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
         setSearchOpen(false);
       }
-      if (placementRef.current && !placementRef.current.contains(event.target as Node)) {
-        setPlacementOpen(false);
-      }
     }
     document.addEventListener('mousedown', onOutsideClick);
     return () => document.removeEventListener('mousedown', onOutsideClick);
@@ -77,7 +72,6 @@ export function TpoTopbar() {
       }
       if (event.key === 'Escape') {
         setSearchOpen(false);
-        setPlacementOpen(false);
       }
     }
     document.addEventListener('keydown', onKeyDown);
@@ -152,7 +146,10 @@ export function TpoTopbar() {
         {/* Desktop Navbar Navigation Links */}
         <nav className="hidden xl:flex items-center gap-1">
           {TPO_NAV.map((item) => {
-            const isActive = isNavItemActive(pathname, item);
+            const isActive =
+              item.kind === 'link' && item.name === 'Placement'
+                ? isPlacementTopNavActive(pathname)
+                : isNavItemActive(pathname, item);
             const itemClassName = `flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] ${
               isActive
                 ? 'border-[var(--tpo-accent-border)] bg-[var(--ds-nav-active-bg)] text-[var(--ds-text)]'
@@ -160,55 +157,7 @@ export function TpoTopbar() {
             }`;
 
             if (item.kind === 'group') {
-              return (
-                <div key={item.name} ref={placementRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setPlacementOpen((v) => !v)}
-                    aria-expanded={placementOpen}
-                    aria-haspopup="menu"
-                    className={itemClassName}
-                  >
-                    <span>{item.name}</span>
-                    <ChevronDown
-                      strokeWidth={1.75}
-                      className={`size-3.5 transition-transform ${placementOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {placementOpen && (
-                    <div
-                      role="menu"
-                      aria-label={item.name}
-                      className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 text-[var(--ds-text)] shadow-lg"
-                    >
-                      {item.children.map((child) => {
-                        const childActive = isNavLinkActive(pathname, child.href);
-
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            role="menuitem"
-                            aria-current={childActive ? 'page' : undefined}
-                            onClick={() => setPlacementOpen(false)}
-                            className={`block rounded-lg px-3 py-2 transition-colors ${
-                              childActive
-                                ? 'bg-[var(--ds-nav-active-bg)] text-[var(--ds-text)]'
-                                : 'text-[var(--ds-text)] hover:bg-[var(--ds-surface-hover)]'
-                            }`}
-                          >
-                            <span className="block text-xs font-semibold">{child.name}</span>
-                            <span className="block text-[11px] font-medium text-[var(--ds-text-muted)]">
-                              {child.description}
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
+              return null;
             }
 
             return (
@@ -385,40 +334,19 @@ export function TpoTopbar() {
               }`;
 
             if (item.kind === 'group') {
-              return (
-                <div key={item.name} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-[var(--ds-text)]">
-                    <item.icon strokeWidth={1.75} className={iconClass} />
-                    <span>{item.name}</span>
-                  </div>
-                  <div className="ml-6 flex flex-col gap-1 border-l border-[var(--ds-border-subtle)] pl-3">
-                    {item.children.map((child) => {
-                      const childActive = isNavLinkActive(pathname, child.href);
-
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          aria-current={childActive ? 'page' : undefined}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={rowClass(childActive)}
-                        >
-                          {child.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+              return null;
             }
+
+            const linkActive =
+              item.name === 'Placement' ? isPlacementTopNavActive(pathname) : isActive;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={linkActive ? 'page' : undefined}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center justify-between ${rowClass(isActive)}`}
+                className={`flex items-center justify-between ${rowClass(linkActive)}`}
               >
                 <div className="flex items-center gap-3">
                   <item.icon strokeWidth={1.75} className={iconClass} />

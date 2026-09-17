@@ -101,7 +101,7 @@ export function LightSelect({
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#00fad0]' : 'text-muted-foreground'}`}
+          className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-foreground' : 'text-muted-foreground'}`}
         />
       </button>
 
@@ -133,7 +133,7 @@ export function LightSelect({
                     }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
                       isSelected
-                        ? 'bg-[#00fad0]/15 text-[#00fad0] font-semibold'
+                        ? 'bg-foreground/15 text-foreground font-semibold'
                         : 'text-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >

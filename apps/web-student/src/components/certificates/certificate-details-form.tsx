@@ -75,7 +75,7 @@ export function CertificateDetailsForm({
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-          <Award className="h-5 w-5 text-[#00967c]" /> Certificate Details
+          <Award className="h-5 w-5 text-foreground" /> Certificate Details
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Enter provider name, credential details, and valid verification link.

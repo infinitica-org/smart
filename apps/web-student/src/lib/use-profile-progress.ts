@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { SkillClaimDto } from '@smart/contracts';
+import { queryKeys } from '@smart/api-client';
+import { useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
-import { useOnboarding } from '@/lib/use-onboarding';
 import {
   computeProfileCompletion,
   dismissRecommendedAction,
@@ -13,6 +14,8 @@ import {
   type ProfileProgressResult,
   type RecommendedAction,
 } from '@/lib/profile-progress';
+
+const PROFILE_STALE_MS = 60_000;
 
 export interface UseProfileProgressResult {
   loading: boolean;
@@ -31,15 +34,6 @@ export interface UseProfileProgressResult {
 }
 
 export function useProfileProgress(): UseProfileProgressResult {
-  const {
-    data: onboardingData,
-    isLoading: onboardingLoading,
-    isError: onboardingError,
-  } = useOnboarding();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [input, setInput] = useState<ProfileProgressInput | null>(null);
-  const [skillClaims, setSkillClaims] = useState<SkillClaimDto[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
   const [dismissTick, setDismissTick] = useState(0);
 
@@ -47,50 +41,71 @@ export function useProfileProgress(): UseProfileProgressResult {
     setRefreshToken((value) => value + 1);
   }, []);
 
-  useEffect(() => {
-    if (onboardingLoading) {
-      setLoading(true);
-      return undefined;
-    }
+  const queryOpts = { staleTime: PROFILE_STALE_MS };
 
-    let cancelled = false;
+  const onboardingQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myOnboarding(), refreshToken],
+    queryFn: () => api.users.getOnboarding(),
+  });
+  const skillClaimsQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.mySkillClaims(), refreshToken],
+    queryFn: () => api.assessment.listSkillClaims(),
+  });
+  const educationQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myEducation(), refreshToken],
+    queryFn: () => api.users.listEducation(),
+  });
+  const experiencesQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myWorkExperiences(), refreshToken],
+    queryFn: () => api.users.listWorkExperiences(),
+  });
+  const languagesQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myLanguages(), refreshToken],
+    queryFn: () => api.users.listLanguages(),
+  });
+  const projectsQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myProjects(), refreshToken],
+    queryFn: () => api.projects.listMine().then((res) => res.projects ?? []),
+  });
+  const certificatesQuery = useQuery({
+    ...queryOpts,
+    queryKey: [...queryKeys.myCandidateCertificates(), refreshToken],
+    queryFn: () => api.candidateCertificates.listMine().then((res) => res.certificates ?? []),
+  });
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+  const queryResults = [
+    onboardingQuery,
+    skillClaimsQuery,
+    educationQuery,
+    experiencesQuery,
+    languagesQuery,
+    projectsQuery,
+    certificatesQuery,
+  ];
 
-      const [
-        skillClaimsRes,
-        educationRes,
-        experiencesRes,
-        languagesRes,
-        projectsRes,
-        certificatesRes,
-      ] = await Promise.allSettled([
-        api.assessment.listSkillClaims(),
-        api.users.listEducation(),
-        api.users.listWorkExperiences(),
-        api.users.listLanguages(),
-        api.projects.listMine(),
-        api.candidateCertificates.listMine(),
-      ]);
+  const loading = queryResults.some((query) => query.isLoading);
 
-      if (cancelled) return;
+  const onboarding = onboardingQuery.data ?? {
+    profile: null,
+    draft: null,
+    onboardingCompleted: true,
+  };
+  const claims = skillClaimsQuery.data ?? [];
+  const education = educationQuery.data ?? [];
+  const experiences = experiencesQuery.data ?? [];
+  const languages = languagesQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+  const certificates = certificatesQuery.data ?? [];
 
-      const onboarding = onboardingData ?? {
-        profile: null,
-        draft: null,
-        onboardingCompleted: true,
-      };
-      const claims = skillClaimsRes.status === 'fulfilled' ? skillClaimsRes.value : [];
-      const education = educationRes.status === 'fulfilled' ? educationRes.value : [];
-      const experiences = experiencesRes.status === 'fulfilled' ? experiencesRes.value : [];
-      const languages = languagesRes.status === 'fulfilled' ? languagesRes.value : [];
-      const projects = projectsRes.status === 'fulfilled' ? (projectsRes.value.projects ?? []) : [];
-      const certificates =
-        certificatesRes.status === 'fulfilled' ? (certificatesRes.value.certificates ?? []) : [];
-
-      const nextInput: ProfileProgressInput = {
+  const input: ProfileProgressInput | null = loading
+    ? null
+    : {
         skillClaims: claims,
         onboardingProfile: onboarding.profile,
         onboardingDraft: onboarding.draft,
@@ -101,33 +116,14 @@ export function useProfileProgress(): UseProfileProgressResult {
         certificates,
       };
 
-      const failures = [
-        onboardingError ? { status: 'rejected' as const } : null,
-        skillClaimsRes,
-        educationRes,
-        experiencesRes,
-        languagesRes,
-        projectsRes,
-        certificatesRes,
-      ].filter((result) => result?.status === 'rejected');
+  const failureCount = queryResults.filter((query) => query.isError).length;
 
-      setInput(nextInput);
-      setSkillClaims(claims);
-      setError(
-        failures.length === 7
-          ? 'Could not load profile progress right now.'
-          : failures.length > 0
-            ? 'Some profile details could not be loaded. Progress may be incomplete.'
-            : null,
-      );
-      setLoading(false);
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [onboardingData, onboardingError, onboardingLoading, refreshToken]);
+  const error =
+    failureCount === 0
+      ? null
+      : failureCount === queryResults.length
+        ? 'Could not load profile progress right now.'
+        : 'Some profile details could not be loaded. Progress may be incomplete.';
 
   const progress = useMemo(() => (input ? computeProfileCompletion(input) : null), [input]);
 
@@ -139,13 +135,13 @@ export function useProfileProgress(): UseProfileProgressResult {
   }, [input, dismissTick]);
 
   const dismissCurrentRecommendedAction = useCallback(() => {
-    if (!rawRecommendedAction) return;
-    dismissRecommendedAction(rawRecommendedAction.id);
+    if (!visibleRecommendedAction) return;
+    dismissRecommendedAction(visibleRecommendedAction.id);
     setDismissTick((value) => value + 1);
-  }, [rawRecommendedAction]);
+  }, [visibleRecommendedAction]);
 
-  const verifiedSkillCount = skillClaims.filter((claim) => claim.status === 'VERIFIED').length;
-  const declaredSkillCount = skillClaims.length;
+  const verifiedSkillCount = claims.filter((claim) => claim.status === 'VERIFIED').length;
+  const declaredSkillCount = claims.length;
 
   const linkedinVerified = Boolean(
     input?.onboardingProfile?.socialVerification?.linkedin?.verified ||
@@ -163,7 +159,7 @@ export function useProfileProgress(): UseProfileProgressResult {
     progress,
     recommendedAction: rawRecommendedAction,
     visibleRecommendedAction,
-    skillClaims,
+    skillClaims: claims,
     verifiedSkillCount,
     declaredSkillCount,
     linkedinVerified,

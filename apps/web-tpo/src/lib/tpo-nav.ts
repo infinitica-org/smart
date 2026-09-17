@@ -3,6 +3,7 @@ import {
   Briefcase,
   Building2,
   ClipboardList,
+  Landmark,
   Columns3,
   LayoutDashboard,
   Settings,
@@ -39,9 +40,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
     groupLabel: 'Job Management',
     items: [
       {
-        name: 'Openings',
+        name: 'Create Job Posting',
+        href: '/openings/create',
+        description: 'Multi-step job posting wizard',
+        icon: Briefcase,
+      },
+      {
+        name: 'Listed Openings',
         href: '/openings',
-        description: 'Create and manage job openings',
+        description: 'Search and manage current openings',
         icon: Briefcase,
       },
     ],
@@ -84,6 +91,12 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
     groupLabel: 'Company',
     items: [
       {
+        name: 'Company Repository',
+        href: '/companies',
+        description: 'Recruiters and partners on campus',
+        icon: Landmark,
+      },
+      {
         name: 'Company Dashboard',
         href: '/company',
         description: 'View placement pipeline overview',
@@ -99,10 +112,13 @@ export const TPO_NAV: TpoNavItem[] = [
   { kind: 'link', name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { kind: 'link', name: 'Candidates', href: '/students', icon: Users },
   { kind: 'link', name: 'Onboarding', href: '/provisioning', icon: UserPlus },
-  { kind: 'group', name: 'Placement', icon: Briefcase, children: PLACEMENT_NAV },
+  { kind: 'link', name: 'Placement', href: '/companies', icon: Briefcase },
   { kind: 'link', name: 'Reports', href: '/reports', icon: BarChart3 },
   { kind: 'link', name: 'Settings', href: '/settings', icon: Settings },
 ];
+
+/** Nav hrefs that must match exactly (sibling routes under the same prefix). */
+const EXACT_MATCH_HREFS = new Set(['/openings', '/company']);
 
 /**
  * `usePathname()` already strips query strings and hashes, so an opening-scoped
@@ -110,7 +126,13 @@ export const TPO_NAV: TpoNavItem[] = [
  */
 export function isNavLinkActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/' || pathname === '/dashboard';
+  if (EXACT_MATCH_HREFS.has(href)) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Topbar Placement link — active on the repository landing and all placement shell routes. */
+export function isPlacementTopNavActive(pathname: string): boolean {
+  return pathname === '/companies' || isPlacementRoute(pathname);
 }
 
 export function isNavItemActive(pathname: string, item: TpoNavItem): boolean {
@@ -119,7 +141,9 @@ export function isNavItemActive(pathname: string, item: TpoNavItem): boolean {
     : isNavLinkActive(pathname, item.href);
 }
 
-/** True on any of the six placement routes, used to mount the placement shell. */
+/** True on any placement workspace route, used to mount the placement shell. */
 export function isPlacementRoute(pathname: string): boolean {
-  return PLACEMENT_NAV.some((link) => isNavLinkActive(pathname, link.href));
+  return (
+    pathname === '/companies' || PLACEMENT_NAV.some((link) => isNavLinkActive(pathname, link.href))
+  );
 }

@@ -278,7 +278,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
         {profileGate ? (
           <Link
             href="/profile"
-            className="inline-flex rounded-lg bg-[#00fad0] px-4 py-2 text-sm font-semibold text-[#04120f] hover:bg-[#33ffdd]"
+            className="inline-flex rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background hover:bg-foreground/90"
           >
             Complete your profile
           </Link>

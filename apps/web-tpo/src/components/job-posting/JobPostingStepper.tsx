@@ -25,7 +25,7 @@ export function JobPostingStepper({
               <button
                 type="button"
                 onClick={() => onSelect(step.id)}
-                aria-label={step.label}
+                aria-label={`Go to step ${index + 1}: ${step.label}`}
                 aria-current={active ? 'step' : undefined}
                 className="flex min-w-0 flex-1 flex-col items-center gap-2 rounded-lg px-1 py-1 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)]"
               >

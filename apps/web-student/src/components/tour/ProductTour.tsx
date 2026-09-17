@@ -125,7 +125,7 @@ export function ProductTour({ steps, autoStart }: { steps: TourStep[]; autoStart
           }}
         >
           <div className="mb-3 flex items-start justify-between gap-2">
-            <span className="text-[11px] font-semibold tracking-wide text-[#00fad0] uppercase">
+            <span className="text-[11px] font-semibold tracking-wide text-foreground uppercase">
               {index + 1} of {steps.length}
             </span>
             <button
@@ -152,7 +152,7 @@ export function ProductTour({ steps, autoStart }: { steps: TourStep[]; autoStart
             <button
               type="button"
               onClick={() => (isLast ? finish() : setIndex((i) => i + 1))}
-              className="flex items-center gap-1.5 rounded-full bg-[#00fad0] px-4 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-[#7dffe6]"
+              className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
             >
               {isLast ? 'Done' : 'Next'}
               {!isLast ? <ArrowRight className="h-3.5 w-3.5" /> : null}

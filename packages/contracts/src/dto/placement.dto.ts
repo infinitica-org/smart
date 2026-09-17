@@ -15,7 +15,7 @@ import {
 } from '../domain/enums.js';
 import { AssessmentResultSchema } from '../domain/evidence/assessment-result.js';
 import { SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
-import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
+import { IsoDateSchema, IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 import { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
@@ -216,6 +216,35 @@ export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
  * TPO create body. `institutionId` is taken from the access-token `inst`
  * claim in api-core — do not accept it from the client.
  */
+const jobOpeningLongText = z.string().max(12_000);
+const jobOpeningMediumText = z.string().max(4_000);
+const jobOpeningShortText = z.string().max(500);
+
+/** Metadata for a JD attachment stored in object storage (TPO upload before create). */
+export const JobOpeningAttachedDocumentSchema = z.object({
+  documentId: UuidSchema,
+  fileName: z.string().min(1).max(255),
+  fileUrl: z.string().min(1).max(2048),
+  mimeType: z.string().min(1).max(127),
+  fileSizeBytes: z.number().int().min(1).max(10_485_760),
+  label: z.string().max(120).optional(),
+});
+export type JobOpeningAttachedDocument = z.infer<typeof JobOpeningAttachedDocumentSchema>;
+
+export const UploadJobOpeningDocumentResponseSchema = JobOpeningAttachedDocumentSchema;
+export type UploadJobOpeningDocumentResponse = z.infer<
+  typeof UploadJobOpeningDocumentResponseSchema
+>;
+
+/** Uploaded company logo (object storage key + short-lived preview URL). */
+export const UploadJobOpeningLogoResponseSchema = z.object({
+  storageKey: z.string().min(1).max(2048),
+  previewUrl: z.string().url().max(2048),
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(127),
+});
+export type UploadJobOpeningLogoResponse = z.infer<typeof UploadJobOpeningLogoResponseSchema>;
+
 export const JobOpeningFieldsSchema = z.object({
   companyName: z.string().min(2).max(150),
   roleTitle: z.string().min(2).max(150),
@@ -226,15 +255,36 @@ export const JobOpeningFieldsSchema = z.object({
   maxYearsExperience: z.number().int().min(0).max(40),
   location: z.string().min(1).max(120),
   employmentType: EmploymentTypeSchema,
-  headcount: z.number().int().min(1).max(10_000),
+  headcount: z.number().int().min(1).max(10_000).optional(),
+  attachedDocuments: z.array(JobOpeningAttachedDocumentSchema).max(10).optional(),
+  aboutCompany: jobOpeningLongText.optional(),
+  companyOffers: jobOpeningMediumText.optional(),
+  additionalCompanyDetails: jobOpeningMediumText.optional(),
+  roleDetails: jobOpeningLongText.optional(),
+  salaryDetails: jobOpeningShortText.optional(),
+  roundDetails: jobOpeningMediumText.optional(),
+  hiringDetails: jobOpeningLongText.optional(),
+  driveSpoc: z.string().min(1).max(200).optional(),
+  driveDate: IsoDateSchema.optional(),
+  lastDateToApply: IsoDateSchema.optional(),
 });
 
-export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.superRefine((value, ctx) => {
+export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.extend({
+  /** Object storage key from `POST /placement/openings/logo/upload`. */
+  companyLogoStorageKey: z.string().min(1).max(2048).optional(),
+}).superRefine((value, ctx) => {
   if (value.minYearsExperience > value.maxYearsExperience) {
     ctx.addIssue({
       code: 'custom',
       path: ['maxYearsExperience'],
       message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
+    });
+  }
+  if (value.driveDate && value.lastDateToApply && value.lastDateToApply > value.driveDate) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['lastDateToApply'],
+      message: 'lastDateToApply must be on or before driveDate',
     });
   }
 });
@@ -245,6 +295,8 @@ export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   institutionId: UuidSchema,
   status: JobOpeningStatusSchema,
   createdAt: IsoDateTimeSchema,
+  /** Time-limited signed URL when a logo object key is stored. */
+  companyLogoUrl: z.string().url().max(2048).optional(),
 });
 export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
 

@@ -95,7 +95,7 @@ export function CertificateUpload({
           if (file) validateAndUpload(file);
         }}
         className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-          dragOver ? 'border-[#00967c]/60 bg-[#00967c]/5' : 'border-border bg-muted/30'
+          dragOver ? 'border-foreground/60 bg-foreground/5' : 'border-border bg-muted/30'
         }`}
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
@@ -114,7 +114,7 @@ export function CertificateUpload({
           type="button"
           disabled={isUploading}
           onClick={() => inputRef.current?.click()}
-          className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#7dffe6] disabled:opacity-50"
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
         >
           {isUploading ? 'Uploading Document…' : 'Browse & Upload File'}
         </button>
@@ -134,7 +134,7 @@ export function CertificateUpload({
       {onSourceUrlSubmit && (
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
-            <LinkIcon className="h-4 w-4 text-[#00967c]" />
+            <LinkIcon className="h-4 w-4 text-foreground" />
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Or Verification / Source URL
             </h4>

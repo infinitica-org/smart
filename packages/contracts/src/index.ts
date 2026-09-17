@@ -33,6 +33,7 @@ export * from './domain/skill-focus-progress.js';
 export * from './domain/evidence/index.js';
 export * from './domain/question.js';
 export * from './domain/trace-prompt.js';
+export * from './domain/placement-cities.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';

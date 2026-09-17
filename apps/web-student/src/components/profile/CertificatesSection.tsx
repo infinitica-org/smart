@@ -71,7 +71,7 @@ export function CertificatesSection() {
               className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 p-5"
             >
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#00fad0]/10 text-[#00fad0]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground/10 text-foreground">
                   <Award className="h-6 w-6" />
                 </div>
                 <div>
@@ -86,7 +86,7 @@ export function CertificatesSection() {
                   )}
                 </div>
               </div>
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+              <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground">
                 {cert.status}
               </span>
             </div>

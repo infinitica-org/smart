@@ -41,14 +41,14 @@ export function CameraIntegrityDock({ compact = false }: { compact?: boolean }) 
       <div
         className={
           status.ok
-            ? 'flex items-start gap-2 border-t border-emerald-500/25 bg-emerald-500/10 px-3 py-3'
+            ? 'flex items-start gap-2 border-t border-foreground/25 bg-muted/10 px-3 py-3'
             : 'flex items-start gap-2 border-t border-amber-400/30 bg-amber-400/10 px-3 py-3'
         }
         role="status"
         aria-live="polite"
       >
         {status.ok ? (
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" aria-hidden />
         ) : (
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
         )}

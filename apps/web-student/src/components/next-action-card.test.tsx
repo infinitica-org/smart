@@ -12,7 +12,7 @@ const addSkillsAction = {
   title: 'Add your skills',
   description: 'Tell SMART what you already know.',
   ctaLabel: 'Add skills',
-  href: '/profile#skills',
+  href: '/assessments',
 };
 
 const verifySkillAction = {
@@ -36,10 +36,10 @@ describe('NextActionCard', () => {
 
   it('renders an add skills action', () => {
     render(<NextActionCard action={addSkillsAction} onLater={vi.fn()} />);
-    expect(screen.getByText('Recommended next step')).toBeTruthy();
+    expect(screen.getByText('Recommended Next Step')).toBeTruthy();
     expect(screen.getByText('Add your skills')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add skills' }).getAttribute('href')).toBe(
-      '/profile#skills',
+      '/assessments',
     );
   });
 
@@ -54,7 +54,7 @@ describe('NextActionCard', () => {
   it('calls onLater when Later is clicked', () => {
     const onLater = vi.fn();
     render(<NextActionCard action={addSkillsAction} onLater={onLater} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    fireEvent.click(screen.getByRole('button', { name: /Remind me later/i }));
     expect(onLater).toHaveBeenCalledTimes(1);
   });
 

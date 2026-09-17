@@ -12,16 +12,15 @@ const valid = {
   approach: 'I used websockets and a small GPS ingest service.',
   stack: 'TypeScript, Nest, Redis',
   outcome: 'Average wait time dropped in a 30-student pilot.',
-  loomUrl: 'https://www.loom.com/share/abc123',
-  githubUrl: '',
+  githubUrl: 'https://github.com/org/repo',
   liveUrl: '',
 };
 
 describe('buildCreateProjectRequest', () => {
-  it('maps the CN-T08 template and omits an empty GitHub link', () => {
+  it('maps the CN-T08 template and omits empty optional links', () => {
     const body = buildCreateProjectRequest(valid);
-    expect(body.githubUrl).toBeUndefined();
-    expect(body.loomUrl).toBe('https://www.loom.com/share/abc123');
+    expect(body.githubUrl).toBe('https://github.com/org/repo');
+    expect(body.loomUrl).toBeUndefined();
     expect(body.githubRepos).toEqual([]);
   });
 
@@ -45,7 +44,7 @@ describe('processing state', () => {
       approach: valid.approach,
       stack: valid.stack,
       outcome: valid.outcome,
-      loomUrl: valid.loomUrl,
+      loomUrl: null,
       githubUrl: null,
       liveUrl: null,
       status: 'SUBMITTED',

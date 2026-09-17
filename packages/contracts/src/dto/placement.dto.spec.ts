@@ -97,6 +97,34 @@ describe('CO-T01 job opening contracts', () => {
     expect(parsed.success).toBe(false);
   });
 
+  it('accepts extended job posting copy and drive metadata', () => {
+    const parsed = CreateJobOpeningRequestSchema.safeParse(
+      validCreate({
+        aboutCompany: 'Mission-driven product company.',
+        companyOffers: 'Health insurance and learning budget.',
+        additionalCompanyDetails: 'Hybrid twice a week.',
+        roleDetails: 'Build APIs for placement workflows.',
+        salaryDetails: '6–8 LPA',
+        roundDetails: 'OA → Tech → HR',
+        hiringDetails: 'Two-week process.',
+        driveSpoc: 'placement@college.edu',
+        driveDate: '2026-10-01',
+        lastDateToApply: '2026-09-25',
+      }),
+    );
+    expect(parsed.success).toBe(true);
+  });
+
+  it('rejects lastDateToApply after driveDate', () => {
+    const parsed = CreateJobOpeningRequestSchema.safeParse(
+      validCreate({
+        driveDate: '2026-09-10',
+        lastDateToApply: '2026-09-20',
+      }),
+    );
+    expect(parsed.success).toBe(false);
+  });
+
   it('rejects an employment type outside the closed enum', () => {
     const parsed = CreateJobOpeningRequestSchema.safeParse(validCreate({ employmentType: 'GIG' }));
     expect(parsed.success).toBe(false);
@@ -105,6 +133,30 @@ describe('CO-T01 job opening contracts', () => {
   it('rejects a non-positive headcount', () => {
     const parsed = CreateJobOpeningRequestSchema.safeParse(validCreate({ headcount: 0 }));
     expect(parsed.success).toBe(false);
+  });
+
+  it('accepts create without headcount (server defaults to one)', () => {
+    const { headcount: _omit, ...withoutHeadcount } = validCreate();
+    const parsed = CreateJobOpeningRequestSchema.safeParse(withoutHeadcount);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('accepts company logo storage key and attached document metadata', () => {
+    const parsed = CreateJobOpeningRequestSchema.safeParse(
+      validCreate({
+        companyLogoStorageKey: 'job-opening-logos/inst/logo.png',
+        attachedDocuments: [
+          {
+            documentId: '33333333-3333-4333-8333-333333333333',
+            fileName: 'jd.pdf',
+            fileUrl: 'job-opening-docs/inst/jd.pdf',
+            mimeType: 'application/pdf',
+            fileSizeBytes: 2048,
+          },
+        ],
+      }),
+    );
+    expect(parsed.success).toBe(true);
   });
 
   it('accepts a list response of institution-scoped openings', () => {

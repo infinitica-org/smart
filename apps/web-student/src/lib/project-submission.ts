@@ -11,7 +11,6 @@ export type ProjectFormFields = {
   approach: string;
   stack: string;
   outcome: string;
-  loomUrl: string;
   githubUrl: string;
   liveUrl: string;
 };
@@ -22,7 +21,6 @@ export const EMPTY_PROJECT_FORM: ProjectFormFields = {
   approach: '',
   stack: '',
   outcome: '',
-  loomUrl: '',
   githubUrl: '',
   liveUrl: '',
 };
@@ -34,7 +32,6 @@ export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProj
     approach: fields.approach.trim(),
     stack: fields.stack.trim(),
     outcome: fields.outcome.trim(),
-    loomUrl: fields.loomUrl.trim() || undefined,
     githubUrl: fields.githubUrl.trim() || undefined,
     liveUrl: fields.liveUrl.trim() || undefined,
   });

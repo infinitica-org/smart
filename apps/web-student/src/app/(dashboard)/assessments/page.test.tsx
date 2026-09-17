@@ -54,7 +54,7 @@ function mockIncompleteProfile() {
       title: 'Add work experience',
       description: 'Share roles that shaped your professional journey.',
       ctaLabel: 'Add experience',
-      href: '/profile#experience',
+      href: '/profile?section=experience',
     },
   });
 }
@@ -82,7 +82,7 @@ function mockCompleteProfile() {
       title: 'Add a project',
       description: 'Projects are strong evidence of what you have built.',
       ctaLabel: 'Add project',
-      href: '/profile#projects',
+      href: '/profile?section=projects',
     },
   });
 }
@@ -147,12 +147,10 @@ describe('SkillRepositoryPage', () => {
     expect(takeAssessment.hasAttribute('disabled')).toBe(true);
     const details = await screen.findByRole('region', { name: 'Skill details' });
     expect(
-      within(details).getByText(
-        'Reach at least 50% profile completion to unlock skill verification.',
-      ),
+      within(details).getByText('Complete your profile to unlock skill verification.'),
     ).toBeDefined();
     expect(within(details).getByRole('link', { name: 'Add experience' }).getAttribute('href')).toBe(
-      '/profile#experience',
+      '/profile?section=experience',
     );
   });
 

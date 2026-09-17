@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithQueryClient } from '@/test/render-with-query-client';
 import { LanguagesSection } from './LanguagesSection';
 
 const listLanguages = vi.fn();
@@ -36,7 +37,7 @@ describe('LanguagesSection', () => {
   });
 
   it('renders language items correctly', async () => {
-    render(<LanguagesSection />);
+    renderWithQueryClient(<LanguagesSection />);
     expect(await screen.findByText('French')).toBeTruthy();
     expect(screen.getByText('Full Professional')).toBeTruthy();
   });
@@ -45,7 +46,7 @@ describe('LanguagesSection', () => {
     listLanguages.mockResolvedValueOnce([]).mockResolvedValueOnce([mockLangItem]);
     createLanguage.mockResolvedValueOnce(mockLangItem);
 
-    render(<LanguagesSection />);
+    renderWithQueryClient(<LanguagesSection />);
     const addButton = await screen.findByRole('button', { name: /Add Language/i });
     fireEvent.click(addButton);
 

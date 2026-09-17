@@ -49,6 +49,19 @@ function storedOpening(overrides: Record<string, unknown> = {}) {
     location: validBody.location,
     employmentType: 'FULL_TIME',
     headcount: 3,
+    companyLogoUrl: null,
+    attachedDocuments: null,
+    categoryCode: null,
+    aboutCompany: null,
+    companyOffers: null,
+    additionalCompanyDetails: null,
+    roleDetails: null,
+    salaryDetails: null,
+    roundDetails: null,
+    hiringDetails: null,
+    driveSpoc: null,
+    driveDate: null,
+    lastDateToApply: null,
     status: 'DRAFT',
     createdAt: new Date('2026-09-02T05:30:00.000Z'),
     requiredSkills: [
@@ -194,6 +207,56 @@ describe('CO-T01 create opening', () => {
     ]);
   });
 
+  it('persists extended job posting fields on create', async () => {
+    const { controller, prisma } = setup();
+
+    await controller.createOpening(tpoAdmin as never, {
+      ...validBody,
+      categoryId: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
+      aboutCompany: 'About the org',
+      companyOffers: 'Perks list',
+      additionalCompanyDetails: 'More info',
+      roleDetails: 'Role JD',
+      salaryDetails: '6 LPA',
+      roundDetails: '3 rounds',
+      hiringDetails: 'Process notes',
+      driveSpoc: 'hr@acme.com',
+      driveDate: '2026-11-01',
+      lastDateToApply: '2026-10-20',
+    });
+
+    const { data } = prisma.jobOpening.create.mock.calls[0][0];
+    expect(data.categoryCode).toBe('SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN');
+    expect(data.aboutCompany).toBe('About the org');
+    expect(data.driveSpoc).toBe('hr@acme.com');
+    expect(data.driveDate).toEqual(new Date('2026-11-01T00:00:00.000Z'));
+    expect(data.lastDateToApply).toEqual(new Date('2026-10-20T00:00:00.000Z'));
+  });
+
+  it('persists company logo, attachments, and defaults headcount when omitted', async () => {
+    const { controller, prisma } = setup();
+    const { headcount: _omit, ...bodyWithoutHeadcount } = validBody;
+
+    await controller.createOpening(tpoAdmin as never, {
+      ...bodyWithoutHeadcount,
+      companyLogoStorageKey: 'job-opening-logos/inst/logo.png',
+      attachedDocuments: [
+        {
+          documentId: '33333333-3333-4333-8333-333333333333',
+          fileName: 'jd.pdf',
+          fileUrl: 'job-opening-docs/inst/jd.pdf',
+          mimeType: 'application/pdf',
+          fileSizeBytes: 1024,
+        },
+      ],
+    });
+
+    const { data } = prisma.jobOpening.create.mock.calls[0][0];
+    expect(data.headcount).toBe(1);
+    expect(data.companyLogoUrl).toBe('job-opening-logos/inst/logo.png');
+    expect(data.attachedDocuments).toEqual([expect.objectContaining({ fileName: 'jd.pdf' })]);
+  });
+
   it('resolves every skillCode against Skill.code without upserting taxonomy rows', async () => {
     const { controller, prisma } = setup();
 
@@ -281,6 +344,27 @@ describe('CO-T01 list openings', () => {
   it('returns an empty list rather than an error when nothing is posted yet', async () => {
     const { controller } = setup({ rows: [] });
     await expect(controller.listOpenings(tpoAdmin as never, {})).resolves.toEqual({ openings: [] });
+  });
+
+  it('coerces legacy rows with null placement fields instead of failing the list', async () => {
+    const { controller } = setup({
+      rows: [
+        storedOpening({
+          location: null,
+          domainCode: null,
+          employmentType: null,
+          minYearsExperience: null,
+          maxYearsExperience: null,
+        }),
+      ],
+    });
+
+    const result = await controller.listOpenings(tpoAdmin as never, {});
+
+    expect(result.openings).toHaveLength(1);
+    expect(result.openings[0]?.location).toBe('Unspecified');
+    expect(result.openings[0]?.domain).toBe('SOFTWARE_IT');
+    expect(result.openings[0]?.employmentType).toBe('FULL_TIME');
   });
 });
 
