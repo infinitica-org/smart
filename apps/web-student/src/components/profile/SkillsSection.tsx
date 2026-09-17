@@ -15,6 +15,7 @@ import {
   SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
   skillNameForCode,
 } from '@/lib/skill-declarations';
+import { skillClaimOriginHint } from '@/lib/skill-claim-origin-ui';
 import { CATEGORY_OPTIONS } from '@/lib/skills-catalog';
 import {
   profileCardClass,
@@ -137,14 +138,22 @@ export function SkillsSection() {
             My selected skills
           </h3>
           <ul className="flex flex-wrap gap-2">
-            {selectedClaims.map((claim) => (
-              <li
-                key={claim.claimId}
-                className="inline-flex items-center rounded-full border border-[var(--student-success-border)] bg-[var(--student-accent-soft)] px-3 py-1 text-sm font-medium text-[var(--student-text-primary)]"
-              >
-                {skillNameForCode(claim.skillCode)}
-              </li>
-            ))}
+            {selectedClaims.map((claim) => {
+              const hint = skillClaimOriginHint(claim);
+              return (
+                <li
+                  key={claim.claimId}
+                  className="inline-flex max-w-full flex-col rounded-full border border-[var(--student-success-border)] bg-[var(--student-accent-soft)] px-3 py-1.5 text-sm font-medium text-[var(--student-text-primary)]"
+                >
+                  <span>{skillNameForCode(claim.skillCode)}</span>
+                  {hint ? (
+                    <span className="text-[11px] font-normal text-[var(--ds-text-muted)]">
+                      {hint}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

@@ -1,5 +1,9 @@
 import type { SkillClaimDto } from '@smart/contracts';
 
+import {
+  isProjectTaggedSkillClaim,
+  SKILL_PROFICIENCY_DISCOVERY_COPY,
+} from './skill-claim-origin-ui';
 import { repositoryStatusForClaim, viewForFocus } from './skill-declarations';
 
 export type AssessmentCardAction = 'start' | 'continue' | 'locked' | 'practice';
@@ -41,6 +45,15 @@ export function assessmentCardStateForClaim(claim: SkillClaimDto): {
       action: 'continue',
       buttonLabel: 'Continue Assessment',
       disabled: false,
+    };
+  }
+
+  if (isProjectTaggedSkillClaim(claim)) {
+    return {
+      statusLabel: SKILL_PROFICIENCY_DISCOVERY_COPY,
+      action: 'start',
+      buttonLabel: 'Start Assessment',
+      disabled: !view.canStart && !view.hasForm,
     };
   }
 

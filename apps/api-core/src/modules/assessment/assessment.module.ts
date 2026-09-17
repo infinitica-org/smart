@@ -11,11 +11,13 @@ import { AssessmentIntelligenceService } from './assessment-intelligence.service
 import { IntegrityAdminController } from './integrity-admin.controller.js';
 import { ItemRotationService } from './item-rotation.service.js';
 import { CertVerificationAssessmentService } from './cert-verification-assessment.service.js';
+import { SkillClaimDeclareModule } from './skill-claim-declare.module.js';
 import { SkillVerifyGradeProcessor } from './skill-verify-grade.processor.js';
 import { SkillVerificationService } from './skill-verification.service.js';
 
 @Module({
   imports: [
+    SkillClaimDeclareModule,
     AuditModule,
     AiGatewayModule,
     EvaluationModule,

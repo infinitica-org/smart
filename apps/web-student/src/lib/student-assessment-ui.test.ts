@@ -26,6 +26,17 @@ describe('assessmentCardStateForClaim', () => {
     expect(state.action).toBe('continue');
   });
 
+  it('shows proficiency discovery copy for project-tagged claims', () => {
+    const state = assessmentCardStateForClaim({
+      claimId: 'clm_pt',
+      skillCode: 'PYTHON',
+      status: 'DECLARED',
+      lastAttemptId: null,
+      declareOrigin: 'PROJECT_TAGGED',
+    } as never);
+    expect(state.statusLabel).toBe('Find out your proficiency');
+  });
+
   it('returns verified practice for verified claims', () => {
     const state = assessmentCardStateForClaim({
       claimId: 'clm_3',
