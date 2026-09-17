@@ -28,13 +28,23 @@ function interviewReadyProject(): ProjectDto {
     interviewRequired: true,
     interviewStatus: 'PENDING',
     report: {
+      reportId: '223e4567-e89b-12d3-a456-426614174002',
+      projectId: '7cf5e6c9-621d-4dae-a94b-0053f952d890',
       score: 72,
       relevanceScore: 70,
       qualityScore: 75,
+      duplicateScore: 0,
+      confidence: 0.9,
       plagiarismFlag: false,
       techAgeFlag: false,
-      explanation: 'Ready for interview',
+      flags: [],
+      explanation: 'Ready for interview — sufficient detail for verify report.',
+      routedToReview: false,
+      promptRef: 'project-verify@1',
+      auditId: null,
+      createdAt: '2026-09-02T11:00:00.000Z',
     },
+    interviewCompletedAt: null,
   };
 }
 

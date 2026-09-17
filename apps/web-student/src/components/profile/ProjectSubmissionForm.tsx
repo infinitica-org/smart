@@ -64,7 +64,7 @@ export function ProjectSubmissionForm() {
   }, []);
 
   useEffect(() => {
-    if (!projects?.some((p) => isProcessingStatus(p.status))) return undefined;
+    if (!projects?.some((p) => isProcessingStatus(p))) return undefined;
     const timer = window.setInterval(() => {
       void api.projects
         .listMine()

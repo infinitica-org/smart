@@ -23,6 +23,9 @@ describe('project-presenters', () => {
         status: 'SUBMITTED',
         createdAt: '2026-09-02T10:00:00.000Z',
         report: null,
+        interviewRequired: false,
+        interviewStatus: 'NOT_REQUIRED',
+        interviewCompletedAt: null,
       },
       50,
     );
