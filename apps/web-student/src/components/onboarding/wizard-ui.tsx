@@ -114,6 +114,7 @@ export const WIZARD_STEP_META = [
   { id: 'resume', label: 'Resume' },
   { id: 'profile', label: 'Profile' },
   { id: 'stream', label: 'Stream' },
+  { id: 'academics', label: 'Academics' },
   { id: 'languages', label: 'Languages' },
   { id: 'social', label: 'Social' },
   { id: 'preferences', label: 'Preferences' },

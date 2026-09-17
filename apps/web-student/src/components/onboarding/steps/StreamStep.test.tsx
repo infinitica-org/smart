@@ -36,6 +36,9 @@ describe('StreamStep', () => {
       createdAt: new Date().toISOString(),
       onboardingCompleted: false,
       profilePhotoUrl: null,
+      cgpa: null,
+      sscPercentage: null,
+      hscPercentage: null,
       sessionHold: null,
     });
 

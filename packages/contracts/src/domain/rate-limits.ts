@@ -250,6 +250,26 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'pgvector cosine matrix computation is expensive; batched per institution.',
   },
   {
+    key: 'placement.matchRunCreate',
+    scope: 'INSTITUTION',
+    limit: 30,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:match_run_create:inst:{id}',
+    rationale:
+      'S6-VV-76 — same expensive ranking work as placement.match, just enqueued instead of run inline.',
+  },
+  {
+    key: 'placement.matchRunStatus',
+    scope: 'USER',
+    limit: 60,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:match_run_status:user:{id}',
+    rationale:
+      'S6-VV-76 — the TPO workspace polls this every ~2s while a run is in flight; a cheap read, budgeted per user so one TPO cannot starve others.',
+  },
+  {
     key: 'users.resumeParse',
     scope: 'USER',
     limit: 10,

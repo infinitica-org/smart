@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EducationDocumentTypeSchema, SharedVerificationStatusSchema } from '../domain/enums.js';
+import { CandidateAcademicScoresSchema } from './candidate-onboarding.dto.js';
 
 export const CandidateEducationDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -60,6 +61,10 @@ export const RejectCandidateEducationSchema = z.object({
   reason: z.string().min(1, 'Rejection reason is required').max(500),
 });
 export type RejectCandidateEducationDto = z.infer<typeof RejectCandidateEducationSchema>;
+
+/** S6-VV-75 — profile-page PATCH for the `User`-level CGPA/10th/12th fields. */
+export const UpdateAcademicScoresRequestSchema = CandidateAcademicScoresSchema;
+export type UpdateAcademicScoresRequest = z.infer<typeof UpdateAcademicScoresRequestSchema>;
 
 export const CandidateLanguageSchema = z.object({
   id: z.string().uuid(),

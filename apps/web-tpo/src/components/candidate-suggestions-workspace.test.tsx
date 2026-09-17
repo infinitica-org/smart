@@ -1,11 +1,16 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CandidateMatchDto, ShortlistDto } from '@smart/contracts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CandidateMatchDto, MatchRunDto, ShortlistDto } from '@smart/contracts';
 import { SmartApiError } from '@smart/api-client';
-import { applicationsApi, matchingApi, openingsApi } from '../lib/api';
+import { api, applicationsApi, matchingApi, openingsApi } from '../lib/api';
 import { CandidateSuggestionsWorkspace } from './candidate-suggestions-workspace';
 
 vi.mock('../lib/api', () => ({
+  api: {
+    onboarding: {
+      listBatches: vi.fn(),
+    },
+  },
   openingsApi: {
     list: vi.fn(),
     get: vi.fn(),
@@ -13,6 +18,8 @@ vi.mock('../lib/api', () => ({
   },
   matchingApi: {
     match: vi.fn(),
+    createRun: vi.fn(),
+    getRun: vi.fn(),
   },
   applicationsApi: {
     create: vi.fn(),
@@ -86,7 +93,45 @@ const mockShortlist: ShortlistDto = {
   generatedAt: '2026-09-02T08:00:00.000Z',
   candidates: [candidateB, candidateA], // Deliberately out of order (0.75 then 0.92)
   totalCandidatesConsidered: 15,
+  eligiblePoolCount: 15,
 };
+
+const runId = '55555555-5555-4555-8555-555555555555';
+
+function succeededRun(overrides: Partial<MatchRunDto> = {}): MatchRunDto {
+  return {
+    runId,
+    jdId: mockOpening.openingId,
+    status: 'SUCCEEDED',
+    eligiblePoolCount: 15,
+    suggestedCount: 2,
+    errorMessage: null,
+    createdAt: '2026-09-02T08:00:00.000Z',
+    completedAt: '2026-09-02T08:00:05.000Z',
+    shortlist: mockShortlist,
+    ...overrides,
+  };
+}
+
+// A tiny real poll interval keeps these tests fast without faking timers, which breaks
+// testing-library's own findBy/waitFor polling.
+const TEST_POLL_INTERVAL_MS = 15;
+
+function renderWorkspace(props: { initialOpeningId?: string } = {}) {
+  return render(
+    <CandidateSuggestionsWorkspace {...props} matchRunPollIntervalMs={TEST_POLL_INTERVAL_MS} />,
+  );
+}
+
+/** Clicks "Run matching" and waits for the poll to resolve the run to a terminal status. */
+async function runMatchingToSuccess() {
+  fireEvent.click(screen.getByRole('button', { name: /run matching/i }));
+  await waitFor(() => expect(matchingApi.getRun).toHaveBeenCalled());
+}
+
+beforeEach(() => {
+  vi.mocked(api.onboarding.listBatches).mockResolvedValue([]);
+});
 
 afterEach(() => {
   cleanup();
@@ -97,22 +142,32 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
   it('shows loading and empty states when no openings exist', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [] });
 
-    render(<CandidateSuggestionsWorkspace />);
+    renderWorkspace();
 
-    expect(screen.getByRole('status').textContent).toContain(
-      'Fetching ranked candidate suggestions',
-    );
+    expect(screen.getByRole('status').textContent).toContain('Loading job openings');
     expect(
       await screen.findByText(/Select a job opening to view ranked candidate suggestions/),
     ).toBeDefined();
     expect(screen.getByText(/No openings found/)).toBeDefined();
   });
 
+  it('prompts for a match run before any candidates are fetched', async () => {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+
+    expect(await screen.findByText(/No match run yet/)).toBeDefined();
+    expect(matchingApi.createRun).not.toHaveBeenCalled();
+  });
+
   it('renders ranked candidate list with score percentage, headline tier, level and explanation.why', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
-    vi.mocked(matchingApi.match).mockResolvedValue(mockShortlist);
+    vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
 
-    render(<CandidateSuggestionsWorkspace initialOpeningId={mockOpening.openingId} />);
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    await screen.findByRole('button', { name: /run matching/i });
+    await runMatchingToSuccess();
 
     expect(await screen.findByText('Aarav Sharma')).toBeDefined();
     expect(screen.getByText('Bhavna Patel')).toBeDefined();
@@ -138,13 +193,20 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     // Level clearance
     expect(screen.getByText(/Level 3 Cleared/)).toBeDefined();
     expect(screen.getByText(/Level 2 Cleared/)).toBeDefined();
+
+    // KPI strip
+    expect(screen.getByText('15 students')).toBeDefined();
+    expect(screen.getByText('2 candidates')).toBeDefined();
   });
 
   it('orders candidates in descending matchScore order', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
-    vi.mocked(matchingApi.match).mockResolvedValue(mockShortlist);
+    vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
 
-    render(<CandidateSuggestionsWorkspace initialOpeningId={mockOpening.openingId} />);
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    await screen.findByRole('button', { name: /run matching/i });
+    await runMatchingToSuccess();
 
     await screen.findByText('Aarav Sharma');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
@@ -153,23 +215,25 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     expect(headings).toEqual(['Aarav Sharma', 'Bhavna Patel']);
   });
 
-  it('shows safe API error message and allows refresh', async () => {
+  it('shows a safe error message when triggering a run fails, and allows retrying', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
-    vi.mocked(matchingApi.match)
+    vi.mocked(matchingApi.createRun)
       .mockRejectedValueOnce(new Error('Matching service unavailable'))
-      .mockResolvedValueOnce(mockShortlist);
+      .mockResolvedValueOnce({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
 
-    render(<CandidateSuggestionsWorkspace initialOpeningId={mockOpening.openingId} />);
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    fireEvent.click(await screen.findByRole('button', { name: /run matching/i }));
 
     expect(await screen.findByText('Matching service unavailable')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await runMatchingToSuccess();
 
     expect(await screen.findByText('Aarav Sharma')).toBeDefined();
-    expect(matchingApi.match).toHaveBeenCalledTimes(2);
+    expect(matchingApi.createRun).toHaveBeenCalledTimes(2);
   });
 
-  it('fetches candidate suggestions when opening selection changes', async () => {
+  it('resets the prior run when the selected opening changes', async () => {
     const secondOpening = {
       ...mockOpening,
       openingId: '22222222-2222-4222-8222-222222222222',
@@ -177,34 +241,43 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     };
 
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening, secondOpening] });
-    vi.mocked(matchingApi.match).mockResolvedValue(mockShortlist);
+    vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
 
-    render(<CandidateSuggestionsWorkspace />);
-
-    await waitFor(() => {
-      expect(matchingApi.match).toHaveBeenCalledWith({ jdId: mockOpening.openingId, limit: 50 });
-    });
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    await screen.findByRole('button', { name: /run matching/i });
+    await runMatchingToSuccess();
+    await screen.findByText('Aarav Sharma');
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Select Job Opening' }), {
       target: { value: secondOpening.openingId },
     });
 
-    await waitFor(() => {
-      expect(matchingApi.match).toHaveBeenCalledWith({ jdId: secondOpening.openingId, limit: 50 });
-    });
+    expect(await screen.findByText(/No match run yet/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /run matching/i }));
+    await waitFor(() =>
+      expect(matchingApi.createRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({ jdId: secondOpening.openingId }),
+      ),
+    );
   });
 });
 
 describe('AC-T05 send opportunity', () => {
-  function renderSuggestions() {
+  async function renderSuggestions() {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
-    vi.mocked(matchingApi.match).mockResolvedValue(mockShortlist);
-    return render(<CandidateSuggestionsWorkspace initialOpeningId={mockOpening.openingId} />);
+    vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
+    const view = renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    await screen.findByRole('button', { name: /run matching/i });
+    await runMatchingToSuccess();
+    await screen.findByText('Aarav Sharma');
+    return view;
   }
 
   it('does not POST when no candidate is selected', async () => {
-    renderSuggestions();
-    await screen.findByText('Aarav Sharma');
+    await renderSuggestions();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
 
@@ -222,8 +295,7 @@ describe('AC-T05 send opportunity', () => {
       createdAt: '2026-09-02T09:00:00.000Z',
       updatedAt: '2026-09-02T09:00:00.000Z',
     });
-    renderSuggestions();
-    await screen.findByText('Aarav Sharma');
+    await renderSuggestions();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));
@@ -252,8 +324,7 @@ describe('AC-T05 send opportunity', () => {
         updatedAt: '2026-09-02T09:00:00.000Z',
       })
       .mockRejectedValueOnce(new Error('Placement API unavailable'));
-    renderSuggestions();
-    await screen.findByText('Aarav Sharma');
+    await renderSuggestions();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Bhavna Patel' }));
@@ -283,8 +354,7 @@ describe('AC-T05 send opportunity', () => {
         statusCode: 409,
       }),
     );
-    renderSuggestions();
-    await screen.findByText('Aarav Sharma');
+    await renderSuggestions();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Aarav Sharma' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send opportunity' }));

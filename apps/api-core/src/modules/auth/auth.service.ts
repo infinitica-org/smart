@@ -246,6 +246,14 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(derived, expected);
 }
 
+/** Prisma returns `cgpa`/`sscPercentage`/`hscPercentage` as `Decimal`; duck-type rather than import generated internals. */
+type Decimalish = { toNumber?: () => number } | number;
+
+function nullableDecimal(value: Decimalish | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  return typeof value === 'number' ? value : (value.toNumber?.() ?? null);
+}
+
 export function toAuthenticatedUser(user: {
   id: string;
   email: string;
@@ -262,6 +270,9 @@ export function toAuthenticatedUser(user: {
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
   profilePhotoObjectKey?: string | null;
+  cgpa?: Decimalish | null;
+  sscPercentage?: Decimalish | null;
+  hscPercentage?: Decimalish | null;
 }): AuthenticatedUser {
   const hold = resolveSessionHold({
     role: user.role,
@@ -294,6 +305,9 @@ export function toAuthenticatedUser(user: {
     // Non-students skip candidate onboarding; students require the server flag.
     onboardingCompleted: user.role === 'STUDENT' ? Boolean(user.onboardingCompleted) : true,
     profilePhotoUrl: null,
+    cgpa: nullableDecimal(user.cgpa),
+    sscPercentage: nullableDecimal(user.sscPercentage),
+    hscPercentage: nullableDecimal(user.hscPercentage),
     sessionHold: hold,
   };
 }
