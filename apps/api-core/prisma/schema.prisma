@@ -955,11 +955,24 @@ model JobOpening {
   companyName        String           @map("company_name")
   roleTitle          String           @map("role_title")
   domainCode         String?          @map("domain_code")
+  categoryCode       String?          @map("category_code")
   minYearsExperience Int?             @map("min_years_experience")
   maxYearsExperience Int?             @map("max_years_experience")
   location           String?
   employmentType     String?          @map("employment_type")
   headcount          Int?
+  companyLogoUrl     String?          @map("company_logo_url")
+  attachedDocuments  Json?            @map("attached_documents")
+  aboutCompany           String?      @map("about_company") @db.Text
+  companyOffers          String?      @map("company_offers") @db.Text
+  additionalCompanyDetails String?    @map("additional_company_details") @db.Text
+  roleDetails            String?      @map("role_details") @db.Text
+  salaryDetails          String?      @map("salary_details")
+  roundDetails           String?      @map("round_details") @db.Text
+  hiringDetails          String?      @map("hiring_details") @db.Text
+  driveSpoc              String?      @map("drive_spoc")
+  driveDate              DateTime?    @map("drive_date") @db.Date
+  lastDateToApply        DateTime?    @map("last_date_to_apply") @db.Date
   status             JobOpeningStatus @default(DRAFT)
   createdById        String           @map("created_by_id") @db.Uuid
   createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
