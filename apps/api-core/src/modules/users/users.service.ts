@@ -188,7 +188,20 @@ export class UsersService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { onboardingDetails: merged as Prisma.InputJsonValue },
+      data: {
+        onboardingDetails: merged as Prisma.InputJsonValue,
+        // Denormalized onto the User row (not just onboardingDetails JSON) so matching can
+        // filter on them directly — see mergeProgressiveProfileDetails for the JSON side.
+        ...(parsed.data.academicScores?.cgpa !== undefined
+          ? { cgpa: parsed.data.academicScores.cgpa }
+          : {}),
+        ...(parsed.data.academicScores?.sscPercentage !== undefined
+          ? { sscPercentage: parsed.data.academicScores.sscPercentage }
+          : {}),
+        ...(parsed.data.academicScores?.hscPercentage !== undefined
+          ? { hscPercentage: parsed.data.academicScores.hscPercentage }
+          : {}),
+      },
     });
 
     if (user.onboardingCompleted) {
@@ -299,6 +312,17 @@ export class UsersService {
       };
     }
 
+    if (patch.academicScores && typeof patch.academicScores === 'object') {
+      const current =
+        existing.academicScores && typeof existing.academicScores === 'object'
+          ? (existing.academicScores as Record<string, unknown>)
+          : {};
+      merged.academicScores = {
+        ...current,
+        ...(patch.academicScores as Record<string, unknown>),
+      };
+    }
+
     if (patch.socialVerification && typeof patch.socialVerification === 'object') {
       const current =
         existing.socialVerification && typeof existing.socialVerification === 'object'
@@ -385,6 +409,9 @@ export class UsersService {
         onboardingCompleted: true,
         onboardingDetails: details as Prisma.InputJsonValue,
         dpdpConsentAt: now,
+        cgpa: request.academicScores?.cgpa ?? undefined,
+        sscPercentage: request.academicScores?.sscPercentage ?? undefined,
+        hscPercentage: request.academicScores?.hscPercentage ?? undefined,
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });

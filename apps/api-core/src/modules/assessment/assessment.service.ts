@@ -16,10 +16,14 @@ import {
   type DifficultyTag,
   type DomainCode,
   type IntegrityFlag,
+  type IntegrityQueueItemDto,
+  type IntegrityQueueStatus,
   type ItemType,
   type LevelFormat,
   type LevelNumber,
   type NextItemDto,
+  type ProctoringSeverity,
+  type ProctoringViolationKind,
   type SaveDraftRequest,
   type SaveDraftResponse,
   type StartAttemptRequest,
@@ -61,6 +65,7 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Prisma } from '../../generated/prisma/index.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
 import { passThresholdsFor } from '../catalog/skill-pass-thresholds.js';
+import { bandForScore, integrityScore, type StoredViolation } from '../proctoring/risk.js';
 import {
   applySkillClaimTransition,
   type SkillClaimEvent,
@@ -99,6 +104,17 @@ interface AttemptWithLevelAndResponses {
     };
   };
   responses?: unknown[];
+}
+
+interface AttemptWithUserAndEvents {
+  id: string;
+  userId: string;
+  integrityFlag: string;
+  status: string;
+  startedAt: Date;
+  completedAt: Date | null;
+  user: { fullName: string; email: string };
+  events: { detail: unknown; createdAt: Date }[];
 }
 
 @Injectable()
@@ -1431,25 +1447,87 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listIntegrityQueue() {
-    const rows = await this.prisma.attempt.findMany({
+  /** Maps a persisted `IntegrityEvent` row (best-effort) into a scorer input. */
+  private toStoredViolation(event: { detail: unknown; createdAt: Date }): StoredViolation | null {
+    const detail = event.detail as { kind?: string; severity?: string } | null;
+    if (!detail?.kind || !detail?.severity) return null;
+    return {
+      kind: detail.kind as ProctoringViolationKind,
+      severity: detail.severity as ProctoringSeverity,
+      ts: event.createdAt.getTime(),
+    };
+  }
+
+  /**
+   * `ProctoringService.record()` persists both genuine violations and
+   * transient technical noise (NETWORK_LOSS, HEARTBEAT_LOST, CAMERA_STATIC,
+   * TECHNICAL_INTERRUPTION — see TECHNICAL_VIOLATION_KINDS) into the same
+   * `IntegrityEvent` table, tagging each row's `detail.classified` as
+   * `'INTEGRITY'` or `'TECHNICAL'`. Only the former should ever surface as
+   * evidence to an admin or feed the severity score.
+   */
+  private isClassifiedIntegrityEvent(event: { detail: unknown }): boolean {
+    const detail = event.detail as { classified?: string } | null;
+    return detail?.classified === 'INTEGRITY';
+  }
+
+  /**
+   * True (uncapped) count of classified `INTEGRITY` events per attempt.
+   *
+   * `listIntegrityQueue`/`resolveIntegrity` only fetch the 50 most recent
+   * `IntegrityEvent` rows per attempt (see `toIntegrityQueueItem`) to keep
+   * `risk.ts`'s O(n^2) pairwise scoring bounded — see the comment on
+   * `toIntegrityQueueItem` for why that cap is kept for scoring. The "+N
+   * more" count shown to admins must not inherit that cap, so it is sourced
+   * from this separate, uncapped `count`/`groupBy` query instead.
+   */
+  private async classifiedIntegrityEventCounts(attemptIds: string[]): Promise<Map<string, number>> {
+    if (attemptIds.length === 0) return new Map();
+    const counts = await this.prisma.integrityEvent.groupBy({
+      by: ['attemptId'],
       where: {
-        status: { not: 'VOIDED' },
-        integrityFlag: {
-          in: [
-            'FLAGGED_TIMING',
-            'FLAGGED_PROCTOR',
-            'FLAGGED_SIMILARITY',
-            'FLAGGED_AUDIO',
-            'UNDER_REVIEW',
-          ],
-        },
+        attemptId: { in: attemptIds },
+        detail: { path: ['classified'], equals: 'INTEGRITY' },
       },
-      include: { user: true },
-      orderBy: { startedAt: 'desc' },
-      take: 100,
+      _count: { _all: true },
     });
-    return rows.map((row) => ({
+    return new Map(counts.map((c) => [c.attemptId, c._count._all]));
+  }
+
+  private async classifiedIntegrityEventCount(attemptId: string): Promise<number> {
+    return this.prisma.integrityEvent.count({
+      where: { attemptId, detail: { path: ['classified'], equals: 'INTEGRITY' } },
+    });
+  }
+
+  private toIntegrityQueueItem(
+    row: AttemptWithUserAndEvents,
+    totalClassifiedEventCount: number,
+  ): IntegrityQueueItemDto {
+    // Filter to classified INTEGRITY events only: a technical event landing
+    // first (e.g. NETWORK_LOSS) must never become the "evidence hint" an
+    // admin reads before choosing Escalate or Confirm, and it must not
+    // inflate the severity score either.
+    const classifiedEvents = row.events.filter((event) => this.isClassifiedIntegrityEvent(event));
+    // Scoring intentionally still uses only the capped (take: 50, most
+    // recent) slice of classified events fetched by the caller, not the
+    // uncapped `totalClassifiedEventCount`. risk.ts's integrityScore() does
+    // pairwise O(n^2) comparisons across the event set, so scoring against
+    // every historical event for attempts with hundreds/thousands of them
+    // would be a real performance risk, and the 50 most recent events are
+    // the most relevant signal for a *current* severity read anyway. This
+    // is a deliberate tradeoff, not an oversight.
+    const violations = classifiedEvents
+      .map((event) => this.toStoredViolation(event))
+      .filter((v): v is StoredViolation => v !== null);
+    const latestEvent = classifiedEvents[0]?.detail as { kind?: string } | null;
+    const moreCount = Math.max(0, totalClassifiedEventCount - (latestEvent ? 1 : 0));
+    const flagReason = latestEvent?.kind
+      ? moreCount > 0
+        ? `${latestEvent.kind} (+${moreCount} more)`
+        : latestEvent.kind
+      : null;
+    return {
       attemptId: row.id,
       userId: row.userId,
       studentName: row.user.fullName,
@@ -1458,14 +1536,55 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       status: row.status,
       startedAt: row.startedAt.toISOString(),
       completedAt: row.completedAt?.toISOString() ?? null,
-    }));
+      severity: bandForScore(integrityScore(violations)),
+      flagReason,
+    };
+  }
+
+  /**
+   * `status` picks which attempts show up:
+   *  - `'PENDING'` (default): the original flagged/under-review queue, i.e.
+   *    attempts still awaiting a Dismiss/Confirm/Escalate decision.
+   *  - `'ESCALATED'`: attempts an admin has already escalated. Escalation
+   *    has no dedicated RBAC route or notification (out of scope for
+   *    S6-VV-64); this view is its durable destination so escalated cases
+   *    stay visible/reviewable instead of vanishing from the queue exactly
+   *    like Dismiss/Void do.
+   */
+  async listIntegrityQueue(
+    status: IntegrityQueueStatus = 'PENDING',
+  ): Promise<IntegrityQueueItemDto[]> {
+    const integrityFlagFilter: IntegrityFlag[] =
+      status === 'ESCALATED'
+        ? ['ESCALATED']
+        : [
+            'FLAGGED_TIMING',
+            'FLAGGED_PROCTOR',
+            'FLAGGED_SIMILARITY',
+            'FLAGGED_AUDIO',
+            'UNDER_REVIEW',
+          ];
+    const rows = await this.prisma.attempt.findMany({
+      where: {
+        status: { not: 'VOIDED' },
+        integrityFlag: { in: integrityFlagFilter },
+      },
+      include: {
+        user: true,
+        events: { orderBy: { createdAt: 'desc' }, take: 50 },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 100,
+    });
+    const counts = await this.classifiedIntegrityEventCounts(rows.map((row) => row.id));
+    return rows.map((row) => this.toIntegrityQueueItem(row, counts.get(row.id) ?? 0));
   }
 
   async resolveIntegrity(
     attemptId: string,
-    body: { resolution: 'CLEAR' | 'VOID'; reason: string },
+    body: { resolution: 'CLEAR' | 'VOID' | 'ESCALATE'; reason: string },
     actorId: string,
-  ) {
+  ): Promise<IntegrityQueueItemDto> {
     const attempt = await this.prisma.attempt.findUnique({
       where: { id: attemptId },
       include: { user: true },
@@ -1477,27 +1596,34 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         statusCode: 404,
       });
     }
+    const data =
+      body.resolution === 'VOID'
+        ? { status: 'VOIDED' as const }
+        : body.resolution === 'ESCALATE'
+          ? { integrityFlag: 'ESCALATED' as const }
+          : { integrityFlag: 'CLEARED' as const };
     const updated = await this.prisma.attempt.update({
       where: { id: attemptId },
-      data: body.resolution === 'VOID' ? { status: 'VOIDED' } : { integrityFlag: 'CLEARED' },
-      include: { user: true },
+      data,
+      include: {
+        user: true,
+        events: { orderBy: { createdAt: 'desc' }, take: 50 },
+      },
     });
+    const action =
+      body.resolution === 'VOID'
+        ? 'integrity.voided'
+        : body.resolution === 'ESCALATE'
+          ? 'integrity.escalated'
+          : 'integrity.cleared';
     await this.auditPublisher.record({
       actorId,
-      action: body.resolution === 'VOID' ? 'integrity.voided' : 'integrity.cleared',
+      action,
       resourceType: 'attempt',
       resourceId: attemptId,
       reasonCode: body.reason,
     });
-    return {
-      attemptId: updated.id,
-      userId: updated.userId,
-      studentName: updated.user.fullName,
-      studentEmail: updated.user.email,
-      integrityFlag: updated.integrityFlag,
-      status: updated.status,
-      startedAt: updated.startedAt.toISOString(),
-      completedAt: updated.completedAt?.toISOString() ?? null,
-    };
+    const totalClassifiedEventCount = await this.classifiedIntegrityEventCount(attemptId);
+    return this.toIntegrityQueueItem(updated, totalClassifiedEventCount);
   }
 }

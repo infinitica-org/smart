@@ -199,7 +199,7 @@ export class CorroborationService {
       });
     }
 
-    const passiveX = await this.store.getPassiveSignal(userId);
+    const passiveX = await this.store.getAllPassiveSignals(userId);
     const { readouts, contradictionDimensions } = fuseSignals({
       passiveX,
       assessmentY: assessment,

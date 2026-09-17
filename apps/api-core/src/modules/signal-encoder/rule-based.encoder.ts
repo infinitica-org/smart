@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   ACTIVE_TAXONOMY_VERSION,
+  type CertificateProficiency,
+  type EvidenceVerificationMethod,
   type HackerrankRawPayload,
   type LanguageBreakdownEntry,
   type LeetcodeRawPayload,
@@ -8,6 +10,13 @@ import {
   type VectorizedSignal,
   type VectorizedSignalEntry,
 } from '@smart/contracts';
+import {
+  CERTIFICATE_PROFICIENCY_SCORE,
+  confidenceForCertificateTier,
+  confidenceForCredentialMethod,
+  PROFESSIONAL_CREDENTIAL_CLAIM_SCORE,
+  type CertificateVerificationTier,
+} from './credential-trust.js';
 import { SkillDimensionResolver } from './skill-dimension.resolver.js';
 
 export interface EncodeGithubInput {
@@ -33,6 +42,29 @@ export interface EncodeLeetcodeInput {
   readonly consentScope: string;
   readonly fetchedAt: string;
   readonly encodedAt: string;
+}
+
+export interface EncodeCandidateCertificateInput {
+  readonly userId: string;
+  readonly skills: readonly {
+    skillCode: string;
+    selfAssessedProficiency: CertificateProficiency;
+  }[];
+  /** The automated tier that verified this certificate, or null if unknown (e.g. endorsement-only). */
+  readonly verificationTier: CertificateVerificationTier | null;
+  readonly encodedAt: string;
+  readonly consentScope?: string;
+  readonly fetchedAt?: string;
+}
+
+export interface EncodeProfessionalCredentialInput {
+  readonly userId: string;
+  readonly coveredSkillCodes: readonly string[];
+  /** The credential's persisted verificationMethod, or null if never automatable/verified. */
+  readonly verificationMethod: EvidenceVerificationMethod | null;
+  readonly encodedAt: string;
+  readonly consentScope?: string;
+  readonly fetchedAt?: string;
 }
 
 /**
@@ -87,6 +119,48 @@ export class RuleBasedEncoder {
       entries,
       consentScope: input.consentScope,
       fetchedAt: input.fetchedAt,
+    };
+  }
+
+  encodeCandidateCertificate(input: EncodeCandidateCertificateInput): VectorizedSignal {
+    const confidence = confidenceForCertificateTier(input.verificationTier);
+    const entries = this.mergeEntries(
+      this.resolver.resolveCandidateCertificateSkills(
+        input.skills,
+        CERTIFICATE_PROFICIENCY_SCORE,
+        confidence,
+      ),
+    );
+
+    return {
+      userId: input.userId,
+      sourceId: 'EXTERNALCERT',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: input.encodedAt,
+      entries,
+      consentScope: input.consentScope ?? 'certificate.candidate.declared',
+      fetchedAt: input.fetchedAt ?? input.encodedAt,
+    };
+  }
+
+  encodeProfessionalCredential(input: EncodeProfessionalCredentialInput): VectorizedSignal {
+    const confidence = confidenceForCredentialMethod(input.verificationMethod);
+    const entries = this.mergeEntries(
+      this.resolver.resolveProfessionalCredentialSkills(
+        input.coveredSkillCodes,
+        PROFESSIONAL_CREDENTIAL_CLAIM_SCORE,
+        confidence,
+      ),
+    );
+
+    return {
+      userId: input.userId,
+      sourceId: 'PROFESSIONALCREDENTIAL',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: input.encodedAt,
+      entries,
+      consentScope: input.consentScope ?? 'credential.candidate.declared',
+      fetchedAt: input.fetchedAt ?? input.encodedAt,
     };
   }
 

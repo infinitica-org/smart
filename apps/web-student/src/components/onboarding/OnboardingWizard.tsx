@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import ResumeUpload from './steps/ResumeUpload';
 import BasicProfileStep from './steps/BasicProfileStep';
 import StreamStep from './steps/StreamStep';
+import AcademicsStep from './steps/AcademicsStep';
 import LanguagesStep from './steps/LanguagesStep';
 import SocialStep from './steps/SocialStep';
 import JobPreferencesStep from './steps/JobPreferencesStep';
@@ -69,6 +70,11 @@ function furthestStep(form: OnboardingProfileForm): WizardStepId {
     form.codingProficiencies.length > 0 ||
     form.frameworkProficiencies.length > 0;
   if (hasLegacySkillsData) return 'languages';
+  const hasAcademicScores =
+    form.academicScores.cgpa.trim() ||
+    form.academicScores.sscPercentage.trim() ||
+    form.academicScores.hscPercentage.trim();
+  if (hasAcademicScores) return 'academics';
   if (form.firstName.trim() || form.lastName.trim()) return 'profile';
   return 'resume';
 }
@@ -203,6 +209,15 @@ export default function OnboardingWizard() {
 
         {currentStep === 'stream' && (
           <StreamStep onBack={() => goBackTo('stream')} onContinue={() => advanceFrom('stream')} />
+        )}
+
+        {currentStep === 'academics' && (
+          <AcademicsStep
+            formData={formData}
+            updateField={updateField}
+            onBack={() => goBackTo('academics')}
+            onContinue={() => advanceFrom('academics')}
+          />
         )}
 
         {currentStep === 'languages' && (

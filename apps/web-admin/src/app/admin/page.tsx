@@ -7,11 +7,12 @@ import {
   GraduationCap,
   PauseCircle,
   ShieldAlert,
-  BadgeCheck,
   ScrollText,
   ArrowUpRight,
+  Users,
+  Sparkles,
 } from 'lucide-react';
-import type { AdminDashboardDto } from '@smart/contracts';
+import type { AdminDashboardDto, AiUsageSummaryDto } from '@smart/contracts';
 import { InlineAlert } from '@/components/admin-ui';
 import { KpiTile, OpsBoard, Panel, PlanMix, TenantMix } from '@/components/dashboard-widgets';
 import { api } from '@/lib/api';
@@ -19,8 +20,8 @@ import { api } from '@/lib/api';
 function LoadingOverview() {
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 7 }).map((_, index) => (
           <div key={index} className="h-32 animate-pulse rounded-2xl bg-card" />
         ))}
       </div>
@@ -36,12 +37,19 @@ function LoadingOverview() {
 export default function AdminHomePage() {
   const [data, setData] = useState<AdminDashboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiUsage, setAiUsage] = useState<AiUsageSummaryDto | null>(null);
 
   useEffect(() => {
     api.onboarding
       .dashboard()
       .then(setData)
       .catch(() => setError('Failed to load dashboard.'));
+    // Independent fetch: AI usage isn't part of AdminDashboardDto, and
+    // failing to load it shouldn't block the rest of the dashboard.
+    api.onboarding
+      .aiUsage()
+      .then(setAiUsage)
+      .catch(() => undefined);
   }, []);
 
   if (error) return <InlineAlert tone="danger" title={error} />;
@@ -53,20 +61,38 @@ export default function AdminHomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5">
         <KpiTile
           icon={GraduationCap}
           tone="accent"
           label="Institutions"
           value={data.institutions.total}
           hint={`${data.institutions.active} active · ${data.institutions.held} held`}
+          href="/admin/institutions"
+        />
+        <KpiTile
+          icon={Users}
+          tone="accent"
+          label="Students"
+          value={data.students.total}
+          hint={`${data.students.active} active · ${data.students.held} held`}
+          href="/admin/users"
         />
         <KpiTile
           icon={PauseCircle}
           tone="inverse"
-          label="Open holds"
-          value={data.openHolds.institutions + data.openHolds.students}
-          hint={`${data.openHolds.institutions} tenants · ${data.openHolds.students} students`}
+          label="Held institutions"
+          value={data.openHolds.institutions}
+          hint="Paused tenant access"
+          href="/admin/institutions"
+        />
+        <KpiTile
+          icon={PauseCircle}
+          tone="inverse"
+          label="Held students"
+          value={data.openHolds.students}
+          hint="Paused candidate access"
+          href="/admin/users"
         />
         <KpiTile
           icon={Building2}
@@ -81,7 +107,21 @@ export default function AdminHomePage() {
           label="Integrity flags"
           value={data.flaggedAttempts}
           hint="Awaiting review"
+          href="/admin/integrity"
         />
+        <Link href="/admin/health" className="block rounded-2xl focus-visible:outline-none">
+          <KpiTile
+            icon={Sparkles}
+            tone="accent"
+            label="AI usage (24h)"
+            value={aiUsage?.last24h.requestCount ?? 0}
+            hint={
+              aiUsage
+                ? `$${aiUsage.last24h.totalCostUsd.toFixed(2)} spent · ${(aiUsage.last24h.fallbackRate * 100).toFixed(0)}% fallback`
+                : 'Loading…'
+            }
+          />
+        </Link>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -162,14 +202,6 @@ export default function AdminHomePage() {
             href: '/admin/institutions',
           },
           {
-            id: 'verify',
-            label: 'Verification',
-            hint: 'Waiting on review',
-            value: data.pendingVerifications,
-            icon: BadgeCheck,
-            href: '/admin/verification',
-          },
-          {
             id: 'integrity',
             label: 'Integrity',
             hint: 'Flagged attempts',
@@ -178,10 +210,18 @@ export default function AdminHomePage() {
             href: '/admin/integrity',
           },
           {
-            id: 'holds',
-            label: 'Open holds',
-            hint: 'Paused access',
-            value: data.openHolds.institutions + data.openHolds.students,
+            id: 'holds-institutions',
+            label: 'Held institutions',
+            hint: 'Paused tenant access',
+            value: data.openHolds.institutions,
+            icon: PauseCircle,
+            href: '/admin/institutions',
+          },
+          {
+            id: 'holds-students',
+            label: 'Held students',
+            hint: 'Paused candidate access',
+            value: data.openHolds.students,
             icon: PauseCircle,
             href: '/admin/users',
           },

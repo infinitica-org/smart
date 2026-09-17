@@ -52,6 +52,7 @@ describe('CertVerificationAssessmentService', () => {
       { setex: vi.fn(), get: vi.fn() } as never,
       {} as never,
       { getSignedDownloadUrl: vi.fn() } as never,
+      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
     );
 
     await expect(service.start(student(), CERT_ID, { prepareOnly: true })).rejects.toThrow();
@@ -70,6 +71,7 @@ describe('CertVerificationAssessmentService', () => {
       redis as never,
       evaluation as never,
       { getSignedDownloadUrl: vi.fn() } as never,
+      { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) } as never,
     );
 
     const prepared = await service.start(student(), CERT_ID, { prepareOnly: true });
@@ -138,11 +140,13 @@ describe('CertVerificationAssessmentService', () => {
       }),
     };
 
+    const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
     const service = new CertVerificationAssessmentService(
       prisma as never,
       redis as never,
       evaluation as never,
       { getSignedDownloadUrl: vi.fn() } as never,
+      outbox as never,
     );
 
     const result = await service.complete(student(), sessionId, {
@@ -150,5 +154,15 @@ describe('CertVerificationAssessmentService', () => {
     });
     expect(result.certificate.status).toBe('VERIFIED');
     expect(result.grade?.passed).toBe(true);
+    expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topic: 'smart.credential.verified',
+        data: expect.objectContaining({
+          userId: STUDENT_ID,
+          sourceId: 'EXTERNALCERT',
+          entityId: CERT_ID,
+        }),
+      }),
+    );
   });
 });

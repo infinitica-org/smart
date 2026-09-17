@@ -123,6 +123,51 @@ export const AiHealthDtoSchema = z.object({
 });
 export type AiHealthDto = z.infer<typeof AiHealthDtoSchema>;
 
+/**
+ * Per-provider slice of an AI usage window, aggregated from
+ * `ai_evaluation_audits` (`groupBy provider` — see `AiGatewayUsageService`).
+ */
+export const AiUsageProviderBreakdownSchema = z.object({
+  provider: AiProviderSchema,
+  requestCount: z.number().int().nonnegative(),
+  totalCostUsd: z.number().nonnegative(),
+  avgLatencyMs: z.number().nonnegative(),
+  fallbackRate: z.number().min(0).max(1),
+});
+export type AiUsageProviderBreakdown = z.infer<typeof AiUsageProviderBreakdownSchema>;
+
+/**
+ * Cost/volume/latency/fallback aggregation for one time window, sourced from
+ * every completion recorded to `ai_evaluation_audits` (see
+ * `AiGatewayAuditService.record()` and the `aiCompletionRecorded` consumer).
+ */
+export const AiUsageWindowSchema = z.object({
+  requestCount: z.number().int().nonnegative(),
+  totalCostUsd: z.number().nonnegative(),
+  avgLatencyMs: z.number().nonnegative(),
+  p95LatencyMs: z.number().nonnegative(),
+  /** Share of requests answered by a fallback provider, 0-1. */
+  fallbackRate: z.number().min(0).max(1),
+  byProvider: z.array(AiUsageProviderBreakdownSchema),
+});
+export type AiUsageWindow = z.infer<typeof AiUsageWindowSchema>;
+
+export const AiUsageSummaryDtoSchema = z.object({
+  last24h: AiUsageWindowSchema,
+  last30d: AiUsageWindowSchema,
+  /**
+   * `ai_evaluation_audits` only records completions that succeeded (see
+   * `AiGatewayService.complete()` — a failed provider attempt is logged and
+   * the next provider in the chain is tried, but no row is ever written for
+   * the failure). There is therefore no error/failure signal to aggregate an
+   * error rate from yet; this stays `false` until that instrumentation
+   * exists. Kept as an explicit field rather than omitted so a consumer can't
+   * silently assume a zero error rate.
+   */
+  errorRateAvailable: z.literal(false),
+});
+export type AiUsageSummaryDto = z.infer<typeof AiUsageSummaryDtoSchema>;
+
 /* ----------------------------- L4 defense sim ------------------------------ */
 
 export const DefenseTurnSchema = z.object({

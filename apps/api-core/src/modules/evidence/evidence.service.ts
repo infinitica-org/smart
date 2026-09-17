@@ -1,4 +1,6 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import { z } from 'zod';
 import {
   CreateEvidenceRequestSchema,
@@ -19,6 +21,9 @@ import {
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import {
   toEvidenceRecordDto,
@@ -28,6 +33,14 @@ import {
   toSkillClaimEvidenceLinkDto,
   toVerificationDecisionDto,
 } from './evidence.mapper.js';
+import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
+
+const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+]);
+const CREDENTIAL_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class EvidenceService {
@@ -35,6 +48,10 @@ export class EvidenceService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
     private readonly reconciliation: EvidenceReconciliationService,
+    @Inject(StorageService) private readonly storageService: StorageService,
+    @InjectQueue(CREDENTIAL_VERIFICATION_QUEUE)
+    private readonly credentialVerificationQueue: Queue<CredentialVerificationJobPayload>,
+    @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
   ) {}
 
   async listEvidence(
@@ -243,6 +260,13 @@ export class EvidenceService {
 
   async createCredential(studentId: string, body: unknown): Promise<ProfessionalCredentialDto> {
     const input = ProfessionalCredentialSchema.omit({ credentialId: true }).parse(body);
+
+    await this.dedup.assertNoDuplicate(studentId, {
+      issuer: input.issuer,
+      title: input.credentialName,
+      identifierNumber: input.externalCredentialId,
+    });
+
     const row = await this.prisma.professionalCredential.create({
       data: {
         studentId,
@@ -255,13 +279,15 @@ export class EvidenceService {
         jurisdiction: input.jurisdiction,
         scope: input.scope,
         verificationSource: input.verificationSource,
-        status: input.status ?? 'PENDING_VERIFICATION',
+        // Status and verification method are never client-supplied: they can
+        // only move once the verification pipeline actually confirms a claim.
+        status: 'PENDING_VERIFICATION',
         assessmentType: input.assessmentType,
         practicalComponent: input.practicalComponent ?? false,
         coveredTopics: input.coveredTopics ?? [],
         coveredSkillCodes: input.coveredSkills ?? [],
         applicationEvidence: (input.applicationEvidence ?? []) as Prisma.InputJsonValue,
-        verificationMethod: input.verificationMethod,
+        verificationMethod: 'SELF_ATTESTED',
       },
     });
 
@@ -276,6 +302,56 @@ export class EvidenceService {
         verificationStatus: 'PENDING',
       },
     });
+
+    await this.reconciliation.reconcileForStudent(studentId);
+    await this.credentialVerificationQueue.add('verify-credential', { credentialId: row.id });
+
+    return toProfessionalCredentialDto(row);
+  }
+
+  async uploadCredentialDocument(
+    studentId: string,
+    credentialId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<ProfessionalCredentialDto> {
+    const existing = await this.prisma.professionalCredential.findFirst({
+      where: { id: credentialId, studentId },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Professional credential not found.',
+        statusCode: 404,
+      });
+    }
+    if (!CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES.has(file.mimeType)) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Only PDF, JPG, and PNG files are accepted.',
+        statusCode: 400,
+      });
+    }
+    if (file.buffer.byteLength > CREDENTIAL_DOCUMENT_MAX_BYTES) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The supporting document must be 5MB or smaller.',
+        statusCode: 400,
+      });
+    }
+
+    const objectKey = await this.storageService.upload({
+      buffer: file.buffer,
+      namespace: `credential-documents/${studentId}`,
+      fileName: file.fileName,
+      contentType: file.mimeType,
+    });
+
+    const row = await this.prisma.professionalCredential.update({
+      where: { id: credentialId },
+      data: { documentObjectKey: objectKey },
+    });
+
+    await this.credentialVerificationQueue.add('verify-credential', { credentialId: row.id });
 
     return toProfessionalCredentialDto(row);
   }

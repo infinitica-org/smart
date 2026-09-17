@@ -153,8 +153,8 @@ export default function SettingsPage() {
                 </span>
                 <div className="text-base font-extrabold text-white">
                   {capacity !== undefined && capacity !== null
-                    ? `${studentCount} / ${capacity} Candidates`
-                    : `${studentCount} Candidates (Unlimited)`}
+                    ? `${studentCount} / ${capacity} Candidate${studentCount === 1 ? '' : 's'}`
+                    : `${studentCount} Candidate${studentCount === 1 ? '' : 's'} · Unlimited`}
                 </div>
                 {capacity !== undefined && capacity !== null ? (
                   <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">

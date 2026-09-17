@@ -13,6 +13,10 @@ const PRACTITIONER_WEIGHTS = {
   LEETCODE: { default: 0.8 },
   RESUME: { default: 0.5 },
   MANUAL: { default: 0.4 },
+  // Credential evidence is supporting-only (playbook §5.5): kept below every
+  // platform-observed source until issuer APIs replace OCR/stub verification.
+  EXTERNALCERT: { default: 0.5 },
+  PROFESSIONALCREDENTIAL: { default: 0.55 },
 } satisfies Record<SignalSourceId, Record<string, number>>;
 
 const PRACTITIONER_BASE = {

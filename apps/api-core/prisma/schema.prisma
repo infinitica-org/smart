@@ -100,6 +100,7 @@ enum IntegrityFlag {
   FLAGGED_AUDIO
   UNDER_REVIEW
   CLEARED
+  ESCALATED
 }
 
 enum Evaluator {
@@ -251,6 +252,7 @@ model Institution {
   invitations          Invitation[]
   jobDescriptions      JobDescription[]
   jobOpenings          JobOpening[]
+  matchRuns            MatchRun[]
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
 
@@ -331,6 +333,13 @@ model User {
   dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
   publicProfileSlug   String?      @unique @map("public_profile_slug")
+  /// S6-VV-75 — CGPA on a 0-10 scale, collected during onboarding; denormalized onto User (not
+  /// CandidateEducation) because matching needs a single indexable value per student.
+  cgpa                Decimal?     @map("cgpa") @db.Decimal(4, 2)
+  /// S6-VV-75 — 10th/SSC exam percentage (0-100).
+  sscPercentage       Decimal?     @map("ssc_percentage") @db.Decimal(5, 2)
+  /// S6-VV-75 — 12th/HSC exam percentage (0-100).
+  hscPercentage       Decimal?     @map("hsc_percentage") @db.Decimal(5, 2)
   /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
   username             String?        @map("username")
   /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
@@ -364,6 +373,7 @@ model User {
   communicationProfile  CommunicationProfile?
   auditLogs             AuditLog[]
   jobOpeningsCreated    JobOpening[]           @relation("JobOpeningCreatedBy")
+  matchRunsRequested    MatchRun[]             @relation("MatchRunRequestedBy")
   notifications         Notification[]
   workExperiences       WorkExperience[]
   candidateCertificates CandidateCertificate[]
@@ -973,6 +983,38 @@ model JobOpeningSkill {
 
   @@unique([openingId, skillId])
   @@map("job_opening_skills")
+}
+
+/**
+ * S6-VV-76 — an async, batch-scoped candidate-matching job. `jdId` deliberately has no FK
+ * relation: it may point at a `JobOpening` or a legacy `JobDescription` row (see
+ * `MatchingService.resolveJob`), so it stays a plain UUID like `MatchRequest.jdId` already does.
+ */
+model MatchRun {
+  id                 String      @id @default(uuid()) @db.Uuid
+  institutionId      String      @map("institution_id") @db.Uuid
+  institution        Institution @relation(fields: [institutionId], references: [id])
+  jdId               String      @map("jd_id") @db.Uuid
+  requestedById      String      @map("requested_by_id") @db.Uuid
+  requestedBy        User        @relation("MatchRunRequestedBy", fields: [requestedById], references: [id])
+  batchIds           String[]    @map("batch_ids") @db.Uuid
+  minCgpa            Decimal?    @map("min_cgpa") @db.Decimal(4, 2)
+  requiredSkillCodes String[]    @map("required_skill_codes")
+  limit              Int
+  /// PENDING | RUNNING | SUCCEEDED | FAILED — plain String, matching this repo's existing
+  /// convention for job-status fields (e.g. ProfessionalCredential.status) rather than an enum.
+  status             String      @default("PENDING")
+  errorMessage       String?     @map("error_message")
+  eligiblePoolCount  Int?        @map("eligible_pool_count")
+  suggestedCount     Int?        @map("suggested_count")
+  shortlistId        String?     @map("shortlist_id") @db.Uuid
+  /// Cached ShortlistDto so the polling GET can read the finished result without re-ranking.
+  resultSnapshot     Json?       @map("result_snapshot")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt        DateTime?   @map("completed_at") @db.Timestamptz(6)
+
+  @@index([institutionId, jdId])
+  @@map("match_runs")
 }
 
 model Application {
@@ -1713,6 +1755,7 @@ model ProfessionalCredential {
   coveredSkillCodes    String[] @default([]) @map("covered_skill_codes")
   applicationEvidence  Json?    @map("application_evidence")
   verificationMethod   String?  @map("verification_method")
+  documentObjectKey    String?  @map("document_object_key")
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

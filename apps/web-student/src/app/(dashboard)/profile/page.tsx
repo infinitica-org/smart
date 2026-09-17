@@ -4,9 +4,13 @@ import { CheckCircle2 } from 'lucide-react';
 
 import { AboutSection } from '@/components/profile/AboutSection';
 
+import { AcademicScoresSection } from '@/components/profile/AcademicScoresSection';
+
 import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
 
 import { CertificatesSection } from '@/components/profile/CertificatesSection';
+
+import { CredentialsSection } from '@/components/profile/CredentialsSection';
 
 import { EducationSection } from '@/components/profile/EducationSection';
 
@@ -108,6 +112,12 @@ export default function ProfilePage() {
         </ProfileSurface>
       </div>
 
+      <div id="academic-scores" className="scroll-mt-24">
+        <ProfileSurface>
+          <AcademicScoresSection />
+        </ProfileSurface>
+      </div>
+
       <div id="experience" className="scroll-mt-24">
         <ProfileSurface>
           <WorkExperienceSection />
@@ -123,6 +133,12 @@ export default function ProfilePage() {
       <div id="certificates" className="scroll-mt-24">
         <ProfileSurface>
           <CertificatesSection />
+        </ProfileSurface>
+      </div>
+
+      <div id="credentials" className="scroll-mt-24">
+        <ProfileSurface>
+          <CredentialsSection />
         </ProfileSurface>
       </div>
 

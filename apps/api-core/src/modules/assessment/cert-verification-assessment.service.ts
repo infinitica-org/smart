@@ -22,9 +22,11 @@ import {
   type PolymorphicAssessmentSessionDto,
 } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { publishCredentialVerified } from '../candidate-certificates/verification/credential-verified-publisher.js';
 import { EvaluationService } from '../evaluation/evaluation.service.js';
 import {
   applyCertAssessmentTransition,
@@ -78,6 +80,7 @@ export class CertVerificationAssessmentService {
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(EvaluationService) private readonly evaluation: EvaluationService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
   ) {}
 
   async start(
@@ -376,6 +379,14 @@ export class CertVerificationAssessmentService {
     });
 
     await this.redis.del(certVerifyRedisKey(sessionId));
+
+    if (transition.becomesVerified) {
+      await publishCredentialVerified(this.outbox, 'assessment', {
+        userId: user.sub,
+        sourceId: 'EXTERNALCERT',
+        entityId: updated.id,
+      });
+    }
 
     return CompleteCertVerifyResponseSchema.parse({
       certificate: await this.toCertificateDto(updated),

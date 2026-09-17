@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SmartApiError } from '@smart/api-client';
+import { SEND_TO_COMPANY_STAGE } from '@smart/contracts';
 import type { ApplicationConfidenceDto, ApplicationDto } from '@smart/contracts';
 import { applicationsApi, openingsApi } from '../lib/api';
 import { ConfidenceReviewWorkspace } from './confidence-review-workspace';
@@ -106,7 +107,7 @@ describe('AC-T06 confidence review workspace', () => {
     vi.mocked(applicationsApi.getConfidence).mockResolvedValue(completeConfidence);
     vi.mocked(applicationsApi.sendToCompany).mockResolvedValue({
       ...shortlisted,
-      stage: 'INTERVIEW',
+      stage: SEND_TO_COMPANY_STAGE,
     });
 
     render(<ConfidenceReviewWorkspace />);
@@ -118,11 +119,36 @@ describe('AC-T06 confidence review workspace', () => {
       expect(applicationsApi.sendToCompany).toHaveBeenCalledWith(shortlisted.applicationId);
     });
     expect((await screen.findAllByText('Sent to company')).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Interviewing ATS column/)).toBeDefined();
+    expect(screen.getByText(/AI-Verified ATS column/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Send Aarav Sharma to company' })).toHaveProperty(
       'disabled',
       true,
     );
+  });
+
+  /**
+   * `sendToCompany` lands on AI_VERIFIED, not INTERVIEW. Hard-coding the wrong
+   * stage here hid a live bug: the row stayed enabled and claimed the candidate
+   * was in the Interviewing column.
+   */
+  it('keeps the sent candidate visible with the already-sent state', async () => {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(applicationsApi.listForOpening).mockResolvedValue({ applications: [shortlisted] });
+    vi.mocked(applicationsApi.getConfidence).mockResolvedValue(completeConfidence);
+    vi.mocked(applicationsApi.sendToCompany).mockResolvedValue({
+      ...shortlisted,
+      stage: SEND_TO_COMPANY_STAGE,
+    });
+
+    render(<ConfidenceReviewWorkspace />);
+    await screen.findByText('Aarav Sharma');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Aarav Sharma to company' }));
+
+    expect(await screen.findByText('Already sent')).toBeDefined();
+    expect(screen.getByText('Aarav Sharma')).toBeDefined();
+    expect(screen.getByText(SEND_TO_COMPANY_STAGE)).toBeDefined();
+    expect(screen.queryByText('Send to Company')).toBeNull();
   });
 
   it('shows failure feedback when send is rejected', async () => {

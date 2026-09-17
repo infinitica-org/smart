@@ -266,6 +266,7 @@ export const INTEGRITY_FLAGS = [
   'FLAGGED_AUDIO', // pre-recorded playback suspected (VAD / fingerprint)
   'UNDER_REVIEW', // trust & safety reviewing
   'CLEARED', // reviewed and cleared by an admin
+  'ESCALATED', // admin confirmed a genuine violation and escalated it for further action
 ] as const;
 export const IntegrityFlagSchema = z.enum(INTEGRITY_FLAGS);
 export type IntegrityFlag = z.infer<typeof IntegrityFlagSchema>;

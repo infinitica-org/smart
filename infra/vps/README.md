@@ -18,10 +18,10 @@ break-glass / first-time setup.
 
 ## 1. DNS (A records)
 
-| Host                                                                                                     | → IP    |
-| -------------------------------------------------------------------------------------------------------- | ------- |
-| `becomesmart.online`, `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`                             | kvm4 IP |
-| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.` | kvm2 IP |
+| Host                                                                                                                | → IP    |
+| ------------------------------------------------------------------------------------------------------------------- | ------- |
+| `becomesmart.online`, `www.` (CNAME → apex), `api.`, `app.`, `tpo.`, `admin.`, `verify.`, `studio.`, `db.`          | kvm4 IP |
+| `dev.becomesmart.online`, `dev.api.`, `dev.app.`, `dev.tpo.`, `dev.admin.`, `dev.verify.`, `dev.studio.`, `dev.db.` | kvm2 IP |
 
 ## 2. Server setup (each VPS) — one-time
 
@@ -75,10 +75,12 @@ bash scripts/seed-vps.sh prod   # kvm4 — smart-prod
 
 ## 4. DB admin UI
 
-`https://studio.becomesmart.online` (prod) / `https://dev.studio.becomesmart.online`
-(dev) — Prisma Studio behind Caddy, gated by HTTP Basic Auth
-(`DB_BASIC_AUTH_USER` / `DB_BASIC_AUTH_HASH` in the env file) **and** the
-Postgres login itself. Raw port 5432 is never exposed publicly.
+Two tools, same gate: HTTP Basic Auth (`DB_BASIC_AUTH_USER` /
+`DB_BASIC_AUTH_HASH` in the env file) **and** the Postgres login itself. Raw
+port 5432 is never exposed publicly.
+
+- `https://studio.becomesmart.online` / `https://dev.studio.becomesmart.online` — Prisma Studio.
+- `https://db.becomesmart.online` / `https://dev.db.becomesmart.online` — Adminer (raw SQL / table admin).
 
 ## 5. Laptop (not a VPS)
 
