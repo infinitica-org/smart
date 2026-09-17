@@ -1,6 +1,6 @@
 ﻿import { z } from 'zod';
 import { ProjectVerifyFlagSchema } from '../domain/enums.js';
-import { DefenseTurnSchema, DefenseRubricWeightsSchema } from './evaluation.dto.js';
+import { DefenseTurnSchema, type DefenseRubricWeightsSchema } from './evaluation.dto.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 export const PROJECT_DEFENSE_EXAMINER_PROMPT_REF = 'project-defense-examiner@1' as const;

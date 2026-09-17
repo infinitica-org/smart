@@ -67,7 +67,6 @@ import { RedisService } from '../../platform/redis/redis.service.js';
 import {
   EvaluationService,
   SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
-  SKILL_INTERVIEW_GRADER_PROMPT_REF,
 } from '../evaluation/evaluation.service.js';
 import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
