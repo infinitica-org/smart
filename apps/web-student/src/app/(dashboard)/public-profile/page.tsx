@@ -102,7 +102,7 @@ export default function PublicProfilePreviewPage() {
               type="button"
               onClick={() => void shareLink()}
               disabled={!link?.url}
-              className="flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black shadow-sm hover:bg-[#7dffe6] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-sm hover:bg-foreground/90 disabled:opacity-50"
             >
               <Share2 className="h-4 w-4" />
               Share Profile
@@ -120,13 +120,13 @@ export default function PublicProfilePreviewPage() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-[40px] border border-gray-100 bg-white shadow-[0_12px_40px_rgb(0,0,0,0.06)] dark:border-white/5 dark:bg-[#1c1c1e] dark:shadow-[0_12px_40px_rgb(0,0,0,0.15)]">
-              <div className="relative h-32 bg-gradient-to-r from-[#00fad0]/20 to-blue-500/20">
+              <div className="relative h-32 bg-muted">
                 <div className="absolute -bottom-12 left-8 h-24 w-24 rounded-full bg-white p-1.5 dark:bg-[#161616]">
                   <CandidateAvatar
                     fullName={profile.fullName}
                     profilePhotoUrl={profile.profilePhotoUrl}
                     className="h-full w-full text-2xl font-bold"
-                    fallbackClassName="rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-2xl font-bold text-gray-500 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400"
+                    fallbackClassName="rounded-full bg-muted text-2xl font-bold text-gray-500 dark:bg-muted dark:text-gray-400"
                   />
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function PublicProfilePreviewPage() {
                       <TierBadge tier={profile.certificate.tier} showLabel />
                     ) : null}
                     {profile.skills.length > 0 ? (
-                      <div className="flex items-center gap-1.5 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#00967c] dark:text-[#00fad0]">
+                      <div className="flex items-center gap-1.5 rounded-full border border-foreground/30 bg-foreground/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-foreground dark:text-foreground">
                         <CheckCircle2 className="h-4 w-4" />
                         SMART Verified
                       </div>
@@ -176,7 +176,7 @@ export default function PublicProfilePreviewPage() {
                             {skill.skillName}
                           </span>
                           <div className="h-3 w-px bg-gray-300 dark:bg-white/20" />
-                          <span className="text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                          <span className="text-xs font-bold text-foreground dark:text-foreground">
                             {skill.proficiency.charAt(0) + skill.proficiency.slice(1).toLowerCase()}
                           </span>
                         </div>
@@ -206,7 +206,7 @@ export default function PublicProfilePreviewPage() {
                               {project.title}
                             </h4>
                             {project.status === 'VERIFIED' ? (
-                              <span className="flex items-center gap-1 rounded-full bg-[#00fad0]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                              <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-bold text-foreground dark:text-foreground">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 {project.score !== null
                                   ? `Verified · ${String(Math.round(project.score))}/100`
@@ -283,7 +283,7 @@ export default function PublicProfilePreviewPage() {
                               {cert.title}
                             </p>
                             {cert.verificationMethod ? (
-                              <span className="flex items-center gap-1 rounded-full bg-[#00fad0]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                              <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-bold text-foreground dark:text-foreground">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 {VERIFICATION_METHOD_LABELS[cert.verificationMethod] ??
                                   cert.verificationMethod}
@@ -304,7 +304,7 @@ export default function PublicProfilePreviewPage() {
                                     {skill.skillName}
                                   </span>
                                   <div className="h-3 w-px bg-gray-300 dark:bg-white/20" />
-                                  <span className="text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                                  <span className="text-xs font-bold text-foreground dark:text-foreground">
                                     {skill.proficiency.charAt(0) +
                                       skill.proficiency.slice(1).toLowerCase()}
                                   </span>

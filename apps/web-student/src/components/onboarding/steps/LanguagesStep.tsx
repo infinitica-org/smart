@@ -120,7 +120,7 @@ export default function LanguagesStep({
       <button
         type="button"
         onClick={addLanguage}
-        className="mt-3 text-sm font-semibold text-[#00fad0] hover:text-[#7dffe6] hover:underline flex items-center gap-1 transition-colors"
+        className="mt-3 text-sm font-semibold text-foreground hover:text-foreground hover:underline flex items-center gap-1 transition-colors"
       >
         <Plus className="w-4 h-4" /> Add a language
       </button>

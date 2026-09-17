@@ -7,6 +7,7 @@ import {
   isRecommendedActionDismissed,
   recommendNextAction,
   resolveVisibleRecommendedAction,
+  profileStrengthFromPercent,
 } from './profile-progress';
 
 function emptyInput(overrides: Partial<ProfileProgressInput> = {}): ProfileProgressInput {
@@ -210,10 +211,10 @@ describe('recommendNextAction', () => {
   it('recommends adding skills first when there are no skill claims', () => {
     const action = recommendNextAction(emptyInput());
     expect(action.id).toBe('add-skills');
-    expect(action.href).toBe('/profile#skills');
+    expect(action.href).toBe('/assessments');
   });
 
-  it('recommends verifying a DECLARED skill', () => {
+  it('prioritizes profile sections over verifying a DECLARED skill', () => {
     const action = recommendNextAction(
       emptyInput({
         skillClaims: [
@@ -225,75 +226,103 @@ describe('recommendNextAction', () => {
         ],
       }),
     );
+    expect(action.id).toBe('add-languages');
+  });
+
+  it('recommends verifying a DECLARED skill only after profile is complete', () => {
+    const action = recommendNextAction(
+      emptyInput({
+        skillClaims: [
+          { claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never,
+          {
+            claimId: 'clm_react',
+            skillCode: 'NODE',
+            status: 'DECLARED',
+          } as never,
+        ],
+        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
+        projects: [{ projectId: 'prj_1', title: 'App' } as never],
+        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
+        onboardingProfile: {
+          linkedinUrl: 'https://linkedin.com/in/ada',
+          jobPreferences: {
+            expectedCtcLakhs: 8,
+            currentLocation: 'Bengaluru',
+            preferredLocations: ['Bengaluru'],
+          },
+        } as never,
+      }),
+    );
     expect(action.id).toBe('verify-skill-clm_react');
-    expect(action.title).toContain('Verify');
     expect(action.href).toBe('/assessments/skills/clm_react');
   });
 
-  it('recommends education after skills are present and verifiable claims are absent', () => {
+  it('recommends languages after skills are present', () => {
     const action = recommendNextAction(
       emptyInput({
         skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-      }),
-    );
-    expect(action.id).toBe('add-education');
-  });
-
-  it('recommends projects after education is complete', () => {
-    const action = recommendNextAction(
-      emptyInput({
-        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-      }),
-    );
-    expect(action.id).toBe('add-project');
-  });
-
-  it('recommends experience after projects are complete', () => {
-    const action = recommendNextAction(
-      emptyInput({
-        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-      }),
-    );
-    expect(action.id).toBe('add-experience');
-  });
-
-  it('recommends certifications after experience is complete', () => {
-    const action = recommendNextAction(
-      emptyInput({
-        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
-      }),
-    );
-    expect(action.id).toBe('add-certification');
-  });
-
-  it('recommends languages after certifications are complete', () => {
-    const action = recommendNextAction(
-      emptyInput({
-        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
-        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
       }),
     );
     expect(action.id).toBe('add-languages');
   });
 
-  it('recommends professional links after languages are complete', () => {
+  it('recommends education after languages are complete', () => {
     const action = recommendNextAction(
       emptyInput({
         skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
-        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+      }),
+    );
+    expect(action.id).toBe('add-education');
+  });
+
+  it('recommends experience after education is complete', () => {
+    const action = recommendNextAction(
+      emptyInput({
+        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+      }),
+    );
+    expect(action.id).toBe('add-experience');
+  });
+
+  it('recommends projects after experience is complete', () => {
+    const action = recommendNextAction(
+      emptyInput({
+        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
+      }),
+    );
+    expect(action.id).toBe('add-project');
+  });
+
+  it('recommends certifications after projects are complete', () => {
+    const action = recommendNextAction(
+      emptyInput({
+        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
+        projects: [{ projectId: 'prj_1', title: 'App' } as never],
+      }),
+    );
+    expect(action.id).toBe('add-certification');
+  });
+
+  it('recommends professional links after certifications are complete', () => {
+    const action = recommendNextAction(
+      emptyInput({
+        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
+        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
+        projects: [{ projectId: 'prj_1', title: 'App' } as never],
+        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
       }),
     );
     expect(action.id).toBe('add-professional-links');
@@ -303,11 +332,11 @@ describe('recommendNextAction', () => {
     const action = recommendNextAction(
       emptyInput({
         skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
-        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
+        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
+        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
+        projects: [{ projectId: 'prj_1', title: 'App' } as never],
+        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         onboardingProfile: { linkedinUrl: 'https://linkedin.com/in/ada' } as never,
       }),
     );
@@ -349,10 +378,10 @@ describe('recommended action dismissal', () => {
     vi.useRealTimers();
   });
 
-  it('hides a dismissed action within the 7-day window', () => {
+  it('shows the next profile action when the top recommendation was dismissed', () => {
     dismissRecommendedAction('add-skills');
     const visible = resolveVisibleRecommendedAction(emptyInput());
-    expect(visible).toBeNull();
+    expect(visible?.id).toBe('add-languages');
   });
 
   it('shows the action again after the 7-day TTL expires', () => {
@@ -367,5 +396,14 @@ describe('recommended action dismissal', () => {
     expect(isRecommendedActionDismissed('add-skills')).toBe(true);
     vi.setSystemTime(new Date(Date.now() + RECOMMENDED_ACTION_DISMISSAL_MS + 1));
     expect(isRecommendedActionDismissed('add-skills')).toBe(false);
+  });
+});
+
+describe('profileStrengthFromPercent', () => {
+  it('maps percent bands to presentational strength labels', () => {
+    expect(profileStrengthFromPercent(38).label).toBe('Getting started');
+    expect(profileStrengthFromPercent(50).label).toBe('Building');
+    expect(profileStrengthFromPercent(88).label).toBe('Strong');
+    expect(profileStrengthFromPercent(100).label).toBe('Verification ready');
   });
 });

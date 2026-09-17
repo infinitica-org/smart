@@ -57,7 +57,17 @@ function extractLinkedinUsername(input: string): string {
   cleaned = cleaned.replace(/^https?:\/\//i, '');
   cleaned = cleaned.replace(/^www\./i, '');
   cleaned = cleaned.replace(/^linkedin\.com\/in\//i, '');
-  cleaned = cleaned.replace(/\/+$|^[/\s]+/g, '');
+  cleaned = (cleaned.split('/')[0] ?? '').replace(/\/+$|^[/\s]+/g, '');
+  return cleaned;
+}
+
+function extractGithubUsername(input: string): string {
+  if (!input) return '';
+  let cleaned = input.trim();
+  cleaned = cleaned.replace(/^https?:\/\//i, '');
+  cleaned = cleaned.replace(/^www\./i, '');
+  cleaned = cleaned.replace(/^github\.com\//i, '');
+  cleaned = (cleaned.split('/')[0] ?? '').replace(/\/+$|^[/\s]+/g, '');
   return cleaned;
 }
 
@@ -73,6 +83,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
   const github = formData.socialVerification.github;
 
   const linkedinUsername = extractLinkedinUsername(formData.linkedinUrl);
+  const githubUsername = extractGithubUsername(formData.githubUrl);
 
   const handleVerifyLinkedin = async () => {
     if (!formData.linkedinUrl.trim()) return;
@@ -138,8 +149,8 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
       {/* LinkedIn */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <LinkedinIcon className="w-4 h-4 text-[#0a66c2]" />
-          LinkedIn Profile <span className="text-emerald-400">*</span>
+          <LinkedinIcon className="w-4 h-4 text-foreground" />
+          LinkedIn Profile <span className="text-foreground">*</span>
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -149,13 +160,14 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
           </div>
           <input
             type="text"
+            aria-label="LinkedIn username"
             value={linkedinUsername}
             onChange={(e) => {
               const uname = extractLinkedinUsername(e.target.value);
               updateField('linkedinUrl', uname ? `https://linkedin.com/in/${uname}` : '');
             }}
             placeholder="username"
-            className="w-full rounded-xl border border-border bg-muted py-3 pl-[128px] pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none focus:ring-1 focus:ring-[#00fad0]"
+            className="w-full rounded-xl border border-border bg-muted py-3 pl-[128px] pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-foreground"
           />
         </div>
 
@@ -167,7 +179,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25 }}
-              className="mt-1 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3"
+              className="mt-1 flex items-center gap-3 rounded-xl border border-foreground/30 bg-muted/[0.06] p-3"
             >
               {linkedin.pictureUrl ? (
                 <img
@@ -182,7 +194,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
                 <p className="truncate text-sm font-medium text-foreground">
                   {linkedin.name ?? 'LinkedIn verified'}
                 </p>
-                <p className="text-xs text-emerald-400 flex items-center gap-1">
+                <p className="text-xs text-foreground flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Verified via LinkedIn sign-in
                 </p>
               </div>
@@ -203,7 +215,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               type="button"
               disabled={!formData.linkedinUrl.trim() || linkedinLoading}
               onClick={() => void handleVerifyLinkedin()}
-              className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-[#0a66c2]/40 bg-[#0a66c2]/10 text-sm font-medium text-[#5b9bd9] hover:bg-[#0a66c2]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
+              className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-foreground/40 bg-foreground/10 text-sm font-medium text-foreground hover:bg-foreground/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
             >
               {linkedinLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -229,20 +241,24 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="text-sm text-muted-foreground">https://</span>
+            <span className="select-none text-sm font-medium text-muted-foreground">
+              github.com/
+            </span>
           </div>
           <input
             type="text"
-            value={formData.githubUrl}
+            aria-label="GitHub username"
+            value={githubUsername}
             onChange={(e) => {
-              updateField('githubUrl', e.target.value);
+              const uname = extractGithubUsername(e.target.value);
+              updateField('githubUrl', uname ? `https://github.com/${uname}` : '');
               setGithubPreview(null);
               setGithubError(null);
             }}
-            autoComplete="url"
-            placeholder="github.com/you"
+            autoComplete="username"
+            placeholder="username"
             disabled={Boolean(github?.verified)}
-            className="w-full rounded-xl border border-border bg-muted py-3 pl-16 pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none focus:ring-1 focus:ring-[#00fad0] disabled:opacity-60"
+            className="w-full rounded-xl border border-border bg-muted py-3 pl-[108px] pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-60"
           />
         </div>
 
@@ -294,7 +310,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
                   <button
                     type="button"
                     onClick={confirmGithub}
-                    className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                    className="h-8 px-3 rounded-lg bg-foreground hover:bg-muted text-white text-xs font-semibold"
                   >
                     Yes, that&apos;s me
                   </button>
@@ -317,7 +333,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25 }}
-              className="mt-1 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3"
+              className="mt-1 flex items-center gap-3 rounded-xl border border-foreground/30 bg-muted/[0.06] p-3"
             >
               <img
                 src={github.avatarUrl}
@@ -328,7 +344,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
                 <p className="truncate text-sm font-medium text-foreground">
                   {github.name ?? github.login}
                 </p>
-                <p className="text-xs text-emerald-400 flex items-center gap-1">
+                <p className="text-xs text-foreground flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Confirmed — pick your best repo below
                 </p>
               </div>

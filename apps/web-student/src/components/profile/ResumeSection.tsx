@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, FileText, Loader2, Upload } from 'lucide-rea
 import { isSmartApiError } from '@smart/api-client';
 import type { CandidateResumeFile } from '@smart/contracts';
 import { api } from '@/lib/api';
+import { profilePrimaryButtonClass } from '@/lib/profile-ui-classes';
 import { extractResumeRawText } from '@/lib/extract-resume-text';
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -90,7 +91,7 @@ export function ResumeSection() {
           id="resume-heading"
           className="flex items-center gap-2 text-xl font-semibold text-foreground"
         >
-          <FileText className="h-5 w-5 text-[#00fad0]" />
+          <FileText className="h-5 w-5 text-foreground" />
           Resume Upload
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -110,7 +111,7 @@ export function ResumeSection() {
                 {(resumeFile.fileSizeBytes / 1024).toFixed(0)} KB · {resumeFile.mimeType}
               </p>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
               <CheckCircle2 className="h-3.5 w-3.5" />
               On file
             </span>
@@ -126,7 +127,7 @@ export function ResumeSection() {
         type="button"
         disabled={busy}
         onClick={() => fileInputRef.current?.click()}
-        className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2.5 text-sm font-semibold text-black hover:bg-[#00fad0]/80 disabled:opacity-50"
+        className={profilePrimaryButtonClass}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         {resumeFile ? 'Replace resume' : 'Upload resume'}
@@ -151,7 +152,7 @@ export function ResumeSection() {
       ) : null}
 
       {parseMessage ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
           {parseMessage}
         </p>
       ) : null}

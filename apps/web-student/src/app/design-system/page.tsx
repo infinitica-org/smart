@@ -46,7 +46,6 @@ export default function DesignSystemPage() {
       description: 'Distributed real-time style transformation pipeline using PyTorch & Kafka.',
       stack: ['PyTorch', 'FastAPI', 'Kafka', 'React'],
       githubUrl: 'https://github.com/example/style-transfer',
-      loomUrl: 'https://loom.com/example-video-id',
     },
   ];
 

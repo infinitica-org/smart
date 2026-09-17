@@ -58,7 +58,7 @@ export function MyApplicationsTracker({
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-4 rounded-full bg-[#00FAD0] px-5 py-2.5 text-sm font-semibold text-[#131313]"
+            className="mt-4 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-[#131313]"
           >
             Try again
           </button>
@@ -76,7 +76,7 @@ export function MyApplicationsTracker({
         </p>
         <Link
           href="/profile"
-          className="mt-6 inline-flex rounded-full bg-[#00FAD0] px-5 py-2.5 text-sm font-semibold text-[#131313]"
+          className="mt-6 inline-flex rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-[#131313]"
         >
           Continue profile
         </Link>
@@ -145,7 +145,7 @@ function ApplicationCard({
       className={cn(
         'w-full rounded-[28px] border p-4 text-left transition',
         active
-          ? 'border-[#00FAD0]/35 bg-[#1a1a1a]'
+          ? 'border-foreground/35 bg-[#1a1a1a]'
           : 'border-white/10 bg-[#141414] hover:border-white/20',
       )}
     >
@@ -153,7 +153,7 @@ function ApplicationCard({
         <div
           className={cn(
             'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
-            active ? 'bg-[#00FAD0]/15 text-[#00FAD0]' : 'bg-white/5 text-white/35',
+            active ? 'bg-foreground/15 text-foreground' : 'bg-white/5 text-white/35',
           )}
         >
           <Briefcase className="h-4 w-4" />
@@ -162,7 +162,7 @@ function ApplicationCard({
           <p className="truncate text-sm font-medium text-white">{app.roleTitle}</p>
           <p className="mt-0.5 text-xs text-white/35">{app.companyName}</p>
         </div>
-        {score ? <span className="text-xs font-semibold text-[#00FAD0]">{score}</span> : null}
+        {score ? <span className="text-xs font-semibold text-foreground">{score}</span> : null}
       </div>
       <div className="mt-3">
         <ApplicationStageTimeline stage={app.stage} labels={false} />
@@ -192,7 +192,7 @@ function ApplicationDetail({ app }: { app: CandidateApplicationDto }) {
       </h2>
       <p className="mt-3 text-sm text-white/40">
         Current status:{' '}
-        <span className="font-semibold text-[#00FAD0]">{ATS_STAGE_LABELS[app.stage]}</span>
+        <span className="font-semibold text-foreground">{ATS_STAGE_LABELS[app.stage]}</span>
       </p>
 
       <div className="mt-10">
@@ -204,7 +204,7 @@ function ApplicationDetail({ app }: { app: CandidateApplicationDto }) {
 
       {score ? (
         <div className="mt-10 rounded-[24px] bg-black/30 p-5">
-          <p className="text-[11px] font-semibold tracking-wider text-[#00FAD0] uppercase">
+          <p className="text-[11px] font-semibold tracking-wider text-foreground uppercase">
             Match score
           </p>
           <p className="mt-2 text-sm text-white/65">Ranked match {score} against this opening.</p>

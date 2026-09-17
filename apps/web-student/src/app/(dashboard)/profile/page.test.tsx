@@ -1,85 +1,99 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import ProfilePage from './page';
+
+const push = vi.fn();
+const replace = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, replace }),
+  useSearchParams: () => new URLSearchParams('section=about'),
+}));
 
 vi.mock('@/lib/candidate-identity', () => ({
   useCurrentUser: () => ({
     data: {
       userId: 'usr_1',
-
       fullName: 'Ada Lovelace',
-
       profilePhotoUrl: null,
+      institutionName: null,
     },
   }),
-
   useTracks: () => ({ data: [] }),
-
   headlineFor: () => 'SMART candidate',
-
   initialsOf: (fullName?: string) => {
     const parts = fullName?.trim().split(/\s+/u).filter(Boolean) ?? [];
-
     return `${parts[0]?.[0] ?? ''}${parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''}`.toUpperCase();
   },
 }));
 
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => ({
+    data: { profile: null, draft: null, onboardingCompleted: true },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+}));
+
+vi.mock('@smart/ui', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  };
+});
+
 vi.mock('@/lib/use-profile-progress', () => ({
   useProfileProgress: () => ({
     loading: false,
-
     error: null,
-
     progress: {
-      percent: 50,
-
-      completedAreas: ['skills', 'languages', 'education', 'projects'],
-
+      percent: 38,
+      completedAreas: ['skills', 'languages', 'education'],
       incompleteAreas: [],
-
       areaStatus: {
         skills: true,
-
         languages: true,
-
         education: true,
-
         experience: false,
-
-        projects: true,
-
+        projects: false,
         certifications: false,
-
         professionalLinks: false,
-
         jobPreferences: false,
       },
     },
-
+    input: {
+      skillClaims: [],
+      onboardingProfile: null,
+      onboardingDraft: null,
+      languages: [],
+      education: [],
+      experiences: [],
+      projects: [],
+      certificates: [],
+    },
     visibleRecommendedAction: {
       id: 'add-experience',
-
       title: 'Add work experience',
-
       description: 'Share roles that shaped your professional journey.',
-
       ctaLabel: 'Add experience',
-
-      href: '/profile#experience',
+      href: '/profile?section=experience',
     },
-
     dismissRecommendedAction: vi.fn(),
-
     linkedinVerified: false,
-
     githubVerified: false,
   }),
 }));
 
 vi.mock('@/components/profile/AboutSection', () => ({
   AboutSection: () => <div>About section</div>,
+}));
+
+vi.mock('@/components/profile/SkillsSection', () => ({
+  SkillsSection: () => <div>Skills section</div>,
 }));
 
 vi.mock('@/components/profile/EducationSection', () => ({
@@ -119,45 +133,29 @@ vi.mock('@/components/profile/ResumeSection', () => ({
 }));
 
 describe('ProfilePage', () => {
-  it('renders profile header, progress, sections, and anchors in Phase 5 order', () => {
-    const { container } = render(<ProfilePage />);
+  it('defaults to About workspace without rendering every subsection at once', () => {
+    render(<ProfilePage />);
 
-    expect(screen.getByText('Build your SMART profile')).toBeTruthy();
-
-    expect(screen.getByText('Ada Lovelace')).toBeTruthy();
-
-    expect(screen.getByText('50% profile complete')).toBeTruthy();
-
-    expect(screen.getByText('Your SMART Profile')).toBeTruthy();
-
+    expect(screen.getByText('About You')).toBeTruthy();
     expect(screen.getByText('About section')).toBeTruthy();
-
-    expect(screen.getByText('Resume section')).toBeTruthy();
-
+    expect(screen.queryByText(/Introduce yourself with a short professional summary/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit Profile/i })).toBeNull();
     expect(screen.queryByText('Skills section')).toBeNull();
+    expect(screen.queryByText('Resume section')).toBeNull();
+    expect(screen.queryByText('Overview')).toBeNull();
+    expect(screen.getAllByText('38%').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ada Lovelace')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /Upload profile photo|Change profile photo/i }),
+    ).toBeTruthy();
+  });
 
-    for (const id of [
-      'about',
+  it('navigates to another subsection via sidebar without showing all sections', () => {
+    render(<ProfilePage />);
 
-      'education',
+    const buttons = screen.getAllByRole('button', { name: 'Work Experience' });
+    if (buttons[0]) fireEvent.click(buttons[0]);
 
-      'experience',
-
-      'languages',
-
-      'certificates',
-
-      'credentials',
-
-      'links',
-
-      'projects',
-
-      'preferences',
-
-      'resume',
-    ]) {
-      expect(container.querySelector(`#${id}`)).toBeTruthy();
-    }
+    expect(push).toHaveBeenCalledWith('/profile?section=experience', { scroll: false });
   });
 });

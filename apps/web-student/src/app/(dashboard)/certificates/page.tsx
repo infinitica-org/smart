@@ -36,7 +36,7 @@ export default function CertificatesPage() {
         action={
           <Link
             href="/certificates/add"
-            className="inline-flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#7dffe6]"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background hover:bg-foreground/90"
           >
             <Plus className="h-4 w-4" /> Add Certificate
           </Link>
@@ -51,7 +51,7 @@ export default function CertificatesPage() {
             <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
               <Link
                 href="/certificates/add"
-                className="inline-flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#7dffe6]"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background hover:bg-foreground/90"
               >
                 <Plus className="h-4 w-4" /> Add Your First Certificate
               </Link>
@@ -73,7 +73,7 @@ export default function CertificatesPage() {
             >
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-[#00967c]" />
+                  <Award className="h-4 w-4 text-foreground" />
                   <h3 className="font-semibold text-gray-900">{certificate.title}</h3>
                 </div>
                 <p className="text-sm text-gray-500">{certificate.issuer}</p>
@@ -88,7 +88,7 @@ export default function CertificatesPage() {
                       href={certificate.verificationUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[#00967c] hover:underline"
+                      className="inline-flex items-center gap-1 text-foreground hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" /> View Source URL
                     </a>
@@ -122,7 +122,7 @@ export default function CertificatesPage() {
                 certificate.status !== 'VERIFIED' ? (
                   <Link
                     href={`/certificates/${certificate.certificateId}/verify`}
-                    className="text-sm text-[#00967c] hover:underline"
+                    className="text-sm text-foreground hover:underline"
                   >
                     Take assessment
                   </Link>

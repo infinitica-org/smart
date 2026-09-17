@@ -99,12 +99,12 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
         }}
         className={`flex min-h-[260px] w-full flex-col items-center justify-center rounded-3xl border border-dashed px-8 py-10 text-center transition-all ${
           isDragging
-            ? 'border-[#00fad0] bg-[#00fad0]/5'
+            ? 'border-foreground bg-foreground/5'
             : uploadStatus === 'success'
-              ? 'border-emerald-300 bg-emerald-50'
+              ? 'border-border bg-muted'
               : uploadStatus === 'failed'
                 ? 'border-rose-300 bg-rose-50'
-                : 'border-border bg-muted/50 hover:border-[#00fad0]/30 hover:bg-muted'
+                : 'border-border bg-muted/50 hover:border-foreground/30 hover:bg-muted'
         } ${uploadStatus === 'idle' ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <input
@@ -120,7 +120,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'idle' && (
           <>
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card text-[#00967c]">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card text-foreground">
               <FileText className="h-6 w-6" />
             </div>
             <p className="mb-1 font-display text-lg font-medium text-foreground">Upload Resume</p>
@@ -133,7 +133,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {busy && (
           <div className="w-full max-w-xs">
-            <Loader2 className="mx-auto mb-4 h-6 w-6 animate-spin text-[#00967c]" />
+            <Loader2 className="mx-auto mb-4 h-6 w-6 animate-spin text-foreground" />
             <p className="mb-1 font-display text-sm text-foreground">
               {uploadStatus === 'extracting' ? 'Reading file…' : 'Parsing resume…'}
             </p>
@@ -146,7 +146,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
 
         {uploadStatus === 'success' && (
           <>
-            <CheckCircle2 className="mb-3 h-8 w-8 text-emerald-600" />
+            <CheckCircle2 className="mb-3 h-8 w-8 text-foreground" />
             <p className="mb-1 font-display text-base font-medium text-foreground">Resume parsed</p>
             <p className="mb-3 font-axiforma text-sm text-muted-foreground">{fileName}</p>
             <button
@@ -158,7 +158,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setDraft(null);
                 setError(null);
               }}
-              className="font-axiforma text-xs text-[#00967c] hover:underline"
+              className="font-axiforma text-xs text-foreground hover:underline"
             >
               Use a different file
             </button>
@@ -180,7 +180,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
                 setFileName('');
                 setDraft(null);
               }}
-              className="font-axiforma text-xs text-[#00967c] hover:underline"
+              className="font-axiforma text-xs text-foreground hover:underline"
             >
               Try another file
             </button>
@@ -202,7 +202,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
           type="button"
           onClick={() => onContinue(null)}
           disabled={busy}
-          className="font-axiforma text-sm text-muted-foreground transition-colors hover:text-[#00967c] disabled:opacity-40"
+          className="font-axiforma text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
         >
           I don't have a resume yet →
         </button>
@@ -213,7 +213,7 @@ export default function ResumeUpload({ onContinue }: ResumeUploadProps) {
           type="button"
           onClick={() => draft && onContinue(draft)}
           disabled={busy || uploadStatus !== 'success' || !draft}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00fad0] px-7 py-3 font-axiforma text-sm font-bold text-[#131313] shadow-sm transition-all hover:bg-[#33ffdd] disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-7 py-3 font-axiforma text-sm font-bold text-[#131313] shadow-sm transition-all hover:bg-foreground/90 disabled:opacity-40"
         >
           Continue
           <ArrowRight className="h-4 w-4" />
