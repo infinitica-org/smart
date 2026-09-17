@@ -1,35 +1,36 @@
-# AGENTS.md — SMART (entire repo)
+# AGENTS.md — SMART (repository-wide)
 
-You are working in the **SMART** monorepo. Shared context is team-wide; personal prefs live in gitignored `.cursor/local/`.
+This file governs agent behavior across the **SMART** monorepo. Shared context applies team-wide; personal preferences live in the excluded `.cursor/local/` directory.
 
-## Load context (in order)
+## Context load order
 
-1. `.cursor/local/IDENTITY.md` — who you are helping
-2. `.cursor/local/preferences.md` — **durable personal preferences across agents**
-3. `.cursor/local/working-memory.md` — current tickets / focus
-4. `.cursor/kb/INDEX.md` — shared cheat sheets (`ownership.md`, rate limits, seams, …)
-5. Role depth: `TEAM.md` + that person's section in `docs/delivery/ENGINEER_GUIDES.md`
-6. As needed: `ARCHITECTURE.md`, `docs/delivery/*`, `packages/contracts`
+1. `.cursor/local/IDENTITY.md` — the operator being assisted
+2. `.cursor/local/preferences.md` — durable personal preferences, applied across agent sessions
+3. `.cursor/local/working-memory.md` — active tickets and current focus
+4. `.cursor/kb/INDEX.md` — shared reference material (`ownership.md`, rate limits, integration seams, and related notes)
+5. Role depth: `TEAM.md` together with the relevant section of `docs/delivery/ENGINEER_GUIDES.md`
+6. As required: `ARCHITECTURE.md`, `docs/delivery/*`, `packages/contracts`
 
-Project rules in `.cursor/rules/*.mdc` always apply. **`02-dev-workflow.mdc` is mandatory.**
+Project rules under `.cursor/rules/*.mdc` apply at all times. `02-dev-workflow.mdc` is mandatory.
 
-## Non-negotiable agent behaviour
+## Non-negotiable agent behavior
 
-| Rule      | Requirement                                                                                                                              |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch    | Never commit to `main`/`qa`/`dev`. Feature branch from `dev`. See `docs/delivery/BRANCHING.md`                                           |
-| Quality   | `pnpm lint` · `typecheck` · `test` · `format:check` before PR                                                                            |
-| Hooks     | Never `--no-verify`                                                                                                                      |
-| Delivery  | Shippable work ends in a **PR to `dev`** with required **labels** (`dev`→`qa`→`main`)                                                    |
-| Commits   | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`                                                     |
-| Size      | ≤ 400 hand-written LOC per PR; one ticket per PR                                                                                         |
-| Contracts | Change `@smart/contracts` first; Tino merges                                                                                             |
-| Ownership | Edit owned paths only; otherwise PR + owner review                                                                                       |
-| Secrets   | Never commit `.env` / keys                                                                                                               |
-| Merge     | Do not merge unless the user explicitly asks; Tino approves                                                                              |
-| Prefs     | Honor `.cursor/local/preferences.md` when present                                                                                        |
-| Backlog   | Edit `tools/zoho-sprint*/backlog.mjs`; sync **GitHub Issues only** via `tools/backlog/sync-github.mjs` — do not update Zoho unless asked |
+| Rule       | Requirement                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| Branching  | Never commit directly to `main`, `qa`, or `dev`. Work proceeds on a feature branch from `dev`. See `docs/delivery/BRANCHING.md`. |
+| Quality    | `pnpm lint`, `typecheck`, `test`, and `format:check` pass before a pull request is opened.                  |
+| Hooks      | Git hooks are never bypassed (`--no-verify` is not used).                                                   |
+| Delivery   | Shippable work concludes as a pull request into `dev`, carrying the required labels (promotion follows `dev` → `qa` → `main`). |
+| Commits    | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`.                        |
+| Size       | No more than 400 hand-written lines of code per pull request; one ticket per pull request.                  |
+| Contracts  | Changes to `@smart/contracts` are made first and reviewed by the system architect before dependent work proceeds. |
+| Ownership  | Only owned paths are edited directly; otherwise a pull request is opened for owner review.                  |
+| Secrets    | Environment files and credentials are never committed.                                                       |
+| Merging    | A pull request is merged only on explicit instruction; review authority rests with the system architect role. |
+| Preferences | `.cursor/local/preferences.md` is honored when present.                                                     |
+| Backlog    | `tools/zoho-sprint*/backlog.mjs` is the edited source; synchronization to GitHub Issues runs via `tools/backlog/sync-github.mjs` only. The external sprint-tracking system is not updated unless explicitly requested. |
+| Deployment verification | A deployment is not considered successful on the basis of a green CI run alone. The triggered deployment workflow, and the resulting live environment, are confirmed independently. |
 
-## Product in one line
+## Product summary
 
-Role-specific readiness certification (5×3 level×tier), transparent & verifiable. GA **2026-09-10 18:00 IST**.
+SMART is a role-specific readiness certification platform, assessed on a five-level by three-tier grid and issued as a transparent, publicly verifiable credential.
