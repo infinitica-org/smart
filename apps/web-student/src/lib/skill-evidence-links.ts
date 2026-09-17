@@ -41,10 +41,9 @@ export type SkillEvidenceTitleOptions = {
 
 export function skillEvidenceTitle(
   record: EvidenceRecordDto,
-  options?: SkillEvidenceTitleOptions | ReadonlyMap<string, string>,
+  options?: SkillEvidenceTitleOptions,
 ): string {
-  const titleOptions: SkillEvidenceTitleOptions | undefined =
-    options instanceof Map ? { projectTitles: options } : options;
+  const titleOptions = options;
   const entityId = skillEvidenceSourceEntityId(record);
   const payload = readPayload(record);
   if (record.evidenceType === 'PROJECT') {

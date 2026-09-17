@@ -513,14 +513,14 @@ export default function SkillRepositoryPage() {
           projects.map(async (project) => {
             try {
               const mappings = await api.evidence.listProjectSkillMappings(project.projectId);
-              return [project.projectId, mappings] as const;
+              return [project.projectId, mappings] as [string, ProjectSkillMappingDto[]];
             } catch {
-              return [project.projectId, []] as const;
+              return [project.projectId, []] as [string, ProjectSkillMappingDto[]];
             }
           }),
         );
         if (!cancelled) {
-          setProjectMappingsById(new Map(mappingEntries));
+          setProjectMappingsById(new Map<string, ProjectSkillMappingDto[]>(mappingEntries));
         }
       } catch {
         if (!cancelled) {
