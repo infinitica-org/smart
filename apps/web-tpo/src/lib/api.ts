@@ -9,9 +9,11 @@ import {
   API_PREFIX,
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
+  CreateMatchRunResponseSchema,
   JobOpeningDtoSchema,
   ListApplicationsResponseSchema,
   ListJobOpeningsResponseSchema,
+  MatchRunDtoSchema,
   ShortlistDtoSchema,
   type AtsStage,
   type CreateApplicationRequest,
@@ -53,9 +55,18 @@ export const openingsApi = {
 };
 
 export const matchingApi = {
+  /** @deprecated use `createRun` + `getRun` (S6-VV-76) — kept for one release. */
   match: (body: MatchRequest) =>
     apiClient.post(`${API_PREFIX}/placement/match`, body, {
       schema: ShortlistDtoSchema,
+    }),
+  createRun: (body: MatchRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/match-runs`, body, {
+      schema: CreateMatchRunResponseSchema,
+    }),
+  getRun: (runId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/match-runs/${runId}`, {
+      schema: MatchRunDtoSchema,
     }),
 };
 

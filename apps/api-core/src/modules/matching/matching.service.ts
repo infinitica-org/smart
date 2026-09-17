@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import {
   CandidateMatchDtoSchema,
+  CreateMatchRunResponseSchema,
   JdThresholdVectorSchema,
+  MatchRunDtoSchema,
   PlacementMatchedDataSchema,
   SKILL_CODE_SET,
   ShortlistDtoSchema,
@@ -10,13 +14,17 @@ import {
   TIER_RANK,
   TrackCodeSchema,
   type CertifiableTier,
+  type CreateMatchRunResponse,
   type LevelNumber,
   type MatchRequest,
+  type MatchRunDto,
   type ShortlistDto,
   type TrackCode,
 } from '@smart/contracts';
+import { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { MATCH_RUN_QUEUE } from '../../platform/queue/queue.names.js';
 import {
   PROFICIENCY_RANK,
   rankCandidates,
@@ -27,6 +35,114 @@ import {
 
 const FALLBACK_TRACK: TrackCode = 'TECH_FULLSTACK';
 
+/**
+ * Internal shape shared by the sync `match()` path and the async `runMatchRun()` path — kept
+ * separate from the public `MatchRequest` contract type since `runMatchRun` rebuilds this from
+ * a persisted `MatchRun` row rather than a fresh request body.
+ */
+interface RunMatchingParams {
+  jdId: string;
+  batchIds: string[];
+  minCgpa?: number;
+  requiredSkillCodes: string[];
+  filters?: MatchRequest['filters'];
+  limit: number;
+}
+
+/** Prisma returns `MatchRun.minCgpa` as a `Decimal`; duck-type rather than import generated internals. */
+type Decimalish = { toNumber?: () => number } | number;
+
+function decimalToNumber(value: Decimalish | null): number | undefined {
+  if (value === null) return undefined;
+  return typeof value === 'number' ? value : value.toNumber?.();
+}
+
+/**
+ * S6-VV-76 perf follow-up: raw row shape for the eligible-pool query. Fetched via `$queryRaw`
+ * instead of a Prisma `findMany` with nested `include`s — at a few thousand eligible students
+ * the nested-relation hydration cost (not the SQL itself, which runs in ~1-2ms per
+ * EXPLAIN ANALYZE) dominated wall-clock time; this raw query does the same joins in Postgres
+ * and returns one row per student with skills pre-aggregated as JSON, cutting that cost by
+ * roughly 4-5x at 5,000 students in local benchmarking. Ranking output is unchanged.
+ */
+interface RawEligibleStudentRow {
+  id: string;
+  fullName: string;
+  primaryTrackCode: string | null;
+  certificateId: string | null;
+  highestLevelCleared: number | null;
+  headlineTier: string | null;
+  skills: { code: string; domain: string; proficiency: string }[] | null;
+}
+
+interface HydratedStudent {
+  id: string;
+  fullName: string;
+  primaryTrackCode: string | null;
+  certificate: { id: string; highestLevelCleared: number; headlineTier: string } | null;
+  verifiedSkills: { code: string; domain: string; proficiency: string }[];
+}
+
+/** Builds the eligible-pool query: institution + role + >=1 verified skill, plus the optional
+ * batch/CGPA/required-skill/track pool-scoping filters — same semantics as the Prisma `where`
+ * clause this replaced, just expressed as parameterized SQL fragments (never string
+ * concatenation) so the dynamic filter lists stay injection-safe. */
+function buildEligibleStudentsQuery(
+  institutionId: string,
+  request: Pick<RunMatchingParams, 'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters'>,
+): Prisma.Sql {
+  const conditions: Prisma.Sql[] = [
+    Prisma.sql`u.institution_id = ${institutionId}::uuid`,
+    Prisma.sql`u.role = 'STUDENT'`,
+    Prisma.sql`EXISTS (SELECT 1 FROM skill_claims sc_any WHERE sc_any.student_id = u.id AND sc_any.status = 'VERIFIED')`,
+  ];
+  if (request.batchIds.length) {
+    conditions.push(Prisma.sql`u.batch_id = ANY(${request.batchIds}::uuid[])`);
+  }
+  if (request.minCgpa !== undefined) {
+    conditions.push(Prisma.sql`u.cgpa >= ${request.minCgpa}`);
+  }
+  // Every required skill must be held VERIFIED (AND) — one EXISTS per code, not a single
+  // `IN (...)`, which would only require ANY one of them and under-filter the pool.
+  for (const code of request.requiredSkillCodes) {
+    conditions.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM skill_claims sc_req
+      JOIN skills sk_req ON sk_req.id = sc_req.skill_id
+      WHERE sc_req.student_id = u.id AND sc_req.status = 'VERIFIED' AND sk_req.code = ${code}
+    )`);
+  }
+  if (request.filters?.trackCodes?.length) {
+    conditions.push(Prisma.sql`t.code = ANY(${request.filters.trackCodes}::text[])`);
+  }
+
+  return Prisma.sql`
+    SELECT
+      u.id,
+      u.full_name AS "fullName",
+      t.code AS "primaryTrackCode",
+      c.id AS "certificateId",
+      c.highest_level_cleared AS "highestLevelCleared",
+      c.headline_tier AS "headlineTier",
+      COALESCE(sc_agg.skills, '[]'::json) AS skills
+    FROM users u
+    LEFT JOIN tracks t ON t.id = u.primary_track_id
+    LEFT JOIN LATERAL (
+      SELECT id, highest_level_cleared, headline_tier
+      FROM certificates
+      WHERE user_id = u.id AND status = 'ISSUED'
+      ORDER BY issued_at DESC
+      LIMIT 1
+    ) c ON true
+    LEFT JOIN LATERAL (
+      SELECT json_agg(json_build_object('code', sk.code, 'domain', sk.domain, 'proficiency', sc.proficiency)) AS skills
+      FROM skill_claims sc
+      JOIN skills sk ON sk.id = sc.skill_id
+      WHERE sc.student_id = u.id AND sc.status = 'VERIFIED'
+    ) sc_agg ON true
+    WHERE ${Prisma.join(conditions, ' AND ')}
+  `;
+}
+
 @Injectable()
 export class MatchingService {
   readonly owner = 'Ramansh';
@@ -35,43 +151,141 @@ export class MatchingService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @InjectQueue(MATCH_RUN_QUEUE) private readonly matchRunQueue: Queue<{ matchRunId: string }>,
   ) {}
 
+  /** @deprecated use `createMatchRun` + polling — kept for one release for backward compat. */
   async match(institutionId: string, request: MatchRequest): Promise<ShortlistDto> {
-    const job = await this.resolveJob(institutionId, request.jdId);
+    return this.runMatching(institutionId, {
+      jdId: request.jdId,
+      batchIds: request.batchIds ?? (request.cohortId ? [request.cohortId] : []),
+      minCgpa: request.minCgpa,
+      requiredSkillCodes: request.requiredSkillCodes ?? [],
+      filters: request.filters,
+      limit: request.limit,
+    });
+  }
 
-    const students = await this.prisma.user.findMany({
-      where: {
+  /** S6-VV-76 — creates a PENDING `MatchRun` row and enqueues the background job. */
+  async createMatchRun(
+    institutionId: string,
+    userId: string,
+    request: MatchRequest,
+  ): Promise<CreateMatchRunResponse> {
+    await this.resolveJob(institutionId, request.jdId); // fail fast on an unknown/foreign jdId
+
+    const batchIds = request.batchIds ?? (request.cohortId ? [request.cohortId] : []);
+    const run = await this.prisma.matchRun.create({
+      data: {
         institutionId,
-        role: 'STUDENT',
-        skillClaims: { some: { status: 'VERIFIED' } },
-        ...(request.cohortId ? { batchId: request.cohortId } : {}),
-        ...(request.filters?.trackCodes?.length
-          ? { primaryTrack: { code: { in: request.filters.trackCodes } } }
-          : {}),
-      },
-      include: {
-        primaryTrack: { select: { code: true } },
-        skillClaims: {
-          where: { status: 'VERIFIED' },
-          include: { skill: { select: { code: true, domain: true } } },
-        },
-        certificates: {
-          where: { status: 'ISSUED' },
-          orderBy: { issuedAt: 'desc' },
-          take: 1,
-        },
+        jdId: request.jdId,
+        requestedById: userId,
+        batchIds,
+        minCgpa: request.minCgpa ?? null,
+        requiredSkillCodes: request.requiredSkillCodes ?? [],
+        limit: request.limit,
       },
     });
+
+    await this.matchRunQueue.add('run-match', { matchRunId: run.id });
+
+    return CreateMatchRunResponseSchema.parse({ runId: run.id, status: run.status });
+  }
+
+  /** Invoked by `MatchRunProcessor`. Never throws without first recording `FAILED` on the row. */
+  async runMatchRun(matchRunId: string): Promise<void> {
+    const run = await this.prisma.matchRun.findUnique({ where: { id: matchRunId } });
+    if (!run) return;
+
+    await this.prisma.matchRun.update({ where: { id: matchRunId }, data: { status: 'RUNNING' } });
+
+    try {
+      const shortlist = await this.runMatching(run.institutionId, {
+        jdId: run.jdId,
+        batchIds: run.batchIds,
+        minCgpa: decimalToNumber(run.minCgpa),
+        requiredSkillCodes: run.requiredSkillCodes,
+        limit: run.limit,
+      });
+
+      await this.prisma.matchRun.update({
+        where: { id: matchRunId },
+        data: {
+          status: 'SUCCEEDED',
+          eligiblePoolCount: shortlist.eligiblePoolCount,
+          suggestedCount: shortlist.candidates.length,
+          shortlistId: shortlist.shortlistId,
+          resultSnapshot: shortlist as unknown as Prisma.InputJsonValue,
+          completedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      await this.prisma.matchRun.update({
+        where: { id: matchRunId },
+        data: {
+          status: 'FAILED',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          completedAt: new Date(),
+        },
+      });
+      // Rethrow so DlqAwareProcessor's 'failed' handler still DLQs once retries exhaust.
+      throw error;
+    }
+  }
+
+  async getMatchRun(institutionId: string, runId: string): Promise<MatchRunDto> {
+    const run = await this.prisma.matchRun.findFirst({ where: { id: runId, institutionId } });
+    if (!run) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Match run not found.',
+        statusCode: 404,
+      });
+    }
+    return MatchRunDtoSchema.parse({
+      runId: run.id,
+      jdId: run.jdId,
+      status: run.status,
+      eligiblePoolCount: run.eligiblePoolCount,
+      suggestedCount: run.suggestedCount,
+      errorMessage: run.errorMessage,
+      createdAt: run.createdAt.toISOString(),
+      completedAt: run.completedAt?.toISOString() ?? null,
+      shortlist: run.resultSnapshot as ShortlistDto | null,
+    });
+  }
+
+  private async runMatching(
+    institutionId: string,
+    request: RunMatchingParams,
+  ): Promise<ShortlistDto> {
+    const job = await this.resolveJob(institutionId, request.jdId);
+
+    const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
+      buildEligibleStudentsQuery(institutionId, request),
+    );
+    const students: HydratedStudent[] = rows.map((row) => ({
+      id: row.id,
+      fullName: row.fullName,
+      primaryTrackCode: row.primaryTrackCode,
+      certificate: row.certificateId
+        ? {
+            id: row.certificateId,
+            highestLevelCleared: row.highestLevelCleared ?? 1,
+            headlineTier: row.headlineTier ?? 'BRONZE',
+          }
+        : null,
+      verifiedSkills: row.skills ?? [],
+    }));
 
     const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
 
     const pool: RankerCandidate[] = filtered.map((student) => ({
       studentId: student.id,
-      verified: student.skillClaims.map((claim) => ({
-        code: claim.skill.code,
+      verified: student.verifiedSkills.map((claim) => ({
+        code: claim.code,
         rank: proficiencyRank(claim.proficiency),
-        domain: claim.skill.domain,
+        domain: claim.domain,
       })),
       years: null,
       location: null,
@@ -87,11 +301,11 @@ export class MatchingService {
       if (!student) {
         throw new Error(`Ranker returned unknown student ${score.studentId}`);
       }
-      const cert = student.certificates[0];
+      const cert = student.certificate;
       return CandidateMatchDtoSchema.parse({
         studentId: student.id,
         studentName: student.fullName,
-        trackCode: parseTrackCode(student.primaryTrack?.code),
+        trackCode: parseTrackCode(student.primaryTrackCode ?? undefined),
         certificateId: cert?.id ?? null,
         highestLevelCleared: parseLevel(cert?.highestLevelCleared),
         headlineTier: parseHeadline(cert?.headlineTier),
@@ -133,6 +347,7 @@ export class MatchingService {
       generatedAt,
       candidates,
       totalCandidatesConsidered: pool.length,
+      eligiblePoolCount: filtered.length,
     });
   }
 
@@ -251,13 +466,11 @@ function parseHeadline(value: string | undefined): CertifiableTier {
 }
 
 function passesOptionalFilters(
-  student: {
-    certificates: { headlineTier: string; highestLevelCleared: number }[];
-  },
+  student: { certificate: { headlineTier: string; highestLevelCleared: number } | null },
   filters: MatchRequest['filters'],
 ): boolean {
   if (!filters) return true;
-  const cert = student.certificates[0];
+  const cert = student.certificate;
   const headline = parseHeadline(cert?.headlineTier);
   const level = parseLevel(cert?.highestLevelCleared);
   if (filters.minHeadlineTier && TIER_RANK[headline] < TIER_RANK[filters.minHeadlineTier]) {

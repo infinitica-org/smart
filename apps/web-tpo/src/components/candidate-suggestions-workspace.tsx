@@ -1,19 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, UserSearch } from 'lucide-react';
+import { Briefcase, Loader2, UserSearch } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import {
+  SKILL_DEFINITIONS,
   TIER_LABEL,
+  type BatchDto,
   type CandidateMatchDto,
   type JobOpeningDto,
-  type ShortlistDto,
 } from '@smart/contracts';
-import { applicationsApi, matchingApi, openingsApi } from '../lib/api';
+import { api, applicationsApi, openingsApi } from '../lib/api';
+import { useMatchRun } from '../lib/use-match-run';
+import { FilterMultiSelect } from './matching/filter-multi-select';
 import {
   cardClass,
   chipClass,
   errorNoticeClass,
+  inputClass,
   labelClass,
   mutedTextClass,
   primaryButtonClass,
@@ -24,6 +28,8 @@ import {
 } from '../lib/tpo-ui';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
+
+const SKILL_OPTIONS = SKILL_DEFINITIONS.map((skill) => ({ id: skill.code, label: skill.name }));
 
 const pillClass =
   'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold';
@@ -62,12 +68,18 @@ function noticeClass(tone: 'success' | 'danger' | 'info'): string {
   }
 }
 
-export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpeningId?: string }) {
+export function CandidateSuggestionsWorkspace({
+  initialOpeningId,
+  matchRunPollIntervalMs,
+}: {
+  initialOpeningId?: string;
+  /** Test seam — production callers should leave this at the hook's default. */
+  matchRunPollIntervalMs?: number;
+}) {
   const [openings, setOpenings] = useState<JobOpeningDto[]>([]);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string>(initialOpeningId ?? '');
-  const [shortlist, setShortlist] = useState<ShortlistDto | null>(null);
+  const [batches, setBatches] = useState<BatchDto[]>([]);
   const [loadingOpenings, setLoadingOpenings] = useState(true);
-  const [loadingMatch, setLoadingMatch] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendNotice, setSendNotice] = useState<{
@@ -77,6 +89,21 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
   } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+
+  // S6-VV-76 pool-scoping filters — batches, min CGPA, required verified skills (all optional).
+  const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
+  const [minCgpa, setMinCgpa] = useState('');
+  const [requiredSkillCodes, setRequiredSkillCodes] = useState<string[]>([]);
+
+  const {
+    run,
+    triggering,
+    inProgress,
+    error: runError,
+    trigger,
+    reset,
+  } = useMatchRun(matchRunPollIntervalMs);
+  const shortlist = run?.shortlist ?? null;
 
   async function loadOpenings() {
     setLoadingOpenings(true);
@@ -94,36 +121,32 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
     }
   }
 
-  async function loadSuggestions(openingId: string) {
-    if (!openingId) {
-      setShortlist(null);
-      return;
-    }
-    setLoadingMatch(true);
-    setError(null);
-    try {
-      const res = await matchingApi.match({ jdId: openingId, limit: 50 });
-      setShortlist(res);
-    } catch (caught) {
-      setError(errorMessage(caught, 'Could not fetch ranked candidate suggestions.'));
-      setShortlist(null);
-    } finally {
-      setLoadingMatch(false);
-    }
-  }
-
   useEffect(() => {
     void loadOpenings();
+    void api.onboarding
+      .listBatches()
+      .then(setBatches)
+      .catch(() => setBatches([]));
   }, []);
 
   useEffect(() => {
     setSelectedIds(new Set());
     setSentIds(new Set());
     setSendNotice(null);
-    if (selectedOpeningId) {
-      void loadSuggestions(selectedOpeningId);
-    }
+    reset();
   }, [selectedOpeningId]);
+
+  async function runMatching() {
+    if (!selectedOpeningId) return;
+    const parsedCgpa = minCgpa.trim() ? Number(minCgpa) : undefined;
+    await trigger({
+      jdId: selectedOpeningId,
+      batchIds: selectedBatchIds.length > 0 ? selectedBatchIds : undefined,
+      minCgpa: parsedCgpa !== undefined && !Number.isNaN(parsedCgpa) ? parsedCgpa : undefined,
+      requiredSkillCodes: requiredSkillCodes.length > 0 ? requiredSkillCodes : undefined,
+      limit: 50,
+    });
+  }
 
   const selectedOpening = openings.find((o) => o.openingId === selectedOpeningId);
 
@@ -241,11 +264,8 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
             <button
               type="button"
               className={`${secondaryButtonClass} h-10`}
-              onClick={() => {
-                void loadOpenings();
-                if (selectedOpeningId) void loadSuggestions(selectedOpeningId);
-              }}
-              disabled={loadingOpenings || loadingMatch}
+              onClick={() => void loadOpenings()}
+              disabled={loadingOpenings || triggering || inProgress}
             >
               Refresh
             </button>
@@ -260,11 +280,76 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
         </div>
       ) : null}
 
+      {runError ? (
+        <div role="status" className={errorNoticeClass}>
+          <p className="font-semibold">Matching Error</p>
+          <p className="mt-0.5">{runError}</p>
+        </div>
+      ) : null}
+
       {sendNotice ? (
         <div role="status" className={noticeClass(sendNotice.tone)}>
           <p className="font-semibold">{sendNotice.title}</p>
           <p className="mt-0.5">{sendNotice.message}</p>
         </div>
+      ) : null}
+
+      {selectedOpeningId ? (
+        <section
+          aria-label="Matching filters"
+          className={`${surfaceClass} flex flex-col gap-4 p-5`}
+        >
+          <p className={sectionLabelClass}>Scope this match run</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FilterMultiSelect
+              label="Batches (leave empty for all)"
+              placeholder="Search batches…"
+              options={batches.map((batch) => ({ id: batch.batchId, label: batch.name }))}
+              selectedIds={selectedBatchIds}
+              onChange={setSelectedBatchIds}
+            />
+            <div>
+              <label
+                className={`mb-1.5 block text-xs font-semibold text-[var(--ds-text-secondary)]`}
+              >
+                Minimum CGPA
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                className={inputClass}
+                placeholder="e.g. 8"
+                value={minCgpa}
+                onChange={(e) => setMinCgpa(e.target.value)}
+              />
+            </div>
+            <FilterMultiSelect
+              label="Required verified skills"
+              placeholder="Search skills…"
+              options={SKILL_OPTIONS}
+              selectedIds={requiredSkillCodes}
+              onChange={setRequiredSkillCodes}
+            />
+          </div>
+          <div>
+            <button
+              type="button"
+              className={primaryButtonClass}
+              onClick={() => void runMatching()}
+              disabled={triggering || inProgress}
+            >
+              {triggering || inProgress ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Matching…
+                </span>
+              ) : (
+                'Run matching'
+              )}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {selectedOpening ? (
@@ -288,20 +373,36 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
             <p className={statLabelClass}>Headcount</p>
             <p className={statValueClass}>{selectedOpening.headcount} position(s)</p>
           </div>
-          {shortlist ? (
+          {run && run.eligiblePoolCount !== null ? (
             <div>
-              <p className={statLabelClass}>Evaluated</p>
-              <p className={statValueClass}>{shortlist.totalCandidatesConsidered} candidates</p>
+              <p className={statLabelClass}>Eligible pool</p>
+              <p className={statValueClass}>{run.eligiblePoolCount} students</p>
+            </div>
+          ) : null}
+          {run && run.suggestedCount !== null ? (
+            <div>
+              <p className={statLabelClass}>Suggested</p>
+              <p className={statValueClass}>{run.suggestedCount} candidates</p>
             </div>
           ) : null}
         </section>
       ) : null}
 
-      {loadingMatch || loadingOpenings ? (
+      {loadingOpenings ? (
         <div role="status" className="flex flex-col gap-4">
-          <p className={`text-sm ${mutedTextClass}`}>Fetching ranked candidate suggestions…</p>
+          <p className={`text-sm ${mutedTextClass}`}>Loading job openings…</p>
           {[1, 2, 3].map((i) => (
             <div key={i} className={`${surfaceClass} h-28 animate-pulse`} />
+          ))}
+        </div>
+      ) : triggering || inProgress ? (
+        <div role="status" className="flex flex-col items-center gap-4 py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--ds-green)]" />
+          <p className={`text-sm ${mutedTextClass}`}>
+            Matching candidates against the selected batches and filters…
+          </p>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`${surfaceClass} h-28 w-full animate-pulse`} />
           ))}
         </div>
       ) : !selectedOpeningId ? (
@@ -309,6 +410,18 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
           icon={Briefcase}
           title="No job opening selected"
           description="Select a job opening to view ranked candidate suggestions."
+        />
+      ) : run?.status === 'FAILED' ? (
+        <PlacementEmptyState
+          icon={UserSearch}
+          title="Matching failed"
+          description={run.errorMessage ?? 'Something went wrong while matching. Try again.'}
+        />
+      ) : !run ? (
+        <PlacementEmptyState
+          icon={UserSearch}
+          title="No match run yet"
+          description="Set your batch/CGPA/skill filters above and click Run matching."
         />
       ) : sortedCandidates.length === 0 ? (
         <PlacementEmptyState
@@ -342,7 +455,7 @@ export function CandidateSuggestionsWorkspace({ initialOpeningId }: { initialOpe
                 type="button"
                 className={primaryButtonClass}
                 onClick={() => void sendOpportunity()}
-                disabled={sending || loadingMatch}
+                disabled={sending || inProgress}
               >
                 {sending ? 'Sending…' : 'Send opportunity'}
               </button>

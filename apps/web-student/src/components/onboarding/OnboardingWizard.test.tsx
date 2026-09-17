@@ -91,11 +91,12 @@ describe('OnboardingWizard', () => {
     expect(screen.queryByText('Your skills')).toBeNull();
   });
 
-  it('routes stream enrollment to languages instead of skills', () => {
+  it('routes stream enrollment to academics, then languages, instead of skills', () => {
     const stepOrder = WIZARD_STEP_META.map((step) => step.id);
     const streamIndex = stepOrder.indexOf('stream');
 
     expect(streamIndex).toBeGreaterThanOrEqual(0);
-    expect(stepOrder[streamIndex + 1]).toBe('languages');
+    expect(stepOrder[streamIndex + 1]).toBe('academics');
+    expect(stepOrder[streamIndex + 2]).toBe('languages');
   });
 });
