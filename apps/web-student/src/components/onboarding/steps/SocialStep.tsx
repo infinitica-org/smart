@@ -51,7 +51,7 @@ export default function SocialStep({ formData, updateField, onBack, onContinue }
             exit={{ opacity: 0, height: 0 }}
             className={`mb-5 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
               linkedinBanner === 'ok'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                ? 'border-border bg-muted text-foreground'
                 : 'border-amber-200 bg-amber-50 text-amber-700'
             }`}
           >

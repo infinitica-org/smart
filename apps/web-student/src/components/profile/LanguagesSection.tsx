@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Languages, Plus, Pencil, Trash2, X } from 'lucide-react';
 import type { CandidateLanguageDto } from '@smart/contracts';
+import { queryKeys } from '@smart/api-client';
+import { useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
+import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
 
 const PROFICIENCY_OPTIONS = [
   'Elementary',
@@ -14,9 +17,19 @@ const PROFICIENCY_OPTIONS = [
 ];
 
 export function LanguagesSection() {
-  const [languages, setLanguages] = useState<CandidateLanguageDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: languages = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.myLanguages(),
+    queryFn: () => api.users.listLanguages(),
+    staleTime: 60_000,
+  });
+  const error = queryError
+    ? (queryError as Error).message || 'Failed to load language proficiencies.'
+    : null;
 
   // Modal / Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,21 +42,8 @@ export function LanguagesSection() {
   const [proficiency, setProficiency] = useState('Professional Working');
 
   const fetchLanguages = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.users.listLanguages();
-      setLanguages(res);
-    } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to load language proficiencies.');
-    } finally {
-      setLoading(false);
-    }
+    await refetch();
   };
-
-  useEffect(() => {
-    void fetchLanguages();
-  }, []);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -103,7 +103,7 @@ export function LanguagesSection() {
       await api.users.deleteLanguage(id);
       await fetchLanguages();
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Failed to delete language entry.');
+      setFormError((err as Error)?.message || 'Failed to delete language entry.');
     }
   };
 
@@ -124,7 +124,7 @@ export function LanguagesSection() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#00fad0] px-4 py-2 text-xs font-semibold text-black hover:bg-[#00fad0]/80 transition-colors"
+          className={`${profilePrimaryButtonSmClass} transition-colors`}
         >
           <Plus className="h-4 w-4" />
           Add Language
@@ -155,7 +155,7 @@ export function LanguagesSection() {
               className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 p-4"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00fad0]/10 text-[#00fad0]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground/10 text-foreground">
                   <Languages className="h-5 w-5" />
                 </div>
                 <div>
@@ -222,7 +222,7 @@ export function LanguagesSection() {
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   placeholder="e.g. English, German, Spanish"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export function LanguagesSection() {
                 <select
                   value={proficiency}
                   onChange={(e) => setProficiency(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-[#00fad0] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground focus:outline-none"
                 >
                   {PROFICIENCY_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -249,11 +249,7 @@ export function LanguagesSection() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-xl bg-[#00fad0] px-4 py-2 text-xs font-semibold text-black hover:bg-[#00fad0]/80 disabled:opacity-50"
-                >
+                <button type="submit" disabled={submitting} className={profilePrimaryButtonSmClass}>
                   {submitting ? 'Saving…' : editingId ? 'Update' : 'Create'}
                 </button>
               </div>

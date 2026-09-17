@@ -115,12 +115,12 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search repositories"
-              className="w-full rounded-lg border border-border bg-muted py-2 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#00fad0] focus:outline-none"
+              className="w-full rounded-lg border border-border bg-muted py-2 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
             />
           </div>
           <span
             className={`text-xs font-medium ${
-              selected.length >= MIN_REPOS ? 'text-emerald-700' : 'text-muted-foreground'
+              selected.length >= MIN_REPOS ? 'text-foreground' : 'text-muted-foreground'
             }`}
           >
             {selected.length} of {MAX_REPOS} selected
@@ -129,7 +129,7 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin text-[#00967c]" /> Loading your repositories…
+            <Loader2 className="h-4 w-4 animate-spin text-foreground" /> Loading your repositories…
           </div>
         ) : error ? (
           <p className="text-xs text-amber-500 flex items-center gap-1 py-4">
@@ -151,7 +151,7 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
                   transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }}
                   className={`relative text-left rounded-xl border p-3.5 transition-colors ${
                     active
-                      ? 'border-emerald-500/60 bg-emerald-500/[0.08]'
+                      ? 'border-foreground/40 bg-muted/[0.08]'
                       : disabled
                         ? 'cursor-not-allowed border-border bg-muted/40 opacity-40'
                         : 'border-border bg-card hover:bg-muted'
@@ -168,11 +168,11 @@ export default function RepoPicker({ formData, updateField }: RepoPickerProps) {
                   <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
                     {repo.primaryLanguage ? <span>{repo.primaryLanguage}</span> : null}
                     <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-emerald-400" /> {repo.stars}
+                      <Star className="w-3 h-3 text-foreground" /> {repo.stars}
                     </span>
                   </div>
                   {active ? (
-                    <span className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-emerald-500 text-zinc-950 flex items-center justify-center text-[10px] font-bold">
+                    <span className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-muted text-background flex items-center justify-center text-[10px] font-bold">
                       ✓
                     </span>
                   ) : null}

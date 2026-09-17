@@ -5,24 +5,8 @@ import DashboardPage from './page';
 
 vi.mock('@smart/ui', async (importOriginal) => {
   const actual = await importOriginal<typeof UiModule>();
-  return {
-    ...actual,
-    useQuery: vi.fn().mockReturnValue({
-      data: [
-        { claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' },
-        { claimId: 'clm_2', skillCode: 'NODE', status: 'DECLARED' },
-      ],
-    }),
-  };
+  return actual;
 });
-
-vi.mock('@/lib/api', () => ({
-  api: {
-    assessment: {
-      listSkillClaims: vi.fn(),
-    },
-  },
-}));
 
 vi.mock('@/lib/candidate-identity', () => ({
   useCurrentUser: () => ({
@@ -48,6 +32,7 @@ vi.mock('@/lib/candidate-identity', () => ({
 vi.mock('@/lib/skill-declarations', () => ({
   skillNameForCode: (code: string) => code,
   claimToBadgeStatus: (claim: { status: string }) => claim.status,
+  proficiencyLabelForClaim: () => null,
 }));
 
 vi.mock('@/lib/tour', () => ({
@@ -62,6 +47,7 @@ vi.mock('@/lib/use-profile-progress', () => ({
   useProfileProgress: () => ({
     loading: false,
     error: null,
+    input: null,
     progress: {
       percent: 37,
       completedAreas: ['skills', 'languages', 'projects'],
@@ -79,12 +65,17 @@ vi.mock('@/lib/use-profile-progress', () => ({
     },
     visibleRecommendedAction: {
       id: 'add-education',
-      title: 'Add education',
-      description: 'Help employers understand your academic background.',
-      ctaLabel: 'Add education',
-      href: '/profile#education',
+      title: 'Complete your Education profile',
+      description:
+        'Add your academic background to strengthen your profile and showcase your qualifications.',
+      ctaLabel: 'Continue to Education',
+      href: '/profile?section=education',
     },
     dismissRecommendedAction: vi.fn(),
+    skillClaims: [
+      { claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' },
+      { claimId: 'clm_2', skillCode: 'NODE', status: 'DECLARED' },
+    ],
   }),
 }));
 
@@ -93,21 +84,22 @@ describe('DashboardPage', () => {
     render(<DashboardPage />);
 
     expect(screen.getByRole('heading', { name: /Welcome back, Ada/i })).toBeTruthy();
-    expect(screen.getByText('Your SMART Profile')).toBeTruthy();
-    expect(screen.getByText('37% complete')).toBeTruthy();
-    expect(
-      screen.getByText('Reach at least 50% profile completion to unlock skill verification.'),
-    ).toBeTruthy();
-    expect(screen.getByText('Recommended next step')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Add education' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Add education' }).getAttribute('href')).toBe(
-      '/profile#education',
+    expect(screen.getByText('Profile Completion')).toBeTruthy();
+    expect(screen.getByText('38%')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Go to Profile' }).getAttribute('href')).toBe(
+      '/profile',
     );
+    expect(screen.getByText('Profile Sections')).toBeTruthy();
     expect(
-      screen.getByRole('link', { name: /Continue building your profile/i }).getAttribute('href'),
-    ).toBe('/profile');
+      screen.getByText('Complete all profile sections to unlock skill verification.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Recommended Next Step')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Complete your Education profile' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Continue to Education/i }).getAttribute('href')).toBe(
+      '/profile?section=education',
+    );
 
-    expect(screen.getByRole('heading', { name: 'Skills you have verified' })).toBeTruthy();
+    expect(screen.getByText('Verified Skills')).toBeTruthy();
     expect(screen.getByText('REACT')).toBeTruthy();
     expect(screen.queryByText('NODE')).toBeNull();
 
@@ -116,7 +108,5 @@ describe('DashboardPage', () => {
 
     expect(screen.queryByText('Skills Declared')).toBeNull();
     expect(screen.queryByText(/Application tracker/i)).toBeNull();
-    expect(screen.queryByText(/Public profile/i)).toBeNull();
-    expect(screen.queryByText(/Active Apps/i)).toBeNull();
   });
 });

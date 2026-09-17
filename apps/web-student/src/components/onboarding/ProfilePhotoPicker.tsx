@@ -49,20 +49,20 @@ export function ProfilePhotoPicker({
         <CandidateAvatar
           fullName={fullName}
           profilePhotoUrl={profilePhotoUrl || null}
-          className="h-20 w-20 border-2 border-[#00fad0]/30 bg-muted text-lg font-bold text-[#00fad0]"
-          fallbackClassName="bg-muted text-lg font-bold text-[#00fad0]"
+          className="h-20 w-20 border-2 border-foreground/30 bg-muted text-lg font-bold text-foreground"
+          fallbackClassName="bg-muted text-lg font-bold text-foreground"
         />
         <div className="space-y-2">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-[#00fad0]/40 hover:bg-muted disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-foreground/40 hover:bg-muted disabled:opacity-60"
           >
             {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-[#00fad0]" />
+              <Loader2 className="h-4 w-4 animate-spin text-foreground" />
             ) : (
-              <Camera className="h-4 w-4 text-[#00fad0]" />
+              <Camera className="h-4 w-4 text-foreground" />
             )}
             {profilePhotoUrl ? 'Change photo' : 'Upload photo'}
           </button>

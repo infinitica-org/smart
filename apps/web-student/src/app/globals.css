@@ -2,3 +2,65 @@
 
 /* App-local scan so shared UI classes always emit. */
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+/*
+ * Student console surfaces (dashboard shell). Scoped tokens so light/dark
+ * stay aligned with the enterprise dashboard palette without touching every hex.
+ */
+:root {
+  --ds-canvas: #f8fafc;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f5f7fa;
+  --ds-surface-hover: #f8fafc;
+  --ds-border: #e4e7ec;
+  --ds-border-subtle: #eef1f4;
+  --ds-border-inner: #e7ebef;
+  --ds-text: #101828;
+  --ds-text-secondary: #475467;
+  --ds-text-muted: #667085;
+  --ds-text-subtle: #98a2b3;
+  --ds-icon: #344054;
+  --ds-nav-active-bg: #eaf8f5;
+  --ds-green: #008f7a;
+  --ds-green-hover: #007a68;
+  --ds-green-soft: #e8f7f3;
+  --ds-green-muted: #f3faf8;
+  --ds-green-status: #009879;
+  --ds-link: #006bff;
+  --ds-coral: #e5484d;
+  --ds-coral-border: #f0d9d9;
+  --ds-success: #4ead68;
+  --ds-progress-track: #eef1f4;
+  --ds-empty-icon: #b7c2d0;
+  --ds-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.03);
+  --ds-chip-bg: #ffffff;
+}
+
+.dark {
+  --ds-canvas: #0c1117;
+  --ds-surface: #151b24;
+  --ds-surface-muted: #1c2430;
+  --ds-surface-hover: #1a222d;
+  --ds-border: #2a3441;
+  --ds-border-subtle: #232b36;
+  --ds-border-inner: #2a3441;
+  --ds-text: #f3f4f6;
+  --ds-text-secondary: #cbd5e1;
+  --ds-text-muted: #94a3b8;
+  --ds-text-subtle: #64748b;
+  --ds-icon: #cbd5e1;
+  --ds-nav-active-bg: #0f3d35;
+  --ds-green: #00a88f;
+  --ds-green-hover: #008f7a;
+  --ds-green-soft: #12352f;
+  --ds-green-muted: #132820;
+  --ds-green-status: #34d399;
+  --ds-link: #5b9cff;
+  --ds-coral: #f87171;
+  --ds-coral-border: #4a2c2e;
+  --ds-success: #5ec982;
+  --ds-progress-track: #2a3441;
+  --ds-empty-icon: #64748b;
+  --ds-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --ds-chip-bg: #151b24;
+}

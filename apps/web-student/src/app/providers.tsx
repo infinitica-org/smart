@@ -1,7 +1,13 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { clearAccessToken, getAccessToken, PORTAL_ROLES } from '@smart/api-client';
+import {
+  buildLoginUrl,
+  clearAccessToken,
+  createRefreshAccessToken,
+  getAccessToken,
+  PORTAL_ROLES,
+} from '@smart/api-client';
 import { RolesGuard, SessionBootstrap, SessionHoldWall, SmartApiProvider } from '@smart/ui';
 import { api } from '../lib/api';
 import { signOut } from '../lib/auth';
@@ -45,9 +51,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <SmartApiProvider
             baseUrl={baseUrl}
             getAccessToken={getAccessToken}
+            refreshAccessToken={createRefreshAccessToken(() => api.auth.refresh())}
             onUnauthorized={() => {
               clearAccessToken();
-              window.location.href = `${authUrl}/login`;
+              window.location.href = buildLoginUrl(authUrl, window.location.href);
             }}
           >
             {children}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
+import { ThemeProvider } from '@smart/ui/theme-provider';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
@@ -10,9 +11,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">
+        <ThemeProvider defaultTheme="light" enableSystem={false} storageKey="smart-student-theme">
+          <Providers>{children}</Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

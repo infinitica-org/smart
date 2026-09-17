@@ -177,7 +177,7 @@ export default function JobPreferencesStep({
             type="button"
             onClick={handleUseMyLocation}
             disabled={locationLoading}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#00fad0] hover:text-[#7dffe6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {locationLoading ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -235,7 +235,7 @@ export default function JobPreferencesStep({
           type="checkbox"
           checked={formData.dpdpConsent}
           onChange={(e) => updateField('dpdpConsent', e.target.checked)}
-          className="mt-0.5 rounded border-border bg-background text-[#00fad0] focus:ring-[#00fad0]"
+          className="mt-0.5 rounded border-border bg-background text-foreground focus:ring-foreground"
         />
         <span className="text-sm text-foreground/90">
           I consent to SMART processing my personal data as described in the{' '}
@@ -244,7 +244,7 @@ export default function JobPreferencesStep({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="font-semibold text-[#00fad0] underline hover:text-[#7dffe6] focus:outline-none focus:ring-2 focus:ring-[#00fad0] rounded px-0.5"
+            className="font-semibold text-foreground underline hover:text-foreground focus:outline-none focus:ring-2 focus:ring-foreground rounded px-0.5"
             aria-label="View DPDP Act 2023 consent terms and data privacy policy sheet"
           >
             DPDP Act 2023 consent terms

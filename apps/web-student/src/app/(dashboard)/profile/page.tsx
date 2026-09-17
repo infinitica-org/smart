@@ -1,12 +1,10 @@
 'use client';
 
-import { CheckCircle2 } from 'lucide-react';
+import { Suspense, useMemo } from 'react';
 
 import { AboutSection } from '@/components/profile/AboutSection';
 
 import { AcademicScoresSection } from '@/components/profile/AcademicScoresSection';
-
-import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
 
 import { CertificatesSection } from '@/components/profile/CertificatesSection';
 
@@ -20,7 +18,19 @@ import { LanguagesSection } from '@/components/profile/LanguagesSection';
 
 import { ProfessionalLinksSection } from '@/components/profile/ProfessionalLinksSection';
 
-import { ProfileProgressPanel } from '@/components/profile/ProfileProgressPanel';
+import { ProfileCompletionCard } from '@/components/profile/ProfileCompletionCard';
+
+import { ProfileIdentityCard } from '@/components/profile/ProfileIdentityCard';
+
+import { ProfileKeyHighlights } from '@/components/profile/ProfileKeyHighlights';
+
+import { ProfileMobileNav } from '@/components/profile/ProfileMobileNav';
+
+import { ProfileSidebar } from '@/components/profile/ProfileSidebar';
+
+import { ProfileSurface } from '@/components/profile/ProfileSurface';
+
+import { ProfileWhyCompleteCard } from '@/components/profile/ProfileWhyCompleteCard';
 
 import { ProjectSubmissionForm } from '@/components/profile/ProjectSubmissionForm';
 
@@ -32,12 +42,43 @@ import { NextActionCard } from '@/components/next-action-card';
 
 import { headlineFor, useCurrentUser, useTracks } from '@/lib/candidate-identity';
 
-import type { ProfileAreaId } from '@/lib/profile-progress';
+import { PROFILE_EXPERIENCE_HEADER_ACTIONS_ID } from '@/lib/profile-experience-header';
+import { PROFILE_PROJECTS_HEADER_ACTIONS_ID } from '@/lib/profile-projects-header';
+
+import { buildProfileHighlights } from '@/lib/profile-highlights';
+
+import { PROFILE_AREA_IDS } from '@/lib/profile-progress';
+
+import { profileSectionMeta, type ProfileSectionId } from '@/lib/profile-sections';
+
+import { useProfileSection } from '@/lib/use-profile-section';
+
 import { useProfileProgress } from '@/lib/use-profile-progress';
 
-/** Candidate console profile: progressive profile sections in Phase 5 order. */
+const ABOUT_PAGE_GRID =
+  'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,34%)] lg:items-start lg:gap-6';
+const ABOUT_MAIN_STACK = 'flex flex-col gap-6';
+const ABOUT_RAIL_STACK = 'flex flex-col gap-6';
+
+function ProfilePageFallback() {
+  return (
+    <div className="min-h-[40vh] bg-[var(--ds-canvas)] px-8 py-10">
+      <p className="text-sm text-[#64748B]">Loading profile…</p>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfilePageFallback />}>
+      <ProfileWorkspace />
+    </Suspense>
+  );
+}
+
+function ProfileWorkspace() {
+  const { section, setSection } = useProfileSection();
+
   const { data: user } = useCurrentUser();
 
   const { data: tracks } = useTracks();
@@ -49,6 +90,8 @@ export default function ProfilePage() {
 
     progress,
 
+    input,
+
     visibleRecommendedAction,
 
     dismissRecommendedAction,
@@ -58,207 +101,191 @@ export default function ProfilePage() {
     githubVerified,
   } = useProfileProgress();
 
+  const meta = profileSectionMeta(section);
+
+  const completedCount = progress
+    ? PROFILE_AREA_IDS.filter((id) => progress.areaStatus[id]).length
+    : null;
+
+  const highlights = useMemo(() => {
+    if (!input) {
+      return buildProfileHighlights({
+        experiences: [],
+
+        education: [],
+
+        onboardingProfile: null,
+
+        onboardingDraft: null,
+
+        roleHeadline: headlineFor(user, tracks),
+      });
+    }
+
+    return buildProfileHighlights({
+      experiences: input.experiences,
+
+      education: input.education,
+
+      onboardingProfile: input.onboardingProfile,
+
+      onboardingDraft: input.onboardingDraft,
+
+      roleHeadline: headlineFor(user, tracks),
+    });
+  }, [input, user, tracks]);
+
+  const jobPreferences = useMemo(() => {
+    return (
+      input?.onboardingProfile?.jobPreferences ?? input?.onboardingDraft?.jobPreferences ?? null
+    );
+  }, [input]);
+
+  const sectionContent = renderSection(section);
+
   return (
-    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8 pb-12">
-      <section className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00967c]">
-          My Profile
-        </p>
+    <div className="min-h-full bg-[var(--ds-canvas)]">
+      <div className="flex min-h-[calc(100dvh-4.25rem)] w-full">
+        <ProfileSidebar activeSection={section} onSelect={setSection} />
 
-        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-          Build your SMART profile
-        </h1>
+        <div className="min-w-0 flex-1">
+          <div className="w-full max-w-[1280px] px-4 py-6 md:px-8 md:py-8 lg:px-6 xl:px-8">
+            <ProfileMobileNav activeSection={section} onSelect={setSection} />
 
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Add useful information at your own pace — education, experience, links, and more.
-        </p>
-      </section>
+            <header
+              className={`mt-3 md:mt-0 ${section === 'about' ? 'space-y-1' : section === 'experience' || section === 'projects' ? 'space-y-2 lg:flex lg:items-end lg:justify-between lg:gap-6' : 'space-y-2'}`}
+            >
+              <div
+                className={
+                  section === 'experience' || section === 'projects'
+                    ? 'min-w-0 flex-1 space-y-2'
+                    : undefined
+                }
+              >
+                <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--ds-text-muted)]">
+                  My Profile
+                </p>
 
-      <SurfaceHeader
-        user={user}
+                <h1 className="text-[32px] font-semibold leading-[1.15] tracking-tight text-[var(--ds-text)]">
+                  {section === 'about' ? 'About You' : meta.title}
+                </h1>
 
-        tracks={tracks}
+                {section !== 'about' ? (
+                  <p className="max-w-[720px] text-base leading-relaxed text-[var(--ds-text-muted)]">
+                    {meta.description}
+                  </p>
+                ) : null}
+              </div>
 
-        linkedinVerified={linkedinVerified}
+              {section === 'experience' ? (
+                <div
+                  id={PROFILE_EXPERIENCE_HEADER_ACTIONS_ID}
+                  className="flex shrink-0 items-center lg:pb-1"
+                />
+              ) : null}
+              {section === 'projects' ? (
+                <div
+                  id={PROFILE_PROJECTS_HEADER_ACTIONS_ID}
+                  className="flex shrink-0 items-center lg:pb-1"
+                />
+              ) : null}
+            </header>
 
-        githubVerified={githubVerified}
-
-        profilePercent={progress?.percent ?? null}
-
-        profileLoading={loading}
-
-        areaStatus={progress?.areaStatus ?? null}
-      />
-
-      {error ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {error}
-        </p>
-      ) : null}
-
-      {visibleRecommendedAction ? (
-        <NextActionCard action={visibleRecommendedAction} onLater={dismissRecommendedAction} />
-      ) : null}
-
-      <div id="about" className="scroll-mt-24">
-        <ProfileSurface>
-          <AboutSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="education" className="scroll-mt-24">
-        <ProfileSurface>
-          <EducationSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="academic-scores" className="scroll-mt-24">
-        <ProfileSurface>
-          <AcademicScoresSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="experience" className="scroll-mt-24">
-        <ProfileSurface>
-          <WorkExperienceSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="languages" className="scroll-mt-24">
-        <ProfileSurface>
-          <LanguagesSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="certificates" className="scroll-mt-24">
-        <ProfileSurface>
-          <CertificatesSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="credentials" className="scroll-mt-24">
-        <ProfileSurface>
-          <CredentialsSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="links" className="scroll-mt-24">
-        <ProfileSurface>
-          <ProfessionalLinksSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="projects" className="scroll-mt-24">
-        <ProfileSurface>
-          <ProjectSubmissionForm />
-        </ProfileSurface>
-      </div>
-
-      <div id="preferences" className="scroll-mt-24">
-        <ProfileSurface>
-          <JobPreferencesSection />
-        </ProfileSurface>
-      </div>
-
-      <div id="resume" className="scroll-mt-24">
-        <ProfileSurface>
-          <ResumeSection />
-        </ProfileSurface>
-      </div>
-    </div>
-  );
-}
-
-function ProfileSurface({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="surface-panel rounded-[28px] border border-border bg-card p-6 md:p-7">
-      {children}
-    </div>
-  );
-}
-
-function SurfaceHeader({
-  user,
-
-  tracks,
-
-  linkedinVerified,
-
-  githubVerified,
-
-  profilePercent,
-
-  profileLoading,
-
-  areaStatus,
-}: {
-  user: ReturnType<typeof useCurrentUser>['data'];
-
-  tracks: ReturnType<typeof useTracks>['data'];
-
-  linkedinVerified: boolean;
-
-  githubVerified: boolean;
-
-  profilePercent: number | null;
-
-  profileLoading: boolean;
-
-  areaStatus: Record<ProfileAreaId, boolean> | null;
-}) {
-  return (
-    <section className="surface-panel rounded-[28px] border border-border bg-card p-6 md:p-7">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center">
-        <CandidateAvatar
-          fullName={user?.fullName}
-
-          profilePhotoUrl={user?.profilePhotoUrl}
-
-          className="h-20 w-20 rounded-2xl border border-[#00fad0]/30 bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
-
-          fallbackClassName="rounded-2xl bg-[#00fad0]/10 text-2xl font-semibold text-[#00967c]"
-        />
-
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-medium text-foreground">{user?.fullName ?? ''}</h2>
-
-            {linkedinVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
-                LinkedIn Verified
-              </span>
+            {error ? (
+              <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {error}
+              </p>
             ) : null}
 
-            {githubVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
-                <CheckCircle2 className="h-3.5 w-3.5 text-purple-700" />
-                GitHub Verified
-              </span>
-            ) : null}
+            {section === 'about' ? (
+              <div className={`mt-6 ${ABOUT_PAGE_GRID}`}>
+                <div className={ABOUT_MAIN_STACK}>
+                  <ProfileIdentityCard
+                    user={user}
+                    education={input?.education ?? []}
+                    jobPreferences={jobPreferences}
+                    linkedinVerified={linkedinVerified}
+                    githubVerified={githubVerified}
+                  />
+
+                  <ProfileSurface>
+                    <AboutSection presentation="summary" />
+                  </ProfileSurface>
+
+                  <ProfileKeyHighlights highlights={highlights} />
+                </div>
+
+                <div className={ABOUT_RAIL_STACK}>
+                  <ProfileCompletionCard
+                    percent={progress?.percent ?? null}
+                    completedCount={completedCount}
+                    areaStatus={progress?.areaStatus}
+                    loading={loading}
+                  />
+
+                  <ProfileWhyCompleteCard />
+
+                  {visibleRecommendedAction ? (
+                    <NextActionCard
+                      action={visibleRecommendedAction}
+                      onLater={dismissRecommendedAction}
+                      compact
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ) : section === 'experience' || section === 'projects' ? (
+              <div className="mt-7 min-w-0 max-w-none">{sectionContent}</div>
+            ) : (
+              <div className="mt-7 max-w-3xl">
+                <ProfileSurface>{sectionContent}</ProfileSurface>
+              </div>
+            )}
           </div>
-
-          <p className="mt-1 text-sm text-muted-foreground">{headlineFor(user, tracks)}</p>
-
-          {!profileLoading && profilePercent !== null ? (
-            <p className="mt-2 text-sm font-medium text-[#00fad0]">
-              {profilePercent}% profile complete
-            </p>
-          ) : null}
         </div>
       </div>
-
-      <div className="mt-6 border-t border-border pt-6">
-        <ProfileProgressPanel
-          percent={profilePercent}
-
-          areaStatus={areaStatus}
-
-          loading={profileLoading}
-
-          showChecklist
-        />
-      </div>
-    </section>
+    </div>
   );
+}
+
+function renderSection(section: ProfileSectionId) {
+  switch (section) {
+    case 'about':
+      return <AboutSection presentation="summary" />;
+
+    case 'experience':
+      return <WorkExperienceSection />;
+
+    case 'projects':
+      return <ProjectSubmissionForm />;
+
+    case 'education':
+      return (
+        <div className="flex flex-col gap-6">
+          <EducationSection />
+          <AcademicScoresSection />
+        </div>
+      );
+
+    case 'certifications':
+      return <CertificatesSection />;
+
+    case 'credentials':
+      return <CredentialsSection />;
+
+    case 'languages':
+      return <LanguagesSection />;
+
+    case 'links':
+      return <ProfessionalLinksSection />;
+
+    case 'preferences':
+      return <JobPreferencesSection />;
+
+    case 'resume':
+      return <ResumeSection />;
+
+    default:
+      return <AboutSection presentation="summary" />;
+  }
 }

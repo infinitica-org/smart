@@ -2,13 +2,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AboutSection } from './AboutSection';
 
-const getOnboarding = vi.fn();
 const saveOnboarding = vi.fn();
+const useOnboarding = vi.fn();
+
+vi.mock('@/lib/use-onboarding', () => ({
+  useOnboarding: () => useOnboarding(),
+}));
+
+vi.mock('@smart/ui', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  };
+});
 
 vi.mock('@/lib/api', () => ({
   api: {
     users: {
-      getOnboarding: () => getOnboarding(),
       saveOnboarding: (...args: unknown[]) => saveOnboarding(...args),
     },
   },
@@ -16,14 +27,18 @@ vi.mock('@/lib/api', () => ({
 
 describe('AboutSection', () => {
   beforeEach(() => {
-    getOnboarding.mockReset();
     saveOnboarding.mockReset();
-    getOnboarding.mockResolvedValue({
-      profile: { about: 'Existing summary.' },
-      draft: null,
-      onboardingCompleted: true,
-    });
     saveOnboarding.mockResolvedValue({});
+    useOnboarding.mockReturnValue({
+      data: {
+        profile: { about: 'Existing summary.' },
+        draft: null,
+        onboardingCompleted: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
   });
 
   it('renders saved about content and supports edit/save/cancel', async () => {
@@ -49,5 +64,29 @@ describe('AboutSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByText('Existing summary.')).toBeDefined();
     expect(screen.queryByDisplayValue('Temporary draft.')).toBeNull();
+  });
+
+  it('hides summary helper copy when professional summary exists', () => {
+    render(<AboutSection presentation="summary" />);
+    expect(
+      screen.queryByText(
+        /Share a short summary about yourself, your skills, and what you're looking for/i,
+      ),
+    ).toBeNull();
+  });
+
+  it('shows summary helper copy only when summary is empty', () => {
+    useOnboarding.mockReturnValue({
+      data: { profile: { about: '' }, draft: null, onboardingCompleted: true },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+    render(<AboutSection presentation="summary" />);
+    expect(
+      screen.getByText(
+        /Share a short summary about yourself, your skills, and what you're looking for/i,
+      ),
+    ).toBeDefined();
   });
 });

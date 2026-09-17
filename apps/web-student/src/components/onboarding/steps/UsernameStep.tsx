@@ -76,7 +76,7 @@ export default function UsernameStep({ onContinue }: UsernameStepProps) {
           />
         </div>
         {saved ? (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-400">
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-foreground">
             <CheckCircle2 className="h-4 w-4" />
             Reserved — it&apos;s yours.
           </p>
@@ -88,7 +88,7 @@ export default function UsernameStep({ onContinue }: UsernameStepProps) {
           type="button"
           onClick={onContinue}
           disabled={saving}
-          className="font-axiforma text-sm text-zinc-400 transition-colors hover:text-emerald-400 disabled:opacity-40"
+          className="font-axiforma text-sm text-zinc-400 transition-colors hover:text-foreground disabled:opacity-40"
         >
           {saved ? 'Skip' : "I'll do this later"}
         </button>
