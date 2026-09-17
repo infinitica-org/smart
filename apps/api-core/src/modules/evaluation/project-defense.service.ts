@@ -163,7 +163,7 @@ export class ProjectDefenseService {
     await this.clearActiveDefenseSession(projectId, userId);
 
     const project = await this.loadOwnedProject(projectId, userId);
-    const report = toReportDto(project.report!);
+    const report = this.reportDtoFromProject(project);
     const context = this.buildContext(project, report);
     const sessionId = randomUUID();
     const expiresAt = new Date(
@@ -661,7 +661,8 @@ export class ProjectDefenseService {
     if (project.githubUrl) artefacts.push(`GitHub: ${project.githubUrl}`);
     if (project.loomUrl) artefacts.push(`Loom walkthrough linked`);
 
-    const { meta } = decodeReportMeta(project.report!.explanation);
+    const explanationForMeta = project.report?.explanation ?? report.explanation;
+    const { meta } = decodeReportMeta(explanationForMeta);
     const repos = meta?.snapshotRepos ?? [];
     const snapshotOk = repos.some((repo) => repo.ok);
 
@@ -699,6 +700,18 @@ export class ProjectDefenseService {
       });
     }
     return row;
+  }
+
+  private reportDtoFromProject(project: ProjectRow): ReturnType<typeof toReportDto> {
+    const row = project.report;
+    if (!row) {
+      throw new BadRequestException({
+        error: 'verify_pending',
+        message: 'Automated verification must finish before the ownership interview.',
+        statusCode: 400,
+      });
+    }
+    return toReportDto(row);
   }
 
   private async assertInterviewAllowed(projectId: string, userId: string): Promise<void> {
@@ -740,7 +753,7 @@ export class ProjectDefenseService {
     startedAt: string,
   ): Promise<StoredDefenseSession> {
     const project = await this.loadOwnedProject(projectId, userId);
-    const report = toReportDto(project.report!);
+    const report = this.reportDtoFromProject(project);
     const context = this.buildContext(project, report);
     const sessionId = randomUUID();
     const expiresAt = new Date(

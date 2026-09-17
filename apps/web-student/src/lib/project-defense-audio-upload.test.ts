@@ -35,6 +35,7 @@ describe('uploadDefenseTurnAudio', () => {
     );
 
     expect(result).toEqual({ ok: true, objectKey: 'project-defense/p1/turn.webm' });
+    // eslint-disable-next-line no-restricted-globals
     expect(fetch).toHaveBeenCalledWith(
       'http://127.0.0.1:9000/smart/project-defense/p1/turn.webm?sig=1',
       expect.objectContaining({ method: 'PUT' }),

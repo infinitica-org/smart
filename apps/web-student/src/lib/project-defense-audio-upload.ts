@@ -17,6 +17,8 @@ export async function uploadDefenseTurnAudio(
       contentType: 'audio/webm',
       fileName: 'turn.webm',
     });
+    // Presigned PUT to object storage — not an API route (see proctoring-snapshot-upload).
+    // eslint-disable-next-line no-restricted-globals
     const put = await fetch(upload.uploadUrl, {
       method: 'PUT',
       body: blob,

@@ -37,9 +37,10 @@ describe('buildQlixSmartContext', () => {
     });
 
     expect(ctx).not.toBeNull();
-    expect(ctx!.clientRef.skillCode).toBe('PYTHON_APPLICATION_BACKEND_DEVELOPMENT');
-    expect(ctx!.competencyContext.competencies.length).toBeGreaterThan(0);
-    expect(ctx!.competencyContext.competencies[0]?.competencyId).toBeTruthy();
-    expect(ctx!.skillMapping.specificContribution).toContain('websocket');
+    if (!ctx) return;
+    expect(ctx.clientRef.skillCode).toBe('PYTHON_APPLICATION_BACKEND_DEVELOPMENT');
+    expect(ctx.competencyContext.competencies.length).toBeGreaterThan(0);
+    expect(ctx.competencyContext.competencies[0]?.competencyId).toBeTruthy();
+    expect(ctx.skillMapping.specificContribution).toContain('websocket');
   });
 });

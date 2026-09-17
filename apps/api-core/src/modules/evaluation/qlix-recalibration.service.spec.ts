@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SIGNAL_WEIGHT_MODEL } from '@smart/scoring-engine';
 import { QlixRecalibrationService } from './qlix-recalibration.service.js';
@@ -47,7 +46,6 @@ describe('QlixRecalibrationService', () => {
   });
 
   it('publishes a trained model when enough QLIX-linked outcomes exist', async () => {
-    const studentId = randomUUID();
     prisma.placementRecord.findMany.mockResolvedValue(
       Array.from({ length: 120 }, (_, index) => ({
         outcome: index < 84 ? 'ACCEPTED' : 'INTERVIEWED',

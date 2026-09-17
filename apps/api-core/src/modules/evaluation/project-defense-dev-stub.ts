@@ -31,7 +31,8 @@ function stackSkills(stack: string): string[] {
 
 function lastCandidateText(turns: ProjectDefenseSessionDto['turns']): string {
   for (let i = turns.length - 1; i >= 0; i--) {
-    if (turns[i]?.role === 'CANDIDATE') return turns[i]!.text;
+    const turn = turns[i];
+    if (turn?.role === 'CANDIDATE') return turn.text;
   }
   return '';
 }
@@ -45,7 +46,8 @@ function skillsQuestion(context: ProjectDefenseContext, candidateTurns: number):
     `How did ${skill} show up in the implementation of ${context.projectTitle}? Be specific.`,
     `What would break in ${context.projectTitle} if you removed ${skill} from the stack?`,
   ];
-  return templates[(candidateTurns - 1) % templates.length]!;
+  const templateIndex = (candidateTurns - 1) % templates.length;
+  return templates[templateIndex] ?? templates[0] ?? '';
 }
 
 /** Project-specific opening when transcript is empty (local dev / no LLM). */
@@ -123,7 +125,8 @@ export function stubExaminerTurn(
     'What broke or surprised you during development, and how did you fix it?',
     'Which part of the codebase would you refactor first if you had another week?',
   ];
-  const followUp = depthFollowUps[(candidateTurns - 3) % depthFollowUps.length]!;
+  const followUpIndex = (candidateTurns - 3) % depthFollowUps.length;
+  const followUp = depthFollowUps[followUpIndex] ?? depthFollowUps[0] ?? '';
 
   return {
     question: `${prefix}${followUp}`.slice(0, 1_000),

@@ -1,5 +1,5 @@
 import type { GithubRepoSnapshot, ProjectGithubSnapshot } from '@smart/contracts';
-import { GithubApiClient } from '../integrations/github/github-api.client.js';
+import type { GithubApiClient } from '../integrations/github/github-api.client.js';
 
 export function parseGithubRepoUrl(
   url: string,
@@ -10,8 +10,10 @@ export function parseGithubRepoUrl(
     if (!/(^|\.)github\.com$/i.test(parsed.hostname)) return null;
     const parts = parsed.pathname.split('/').filter(Boolean);
     if (parts.length < 2) return null;
-    const owner = parts[0]!;
-    const name = parts[1]!.replace(/\.git$/i, '');
+    const owner = parts[0];
+    const namePart = parts[1];
+    if (!owner || !namePart) return null;
+    const name = namePart.replace(/\.git$/i, '');
     return {
       owner,
       name,

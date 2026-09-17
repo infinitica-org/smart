@@ -122,7 +122,7 @@ describe('SkillRepositoryPage', () => {
     render(<SkillRepositoryPage />);
     expect(await screen.findByRole('heading', { name: 'Skill Repository' })).toBeDefined();
     expect(screen.getByText('Python')).toBeDefined();
-    expect(screen.getByText('JavaScript / TypeScript (Full-Stack Development)')).toBeDefined();
+    expect(screen.getByText('JavaScript / TypeScript')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Declared').length).toBeGreaterThan(0);
   });
@@ -207,7 +207,7 @@ describe('SkillRepositoryPage', () => {
   it('does not list catalog skills until they are added', async () => {
     render(<SkillRepositoryPage />);
     await screen.findByText('Python');
-    expect(screen.queryByText(/High-Performance Services/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Go$/i })).toBeNull();
   });
 
   it('adds a skill from the category picker dialog', async () => {
@@ -225,9 +225,11 @@ describe('SkillRepositoryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add skill/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Add skill' });
     fireEvent.change(within(dialog).getByPlaceholderText('Search skills...'), {
-      target: { value: 'High-Performance Services' },
+      target: { value: 'Go' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: /High-Performance Services/i }));
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /Go GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES/i }),
+    );
 
     await waitFor(() => {
       expect(declareSkillClaimMock).toHaveBeenCalledWith(
@@ -238,9 +240,7 @@ describe('SkillRepositoryPage', () => {
       );
     });
     expect(
-      await screen.findByRole('button', {
-        name: /Go \(Golang\) for High-Performance Services/i,
-      }),
+      await screen.findByRole('button', { name: /Go GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES/i }),
     ).toBeDefined();
   });
 });

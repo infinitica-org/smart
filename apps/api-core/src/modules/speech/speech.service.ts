@@ -31,8 +31,9 @@ export class SpeechService {
     audioObjectKey?: string;
     clientTranscript?: string;
   }): Promise<string> {
-    if (this.shouldUseServerStt(params.audioObjectKey)) {
-      return this.transcribeWithWhisper(params.audioObjectKey!);
+    const audioKey = params.audioObjectKey;
+    if (audioKey && this.shouldUseServerStt(audioKey)) {
+      return this.transcribeWithWhisper(audioKey);
     }
 
     if (params.clientTranscript?.trim()) {

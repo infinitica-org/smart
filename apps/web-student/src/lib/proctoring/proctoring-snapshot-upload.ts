@@ -80,6 +80,7 @@ export async function uploadProctoringSnapshot(
       contentType: 'image/jpeg',
     });
 
+    // eslint-disable-next-line no-restricted-globals
     const put = await fetch(upload.uploadUrl, {
       method: 'PUT',
 

@@ -9,8 +9,6 @@ import { ProjectDefenseService } from './project-defense.service.js';
 
 const projectId = randomUUID();
 const userId = randomUUID();
-const sessionId = randomUUID();
-
 const projectRow = {
   id: projectId,
   studentId: userId,
@@ -136,7 +134,8 @@ describe('ProjectDefenseService', () => {
 
     const raw = redisStore.get(`project:defense:session:${prepared.sessionId}`);
     expect(raw).toBeTruthy();
-    const stored = JSON.parse(raw!) as { startedAt: string | null };
+    if (!raw) throw new Error('expected defense session in redis');
+    const stored = JSON.parse(raw) as { startedAt: string | null };
     expect(stored.startedAt).toBeNull();
   });
 

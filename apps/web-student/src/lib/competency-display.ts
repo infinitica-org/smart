@@ -2,7 +2,6 @@ import {
   getSkillBlueprint,
   getSkillDefinition,
   buildSkillBlueprintForCategory,
-  type AssessmentResult,
   type CompetencyStatus,
   type SkillEvidenceContext,
 } from '@smart/contracts';

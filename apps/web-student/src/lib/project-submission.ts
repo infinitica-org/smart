@@ -2,7 +2,6 @@ import {
   CreateProjectRequestSchema,
   type CreateProjectRequest,
   type ProjectDto,
-  type ProjectStatus,
 } from '@smart/contracts';
 
 export type ProjectFormFields = {

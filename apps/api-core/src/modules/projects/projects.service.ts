@@ -1,7 +1,6 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   CreateProjectRequestSchema,
-  ProjectDtoSchema,
   ProjectSubmittedDataSchema,
   SMART_TOPICS,
   UuidSchema,

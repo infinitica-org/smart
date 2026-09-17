@@ -28,7 +28,6 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { ProctoringService } from './proctoring.service.js';
 
-const AttemptBody = z.object({ attemptId: z.uuid() });
 const VoiceBody = z.object({ attemptId: z.uuid(), phrase: z.string().max(200) });
 const PingBody = z.object({ attemptId: z.uuid() });
 

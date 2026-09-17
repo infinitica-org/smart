@@ -299,7 +299,6 @@ function recognitionLanguage(): string {
 export function mapRecognitionError(error: string): string {
   switch (error) {
     case 'not-allowed':
-
     case 'service-not-allowed':
       return 'Microphone access was blocked. Allow the mic in your browser settings and reload.';
 
@@ -488,7 +487,7 @@ function computeAudioRms(analyser: AnalyserNode, scratch: Uint8Array<ArrayBuffer
   let sum = 0;
 
   for (let i = 0; i < scratch.length; i++) {
-    const sample = (scratch[i]! - 128) / 128;
+    const sample = ((scratch[i] ?? 128) - 128) / 128;
 
     sum += sample * sample;
   }
