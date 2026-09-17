@@ -1879,7 +1879,8 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'LLM_INTERACTIVE',
     execution: 'SYNC',
     slaMs: 4000,
-    summary: 'Generate three skill-relevant interview questions (cached per skill when possible).',
+    summary:
+      'Internal/registry only — students use POST /assessment/skill-verify/:sessionId/interview/start (session-cached questions).',
   },
   {
     method: 'POST',
@@ -1891,7 +1892,8 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'LLM_INTERACTIVE',
     execution: 'SYNC',
     slaMs: 5000,
-    summary: 'Score typed/transcribed answers; always returns pass/fail plus a one-line why.',
+    summary:
+      'Internal/registry only — students use POST /assessment/skill-verify/:sessionId/interview/complete.',
   },
   {
     method: 'POST',

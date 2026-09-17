@@ -465,6 +465,16 @@ describe('ProjectDefenseService', () => {
     });
   });
 
+  it('resets gate to PENDING when the active Redis session expired before start', async () => {
+    const { service, redisStore, interviewGate } = setup();
+    await service.prepare(projectId, userId);
+    const started = await service.start(projectId, userId);
+    redisStore.delete(`project:defense:session:${started.session.sessionId}`);
+    interviewGate.markPending.mockClear();
+    await service.start(projectId, userId);
+    expect(interviewGate.markPending).toHaveBeenCalled();
+  });
+
   it('uses local stub when no AI provider is configured', async () => {
     const { service, gateway } = setup();
     gateway.hasCallableProvider.mockReturnValue(false);

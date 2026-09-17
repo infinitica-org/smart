@@ -264,7 +264,10 @@ describe('SkillVerificationService pending verification flow', () => {
 
     const interview = await service.startInterview(student(), SESSION_ID);
     expect(interview.questions).toHaveLength(3);
-    expect(evaluation.generateSkillInterview).toHaveBeenCalled();
+    expect(evaluation.generateSkillInterview).toHaveBeenCalledTimes(1);
+
+    await service.startInterview(student(), SESSION_ID);
+    expect(evaluation.generateSkillInterview).toHaveBeenCalledTimes(1);
 
     const afterInterview = await service.completeInterview(student(), SESSION_ID, {
       items: interview.questions.map((question) => ({

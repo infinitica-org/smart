@@ -194,6 +194,9 @@ export class ProjectDefenseService {
     let stored: StoredDefenseSession | null = null;
     if (existingSessionId) {
       stored = await this.loadSession(existingSessionId);
+      if (!stored) {
+        await this.reconcileMissingActiveSession(projectId, existingSessionId);
+      }
     }
 
     if (!stored || stored.status !== 'ACTIVE') {
@@ -249,6 +252,7 @@ export class ProjectDefenseService {
     const request = ProjectDefenseReplyRequestSchema.parse(body);
     const session = await this.loadSession(request.sessionId);
     if (!session || session.projectId !== projectId || session.userId !== userId) {
+      await this.reconcileMissingActiveSession(projectId, request.sessionId);
       throw new NotFoundException({
         error: 'session_not_found',
         message: 'Defense session not found.',
@@ -339,6 +343,7 @@ export class ProjectDefenseService {
     const integrityTerminated = request.integrityTerminated === true;
     const session = await this.loadSession(request.sessionId);
     if (!session || session.projectId !== projectId || session.userId !== userId) {
+      await this.reconcileMissingActiveSession(projectId, request.sessionId);
       throw new NotFoundException({
         error: 'session_not_found',
         message: 'Defense session not found.',
@@ -494,7 +499,7 @@ export class ProjectDefenseService {
       const examiner = await this.gateway.complete({
         promptRef: PROJECT_DEFENSE_EXAMINER_PROMPT_REF,
         modelRole: projectDefenseExaminerTemplate.modelRole,
-        priority: 'P2_ASYNC_EVAL',
+        priority: 'P1_REALTIME',
         variables: {
           projectTitle: session.context.projectTitle,
           projectSummary: session.context.projectSummary,
@@ -533,7 +538,7 @@ export class ProjectDefenseService {
       const examiner = await this.gateway.complete({
         promptRef: PROJECT_DEFENSE_EXAMINER_PROMPT_REF,
         modelRole: projectDefenseExaminerTemplate.modelRole,
-        priority: 'P2_ASYNC_EVAL',
+        priority: 'P1_REALTIME',
         variables: {
           projectTitle: session.context.projectTitle,
           projectSummary: session.context.projectSummary,
@@ -602,13 +607,26 @@ export class ProjectDefenseService {
     return { parsed: stubGraderOutput(session), auditId: null };
   }
 
-  /** Local/test fallback when no LLM keys are configured; never on deployed production. */
+  /** Local/test fallback when no LLM keys are configured; never in production. */
   private shouldUseDefenseStub(): boolean {
     if (this.gateway.hasCallableProvider()) return false;
-    if (env.NODE_ENV === 'test' || env.NODE_ENV === 'development') return true;
-    const localDb =
-      env.DATABASE_URL.includes('127.0.0.1') || env.DATABASE_URL.includes('localhost');
-    return localDb;
+    if (env.NODE_ENV === 'production') return false;
+    return env.NODE_ENV === 'test' || env.NODE_ENV === 'development';
+  }
+
+  /** Drop stale active pointer and unblock the student when Redis session TTL expired. */
+  private async reconcileMissingActiveSession(projectId: string, sessionId: string): Promise<void> {
+    const activeId = await this.redis.get(activeProjectKey(projectId));
+    if (activeId !== sessionId) return;
+
+    await this.redis.del(activeProjectKey(projectId));
+    const interview = await this.interviewGate.getState(projectId);
+    if (interview.interviewStatus === 'IN_PROGRESS') {
+      await this.interviewGate.markPending(projectId);
+      this.logger.warn(
+        `Defense session ${sessionId} missing for project ${projectId}; gate reset to PENDING`,
+      );
+    }
   }
 
   /** Production with proctoring must go through prepare → onboarding → start. */
@@ -750,6 +768,14 @@ export class ProjectDefenseService {
       'EX',
       PROJECT_DEFENSE_SESSION_TTL_SECONDS,
     );
+    if (session.status === 'ACTIVE') {
+      await this.redis.set(
+        activeProjectKey(session.projectId),
+        session.sessionId,
+        'EX',
+        PROJECT_DEFENSE_SESSION_TTL_SECONDS,
+      );
+    }
   }
 
   private toSessionDto(session: StoredDefenseSession): ProjectDefenseSessionDto {

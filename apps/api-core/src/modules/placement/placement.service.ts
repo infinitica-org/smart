@@ -26,6 +26,7 @@ import {
   PlacementRecordDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
+  AssessmentResultSchema,
   SkillTaxonomyDomainSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
@@ -689,12 +690,18 @@ export class PlacementService {
     applicationId: string,
   ): Promise<ApplicationConfidenceDto> {
     const application = await this.requireApplication(institutionId, applicationId);
-    return this.toConfidenceDto(application.id, application.studentId);
+    const requiredSkillCodes = await this.openingRequiredSkillCodes(application.openingId);
+    return this.toConfidenceDto(application.id, application.studentId, requiredSkillCodes);
   }
 
   async sendToCompany(institutionId: string, applicationId: string): Promise<ApplicationDto> {
     const application = await this.requireApplication(institutionId, applicationId);
-    const confidence = await this.toConfidenceDto(application.id, application.studentId);
+    const requiredSkillCodes = await this.openingRequiredSkillCodes(application.openingId);
+    const confidence = await this.toConfidenceDto(
+      application.id,
+      application.studentId,
+      requiredSkillCodes,
+    );
     if (!confidence.complete) {
       throw new UnprocessableEntityException({
         error: 'validation_failed',
@@ -748,14 +755,30 @@ export class PlacementService {
     return application;
   }
 
+  private async openingRequiredSkillCodes(openingId: string): Promise<string[]> {
+    const opening = await this.prisma.jobOpening.findUnique({
+      where: { id: openingId },
+      select: { requiredSkills: { select: { skill: { select: { code: true } } } } },
+    });
+    return opening?.requiredSkills.map((row) => row.skill.code) ?? [];
+  }
+
   private async toConfidenceDto(
     applicationId: string,
     studentId: string,
+    requiredSkillCodes: readonly string[],
   ): Promise<ApplicationConfidenceDto> {
     const latest = await this.prisma.skillVerificationAttempt.findFirst({
-      where: { claim: { studentId } },
+      where: {
+        claim: {
+          studentId,
+          ...(requiredSkillCodes.length > 0
+            ? { skill: { code: { in: [...requiredSkillCodes] } } }
+            : {}),
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      select: { passed: true, explanation: true },
+      select: { passed: true, explanation: true, assessmentResultJson: true },
     });
 
     const explanation = latest?.explanation?.trim() || null;
@@ -764,11 +787,16 @@ export class PlacementService {
     const complete = passed !== null && explanation !== null && explanation.length >= 10;
     let sendBlockedReason: string | null = null;
     if (!available) {
-      sendBlockedReason = 'No SE-T02 confidence result is on file for this candidate.';
+      sendBlockedReason =
+        requiredSkillCodes.length > 0
+          ? 'No SE-T02 confidence result is on file for this opening’s required skills.'
+          : 'No SE-T02 confidence result is on file for this candidate.';
     } else if (!complete) {
       sendBlockedReason =
         'Confidence result is incomplete — pass/fail or the one-line explanation is missing.';
     }
+
+    const promptRef = seT02GraderPromptRef(latest?.assessmentResultJson ?? null);
 
     return ApplicationConfidenceDtoSchema.parse({
       applicationId,
@@ -777,8 +805,7 @@ export class PlacementService {
       complete,
       passed,
       explanation,
-      // SE-T02 grade does not persist promptRef; do not invent one.
-      promptRef: null,
+      promptRef,
       sendBlockedReason,
     });
   }
@@ -870,6 +897,12 @@ export class PlacementService {
       data: ApplicationStageChangedDataSchema.parse(data),
     });
   }
+}
+
+function seT02GraderPromptRef(assessmentResultJson: unknown): string | null {
+  const parsed = AssessmentResultSchema.safeParse(assessmentResultJson);
+  if (!parsed.success) return null;
+  return parsed.data.seT02Interview?.graderPromptRef ?? null;
 }
 
 /** Prisma unique-constraint failure, i.e. this pair is already shortlisted. */

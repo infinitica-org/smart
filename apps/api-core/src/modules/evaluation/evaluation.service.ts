@@ -364,7 +364,7 @@ export class EvaluationService {
       const result = await this.gateway.complete({
         promptRef: SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
         modelRole: 'FAST_EXTRACTION',
-        priority: 'P3_BATCH',
+        priority: 'P2_ASYNC_EVAL',
         variables: { skillCode: request.skillCode, proficiency: request.proficiency },
         correlation: {},
         maxOutputTokens: 400,

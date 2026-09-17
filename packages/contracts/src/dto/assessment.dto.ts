@@ -353,6 +353,14 @@ export const CompleteSkillVerifyResponseSchema = z.object({
   pendingVerification: z.boolean().optional(),
 });
 
+export const StartSkillVerifyInterviewRequestSchema = z.object({
+  /** When true, regenerate questions (capped server-side). Default reuses cached questions. */
+  regenerate: z.boolean().optional().default(false),
+});
+export type StartSkillVerifyInterviewRequest = z.infer<
+  typeof StartSkillVerifyInterviewRequestSchema
+>;
+
 export const CompleteSkillVerifyInterviewRequestSchema = z.object({
   items: z
     .array(

@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
@@ -11,6 +13,7 @@ import {
   CompleteSkillVerifyRequestSchema,
   CompleteSkillVerifyResponseSchema,
   CompleteSkillVerifyInterviewRequestSchema,
+  StartSkillVerifyInterviewRequestSchema,
   SkillVerifyInterviewDtoSchema,
   REDIS_TTL_SECONDS,
   SKILL_VERIFICATION_STATUSES,
@@ -57,12 +60,19 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
-import { EvaluationService } from '../evaluation/evaluation.service.js';
+import {
+  EvaluationService,
+  SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
+  SKILL_INTERVIEW_GRADER_PROMPT_REF,
+} from '../evaluation/evaluation.service.js';
 import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
 import { AssessmentIntelligenceService } from './assessment-intelligence.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
+
+/** Max LLM regens after the first cached question set for a pending verification session. */
+const SKILL_VERIFY_INTERVIEW_MAX_REGENERATIONS = 2;
 
 function skillVerifyRedisKey(sessionId: string): string {
   return `session:skill-verify:${sessionId}`;
@@ -98,6 +108,9 @@ type StoredSession = {
   interviewPassed?: boolean;
   interviewExplanation?: string;
   interviewQuestions?: Array<{ index: number; text: string }>;
+  interviewRegenerations?: number;
+  interviewExaminerPromptRef?: string;
+  interviewGraderPromptRef?: string | null;
   evidenceContext?: SkillEvidenceContext;
   targetedSkipReason?: 'ai_unavailable' | 'generation_failed';
 };
@@ -114,6 +127,23 @@ function ttlSeconds(expiresAt: string): number {
 
 function normalizeInterviewText(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function withSeT02InterviewAudit(
+  result: AssessmentResult | null | undefined,
+  stored: StoredSession,
+): AssessmentResult | null | undefined {
+  if (!result) return result;
+  const examiner = stored.interviewExaminerPromptRef;
+  const grader = stored.interviewGraderPromptRef;
+  if (!examiner && !grader) return result;
+  return {
+    ...result,
+    seT02Interview: {
+      examinerPromptRef: examiner ?? SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
+      graderPromptRef: grader ?? null,
+    },
+  };
 }
 
 function bindInterviewAnswers(
@@ -627,8 +657,9 @@ export class SkillVerificationService {
     });
   }
 
-  async startInterview(user: RequestUser, sessionId: string) {
+  async startInterview(user: RequestUser, sessionId: string, body: unknown = {}) {
     this.assertStudent(user);
+    const request = StartSkillVerifyInterviewRequestSchema.parse(body ?? {});
     const stored = await this.loadSession(user.sub, sessionId);
     if (!stored.pendingAssessmentResult) {
       throw new BadRequestException({
@@ -640,11 +671,38 @@ export class SkillVerificationService {
     const interviewProficiency = this.interviewProficiency(
       stored.pendingAssessmentResult.highestAssessmentSupportedProficiency,
     );
+
+    if (stored.interviewQuestions?.length && !request.regenerate) {
+      return SkillVerifyInterviewDtoSchema.parse({
+        sessionId: stored.sessionId,
+        skillCode: stored.catalogSkillCode,
+        proficiency: interviewProficiency,
+        questions: stored.interviewQuestions,
+      });
+    }
+
+    if (request.regenerate) {
+      const prior = stored.interviewRegenerations ?? 0;
+      if (prior >= SKILL_VERIFY_INTERVIEW_MAX_REGENERATIONS) {
+        throw new HttpException(
+          {
+            error: 'interview_regen_cap',
+            message: 'Interview question regeneration limit reached for this session.',
+            statusCode: 429,
+            limit: SKILL_VERIFY_INTERVIEW_MAX_REGENERATIONS,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      stored.interviewRegenerations = prior + 1;
+    }
+
     const interview = await this.evaluation.generateSkillInterview({
       skillCode: stored.catalogSkillCode,
       proficiency: interviewProficiency,
     });
     stored.interviewQuestions = interview.questions;
+    stored.interviewExaminerPromptRef = interview.promptRef;
     await this.persistSession(stored);
     return SkillVerifyInterviewDtoSchema.parse({
       sessionId: stored.sessionId,
@@ -676,6 +734,7 @@ export class SkillVerificationService {
     });
     stored.interviewPassed = grade.passed;
     stored.interviewExplanation = grade.explanation;
+    stored.interviewGraderPromptRef = grade.promptRef;
     await this.persistSession(stored);
     if (!grade.passed) {
       const claim = await this.loadOwnClaim(user.sub, stored.claimId);
@@ -944,7 +1003,10 @@ export class SkillVerificationService {
           marksEarned: input.grade?.marksEarned ?? null,
           marksTotal: input.grade?.marksTotal ?? null,
           scorePercent: input.grade?.scorePercent ?? null,
-          assessmentResultJson: input.assessmentResult as never,
+          assessmentResultJson: withSeT02InterviewAudit(
+            input.assessmentResult,
+            input.stored,
+          ) as never,
         },
       }),
       ...(input.verificationSettlement && (genuinePass || provisionalSettlement)

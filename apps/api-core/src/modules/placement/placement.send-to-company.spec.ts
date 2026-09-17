@@ -60,6 +60,7 @@ function setup(
   const prisma = {
     jobOpening: {
       findFirst: vi.fn().mockResolvedValue({ id: openingId }),
+      findUnique: vi.fn().mockResolvedValue({ requiredSkills: [] }),
     },
     application: {
       findUnique: vi.fn().mockResolvedValue(applicationRow),
@@ -132,6 +133,26 @@ describe('AC-T06 authorization', () => {
 });
 
 describe('AC-T06 confidence result display', () => {
+  it('scopes confidence lookup to opening required skills when configured', async () => {
+    const { controller, prisma } = setup();
+    prisma.jobOpening.findUnique.mockResolvedValue({
+      requiredSkills: [{ skill: { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' } }],
+    });
+
+    await controller.getApplicationConfidence(tpoStaff as never, applicationId);
+
+    expect(prisma.skillVerificationAttempt.findFirst).toHaveBeenCalledWith({
+      where: {
+        claim: {
+          studentId,
+          skill: { code: { in: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'] } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { passed: true, explanation: true, assessmentResultJson: true },
+    });
+  });
+
   it('returns the persisted passed + explanation without inventing a score', async () => {
     const { controller, prisma } = setup();
 
@@ -140,7 +161,11 @@ describe('AC-T06 confidence result display', () => {
     expect(prisma.skillVerificationAttempt.findFirst).toHaveBeenCalledWith({
       where: { claim: { studentId } },
       orderBy: { createdAt: 'desc' },
-      select: { passed: true, explanation: true },
+      select: { passed: true, explanation: true, assessmentResultJson: true },
+    });
+    expect(prisma.jobOpening.findUnique).toHaveBeenCalledWith({
+      where: { id: openingId },
+      select: { requiredSkills: { select: { skill: { select: { code: true } } } } },
     });
     expect(result).toMatchObject({
       applicationId,
