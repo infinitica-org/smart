@@ -15,6 +15,7 @@ export function JobPostingTextField({
   type,
   min,
   max,
+  step,
   required,
   placeholder,
 }: {
@@ -24,6 +25,7 @@ export function JobPostingTextField({
   type?: string;
   min?: number;
   max?: number;
+  step?: string | number;
   required?: boolean;
   placeholder?: string;
 }) {
@@ -46,6 +48,7 @@ export function JobPostingTextField({
         type={type}
         min={min}
         max={max}
+        step={step}
         value={value}
         onChange={onChange}
         required={required}

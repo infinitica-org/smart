@@ -5,7 +5,7 @@
  */
 
 export const surfaceClass =
-  'rounded-2xl border border-[var(--ds-border)] bg-[var(--ds-surface)] shadow-[var(--ds-card-shadow)]';
+  'relative overflow-hidden rounded-[20px] border border-[var(--ds-border)] bg-[var(--ds-surface)] shadow-[var(--ds-card-shadow)] transition-[border-color,box-shadow] duration-200';
 
 export const cardClass = `${surfaceClass} p-6`;
 

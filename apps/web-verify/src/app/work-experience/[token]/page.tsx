@@ -129,7 +129,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#00fad0] border-t-transparent" />
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#14b8a6] border-t-transparent" />
         <p className="mt-3 text-sm text-white/60">Loading verification details...</p>
       </div>
     );
@@ -152,7 +152,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
     <div className="mx-auto max-w-2xl py-8 px-4 animate-fade-in flex flex-col gap-6">
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md">
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="rounded-xl bg-[#00fad0]/10 p-3 text-[#00fad0]">
+          <div className="rounded-xl bg-[#14b8a6]/10 p-3 text-[#14b8a6]">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -267,7 +267,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
                     onClick={() => setSelectedDecision(option.decision)}
                     className={`rounded-xl border p-4 text-left transition-colors ${
                       selected
-                        ? 'border-[#00fad0]/50 bg-[#00fad0]/10'
+                        ? 'border-[#14b8a6]/50 bg-[#14b8a6]/10'
                         : 'border-white/10 bg-white/[0.02] hover:border-white/20'
                     }`}
                   >
@@ -290,7 +290,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="Add verification notes or clarification details..."
-                className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#00fad0] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#14b8a6] focus:outline-none"
               />
             </div>
 
@@ -304,7 +304,7 @@ export default function WorkExperienceVerificationPage({ params }: PageProps) {
               type="button"
               onClick={handleSubmit}
               disabled={submitting || !selectedDecision}
-              className="w-full rounded-xl bg-[#00fad0] px-4 py-3 text-sm font-semibold text-black hover:bg-[#00e0ba] disabled:opacity-50 transition-colors"
+              className="w-full rounded-xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-black hover:bg-[#0d9488] disabled:opacity-50 transition-colors"
             >
               {submitting ? 'Submitting...' : 'Submit verification response'}
             </button>

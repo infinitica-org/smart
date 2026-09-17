@@ -285,7 +285,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
 
   const backToSkills = () => {
     void releaseProctoringSession().finally(() => {
-      router.push('/assessments');
+      router.push('/assessment');
     });
   };
 
@@ -357,7 +357,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
               return next;
             })
           }
-          onExit={() => router.push('/assessments')}
+          onExit={() => router.push('/assessment')}
           onSubmit={complete}
           onRunCode={(item, source) =>
             api.evaluation.runSkillFormCode({

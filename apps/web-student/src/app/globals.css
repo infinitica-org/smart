@@ -1,66 +1,295 @@
 @import '@smart/ui/styles.css';
 
 /* App-local scan so shared UI classes always emit. */
+
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
 
 /*
- * Student console surfaces (dashboard shell). Scoped tokens so light/dark
- * stay aligned with the enterprise dashboard palette without touching every hex.
+
+ * SMART Student platform — semantic design tokens.
+
+ * Components should prefer --student-* (or legacy --ds-* aliases below).
+
  */
+
 :root {
-  --ds-canvas: #f8fafc;
-  --ds-surface: #ffffff;
-  --ds-surface-muted: #f5f7fa;
-  --ds-surface-hover: #f8fafc;
-  --ds-border: #e4e7ec;
-  --ds-border-subtle: #eef1f4;
-  --ds-border-inner: #e7ebef;
-  --ds-text: #101828;
-  --ds-text-secondary: #475467;
-  --ds-text-muted: #667085;
-  --ds-text-subtle: #98a2b3;
-  --ds-icon: #344054;
-  --ds-nav-active-bg: #eaf8f5;
-  --ds-green: #008f7a;
-  --ds-green-hover: #007a68;
-  --ds-green-soft: #e8f7f3;
-  --ds-green-muted: #f3faf8;
-  --ds-green-status: #009879;
-  --ds-link: #006bff;
-  --ds-coral: #e5484d;
-  --ds-coral-border: #f0d9d9;
-  --ds-success: #4ead68;
-  --ds-progress-track: #eef1f4;
-  --ds-empty-icon: #b7c2d0;
-  --ds-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.03);
-  --ds-chip-bg: #ffffff;
+  /* Neutrals */
+
+  --student-bg: #f6f8fb;
+
+  --student-surface: #ffffff;
+
+  --student-surface-secondary: #f8fafc;
+
+  --student-surface-subtle: #f1f5f9;
+
+  --student-text-primary: #172033;
+
+  --student-text-secondary: #64748b;
+
+  --student-text-tertiary: #94a3b8;
+
+  --student-border: #e2e8f0;
+
+  --student-border-subtle: #edf1f5;
+
+  --student-divider: #e8edf3;
+
+  /* Accents */
+
+  --student-accent: #0f9f8f;
+
+  --student-accent-hover: #0d8a7c;
+
+  --student-accent-soft: #ecfdf5;
+
+  --student-accent-muted: #f3faf8;
+
+  --student-blue: #3b82f6;
+
+  --student-blue-soft: #eff6ff;
+
+  --student-blue-muted: #dbeafe;
+
+  --student-purple: #7c6ce7;
+
+  --student-purple-soft: #f4f1ff;
+
+  /* Semantic */
+
+  --student-success: #16856f;
+
+  --student-success-soft: #ecfdf5;
+
+  --student-success-border: #cdefe3;
+
+  --student-warning: #b7791f;
+
+  --student-warning-soft: #fff8e7;
+
+  --student-warning-border: #f3e2b8;
+
+  --student-error: #c24141;
+
+  --student-error-soft: #fff1f2;
+
+  --student-error-border: #f3c8cc;
+
+  --student-info: #3478c5;
+
+  --student-info-soft: #eff6ff;
+
+  --student-info-border: #d7e8fa;
+
+  --student-overlay: rgb(23 32 51 / 0.45);
+
+  --student-skeleton: #e8edf3;
+
+  --student-progress-track: #e8edf3;
+
+  --student-card-shadow: 0 1px 3px rgb(23 32 51 / 0.04);
+
+  --student-empty-icon: #94a3b8;
+
+  /*
+
+   * Legacy dashboard aliases (--ds-*) — map to student tokens for existing UI.
+
+   */
+
+  --ds-canvas: var(--student-bg);
+
+  --ds-surface: var(--student-surface);
+
+  --ds-surface-muted: var(--student-surface-subtle);
+
+  --ds-surface-hover: var(--student-surface-secondary);
+
+  --ds-border: var(--student-border);
+
+  --ds-border-subtle: var(--student-border-subtle);
+
+  --ds-border-inner: var(--student-divider);
+
+  --ds-text: var(--student-text-primary);
+
+  --ds-text-secondary: var(--student-text-secondary);
+
+  --ds-text-muted: var(--student-text-secondary);
+
+  --ds-text-subtle: var(--student-text-tertiary);
+
+  --ds-icon: var(--student-text-primary);
+
+  --ds-nav-active-bg: var(--student-accent-soft);
+
+  --ds-green: var(--student-accent);
+
+  --ds-green-hover: var(--student-accent-hover);
+
+  --ds-green-soft: var(--student-accent-soft);
+
+  --ds-green-muted: var(--student-accent-muted);
+
+  --ds-green-status: var(--student-success);
+
+  --ds-link: var(--student-blue);
+
+  --ds-coral: var(--student-error);
+
+  --ds-coral-border: var(--student-error-border);
+
+  --ds-success: var(--student-success);
+
+  --ds-progress-track: var(--student-progress-track);
+
+  --ds-empty-icon: var(--student-empty-icon);
+
+  --ds-card-shadow: var(--student-card-shadow);
+
+  --ds-chip-bg: var(--student-surface);
+
+  --tpo-font-sans:
+    'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+    sans-serif;
 }
 
 .dark {
-  --ds-canvas: #0c1117;
-  --ds-surface: #151b24;
-  --ds-surface-muted: #1c2430;
-  --ds-surface-hover: #1a222d;
-  --ds-border: #2a3441;
-  --ds-border-subtle: #232b36;
-  --ds-border-inner: #2a3441;
-  --ds-text: #f3f4f6;
-  --ds-text-secondary: #cbd5e1;
-  --ds-text-muted: #94a3b8;
-  --ds-text-subtle: #64748b;
-  --ds-icon: #cbd5e1;
-  --ds-nav-active-bg: #0f3d35;
-  --ds-green: #00a88f;
-  --ds-green-hover: #008f7a;
-  --ds-green-soft: #12352f;
-  --ds-green-muted: #132820;
-  --ds-green-status: #34d399;
-  --ds-link: #5b9cff;
-  --ds-coral: #f87171;
-  --ds-coral-border: #4a2c2e;
-  --ds-success: #5ec982;
-  --ds-progress-track: #2a3441;
-  --ds-empty-icon: #64748b;
-  --ds-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  --ds-chip-bg: #151b24;
+  --student-bg: #0c1117;
+
+  --student-surface: #151b24;
+
+  --student-surface-secondary: #1a222d;
+
+  --student-surface-subtle: #1c2430;
+
+  --student-text-primary: #f3f4f6;
+
+  --student-text-secondary: #94a3b8;
+
+  --student-text-tertiary: #64748b;
+
+  --student-border: #2a3441;
+
+  --student-border-subtle: #232b36;
+
+  --student-divider: #2a3441;
+
+  --student-accent: #2bb8a8;
+
+  --student-accent-hover: #24a697;
+
+  --student-accent-soft: #12352f;
+
+  --student-accent-muted: #132820;
+
+  --student-blue: #5b9cff;
+
+  --student-blue-soft: #172554;
+
+  --student-blue-muted: #1e3a5f;
+
+  --student-purple: #9d8ff0;
+
+  --student-purple-soft: #2a2640;
+
+  --student-success: #34d399;
+
+  --student-success-soft: #12352f;
+
+  --student-success-border: #1f4f45;
+
+  --student-warning: #fbbf24;
+
+  --student-warning-soft: #3b2f1a;
+
+  --student-warning-border: #5c4a24;
+
+  --student-error: #f87171;
+
+  --student-error-soft: #3f2224;
+
+  --student-error-border: #5c3034;
+
+  --student-info: #5b9cff;
+
+  --student-info-soft: #172554;
+
+  --student-info-border: #1e3a5f;
+
+  --student-overlay: rgb(0 0 0 / 0.55);
+
+  --student-skeleton: #2a3441;
+
+  --student-progress-track: #2a3441;
+
+  --student-card-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+
+  --student-empty-icon: #64748b;
+
+  --ds-canvas: var(--student-bg);
+
+  --ds-surface: var(--student-surface);
+
+  --ds-surface-muted: var(--student-surface-subtle);
+
+  --ds-surface-hover: var(--student-surface-secondary);
+
+  --ds-border: var(--student-border);
+
+  --ds-border-subtle: var(--student-border-subtle);
+
+  --ds-border-inner: var(--student-divider);
+
+  --ds-text: var(--student-text-primary);
+
+  --ds-text-secondary: var(--student-text-secondary);
+
+  --ds-text-muted: var(--student-text-secondary);
+
+  --ds-text-subtle: var(--student-text-tertiary);
+
+  --ds-icon: var(--student-text-primary);
+
+  --ds-nav-active-bg: var(--student-accent-soft);
+
+  --ds-green: var(--student-accent);
+
+  --ds-green-hover: var(--student-accent-hover);
+
+  --ds-green-soft: var(--student-accent-soft);
+
+  --ds-green-muted: var(--student-accent-muted);
+
+  --ds-green-status: var(--student-success);
+
+  --ds-link: var(--student-blue);
+
+  --ds-coral: var(--student-error);
+
+  --ds-coral-border: var(--student-error-border);
+
+  --ds-success: var(--student-success);
+
+  --ds-progress-track: var(--student-progress-track);
+
+  --ds-empty-icon: var(--student-empty-icon);
+
+  --ds-card-shadow: var(--student-card-shadow);
+
+  --ds-chip-bg: var(--student-surface);
+}
+
+@layer base {
+  body {
+    background-color: var(--student-bg);
+
+    color: var(--student-text-primary);
+
+    font-family: var(--tpo-font-sans);
+
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1;
+  }
 }

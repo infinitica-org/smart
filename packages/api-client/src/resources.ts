@@ -138,6 +138,7 @@ import {
   HealthStatusSchema,
   ParseResumeResponseSchema,
   UploadResumeResponseSchema,
+  DeleteResumeResponseSchema,
   ProctoringEnrollResponseSchema,
   ProctoringSnapshotUploadResponseSchema,
   ProctoringLivenessResponseSchema,
@@ -266,6 +267,13 @@ export function usersApi(client: SmartApiClient) {
         schema: UploadResumeResponseSchema,
       });
     },
+
+    deleteResume: (objectKey: string) =>
+      client.request({
+        method: 'DELETE',
+        path: prefixed(`/users/me/resume?objectKey=${encodeURIComponent(objectKey)}`),
+        schema: DeleteResumeResponseSchema,
+      }),
 
     getOnboarding: () =>
       client.get(prefixed('/users/me/onboarding'), {

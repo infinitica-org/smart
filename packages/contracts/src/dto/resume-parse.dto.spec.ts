@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CANDIDATE_RESUME_FILES_MAX,
+  CandidateResumeFilesSchema,
   ParseResumeRequestSchema,
   ParseResumeResponseSchema,
   ResumeParseDraftSchema,
@@ -62,6 +64,22 @@ describe('ResumeParseDraftSchema', () => {
       licenses: [{ name: 'AWS Cloud Practitioner', issuer: 'Amazon' }],
     });
     expect(parsed.licenses).toHaveLength(1);
+  });
+});
+
+describe('CandidateResumeFilesSchema', () => {
+  it(`allows up to ${CANDIDATE_RESUME_FILES_MAX} stored files`, () => {
+    const files = Array.from({ length: CANDIDATE_RESUME_FILES_MAX }, (_, index) => ({
+      fileName: `cv-${index}.pdf`,
+      objectKey: `resumes/u1/cv-${index}.pdf`,
+      mimeType: 'application/pdf',
+      fileSizeBytes: 1000,
+      uploadedAt: '2026-09-12T10:00:00.000Z',
+    }));
+    expect(CandidateResumeFilesSchema.parse(files)).toHaveLength(CANDIDATE_RESUME_FILES_MAX);
+    const duplicate = files[0];
+    expect(duplicate).toBeDefined();
+    expect(CandidateResumeFilesSchema.safeParse([...files, duplicate]).success).toBe(false);
   });
 });
 

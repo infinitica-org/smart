@@ -15,6 +15,7 @@ export type JobPostingCompanyLogo = {
 };
 
 export type JobPostingFormState = {
+  employerId: string;
   companyName: string;
   roleTitle: string;
   domain: string;
@@ -32,9 +33,15 @@ export type JobPostingFormState = {
   driveSpoc: string;
   driveDate: string;
   lastDateToApply: string;
+  minSscPercentage: string;
+  minHscPercentage: string;
+  minCollegePercentage: string;
+  /** 'yes' | 'no' — whether active backlogs are allowed. */
+  backlogsAllowedChoice: 'yes' | 'no';
 };
 
 export const EMPTY_JOB_POSTING_FORM: JobPostingFormState = {
+  employerId: '',
   companyName: '',
   roleTitle: '',
   domain: 'SOFTWARE_IT',
@@ -52,6 +59,10 @@ export const EMPTY_JOB_POSTING_FORM: JobPostingFormState = {
   driveSpoc: '',
   driveDate: '',
   lastDateToApply: '',
+  minSscPercentage: '',
+  minHscPercentage: '',
+  minCollegePercentage: '',
+  backlogsAllowedChoice: 'yes',
 };
 
 export const JOB_POSTING_STEPS = [
@@ -90,6 +101,14 @@ function optionalText(value: string): string | undefined {
 function optionalDate(value: string): string | undefined {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function optionalPercent(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const num = Number(trimmed);
+  if (Number.isNaN(num) || num < 0 || num > 100) return undefined;
+  return num;
 }
 
 export function saveJobPostingDraft(
@@ -153,7 +172,8 @@ export function buildCreateOpeningPayload(
   companyLogo: JobPostingCompanyLogo | null,
 ) {
   return CreateJobOpeningRequestSchema.safeParse({
-    companyName: form.companyName.trim(),
+    ...(form.employerId ? { employerId: form.employerId } : {}),
+    companyName: form.companyName.trim() || undefined,
     roleTitle: form.roleTitle.trim(),
     domain: form.domain as SkillTaxonomyDomain,
     companyLogoStorageKey: companyLogo?.storageKey,
@@ -171,6 +191,10 @@ export function buildCreateOpeningPayload(
     driveSpoc: optionalText(form.driveSpoc),
     driveDate: optionalDate(form.driveDate),
     lastDateToApply: optionalDate(form.lastDateToApply),
+    minSscPercentage: optionalPercent(form.minSscPercentage),
+    minHscPercentage: optionalPercent(form.minHscPercentage),
+    minCollegePercentage: optionalPercent(form.minCollegePercentage),
+    backlogsAllowed: form.backlogsAllowedChoice === 'yes',
     attachedDocuments: attachedDocuments.length > 0 ? [...attachedDocuments] : undefined,
     requiredSkills: [...skills].map(([skillCode, minProficiency]) => ({
       skillCode,

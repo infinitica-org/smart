@@ -65,6 +65,8 @@ export const CandidateAcademicScoresSchema = z.object({
   cgpa: z.number().min(0).max(10).optional(),
   sscPercentage: z.number().min(0).max(100).optional(),
   hscPercentage: z.number().min(0).max(100).optional(),
+  /** Active academic backlog at time of profile update. */
+  hasActiveBacklog: z.boolean().optional(),
 });
 export type CandidateAcademicScores = z.infer<typeof CandidateAcademicScoresSchema>;
 

@@ -33,7 +33,7 @@ export function FunnelPipeline({
             <li key={step.id} className="flex items-stretch gap-2">
               <MagicCard className="relative flex-1 rounded-2xl">
                 {step.shine ? (
-                  <ShineBorder shineColor={['#00fad0', '#004c63', '#00fad0']} duration={10} />
+                  <ShineBorder shineColor={['#14b8a6', '#004c63', '#14b8a6']} duration={10} />
                 ) : null}
                 <div className="flex items-center gap-3 p-4">
                   <div className="flex size-9 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] text-brand-500">

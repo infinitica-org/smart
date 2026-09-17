@@ -21,7 +21,11 @@ import { validateVerifierEmailForEmployerSend } from '@/lib/work-experience-veri
 import { ExperienceBuilderModal } from '@/components/profile/work-experience/ExperienceBuilderModal';
 import { ExperienceEmptyState } from '@/components/profile/work-experience/ExperienceEmptyState';
 import { WorkExperienceExperienceCard } from '@/components/profile/work-experience/WorkExperienceExperienceCard';
-import { PROFILE_EXPERIENCE_HEADER_ACTIONS_ID } from '@/lib/profile-experience-header';
+import {
+  ProfileSectionError,
+  ProfileSectionHeader,
+} from '@/components/profile/ProfileSectionChrome';
+import { profileSectionMeta } from '@/lib/profile-sections';
 import { usePerActionCooldown } from '@/lib/use-per-action-cooldown';
 import { WORK_EXPERIENCE_RESEND_COOLDOWN_MS } from '@/lib/work-experience-verification-ui';
 
@@ -82,7 +86,7 @@ export function WorkExperienceSection() {
   const [error, setError] = useState<string | null>(null);
   const [proofValidationError, setProofValidationError] = useState<string | null>(null);
 
-  const [modalStep, setModalStep] = useState(0);
+  const [focusVerificationOnOpen, setFocusVerificationOnOpen] = useState(false);
 
   // Form Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,13 +159,13 @@ export function WorkExperienceSection() {
     setModalPendingDocs([]);
     setModalNewDocType('OFFER_LETTER');
     setModalNewProofFile(null);
-    setModalStep(0);
+    setFocusVerificationOnOpen(false);
     setError(null);
     setProofValidationError(null);
     setIsModalOpen(true);
   };
 
-  const openEditModal = (exp: WorkExperienceDto, options?: { initialStep?: number }) => {
+  const openEditModal = (exp: WorkExperienceDto, options?: { focusVerification?: boolean }) => {
     setEditingId(exp.id);
     setCompanyName(exp.companyName);
     setCompanyWebsite(exp.companyWebsite || '');
@@ -183,7 +187,7 @@ export function WorkExperienceSection() {
     setModalPendingDocs([]);
     setModalNewDocType('OFFER_LETTER');
     setModalNewProofFile(null);
-    setModalStep(options?.initialStep ?? 0);
+    setFocusVerificationOnOpen(options?.focusVerification ?? false);
     setError(null);
     setProofValidationError(null);
     setIsModalOpen(true);
@@ -209,7 +213,7 @@ export function WorkExperienceSection() {
       return;
     }
     if (!exp.verifierEmail?.trim()) {
-      setError('Add a verifier email on the Verification step, save, then send the link.');
+      setError('Add a verifier email in the form, save, then send the link.');
       return;
     }
     const verifierCheck = validateVerifierEmailForEmployerSend({
@@ -505,12 +509,6 @@ export function WorkExperienceSection() {
 
   // Document validation state
   const [validatingDocId, setValidatingDocId] = useState<string | null>(null);
-  const [headerActionsEl, setHeaderActionsEl] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setHeaderActionsEl(document.getElementById(PROFILE_EXPERIENCE_HEADER_ACTIONS_ID));
-  }, []);
-
   const [validationResults, setValidationResults] = useState<
     Record<
       string,
@@ -545,20 +543,29 @@ export function WorkExperienceSection() {
       setValidatingDocId(null);
     }
   };
-  const headerAddButton =
-    experiences.length > 0 && headerActionsEl
-      ? createPortal(
-          <button type="button" onClick={openAddModal} className={profilePrimaryButtonSmClass}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Work Experience
-          </button>,
-          headerActionsEl,
-        )
-      : null;
+  const meta = profileSectionMeta('experience');
 
   return (
-    <div className="flex flex-col gap-6">
-      {headerAddButton}
+    <section
+      className="flex flex-col gap-4 font-[family-name:var(--tpo-font-sans)]"
+      aria-label="Work experience"
+    >
+      <ProfileSectionHeader
+        title={meta.title}
+        description={meta.description}
+        action={
+          !loading && experiences.length > 0 ? (
+            <button
+              type="button"
+              onClick={openAddModal}
+              className={`${profilePrimaryButtonSmClass} justify-center px-4 py-2.5 text-[13px] font-semibold tracking-[-0.01em]`}
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              Add experience
+            </button>
+          ) : null
+        }
+      />
 
       {verificationSuccess && (
         <div className="flex items-center justify-between rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-hover)] p-3 text-sm text-[var(--ds-text)]">
@@ -577,12 +584,14 @@ export function WorkExperienceSection() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error ? (
+        <ProfileSectionError>
+          <span className="inline-flex items-center gap-2">
+            <AlertCircle className="size-4 shrink-0" aria-hidden />
+            {error}
+          </span>
+        </ProfileSectionError>
+      ) : null}
 
       {proofValidationError ? (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -610,11 +619,12 @@ export function WorkExperienceSection() {
       ) : experiences.length === 0 ? (
         <ExperienceEmptyState onAdd={openAddModal} />
       ) : (
-        <div className="relative flex w-full max-w-none flex-col gap-8 before:absolute before:bottom-4 before:left-[7.25rem] before:top-4 before:hidden before:w-px before:bg-[var(--ds-border)] lg:before:block">
-          {experiences.map((exp) => (
+        <div className="flex w-full max-w-none flex-col gap-4">
+          {experiences.map((exp, index) => (
             <WorkExperienceExperienceCard
               key={exp.id}
               exp={exp}
+              accentIndex={index}
               validationResults={validationResults}
               validatingDocId={validatingDocId}
               sendingVerificationId={sendingVerificationId}
@@ -637,7 +647,7 @@ export function WorkExperienceSection() {
           <button
             type="button"
             onClick={openAddModal}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--ds-border)] bg-transparent py-8 text-sm font-medium text-[var(--ds-text-muted)] transition-colors hover:border-[var(--ds-green)] hover:text-[var(--ds-green)]"
+            className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface-muted)]/30 py-8 text-sm font-medium text-[var(--ds-text-muted)] transition-colors hover:border-[var(--ds-green)]/40 hover:text-[var(--ds-green)]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add another work experience
@@ -648,8 +658,7 @@ export function WorkExperienceSection() {
       {isModalOpen ? (
         <ExperienceBuilderModal
           editingId={editingId}
-          modalStep={modalStep}
-          setModalStep={setModalStep}
+          focusVerification={focusVerificationOnOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleSave}
           submitting={submitting}
@@ -784,6 +793,6 @@ export function WorkExperienceSection() {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

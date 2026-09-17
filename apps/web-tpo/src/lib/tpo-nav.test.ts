@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CANDIDATES_NAV,
   PLACEMENT_NAV,
   PLACEMENT_NAV_GROUPS,
   TPO_NAV,
+  isCandidatesRoute,
+  isCandidatesTopNavActive,
   isNavItemActive,
   isNavLinkActive,
   isPlacementRoute,
@@ -17,7 +20,6 @@ describe('TPO_NAV', () => {
     expect(TPO_NAV.map((item) => item.name)).toEqual([
       'Dashboard',
       'Candidates',
-      'Onboarding',
       'Placement',
       'Reports',
       'Settings',
@@ -27,23 +29,31 @@ describe('TPO_NAV', () => {
 
   it('lists placement sidebar routes including company repository', () => {
     expect(PLACEMENT_NAV.map((link) => [link.name, link.href])).toEqual([
+      ['Company Repository', '/companies'],
+      ['Company Dashboard', '/company'],
       ['Create Job Posting', '/openings/create'],
       ['Listed Openings', '/openings'],
       ['Suggestions', '/suggestions'],
       ['Opportunities', '/opportunities'],
       ['ATS', '/ats'],
       ['Review', '/review'],
-      ['Company Repository', '/companies'],
-      ['Company Dashboard', '/company'],
     ]);
   });
 
   it('groups sidebar items under four sections', () => {
     expect(PLACEMENT_NAV_GROUPS.map((group) => group.groupLabel)).toEqual([
+      'Company',
       'Job Management',
       'Candidate Discovery',
       'Pipeline',
-      'Company',
+    ]);
+  });
+
+  it('lists candidates sidebar routes for repository and onboarding', () => {
+    expect(CANDIDATES_NAV.map((link) => [link.name, link.href])).toEqual([
+      ['Candidates Repository', '/students'],
+      ['Candidate Onboarding', '/provisioning'],
+      ['Batches', '/batches'],
     ]);
   });
 
@@ -84,12 +94,34 @@ describe('isPlacementTopNavActive', () => {
   });
 });
 
+describe('isCandidatesTopNavActive', () => {
+  it('is active on repository and onboarding routes', () => {
+    expect(isCandidatesTopNavActive('/students')).toBe(true);
+    expect(isCandidatesTopNavActive('/provisioning')).toBe(true);
+    expect(isCandidatesTopNavActive('/reports')).toBe(false);
+  });
+});
+
 describe('isNavItemActive', () => {
   it('keeps leaf items matching their own route', () => {
     if (!candidatesItem || candidatesItem.kind !== 'link')
       throw new Error('Candidates nav missing');
     expect(isNavItemActive('/students', candidatesItem)).toBe(true);
     expect(isNavItemActive('/ats', candidatesItem)).toBe(false);
+  });
+});
+
+describe('isCandidatesRoute', () => {
+  it.each(['/students', '/provisioning', '/batches', '/batches/batch-1'])(
+    'is true for %s',
+    (href) => {
+      expect(isCandidatesRoute(href)).toBe(true);
+    },
+  );
+
+  it('is false for placement and dashboard routes', () => {
+    expect(isCandidatesRoute('/openings')).toBe(false);
+    expect(isCandidatesRoute('/')).toBe(false);
   });
 });
 

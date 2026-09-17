@@ -110,8 +110,16 @@ function setup(options: { seededCodes?: string[]; rows?: unknown[]; row?: unknow
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
-  const service = new PlacementService(prisma as never, outbox as never, jdParseQueue as never);
-  return { prisma, service, controller: new PlacementController(service) };
+  const employers = {
+    requireEmployer: vi.fn().mockRejectedValue(new Error('employer not mocked')),
+  };
+  const service = new PlacementService(
+    prisma as never,
+    outbox as never,
+    jdParseQueue as never,
+    employers as never,
+  );
+  return { prisma, service, controller: new PlacementController(service), employers };
 }
 
 describe('CO-T01 opening authorization', () => {

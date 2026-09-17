@@ -6,6 +6,7 @@ import {
   Landmark,
   Columns3,
   LayoutDashboard,
+  LayoutGrid,
   Settings,
   ShieldCheck,
   UserPlus,
@@ -36,6 +37,23 @@ export type TpoNavItem =
  * share one source of truth.
  */
 export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
+  {
+    groupLabel: 'Company',
+    items: [
+      {
+        name: 'Company Repository',
+        href: '/companies',
+        description: 'Employer profiles, history, and openings',
+        icon: Landmark,
+      },
+      {
+        name: 'Company Dashboard',
+        href: '/company',
+        description: 'Placement pipeline overview',
+        icon: Building2,
+      },
+    ],
+  },
   {
     groupLabel: 'Job Management',
     items: [
@@ -87,31 +105,42 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
       },
     ],
   },
+];
+
+export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
+
+/** Candidates workspace — sidebar + mobile pills (URLs unchanged). */
+export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
   {
-    groupLabel: 'Company',
+    groupLabel: 'Workspace',
     items: [
       {
-        name: 'Company Repository',
-        href: '/companies',
-        description: 'Recruiters and partners on campus',
-        icon: Landmark,
+        name: 'Candidates Repository',
+        href: '/students',
+        description: 'Search and review onboarded candidates',
+        icon: Users,
       },
       {
-        name: 'Company Dashboard',
-        href: '/company',
-        description: 'View placement pipeline overview',
-        icon: Building2,
+        name: 'Candidate Onboarding',
+        href: '/provisioning',
+        description: 'Invite candidates and manage batch roster',
+        icon: UserPlus,
+      },
+      {
+        name: 'Batches',
+        href: '/batches',
+        description: 'Group candidates into cohorts for filtering and access',
+        icon: LayoutGrid,
       },
     ],
   },
 ];
 
-export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
+export const CANDIDATES_NAV: TpoNavLink[] = CANDIDATES_NAV_GROUPS.flatMap((group) => group.items);
 
 export const TPO_NAV: TpoNavItem[] = [
   { kind: 'link', name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { kind: 'link', name: 'Candidates', href: '/students', icon: Users },
-  { kind: 'link', name: 'Onboarding', href: '/provisioning', icon: UserPlus },
   { kind: 'link', name: 'Placement', href: '/companies', icon: Briefcase },
   { kind: 'link', name: 'Reports', href: '/reports', icon: BarChart3 },
   { kind: 'link', name: 'Settings', href: '/settings', icon: Settings },
@@ -135,6 +164,11 @@ export function isPlacementTopNavActive(pathname: string): boolean {
   return pathname === '/companies' || isPlacementRoute(pathname);
 }
 
+/** Topbar Candidates link — active on repository and onboarding routes. */
+export function isCandidatesTopNavActive(pathname: string): boolean {
+  return isCandidatesRoute(pathname);
+}
+
 export function isNavItemActive(pathname: string, item: TpoNavItem): boolean {
   return item.kind === 'group'
     ? item.children.some((child) => isNavLinkActive(pathname, child.href))
@@ -146,4 +180,9 @@ export function isPlacementRoute(pathname: string): boolean {
   return (
     pathname === '/companies' || PLACEMENT_NAV.some((link) => isNavLinkActive(pathname, link.href))
   );
+}
+
+/** True on candidates workspace routes (repository or onboarding). */
+export function isCandidatesRoute(pathname: string): boolean {
+  return CANDIDATES_NAV.some((link) => isNavLinkActive(pathname, link.href));
 }

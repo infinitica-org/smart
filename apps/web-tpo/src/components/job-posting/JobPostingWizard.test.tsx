@@ -15,6 +15,7 @@ vi.mock('@smart/contracts', async (importOriginal) => {
 
 vi.mock('../../lib/api', () => ({
   openingsApi: { create: vi.fn(), uploadDocument: vi.fn(), uploadLogo: vi.fn() },
+  employersApi: { list: vi.fn().mockResolvedValue({ employers: [] }) },
 }));
 
 const opening = {
@@ -49,8 +50,8 @@ function goToStep(label: string) {
 }
 
 async function fillValidForm() {
-  await screen.findByLabelText('Company name');
-  fireEvent.change(screen.getByLabelText('Company name'), {
+  await screen.findByLabelText('Company');
+  fireEvent.change(screen.getByLabelText('Company'), {
     target: { value: 'Infinitica Labs' },
   });
   fireEvent.change(screen.getByLabelText('Role title'), {
@@ -90,6 +91,8 @@ describe('JobPostingWizard', () => {
   it('uses dropdown skill picker with scrollable list area', async () => {
     render(<JobPostingWizard onCreated={async () => {}} />);
     goToStep('Requirements');
+    expect(screen.getByLabelText('Minimum 10th / SSC (%)')).toBeDefined();
+    expect(screen.getByLabelText('Active backlogs allowed')).toBeDefined();
     expect(screen.getByLabelText('Add required skill')).toBeDefined();
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(document.querySelector('.max-h-96.overflow-y-auto')).toBeTruthy();

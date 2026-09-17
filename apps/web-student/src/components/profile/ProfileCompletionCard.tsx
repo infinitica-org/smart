@@ -22,7 +22,7 @@ function firstIncompleteAreaHref(
   areaStatus: Partial<Record<ProfileAreaId, boolean>> | undefined,
 ): string {
   const incomplete = PROFILE_AREA_IDS.find((id) => !areaStatus?.[id]);
-  return incomplete ? PROFILE_AREA_HREFS[incomplete] : '/profile?section=about';
+  return incomplete ? PROFILE_AREA_HREFS[incomplete] : '/profile?section=experience';
 }
 
 export function ProfileCompletionCard({

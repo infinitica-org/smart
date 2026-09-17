@@ -8,7 +8,7 @@ import { LayoutDashboard, Briefcase, FileText, Video, Search, Lock } from 'lucid
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Applications', href: '/applications', icon: Briefcase },
-  { name: 'Skills', href: '/assessments', icon: FileText },
+  { name: 'Assessment', href: '/assessment', icon: FileText },
   { name: 'Interviews', href: '/interviews', icon: Video },
 ];
 

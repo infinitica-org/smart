@@ -58,11 +58,13 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByText('Pilot TPO')).toBeDefined();
     expect(screen.getByText('Total Onboarded')).toBeDefined();
-    expect(screen.getByText('Domain Readiness')).toBeDefined();
+    expect(screen.getAllByText('Verified Skills').length).toBeGreaterThan(0);
     expect(screen.getByText('Recent Candidates')).toBeDefined();
     expect(screen.getByText('No upcoming activities')).toBeDefined();
 
-    expect(screen.getByText('100%')).toBeDefined();
+    expect(screen.queryByText('Domain Readiness')).toBeNull();
+    expect(screen.queryByText('Invites Accepted')).toBeNull();
+    expect(screen.queryByText('Onboarding Completion')).toBeNull();
     expect(screen.getByText('Ada Lovelace')).toBeDefined();
   });
 
@@ -83,6 +85,14 @@ describe('DashboardPage', () => {
     apiMock.listTpoStudents.mockResolvedValueOnce([]);
     render(<DashboardPage />);
 
-    expect(await screen.findByText('No candidates onboarded yet')).toBeDefined();
+    expect((await screen.findAllByText('No candidates onboarded yet')).length).toBeGreaterThan(0);
+  });
+
+  it('does not use neon dashboard accent #00fad0 or global tpo-accent tokens', async () => {
+    const { container } = render(<DashboardPage />);
+    await screen.findByText('Pilot TPO');
+    const html = container.innerHTML.toLowerCase();
+    expect(html).not.toContain('00fad0');
+    expect(html).not.toContain('--tpo-accent');
   });
 });

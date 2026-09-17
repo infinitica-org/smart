@@ -144,19 +144,28 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
     updateField('socialVerification', { ...formData.socialVerification, github: null });
   };
 
+  const inputClass =
+    'w-full rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] py-3 text-[var(--ds-text)] transition-all placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--ds-green)]/40 focus:outline-none focus:ring-0 disabled:opacity-60';
+  const prefixClass =
+    'select-none text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text-muted)]';
+  const labelClass =
+    'flex items-center gap-2 text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text-secondary)]';
+  const verifiedPanelClass =
+    'mt-1 flex items-center gap-3 rounded-[14px] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)]/45 p-3 ring-1 ring-[#101828]/[0.04]';
+  const secondaryBtnClass =
+    'mt-1 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-[10px] border border-[var(--ds-border)] bg-white/70 px-4 text-[13px] font-semibold text-[var(--ds-text)] transition hover:bg-[var(--ds-surface-muted)]/60 disabled:cursor-not-allowed disabled:opacity-40';
+
   return (
-    <div key="social" className="flex flex-col gap-6">
+    <div key="social" className="flex flex-col gap-8">
       {/* LinkedIn */}
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <LinkedinIcon className="w-4 h-4 text-foreground" />
-          LinkedIn Profile <span className="text-foreground">*</span>
+      <div className="flex flex-col gap-2.5">
+        <label className={labelClass}>
+          <LinkedinIcon className="size-4 text-[var(--ds-text)]" />
+          LinkedIn Profile <span className="text-red-600">*</span>
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="select-none text-sm font-medium text-muted-foreground">
-              linkedin.com/in/
-            </span>
+            <span className={prefixClass}>linkedin.com/in/</span>
           </div>
           <input
             type="text"
@@ -167,7 +176,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               updateField('linkedinUrl', uname ? `https://linkedin.com/in/${uname}` : '');
             }}
             placeholder="username"
-            className="w-full rounded-xl border border-border bg-muted py-3 pl-[128px] pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-foreground"
+            className={`${inputClass} pl-[128px] pr-4`}
           />
         </div>
 
@@ -179,29 +188,29 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25 }}
-              className="mt-1 flex items-center gap-3 rounded-xl border border-foreground/30 bg-muted/[0.06] p-3"
+              className={verifiedPanelClass}
             >
               {linkedin.pictureUrl ? (
                 <img
                   src={linkedin.pictureUrl}
                   alt=""
-                  className="h-9 w-9 rounded-full border border-border object-cover"
+                  className="size-9 rounded-full border border-[var(--ds-border-subtle)] object-cover"
                 />
               ) : (
-                <div className="h-9 w-9 rounded-full bg-muted" />
+                <div className="size-9 rounded-full bg-[var(--ds-surface-muted)]" />
               )}
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--ds-text)]">
                   {linkedin.name ?? 'LinkedIn verified'}
                 </p>
-                <p className="text-xs text-foreground flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Verified via LinkedIn sign-in
+                <p className="flex items-center gap-1 text-xs text-[var(--ds-green)]">
+                  <CheckCircle2 className="size-3" /> Verified via LinkedIn sign-in
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => void handleVerifyLinkedin()}
-                className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                className="shrink-0 text-xs font-medium text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]"
               >
                 Re-verify
               </button>
@@ -215,12 +224,12 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               type="button"
               disabled={!formData.linkedinUrl.trim() || linkedinLoading}
               onClick={() => void handleVerifyLinkedin()}
-              className="mt-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-foreground/40 bg-foreground/10 text-sm font-medium text-foreground hover:bg-foreground/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors w-fit"
+              className={`${secondaryBtnClass} border-[#0a66c2]/25 text-[#0a66c2] hover:bg-[#0a66c2]/5`}
             >
               {linkedinLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <LinkedinIcon className="w-4 h-4" />
+                <LinkedinIcon className="size-4" />
               )}
               Verify with LinkedIn
             </motion.button>
@@ -234,16 +243,14 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
       </div>
 
       {/* GitHub */}
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <GithubIcon className="w-4 h-4" />
-          GitHub Profile <span className="font-normal text-muted-foreground">(Optional)</span>
+      <div className="flex flex-col gap-2.5">
+        <label className={labelClass}>
+          <GithubIcon className="size-4" />
+          GitHub Profile <span className="font-normal text-[var(--ds-text-muted)]">(Optional)</span>
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="select-none text-sm font-medium text-muted-foreground">
-              github.com/
-            </span>
+            <span className={prefixClass}>github.com/</span>
           </div>
           <input
             type="text"
@@ -258,7 +265,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
             autoComplete="username"
             placeholder="username"
             disabled={Boolean(github?.verified)}
-            className="w-full rounded-xl border border-border bg-muted py-3 pl-[108px] pr-4 text-foreground transition-all placeholder:text-muted-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-60"
+            className={`${inputClass} pl-[108px] pr-4`}
           />
         </div>
 
@@ -267,12 +274,12 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
             type="button"
             disabled={!formData.githubUrl.trim() || githubLoading}
             onClick={() => void handlePreviewGithub()}
-            className="mt-1 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            className={secondaryBtnClass}
           >
             {githubLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <GithubIcon className="w-4 h-4" />
+              <GithubIcon className="size-4" />
             )}
             Fetch profile
           </button>
@@ -286,7 +293,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25 }}
-              className="mt-1 flex items-start gap-3 rounded-xl border border-border bg-muted p-3"
+              className={`${verifiedPanelClass} items-start`}
             >
               <img
                 src={githubPreview.avatarUrl}
@@ -310,14 +317,14 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
                   <button
                     type="button"
                     onClick={confirmGithub}
-                    className="h-8 px-3 rounded-lg bg-foreground hover:bg-muted text-white text-xs font-semibold"
+                    className="h-8 rounded-[9px] bg-[var(--ds-green)] px-3 text-xs font-semibold text-white hover:bg-[var(--ds-green-hover)]"
                   >
                     Yes, that&apos;s me
                   </button>
                   <button
                     type="button"
                     onClick={rejectGithub}
-                    className="h-8 rounded-lg border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
+                    className="h-8 rounded-[9px] border border-[var(--ds-border)] px-3 text-xs text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]"
                   >
                     Not me
                   </button>
@@ -333,25 +340,25 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25 }}
-              className="mt-1 flex items-center gap-3 rounded-xl border border-foreground/30 bg-muted/[0.06] p-3"
+              className={verifiedPanelClass}
             >
               <img
                 src={github.avatarUrl}
                 alt=""
-                className="w-9 h-9 rounded-full object-cover border border-zinc-800"
+                className="size-9 rounded-full border border-[var(--ds-border-subtle)] object-cover"
               />
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--ds-text)]">
                   {github.name ?? github.login}
                 </p>
-                <p className="text-xs text-foreground flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Confirmed — pick your best repo below
+                <p className="flex items-center gap-1 text-xs text-[var(--ds-green)]">
+                  <CheckCircle2 className="size-3" /> Confirmed — pick your best repo below
                 </p>
               </div>
               <button
                 type="button"
                 onClick={disconnectGithub}
-                className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                className="shrink-0 text-xs font-medium text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]"
               >
                 Disconnect
               </button>
@@ -363,7 +370,7 @@ export default function SocialVerification({ formData, updateField }: SocialVeri
             <AlertCircle className="w-3.5 h-3.5" /> {githubError}
           </p>
         ) : null}
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--ds-text-subtle)]">
           We only read public repository metadata and language stats — nothing private, no write
           access.
         </p>

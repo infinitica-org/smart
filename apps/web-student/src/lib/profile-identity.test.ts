@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { primaryInstitutionName } from './profile-identity';
+import {
+  primaryBatchLabel,
+  primaryDepartmentName,
+  primaryInstitutionName,
+} from './profile-identity';
 
 describe('primaryInstitutionName', () => {
   it('prefers the current education entry', () => {
@@ -25,5 +29,42 @@ describe('primaryInstitutionName', () => {
 
   it('returns null when no institution data exists', () => {
     expect(primaryInstitutionName([], undefined)).toBeNull();
+  });
+});
+
+describe('primaryDepartmentName', () => {
+  it('uses field of study from the current education entry', () => {
+    expect(
+      primaryDepartmentName([
+        { fieldOfStudy: 'Mechanical Engineering', current: false } as never,
+        { fieldOfStudy: 'Computer Science', current: true } as never,
+      ]),
+    ).toBe('Computer Science');
+  });
+});
+
+describe('primaryBatchLabel', () => {
+  it('formats start and end years from the primary education entry', () => {
+    expect(
+      primaryBatchLabel([
+        {
+          startDate: '2022-01-01',
+          endDate: '2026-01-01',
+          current: true,
+        } as never,
+      ]),
+    ).toBe('Batch 2022 – 2026');
+  });
+
+  it('uses Present when the student is still enrolled without an end date', () => {
+    expect(
+      primaryBatchLabel([{ startDate: '2022-09-01', endDate: null, current: true } as never]),
+    ).toBe('Batch 2022 – Present');
+  });
+
+  it('returns null when education has no batch dates', () => {
+    expect(
+      primaryBatchLabel([{ institutionName: 'SMART Pilot Institute', current: true } as never]),
+    ).toBeNull();
   });
 });

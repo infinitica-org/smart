@@ -5,27 +5,24 @@ import { usePathname } from 'next/navigation';
 import { PLACEMENT_NAV_GROUPS, isNavLinkActive } from '../../lib/tpo-nav';
 import { sectionLabelClass } from '../../lib/tpo-ui';
 
-/**
- * Sticky rather than fixed: the TPO shell centres `main` at max-w-[1440px], so a
- * viewport-anchored sidebar would detach from the content on wide screens.
- */
+/** Full-height placement nav column (surface fills viewport below the topbar). */
 export function PlacementSidebar() {
   const pathname = usePathname();
 
   return (
     <nav
       aria-label="Placement sections"
-      className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-[232px] shrink-0 self-start border-r border-[var(--ds-border)] bg-[var(--ds-surface)] lg:block"
+      className="hidden w-[232px] shrink-0 flex-col border-r border-[var(--ds-border)] bg-[var(--ds-surface)] lg:flex lg:min-h-[calc(100dvh-4rem)] lg:flex-col"
     >
-      <div className="flex h-full flex-col overflow-y-auto px-3 py-5 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent">
-        <div className="mb-6 px-3">
+      <div className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col px-3 py-4 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="mb-4 shrink-0 px-3">
           <p className="text-[13px] font-semibold tracking-tight text-[var(--ds-text)]">
             Placement
           </p>
           <p className="text-[11px] text-[var(--ds-text-muted)]">Placement Operations</p>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain">
           {PLACEMENT_NAV_GROUPS.map((group) => (
             <div key={group.groupLabel}>
               <p className={`mb-2 px-3 ${sectionLabelClass}`}>{group.groupLabel}</p>
@@ -63,7 +60,7 @@ export function PlacementSidebar() {
           ))}
         </div>
 
-        <p className="mt-auto px-3 pt-6 text-[11px] leading-snug text-[var(--ds-text-subtle)]">
+        <p className="mt-auto shrink-0 px-3 pb-1 pt-4 text-[11px] leading-snug text-[var(--ds-text-subtle)]">
           © SMART. Build. Verify. Grow.
         </p>
       </div>

@@ -3,7 +3,7 @@
 /*
  * TPO console surfaces. Neutral scale is ported from the student profile
  * workspace (apps/web-student/src/app/globals.css) so both consoles read as one
- * product; the accent is SMART teal #00FAD0.
+ * product; accent aligns with SMART brand teal (#14b8a6).
  */
 :root {
   color-scheme: light;
@@ -36,14 +36,13 @@
   --ds-nav-active-bg: #eaf8f5;
 
   /*
-   * #00FAD0 is ~1.4:1 on white, so it carries fills, rails, rings and active
-   * rails only. Type on an accent fill uses --ds-text; active nav type uses
-   * --ds-green so it stays readable.
+   * Accent fills, rails, and rings. Type on an accent fill uses --ds-text;
+   * active nav type uses --ds-green for readability on light surfaces.
    */
-  --tpo-accent: #00fad0;
-  --tpo-accent-hover: #29ffd9;
-  --tpo-accent-tint: #e8fffb;
-  --tpo-accent-border: #86f5e2;
+  --tpo-accent: #14b8a6;
+  --tpo-accent-hover: #0d9488;
+  --tpo-accent-tint: #ecfdf5;
+  --tpo-accent-border: #99f6e4;
 
   /*
    * Apple SF Pro via system stack (licensed fonts are not bundled). On macOS/iOS
@@ -120,4 +119,118 @@
   font-family: var(--tpo-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Bento workspaces (candidates, placement, reports, …) — shared light tokens.
+ * Home dashboard refinements live under `.tpo-dashboard` only.
+ */
+.tpo-bento-theme {
+  --ds-canvas: #f7f8fa;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f7f8fa;
+  --ds-text: #0f172a;
+  --ds-text-secondary: #475569;
+  --ds-text-muted: #64748b;
+  --ds-text-subtle: #94a3b8;
+
+  --ds-border: #e8ecf2;
+  --ds-border-subtle: #eef1f5;
+  --ds-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --ds-border-hover: #dfe4ec;
+  --ds-card-shadow-hover: 0 2px 10px rgba(15, 23, 42, 0.05);
+
+  --tpo-dash-primary: #0f172a;
+  --tpo-dash-primary-hover: #1e293b;
+
+  --tpo-dash-accent-blue: #3b82f6;
+  --tpo-dash-accent-blue-soft: #eff6ff;
+  --tpo-dash-accent-mint: #5bc7a5;
+  --tpo-dash-accent-mint-soft: #ecfdf7;
+  --tpo-dash-accent-lavender: #8b7cf6;
+  --tpo-dash-accent-lavender-soft: #f5f3ff;
+  --tpo-dash-accent-amber: #e9a23b;
+  --tpo-dash-accent-amber-soft: #fff8ed;
+  --tpo-dash-accent-rose: #e58ba6;
+  --tpo-dash-accent-rose-soft: #fdf2f6;
+}
+
+/*
+ * TPO home dashboard — premium SaaS palette (color-only). No neon cyan.
+ */
+.tpo-dashboard {
+  --ds-canvas: #f6f8fb;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f8fafc;
+  --ds-text: #0f172a;
+  --ds-text-secondary: #64748b;
+  --ds-text-muted: #64748b;
+  --ds-text-subtle: #94a3b8;
+
+  --ds-border: #e7ebf2;
+  --ds-border-subtle: #e8edf3;
+  --ds-card-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  --ds-border-hover: #e5eaf1;
+  --ds-card-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.04);
+
+  --tpo-dash-primary: #0f172a;
+  --tpo-dash-primary-hover: #1e293b;
+
+  --tpo-dash-accent-blue: #3b82f6;
+  --tpo-dash-accent-blue-soft: #eaf3ff;
+  --tpo-dash-accent-mint: #34bfa3;
+  --tpo-dash-accent-mint-soft: #e8f8f3;
+  --tpo-dash-accent-lavender: #8b7cf6;
+  --tpo-dash-accent-lavender-soft: #f0ecff;
+  --tpo-dash-accent-amber: #f2a93b;
+  --tpo-dash-accent-amber-soft: #fff2dd;
+
+  --tpo-dash-kpi-blue-surface: #f8fbff;
+  --tpo-dash-kpi-blue-icon: #eaf3ff;
+  --tpo-dash-kpi-mint-surface: #f7fcfa;
+  --tpo-dash-kpi-mint-icon: #e8f8f3;
+  --tpo-dash-kpi-lavender-surface: #faf9ff;
+  --tpo-dash-kpi-lavender-icon: #f0ecff;
+  --tpo-dash-kpi-amber-surface: #fffbf5;
+  --tpo-dash-kpi-amber-icon: #fff2dd;
+
+  --tpo-dash-hero-from: #ffffff;
+  --tpo-dash-hero-to: #f5f8ff;
+  --tpo-dash-hero-glow-blue: rgb(59 130 246 / 0.08);
+  --tpo-dash-hero-glow-lavender: rgb(139 124 246 / 0.1);
+
+  --tpo-dash-chart-bar: #bfd4f8;
+  --tpo-dash-chart-bar-muted: #d4e3f7;
+  --tpo-dash-chart-track: #e9eef5;
+
+  --tpo-dash-table-head: #f8fafc;
+  --tpo-dash-table-row-hover: rgb(248 250 252 / 0.85);
+  --tpo-dash-table-border: #e8edf3;
+  --tpo-dash-avatar-bg: #eef2f6;
+
+  --tpo-dash-status-pending-bg: #fff8e8;
+  --tpo-dash-status-pending-text: #b7791f;
+  --tpo-dash-status-pending-border: #f4d9a3;
+
+  --tpo-dash-status-eval-bg: #eef5ff;
+  --tpo-dash-status-eval-text: #3568b8;
+  --tpo-dash-status-eval-border: #d6e5fa;
+
+  --tpo-dash-status-success-bg: #ecf8f4;
+  --tpo-dash-status-success-text: #258b72;
+  --tpo-dash-status-success-border: #cbede3;
+
+  --tpo-dash-empty-bg: #f8fafc;
+  --tpo-dash-empty-border: #e2e8f0;
+  --tpo-dash-empty-icon-bg: #f1f5f9;
+  --tpo-dash-empty-icon: #64748b;
+}
+
+.tpo-dashboard .dashboard-hero-card {
+  background: linear-gradient(
+    105deg,
+    var(--tpo-dash-hero-from) 0%,
+    var(--tpo-dash-hero-from) 42%,
+    var(--tpo-dash-hero-to) 100%
+  );
 }

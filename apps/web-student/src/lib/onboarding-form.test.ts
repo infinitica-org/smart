@@ -5,6 +5,7 @@ import {
   applyServerDraft,
   buildCompleteOnboardingRequest,
   buildOnboardingDraftPayload,
+  buildProfessionalLinksSavePayload,
   emptyOnboardingForm,
 } from './onboarding-form';
 
@@ -64,6 +65,15 @@ describe('onboarding-form', () => {
       preferredLocations: ['Bengaluru'],
       preferredWorkModes: ['FULL_TIME', 'HYBRID'],
     });
+  });
+
+  it('normalizes professional links payload for profile save', () => {
+    const form = emptyOnboardingForm();
+    form.githubUrl = 'github.com/ada';
+    form.linkedinUrl = 'linkedin.com/in/ada';
+    const payload = buildProfessionalLinksSavePayload(form);
+    expect(payload.githubUrl).toBe('https://github.com/ada');
+    expect(payload.linkedinUrl).toBe('https://linkedin.com/in/ada');
   });
 
   it('leaves githubUrl optional and normalizes it like linkedinUrl when present', () => {
