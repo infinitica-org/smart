@@ -53,9 +53,9 @@ const STREAM_VISUALS: Record<
   },
   'Software Development': {
     Icon: Code2,
-    iconClass: 'text-[#00967c]',
-    chipClass: 'bg-[#00fad0]/10',
-    ringClass: 'ring-[#00fad0]/20',
+    iconClass: 'text-foreground',
+    chipClass: 'bg-foreground/10',
+    ringClass: 'ring-foreground/20',
   },
   'Data Science': {
     Icon: Database,
@@ -110,7 +110,7 @@ function CatalogSkillRow({
       aria-pressed={selected}
       className={cn(
         'flex w-full items-center gap-3 px-5 py-4 text-left transition-colors',
-        selected ? 'bg-[#00fad0]/10' : 'hover:bg-muted',
+        selected ? 'bg-foreground/10' : 'hover:bg-muted',
       )}
     >
       <div
@@ -223,7 +223,7 @@ function AddSkillDialog({
               placeholder="Search skills..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="w-full rounded-full border border-border bg-background py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0]/50 focus:outline-none"
+              className="w-full rounded-full border border-border bg-background py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
             />
           </div>
         </div>
@@ -263,7 +263,7 @@ function AddSkillDialog({
                               {definition.code}
                             </code>
                           </div>
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-2.5 py-1 text-xs font-semibold text-[#00967c]">
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-foreground/30 bg-foreground/10 px-2.5 py-1 text-xs font-semibold text-foreground">
                             <Plus className="h-3 w-3" />
                             {addingCode === definition.code ? 'Adding…' : 'Add'}
                           </span>
@@ -411,7 +411,7 @@ function SkillDetailPanel({
           <p className="text-amber-800">Your profile is {profilePercent}% complete.</p>
           <Link
             href={profileActionHref}
-            className="inline-flex font-semibold text-[#00967c] underline-offset-2 hover:text-[#00fad0] hover:underline"
+            className="inline-flex font-semibold text-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             {profileActionLabel}
           </Link>
@@ -428,7 +428,7 @@ function SkillDetailPanel({
         type="button"
         disabled={!canTakeAssessment || isBusy || isPending || Boolean(blockMessage)}
         onClick={onTakeAssessment}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#00fad0] px-4 py-3 text-sm font-bold text-[#04120f] transition-all hover:bg-[#33ffdd] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isBusy ? 'Loading…' : skill.verified ? 'Practice Assessment' : 'Take Assessment'}
         <ArrowRight className="h-3.5 w-3.5" />
@@ -645,7 +645,7 @@ export default function SkillRepositoryPage() {
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-16 pt-2">
       <section className="surface-panel relative overflow-hidden rounded-3xl p-6 sm:p-8">
         <div
-          className="brand-gradient pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full opacity-[0.12] blur-3xl"
+          className="hidden pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full opacity-[0.12] blur-3xl"
           aria-hidden="true"
         />
 
@@ -696,13 +696,13 @@ export default function SkillRepositoryPage() {
                   aria-label="Profile completion"
                 >
                   <div
-                    className="h-full rounded-full bg-[#00fad0] transition-[width] duration-500"
+                    className="h-full rounded-full bg-foreground transition-[width] duration-500"
                     style={{ width: `${String(profilePercent)}%` }}
                   />
                 </div>
                 <Link
                   href={profileActionHref}
-                  className="mt-2 inline-block text-sm font-medium text-[#00967c] hover:text-[#00fad0] hover:underline"
+                  className="mt-2 inline-block text-sm font-medium text-foreground hover:text-foreground hover:underline"
                 >
                   {profileComplete ? 'View profile' : profileActionLabel}
                 </Link>
@@ -721,8 +721,8 @@ export default function SkillRepositoryPage() {
                 className={cn(
                   'whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-all duration-200',
                   activeFilter === opt
-                    ? 'border border-[#00fad0]/40 bg-[#00fad0]/15 font-bold text-[#00967c] shadow-sm'
-                    : 'border border-border bg-muted text-muted-foreground hover:border-[#00fad0]/30 hover:bg-[#00fad0]/5 hover:text-foreground',
+                    ? 'border border-foreground/40 bg-foreground/15 font-bold text-foreground shadow-sm'
+                    : 'border border-border bg-muted text-muted-foreground hover:border-foreground/30 hover:bg-foreground/5 hover:text-foreground',
                 )}
               >
                 {opt}
@@ -738,7 +738,7 @@ export default function SkillRepositoryPage() {
                 placeholder="Search skills..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-full border border-border bg-background py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00fad0]/50 focus:outline-none"
+                className="w-full rounded-full border border-border bg-background py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
               />
             </div>
 
@@ -746,7 +746,7 @@ export default function SkillRepositoryPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'recent' | 'name' | 'status')}
-                className="cursor-pointer appearance-none rounded-full border border-border bg-background py-2 pl-3.5 pr-8 text-sm font-medium text-foreground focus:border-[#00fad0]/50 focus:outline-none"
+                className="cursor-pointer appearance-none rounded-full border border-border bg-background py-2 pl-3.5 pr-8 text-sm font-medium text-foreground focus:border-foreground/50 focus:outline-none"
               >
                 <option value="recent">Sort by: Recent</option>
                 <option value="name">Sort by: Name</option>
@@ -798,7 +798,7 @@ export default function SkillRepositoryPage() {
           <button
             type="button"
             onClick={() => setAddSkillOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#00fad0] px-4 py-2.5 text-sm font-bold text-[#04120f] transition-all hover:bg-[#33ffdd]"
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-sm font-bold text-background transition-all hover:bg-foreground/90"
           >
             <Plus className="h-4 w-4" />
             Add skill
@@ -826,7 +826,7 @@ export default function SkillRepositoryPage() {
             <button
               type="button"
               onClick={() => setAddSkillOpen(true)}
-              className="surface-panel flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#00fad0]/40 bg-[#00fad0]/5 px-5 py-4 text-sm font-bold text-[#00967c] transition-colors hover:bg-[#00fad0]/10"
+              className="surface-panel flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/40 bg-foreground/5 px-5 py-4 text-sm font-bold text-foreground transition-colors hover:bg-foreground/10"
             >
               <Plus className="h-4 w-4" />
               Add skill

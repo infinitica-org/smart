@@ -35,14 +35,14 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
                 isActive
-                  ? 'bg-[#00fad0]/10 text-[#00fad0] shadow-sm'
+                  ? 'bg-foreground/10 text-foreground shadow-sm'
                   : 'text-gray-400 hover:bg-white/5 hover:text-white',
               )}
             >
               <item.icon
                 className={cn(
                   'w-4 h-4',
-                  isActive ? 'text-[#00fad0]' : 'text-gray-500 group-hover:text-gray-300',
+                  isActive ? 'text-foreground' : 'text-gray-500 group-hover:text-gray-300',
                 )}
               />
               {item.name}
@@ -63,7 +63,7 @@ export function Sidebar() {
 
           {/* Tooltip */}
           <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-xs text-[#00fad0]">Coming Soon (V2)</span>
+            <span className="text-xs text-foreground">Coming Soon (V2)</span>
           </div>
         </div>
       </nav>
@@ -71,7 +71,7 @@ export function Sidebar() {
       {/* Footer Area - Profile Completion */}
       <div className="p-4 border-t border-white/5 shrink-0">
         <div className="bg-[#161616] rounded-xl p-4 border border-white/5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-[#00fad0]/10 blur-xl -mr-8 -mt-8" />
+          <div className="absolute top-0 right-0 w-16 h-16 bg-foreground/10 blur-xl -mr-8 -mt-8" />
           <div className="text-xs font-semibold text-white mb-1 relative z-10">
             Profile Strength
           </div>
@@ -79,7 +79,7 @@ export function Sidebar() {
             Verification in progress
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5 relative z-10">
-            <div className="bg-[#00fad0] h-1.5 rounded-full w-[65%] shadow-[0_0_10px_rgba(0,250,208,0.5)]" />
+            <div className="bg-foreground h-1.5 rounded-full w-[65%] shadow-[0_0_10px_rgba(19,19,19,0.5)]" />
           </div>
         </div>
       </div>

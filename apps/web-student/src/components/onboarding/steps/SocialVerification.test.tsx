@@ -88,4 +88,20 @@ describe('SocialVerification GitHub errors', () => {
     expect(await screen.findByText(/The Octocat/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /Yes, that's me/i })).toBeTruthy();
   });
+
+  it('shows GitHub username only and normalizes pasted profile URLs', () => {
+    const formData = {
+      ...emptyOnboardingForm(),
+      githubUrl: 'https://github.com/vishalbharath',
+    };
+    const updateField = vi.fn();
+
+    render(<SocialVerification formData={formData} updateField={updateField} />);
+
+    const githubInput = screen.getByLabelText('GitHub username');
+    expect(githubInput).toHaveProperty('value', 'vishalbharath');
+
+    fireEvent.change(githubInput, { target: { value: 'github.com/new-user' } });
+    expect(updateField).toHaveBeenCalledWith('githubUrl', 'https://github.com/new-user');
+  });
 });

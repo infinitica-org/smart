@@ -197,7 +197,7 @@ export function CertificateWizard() {
       >
         <ArrowLeft className="h-4 w-4" /> Back to My Certificates
       </Link>
-      <Link href="/dashboard" className="text-xs font-medium text-[#00967c] hover:underline">
+      <Link href="/dashboard" className="text-xs font-medium text-foreground hover:underline">
         Skip to Dashboard &rarr;
       </Link>
     </div>
@@ -311,7 +311,7 @@ export function CertificateWizard() {
             <ul className="flex flex-col gap-3">
               {eventsRes?.events.map((event) => (
                 <li key={event.eventId} className="flex items-start gap-3 text-xs">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00967c]" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
                   <div>
                     <p className="text-foreground/80 font-mono">{event.message}</p>
                     <p className="text-[11px] text-muted-foreground">

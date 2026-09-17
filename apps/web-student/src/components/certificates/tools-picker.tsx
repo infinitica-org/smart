@@ -64,7 +64,7 @@ export function ToolsPicker({ tools, onChange, disabled }: ToolsPickerProps) {
             }
           }}
           placeholder="Add a tool or technology (e.g. AWS Console)"
-          className="flex-1 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
+          className="flex-1 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
         />
         <button
           type="button"

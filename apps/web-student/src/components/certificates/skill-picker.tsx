@@ -131,7 +131,7 @@ export function SkillPicker({ selected, onChange, disabled }: SkillPickerProps) 
             }
           }}
           placeholder="Search skills (e.g. AWS, Cloud Computing)"
-          className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00967c]/50 focus:outline-none"
+          className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/50 focus:outline-none"
         />
         {query.trim() ? (
           matches.length > 0 ? (

@@ -18,7 +18,7 @@ export function SkillEvidenceContextPanel({
       className={
         compact
           ? 'rounded-lg border border-border bg-muted/50 p-3 text-sm'
-          : 'rounded-xl border border-[#00fad0]/20 bg-[#00fad0]/5 p-4 text-sm'
+          : 'rounded-xl border border-foreground/20 bg-foreground/5 p-4 text-sm'
       }
       aria-label="Application evidence context"
     >
@@ -40,7 +40,7 @@ export function SkillEvidenceContextPanel({
       ) : (
         <Link
           href="/profile"
-          className="mt-2 inline-block text-xs font-semibold text-[#00967c] hover:underline"
+          className="mt-2 inline-block text-xs font-semibold text-foreground hover:underline"
         >
           Add projects or work experience on your profile
         </Link>

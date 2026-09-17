@@ -101,7 +101,7 @@ export function CertificateStatusStepper({
                     ? 'text-danger font-semibold'
                     : isRetry
                       ? 'text-warning font-semibold'
-                      : 'text-[#00967c] font-semibold'
+                      : 'text-foreground font-semibold'
               }
             >
               {currentStage}
@@ -143,9 +143,7 @@ export function CertificateStatusStepper({
             else if (step.id === 'retry')
               bgStyle =
                 'border-warning bg-warning/20 text-warning shadow-[0_0_12px_rgba(245,158,11,0.3)]';
-            else
-              bgStyle =
-                'border-[#00967c] bg-[#00967c]/15 text-[#00967c] shadow-[0_0_12px_rgba(0,150,124,0.3)]';
+            else bgStyle = 'border-foreground bg-foreground/15 text-foreground shadow-none';
           }
 
           return (

@@ -49,10 +49,28 @@ describe('OnboardingWizard', () => {
     });
     saveOnboarding.mockResolvedValue({ saved: true });
     completeOnboarding.mockResolvedValue({ onboardingCompleted: true });
+    enrollTrack.mockResolvedValue({ primaryTrack: 'TECH_FULLSTACK' });
   });
 
   it('does not include a skills selection step in the wizard', () => {
     expect(WIZARD_STEP_META.map((step) => step.id)).not.toContain('skills');
+  });
+
+  it('starts with profile and does not include a resume upload step', () => {
+    const stepOrder = WIZARD_STEP_META.map((step) => step.id);
+    expect(stepOrder[0]).toBe('profile');
+    expect(stepOrder).not.toContain('resume');
+    expect(stepOrder).toContain('academics');
+  });
+
+  it('opens on the profile step for a new candidate', async () => {
+    render(<OnboardingWizard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Let's set up your profile")).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/upload your resume/i)).toBeNull();
   });
 
   it('hydrates an uploaded profile photo from the onboarding response', async () => {
@@ -91,12 +109,10 @@ describe('OnboardingWizard', () => {
     expect(screen.queryByText('Your skills')).toBeNull();
   });
 
-  it('routes stream enrollment to academics, then languages, instead of skills', () => {
+  it('does not include a stream selection step', () => {
     const stepOrder = WIZARD_STEP_META.map((step) => step.id);
-    const streamIndex = stepOrder.indexOf('stream');
-
-    expect(streamIndex).toBeGreaterThanOrEqual(0);
-    expect(stepOrder[streamIndex + 1]).toBe('academics');
-    expect(stepOrder[streamIndex + 2]).toBe('languages');
+    expect(stepOrder).not.toContain('stream');
+    expect(stepOrder.indexOf('academics')).toBe(stepOrder.indexOf('profile') + 1);
+    expect(stepOrder.indexOf('languages')).toBe(stepOrder.indexOf('academics') + 1);
   });
 });
