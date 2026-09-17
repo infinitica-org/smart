@@ -114,10 +114,10 @@ export function SkillVerifyReport({
           Back to Skills
         </Button>
         <Link
-          href="/assessments"
+          href="/assessment"
           className="inline-flex flex-1 items-center justify-center rounded-lg border border-border bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-background"
         >
-          View skill repository
+          View assessments
         </Link>
       </div>
     </div>

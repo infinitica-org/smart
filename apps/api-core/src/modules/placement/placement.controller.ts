@@ -18,8 +18,11 @@ import {
   API_PREFIX,
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
+  CreatePlacementEmployerRequestSchema,
   ListJobOpeningsQuerySchema,
+  ListPlacementEmployersQuerySchema,
   PatchApplicationStageRequestSchema,
+  UpdatePlacementEmployerRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
   type JobOpeningDto,
@@ -27,12 +30,16 @@ import {
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
+  type ListPlacementEmployersResponse,
+  type PlacementEmployerDetail,
+  type PlacementEmployerSummary,
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
 
 function requireInstitutionId(user: RequestUser): string {
@@ -49,7 +56,10 @@ function requireInstitutionId(user: RequestUser): string {
 @ApiTags('placement')
 @Controller(`${API_PREFIX}/placement`)
 export class PlacementController {
-  constructor(@Inject(PlacementService) private readonly service: PlacementService) {}
+  constructor(
+    @Inject(PlacementService) private readonly service: PlacementService,
+    @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
+  ) {}
 
   @Get('_meta')
   meta() {
@@ -66,6 +76,61 @@ export class PlacementController {
    * roles post a JD. The contract route still lists `B2B_PARTNER` for a later
    * company surface — that is deliberately not authorized here.
    */
+  @Get('employers')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'List institution employer profiles (Company Repository).' })
+  @ApiBearerAuth()
+  async listEmployers(
+    @CurrentUser() user: RequestUser,
+    @Query() query: unknown,
+  ): Promise<ListPlacementEmployersResponse> {
+    return this.employers.listEmployers(
+      requireInstitutionId(user),
+      ListPlacementEmployersQuerySchema.parse(query),
+    );
+  }
+
+  @Post('employers')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Create an employer profile for the Company Repository.' })
+  @ApiBearerAuth()
+  async createEmployer(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<PlacementEmployerSummary> {
+    return this.employers.createEmployer(
+      requireInstitutionId(user),
+      CreatePlacementEmployerRequestSchema.parse(body),
+    );
+  }
+
+  @Get('employers/:employerId')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Employer profile with drive history and current openings.' })
+  @ApiBearerAuth()
+  async getEmployer(
+    @CurrentUser() user: RequestUser,
+    @Param('employerId') employerId: string,
+  ): Promise<PlacementEmployerDetail> {
+    return this.employers.getEmployer(requireInstitutionId(user), employerId);
+  }
+
+  @Patch('employers/:employerId')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Update an employer profile.' })
+  @ApiBearerAuth()
+  async updateEmployer(
+    @CurrentUser() user: RequestUser,
+    @Param('employerId') employerId: string,
+    @Body() body: unknown,
+  ): Promise<PlacementEmployerSummary> {
+    return this.employers.updateEmployer(
+      requireInstitutionId(user),
+      employerId,
+      UpdatePlacementEmployerRequestSchema.parse(body),
+    );
+  }
+
   @Post('openings')
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({ summary: 'Create a structured job opening from INF-05 taxonomy skills.' })

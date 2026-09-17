@@ -12,7 +12,6 @@ import {
   Languages,
   Link2,
   Shield,
-  SlidersHorizontal,
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
@@ -33,7 +32,6 @@ const DASHBOARD_AREA_ICONS: Record<ProfileAreaId, LucideIcon> = {
   projects: FolderKanban,
   certifications: Shield,
   professionalLinks: Link2,
-  jobPreferences: SlidersHorizontal,
 };
 
 interface ProfileProgressPanelProps {

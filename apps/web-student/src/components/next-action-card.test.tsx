@@ -12,7 +12,7 @@ const addSkillsAction = {
   title: 'Add your skills',
   description: 'Tell SMART what you already know.',
   ctaLabel: 'Add skills',
-  href: '/assessments',
+  href: '/profile?section=skills',
 };
 
 const verifySkillAction = {
@@ -39,7 +39,7 @@ describe('NextActionCard', () => {
     expect(screen.getByText('Recommended Next Step')).toBeTruthy();
     expect(screen.getByText('Add your skills')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add skills' }).getAttribute('href')).toBe(
-      '/assessments',
+      '/profile?section=skills',
     );
   });
 

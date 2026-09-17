@@ -8,7 +8,12 @@ import { Avatar, AvatarFallback, SmartLogo } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
 import { signOut } from '../lib/auth';
-import { TPO_NAV, isNavItemActive, isPlacementTopNavActive } from '../lib/tpo-nav';
+import {
+  TPO_NAV,
+  isCandidatesTopNavActive,
+  isNavItemActive,
+  isPlacementTopNavActive,
+} from '../lib/tpo-nav';
 import {
   topbarFontClass,
   topbarMobileNavRowClass,
@@ -173,7 +178,7 @@ export function TpoTopbar() {
             <SmartLogo
               kind="mark"
               tone="on-light"
-              className="size-5 transition-opacity group-hover:opacity-80"
+              className="size-7 transition-opacity group-hover:opacity-80"
               title="SMART"
             />
             <span className={topbarProBadgeClass}>PRO</span>
@@ -191,7 +196,9 @@ export function TpoTopbar() {
             const isActive =
               item.name === 'Placement'
                 ? isPlacementTopNavActive(pathname)
-                : isNavItemActive(pathname, item);
+                : item.name === 'Candidates'
+                  ? isCandidatesTopNavActive(pathname)
+                  : isNavItemActive(pathname, item);
 
             return (
               <TopbarNavLink key={item.href} href={item.href} isActive={isActive}>
@@ -357,7 +364,9 @@ export function TpoTopbar() {
             const linkActive =
               item.name === 'Placement'
                 ? isPlacementTopNavActive(pathname)
-                : isNavItemActive(pathname, item);
+                : item.name === 'Candidates'
+                  ? isCandidatesTopNavActive(pathname)
+                  : isNavItemActive(pathname, item);
             return (
               <Link
                 key={item.href}

@@ -1,8 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   bentoCardClass,
+  dashboardMetricAccentStyles,
+  dashboardMetricHintClass,
+  dashboardMetricLabelClass,
   dashboardMetricValueClass,
   dashboardSkeletonClass,
+  type DashboardAccentKey,
 } from '../../lib/tpo-dashboard-ui';
 
 type DashboardMetricCardProps = {
@@ -11,7 +15,7 @@ type DashboardMetricCardProps = {
   hint: string;
   footnote: string;
   icon: LucideIcon;
-  iconWrapClass: string;
+  accent: DashboardAccentKey;
   loading: boolean;
 };
 
@@ -21,33 +25,31 @@ export function DashboardMetricCard({
   hint,
   footnote,
   icon: Icon,
-  iconWrapClass,
+  accent,
   loading,
 }: DashboardMetricCardProps) {
+  const accentStyle = dashboardMetricAccentStyles[accent];
+
   return (
-    <article className={bentoCardClass}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-3">
-          <p className="text-[12px] font-medium text-[var(--ds-text-muted)]">{label}</p>
+    <article className={`${bentoCardClass} ${accentStyle.cardSurface}`}>
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="space-y-2.5">
+          <p className={dashboardMetricLabelClass}>{label}</p>
           {loading ? (
-            <div className={`${dashboardSkeletonClass} h-8 w-16`} />
+            <div className={`${dashboardSkeletonClass} h-9 w-16`} />
           ) : (
             <p className={dashboardMetricValueClass}>{value}</p>
           )}
-          <p className="text-[12px] text-[var(--ds-text-subtle)]">{hint}</p>
+          <p className={dashboardMetricHintClass}>{hint}</p>
         </div>
         <span
-          className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${iconWrapClass}`}
+          className={`relative flex size-10 shrink-0 items-center justify-center rounded-2xl ${accentStyle.iconWrap}`}
         >
           <Icon className="size-[18px]" strokeWidth={1.5} />
         </span>
       </div>
-      <div className="mt-4 border-t border-[var(--ds-border-subtle)] pt-3">
-        <p className="text-[11px] font-medium text-[var(--ds-text-muted)]">{footnote}</p>
-        <div
-          aria-hidden
-          className="mt-2 h-6 w-full rounded-md bg-gradient-to-r from-[var(--ds-surface-muted)] to-transparent opacity-80"
-        />
+      <div className="relative mt-4 border-t border-[var(--ds-border-subtle)] pt-3">
+        <p className="text-[12px] font-medium text-[var(--ds-text-muted)]">{footnote}</p>
       </div>
     </article>
   );

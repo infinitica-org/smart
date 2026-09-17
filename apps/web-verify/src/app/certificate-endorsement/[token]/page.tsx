@@ -153,7 +153,7 @@ export default function CertificateEndorsementPage({ params }: PageProps) {
             href={data.certificateFileUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-block text-sm text-[#00967c] underline dark:text-[#00fad0]"
+            className="mt-4 inline-block text-sm text-[#00967c] underline dark:text-[#14b8a6]"
           >
             View the certificate file
           </a>
@@ -217,7 +217,7 @@ export default function CertificateEndorsementPage({ params }: PageProps) {
                 type="button"
                 disabled={submitting}
                 onClick={() => void handleDecision(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00fad0] px-4 py-3 text-sm font-semibold text-black hover:bg-[#7dffe6] disabled:opacity-50 sm:w-1/2"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-black hover:bg-[#0d9488] disabled:opacity-50 sm:w-1/2"
               >
                 Approve
               </button>

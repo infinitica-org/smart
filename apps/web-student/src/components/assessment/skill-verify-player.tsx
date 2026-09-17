@@ -295,7 +295,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     );
   }
 
-  const backToSkills = () => router.push('/assessments');
+  const backToSkills = () => router.push('/assessment');
 
   if (postAssessment === 'summary' && report) {
     return (
@@ -372,7 +372,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
               return next;
             })
           }
-          onExit={() => router.push('/assessments')}
+          onExit={() => router.push('/assessment')}
           onSubmit={complete}
           onRunCode={(item, source) =>
             api.evaluation.runSkillFormCode({

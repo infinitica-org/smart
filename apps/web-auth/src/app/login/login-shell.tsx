@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react';
 
+const authFontClass =
+  'font-[family-name:var(--auth-font-sans,-apple-system,BlinkMacSystemFont,"Segoe_UI",sans-serif)]';
+
 export function LoginShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen w-full bg-[#F3F4F6] text-slate-900 flex flex-col items-center justify-center relative p-4 font-sans select-none">
+    <div
+      className={`min-h-dvh w-full bg-white text-[#172033] flex flex-col items-center justify-center px-4 py-10 sm:px-6 ${authFontClass}`}
+    >
       {children}
     </div>
   );
@@ -12,12 +17,12 @@ export function LoginLoadingState() {
   return (
     <LoginShell>
       <div
-        className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xs text-center"
+        className="flex w-full max-w-[420px] flex-col items-center gap-4 text-center"
         role="status"
         aria-live="polite"
       >
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#004C63]/25 border-t-[#004C63]" />
-        <p className="text-xs font-medium text-slate-500">Preparing sign-in…</p>
+        <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#172033]/15 border-t-[#172033]" />
+        <p className="text-sm text-[#64748b]">Preparing sign-in…</p>
       </div>
     </LoginShell>
   );

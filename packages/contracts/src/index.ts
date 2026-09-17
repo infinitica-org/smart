@@ -34,6 +34,7 @@ export * from './domain/evidence/index.js';
 export * from './domain/question.js';
 export * from './domain/trace-prompt.js';
 export * from './domain/placement-cities.js';
+export * from './placement/job-opening-eligibility.js';
 
 /* --------------------------------- dto ------------------------------------ */
 export * from './dto/common.js';
@@ -63,6 +64,7 @@ export * from './dto/work-experience-letter-authenticity.dto.js';
 export * from './dto/organization.dto.js';
 export * from './dto/username.dto.js';
 export * from './dto/void.dto.js';
+export * from './dto/candidate-degree-details.dto.js';
 export * from './dto/candidate-profile.dto.js';
 export * from './dto/signals.dto.js';
 export * from './dto/raw-signals.dto.js';

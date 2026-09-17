@@ -1,14 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, BadgeCheck, FileText, Loader2, Sparkles, Upload } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Loader2, Plus, ShieldCheck } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import {
   CREDENTIAL_TYPES,
   type CredentialType,
   type ProfessionalCredentialDto,
 } from '@smart/contracts';
+import { CredentialEntryCard } from '@/components/profile/CredentialEntryCard';
+import {
+  ProfileBentoEmptyPanel,
+  ProfileSectionError,
+  ProfileSectionHeader,
+} from '@/components/profile/ProfileSectionChrome';
 import { api } from '@/lib/api';
+import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
+import { profileSectionMeta } from '@/lib/profile-sections';
 
 // DEGREE is intentionally not offered here: CandidateEducation already owns
 // degree verification, and this pipeline never resolves that type.
@@ -20,20 +28,6 @@ const CREDENTIAL_TYPE_LABELS: Record<CredentialType, string> = {
   DEGREE: 'Degree',
   BADGE: 'Badge',
   PROFESSIONAL_MEMBERSHIP: 'Professional membership',
-};
-
-const STATUS_BADGE_STYLES: Record<string, string> = {
-  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PENDING_VERIFICATION: 'border-amber-200 bg-amber-50 text-amber-900',
-  EXPIRED: 'border-border bg-muted text-muted-foreground',
-  REVOKED: 'border-red-200 bg-red-50 text-red-800',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Verified',
-  PENDING_VERIFICATION: 'Pending verification',
-  EXPIRED: 'Expired',
-  REVOKED: 'Revoked',
 };
 
 const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
@@ -166,68 +160,77 @@ export function CredentialsSection() {
     }
   };
 
+  const meta = profileSectionMeta('credentials');
+
   return (
-    <section className="flex flex-col gap-6" aria-labelledby="credentials-heading">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2
-            id="credentials-heading"
-            className="text-xl font-semibold tracking-tight text-foreground"
-          >
-            Professional credentials
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Licenses, certifications, badges, and professional memberships. We attempt automated
-            verification against the issuer; unresolved claims stay pending.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((current) => !current)}
-          className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-        >
-          {showForm ? 'Cancel' : 'Add credential'}
-        </button>
-      </div>
+    <section
+      className="flex w-full min-w-0 flex-col gap-4 font-[family-name:var(--tpo-font-sans)]"
+      aria-label="Professional credentials"
+    >
+      <ProfileSectionHeader
+        title={meta.title}
+        description={meta.description}
+        action={
+          !loading && (credentials.length > 0 || showForm) ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (showForm) {
+                  setShowForm(false);
+                  setForm(emptyForm());
+                } else {
+                  setShowForm(true);
+                }
+              }}
+              className={`${profilePrimaryButtonSmClass} justify-center px-4 py-2.5 text-[13px] font-semibold tracking-[-0.01em]`}
+            >
+              {showForm ? null : <Plus className="size-4" strokeWidth={2} aria-hidden />}
+              {showForm ? 'Cancel' : 'Add credential'}
+            </button>
+          ) : null
+        }
+      />
 
       {error ? (
-        <p className="inline-flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {error}
-        </p>
+        <ProfileSectionError>
+          <span className="inline-flex items-start gap-2">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {error}
+          </span>
+        </ProfileSectionError>
       ) : null}
 
       {showForm ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/50 p-5">
+        <div className="flex w-full flex-col gap-3 overflow-hidden rounded-[18px] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-foreground/80">Issuer</span>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--ds-text-secondary)]">Issuer</span>
               <input
                 type="text"
                 value={form.issuer}
                 onChange={(e) => setForm((f) => ({ ...f, issuer: e.target.value }))}
                 placeholder="e.g. Amazon Web Services"
-                className="rounded-lg border border-border bg-background px-3 py-2"
+                className="rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2.5 text-[var(--ds-text)] outline-none ring-0 placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--ds-green)]/40"
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-foreground/80">Credential name</span>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--ds-text-secondary)]">Credential name</span>
               <input
                 type="text"
                 value={form.credentialName}
                 onChange={(e) => setForm((f) => ({ ...f, credentialName: e.target.value }))}
                 placeholder="e.g. AWS Certified Solutions Architect"
-                className="rounded-lg border border-border bg-background px-3 py-2"
+                className="rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2.5 text-[var(--ds-text)] outline-none placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--ds-green)]/40"
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-foreground/80">Type</span>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--ds-text-secondary)]">Type</span>
               <select
                 value={form.credentialType}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, credentialType: e.target.value as CredentialType }))
                 }
-                className="rounded-lg border border-border bg-background px-3 py-2"
+                className="rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2.5 text-[var(--ds-text)] focus:border-[var(--ds-green)]/40"
               >
                 {SELECTABLE_CREDENTIAL_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -236,24 +239,28 @@ export function CredentialsSection() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-foreground/80">Credential / license number</span>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--ds-text-secondary)]">
+                Credential / license number
+              </span>
               <input
                 type="text"
                 value={form.externalCredentialId}
                 onChange={(e) => setForm((f) => ({ ...f, externalCredentialId: e.target.value }))}
                 placeholder="Optional"
-                className="rounded-lg border border-border bg-background px-3 py-2"
+                className="rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2.5 text-[var(--ds-text)] outline-none placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--ds-green)]/40"
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="font-medium text-foreground/80">Public verification URL</span>
+            <label className="flex flex-col gap-1.5 text-sm sm:col-span-2">
+              <span className="font-medium text-[var(--ds-text-secondary)]">
+                Public verification URL
+              </span>
               <input
                 type="url"
                 value={form.verificationSource}
                 onChange={(e) => setForm((f) => ({ ...f, verificationSource: e.target.value }))}
                 placeholder="Optional — the issuer's public lookup page for this credential"
-                className="rounded-lg border border-border bg-background px-3 py-2"
+                className="rounded-[10px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2.5 text-[var(--ds-text)] outline-none placeholder:text-[var(--ds-text-subtle)] focus:border-[var(--ds-green)]/40"
               />
             </label>
           </div>
@@ -262,7 +269,7 @@ export function CredentialsSection() {
               type="button"
               disabled={saving}
               onClick={() => void handleCreate()}
-              className="inline-flex items-center gap-2 rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-black disabled:opacity-60"
+              className={`${profilePrimaryButtonSmClass} disabled:opacity-60`}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {saving ? 'Adding…' : 'Add credential'}
@@ -271,114 +278,70 @@ export function CredentialsSection() {
         </div>
       ) : null}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading credentials…</p>
-      ) : credentials.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-muted/50 p-8 text-center">
-          <BadgeCheck className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-medium text-foreground/80">No credentials added yet</p>
-          <p className="text-xs text-muted-foreground">
-            Add a license, certification, or membership to have it verified.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {credentials.map((credential) => {
+      {loading ? <p className="text-sm text-[var(--ds-text-muted)]">Loading credentials…</p> : null}
+
+      {!loading && credentials.length === 0 && !showForm ? (
+        <ProfileBentoEmptyPanel
+          tipIcon={ShieldCheck}
+          tipIconClassName="text-[#0284c7]"
+          tipTitle="Licenses and professional IDs"
+          tipBody="Upload supporting documents — we verify against the issuer where possible and keep pending items visible until confirmed."
+          emptyIcon={BadgeCheck}
+          emptyTitle="No credentials yet"
+          emptyBody="Add a license, certification, badge, or membership to track verification here."
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className={`${profilePrimaryButtonSmClass} justify-center px-5 py-2.5 text-[13px]`}
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              Add your first credential
+            </button>
+          }
+        />
+      ) : null}
+
+      {!loading && credentials.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {credentials.map((credential, index) => {
+            const preview = documentPreviews[credential.credentialId];
+            const fileName =
+              preview?.fileName ??
+              (credential.documentObjectKey
+                ? fileNameFromObjectKey(credential.documentObjectKey)
+                : null);
             const busy = uploadingId === credential.credentialId;
+
             return (
-              <div
+              <CredentialEntryCard
                 key={credential.credentialId}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/50 p-5"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{credential.credentialName}</h3>
-                    <p className="text-sm text-foreground/80">Issuer: {credential.issuer}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {CREDENTIAL_TYPE_LABELS[credential.credentialType]}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${
-                      STATUS_BADGE_STYLES[credential.status] ??
-                      'border-border bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {STATUS_LABELS[credential.status] ?? credential.status}
-                  </span>
-                </div>
-
-                {(() => {
-                  const preview = documentPreviews[credential.credentialId];
-                  const fileName =
-                    preview?.fileName ??
-                    (credential.documentObjectKey
-                      ? fileNameFromObjectKey(credential.documentObjectKey)
-                      : null);
-                  if (!fileName) return null;
-                  return (
-                    <div className="flex items-center gap-3 rounded-xl border border-border bg-background/60 p-2.5">
-                      {preview?.isImage ? (
-                        <img
-                          src={preview.objectUrl}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                      )}
-                      <p className="truncate text-xs text-foreground/80">{fileName}</p>
-                    </div>
-                  );
-                })()}
-
-                {credential.status === 'PENDING_VERIFICATION' ? (
-                  <div className="flex flex-col gap-3">
-                    <div>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => fileInputRefs.current[credential.credentialId]?.click()}
-                        className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
-                      >
-                        {busy ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Upload className="h-3.5 w-3.5" />
-                        )}
-                        {credential.documentObjectKey
-                          ? 'Replace supporting document'
-                          : 'Upload supporting document'}
-                      </button>
-                      <input
-                        ref={(el) => {
-                          fileInputRefs.current[credential.credentialId] = el;
-                        }}
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) void handleUpload(credential.credentialId, file);
-                          event.target.value = '';
-                        }}
-                      />
-                    </div>
-                    <p className="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#00967c]" />
-                      we&apos;re checking this behind the scenes rn — all verification runs on our
-                      backend, zero vibes-based approval. we&apos;ll flip this the second it&apos;s
-                      confirmed, no need to refresh.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+                credential={credential}
+                accentIndex={index}
+                preview={preview}
+                fileName={fileName}
+                uploading={busy}
+                onUploadClick={() => fileInputRefs.current[credential.credentialId]?.click()}
+                fileInput={
+                  <input
+                    ref={(el) => {
+                      fileInputRefs.current[credential.credentialId] = el;
+                    }}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void handleUpload(credential.credentialId, file);
+                      event.target.value = '';
+                    }}
+                  />
+                }
+              />
             );
           })}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

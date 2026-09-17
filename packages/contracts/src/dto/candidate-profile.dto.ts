@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EducationDocumentTypeSchema, SharedVerificationStatusSchema } from '../domain/enums.js';
 import { CandidateAcademicScoresSchema } from './candidate-onboarding.dto.js';
+import { CandidateDegreeDetailsSchema } from './candidate-degree-details.dto.js';
 
 export const CandidateEducationDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -37,6 +38,7 @@ export const CandidateEducationSchema = z.object({
   grade: z.string().max(40).nullable().optional(),
   status: SharedVerificationStatusSchema.default('unverified'),
   rejectionReason: z.string().max(500).nullable().optional(),
+  degreeDetails: CandidateDegreeDetailsSchema.nullable().optional(),
   documents: z.array(CandidateEducationDocumentSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -51,6 +53,7 @@ export const CreateCandidateEducationSchema = z.object({
   endDate: z.string().max(32).optional().nullable().or(z.literal('')),
   current: z.boolean().default(false).optional(),
   grade: z.string().max(40).optional().nullable().or(z.literal('')),
+  degreeDetails: CandidateDegreeDetailsSchema.optional().nullable(),
 });
 export type CreateCandidateEducationDto = z.infer<typeof CreateCandidateEducationSchema>;
 

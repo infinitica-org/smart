@@ -7,7 +7,7 @@ import {
 } from './job-posting';
 
 describe('job posting payload', () => {
-  it('exposes seven wizard steps without job-details or eligibility steps', () => {
+  it('exposes seven wizard steps including requirements (skills + eligibility)', () => {
     expect(JOB_POSTING_STEPS.map((step) => step.id)).toEqual([
       'company-role',
       'about-company',
@@ -55,6 +55,32 @@ describe('job posting payload', () => {
       attachedDocuments: [expect.objectContaining({ fileName: 'jd.pdf' })],
     });
     expect('companyLogoUrl' in parsed.data).toBe(false);
+  });
+
+  it('includes optional eligibility criteria on the create payload', () => {
+    const parsed = buildCreateOpeningPayload(
+      {
+        ...EMPTY_JOB_POSTING_FORM,
+        companyName: 'Infinitica Labs',
+        roleTitle: 'Backend Engineer',
+        location: 'Coimbatore',
+        minSscPercentage: '60',
+        minHscPercentage: '65',
+        minCollegePercentage: '70',
+        backlogsAllowedChoice: 'no',
+      },
+      new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'BEGINNER']]),
+      [],
+      null,
+    );
+    expect(isCreateOpeningPayload(parsed)).toBe(true);
+    if (!isCreateOpeningPayload(parsed)) return;
+    expect(parsed.data).toMatchObject({
+      minSscPercentage: 60,
+      minHscPercentage: 65,
+      minCollegePercentage: 70,
+      backlogsAllowed: false,
+    });
   });
 
   it('rejects an inverted experience range with the shared contract', () => {

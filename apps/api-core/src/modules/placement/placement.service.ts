@@ -24,6 +24,7 @@ import {
   SkillTaxonomyDomainSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
+  studentMeetsJobOpeningEligibility,
 } from '@smart/contracts';
 import type {
   ApplicationConfidenceDto,
@@ -34,6 +35,7 @@ import type {
   CreateJobOpeningRequest,
   JobOpeningAttachedDocument,
   JobOpeningDto,
+  JobOpeningEligibilityCriteria,
   UploadJobOpeningDocumentResponse,
   UploadJobOpeningLogoResponse,
   ListApplicationsResponse,
@@ -47,6 +49,7 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { PlacementEmployersService } from './placement-employers.service.js';
 
 const JOB_OPENING_DOC_MAX_BYTES = 10 * 1024 * 1024;
 const JOB_OPENING_LOGO_MAX_BYTES = 2 * 1024 * 1024;
@@ -57,6 +60,7 @@ const JOB_OPENING_LOGO_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png']);
 interface OpeningRow {
   id: string;
   institutionId: string;
+  placementEmployerId?: string | null;
   companyName: string;
   roleTitle: string;
   domainCode: string | null;
@@ -78,6 +82,10 @@ interface OpeningRow {
   driveSpoc: string | null;
   driveDate: Date | null;
   lastDateToApply: Date | null;
+  minSscPercentage: unknown;
+  minHscPercentage: unknown;
+  minCollegePercentage: unknown;
+  backlogsAllowed: boolean;
   status: string;
   createdAt: Date;
   requiredSkills: { minProficiency: string; skill: { code: string } }[];
@@ -112,6 +120,7 @@ function normalizeOpeningRow(row: OpeningRow): OpeningRow {
     employmentType: employmentType.success ? employmentType.data : 'FULL_TIME',
     minYearsExperience: minYears,
     maxYearsExperience: maxYears < minYears ? minYears : maxYears,
+    backlogsAllowed: row.backlogsAllowed ?? true,
   };
 }
 
@@ -120,6 +129,31 @@ function attachedDocumentsForCreate(
 ): Prisma.InputJsonValue | undefined {
   if (!body.attachedDocuments?.length) return undefined;
   return body.attachedDocuments as Prisma.InputJsonValue;
+}
+
+function decimalField(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'object' && value !== null && 'toNumber' in value) {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+  return Number(value);
+}
+
+type OpeningEligibilitySource = Pick<
+  OpeningRow,
+  'minSscPercentage' | 'minHscPercentage' | 'minCollegePercentage' | 'backlogsAllowed'
+>;
+
+function openingEligibilityCriteriaFromRow(
+  row: OpeningEligibilitySource,
+): JobOpeningEligibilityCriteria {
+  return {
+    minSscPercentage: decimalField(row.minSscPercentage) ?? undefined,
+    minHscPercentage: decimalField(row.minHscPercentage) ?? undefined,
+    minCollegePercentage: decimalField(row.minCollegePercentage) ?? undefined,
+    backlogsAllowed: row.backlogsAllowed,
+  };
 }
 
 function openingExtendedFields(body: CreateJobOpeningRequest) {
@@ -137,6 +171,10 @@ function openingExtendedFields(body: CreateJobOpeningRequest) {
     driveSpoc: body.driveSpoc ?? null,
     driveDate: body.driveDate ? isoDateToCalendarDate(body.driveDate) : null,
     lastDateToApply: body.lastDateToApply ? isoDateToCalendarDate(body.lastDateToApply) : null,
+    minSscPercentage: body.minSscPercentage ?? null,
+    minHscPercentage: body.minHscPercentage ?? null,
+    minCollegePercentage: body.minCollegePercentage ?? null,
+    backlogsAllowed: body.backlogsAllowed ?? true,
   };
 }
 
@@ -182,6 +220,7 @@ export class PlacementService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
     @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
 
@@ -310,6 +349,33 @@ export class PlacementService {
   ): Promise<JobOpeningDto> {
     const requestedCodes = body.requiredSkills.map((requirement) => requirement.skillCode);
 
+    let companyName = body.companyName?.trim() ?? '';
+    let placementEmployerId: string | null = null;
+    let profileFields = openingExtendedFields(body);
+
+    if (body.employerId) {
+      const employer = await this.employers.requireEmployer(institutionId, body.employerId);
+      companyName = employer.name;
+      placementEmployerId = employer.id;
+      profileFields = {
+        ...profileFields,
+        aboutCompany: body.aboutCompany ?? employer.aboutCompany,
+        companyOffers: body.companyOffers ?? employer.companyOffers,
+        additionalCompanyDetails:
+          body.additionalCompanyDetails ?? employer.additionalCompanyDetails,
+        companyLogoUrl:
+          body.companyLogoStorageKey ?? employer.logoStorageKey ?? profileFields.companyLogoUrl,
+      };
+    }
+
+    if (companyName.length < 2) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Company name is required when no employer is selected.',
+        statusCode: 400,
+      });
+    }
+
     const row = await this.prisma.$transaction(async (tx) => {
       const skills = await tx.skill.findMany({
         where: { code: { in: requestedCodes } },
@@ -343,7 +409,8 @@ export class PlacementService {
         data: {
           institutionId,
           createdById,
-          companyName: body.companyName,
+          placementEmployerId,
+          companyName,
           roleTitle: body.roleTitle,
           domainCode: body.domain,
           minYearsExperience: body.minYearsExperience,
@@ -351,7 +418,7 @@ export class PlacementService {
           location: body.location,
           employmentType: body.employmentType,
           headcount: body.headcount ?? 1,
-          ...openingExtendedFields(body),
+          ...profileFields,
           requiredSkills: { create: requirements },
         },
         include: { requiredSkills: { include: { skill: { select: { code: true } } } } },
@@ -404,7 +471,6 @@ export class PlacementService {
   ): Promise<ApplicationDto> {
     const opening = await this.prisma.jobOpening.findFirst({
       where: { id: body.openingId, institutionId },
-      select: { id: true },
     });
     if (!opening) {
       throw new NotFoundException({
@@ -418,13 +484,37 @@ export class PlacementService {
     // student" — none of which should be distinguishable to the caller.
     const student = await this.prisma.user.findFirst({
       where: { id: body.studentId, institutionId, role: 'STUDENT' },
-      select: { id: true },
+      select: {
+        id: true,
+        cgpa: true,
+        sscPercentage: true,
+        hscPercentage: true,
+        hasActiveBacklog: true,
+      },
     });
     if (!student) {
       throw new NotFoundException({
         error: 'not_found',
         message: 'Student not found in this institution.',
         statusCode: 404,
+      });
+    }
+
+    const eligibility = openingEligibilityCriteriaFromRow(opening);
+    const eligibilityCheck = studentMeetsJobOpeningEligibility(
+      {
+        cgpa: decimalField(student.cgpa),
+        sscPercentage: decimalField(student.sscPercentage),
+        hscPercentage: decimalField(student.hscPercentage),
+        hasActiveBacklog: student.hasActiveBacklog,
+      },
+      eligibility,
+    );
+    if (!eligibilityCheck.eligible) {
+      throw new UnprocessableEntityException({
+        error: 'student_ineligible',
+        message: eligibilityCheck.reasons[0] ?? 'Student does not meet drive eligibility.',
+        statusCode: 422,
       });
     }
 
@@ -786,6 +876,7 @@ export function toJobOpeningDto(
   const parsed = JobOpeningDtoSchema.safeParse({
     openingId: row.id,
     institutionId: row.institutionId,
+    employerId: row.placementEmployerId ?? null,
     companyName: row.companyName,
     roleTitle: row.roleTitle,
     domain: row.domainCode,
@@ -811,6 +902,10 @@ export function toJobOpeningDto(
     driveSpoc: row.driveSpoc ?? undefined,
     driveDate: row.driveDate ? calendarDateToIso(row.driveDate) : undefined,
     lastDateToApply: row.lastDateToApply ? calendarDateToIso(row.lastDateToApply) : undefined,
+    minSscPercentage: decimalField(row.minSscPercentage) ?? undefined,
+    minHscPercentage: decimalField(row.minHscPercentage) ?? undefined,
+    minCollegePercentage: decimalField(row.minCollegePercentage) ?? undefined,
+    backlogsAllowed: row.backlogsAllowed,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
   });

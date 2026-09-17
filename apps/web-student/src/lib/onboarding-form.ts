@@ -332,6 +332,23 @@ function buildJobPreferencesPayload(
   };
 }
 
+function normalizeOptionalUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+/** Professional links tab — normalized URLs + optional social verification snapshot. */
+export function buildProfessionalLinksSavePayload(
+  form: OnboardingProfileForm,
+): Pick<SaveCandidateOnboardingDraftRequest, 'linkedinUrl' | 'githubUrl' | 'socialVerification'> {
+  return {
+    linkedinUrl: normalizeOptionalUrl(form.linkedinUrl),
+    githubUrl: normalizeOptionalUrl(form.githubUrl),
+    socialVerification: form.socialVerification,
+  };
+}
+
 /** Best-effort snapshot of the in-progress form, sent to the server as a draft. */
 export function buildOnboardingDraftPayload(
   form: OnboardingProfileForm,
@@ -348,8 +365,8 @@ export function buildOnboardingDraftPayload(
     dateOfBirth,
     phoneCountryCode: form.phoneCountryCode.trim() || undefined,
     phoneNumber: form.phoneNumber.trim() || undefined,
-    linkedinUrl: form.linkedinUrl.trim() || undefined,
-    githubUrl: form.githubUrl.trim() || undefined,
+    linkedinUrl: normalizeOptionalUrl(form.linkedinUrl),
+    githubUrl: normalizeOptionalUrl(form.githubUrl),
     education: [],
     experiences: [],
     skills: buildSkillsPayload(form),

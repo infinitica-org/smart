@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={SMART_HTML_CLASS}>
-      <body className="min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)] antialiased">
+      <body className="min-h-dvh bg-white text-[#172033] antialiased font-[family-name:var(--auth-font-sans)]">
         <SessionBootstrap>{children}</SessionBootstrap>
       </body>
     </html>

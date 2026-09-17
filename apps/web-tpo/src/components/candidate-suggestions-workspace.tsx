@@ -27,6 +27,7 @@ import {
   surfaceClass,
 } from '../lib/tpo-ui';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
+import { JobOpeningIdLabel } from './placement/JobOpeningIdLabel';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
 const SKILL_OPTIONS = SKILL_DEFINITIONS.map((skill) => ({ id: skill.code, label: skill.name }));
@@ -385,6 +386,9 @@ export function CandidateSuggestionsWorkspace({
               <p className={statValueClass}>{run.suggestedCount} candidates</p>
             </div>
           ) : null}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-5">
+            <JobOpeningIdLabel openingId={selectedOpening.openingId} />
+          </div>
         </section>
       ) : null}
 

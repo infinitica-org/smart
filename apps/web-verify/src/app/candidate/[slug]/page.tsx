@@ -119,7 +119,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl pb-16">
       <div className="overflow-hidden rounded-[40px] border border-[var(--surface-border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
-        <div className="relative h-32 bg-gradient-to-r from-[#00fad0]/20 to-[#004c63]/30">
+        <div className="relative h-32 bg-gradient-to-r from-[#14b8a6]/20 to-[#004c63]/30">
           <div className="absolute -bottom-12 left-8 h-24 w-24 rounded-full bg-[var(--surface)] p-1.5">
             <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[var(--surface-muted)] to-[var(--surface-border)] text-2xl font-bold text-[var(--text-muted)]">
               {initialsOf(profile.fullName)}
@@ -136,7 +136,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
             <div className="flex items-center gap-2">
               {profile.certificate ? <TierBadge tier={profile.certificate.tier} showLabel /> : null}
               {profile.skills.length > 0 ? (
-                <div className="flex items-center gap-1.5 rounded-full border border-[#00fad0]/30 bg-[#00fad0]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#00967c] dark:text-[#00fad0]">
+                <div className="flex items-center gap-1.5 rounded-full border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#00967c] dark:text-[#14b8a6]">
                   <Icon path={ICON_PATH.checkCircle} className="h-4 w-4" />
                   SMART Verified
                 </div>
@@ -163,7 +163,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
                       {skill.skillName}
                     </span>
                     <div className="h-3 w-px bg-[var(--surface-border)]" />
-                    <span className="text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                    <span className="text-xs font-bold text-[#00967c] dark:text-[#14b8a6]">
                       {skill.proficiency.charAt(0) + skill.proficiency.slice(1).toLowerCase()}
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
                     key={`${entry.companyName}-${String(idx)}`}
                     className="flex items-start gap-3 rounded-[20px] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-5"
                   >
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00fad0]/10 text-[#00967c] dark:text-[#00fad0]">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14b8a6]/10 text-[#00967c] dark:text-[#14b8a6]">
                       <Icon path={ICON_PATH.checkCircle} className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
@@ -233,7 +233,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
                         {project.title}
                       </h4>
                       {project.status === 'VERIFIED' ? (
-                        <span className="flex items-center gap-1 rounded-full bg-[#00fad0]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                        <span className="flex items-center gap-1 rounded-full bg-[#14b8a6]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#14b8a6]">
                           <Icon path={ICON_PATH.checkCircle} className="h-3.5 w-3.5" />
                           {project.score !== null
                             ? `Verified · ${String(Math.round(project.score))}/100`
@@ -306,7 +306,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-[var(--text-primary)]">{cert.title}</p>
                       {cert.verificationMethod ? (
-                        <span className="flex items-center gap-1 rounded-full bg-[#00fad0]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                        <span className="flex items-center gap-1 rounded-full bg-[#14b8a6]/10 px-2 py-0.5 text-xs font-bold text-[#00967c] dark:text-[#14b8a6]">
                           <Icon path={ICON_PATH.checkCircle} className="h-3.5 w-3.5" />
                           {VERIFICATION_METHOD_LABELS[cert.verificationMethod] ??
                             cert.verificationMethod}
@@ -325,7 +325,7 @@ export default function PublicCandidateProfilePage({ params }: PageProps) {
                               {skill.skillName}
                             </span>
                             <div className="h-3 w-px bg-[var(--surface-border)]" />
-                            <span className="text-xs font-bold text-[#00967c] dark:text-[#00fad0]">
+                            <span className="text-xs font-bold text-[#00967c] dark:text-[#14b8a6]">
                               {skill.proficiency.charAt(0) +
                                 skill.proficiency.slice(1).toLowerCase()}
                             </span>

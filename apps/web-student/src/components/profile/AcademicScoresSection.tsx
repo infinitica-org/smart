@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isSmartApiError } from '@smart/api-client';
+import type { CandidateAcademicScores } from '@smart/contracts';
 import { api } from '@/lib/api';
 
 /**
@@ -17,6 +18,7 @@ export function AcademicScoresSection() {
   const [cgpa, setCgpa] = useState('');
   const [sscPercentage, setSscPercentage] = useState('');
   const [hscPercentage, setHscPercentage] = useState('');
+  const [hasActiveBacklog, setHasActiveBacklog] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,11 +26,13 @@ export function AcademicScoresSection() {
       .getOnboarding()
       .then((response) => {
         if (cancelled) return;
-        const scores = response.profile?.academicScores ?? response.draft?.academicScores;
+        const scores: CandidateAcademicScores | undefined =
+          response.profile?.academicScores ?? response.draft?.academicScores;
         if (!scores) return;
         setCgpa(scores.cgpa?.toString() ?? '');
         setSscPercentage(scores.sscPercentage?.toString() ?? '');
         setHscPercentage(scores.hscPercentage?.toString() ?? '');
+        setHasActiveBacklog(scores.hasActiveBacklog === true);
       })
       .catch(() => {
         if (!cancelled) setError('Could not load saved academic scores.');
@@ -45,7 +49,12 @@ export function AcademicScoresSection() {
     setError(null);
     setSuccess(null);
 
-    const parsed: { cgpa?: number; sscPercentage?: number; hscPercentage?: number } = {};
+    const parsed: {
+      cgpa?: number;
+      sscPercentage?: number;
+      hscPercentage?: number;
+      hasActiveBacklog?: boolean;
+    } = { hasActiveBacklog };
     if (cgpa.trim()) {
       const value = Number(cgpa);
       if (Number.isNaN(value) || value < 0 || value > 10) {
@@ -119,7 +128,7 @@ export function AcademicScoresSection() {
             value={cgpa}
             onChange={(e) => setCgpa(e.target.value)}
             placeholder="e.g. 8.5"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[#00fad0]"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-accent"
           />
         </div>
         <div>
@@ -133,7 +142,7 @@ export function AcademicScoresSection() {
             value={sscPercentage}
             onChange={(e) => setSscPercentage(e.target.value)}
             placeholder="e.g. 92.4"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[#00fad0]"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-accent"
           />
         </div>
         <div>
@@ -147,16 +156,26 @@ export function AcademicScoresSection() {
             value={hscPercentage}
             onChange={(e) => setHscPercentage(e.target.value)}
             placeholder="e.g. 88.1"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[#00fad0]"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-accent"
           />
         </div>
       </div>
+
+      <label className="flex max-w-2xl items-start gap-3 text-sm text-foreground">
+        <input
+          type="checkbox"
+          className="mt-1 size-4 rounded border-border"
+          checked={hasActiveBacklog}
+          onChange={(e) => setHasActiveBacklog(e.target.checked)}
+        />
+        <span>I currently have active academic backlogs (standing arrears).</span>
+      </label>
 
       <button
         type="button"
         onClick={() => void handleSave()}
         disabled={saving}
-        className="rounded-full bg-[#00fad0] px-5 py-2.5 text-sm font-semibold text-[#131313] disabled:opacity-60"
+        className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-60"
       >
         {saving ? 'Saving…' : 'Save scores'}
       </button>

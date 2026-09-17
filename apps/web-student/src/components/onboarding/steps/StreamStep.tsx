@@ -63,18 +63,18 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
             key="picker"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-2xl border-2 border-[#00fad0] bg-[#00fad0]/10 p-5 flex items-center justify-between gap-4 cursor-pointer shadow-lg shadow-[#00fad0]/5"
+            className="rounded-2xl border-2 border-accent bg-accent/10 p-5 flex items-center justify-between gap-4 cursor-pointer shadow-lg shadow-accent/5"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#00fad0]/20 flex items-center justify-center shrink-0">
-                <Code2 className="w-6 h-6 text-[#00fad0]" />
+              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
+                <Code2 className="w-6 h-6 text-accent" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-base font-semibold text-foreground">
                     Software Engineering / SDE
                   </p>
-                  <span className="rounded-full bg-[#00fad0]/20 border border-[#00fad0]/30 px-2.5 py-0.5 text-[11px] font-semibold text-[#00fad0]">
+                  <span className="rounded-full bg-accent/20 border border-accent/30 px-2.5 py-0.5 text-[11px] font-semibold text-accent">
                     Active
                   </span>
                 </div>
@@ -84,7 +84,7 @@ export default function StreamStep({ onBack, onContinue }: StreamStepProps) {
                 </p>
               </div>
             </div>
-            <CheckCircle2 className="w-5 h-5 text-[#00fad0] shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
           </motion.div>
 
           {/* DataOps Coming Soon Card */}

@@ -144,8 +144,8 @@ describe('SkillVerifyReport', () => {
 
     expect(screen.getByRole('button', { name: /back to skills/i })).toBeDefined();
 
-    expect(screen.getByRole('link', { name: /view skill repository/i }).getAttribute('href')).toBe(
-      '/assessments',
+    expect(screen.getByRole('link', { name: /view assessments/i }).getAttribute('href')).toBe(
+      '/assessment',
     );
 
     fireEvent.click(screen.getByRole('button', { name: /back to skills/i }));

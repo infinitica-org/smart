@@ -20,6 +20,7 @@ import {
   type MatchRunDto,
   type ShortlistDto,
   type TrackCode,
+  type JobOpeningEligibilityCriteria,
 } from '@smart/contracts';
 import { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -46,6 +47,7 @@ interface RunMatchingParams {
   minCgpa?: number;
   requiredSkillCodes: string[];
   filters?: MatchRequest['filters'];
+  openingEligibility?: JobOpeningEligibilityCriteria;
   limit: number;
 }
 
@@ -89,7 +91,10 @@ interface HydratedStudent {
  * concatenation) so the dynamic filter lists stay injection-safe. */
 function buildEligibleStudentsQuery(
   institutionId: string,
-  request: Pick<RunMatchingParams, 'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters'>,
+  request: Pick<
+    RunMatchingParams,
+    'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters' | 'openingEligibility'
+  >,
 ): Prisma.Sql {
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
@@ -101,6 +106,24 @@ function buildEligibleStudentsQuery(
   }
   if (request.minCgpa !== undefined) {
     conditions.push(Prisma.sql`u.cgpa >= ${request.minCgpa}`);
+  }
+  const eligibility = request.openingEligibility;
+  if (eligibility?.minSscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.ssc_percentage IS NOT NULL AND u.ssc_percentage >= ${eligibility.minSscPercentage}`,
+    );
+  }
+  if (eligibility?.minHscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.hsc_percentage IS NOT NULL AND u.hsc_percentage >= ${eligibility.minHscPercentage}`,
+    );
+  }
+  if (eligibility?.minCollegePercentage !== undefined && request.minCgpa === undefined) {
+    const minCgpaFromPercent = eligibility.minCollegePercentage / 10;
+    conditions.push(Prisma.sql`u.cgpa IS NOT NULL AND u.cgpa >= ${minCgpaFromPercent}`);
+  }
+  if (eligibility?.backlogsAllowed === false) {
+    conditions.push(Prisma.sql`u.has_active_backlog IS DISTINCT FROM TRUE`);
   }
   // Every required skill must be held VERIFIED (AND) — one EXISTS per code, not a single
   // `IN (...)`, which would only require ANY one of them and under-filter the pool.
@@ -260,9 +283,23 @@ export class MatchingService {
     request: RunMatchingParams,
   ): Promise<ShortlistDto> {
     const job = await this.resolveJob(institutionId, request.jdId);
+    const effectiveMinCgpa = (() => {
+      const fromOpening =
+        job.openingEligibility?.minCollegePercentage !== undefined
+          ? job.openingEligibility.minCollegePercentage / 10
+          : undefined;
+      if (request.minCgpa !== undefined && fromOpening !== undefined) {
+        return Math.max(request.minCgpa, fromOpening);
+      }
+      return request.minCgpa ?? fromOpening;
+    })();
 
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
-      buildEligibleStudentsQuery(institutionId, request),
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpa,
+        openingEligibility: job.openingEligibility,
+      }),
     );
     const students: HydratedStudent[] = rows.map((row) => ({
       id: row.id,
@@ -382,7 +419,12 @@ export class MatchingService {
   private async resolveJob(
     institutionId: string,
     jdId: string,
-  ): Promise<{ companyName: string; roleTitle: string; ranker: RankerJob }> {
+  ): Promise<{
+    companyName: string;
+    roleTitle: string;
+    ranker: RankerJob;
+    openingEligibility?: JobOpeningEligibilityCriteria;
+  }> {
     const opening = await this.prisma.jobOpening.findFirst({
       where: { id: jdId, institutionId },
       include: {
@@ -390,9 +432,18 @@ export class MatchingService {
       },
     });
     if (opening) {
+      const openingEligibility: JobOpeningEligibilityCriteria = {
+        minSscPercentage: opening.minSscPercentage ? Number(opening.minSscPercentage) : undefined,
+        minHscPercentage: opening.minHscPercentage ? Number(opening.minHscPercentage) : undefined,
+        minCollegePercentage: opening.minCollegePercentage
+          ? Number(opening.minCollegePercentage)
+          : undefined,
+        backlogsAllowed: opening.backlogsAllowed,
+      };
       return {
         companyName: opening.companyName,
         roleTitle: opening.roleTitle,
+        openingEligibility,
         ranker: {
           requiredSkills: opening.requiredSkills.map((row) => ({
             code: row.skill.code,

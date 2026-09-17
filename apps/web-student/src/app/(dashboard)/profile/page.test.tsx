@@ -9,7 +9,7 @@ const replace = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace }),
-  useSearchParams: () => new URLSearchParams('section=about'),
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 vi.mock('@/lib/candidate-identity', () => ({
@@ -62,7 +62,6 @@ vi.mock('@/lib/use-profile-progress', () => ({
         projects: false,
         certifications: false,
         professionalLinks: false,
-        jobPreferences: false,
       },
     },
     input: {
@@ -88,8 +87,8 @@ vi.mock('@/lib/use-profile-progress', () => ({
   }),
 }));
 
-vi.mock('@/components/profile/AboutSection', () => ({
-  AboutSection: () => <div>About section</div>,
+vi.mock('@/components/profile/ProfilePublicLinkCard', () => ({
+  ProfilePublicLinkCard: () => null,
 }));
 
 vi.mock('@/components/profile/SkillsSection', () => ({
@@ -124,20 +123,16 @@ vi.mock('@/components/profile/ProfessionalLinksSection', () => ({
   ProfessionalLinksSection: () => <div>Professional links section</div>,
 }));
 
-vi.mock('@/components/profile/JobPreferencesSection', () => ({
-  JobPreferencesSection: () => <div>Job preferences section</div>,
-}));
-
 vi.mock('@/components/profile/ResumeSection', () => ({
   ResumeSection: () => <div>Resume section</div>,
 }));
 
 describe('ProfilePage', () => {
-  it('defaults to About workspace without rendering every subsection at once', () => {
+  it('defaults to education workspace without professional summary above tabs', () => {
     render(<ProfilePage />);
 
-    expect(screen.getByText('About You')).toBeTruthy();
-    expect(screen.getByText('About section')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'About' })).toBeNull();
+    expect(screen.getByText('Education section')).toBeTruthy();
     expect(screen.queryByText(/Introduce yourself with a short professional summary/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /Edit Profile/i })).toBeNull();
     expect(screen.queryByText('Skills section')).toBeNull();
@@ -150,11 +145,10 @@ describe('ProfilePage', () => {
     ).toBeTruthy();
   });
 
-  it('navigates to another subsection via sidebar without showing all sections', () => {
+  it('navigates to another subsection via top nav without showing all sections', () => {
     render(<ProfilePage />);
 
-    const buttons = screen.getAllByRole('button', { name: 'Work Experience' });
-    if (buttons[0]) fireEvent.click(buttons[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Work Experience' }));
 
     expect(push).toHaveBeenCalledWith('/profile?section=experience', { scroll: false });
   });

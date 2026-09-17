@@ -94,7 +94,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#00fad0] border-t-transparent" />
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#14b8a6] border-t-transparent" />
         <p className="mt-3 text-sm text-white/60">Loading manager endorsement survey...</p>
       </div>
     );
@@ -134,7 +134,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="rounded-xl bg-[#00fad0]/10 p-3 text-[#00fad0]">
+          <div className="rounded-xl bg-[#14b8a6]/10 p-3 text-[#14b8a6]">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -275,7 +275,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
                       key={skillCode}
                       className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl bg-white/[0.02] border border-white/5 p-3 gap-2"
                     >
-                      <span className="text-xs font-mono font-medium text-[#00fad0]">
+                      <span className="text-xs font-mono font-medium text-[#14b8a6]">
                         {skillCode}
                       </span>
                       <div className="flex items-center gap-1">
@@ -286,7 +286,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
                             onClick={() => handleRatingChange(skillCode, star)}
                             className={`h-8 w-8 rounded-lg text-xs font-bold transition-all ${
                               (skillRatings[skillCode] ?? 5) >= star
-                                ? 'bg-[#00fad0]/20 text-[#00fad0] border border-[#00fad0]/40'
+                                ? 'bg-[#14b8a6]/20 text-[#14b8a6] border border-[#14b8a6]/40'
                                 : 'bg-white/5 text-white/30 border border-white/5 hover:bg-white/10'
                             }`}
                           >
@@ -310,7 +310,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="Add comments regarding candidate performance, leadership, or endorsement context..."
-                className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#00fad0] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#14b8a6] focus:outline-none"
               />
             </div>
 
@@ -325,7 +325,7 @@ export default function ManagerSurveyPage({ params }: PageProps) {
               <button
                 onClick={() => handleSubmit(true)}
                 disabled={submitting}
-                className="w-full sm:w-1/2 flex items-center justify-center gap-2 rounded-xl bg-[#00fad0] px-4 py-3 text-sm font-semibold text-black hover:bg-[#00e0ba] disabled:opacity-50 transition-colors shadow-lg shadow-[#00fad0]/10"
+                className="w-full sm:w-1/2 flex items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-black hover:bg-[#0d9488] disabled:opacity-50 transition-colors shadow-lg shadow-[#14b8a6]/10"
               >
                 {submitting ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />

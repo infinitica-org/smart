@@ -6,20 +6,6 @@ export const experienceTextareaClass =
 
 export const experienceLabelClass = 'block text-[13px] font-medium text-[var(--ds-text-secondary)]';
 
-export const EXPERIENCE_BUILDER_STEPS = [
-  { id: 'role', title: 'Role Details', subtitle: 'Basic information' },
-  { id: 'employment', title: 'Employment', subtitle: 'Type and location' },
-  {
-    id: 'professional',
-    title: 'Professional Details',
-    subtitle: 'Domain, skills and responsibilities',
-  },
-  { id: 'evidence', title: 'Evidence', subtitle: 'Upload documents' },
-  { id: 'verification', title: 'Verification', subtitle: 'Employer verification' },
-] as const;
-
-export type ExperienceBuilderStepId = (typeof EXPERIENCE_BUILDER_STEPS)[number]['id'];
-
 export const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   FULL_TIME: 'Full-time',
   PART_TIME: 'Part-time',
