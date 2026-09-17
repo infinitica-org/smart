@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
+import { withSkillVerificationPending } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { SkillVerificationService } from './skill-verification.service.js';
 
@@ -23,6 +24,15 @@ function professionalClaim() {
     verifiedUntil: null,
     lastAttemptId: null,
     sourceMetadata: {},
+    skill: { code: 'SQL_QUERY_OPTIMIZATION', name: 'SQL Query Optimization' },
+  };
+}
+
+function claimMarkedInProgress() {
+  return {
+    ...professionalClaim(),
+    lastAttemptId: SESSION_ID,
+    sourceMetadata: withSkillVerificationPending({}, SESSION_ID),
     skill: { code: 'SQL_QUERY_OPTIMIZATION', name: 'SQL Query Optimization' },
   };
 }
@@ -106,7 +116,6 @@ function makeService(deps: {
   prisma?: Record<string, unknown>;
   redis?: Record<string, unknown>;
   evaluation?: Record<string, unknown>;
-  aiGateway?: Record<string, unknown>;
   intelligence?: Record<string, unknown>;
   verification?: Record<string, unknown>;
   outbox?: Record<string, unknown>;
@@ -130,7 +139,6 @@ function makeService(deps: {
       generateSkillInterview: vi.fn(),
       gradeSkillInterview: vi.fn(),
     }) as never,
-    (deps.aiGateway ?? { hasCallableProvider: vi.fn().mockReturnValue(true) }) as never,
     (deps.outbox ?? { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) }) as never,
     (deps.intelligence ?? {
       resolveBlueprint: vi.fn(),
@@ -235,7 +243,7 @@ describe('SkillVerificationService pending verification flow', () => {
     const prisma = {
       skillClaim: {
         findUnique: vi.fn().mockResolvedValue(professionalClaim()),
-        update: vi.fn(),
+        update: vi.fn().mockResolvedValue(claimMarkedInProgress()),
       },
       skillVerificationAttempt: {
         findFirst: vi.fn().mockResolvedValue(null),
@@ -260,7 +268,9 @@ describe('SkillVerificationService pending verification flow', () => {
     });
     expect(pending.pendingVerification).toBe(true);
     expect(pending.assessmentResult?.recommendedNextStep).toBe('INTERVIEW');
-    expect(prisma.skillClaim.update).not.toHaveBeenCalled();
+    expect(pending.claim.verificationInProgress).toBe(true);
+    expect(prisma.skillClaim.update).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
 
     const interview = await service.startInterview(student(), SESSION_ID);
     expect(interview.questions).toHaveLength(3);
@@ -320,7 +330,10 @@ describe('SkillVerificationService pending verification flow', () => {
     };
 
     const prisma = {
-      skillClaim: { findUnique: vi.fn().mockResolvedValue(professionalClaim()), update: vi.fn() },
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(professionalClaim()),
+        update: vi.fn().mockResolvedValue(claimMarkedInProgress()),
+      },
       skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
       $transaction: vi.fn(),
     };
@@ -331,6 +344,8 @@ describe('SkillVerificationService pending verification flow', () => {
     expect(result.pendingVerification).toBe(true);
     expect(result.claim.status).toBe('DECLARED');
     expect(result.claim.strikes).toBe(0);
-    expect(prisma.skillClaim.update).not.toHaveBeenCalled();
+    expect(result.claim.verificationInProgress).toBe(true);
+    expect(prisma.skillClaim.update).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

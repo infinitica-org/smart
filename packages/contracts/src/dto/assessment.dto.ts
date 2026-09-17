@@ -348,9 +348,10 @@ export const CompleteSkillVerifyResponseSchema = z.object({
   technicalFailure: z.boolean(),
   grade: GradeSdeSkillFormResponseSchema.nullable(),
   assessmentResult: AssessmentResultSchema.nullable().optional(),
-  sessionContinues: z.boolean().optional(),
   session: SkillVerifySessionDtoSchema.nullable().optional(),
   pendingVerification: z.boolean().optional(),
+  /** Answers accepted; LLM grading and claim settlement run asynchronously. */
+  gradingAccepted: z.boolean().optional(),
 });
 
 export const StartSkillVerifyInterviewRequestSchema = z.object({

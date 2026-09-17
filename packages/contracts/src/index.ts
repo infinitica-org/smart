@@ -30,6 +30,7 @@ export * from './domain/signal-consent-scopes.js';
 export * from './domain/sde-v4-bridge.js';
 export * from './domain/skill-assessment-spec.js';
 export * from './domain/skill-focus-progress.js';
+export * from './domain/skill-verification-pending.js';
 export * from './domain/evidence/index.js';
 export * from './domain/question.js';
 export * from './domain/trace-prompt.js';

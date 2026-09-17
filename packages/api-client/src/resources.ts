@@ -1011,6 +1011,7 @@ export function assessmentApi(client: SmartApiClient) {
     completeSkillVerify: (sessionId: string, body: CompleteSkillVerifyRequest) =>
       client.post(prefixed(`/assessment/skill-verify/${sessionId}/complete`), body, {
         schema: CompleteSkillVerifyResponseSchema,
+        timeoutMs: 30_000,
       }),
 
     startSkillVerifyInterview: (sessionId: string) =>

@@ -1741,9 +1741,10 @@ export const ROUTES: readonly RouteSpec[] = [
     roles: ['STUDENT'],
     rateLimit: 'proctoring.media',
     criticality: 'CANDIDATE_CRITICAL',
-    execution: 'SYNC',
+    execution: 'ASYNC',
     slaMs: 3000,
-    summary: 'Sync CV analyze on uploaded snapshot; returns violations and warning state.',
+    summary:
+      'HTTP sync; CV analyze on uploaded snapshot (may exceed 200ms). Returns violations and warning state.',
   },
   {
     method: 'POST',

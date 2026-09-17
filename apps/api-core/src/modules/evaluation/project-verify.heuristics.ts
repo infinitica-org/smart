@@ -112,7 +112,6 @@ export function routeQlixResult(input: {
     similarityHardFail: number;
     similarityBorderline: number;
     aiLikelihoodFlag: number;
-    minTokens: number;
   };
 }): {
   opensInterviewGate: boolean;
@@ -130,37 +129,21 @@ export function routeQlixResult(input: {
       flags,
     };
   }
+  let routedToReview = false;
+  let exclusionReason: ProjectExclusionReason | null = null;
   if (input.similarityIndex > input.thresholds.similarityHardFail) {
-    return {
-      opensInterviewGate: false,
-      routedToReview: true,
-      exclusionReason: 'SOURCE_OVERLAP_ELEVATED',
-      flags,
-    };
-  }
-  if (input.similarityIndex > input.thresholds.similarityBorderline) {
-    return {
-      opensInterviewGate: false,
-      routedToReview: true,
-      exclusionReason: null,
-      flags,
-    };
-  }
-  if (input.analyzedTokens > 0 && input.analyzedTokens < input.thresholds.minTokens) {
-    return {
-      opensInterviewGate: false,
-      routedToReview: true,
-      exclusionReason: 'INSUFFICIENT_COMPLEXITY_FOR_VERIFICATION',
-      flags,
-    };
+    routedToReview = true;
+    exclusionReason = 'SOURCE_OVERLAP_ELEVATED';
+  } else if (input.similarityIndex > input.thresholds.similarityBorderline) {
+    routedToReview = true;
   }
   if (input.aiLikelihood !== null && input.aiLikelihood >= input.thresholds.aiLikelihoodFlag) {
     flags.push('QLIX_AUTHORSHIP_ELEVATED');
   }
   return {
     opensInterviewGate: true,
-    routedToReview: false,
-    exclusionReason: null,
+    routedToReview,
+    exclusionReason,
     flags,
   };
 }

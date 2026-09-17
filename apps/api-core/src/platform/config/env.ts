@@ -92,7 +92,6 @@ const EnvSchema = z.object({
   QLIX_SIMILARITY_HARD_FAIL: z.coerce.number().min(0).max(100).default(50),
   QLIX_SIMILARITY_BORDERLINE: z.coerce.number().min(0).max(100).default(30),
   QLIX_AI_LIKELIHOOD_FLAG: z.coerce.number().min(0).max(100).default(60),
-  QLIX_MIN_ANALYZED_TOKENS: z.coerce.number().int().nonnegative().default(5_000),
 
   /**
    * CN-T01 LinkedIn identity verification. LinkedIn has no public profile-

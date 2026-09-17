@@ -16,6 +16,7 @@ import { projectDefenseTimerProps } from '@/lib/project-defense-timer';
 import { isSmartApiError } from '@smart/api-client';
 import { api } from '../../lib/api';
 import { uploadDefenseTurnAudio } from '../../lib/project-defense-audio-upload';
+import { resolveDefenseClosingAnnouncement } from '../../lib/project-defense-closing';
 import { resolveDefenseReplyAction } from '../../lib/project-defense-reply-action';
 import {
   createConversationCapture,
@@ -279,17 +280,24 @@ export function ProjectDefenseInterviewPanel({
 
         submittingRef.current = false;
 
+        const closingAnnouncement = resolveDefenseClosingAnnouncement({
+          isFinalTurn: reply.isFinalTurn,
+          questionText: reply.questionText,
+          secondsRemaining: reply.session.secondsRemaining,
+        });
+
         if (nextStep.action === 'close_then_grade') {
-          if (nextStep.questionText) {
-            await playClosingThenComplete(nextStep.questionText, reply.questionAudioUrl);
-          } else {
-            await completeInterview();
-          }
+          const useExaminerAudio =
+            reply.questionText?.trim() === closingAnnouncement.trim() && reply.questionAudioUrl;
+          await playClosingThenComplete(
+            closingAnnouncement,
+            useExaminerAudio ? reply.questionAudioUrl : null,
+          );
           return;
         }
 
         if (nextStep.action === 'grade') {
-          await completeInterview();
+          await playClosingThenComplete(closingAnnouncement, null);
           return;
         }
 
@@ -308,20 +316,20 @@ export function ProjectDefenseInterviewPanel({
         );
         submittingRef.current = false;
         if (timeUp && hasSpokenRef.current) {
-          await completeInterview();
+          await playClosingThenComplete(
+            resolveDefenseClosingAnnouncement({
+              isFinalTurn: false,
+              questionText: null,
+              secondsRemaining: 0,
+            }),
+            null,
+          );
         } else if (!rateLimited && secondsRemaining !== null && secondsRemaining > 0) {
           await promptForAnswer();
         }
       }
     },
-    [
-      askThenListen,
-      completeInterview,
-      playClosingThenComplete,
-      project.projectId,
-      promptForAnswer,
-      secondsRemaining,
-    ],
+    [askThenListen, playClosingThenComplete, project.projectId, promptForAnswer, secondsRemaining],
   );
 
   const submitTypedAnswer = useCallback(async () => {
@@ -425,7 +433,14 @@ export function ProjectDefenseInterviewPanel({
         if (phase === 'listening' && captureRef.current) {
           void finishListeningRef.current();
         } else if (phase !== 'processing' && phase !== 'agent_speaking') {
-          void completeInterview();
+          void playClosingThenComplete(
+            resolveDefenseClosingAnnouncement({
+              isFinalTurn: false,
+              questionText: null,
+              secondsRemaining: 0,
+            }),
+            null,
+          );
         }
       }
     };
@@ -433,7 +448,7 @@ export function ProjectDefenseInterviewPanel({
     tick();
     const id = window.setInterval(tick, 1_000);
     return () => window.clearInterval(id);
-  }, [completeInterview, maxDurationSeconds, phase, startedAt]);
+  }, [maxDurationSeconds, phase, playClosingThenComplete, startedAt]);
 
   const replayQuestion = () => {
     if (agentQuestion) void speakAgentPromptAsync(agentQuestion);

@@ -232,10 +232,10 @@ UI entry: `apps/web-student/src/app/(dashboard)/assessments/page.tsx` and `skill
 - `GET /assessment/skill-verify/:sessionId` — resume session; server clock authoritative
 - `POST /assessment/skill-verify/:sessionId/save` — persist answers to Redis (TTL-bound)
 
-Optional **assessment intelligence** (diagnostic → targeted → full stages):
+Optional **assessment intelligence** (diagnostic form, then finalize):
 
 - `AssessmentIntelligenceService` + `evaluateAssessmentIntelligence()` in scoring-engine
-- May run a shorter diagnostic first, then targeted follow-up for weak competencies
+- May run a shorter diagnostic first; gaps drive interview/evidence/remediation — no second LLM form phase
 
 #### Step 4 — Complete form
 

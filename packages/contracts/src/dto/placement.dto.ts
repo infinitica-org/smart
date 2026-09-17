@@ -538,6 +538,8 @@ export const SkillClaimDtoSchema = z.object({
   /** Most recent settlement outcome when status is VERIFIED. */
   verificationDecision: z.enum(['VERIFIED', 'PROVISIONAL', 'FAILED']).nullable().optional(),
   claimConfidence: z.number().min(0).max(1).nullable().optional(),
+  /** Diagnostic submitted; grading or follow-on verification not finalized yet. */
+  verificationInProgress: z.boolean().optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 

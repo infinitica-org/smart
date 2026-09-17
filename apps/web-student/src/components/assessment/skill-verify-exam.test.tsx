@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SkillVerifySessionDto } from '@smart/contracts';
+import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
 import {
   SkillVerifyExam,
   isSkillVerifyAnswered,
@@ -57,7 +58,9 @@ describe('SkillVerifyExam layout', () => {
     expect(screen.getByText('First stem')).toBeDefined();
     expect(screen.queryByText('Second stem')).toBeNull();
     expect(
-      screen.getByRole('heading', { name: /sql & query optimization · short diagnostic/i }),
+      screen.getByRole('heading', {
+        name: formatSkillVerifyKioskTitle('SQL_QUERY_OPTIMIZATION', 'DIAGNOSTIC'),
+      }),
     ).toBeDefined();
     expect(screen.getByText('Single Choice')).toBeDefined();
     expect(screen.queryByText(/Pass bar/)).toBeNull();

@@ -65,10 +65,11 @@ describe('QlixPollService', () => {
       logUnavailable: vi.fn(),
     };
 
+    const markVerifyComplete = vi.fn().mockResolvedValue(undefined);
     const service = new QlixPollService(
       prisma as never,
       qlix as never,
-      { markVerifyComplete: vi.fn() } as never,
+      { markVerifyComplete } as never,
       { enqueueEnvelope: vi.fn() } as never,
       { get: vi.fn().mockResolvedValue(null) } as never,
       { add: vi.fn() } as never,
@@ -91,7 +92,16 @@ describe('QlixPollService', () => {
         }),
       }),
     );
-    expect(reportCreate).toHaveBeenCalled();
-    expect(projectUpdate).toHaveBeenCalled();
+    expect(reportCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ routedToReview: false }),
+      }),
+    );
+    expect(projectUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: 'SUBMITTED' },
+      }),
+    );
+    expect(markVerifyComplete).toHaveBeenCalledWith(projectId);
   });
 });

@@ -250,6 +250,46 @@ describe('EvaluationService SDE v4 skill form', () => {
     expect(complete).toHaveBeenCalledTimes(2);
   });
 
+  it('uses SCENARIO open items for APPLIED catalog skills on SDE_TESTING blueprint', async () => {
+    const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
+      ...item,
+      competencySlot: `C${String((idx % 6) + 1)}` as const,
+    }));
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedWithSlots } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'SCENARIO',
+              competencySlot: 'C1',
+              prompt:
+                'During a scoped web app pentest you find reflected XSS in search. What is your next step under ROE?',
+              rubric: 'Names validation scope, evidence capture, and safe reproduction.',
+              modelAnswer:
+                'Confirm in scope, reproduce minimally, document impact, stop short of exploit.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_TESTING',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-pentest-diagnostic',
+        stage: 'DIAGNOSTIC',
+        catalogSkillCode: 'PENETRATION_TESTING_VULNERABILITY_ASSESSMENT',
+      },
+      OWNER_ID,
+    );
+
+    expect(result.items.some((item) => item.format === 'SCENARIO')).toBe(true);
+    expect(complete.mock.calls[1]?.[0]?.variables.formats).toEqual(['SCENARIO']);
+    expect(complete.mock.calls[1]?.[0]?.variables.taskFamily).toBe('APPLIED');
+  });
+
   it('accepts mislabeled CODING output for SCENARIO-only deployment diagnostic forms', async () => {
     const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
       ...item,

@@ -137,7 +137,6 @@ export class QlixPollService {
         similarityHardFail: env.QLIX_SIMILARITY_HARD_FAIL,
         similarityBorderline: env.QLIX_SIMILARITY_BORDERLINE,
         aiLikelihoodFlag: env.QLIX_AI_LIKELIHOOD_FLAG,
-        minTokens: env.QLIX_MIN_ANALYZED_TOKENS,
       },
     });
 
@@ -226,8 +225,10 @@ export class QlixPollService {
 
     const explanation = encodeReportExplanation(
       routed.opensInterviewGate
-        ? 'Integrity verification completed. Complete the voice ownership interview to finalize verification.'
-        : 'Automated verification requires review before the ownership interview.',
+        ? routed.routedToReview
+          ? 'Integrity checks flagged concerns. Complete the voice ownership interview; final verification may require human review.'
+          : 'Integrity verification completed. Complete the voice ownership interview to finalize verification.'
+        : 'Automated verification could not be completed. Re-submit or contact support if this persists.',
       meta,
     );
 

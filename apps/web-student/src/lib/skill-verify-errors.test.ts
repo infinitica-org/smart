@@ -24,6 +24,19 @@ function session(items: SkillVerifySessionDto['items']): SkillVerifySessionDto {
 }
 
 describe('skillVerifyErrorFromUnknown', () => {
+  it('maps submit scoring failures without referencing a second assessment stage', () => {
+    const mapped = skillVerifyErrorFromUnknown(
+      new SmartApiError({
+        error: 'skill_form_unavailable',
+        message: 'Skill form could not be graded.',
+        statusCode: 502,
+      }),
+      'submit',
+    );
+    expect(mapped.title).toBe('Could not finish assessment');
+    expect(mapped.message).not.toMatch(/next stage/i);
+  });
+
   it('maps provider failures to a friendly generation message', () => {
     const mapped = skillVerifyErrorFromUnknown(
       new SmartApiError({

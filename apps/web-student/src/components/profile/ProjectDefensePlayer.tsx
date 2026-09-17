@@ -32,24 +32,22 @@ export function ProjectDefensePlayer({
   const abortInterviewRef = useRef<(() => void) | null>(null);
   const preparedRef = useRef(prepared);
   const startedRef = useRef(started);
+  const prepareSeqRef = useRef(0);
   preparedRef.current = prepared;
   startedRef.current = started;
 
   useEffect(() => {
-    let cancelled = false;
+    const seq = ++prepareSeqRef.current;
     void (async () => {
       try {
         const next = await api.projects.prepareDefense(project.projectId);
-        if (!cancelled) setPrepared(next);
+        if (seq !== prepareSeqRef.current) return;
+        setPrepared(next);
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not prepare interview.');
-        }
+        if (seq !== prepareSeqRef.current) return;
+        setError(err instanceof Error ? err.message : 'Could not prepare interview.');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [project.projectId]);
 
   const activateInterview = useCallback(async () => {

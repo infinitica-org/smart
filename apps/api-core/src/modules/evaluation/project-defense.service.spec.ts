@@ -214,6 +214,13 @@ describe('ProjectDefenseService', () => {
     );
   });
 
+  it('prepare reuses an active unprepared session so proctoring stays on the same attemptId', async () => {
+    const { service } = setup();
+    const first = await service.prepare(projectId, userId);
+    const second = await service.prepare(projectId, userId);
+    expect(second.sessionId).toBe(first.sessionId);
+  });
+
   it('prepare clears a prior attempt so the next start is fresh', async () => {
     const { service, gateway, redisStore, interviewGate } = setup();
     gateway.complete

@@ -146,6 +146,20 @@ export class ProjectDefenseService {
 
   async prepare(projectId: string, userId: string): Promise<PrepareProjectDefenseResponse> {
     await this.assertInterviewAllowed(projectId, userId);
+
+    const existingSessionId = await this.redis.get(activeProjectKey(projectId));
+    if (existingSessionId) {
+      const existing = await this.loadSession(existingSessionId);
+      if (
+        existing &&
+        existing.userId === userId &&
+        existing.status === 'ACTIVE' &&
+        !existing.startedAt
+      ) {
+        return PrepareProjectDefenseResponseSchema.parse({ sessionId: existing.sessionId });
+      }
+    }
+
     await this.clearActiveDefenseSession(projectId, userId);
 
     const project = await this.loadOwnedProject(projectId, userId);

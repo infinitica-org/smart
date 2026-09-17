@@ -11,6 +11,7 @@ import { AssessmentIntelligenceService } from './assessment-intelligence.service
 import { IntegrityAdminController } from './integrity-admin.controller.js';
 import { ItemRotationService } from './item-rotation.service.js';
 import { CertVerificationAssessmentService } from './cert-verification-assessment.service.js';
+import { SkillVerifyGradeProcessor } from './skill-verify-grade.processor.js';
 import { SkillVerificationService } from './skill-verification.service.js';
 
 @Module({
@@ -27,6 +28,7 @@ import { SkillVerificationService } from './skill-verification.service.js';
     AssessmentService,
     ItemRotationService,
     SkillVerificationService,
+    SkillVerifyGradeProcessor,
     CertVerificationAssessmentService,
     AssessmentIntelligenceService,
   ],

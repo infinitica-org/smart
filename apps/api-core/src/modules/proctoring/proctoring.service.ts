@@ -620,7 +620,7 @@ export class ProctoringService {
     if (objectKey) {
       this.assertValidSnapshotObjectKey(attemptId, objectKey);
       const analysis = await analyzeProctoringSnapshot(objectKey);
-      if ((analysis.faceCount ?? 0) !== 1) {
+      if (analysis.faceCount !== undefined && analysis.faceCount !== 1) {
         return { enrolled: false, message: 'Enrollment frame must show exactly one face.' };
       }
       if (analysis.violations.length > 0) {

@@ -302,8 +302,7 @@ export const GenerateSdeSkillFormRequestSchema = z.object({
   attemptId: z.string().min(1).max(80).optional(),
   priorStems: z.array(z.string().max(200)).max(40).optional(),
   skillFocus: z.string().min(1).max(64).optional(),
-  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional().default('FULL'),
-  targetCompetencyIds: z.array(z.uuid()).max(20).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'FULL']).optional().default('FULL'),
   catalogSkillCode: z.string().min(2).max(64).optional(),
 });
 export type GenerateSdeSkillFormRequest = z.infer<typeof GenerateSdeSkillFormRequestSchema>;
@@ -348,7 +347,7 @@ export const GenerateSdeSkillFormResponseSchema = z.object({
   attemptId: z.string().min(1).max(80),
   timeMinutes: z.number().int().positive(),
   passMarkPercent: z.number().int().min(1).max(100).optional(),
-  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'FULL']).optional(),
   promptRefs: z.object({
     closed: z.string().regex(/^[a-z0-9-]+@\d+$/),
     open: z.string().regex(/^[a-z0-9-]+@\d+$/),

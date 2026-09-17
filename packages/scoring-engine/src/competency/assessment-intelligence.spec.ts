@@ -129,7 +129,7 @@ describe('assessment-intelligence', () => {
     expect(shouldStopTesting(results, 'PROFESSIONAL', requirements, true)).toBe(false);
   });
 
-  it('stops after targeted assessment without probing another tier upward', () => {
+  it('stops testing when upward probe is disabled after strong diagnostic', () => {
     const items = model.slice(0, 5).map((row) => ({
       competencyIds: [row.competencyId],
       marksEarned: 10,
