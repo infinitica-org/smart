@@ -26,7 +26,8 @@ export interface SmartLogoProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'c
   /**
    * `auto` — COLOURED artwork: teal diamond + `currentColor` word (follows
    * `text-*` / sidebar foreground, so light and dark themes both read).
-   * `on-light` / `on-dark` lock letter colour to black / white.
+   * `on-light` / `on-dark` lock letter colour to black / white; for `kind="mark"`,
+   * the favicon uses black / white instead of teal.
    */
   tone?: SmartLogoTone;
   title?: string;
@@ -36,6 +37,12 @@ function lettersFillForTone(tone: SmartLogoTone): string {
   if (tone === 'on-light') return '#131313';
   if (tone === 'on-dark') return '#ffffff';
   return 'currentColor';
+}
+
+function markFillForTone(tone: SmartLogoTone): string {
+  if (tone === 'on-light') return '#131313';
+  if (tone === 'on-dark') return '#ffffff';
+  return SMART_MARK_TEAL;
 }
 
 function WordmarkSvg({ lettersFill, title }: { lettersFill: string; title: string }) {
@@ -57,7 +64,7 @@ function WordmarkSvg({ lettersFill, title }: { lettersFill: string; title: strin
   );
 }
 
-function MarkSvg({ title }: { title: string }) {
+function MarkSvg({ title, fill }: { title: string; fill: string }) {
   return (
     <svg
       viewBox="0 0 202.67 211.56"
@@ -66,7 +73,7 @@ function MarkSvg({ title }: { title: string }) {
       className="block size-full shrink-0"
     >
       <title>{title}</title>
-      <path fill={SMART_MARK_TEAL} d={MARK_PATH} />
+      <path fill={fill} d={MARK_PATH} />
     </svg>
   );
 }
@@ -88,7 +95,7 @@ export function SmartLogo({
         className={cn('inline-flex size-8 shrink-0 items-center justify-center', className)}
         {...props}
       >
-        <MarkSvg title={title} />
+        <MarkSvg title={title} fill={markFillForTone(tone)} />
       </span>
     );
   }

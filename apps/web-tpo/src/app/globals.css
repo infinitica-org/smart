@@ -44,6 +44,14 @@
   --tpo-accent-hover: #29ffd9;
   --tpo-accent-tint: #e8fffb;
   --tpo-accent-border: #86f5e2;
+
+  /*
+   * Apple SF Pro via system stack (licensed fonts are not bundled). On macOS/iOS
+   * this resolves to SF Pro Text/Display; elsewhere falls back to system UI sans.
+   */
+  --tpo-font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    system-ui, sans-serif;
 }
 
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
@@ -106,4 +114,10 @@
   font-weight: 900;
   font-display: swap;
   font-style: normal;
+}
+
+.tpo-console {
+  font-family: var(--tpo-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
