@@ -10,6 +10,7 @@ import {
   ACTIVE_TAXONOMY_VERSION,
   AdminReviewFlagsQuerySchema,
   AdminReviewFlagsResponseSchema,
+  AssessmentPerformanceVectorSchema,
   ResolveReviewFlagResponseSchema,
   SMART_TOPICS,
   StudentCorroborationResponseSchema,
@@ -76,6 +77,61 @@ export class CorroborationService {
       if (!claimed) return;
     }
     await this.recomputeSnapshot(assessment.userId, assessment);
+  }
+
+  /**
+   * Re-fuses passive X with all verified skill assessments after passive ingest
+   * (e.g. QLIX project evidence landed after assessments were already verified).
+   */
+  async refusionVerifiedSkillClaims(
+    userId: string,
+    options: { skillCodes?: readonly string[] } = {},
+  ): Promise<void> {
+    const claims = await this.prisma.skillClaim.findMany({
+      where: { studentId: userId, status: 'VERIFIED' },
+      include: {
+        skill: { select: { code: true } },
+        verificationAttempts: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    const skillFilter = options.skillCodes?.length ? new Set(options.skillCodes) : null;
+    const entries = claims
+      .filter((claim) => !skillFilter || skillFilter.has(claim.skill.code))
+      .flatMap((claim) => {
+        const attempt = claim.verificationAttempts[0];
+        if (!attempt || attempt.scorePercent == null) return [];
+        return [
+          {
+            dimension: {
+              taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+              dimensionKey: claim.skill.code,
+              skillCode: claim.skill.code,
+              proficiencyLevel: attempt.claimedProficiency,
+            },
+            scorePercent: Number(attempt.scorePercent),
+            passed: attempt.passed ?? false,
+            proficiencyLevel: attempt.claimedProficiency,
+          },
+        ];
+      });
+
+    if (entries.length === 0) return;
+
+    const primaryClaim = claims.find(
+      (claim) => claim.skill.code === entries[0]?.dimension.skillCode,
+    );
+    if (!primaryClaim) return;
+
+    const assessment = AssessmentPerformanceVectorSchema.parse({
+      userId,
+      claimId: primaryClaim.id,
+      skillCode: primaryClaim.skill.code,
+      assessedAt: new Date().toISOString(),
+      entries,
+    });
+
+    await this.recomputeSnapshot(userId, assessment);
   }
 
   async getStudentSnapshot(userId: string) {
