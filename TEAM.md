@@ -1,191 +1,205 @@
 # SMART — Team Charter, Role Definition & Module Ownership
 
 > **Version:** v3.0 — Authoritative Ownership Contract
-> **Last Updated:** 2026-08-21
-> **Release Target:** **10 September 2026, 18:00 IST** (General Availability)
-> **Methodology:** Scrum (Agile) — 6 sprints, see [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md)
+> **Status:** Active
+> **Methodology:** Scrum (Agile), structured into sequential sprints. See [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md).
+> **Release Governance:** General Availability (GA) sign-off criteria and scheduling are maintained in [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md).
 
-This document is the **single source of truth for who owns what**. If a file is being changed
-and you are not its owner (or an explicitly listed contributor), you open a PR and request the
-owner's review — you do not merge into someone else's module.
+This document is the single source of truth for module and process ownership within the SMART
+engineering team. Any contributor modifying a file outside their designated ownership must open a
+pull request and obtain the owner's review; direct merges into another owner's module are not
+permitted.
 
-Ownership is enforced mechanically by [`.github/CODEOWNERS`](./.github/CODEOWNERS). If this
-document and `CODEOWNERS` ever disagree, **`CODEOWNERS` wins and this document is a bug**.
-
----
-
-## 1. The Team
-
-| #   | Engineer             | Role Title                         | Mandate (one sentence)                                                                                                                              | Writes Feature Code? |
-| --- | -------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| 1   | **Tino**             | **System Architect & Reviewer**    | Owns the architecture, the contracts, the quality gates and the final merge decision — reviews everything, ships no feature code.                   | **No — by design**   |
-| 2   | **Vishal V**         | **Senior Backend Engineer**        | Owns the backend platform core: identity, data layer, rate limiting, event bus, code-execution sandbox and runtime infrastructure.                  | Yes                  |
-| 3   | **Satheswaran V**    | **Frontend & Full-Stack Engineer** | Owns the candidate and TPO experience layer: design system, assessment player, dashboards and the typed API client.                                 | Yes                  |
-| 4   | **Vishal Bharath R** | **Full-Stack & Backend Engineer**  | Owns the assessment lifecycle and the trust chain: attempt orchestration, certificates, public verification, admin console and webhooks.            | Yes                  |
-| 5   | **Ramansh**          | **AI Engineer**                    | Owns every LLM boundary: AI gateway with failover, BARS evaluation, L4 defense simulation, RAG/pgvector and vector matching.                        | Yes                  |
-| 6   | **Vedika G**         | **Data & AI/Backend Engineer**     | Owns the content and data spine: item banks for all 10 tracks, calibration/cut scores, seed & ingestion pipelines, placement records and analytics. | Yes                  |
-
-> **GitHub handles** are listed in the table below and enforced in [`.github/CODEOWNERS`](./.github/CODEOWNERS).
-
-| Engineer         | GitHub handle     | Timezone | Standup   |
-| ---------------- | ----------------- | -------- | --------- |
-| Tino             | `@brittytino`     | IST      | 09:30 IST |
-| Vishal V         | `@vis465`         | IST      | 09:30 IST |
-| Satheswaran V    | `@Satheshwaran26` | IST      | 09:30 IST |
-| Vishal Bharath R | `@vishalbharath`  | IST      | 09:30 IST |
-| Ramansh          | `@Ram9012`        | IST      | 09:30 IST |
-| Vedika G         | `@11vedikaa`      | IST      | 09:30 IST |
+Ownership is enforced mechanically by [`.github/CODEOWNERS`](./.github/CODEOWNERS). Where this
+document and `CODEOWNERS` disagree, `CODEOWNERS` is authoritative, and this document is considered
+out of date and must be corrected.
 
 ---
 
-## 2. Role Definitions — What Each Person Is Accountable For
+## 1. Team Composition
+
+| #   | Engineer             | Role Title                         | Mandate                                                                                                                                              | Writes Feature Code? |
+| --- | --------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| 1   | **Tino**              | **System Architect & Reviewer**     | Owns the architecture, the contracts, the quality gates, and the final merge decision. Reviews all changes; does not ship feature code.                | **No — by design**   |
+| 2   | **Vishal V**          | **Senior Backend Engineer**         | Owns the backend platform core: identity, data layer, rate limiting, event bus, code-execution sandbox, and runtime infrastructure.                    | Yes                   |
+| 3   | **Satheswaran V**     | **Frontend & Full-Stack Engineer**  | Owns the candidate and TPO experience layer: design system, assessment player, dashboards, and the typed API client.                                   | Yes                   |
+| 4   | **Vishal Bharath R**  | **Full-Stack & Backend Engineer**   | Owns the assessment lifecycle and the trust chain: attempt orchestration, certificates, public verification, admin console, and webhooks.              | Yes                   |
+| 5   | **Ramansh**           | **AI Engineer**                     | Owns every LLM boundary: AI gateway with failover, BARS evaluation, L4 defense simulation, RAG/pgvector, and vector matching.                           | Yes                   |
+| 6   | **Vedika G**          | **Data & AI/Backend Engineer**      | Owns the content and data spine: item banks for all ten tracks, calibration and cut scores, seed and ingestion pipelines, placement records, analytics. | Yes                   |
+
+> GitHub handles are listed below and are enforced in [`.github/CODEOWNERS`](./.github/CODEOWNERS).
+
+| Engineer          | GitHub handle      | Timezone | Standup   |
+| ------------------ | ------------------- | -------- | --------- |
+| Tino               | `@brittytino`        | IST      | 09:30 IST |
+| Vishal V            | `@vis465`             | IST      | 09:30 IST |
+| Satheswaran V       | `@Satheshwaran26`     | IST      | 09:30 IST |
+| Vishal Bharath R    | `@vishalbharath`      | IST      | 09:30 IST |
+| Ramansh             | `@Ram9012`            | IST      | 09:30 IST |
+| Vedika G            | `@11vedikaa`          | IST      | 09:30 IST |
+
+---
+
+## 2. Role Definitions and Individual Accountability
 
 ### 2.1 Tino — System Architect & Reviewer
 
-**Explicitly NOT assigned any feature story points.** Tino's capacity is reserved for
-architecture, review throughput and unblocking. Sprint velocity must never assume Tino writes
-product code — if it does, the sprint is mis-planned.
+Tino is not assigned feature story points. His capacity is reserved for architecture, review
+throughput, and unblocking other engineers. Sprint velocity planning must not assume that Tino
+contributes product code; a sprint plan that does so is mis-scoped and must be corrected.
 
 **Owns (exclusive write authority):**
 
-| Artifact                                                         | Why it is architect-owned                                                                   |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ARCHITECTURE.md`, `SERVICES_VIEW.md`, `REPOSITORY_STRUCTURE.md` | System-level truth must not drift per-developer.                                            |
-| `docs/adr/**`                                                    | Architecture Decision Records — one decision, one owner.                                    |
-| `packages/contracts/**`                                          | The cross-team API/event contract. Anyone may propose a change via PR; only Tino merges it. |
-| `.github/workflows/**`, `.github/CODEOWNERS`                     | Quality gates cannot be edited by the person trying to pass them.                           |
-| `turbo.json`, `pnpm-workspace.yaml`, root `tsconfig.base.json`   | Build graph and module boundaries.                                                          |
-| `docs/delivery/**`                                               | Sprint plan, backlog, definition of done.                                                   |
+| Artifact                                                          | Rationale for Sole Ownership                                                                          |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `ARCHITECTURE.md`, `SERVICES_VIEW.md`, `REPOSITORY_STRUCTURE.md`  | System-level documentation must remain authoritative and must not diverge across individual contributors. |
+| `docs/adr/**`                                                     | Architecture Decision Records — each decision has a single accountable owner.                            |
+| `packages/contracts/**`                                           | The cross-team API and event contract. Any engineer may propose a change via pull request; only Tino may merge it. |
+| `.github/workflows/**`, `.github/CODEOWNERS`                      | Quality gates must not be modifiable by the individual whose work they are intended to gate.              |
+| `turbo.json`, `pnpm-workspace.yaml`, root `tsconfig.base.json`    | Build graph and module boundaries.                                                                        |
+| `docs/delivery/**`                                                | Sprint plan, backlog, and definition of done.                                                             |
 
 **Accountable for:**
 
-1. **Mandatory reviewer on every PR** (`* @brittytino` in CODEOWNERS). No PR merges without architect approval.
-2. **Contract change control** — every change to `@smart/contracts` is a PR with an ADR link, a migration note, and notification to all affected owners in the same PR body.
-3. **Daily Architecture Review Board, 17:00 IST** — 30 min, all open PRs triaged to `merge` / `changes-requested` / `escalate`. No PR sits >24h.
-4. **Definition of Done enforcement** — see `docs/delivery/DEFINITION_OF_DONE.md`. Tino rejects on DoD, not on taste.
-5. **Cross-module integration correctness** — Kafka topic contracts, SLA budgets, rate-limit matrix, RBAC matrix.
-6. **Release management** — cutting `release/*` branches, sign-off on the code freeze (8 Sep 23:59 IST) and the GA tag (10 Sep).
-7. **Tech debt register** (`docs/engineering/TECH_DEBT.md`) — anything merged with a known compromise gets logged here in the same PR.
+1. **Mandatory reviewer on every pull request** (`* @brittytino` in CODEOWNERS). No pull request merges without architect approval.
+2. **Contract change control** — every change to `@smart/contracts` requires a pull request with an ADR link, a migration note, and notification to all affected owners within the same pull request body.
+3. **Daily Architecture Review Board (17:00 IST)** — thirty minutes, all open pull requests triaged to `merge`, `changes-requested`, or `escalate`. No pull request remains untriaged for more than 24 hours.
+4. **Definition of Done enforcement** — per `docs/delivery/DEFINITION_OF_DONE.md`. Rejections are made on the basis of the Definition of Done, not subjective preference.
+5. **Cross-module integration correctness** — Kafka topic contracts, SLA budgets, the rate-limit matrix, and the RBAC matrix.
+6. **Release management** — cutting `release/*` branches and providing sign-off on the code freeze and the General Availability (GA) tag, per the schedule maintained in `docs/delivery/AGILE_PLAN.md`.
+7. **Technical debt register** (`docs/engineering/TECH_DEBT.md`) — any change merged with a known compromise is logged here within the same pull request.
 
-**Tino does not:** implement modules, fix other people's failing tests, or take over a blocked
-ticket. Blocked tickets get re-assigned in standup, not absorbed by the architect.
+Tino does not implement feature modules, resolve other engineers' failing tests, or assume
+ownership of a blocked ticket. Blocked tickets are reassigned during standup and are not absorbed
+by the architect.
 
 ---
 
 ### 2.2 Vishal V — Senior Backend Engineer
 
-**Bounded context: Platform Core.** Everything that every other backend module depends on.
-Vishal V is the most senior IC — he is the **second reviewer of choice** for all backend PRs and
-the escalation path when Ramansh/Vedika/Vishal Bharath are blocked on backend internals.
+**Bounded context: Platform Core.** Everything that every other backend module depends on. Vishal
+V is the most senior individual contributor on the team. He serves as the secondary reviewer for
+all backend pull requests and is the designated escalation path when Ramansh, Vedika, or Vishal
+Bharath are blocked on backend internals.
 
 **Owns:**
 
-| Path                                                                         | Deliverable                                                                                                                                 |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/main.ts`, `app.module.ts`                                 | Fastify bootstrap, global pipes/filters/interceptors, Swagger, graceful shutdown.                                                           |
-| `apps/api-core/src/platform/**`                                              | Config (validated env), logging (pino), Prisma service, Redis service, Kafka service, BullMQ registration, health/readiness, OpenTelemetry. |
-| `apps/api-core/src/modules/auth/**`                                          | 15-min access JWT, HttpOnly refresh rotation, OAuth (Google/GitHub), SAML 2.0 / OIDC institutional SSO, RBAC guards, B2B `X-SMART-API-KEY`. |
-| `apps/api-core/src/modules/users/**`                                         | Student/TPO/admin profile, track enrollment (primary + secondary).                                                                          |
-| `apps/api-core/src/modules/rate-limit/**`                                    | Redis sliding-window + token-bucket Lua guard, role & endpoint matrix, `X-RateLimit-*` headers, `smart.rate_limit.exceeded`.                |
-| `apps/api-core/src/modules/sandbox/**`                                       | Non-networked Docker runner (256 MB / 1 CPU / 5 s), SQL executor on throwaway schema, watchdog.                                             |
-| `apps/api-core/prisma/**`                                                    | **Schema steward.** All migrations land through him — this is how we avoid migration collisions with 5 devs.                                |
-| `infra/docker/**`, `infra/k8s/**`, `infra/helm/**`, `infra/observability/**` | Local stack, images, manifests, Grafana/Prometheus/Loki wiring.                                                                             |
-| `scripts/**`                                                                 | Bootstrap, seed, reset, diagnostics.                                                                                                        |
+| Path                                                                          | Deliverable                                                                                                                                  |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api-core/src/main.ts`, `app.module.ts`                                  | Fastify bootstrap, global pipes/filters/interceptors, Swagger, graceful shutdown.                                                              |
+| `apps/api-core/src/platform/**`                                               | Config (validated env), logging (pino), Prisma service, Redis service, Kafka service, BullMQ registration, health/readiness, OpenTelemetry.    |
+| `apps/api-core/src/modules/auth/**`                                           | 15-minute access JWT, HttpOnly refresh rotation, OAuth (Google/GitHub), SAML 2.0 / OIDC institutional SSO, RBAC guards, B2B `X-SMART-API-KEY`.  |
+| `apps/api-core/src/modules/users/**`                                          | Student/TPO/admin profile, track enrollment (primary + secondary).                                                                             |
+| `apps/api-core/src/modules/rate-limit/**`                                     | Redis sliding-window + token-bucket Lua guard, role & endpoint matrix, `X-RateLimit-*` headers, `smart.rate_limit.exceeded`.                    |
+| `apps/api-core/src/modules/sandbox/**`                                        | Non-networked Docker runner (256 MB / 1 CPU / 5 s), SQL executor on throwaway schema, watchdog.                                                 |
+| `apps/api-core/prisma/**`                                                     | **Schema steward.** All schema migrations are routed through this owner to prevent migration collisions across a multi-engineer team.          |
+| `infra/docker/**`, `infra/k8s/**`, `infra/helm/**`, `infra/observability/**`  | Local stack, images, manifests, Grafana/Prometheus/Loki wiring.                                                                                 |
+| `scripts/**`                                                                  | Bootstrap, seed, reset, diagnostics.                                                                                                            |
 
-**Non-negotiables he is judged on:** local `pnpm dev` works for all 5 other engineers on day 1;
-p95 < 200 ms on synchronous endpoints; zero un-TTL'd Redis keys; migrations always forward-only.
+**Non-negotiables:** the local `pnpm dev` environment must function for all other engineers from
+the outset; synchronous endpoints must maintain p95 latency below 200 ms; no Redis key may be
+created without a TTL; database migrations must always be forward-only.
 
 ---
 
 ### 2.3 Satheswaran V — Frontend & Full-Stack Engineer
 
-**Bounded context: Experience Layer.** Everything the student and the placement officer touch.
+**Bounded context: Experience Layer.** Encompasses all interfaces used by students and placement
+officers.
 
 **Owns:**
 
-| Path                     | Deliverable                                                                                                                                                                                           |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/ui/**`         | Design system on Tailwind 4 + shadcn/ui: tokens, theme, primitives, `TierBadge`, `TierTrail`, `ConfidenceNote`, `LevelStepper`, charts. Every app consumes this — no app-local component duplication. |
-| `packages/api-client/**` | Typed fetch client generated against `@smart/contracts`, TanStack Query hooks, silent-refresh interceptor, 429/`Retry-After` handling.                                                                |
-| `apps/web-student/**`    | Assessment player (L1 MCQ, L2 code editor, L3 recorder, L4 defense chat, L5 upload), Zustand attempt store, timer/auto-submit, growth & gap-report portal.                                            |
-| `apps/web-tpo/**`        | Cohort readiness dashboard, Gold/Silver/Bronze distribution, gap report, shortlist table + CSV/PDF export, JD upload UI.                                                                              |
+| Path                       | Deliverable                                                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/ui/**`            | Design system on Tailwind 4 + shadcn/ui: tokens, theme, primitives, `TierBadge`, `TierTrail`, `ConfidenceNote`, `LevelStepper`, charts. Every application consumes this; no app-local component duplication is permitted. |
+| `packages/api-client/**`    | Typed fetch client generated against `@smart/contracts`, TanStack Query hooks, silent-refresh interceptor, 429/`Retry-After` handling.                                                                  |
+| `apps/web-student/**`       | Assessment player (L1 MCQ, L2 code editor, L3 recorder, L4 defense chat, L5 upload), Zustand attempt store, timer/auto-submit, growth & gap-report portal.                                               |
+| `apps/web-tpo/**`           | Cohort readiness dashboard, Gold/Silver/Bronze distribution, gap report, shortlist table with CSV/PDF export, JD upload UI.                                                                              |
 
-**Non-negotiables:** WCAG 2.1 AA on the assessment player; the player never loses an answer on
-network blip (optimistic Redis draft + retry); Lighthouse performance ≥ 90 on `web-verify` and
-the student dashboard; zero `any` crossing the API boundary — everything typed from contracts.
+**Non-negotiables:** WCAG 2.1 AA compliance on the assessment player; the player must not lose an
+answer on a network interruption (optimistic Redis draft with retry); Lighthouse performance
+score of at least 90 on `web-verify` and the student dashboard; no `any` type may cross the API
+boundary — all data is typed from contracts.
 
 ---
 
 ### 2.4 Vishal Bharath R — Full-Stack & Backend Engineer
 
-**Bounded context: Assessment Lifecycle & Trust Chain.** He owns the attempt from "start" to
-"issued certificate", plus the two surfaces that prove the product is real (verification + admin).
+**Bounded context: Assessment Lifecycle and Trust Chain.** Ownership spans the full attempt
+lifecycle, from initiation through certificate issuance, together with the two surfaces that
+establish the product's legitimacy: public verification and the administrative console.
 
 **Owns:**
 
-| Path                                       | Deliverable                                                                                                                                                                                                                       |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/modules/assessment/**`  | Attempt orchestration, Redis session state `session:assessment:{attempt_id}`, server-authoritative timer + auto-submit, item delivery from `items:form:*` warm cache, level unlock gating (Bronze-or-above), integrity event log. |
-| `apps/api-core/src/modules/certificate/**` | Tier Trail computation, headline tier, confidence note assembly, signed SHA-256 QR, Puppeteer PDF → R2, `smart.certificate.issued`.                                                                                               |
-| `apps/api-core/src/modules/webhooks/**`    | Outbound HMAC-SHA256 dispatcher, endpoint registry, retry with exponential backoff + DLQ.                                                                                                                                         |
-| `apps/web-verify/**`                       | Public `verify.smart.com/cert/[id]` — Tier Trail, confidence note, calibration employer credits, QR validator. Cached, SSG/ISR, < 80 ms p95.                                                                                      |
-| `apps/web-admin/**`                        | Super Admin console: system health, rate-limit overrides, user/institution management, integrity review queue, cut-score publish workflow.                                                                                        |
+| Path                                        | Deliverable                                                                                                                                                                                                                        |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api-core/src/modules/assessment/**`    | Attempt orchestration, Redis session state `session:assessment:{attempt_id}`, server-authoritative timer with auto-submit, item delivery from `items:form:*` warm cache, level unlock gating (Bronze-or-above), integrity event log. |
+| `apps/api-core/src/modules/certificate/**`   | Tier Trail computation, headline tier, confidence note assembly, signed SHA-256 QR, Puppeteer PDF to R2, `smart.certificate.issued`.                                                                                              |
+| `apps/api-core/src/modules/webhooks/**`      | Outbound HMAC-SHA256 dispatcher, endpoint registry, retry with exponential backoff and DLQ.                                                                                                                                       |
+| `apps/web-verify/**`                         | Public `verify.smart.com/cert/[id]` — Tier Trail, confidence note, calibration employer credits, QR validator. Cached, SSG/ISR, p95 latency below 80 ms.                                                                          |
+| `apps/web-admin/**`                          | Super Admin console: system health, rate-limit overrides, user/institution management, integrity review queue, cut-score publish workflow.                                                                                       |
 
-**Non-negotiables:** the timer cannot be beaten from the client (server is the clock); an attempt
-with `integrity_flag != 'CLEAN'` **must not** produce a certificate; verification page is
-correct or it shows an error — it never shows a stale or partially-computed tier.
+**Non-negotiables:** the timer must be authoritative on the server and cannot be circumvented from
+the client; an attempt with `integrity_flag != 'CLEAN'` must not produce a certificate; the
+verification page must be correct or must display an explicit error state — it must never present
+a stale or partially computed tier.
 
 ---
 
 ### 2.5 Ramansh — AI Engineer
 
-**Bounded context: Every LLM and vector boundary.** No other engineer calls Anthropic or Google
-directly — all AI traffic goes through Ramansh's gateway. This is how we control cost and failover.
+**Bounded context: All LLM and vector-search boundaries.** No other engineer is authorized to call
+Anthropic or Google APIs directly; all AI traffic is routed through Ramansh's gateway. This
+routing is the mechanism by which cost and failover are controlled.
 
 **Owns:**
 
-| Path                                      | Deliverable                                                                                                                                                                                                                                                                            |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/modules/ai-gateway/**` | Claude 5 Sonnet + Claude 4.7 clients, Redis token-bucket (200 RPM / 10k TPM), 3 priority queues (P1 L4 defense 40% reserved, P2 L3 grading, P3 batch), circuit breaker → **Gemini 2.5 Pro/Flash** on 429/5xx/timeout, prompt+response audit to `claude_evaluation_audits`, cost meter. |
-| `apps/api-core/src/modules/evaluation/**` | L3 BARS mode-consensus grading, L4 interactive defense simulation, L5 split scoring (50 % checklist / 30 % rubric / 20 % presentation), Cohen's κ monitor with **auto-pause of automated scoring below κ 0.65**.                                                                       |
-| `apps/api-core/src/modules/matching/**`   | JD → threshold-vector NLP parse, embedding generation, pgvector cosine search + rule filters, match explainability.                                                                                                                                                                    |
-| `packages/scoring-engine/**`              | Effect.ts pure math: Angoff μ/σ cut scores + confidence bands, tier assignment with borderline detection, weighted L1 scoring, IRT 2PL (Phase 2), Cohen's κ, Cronbach's α / KR-20.                                                                                                     |
-| `packages/prompts/**`                     | Versioned, immutable prompt templates + JSON output schemas. A prompt change is a version bump, never an in-place edit.                                                                                                                                                                |
+| Path                                        | Deliverable                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api-core/src/modules/ai-gateway/**`     | Claude 5 Sonnet + Claude 4.7 clients, Redis token-bucket (200 RPM / 10k TPM), three priority queues (P1 L4 defense with 40% reserved capacity, P2 L3 grading, P3 batch), circuit breaker to **Gemini 2.5 Pro/Flash** on 429/5xx/timeout, prompt and response audit to `claude_evaluation_audits`, cost meter. |
+| `apps/api-core/src/modules/evaluation/**`     | L3 BARS mode-consensus grading, L4 interactive defense simulation, L5 split scoring (50% checklist / 30% rubric / 20% presentation), Cohen's κ monitor with automatic pause of automated scoring below κ 0.65.                                                                         |
+| `apps/api-core/src/modules/matching/**`       | JD-to-threshold-vector NLP parse, embedding generation, pgvector cosine search with rule filters, match explainability.                                                                                                                                                                 |
+| `packages/scoring-engine/**`                  | Effect.ts pure math: Angoff μ/σ cut scores with confidence bands, tier assignment with borderline detection, weighted L1 scoring, IRT 2PL (Phase 2), Cohen's κ, Cronbach's α / KR-20.                                                                                                   |
+| `packages/prompts/**`                         | Versioned, immutable prompt templates with JSON output schemas. A prompt change is a version increment, never an in-place edit.                                                                                                                                                          |
 
-**Non-negotiables:** deterministic structured output (schema-validated, never free text parsed by
-regex); every LLM call is idempotent and replayable from the audit row; a Gemini failover must
-produce a tier within the same SLA band; **automated scoring self-disables when κ < 0.65** —
-this is a product-integrity requirement, not a nice-to-have.
+**Non-negotiables:** output must be deterministic, schema-validated structured data; free-text
+responses parsed by regular expression are not permitted; every LLM call must be idempotent and
+replayable from its audit record; a Gemini failover must produce a tier within the same SLA band
+as the primary model; automated scoring must self-disable when Cohen's κ falls below 0.65 — this
+is a product-integrity requirement, not an optional safeguard.
 
 ---
 
 ### 2.6 Vedika G — Data & AI/Backend Engineer
 
-**Bounded context: Content & Data Spine.** Without her output the platform has nothing to ask
-and nothing to grade against. Her work is on the **critical path of Sprint 1 and Sprint 2** —
-treat item-bank readiness as a release blocker, not a content chore.
+**Bounded context: Content and Data Spine.** Item-bank and calibration output constitutes the
+foundational content and scoring reference for the platform; without it, no assessment can be
+administered or graded. This work sits on the critical path of Sprint 1 and Sprint 2. Item-bank
+readiness is a release blocker and must be tracked accordingly, not treated as incidental content
+production.
 
 **Owns:**
 
-| Path                                        | Deliverable                                                                                                                                                                                  |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tools/content-pipeline/**`                 | Authoring schema + CLI: `validate`, `seed`, `embed`, `export`, `report`. Item banks live as reviewed files in Git, not as ad-hoc SQL.                                                        |
-| `tools/content-pipeline/data/**`            | **25–40 task-based items per track × 10 tracks**, competency weights, BARS anchor sets, L5 capstone briefs, per-cohort rotation forms.                                                       |
-| `apps/api-core/src/modules/catalog/**`      | Tracks, competencies (Domains A–E), levels, item bank read APIs, parallel-form selection, item retirement on exposure.                                                                       |
-| `apps/api-core/src/modules/calibration/**`  | Calibration panels (3–5 practitioners/track), Angoff estimate capture, cut-score derivation & publish, Cronbach's α per level/track, confidence-note text generation, `smart.track.updated`. |
-| `apps/api-core/src/modules/placement/**`    | JD records, shortlist generation & export, `placement_records` outcome ingestion, `smart.placement.matched`.                                                                                 |
-| `apps/api-core/src/modules/analytics/**`    | Cohort readiness aggregates, gap reports, correlation records (interview/offer rate by tier), TPO report endpoints.                                                                          |
-| `packages/prompts/src/templates/goldens/**` | Golden evaluation sets — the regression suite that proves a prompt change did not degrade grading. Co-owned with Ramansh.                                                                    |
+| Path                                          | Deliverable                                                                                                                                                                                    |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools/content-pipeline/**`                     | Authoring schema and CLI: `validate`, `seed`, `embed`, `export`, `report`. Item banks are maintained as reviewed files in version control, not as ad-hoc SQL.                                  |
+| `tools/content-pipeline/data/**`                | 25–40 task-based items per track across ten tracks, competency weights, BARS anchor sets, L5 capstone briefs, per-cohort rotation forms.                                                       |
+| `apps/api-core/src/modules/catalog/**`          | Tracks, competencies (Domains A–E), levels, item bank read APIs, parallel-form selection, item retirement on exposure.                                                                          |
+| `apps/api-core/src/modules/calibration/**`      | Calibration panels (3–5 practitioners per track), Angoff estimate capture, cut-score derivation and publication, Cronbach's α per level/track, confidence-note text generation, `smart.track.updated`. |
+| `apps/api-core/src/modules/placement/**`        | JD records, shortlist generation and export, `placement_records` outcome ingestion, `smart.placement.matched`.                                                                                  |
+| `apps/api-core/src/modules/analytics/**`        | Cohort readiness aggregates, gap reports, correlation records (interview/offer rate by tier), TPO report endpoints.                                                                             |
+| `packages/prompts/src/templates/goldens/**`     | Golden evaluation sets — the regression suite verifying that a prompt change has not degraded grading quality. Co-owned with Ramansh.                                                          |
 
-**Non-negotiables:** every item carries `competency_id`, `real_world_weight`, `difficulty_tag`
-and a model answer; content passes `content-pipeline validate` in CI or the PR fails; no track is
-marked "validated lead" until its calibration panel and α ≥ 0.70 are recorded in the DB.
+**Non-negotiables:** every item must carry a `competency_id`, `real_world_weight`, `difficulty_tag`,
+and a model answer; content must pass `content-pipeline validate` in continuous integration, or the
+pull request fails; no track may be marked as validated until its calibration panel has convened
+and Cronbach's α ≥ 0.70 is recorded in the database.
 
 ---
 
-## 3. Module Ownership Matrix (authoritative)
+## 3. Module Ownership Matrix (Authoritative)
 
-`O` = Owner (merges, accountable) · `C` = Contributor (may PR into it) · `R` = Reviewer (approval required)
+`O` = Owner (merges, accountable) · `C` = Contributor (may submit changes via pull request) · `R` = Reviewer (approval required)
 
 ### 3.1 Backend — `apps/api-core/src/modules/*`
 
@@ -207,59 +221,61 @@ marked "validated lead" until its calibration panel and α ≥ 0.70 are recorded
 | `evaluation`  | BARS, L4 defense, L5 split, κ monitor               |  R   |          |             |       C        |  **O**  |   C    |
 | `matching`    | JD parse, embeddings, pgvector cosine               |  R   |          |             |                |  **O**  |   C    |
 
-### 3.2 Frontend & shared packages
+### 3.2 Frontend & Shared Packages
 
-| Package / App             | Tino  | Vishal V | Satheswaran | Vishal Bharath | Ramansh | Vedika |
-| ------------------------- | :---: | :------: | :---------: | :------------: | :-----: | :----: |
-| `packages/contracts`      | **O** |    C     |      C      |       C        |    C    |   C    |
-| `packages/scoring-engine` |   R   |          |             |       C        |  **O**  |   C    |
-| `packages/prompts`        |   R   |          |             |                |  **O**  |   C    |
-| `packages/ui`             |   R   |          |    **O**    |       C        |         |        |
-| `packages/api-client`     |   R   |    C     |    **O**    |       C        |         |        |
-| `packages/observability`  |   R   |  **O**   |      C      |                |         |        |
-| `packages/config-*`       | **O** |    C     |      C      |                |         |        |
-| `apps/web-student`        |   R   |          |    **O**    |       C        |    C    |        |
-| `apps/web-tpo`            |   R   |          |    **O**    |       C        |         |   C    |
-| `apps/web-admin`          |   R   |    C     |      C      |     **O**      |         |   C    |
-| `apps/web-verify`         |   R   |          |      C      |     **O**      |         |        |
-| `tools/content-pipeline`  |   R   |          |             |                |    C    | **O**  |
-| `tools/load-tests`        |   R   |  **O**   |             |       C        |         |        |
-| `tests/e2e`               |   R   |    C     |    **O**    |       C        |    C    |   C    |
-| `infra/**`                |   R   |  **O**   |             |       C        |         |        |
-| `.github/workflows`       | **O** |    C     |             |                |         |        |
+| Package / App              | Tino  | Vishal V | Satheswaran | Vishal Bharath | Ramansh | Vedika |
+| --------------------------- | :---: | :------: | :---------: | :------------: | :-----: | :----: |
+| `packages/contracts`       | **O** |    C     |      C      |       C        |    C    |   C    |
+| `packages/scoring-engine`  |   R   |          |             |       C        |  **O**  |   C    |
+| `packages/prompts`         |   R   |          |             |                |  **O**  |   C    |
+| `packages/ui`              |   R   |          |    **O**    |       C        |         |        |
+| `packages/api-client`      |   R   |    C     |    **O**    |       C        |         |        |
+| `packages/observability`   |   R   |  **O**   |      C      |                |         |        |
+| `packages/config-*`        | **O** |    C     |      C      |                |         |        |
+| `apps/web-student`         |   R   |          |    **O**    |       C        |    C    |        |
+| `apps/web-tpo`             |   R   |          |    **O**    |       C        |         |   C    |
+| `apps/web-admin`           |   R   |    C     |      C      |     **O**      |         |   C    |
+| `apps/web-verify`          |   R   |          |      C      |     **O**      |         |        |
+| `tools/content-pipeline`   |   R   |          |             |                |    C    | **O**  |
+| `tools/load-tests`         |   R   |  **O**   |             |       C        |         |        |
+| `tests/e2e`                |   R   |    C     |    **O**    |       C        |    C    |   C    |
+| `infra/**`                 |   R   |  **O**   |             |       C        |         |        |
+| `.github/workflows`        | **O** |    C     |             |                |         |        |
 
-### 3.3 Kafka topic ownership
+### 3.3 Kafka Topic Ownership
 
-A topic has exactly one producer-owner. Consuming is free; **changing a payload is a
-`@smart/contracts` PR reviewed by Tino and every listed consumer.**
+Each topic has exactly one producer-owner. Any team member may consume a topic. Modifying a
+payload schema requires a pull request against `@smart/contracts`, reviewed by Tino and every
+listed consumer of that topic.
 
-| Topic                                                     | Producer-owner   | Consumers                                                   |
-| --------------------------------------------------------- | ---------------- | ----------------------------------------------------------- |
-| `smart.user.created` / `smart.user.updated`               | Vishal V         | Vedika (analytics)                                          |
-| `smart.assessment.started` / `smart.assessment.submitted` | Vishal Bharath R | Ramansh (evaluation), Vishal V (cache invalidation)         |
-| `smart.eval.requested`                                    | Ramansh          | Ramansh (ai-gateway)                                        |
-| `smart.eval.completed`                                    | Ramansh          | Vishal Bharath (certificate), Vedika (placement, analytics) |
-| `smart.track.updated`                                     | Vedika G         | Vishal V (cache invalidation), Vishal Bharath (certificate) |
-| `smart.certificate.issued`                                | Vishal Bharath R | Vishal Bharath (webhooks), Vedika (analytics)               |
-| `smart.placement.matched`                                 | Vedika G         | Vishal Bharath (webhooks), Vedika (analytics)               |
-| `smart.rate_limit.exceeded`                               | Vishal V         | Vishal V (observability), Vishal Bharath (integrity review) |
+| Topic                                                       | Producer-owner    | Consumers                                                     |
+| ------------------------------------------------------------ | ------------------ | ---------------------------------------------------------------- |
+| `smart.user.created` / `smart.user.updated`                 | Vishal V           | Vedika (analytics)                                                |
+| `smart.assessment.started` / `smart.assessment.submitted`   | Vishal Bharath R   | Ramansh (evaluation), Vishal V (cache invalidation)               |
+| `smart.eval.requested`                                       | Ramansh            | Ramansh (ai-gateway)                                              |
+| `smart.eval.completed`                                       | Ramansh            | Vishal Bharath (certificate), Vedika (placement, analytics)       |
+| `smart.track.updated`                                        | Vedika G           | Vishal V (cache invalidation), Vishal Bharath (certificate)       |
+| `smart.certificate.issued`                                   | Vishal Bharath R   | Vishal Bharath (webhooks), Vedika (analytics)                     |
+| `smart.placement.matched`                                    | Vedika G           | Vishal Bharath (webhooks), Vedika (analytics)                     |
+| `smart.rate_limit.exceeded`                                  | Vishal V           | Vishal V (observability), Vishal Bharath (integrity review)       |
 
 ---
 
-## 4. How We Work Together (collaboration rules)
+## 4. Collaboration Framework
 
-### 4.1 The contract-first rule
+### 4.1 The Contract-First Rule
 
-Cross-module work **always** starts in `packages/contracts`, never in an implementation.
+Cross-module work always originates in `packages/contracts`, never in an implementation.
 
-1. The consumer opens a PR adding/changing the Zod schema + type in `@smart/contracts`.
-2. Tino reviews and merges it — usually same day, at the 17:00 Architecture Review Board.
-3. Producer and consumer then implement **in parallel** against the merged type.
+1. The consumer opens a pull request adding or changing the Zod schema and type in `@smart/contracts`.
+2. Tino reviews and merges it, typically within the same working day, at the Architecture Review Board.
+3. Producer and consumer then implement in parallel against the merged type.
 
-This is the mechanism that lets 5 engineers ship into one API without blocking each other.
-Two people implementing against an unmerged contract is the #1 cause of integration pain — don't.
+This mechanism allows the team to ship into a single API without engineers blocking one another.
+Implementation by two parties against an unmerged contract is the leading cause of integration
+defects and is not permitted.
 
-### 4.2 Branching & PR flow
+### 4.2 Branching & Pull Request Flow
 
 Full policy: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 
@@ -275,68 +291,70 @@ main ─────────────────────────
            └── fix/S2-RM-19-gemini-failover-timeout
 ```
 
-- **`develop` is deprecated** — use **`dev`**.
-- Branch name: `<type>/S<sprint>-<initials>-<nn>-<slug>`
+- The `develop` branch is deprecated; `dev` is the designated integration branch.
+- Branch name format: `<type>/S<sprint>-<initials>-<nn>-<slug>`
 - Initials: `TN` Tino · `VV` Vishal V · `SV` Satheswaran V · `VB` Vishal Bharath R · `RM` Ramansh · `VG` Vedika G
 
-**PR rules:**
+**Pull request rules:**
 
-- Max **400 changed lines** of non-generated code. Bigger than that, split it.
+- Maximum 400 changed lines of non-generated code per pull request. Larger changes must be split.
 - Title follows Conventional Commits and names the ticket: `feat(rate-limit): sliding window Lua guard (S1-VV-04)`.
-- Feature PRs target **`dev`**. Promote `dev` → `qa` → `main` via separate promotion PRs (Tino / brittytino only on `main`).
-- Every PR: linked ticket, filled template, green CI, **Tino approval**, plus the owner's approval if it touches someone else's module.
-- **Squash merge only.** `dev` history is one commit per ticket.
-- A PR open >24 h without review is raised in standup, not left to rot.
+- Feature pull requests target `dev`. Promotion from `dev` to `qa` to `main` occurs via separate promotion pull requests (only Tino / `@brittytino` merges into `main`).
+- Every pull request requires: a linked ticket, a completed template, passing CI, Tino's approval, and the module owner's approval if it touches another owner's module.
+- Squash merge only. `dev` history retains one commit per ticket.
+- A pull request open for more than 24 hours without review must be raised in standup rather than left unaddressed.
 
-### 4.3 Escalation path
+### 4.3 Escalation Path
 
-| Situation                         | Do this                                                                       |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| Blocked on a contract             | Post in `#smart-contracts`, tag Tino. Resolved same day at 17:00 board.       |
-| Blocked on backend internals      | Tag Vishal V — he is the backend escalation path.                             |
-| Blocked on AI output quality/cost | Tag Ramansh. Never work around the gateway with a direct SDK call.            |
-| Missing or wrong content/items    | Tag Vedika G with the `content` label.                                        |
-| Cross-module design disagreement  | 15-min call, then **Tino decides and writes an ADR.** No design by attrition. |
-| Slipping a sprint commitment      | Say it in standup the day you know, not at review.                            |
+| Situation                          | Required Action                                                                          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Blocked on a contract               | Post the blocker in `#smart-contracts` and tag Tino; resolved at the Architecture Review Board. |
+| Blocked on backend internals        | Tag Vishal V; he is the designated backend escalation path.                                  |
+| Blocked on AI output quality or cost | Tag Ramansh. Direct SDK calls that bypass the gateway are not permitted.                      |
+| Missing or incorrect content/items  | Tag Vedika G with the `content` label.                                                       |
+| Cross-module design disagreement    | A fifteen-minute call is held, after which Tino decides and records the decision in an ADR. Design is not resolved by attrition. |
+| Slipping a sprint commitment        | Report the slippage in standup as soon as it is known; do not defer disclosure to the sprint review. |
 
-### 4.4 Interfaces between people (the four seams that will hurt if ignored)
+### 4.4 Interfaces Between Owners (Integration Seams)
 
-| Seam                        | Between                      | Agreement                                                                                                                                                |
-| --------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Player ⇄ Attempt API**    | Satheswaran ⇄ Vishal Bharath | Server is the clock and the authority. Client sends drafts, server decides validity, expiry and next item. Contract: `AttemptSessionDto`, `NextItemDto`. |
-| **Attempt ⇄ Evaluation**    | Vishal Bharath ⇄ Ramansh     | Handoff is `smart.assessment.submitted` only — never a direct service call. Result returns via `smart.eval.completed`.                                   |
-| **Evaluation ⇄ Cut scores** | Ramansh ⇄ Vedika             | Evaluation produces a raw score; **calibration owns tier assignment** via published `cut_scores`. Ramansh never hardcodes a threshold.                   |
-| **Content ⇄ Delivery**      | Vedika ⇄ Vishal Bharath      | Items are served only from `catalog` parallel forms; delivery never queries `items` directly.                                                            |
-
----
-
-## 5. Capacity & Velocity Assumption
-
-| Engineer         | Feature capacity        | Review load                    |
-| ---------------- | ----------------------- | ------------------------------ |
-| Tino             | **0 pts**               | ~100 % — all PRs               |
-| Vishal V         | 8 pts/sprint-day equiv. | Secondary reviewer, backend    |
-| Satheswaran V    | 8 pts                   | Secondary reviewer, frontend   |
-| Vishal Bharath R | 8 pts                   | Secondary reviewer, full-stack |
-| Ramansh          | 8 pts                   | AI/scoring reviews             |
-| Vedika G         | 8 pts                   | Content/data reviews           |
-
-**Planned team velocity: 5 ICs.** Any plan that assumes 6 delivery engineers is wrong.
+| Seam                          | Between                        | Agreement                                                                                                                                                  |
+| ------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Player ⇄ Attempt API**       | Satheswaran ⇄ Vishal Bharath     | The server is the clock and the authority. The client sends drafts; the server determines validity, expiry, and the next item. Contract: `AttemptSessionDto`, `NextItemDto`. |
+| **Attempt ⇄ Evaluation**       | Vishal Bharath ⇄ Ramansh         | Handoff occurs exclusively via `smart.assessment.submitted`, never a direct service call. The result returns via `smart.eval.completed`.                    |
+| **Evaluation ⇄ Cut Scores**    | Ramansh ⇄ Vedika                 | Evaluation produces a raw score; calibration owns tier assignment via published `cut_scores`. Ramansh must not hardcode a threshold.                        |
+| **Content ⇄ Delivery**         | Vedika ⇄ Vishal Bharath          | Items are served only from `catalog` parallel forms; delivery must never query `items` directly.                                                            |
 
 ---
 
-## 6. Definition of Ownership — what "you own it" actually means
+## 5. Capacity & Velocity Assumptions
 
-If you own a module, you are accountable for all six of these. Not one of them is optional.
+| Engineer          | Feature Capacity                | Review Load                       |
+| ------------------ | --------------------------------- | ------------------------------------ |
+| Tino                | 0 story points                    | Approximately 100% — all pull requests |
+| Vishal V            | 8 story points per sprint (steady-state rate) | Secondary reviewer, backend            |
+| Satheswaran V       | 8 story points per sprint (steady-state rate) | Secondary reviewer, frontend           |
+| Vishal Bharath R    | 8 story points per sprint (steady-state rate) | Secondary reviewer, full-stack         |
+| Ramansh             | 8 story points per sprint (steady-state rate) | AI/scoring reviews                     |
+| Vedika G            | 8 story points per sprint (steady-state rate) | Content/data reviews                   |
 
-1. **It works** — happy path plus the failure modes named in your non-negotiables.
-2. **It is typed** — public surface exported through `@smart/contracts`; no `any` at boundaries.
-3. **It is tested** — unit tests on logic, integration tests on I/O, ≥ 80 % on your module by Sprint 5.
-4. **It is observable** — structured logs with `traceId`, Prometheus counters/histograms, a Grafana panel.
-5. **It is documented** — Swagger decorators on every endpoint, a README in your module folder, a runbook in `docs/runbooks/` for anything that can page someone.
-6. **It is rate-limited and secured** — declares its limit tier and its RBAC roles. Unlimited endpoints do not ship.
+Planned team velocity is calculated on the basis of five delivery individual contributors (ICs).
+Any sprint plan that assumes six delivery engineers is invalid, since Tino's capacity is reserved
+for architecture and review rather than feature delivery.
 
 ---
 
-_Owned by: Tino (System Architect). Changes to this document are a PR to Tino, discussed at the
-Architecture Review Board._
+## 6. Definition of Ownership — What "You Own It" Means
+
+An owner of a module is accountable for all six of the following obligations. None is optional.
+
+1. **It works** — the happy path, plus the failure modes named in the owner's non-negotiables.
+2. **It is typed** — the public surface is exported through `@smart/contracts`; no `any` at boundaries.
+3. **It is tested** — unit tests on logic, integration tests on I/O, at least 80% coverage on the owner's module by Sprint 5.
+4. **It is observable** — structured logs with `traceId`, Prometheus counters/histograms, and a Grafana panel.
+5. **It is documented** — Swagger decorators on every endpoint, a README in the module's folder, and a runbook in `docs/runbooks/` for anything capable of paging an on-call engineer.
+6. **It is rate-limited and secured** — the module declares its rate-limit tier and its RBAC roles. Unlimited endpoints are not permitted to ship.
+
+---
+
+_This document is owned by Tino (System Architect). Amendments require a pull request to Tino and
+are discussed at the Architecture Review Board._

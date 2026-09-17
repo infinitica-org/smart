@@ -1,49 +1,47 @@
 # Contributing to SMART
 
-**New engineer?** Start here: [`docs/delivery/ENGINEER_START_CHECKLIST.md`](./docs/delivery/ENGINEER_START_CHECKLIST.md) — access, bootstrap, sign-off, first ticket, PR workflow.
+**New engineer:** begin with [`docs/delivery/ENGINEER_START_CHECKLIST.md`](./docs/delivery/ENGINEER_START_CHECKLIST.md) — access provisioning, environment bootstrap, sign-off, first ticket, and pull-request workflow.
 
-Read these in order before writing code:
+Read the following in order before writing code:
 
-1. [`TEAM.md`](./TEAM.md) — who owns which path
-2. [`docs/delivery/ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md) — your day-to-day
-3. [`docs/delivery/DEFINITION_OF_DONE.md`](./docs/delivery/DEFINITION_OF_DONE.md) — merge bar
-4. [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md) — sprint calendar to 10 Sep 2026
-5. [`AGENTS.md`](./AGENTS.md) + [`.cursor/`](./.cursor/) — shared agent/human KB and workflow rules
-6. [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md) — **exact local commands**
-7. [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md) — **main / qa / dev** enterprise flow
+1. [`TEAM.md`](./TEAM.md) — ownership by path
+2. [`docs/delivery/ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md) — day-to-day engineering practice
+3. [`docs/delivery/DEFINITION_OF_DONE.md`](./docs/delivery/DEFINITION_OF_DONE.md) — merge criteria
+4. [`docs/delivery/AGILE_PLAN.md`](./docs/delivery/AGILE_PLAN.md) — delivery methodology and cadence
+5. [`AGENTS.md`](./AGENTS.md) and [`.cursor/`](./.cursor/) — shared agent and human knowledge base and workflow rules
+6. [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md) — exact local commands
+7. [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md) — the `main` / `qa` / `dev` branching model
 
-## Rules that do not get waived
+## Non-negotiable rules
 
-- **Feature branches only.** Never commit to `main`, `qa`, or `dev`. Branch: `<type>/S<sprint>-<initials>-<nn>-<slug>` from up-to-date `dev`.
-- **PR required.** Every shippable change opens a PR into **`dev`** (squash-merge after review). Promote `dev` → `qa` → `main` separately. Local commits alone are not done.
-- **Branching policy:** [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md). `develop` is deprecated.
-- **Quality gates.** `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm format:check` must pass. Do not skip hooks (`--no-verify`).
-- **Tino does not write feature code.** Architect review is mandatory (`CODEOWNERS`).
-- **Contract-first.** Cross-module types live in `@smart/contracts`. Implement against a merged type, do not invent a parallel DTO.
-- **One owner per path.** If you are not the owner, open a PR; do not merge into someone else's module.
-- **Unlimited endpoints do not ship.** Every route has a rate-limit policy and RBAC roles in `packages/contracts/src/http/routes.ts`.
-- **Conventional Commits** — `<type>(<scope>): <summary> (<TICKET>)` with scopes from `commitlint.config.mjs`. Details: [`.cursor/rules/09-commits-and-prs.mdc`](./.cursor/rules/09-commits-and-prs.mdc).
-- **PR labels (tags)** — every PR: one of `P0-blocker`/`P1`/`P2-droppable` + one `area:*` + `sprint-N`. Optional: `needs-contract`, `needs-content`, `blocked`.
-- **PR size.** ≤ 400 hand-written LOC; one ticket per PR.
-- **No personal names in file/folder names or content.** Refer to external stakeholders (product owner, design partner, client, etc.) by role, not by name — e.g. `docs/product/PRODUCT_ROADMAP_V1.1_TO_V1.3.md`, "the Product Owner locked V1", not a person's name. Internal team files that exist specifically to record ownership (`TEAM.md`, `CODEOWNERS`) are the intentional exception.
+- **Feature branches only.** Never commit directly to `main`, `qa`, or `dev`. Branch as `<type>/S<sprint>-<initials>-<nn>-<slug>` from an up-to-date `dev`.
+- **Pull request required.** Every shippable change lands via a pull request into `dev` (squash-merge after review). Promotion from `dev` to `qa` to `main` is a separate, deliberate action. A local commit alone is not complete work.
+- **Branching policy** is authoritative in [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md). The `develop` branch name is deprecated.
+- **Quality gates.** `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm format:check` must pass before a pull request is opened. Git hooks are not bypassed (`--no-verify` is not used).
+- **Architecture review is mandatory.** The system architect role does not author feature code and reviews all cross-cutting changes; see [`.github/CODEOWNERS`](./.github/CODEOWNERS).
+- **Contract-first development.** Cross-module types live in `@smart/contracts`. Implementations target a merged contract type; parallel or ad hoc DTOs are not introduced.
+- **One owner per path.** A contributor who does not own a path opens a pull request for the owner to review rather than merging into it directly.
+- **No unbounded endpoints.** Every route carries an explicit rate-limit policy and RBAC role set, declared in `packages/contracts/src/http/routes.ts`.
+- **Conventional Commits.** Format: `<type>(<scope>): <summary> (<TICKET>)`, with scopes defined in `commitlint.config.mjs`. Details: [`.cursor/rules/09-commits-and-prs.mdc`](./.cursor/rules/09-commits-and-prs.mdc).
+- **Pull request labels.** Every pull request carries exactly one priority label (`P0-blocker` / `P1` / `P2-droppable`), one `area:*` label, and one `sprint-N` label. Optional labels: `needs-contract`, `needs-content`, `blocked`.
+- **Pull request size.** No more than 400 hand-written lines of code, and one ticket per pull request.
+- **No personal names in file or folder names, or in content.** External stakeholders (product owner, design partner, client, and similar) are referred to by role, not by name — for example `docs/product/PRODUCT_ROADMAP_V1.1_TO_V1.3.md` and "the Product Owner locked V1," never a person's name. Files that exist specifically to record internal ownership (`TEAM.md`, `CODEOWNERS`) are the intentional exception.
+- **Deployment verification.** A merge to `dev` or `main` is not considered complete until the corresponding deployment has been confirmed to run to completion and the live environment has been smoke-tested (`/health`, `/ready`, and each public subdomain). A green continuous-integration run confirms the code compiles and passes tests; it does not by itself confirm that a deployment occurred.
 
-Personal Cursor notes (identity, working memory) live in `.cursor/local/` and are gitignored — copy the `*.example.md` files there.
+Personal working notes (identity, working memory) live in `.cursor/local/` and are excluded from version control — copy the corresponding `*.example.md` files into that directory.
 
-## Local loop
+## Local development loop
 
-Full command list: [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md).
+Full command reference: [`docs/delivery/LOCAL_DEV.md`](./docs/delivery/LOCAL_DEV.md).
 
 ```bash
-pnpm bootstrap          # install, start data plane, generate Prisma, seed
+pnpm bootstrap          # install, start data plane, generate Prisma client, seed
 pnpm dev:api            # Nest API on :3000
-pnpm dev:web            # all four portals :3001–:3004
+pnpm dev:web            # all four portals, :3001–:3004
 ```
 
-Seeded logins (local only): `student@smart.local` / `tpo@smart.local` / `admin@smart.local` — password `ChangeMe!Dev`.
+Seeded credentials for local and non-production environments are environment-specific; see [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md).
 
-## VPS
+## Server operations
 
-See [`infra/vps/README.md`](./infra/vps/README.md). SSH in as `deploy`, not
-`root` — the checkout lives at `~deploy/smart` and is synced by CI (`rsync`),
-not `git pull`. To seed a server database: `bash scripts/seed-vps.sh
-<dev|qa|prod>` (see [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md)).
+See [`infra/vps/README.md`](./infra/vps/README.md). Connect as the designated deployment user, not as `root` — the deployed checkout is synchronized by the continuous-deployment pipeline (`rsync`), not by `git pull`, and is not to be hand-edited. To seed an environment's database: `bash scripts/seed-vps.sh <dev|qa|prod>` (see [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md)).
