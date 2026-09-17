@@ -22,6 +22,7 @@ import {
   projectDefenseExaminerTemplate,
   projectDefenseGraderTemplate,
 } from './templates/project-defense.js';
+import { capabilityInferenceTemplate } from './templates/capability-inference.js';
 import { certAgendaGenerateTemplate } from './templates/cert-agenda.js';
 import { workExperienceProofParseTemplate } from './templates/work-experience-proof-parsing.js';
 import { workExperienceLetterAuthenticityTemplate } from './templates/work-experience-letter-authenticity.js';
@@ -74,6 +75,7 @@ const TEMPLATES: readonly PromptTemplate<any>[] = [
   projectVerifyTemplate,
   projectDefenseExaminerTemplate,
   projectDefenseGraderTemplate,
+  capabilityInferenceTemplate,
   certAgendaGenerateTemplate,
   workExperienceProofParseTemplate,
   workExperienceLetterAuthenticityTemplate,

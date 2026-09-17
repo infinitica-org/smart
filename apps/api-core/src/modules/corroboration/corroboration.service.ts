@@ -19,15 +19,12 @@ import {
   type PassiveSignalSourceId,
   type VectorizedSignal,
 } from '@smart/contracts';
-import {
-  DEFAULT_SIGNAL_WEIGHT_MODEL,
-  fuseSignals,
-  verifySignalWeightModel,
-} from '@smart/scoring-engine';
+import { fuseSignals, verifySignalWeightModel } from '@smart/scoring-engine';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CorroborationRedisStore } from './corroboration-redis.store.js';
+import { SignalWeightModelStore } from './signal-weight-model.store.js';
 import type { CorroborationAdminActor } from './corroboration.types.js';
 
 export interface FuseWithAssessmentOptions {
@@ -47,6 +44,7 @@ export class CorroborationService {
 
   constructor(
     @Inject(CorroborationRedisStore) private readonly store: CorroborationRedisStore,
+    @Inject(SignalWeightModelStore) private readonly weightModels: SignalWeightModelStore,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -192,7 +190,8 @@ export class CorroborationService {
     userId: string,
     assessment: AssessmentPerformanceVector | null,
   ): Promise<void> {
-    if (!verifySignalWeightModel(DEFAULT_SIGNAL_WEIGHT_MODEL)) {
+    const weights = await this.weightModels.getActiveModel();
+    if (!verifySignalWeightModel(weights)) {
       throw new InternalServerErrorException({
         error: 'invalid_weight_model',
         message: 'Signal weight model failed integrity check.',
@@ -203,7 +202,7 @@ export class CorroborationService {
     const { readouts, contradictionDimensions } = fuseSignals({
       passiveX,
       assessmentY: assessment,
-      weights: DEFAULT_SIGNAL_WEIGHT_MODEL,
+      weights,
     });
 
     const existing = await this.store.getSnapshot(userId);

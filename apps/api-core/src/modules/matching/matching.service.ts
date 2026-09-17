@@ -24,6 +24,10 @@ import {
   type RankerCandidate,
   type RankerJob,
 } from './rules-ranker.js';
+import {
+  mergeMatchExplainability,
+  type QlixProjectExplainability,
+} from './matching-explainability.js';
 
 const FALLBACK_TRACK: TrackCode = 'TECH_FULLSTACK';
 
@@ -81,6 +85,8 @@ export class MatchingService {
     const byId = new Map(filtered.map((student) => [student.id, student]));
     const generatedAt = new Date().toISOString();
     const shortlistId = randomUUID();
+    const rankedStudentIds = ranked.map((score) => score.studentId);
+    const explainability = await this.loadExplainabilityContext(rankedStudentIds);
 
     const candidates = ranked.map((score) => {
       const student = byId.get(score.studentId);
@@ -88,6 +94,19 @@ export class MatchingService {
         throw new Error(`Ranker returned unknown student ${score.studentId}`);
       }
       const cert = student.certificates[0];
+      const verifiedSkillCodes = student.skillClaims.map((claim) => claim.skill.code);
+      const mergedExplanation = mergeMatchExplainability(
+        {
+          strongCompetencies: score.strongCompetencies,
+          gapCompetencies: score.gapCompetencies,
+          why: score.why,
+        },
+        {
+          verifiedSkillCodes,
+          capabilityRows: explainability.capabilitiesByStudent.get(student.id) ?? [],
+          qlixProjects: explainability.qlixProjectsByStudent.get(student.id) ?? [],
+        },
+      );
       return CandidateMatchDtoSchema.parse({
         studentId: student.id,
         studentName: student.fullName,
@@ -101,9 +120,9 @@ export class MatchingService {
         explanation: {
           thresholdsMet: [],
           thresholdsMissed: [],
-          strongCompetencies: [...score.strongCompetencies],
-          gapCompetencies: [...score.gapCompetencies],
-          why: score.why,
+          strongCompetencies: mergedExplanation.strongCompetencies,
+          gapCompetencies: mergedExplanation.gapCompetencies,
+          why: mergedExplanation.why,
           rules: {
             skill: score.s / 1000,
             proficiency: score.p / 1000,
@@ -162,6 +181,86 @@ export class MatchingService {
       source: 'placement',
       data,
     });
+  }
+
+  private async loadExplainabilityContext(studentIds: readonly string[]): Promise<{
+    capabilitiesByStudent: Map<
+      string,
+      Array<{
+        capabilityLabel: string;
+        skillCode: string | null;
+        assessmentVerified: boolean;
+        confidenceScore: number;
+      }>
+    >;
+    qlixProjectsByStudent: Map<string, QlixProjectExplainability[]>;
+  }> {
+    const capabilitiesByStudent = new Map<
+      string,
+      Array<{
+        capabilityLabel: string;
+        skillCode: string | null;
+        assessmentVerified: boolean;
+        confidenceScore: number;
+      }>
+    >();
+    const qlixProjectsByStudent = new Map<string, QlixProjectExplainability[]>();
+
+    if (studentIds.length === 0) {
+      return { capabilitiesByStudent, qlixProjectsByStudent };
+    }
+
+    const [capabilities, projects] = await Promise.all([
+      this.prisma.studentCapability.findMany({
+        where: { studentId: { in: [...studentIds] } },
+        select: {
+          studentId: true,
+          capabilityLabel: true,
+          skillCode: true,
+          assessmentVerified: true,
+          confidenceScore: true,
+        },
+      }),
+      this.prisma.project.findMany({
+        where: {
+          studentId: { in: [...studentIds] },
+          qlixCheckResult: { isNot: null },
+        },
+        include: {
+          skillMappings: { select: { skillCode: true } },
+          qlixCheckResult: {
+            select: {
+              gaps: true,
+              smartAssessmentJson: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    for (const row of capabilities) {
+      const bucket = capabilitiesByStudent.get(row.studentId) ?? [];
+      bucket.push({
+        capabilityLabel: row.capabilityLabel,
+        skillCode: row.skillCode,
+        assessmentVerified: row.assessmentVerified,
+        confidenceScore: row.confidenceScore,
+      });
+      capabilitiesByStudent.set(row.studentId, bucket);
+    }
+
+    for (const project of projects) {
+      if (!project.qlixCheckResult) continue;
+      const bucket = qlixProjectsByStudent.get(project.studentId) ?? [];
+      bucket.push({
+        skillCodes: project.skillMappings.map((mapping) => mapping.skillCode),
+        gaps: project.qlixCheckResult.gaps,
+        smartAssessmentJson: project.qlixCheckResult.smartAssessmentJson,
+      });
+      qlixProjectsByStudent.set(project.studentId, bucket);
+    }
+
+    return { capabilitiesByStudent, qlixProjectsByStudent };
   }
 
   private async resolveJob(

@@ -29,6 +29,7 @@ import {
   skillInterviewExaminerTemplate,
   skillInterviewGraderTemplate,
   projectVerifyTemplate,
+  capabilityInferenceTemplate,
   projectDefenseExaminerTemplate,
   projectDefenseGraderTemplate,
 } from './index.js';
@@ -206,6 +207,20 @@ describe('rendered grading prompts', () => {
     expect(rendered.promptRef).toBe(PROJECT_VERIFY_PROMPT_REF);
     expect(rendered.system).toContain('Do not say Gold');
     expect(rendered.system).toContain('Never recommend rejecting');
+  });
+
+  it('registers capability inference prompt', () => {
+    expect(PROMPT_REGISTRY.has('capability-inference@1')).toBe(true);
+    const rendered = renderPrompt(capabilityInferenceTemplate, {
+      projectTitle: 'Bus tracker',
+      projectSummary: 'Problem: buses\nApproach: websockets',
+      stack: 'TypeScript',
+      qlixDigest: 'similarityIndex=12',
+      smartAssessmentJson: '{"qualityScore":72}',
+      skillsDigest: '{"totals":{"analyzedTokens":1200}}',
+    });
+    expect(rendered.user).toContain('QLIX_DIGEST:');
+    expect(rendered.user).toContain('SMART_ASSESSMENT:');
   });
 
   it('registers project-defense examiner and grader prompts', () => {

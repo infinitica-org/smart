@@ -70,6 +70,12 @@ function setup(options: { opening?: unknown; jd?: unknown; students?: unknown[] 
     user: {
       findMany: vi.fn().mockResolvedValue(options.students ?? [verifiedStudent()]),
     },
+    studentCapability: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    project: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const service = new MatchingService(prisma as never, outbox as never);
@@ -191,6 +197,56 @@ describe('SE-T05 POST /placement/match', () => {
     expect(dto.candidates).toHaveLength(1);
     expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
     expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('SQL_QUERY_OPTIMIZATION');
+  });
+
+  it('enriches explainability with QLIX gaps and verified student capabilities without changing matchScore', async () => {
+    const { controller, prisma } = setup({
+      students: [
+        verifiedStudent({
+          skillClaims: [
+            {
+              proficiency: 'INTERMEDIATE',
+              skill: {
+                code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+                domain: 'SOFTWARE_IT',
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    prisma.studentCapability.findMany.mockResolvedValue([
+      {
+        studentId,
+        capabilityLabel: 'Build tested REST APIs using FastAPI',
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        assessmentVerified: true,
+        confidenceScore: 0.82,
+      },
+    ]);
+    prisma.project.findMany.mockResolvedValue([
+      {
+        studentId,
+        skillMappings: [{ skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' }],
+        qlixCheckResult: {
+          gaps: ['Missing Dockerfile'],
+          smartAssessmentJson: {
+            appliedProficiencyCeiling: 'INTERMEDIATE',
+            competencyObservations: [],
+          },
+        },
+      },
+    ]);
+
+    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+
+    expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
+    expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('Missing Dockerfile');
+    expect(dto.candidates[0]?.explanation.strongCompetencies).toContain(
+      'Build tested REST APIs using FastAPI',
+    );
+    expect(dto.candidates[0]?.explanation.why).toContain('QLIX project ceiling: INTERMEDIATE');
   });
 
   it('rejects an invalid jdId before touching the database', async () => {

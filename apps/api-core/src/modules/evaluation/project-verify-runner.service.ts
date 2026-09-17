@@ -6,6 +6,7 @@ import { GithubApiClient } from '../integrations/github/github-api.client.js';
 import { QlixClient } from './qlix-client.js';
 import { QlixPollService } from './qlix-poll.service.js';
 import { buildProjectGithubSnapshot } from './project-github-snapshot.js';
+import { buildQlixSmartContext } from './qlix-smart-context.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { encodeReportExplanation, type StoredReportMeta } from './project-verify.mapper.js';
 
@@ -35,7 +36,10 @@ export class ProjectVerifyRunnerService {
       return;
     }
 
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { skillMappings: true },
+    });
     if (!project || project.studentId !== studentId) return;
 
     if (project.qlixCheckId) {
@@ -66,10 +70,23 @@ export class ProjectVerifyRunnerService {
     const idempotencyKey = `${projectId}:${snapshotSha}`;
     let checkId: string;
     try {
+      const smartContext = buildQlixSmartContext({
+        projectId: project.id,
+        studentId: project.studentId,
+        title: project.title,
+        problem: project.problem,
+        approach: project.approach,
+        stack: project.stack,
+        outcome: project.outcome,
+        loomUrl: project.loomUrl,
+        liveUrl: project.liveUrl,
+        skillMappings: project.skillMappings,
+      });
       const submitted = await this.qlix.submitCheck({
         githubUrl: project.githubUrl,
         title: project.title,
         idempotencyKey,
+        smartContext,
       });
       checkId = submitted.checkId;
     } catch (error) {

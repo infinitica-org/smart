@@ -45,3 +45,4 @@ export * from './corroboration/default-weights.js';
 export * from './corroboration/fusion.js';
 export * from './corroboration/statistics.js';
 export * from './corroboration/model-integrity.js';
+export * from './corroboration/qlix-recalibration.js';

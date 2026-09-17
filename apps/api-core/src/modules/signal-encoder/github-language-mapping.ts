@@ -147,8 +147,8 @@ export const GITHUB_LANGUAGE_MAPPING: Readonly<
   ],
   shell: [
     {
-      dimensionKey: 'INFRASTRUCTURE_AS_CODE_IAC',
-      skillCode: 'INFRASTRUCTURE_AS_CODE_IAC',
+      dimensionKey: 'LINUX_SYSTEMS_ADMINISTRATION',
+      skillCode: 'LINUX_SYSTEMS_ADMINISTRATION',
       weight: 0.75,
     },
   ],

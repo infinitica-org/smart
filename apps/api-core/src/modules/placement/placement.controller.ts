@@ -16,11 +16,13 @@ import {
   CreateJobOpeningRequestSchema,
   ListJobOpeningsQuerySchema,
   PatchApplicationStageRequestSchema,
+  RecordOutcomeRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
   type JobOpeningDto,
   type ListApplicationsResponse,
   type ListJobOpeningsResponse,
+  type PlacementRecordDto,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
@@ -205,5 +207,20 @@ export class PlacementController {
     @Param('applicationId') applicationId: string,
   ): Promise<ApplicationDto> {
     return this.service.sendToCompany(requireInstitutionId(user), applicationId);
+  }
+
+  @Post('outcomes')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Record a real interview/offer outcome for predictive validity.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Placement outcome recorded.' })
+  async recordOutcome(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<PlacementRecordDto> {
+    return this.service.recordOutcome(
+      requireInstitutionId(user),
+      RecordOutcomeRequestSchema.parse(body),
+    );
   }
 }

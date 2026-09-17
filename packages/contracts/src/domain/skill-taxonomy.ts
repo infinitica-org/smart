@@ -169,12 +169,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
     'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
     'Software Architecture & System Design',
   ),
-  entry(
-    'API_GATEWAY_SERVICE_MESH_MANAGEMENT',
-    'Service Mesh & API Gateway',
-    'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
-    'Software Architecture & System Design',
-  ),
   entry('AMAZON_WEB_SERVICES_AWS_ARCHITECTURE', 'AWS', 'CLOUD_PLATFORMS', 'Cloud Platforms'),
   entry('MICROSOFT_AZURE_CLOUD_ENGINEERING', 'Azure', 'CLOUD_PLATFORMS', 'Cloud Platforms'),
   entry(
@@ -182,13 +176,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
     'Google Cloud (GCP)',
     'CLOUD_PLATFORMS',
     'Cloud Platforms',
-  ),
-  entry('CLOUD_COST_OPTIMIZATION_FINOPS', 'FinOps', 'CLOUD_PLATFORMS', 'Cloud Platforms'),
-  entry(
-    'INFRASTRUCTURE_AS_CODE_IAC',
-    'Infrastructure as Code',
-    'DEVOPS_INFRASTRUCTURE',
-    'DevOps & Infrastructure',
   ),
   entry('CI_CD_PIPELINE_ENGINEERING', 'CI/CD', 'DEVOPS_INFRASTRUCTURE', 'DevOps & Infrastructure'),
   entry(
@@ -200,12 +187,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
   entry(
     'OBSERVABILITY_MONITORING',
     'Observability',
-    'DEVOPS_INFRASTRUCTURE',
-    'DevOps & Infrastructure',
-  ),
-  entry(
-    'CONFIGURATION_MANAGEMENT_AUTOMATION',
-    'Configuration Management',
     'DEVOPS_INFRASTRUCTURE',
     'DevOps & Infrastructure',
   ),
@@ -247,12 +228,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
     'Data Engineering & Big Data',
   ),
   entry(
-    'STREAM_PROCESSING_MESSAGING_SYSTEMS',
-    'Stream Processing',
-    'DATA_ENGINEERING_BIG_DATA',
-    'Data Engineering & Big Data',
-  ),
-  entry(
     'MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT',
     'Machine Learning',
     'AI_ML_DATA_SCIENCE',
@@ -287,28 +262,10 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
   entry('APPLICATION_SECURITY_APPSEC', 'Application Security', 'CYBERSECURITY', 'Cybersecurity'),
   entry('CLOUD_SECURITY_ENGINEERING', 'Cloud Security', 'CYBERSECURITY', 'Cybersecurity'),
   entry(
-    'IDENTITY_ACCESS_MANAGEMENT_IAM',
-    'Identity & Access Management',
-    'CYBERSECURITY',
-    'Cybersecurity',
-  ),
-  entry(
     'PENETRATION_TESTING_VULNERABILITY_ASSESSMENT',
     'Penetration Testing',
     'CYBERSECURITY',
     'Cybersecurity',
-  ),
-  entry(
-    'SECURITY_OPERATIONS_INCIDENT_RESPONSE',
-    'Security Operations',
-    'CYBERSECURITY',
-    'Cybersecurity',
-  ),
-  entry(
-    'TEST_AUTOMATION_ENGINEERING',
-    'Test Automation',
-    'TESTING_QA_RELIABILITY',
-    'Testing, QA & Reliability',
   ),
   entry(
     'PERFORMANCE_LOAD_TESTING',
@@ -336,12 +293,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
   ),
   entry('NATIVE_IOS_DEVELOPMENT', 'iOS Development', 'MOBILE_DEVELOPMENT', 'Mobile Development'),
   entry(
-    'CROSS_PLATFORM_MOBILE_DEVELOPMENT',
-    'Cross-Platform Mobile',
-    'MOBILE_DEVELOPMENT',
-    'Mobile Development',
-  ),
-  entry(
     'MODERN_FRONTEND_FRAMEWORKS',
     'Frontend Frameworks',
     'FRONTEND_WEB_DEVELOPMENT',
@@ -360,12 +311,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
     'Frontend & Web Development',
   ),
   entry(
-    'ACCESSIBILITY_ENGINEERING_A11Y',
-    'Accessibility (a11y)',
-    'FRONTEND_WEB_DEVELOPMENT',
-    'Frontend & Web Development',
-  ),
-  entry(
     'NETWORK_ARCHITECTURE_PROTOCOLS',
     'Networking',
     'NETWORKING_SYSTEMS_ADMINISTRATION',
@@ -374,12 +319,6 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
   entry(
     'LINUX_SYSTEMS_ADMINISTRATION',
     'Linux Administration',
-    'NETWORKING_SYSTEMS_ADMINISTRATION',
-    'Networking & Systems Administration',
-  ),
-  entry(
-    'VIRTUALIZATION_HYPERVISOR_MANAGEMENT',
-    'Virtualization',
     'NETWORKING_SYSTEMS_ADMINISTRATION',
     'Networking & Systems Administration',
   ),
@@ -402,38 +341,8 @@ export const SKILL_DEFINITIONS: readonly SkillDefinition[] = [
     'Emerging Technology',
   ),
   entry(
-    'AGILE_DELIVERY_LEADERSHIP',
-    'Agile Delivery',
-    'DELIVERY_PROCESS_TOOLING',
-    'Delivery, Process & Tooling',
-  ),
-  entry(
-    'TECHNICAL_PROGRAM_PROJECT_MANAGEMENT',
-    'Technical Project Management',
-    'DELIVERY_PROCESS_TOOLING',
-    'Delivery, Process & Tooling',
-  ),
-  entry(
     'VERSION_CONTROL_CODE_COLLABORATION',
     'Git & Version Control',
-    'DELIVERY_PROCESS_TOOLING',
-    'Delivery, Process & Tooling',
-  ),
-  entry(
-    'TECHNICAL_DOCUMENTATION_KNOWLEDGE_MANAGEMENT',
-    'Technical Documentation',
-    'DELIVERY_PROCESS_TOOLING',
-    'Delivery, Process & Tooling',
-  ),
-  entry(
-    'CROSS_FUNCTIONAL_STAKEHOLDER_COLLABORATION',
-    'Stakeholder Collaboration',
-    'DELIVERY_PROCESS_TOOLING',
-    'Delivery, Process & Tooling',
-  ),
-  entry(
-    'MENTORSHIP_TECHNICAL_LEADERSHIP',
-    'Technical Leadership',
     'DELIVERY_PROCESS_TOOLING',
     'Delivery, Process & Tooling',
   ),

@@ -194,8 +194,8 @@ describe('route registry', () => {
 });
 
 describe('skill taxonomy (skill@1)', () => {
-  it('defines 67 skills across 14 categories', () => {
-    expect(SKILL_DEFINITIONS).toHaveLength(67);
+  it('defines 51 skills across 14 categories', () => {
+    expect(SKILL_DEFINITIONS).toHaveLength(51);
     expect(new Set(SKILL_DEFINITIONS.map((skill) => skill.categoryId)).size).toBe(14);
   });
 

@@ -14,6 +14,7 @@ import {
   CandidateApplicationDtoSchema,
   EmploymentTypeSchema,
   JobOpeningDtoSchema,
+  PlacementRecordDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
   SkillTaxonomyDomainSchema,
@@ -30,6 +31,8 @@ import type {
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
   ListMyApplicationsResponse,
+  PlacementRecordDto,
+  RecordOutcomeRequest,
   SkillProficiency,
 } from '@smart/contracts';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -503,6 +506,77 @@ export class PlacementService {
       // SE-T02 grade does not persist promptRef; do not invent one.
       promptRef: null,
       sendBlockedReason,
+    });
+  }
+
+  /** Closes the placement feedback loop for ORION / QLIX recalibration. */
+  async recordOutcome(
+    institutionId: string,
+    body: RecordOutcomeRequest,
+  ): Promise<PlacementRecordDto> {
+    const student = await this.prisma.user.findFirst({
+      where: { id: body.studentId, institutionId, role: 'STUDENT' },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException({
+        error: 'student_not_found',
+        message: 'Student not found in your institution.',
+        statusCode: 404,
+      });
+    }
+
+    const track = await this.prisma.track.findUnique({
+      where: { code: body.trackCode },
+      select: { id: true, code: true },
+    });
+    if (!track) {
+      throw new UnprocessableEntityException({
+        error: 'unknown_track',
+        message: `Unknown track code ${body.trackCode}.`,
+        statusCode: 422,
+      });
+    }
+
+    const certificate = await this.prisma.certificate.findFirst({
+      where: { userId: body.studentId, status: 'ISSUED' },
+      orderBy: { issuedAt: 'desc' },
+      select: { headlineTier: true },
+    });
+    if (!certificate) {
+      throw new UnprocessableEntityException({
+        error: 'certificate_required',
+        message: 'Record outcomes only for students with an issued certificate.',
+        statusCode: 422,
+      });
+    }
+
+    const row = await this.prisma.placementRecord.create({
+      data: {
+        userId: body.studentId,
+        trackId: track.id,
+        cycle: body.placementCycle,
+        outcome: body.outcome,
+        companyName: body.companyName,
+        packageLpa: body.offeredPackageLpa,
+      },
+    });
+
+    return PlacementRecordDtoSchema.parse({
+      recordId: row.id,
+      studentId: row.userId,
+      trackCode: track.code,
+      tierAtPlacement: certificate.headlineTier,
+      placementCycle: row.cycle,
+      companyName: row.companyName ?? body.companyName,
+      outcome: row.outcome,
+      interviewOffered: body.interviewOffered,
+      jobOffered: body.jobOffered,
+      offeredPackageLpa:
+        row.packageLpa === null || row.packageLpa === undefined
+          ? body.offeredPackageLpa
+          : Number(row.packageLpa),
+      recordedAt: row.createdAt.toISOString(),
     });
   }
 

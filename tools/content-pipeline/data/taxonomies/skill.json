@@ -220,21 +220,6 @@
           },
           "corroborationEligible": true,
           "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "API_GATEWAY_SERVICE_MESH_MANAGEMENT",
-          "name": "Service Mesh & API Gateway",
-          "categoryId": "SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN",
-          "categoryName": "Software Architecture & System Design",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
         }
       ]
     },
@@ -286,21 +271,6 @@
           },
           "corroborationEligible": true,
           "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "CLOUD_COST_OPTIMIZATION_FINOPS",
-          "name": "FinOps",
-          "categoryId": "CLOUD_PLATFORMS",
-          "categoryName": "Cloud Platforms",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
         }
       ]
     },
@@ -308,21 +278,6 @@
       "id": "DEVOPS_INFRASTRUCTURE",
       "name": "DevOps & Infrastructure",
       "skills": [
-        {
-          "code": "INFRASTRUCTURE_AS_CODE_IAC",
-          "name": "Infrastructure as Code",
-          "categoryId": "DEVOPS_INFRASTRUCTURE",
-          "categoryName": "DevOps & Infrastructure",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
         {
           "code": "CI_CD_PIPELINE_ENGINEERING",
           "name": "CI/CD",
@@ -356,21 +311,6 @@
         {
           "code": "OBSERVABILITY_MONITORING",
           "name": "Observability",
-          "categoryId": "DEVOPS_INFRASTRUCTURE",
-          "categoryName": "DevOps & Infrastructure",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "CONFIGURATION_MANAGEMENT_AUTOMATION",
-          "name": "Configuration Management",
           "categoryId": "DEVOPS_INFRASTRUCTURE",
           "categoryName": "DevOps & Infrastructure",
           "domain": "SOFTWARE_IT",
@@ -488,21 +428,6 @@
         {
           "code": "BIG_DATA_PROCESSING_FRAMEWORKS",
           "name": "Big Data Processing",
-          "categoryId": "DATA_ENGINEERING_BIG_DATA",
-          "categoryName": "Data Engineering & Big Data",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "STREAM_PROCESSING_MESSAGING_SYSTEMS",
-          "name": "Stream Processing",
           "categoryId": "DATA_ENGINEERING_BIG_DATA",
           "categoryName": "Data Engineering & Big Data",
           "domain": "SOFTWARE_IT",
@@ -663,38 +588,8 @@
           "assessmentRequiredForClaim": true
         },
         {
-          "code": "IDENTITY_ACCESS_MANAGEMENT_IAM",
-          "name": "Identity & Access Management",
-          "categoryId": "CYBERSECURITY",
-          "categoryName": "Cybersecurity",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
           "code": "PENETRATION_TESTING_VULNERABILITY_ASSESSMENT",
           "name": "Penetration Testing",
-          "categoryId": "CYBERSECURITY",
-          "categoryName": "Cybersecurity",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "SECURITY_OPERATIONS_INCIDENT_RESPONSE",
-          "name": "Security Operations",
           "categoryId": "CYBERSECURITY",
           "categoryName": "Cybersecurity",
           "domain": "SOFTWARE_IT",
@@ -713,21 +608,6 @@
       "id": "TESTING_QA_RELIABILITY",
       "name": "Testing, QA & Reliability",
       "skills": [
-        {
-          "code": "TEST_AUTOMATION_ENGINEERING",
-          "name": "Test Automation",
-          "categoryId": "TESTING_QA_RELIABILITY",
-          "categoryName": "Testing, QA & Reliability",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
         {
           "code": "PERFORMANCE_LOAD_TESTING",
           "name": "Performance Testing",
@@ -808,21 +688,6 @@
           },
           "corroborationEligible": true,
           "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "CROSS_PLATFORM_MOBILE_DEVELOPMENT",
-          "name": "Cross-Platform Mobile",
-          "categoryId": "MOBILE_DEVELOPMENT",
-          "categoryName": "Mobile Development",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
         }
       ]
     },
@@ -874,21 +739,6 @@
           },
           "corroborationEligible": true,
           "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "ACCESSIBILITY_ENGINEERING_A11Y",
-          "name": "Accessibility (a11y)",
-          "categoryId": "FRONTEND_WEB_DEVELOPMENT",
-          "categoryName": "Frontend & Web Development",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
         }
       ]
     },
@@ -914,21 +764,6 @@
         {
           "code": "LINUX_SYSTEMS_ADMINISTRATION",
           "name": "Linux Administration",
-          "categoryId": "NETWORKING_SYSTEMS_ADMINISTRATION",
-          "categoryName": "Networking & Systems Administration",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "VIRTUALIZATION_HYPERVISOR_MANAGEMENT",
-          "name": "Virtualization",
           "categoryId": "NETWORKING_SYSTEMS_ADMINISTRATION",
           "categoryName": "Networking & Systems Administration",
           "domain": "SOFTWARE_IT",
@@ -999,83 +834,8 @@
       "name": "Delivery, Process & Tooling",
       "skills": [
         {
-          "code": "AGILE_DELIVERY_LEADERSHIP",
-          "name": "Agile Delivery",
-          "categoryId": "DELIVERY_PROCESS_TOOLING",
-          "categoryName": "Delivery, Process & Tooling",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "TECHNICAL_PROGRAM_PROJECT_MANAGEMENT",
-          "name": "Technical Project Management",
-          "categoryId": "DELIVERY_PROCESS_TOOLING",
-          "categoryName": "Delivery, Process & Tooling",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
           "code": "VERSION_CONTROL_CODE_COLLABORATION",
           "name": "Git & Version Control",
-          "categoryId": "DELIVERY_PROCESS_TOOLING",
-          "categoryName": "Delivery, Process & Tooling",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "TECHNICAL_DOCUMENTATION_KNOWLEDGE_MANAGEMENT",
-          "name": "Technical Documentation",
-          "categoryId": "DELIVERY_PROCESS_TOOLING",
-          "categoryName": "Delivery, Process & Tooling",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "CROSS_FUNCTIONAL_STAKEHOLDER_COLLABORATION",
-          "name": "Stakeholder Collaboration",
-          "categoryId": "DELIVERY_PROCESS_TOOLING",
-          "categoryName": "Delivery, Process & Tooling",
-          "domain": "SOFTWARE_IT",
-          "competencyBars": {
-            "BEGINNER": "Conceptual understanding; supervised tasks",
-            "INTERMEDIATE": "Independent, bounded-scope execution",
-            "ADVANCED": "Owns a component end-to-end; trade-off reasoning",
-            "PROFESSIONAL": "Sets standards / architecture / strategy"
-          },
-          "corroborationEligible": true,
-          "assessmentRequiredForClaim": true
-        },
-        {
-          "code": "MENTORSHIP_TECHNICAL_LEADERSHIP",
-          "name": "Technical Leadership",
           "categoryId": "DELIVERY_PROCESS_TOOLING",
           "categoryName": "Delivery, Process & Tooling",
           "domain": "SOFTWARE_IT",

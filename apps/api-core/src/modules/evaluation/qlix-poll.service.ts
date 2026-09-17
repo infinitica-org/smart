@@ -1,5 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { Prisma } from '../../generated/prisma/index.js';
 import {
   PROJECT_VERIFY_PROMPT_REF,
   SMART_TOPICS,
@@ -113,12 +114,23 @@ export class QlixPollService {
     result: QlixCheckResult,
     timedOut = false,
   ): Promise<void> {
+    let skills = null;
+    if (result.status === 'completed' && !timedOut) {
+      try {
+        skills = await this.qlix.getSkills(result.checkId);
+      } catch (error) {
+        this.qlix.logUnavailable(error instanceof Error ? error.message : 'skills fetch failed');
+      }
+    }
+
+    const analyzedTokens = skills?.totals?.analyzedTokens ?? 0;
     const similarity = result.similarityIndex ?? 0;
     const aiLikelihood = result.aiLikelihood ?? null;
+    const smart = result.smartAssessment ?? null;
     const routed = routeQlixResult({
       similarityIndex: similarity,
       aiLikelihood,
-      analyzedTokens: 0,
+      analyzedTokens,
       failed: result.status === 'failed',
       timedOut,
       thresholds: {
@@ -140,12 +152,53 @@ export class QlixPollService {
       }
     }
 
-    const qlixReportDigest = this.qlix.buildDigest({
-      checkId: result.checkId,
-      status: result.status as 'completed' | 'failed',
-      similarityIndex: result.similarityIndex,
-      aiLikelihood: result.aiLikelihood,
-      agentReview: result.agentReview ?? null,
+    const qlixReportDigest = this.qlix.buildDigest(result);
+    const skillsJson = skills
+      ? (JSON.parse(JSON.stringify(skills)) as Prisma.InputJsonValue)
+      : undefined;
+    const smartAssessmentJson = smart
+      ? (JSON.parse(JSON.stringify(smart)) as Prisma.InputJsonValue)
+      : undefined;
+
+    await this.prisma.qlixCheckResult.upsert({
+      where: { projectId: payload.projectId },
+      create: {
+        projectId: payload.projectId,
+        checkId: result.checkId,
+        status: result.status,
+        similarityIndex: result.similarityIndex ?? null,
+        similarityExcludingCited: result.similarityExcludingCited ?? null,
+        confidence: result.confidence ?? null,
+        aiLikelihood: result.aiLikelihood ?? null,
+        suspicionLevel: result.agentReview?.verdict?.suspicionLevel ?? null,
+        agentSummary: result.agentReview?.verdict?.summary ?? null,
+        skillsJson,
+        smartAssessmentJson,
+        appliedProficiencyCeiling: smart?.appliedProficiencyCeiling ?? null,
+        qualityScore: smart?.qualityScore ?? null,
+        authenticityScore: smart?.authenticityScore ?? null,
+        relevanceScore: smart?.relevanceScore ?? null,
+        gaps: smart?.gaps ?? [],
+        analyzedTokens: analyzedTokens > 0 ? analyzedTokens : null,
+      },
+      update: {
+        checkId: result.checkId,
+        status: result.status,
+        similarityIndex: result.similarityIndex ?? null,
+        similarityExcludingCited: result.similarityExcludingCited ?? null,
+        confidence: result.confidence ?? null,
+        aiLikelihood: result.aiLikelihood ?? null,
+        suspicionLevel: result.agentReview?.verdict?.suspicionLevel ?? null,
+        agentSummary: result.agentReview?.verdict?.summary ?? null,
+        skillsJson,
+        smartAssessmentJson,
+        appliedProficiencyCeiling: smart?.appliedProficiencyCeiling ?? null,
+        qualityScore: smart?.qualityScore ?? null,
+        authenticityScore: smart?.authenticityScore ?? null,
+        relevanceScore: smart?.relevanceScore ?? null,
+        gaps: smart?.gaps ?? [],
+        analyzedTokens: analyzedTokens > 0 ? analyzedTokens : null,
+      },
     });
 
     const duplicateScore = similarity;
@@ -163,7 +216,7 @@ export class QlixPollService {
         similarityIndex: similarity,
         aiLikelihood,
         agentSummary: result.agentReview?.verdict?.summary ?? '',
-        analyzedTokens: 0,
+        analyzedTokens,
       },
       qlixReportDigest,
       snapshotRepos,
