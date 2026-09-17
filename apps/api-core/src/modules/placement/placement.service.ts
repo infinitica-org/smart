@@ -196,8 +196,8 @@ export class PlacementService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
-    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
     @InjectQueue(JD_PARSE_QUEUE) private readonly jdParseQueue: Queue<{ openingId: string }>,
+    @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
 
   async uploadOpeningDocument(

@@ -52,6 +52,8 @@ import {
 import {
   PROFICIENCY_RANK,
   rankSkillCapabilityCandidates,
+  type InferredCapabilityRow,
+  type QlixCompetencyObservation,
   type SkillCapabilityCandidate,
   type SkillCapabilityJob,
 } from './skill-capability-ranker.js';
@@ -396,7 +398,7 @@ export class MatchingService {
       batchIds: [],
       requiredSkillCodes: [],
       limit: 500,
-      minSkillCoverage: decimalToNumber(latestRun?.minSkillCoverage) ?? 0.6,
+      minSkillCoverage: decimalToNumber(latestRun?.minSkillCoverage ?? null) ?? 0.6,
     });
     const candidate = shortlist.candidates.find((row) => row.studentId === studentId);
     if (!candidate) {
@@ -678,8 +680,8 @@ export class MatchingService {
       string,
       SkillCapabilityCandidate['competencyResults']
     >();
-    const inferredByStudent = new Map<string, SkillCapabilityCandidate['inferredCapabilities']>();
-    const qlixByStudent = new Map<string, SkillCapabilityCandidate['qlixObservations']>();
+    const inferredByStudent = new Map<string, InferredCapabilityRow[]>();
+    const qlixByStudent = new Map<string, QlixCompetencyObservation[]>();
 
     if (studentIds.length === 0) {
       return { competencyResultsByStudent, inferredByStudent, qlixByStudent };
