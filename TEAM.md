@@ -18,25 +18,25 @@ out of date and must be corrected.
 
 ## 1. Team Composition
 
-| #   | Engineer             | Role Title                         | Mandate                                                                                                                                              | Writes Feature Code? |
-| --- | --------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| 1   | **Tino**              | **System Architect & Reviewer**     | Owns the architecture, the contracts, the quality gates, and the final merge decision. Reviews all changes; does not ship feature code.                | **No — by design**   |
-| 2   | **Vishal V**          | **Senior Backend Engineer**         | Owns the backend platform core: identity, data layer, rate limiting, event bus, code-execution sandbox, and runtime infrastructure.                    | Yes                   |
-| 3   | **Satheswaran V**     | **Frontend & Full-Stack Engineer**  | Owns the candidate and TPO experience layer: design system, assessment player, dashboards, and the typed API client.                                   | Yes                   |
-| 4   | **Vishal Bharath R**  | **Full-Stack & Backend Engineer**   | Owns the assessment lifecycle and the trust chain: attempt orchestration, certificates, public verification, admin console, and webhooks.              | Yes                   |
-| 5   | **Ramansh**           | **AI Engineer**                     | Owns every LLM boundary: AI gateway with failover, BARS evaluation, L4 defense simulation, RAG/pgvector, and vector matching.                           | Yes                   |
-| 6   | **Vedika G**          | **Data & AI/Backend Engineer**      | Owns the content and data spine: item banks for all ten tracks, calibration and cut scores, seed and ingestion pipelines, placement records, analytics. | Yes                   |
+| #   | Engineer             | Role Title                         | Mandate                                                                                                                                                 | Writes Feature Code? |
+| --- | -------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| 1   | **Tino**             | **System Architect & Reviewer**    | Owns the architecture, the contracts, the quality gates, and the final merge decision. Reviews all changes; does not ship feature code.                 | **No — by design**   |
+| 2   | **Vishal V**         | **Senior Backend Engineer**        | Owns the backend platform core: identity, data layer, rate limiting, event bus, code-execution sandbox, and runtime infrastructure.                     | Yes                  |
+| 3   | **Satheswaran V**    | **Frontend & Full-Stack Engineer** | Owns the candidate and TPO experience layer: design system, assessment player, dashboards, and the typed API client.                                    | Yes                  |
+| 4   | **Vishal Bharath R** | **Full-Stack & Backend Engineer**  | Owns the assessment lifecycle and the trust chain: attempt orchestration, certificates, public verification, admin console, and webhooks.               | Yes                  |
+| 5   | **Ramansh**          | **AI Engineer**                    | Owns every LLM boundary: AI gateway with failover, BARS evaluation, L4 defense simulation, RAG/pgvector, and vector matching.                           | Yes                  |
+| 6   | **Vedika G**         | **Data & AI/Backend Engineer**     | Owns the content and data spine: item banks for all ten tracks, calibration and cut scores, seed and ingestion pipelines, placement records, analytics. | Yes                  |
 
 > GitHub handles are listed below and are enforced in [`.github/CODEOWNERS`](./.github/CODEOWNERS).
 
-| Engineer          | GitHub handle      | Timezone | Standup   |
-| ------------------ | ------------------- | -------- | --------- |
-| Tino               | `@brittytino`        | IST      | 09:30 IST |
-| Vishal V            | `@vis465`             | IST      | 09:30 IST |
-| Satheswaran V       | `@Satheshwaran26`     | IST      | 09:30 IST |
-| Vishal Bharath R    | `@vishalbharath`      | IST      | 09:30 IST |
-| Ramansh             | `@Ram9012`            | IST      | 09:30 IST |
-| Vedika G            | `@11vedikaa`          | IST      | 09:30 IST |
+| Engineer         | GitHub handle     | Timezone | Standup   |
+| ---------------- | ----------------- | -------- | --------- |
+| Tino             | `@brittytino`     | IST      | 09:30 IST |
+| Vishal V         | `@vis465`         | IST      | 09:30 IST |
+| Satheswaran V    | `@Satheshwaran26` | IST      | 09:30 IST |
+| Vishal Bharath R | `@vishalbharath`  | IST      | 09:30 IST |
+| Ramansh          | `@Ram9012`        | IST      | 09:30 IST |
+| Vedika G         | `@11vedikaa`      | IST      | 09:30 IST |
 
 ---
 
@@ -50,14 +50,14 @@ contributes product code; a sprint plan that does so is mis-scoped and must be c
 
 **Owns (exclusive write authority):**
 
-| Artifact                                                          | Rationale for Sole Ownership                                                                          |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `ARCHITECTURE.md`, `SERVICES_VIEW.md`, `REPOSITORY_STRUCTURE.md`  | System-level documentation must remain authoritative and must not diverge across individual contributors. |
-| `docs/adr/**`                                                     | Architecture Decision Records — each decision has a single accountable owner.                            |
-| `packages/contracts/**`                                           | The cross-team API and event contract. Any engineer may propose a change via pull request; only Tino may merge it. |
-| `.github/workflows/**`, `.github/CODEOWNERS`                      | Quality gates must not be modifiable by the individual whose work they are intended to gate.              |
-| `turbo.json`, `pnpm-workspace.yaml`, root `tsconfig.base.json`    | Build graph and module boundaries.                                                                        |
-| `docs/delivery/**`                                                | Sprint plan, backlog, and definition of done.                                                             |
+| Artifact                                                         | Rationale for Sole Ownership                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ARCHITECTURE.md`, `SERVICES_VIEW.md`, `REPOSITORY_STRUCTURE.md` | System-level documentation must remain authoritative and must not diverge across individual contributors.          |
+| `docs/adr/**`                                                    | Architecture Decision Records — each decision has a single accountable owner.                                      |
+| `packages/contracts/**`                                          | The cross-team API and event contract. Any engineer may propose a change via pull request; only Tino may merge it. |
+| `.github/workflows/**`, `.github/CODEOWNERS`                     | Quality gates must not be modifiable by the individual whose work they are intended to gate.                       |
+| `turbo.json`, `pnpm-workspace.yaml`, root `tsconfig.base.json`   | Build graph and module boundaries.                                                                                 |
+| `docs/delivery/**`                                               | Sprint plan, backlog, and definition of done.                                                                      |
 
 **Accountable for:**
 
@@ -84,17 +84,17 @@ Bharath are blocked on backend internals.
 
 **Owns:**
 
-| Path                                                                          | Deliverable                                                                                                                                  |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/main.ts`, `app.module.ts`                                  | Fastify bootstrap, global pipes/filters/interceptors, Swagger, graceful shutdown.                                                              |
-| `apps/api-core/src/platform/**`                                               | Config (validated env), logging (pino), Prisma service, Redis service, Kafka service, BullMQ registration, health/readiness, OpenTelemetry.    |
-| `apps/api-core/src/modules/auth/**`                                           | 15-minute access JWT, HttpOnly refresh rotation, OAuth (Google/GitHub), SAML 2.0 / OIDC institutional SSO, RBAC guards, B2B `X-SMART-API-KEY`.  |
-| `apps/api-core/src/modules/users/**`                                          | Student/TPO/admin profile, track enrollment (primary + secondary).                                                                             |
-| `apps/api-core/src/modules/rate-limit/**`                                     | Redis sliding-window + token-bucket Lua guard, role & endpoint matrix, `X-RateLimit-*` headers, `smart.rate_limit.exceeded`.                    |
-| `apps/api-core/src/modules/sandbox/**`                                        | Non-networked Docker runner (256 MB / 1 CPU / 5 s), SQL executor on throwaway schema, watchdog.                                                 |
-| `apps/api-core/prisma/**`                                                     | **Schema steward.** All schema migrations are routed through this owner to prevent migration collisions across a multi-engineer team.          |
-| `infra/docker/**`, `infra/k8s/**`, `infra/helm/**`, `infra/observability/**`  | Local stack, images, manifests, Grafana/Prometheus/Loki wiring.                                                                                 |
-| `scripts/**`                                                                  | Bootstrap, seed, reset, diagnostics.                                                                                                            |
+| Path                                                                         | Deliverable                                                                                                                                    |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api-core/src/main.ts`, `app.module.ts`                                 | Fastify bootstrap, global pipes/filters/interceptors, Swagger, graceful shutdown.                                                              |
+| `apps/api-core/src/platform/**`                                              | Config (validated env), logging (pino), Prisma service, Redis service, Kafka service, BullMQ registration, health/readiness, OpenTelemetry.    |
+| `apps/api-core/src/modules/auth/**`                                          | 15-minute access JWT, HttpOnly refresh rotation, OAuth (Google/GitHub), SAML 2.0 / OIDC institutional SSO, RBAC guards, B2B `X-SMART-API-KEY`. |
+| `apps/api-core/src/modules/users/**`                                         | Student/TPO/admin profile, track enrollment (primary + secondary).                                                                             |
+| `apps/api-core/src/modules/rate-limit/**`                                    | Redis sliding-window + token-bucket Lua guard, role & endpoint matrix, `X-RateLimit-*` headers, `smart.rate_limit.exceeded`.                   |
+| `apps/api-core/src/modules/sandbox/**`                                       | Non-networked Docker runner (256 MB / 1 CPU / 5 s), SQL executor on throwaway schema, watchdog.                                                |
+| `apps/api-core/prisma/**`                                                    | **Schema steward.** All schema migrations are routed through this owner to prevent migration collisions across a multi-engineer team.          |
+| `infra/docker/**`, `infra/k8s/**`, `infra/helm/**`, `infra/observability/**` | Local stack, images, manifests, Grafana/Prometheus/Loki wiring.                                                                                |
+| `scripts/**`                                                                 | Bootstrap, seed, reset, diagnostics.                                                                                                           |
 
 **Non-negotiables:** the local `pnpm dev` environment must function for all other engineers from
 the outset; synchronous endpoints must maintain p95 latency below 200 ms; no Redis key may be
@@ -109,12 +109,12 @@ officers.
 
 **Owns:**
 
-| Path                       | Deliverable                                                                                                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/ui/**`            | Design system on Tailwind 4 + shadcn/ui: tokens, theme, primitives, `TierBadge`, `TierTrail`, `ConfidenceNote`, `LevelStepper`, charts. Every application consumes this; no app-local component duplication is permitted. |
-| `packages/api-client/**`    | Typed fetch client generated against `@smart/contracts`, TanStack Query hooks, silent-refresh interceptor, 429/`Retry-After` handling.                                                                  |
-| `apps/web-student/**`       | Assessment player (L1 MCQ, L2 code editor, L3 recorder, L4 defense chat, L5 upload), Zustand attempt store, timer/auto-submit, growth & gap-report portal.                                               |
-| `apps/web-tpo/**`           | Cohort readiness dashboard, Gold/Silver/Bronze distribution, gap report, shortlist table with CSV/PDF export, JD upload UI.                                                                              |
+| Path                     | Deliverable                                                                                                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/ui/**`         | Design system on Tailwind 4 + shadcn/ui: tokens, theme, primitives, `TierBadge`, `TierTrail`, `ConfidenceNote`, `LevelStepper`, charts. Every application consumes this; no app-local component duplication is permitted. |
+| `packages/api-client/**` | Typed fetch client generated against `@smart/contracts`, TanStack Query hooks, silent-refresh interceptor, 429/`Retry-After` handling.                                                                                    |
+| `apps/web-student/**`    | Assessment player (L1 MCQ, L2 code editor, L3 recorder, L4 defense chat, L5 upload), Zustand attempt store, timer/auto-submit, growth & gap-report portal.                                                                |
+| `apps/web-tpo/**`        | Cohort readiness dashboard, Gold/Silver/Bronze distribution, gap report, shortlist table with CSV/PDF export, JD upload UI.                                                                                               |
 
 **Non-negotiables:** WCAG 2.1 AA compliance on the assessment player; the player must not lose an
 answer on a network interruption (optimistic Redis draft with retry); Lighthouse performance
@@ -131,13 +131,13 @@ establish the product's legitimacy: public verification and the administrative c
 
 **Owns:**
 
-| Path                                        | Deliverable                                                                                                                                                                                                                        |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/modules/assessment/**`    | Attempt orchestration, Redis session state `session:assessment:{attempt_id}`, server-authoritative timer with auto-submit, item delivery from `items:form:*` warm cache, level unlock gating (Bronze-or-above), integrity event log. |
-| `apps/api-core/src/modules/certificate/**`   | Tier Trail computation, headline tier, confidence note assembly, signed SHA-256 QR, Puppeteer PDF to R2, `smart.certificate.issued`.                                                                                              |
-| `apps/api-core/src/modules/webhooks/**`      | Outbound HMAC-SHA256 dispatcher, endpoint registry, retry with exponential backoff and DLQ.                                                                                                                                       |
-| `apps/web-verify/**`                         | Public `verify.smart.com/cert/[id]` — Tier Trail, confidence note, calibration employer credits, QR validator. Cached, SSG/ISR, p95 latency below 80 ms.                                                                          |
-| `apps/web-admin/**`                          | Super Admin console: system health, rate-limit overrides, user/institution management, integrity review queue, cut-score publish workflow.                                                                                       |
+| Path                                       | Deliverable                                                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api-core/src/modules/assessment/**`  | Attempt orchestration, Redis session state `session:assessment:{attempt_id}`, server-authoritative timer with auto-submit, item delivery from `items:form:*` warm cache, level unlock gating (Bronze-or-above), integrity event log. |
+| `apps/api-core/src/modules/certificate/**` | Tier Trail computation, headline tier, confidence note assembly, signed SHA-256 QR, Puppeteer PDF to R2, `smart.certificate.issued`.                                                                                                 |
+| `apps/api-core/src/modules/webhooks/**`    | Outbound HMAC-SHA256 dispatcher, endpoint registry, retry with exponential backoff and DLQ.                                                                                                                                          |
+| `apps/web-verify/**`                       | Public `verify.smart.com/cert/[id]` — Tier Trail, confidence note, calibration employer credits, QR validator. Cached, SSG/ISR, p95 latency below 80 ms.                                                                             |
+| `apps/web-admin/**`                        | Super Admin console: system health, rate-limit overrides, user/institution management, integrity review queue, cut-score publish workflow.                                                                                           |
 
 **Non-negotiables:** the timer must be authoritative on the server and cannot be circumvented from
 the client; an attempt with `integrity_flag != 'CLEAN'` must not produce a certificate; the
@@ -154,13 +154,13 @@ routing is the mechanism by which cost and failover are controlled.
 
 **Owns:**
 
-| Path                                        | Deliverable                                                                                                                                                                                                                                                                              |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api-core/src/modules/ai-gateway/**`     | Claude 5 Sonnet + Claude 4.7 clients, Redis token-bucket (200 RPM / 10k TPM), three priority queues (P1 L4 defense with 40% reserved capacity, P2 L3 grading, P3 batch), circuit breaker to **Gemini 2.5 Pro/Flash** on 429/5xx/timeout, prompt and response audit to `claude_evaluation_audits`, cost meter. |
-| `apps/api-core/src/modules/evaluation/**`     | L3 BARS mode-consensus grading, L4 interactive defense simulation, L5 split scoring (50% checklist / 30% rubric / 20% presentation), Cohen's κ monitor with automatic pause of automated scoring below κ 0.65.                                                                         |
-| `apps/api-core/src/modules/matching/**`       | JD-to-threshold-vector NLP parse, embedding generation, pgvector cosine search with rule filters, match explainability.                                                                                                                                                                 |
-| `packages/scoring-engine/**`                  | Effect.ts pure math: Angoff μ/σ cut scores with confidence bands, tier assignment with borderline detection, weighted L1 scoring, IRT 2PL (Phase 2), Cohen's κ, Cronbach's α / KR-20.                                                                                                   |
-| `packages/prompts/**`                         | Versioned, immutable prompt templates with JSON output schemas. A prompt change is a version increment, never an in-place edit.                                                                                                                                                          |
+| Path                                      | Deliverable                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api-core/src/modules/ai-gateway/**` | Claude 5 Sonnet + Claude 4.7 clients, Redis token-bucket (200 RPM / 10k TPM), three priority queues (P1 L4 defense with 40% reserved capacity, P2 L3 grading, P3 batch), circuit breaker to **Gemini 2.5 Pro/Flash** on 429/5xx/timeout, prompt and response audit to `claude_evaluation_audits`, cost meter. |
+| `apps/api-core/src/modules/evaluation/**` | L3 BARS mode-consensus grading, L4 interactive defense simulation, L5 split scoring (50% checklist / 30% rubric / 20% presentation), Cohen's κ monitor with automatic pause of automated scoring below κ 0.65.                                                                                                |
+| `apps/api-core/src/modules/matching/**`   | JD-to-threshold-vector NLP parse, embedding generation, pgvector cosine search with rule filters, match explainability.                                                                                                                                                                                       |
+| `packages/scoring-engine/**`              | Effect.ts pure math: Angoff μ/σ cut scores with confidence bands, tier assignment with borderline detection, weighted L1 scoring, IRT 2PL (Phase 2), Cohen's κ, Cronbach's α / KR-20.                                                                                                                         |
+| `packages/prompts/**`                     | Versioned, immutable prompt templates with JSON output schemas. A prompt change is a version increment, never an in-place edit.                                                                                                                                                                               |
 
 **Non-negotiables:** output must be deterministic, schema-validated structured data; free-text
 responses parsed by regular expression are not permitted; every LLM call must be idempotent and
@@ -180,15 +180,15 @@ production.
 
 **Owns:**
 
-| Path                                          | Deliverable                                                                                                                                                                                    |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tools/content-pipeline/**`                     | Authoring schema and CLI: `validate`, `seed`, `embed`, `export`, `report`. Item banks are maintained as reviewed files in version control, not as ad-hoc SQL.                                  |
-| `tools/content-pipeline/data/**`                | 25–40 task-based items per track across ten tracks, competency weights, BARS anchor sets, L5 capstone briefs, per-cohort rotation forms.                                                       |
-| `apps/api-core/src/modules/catalog/**`          | Tracks, competencies (Domains A–E), levels, item bank read APIs, parallel-form selection, item retirement on exposure.                                                                          |
-| `apps/api-core/src/modules/calibration/**`      | Calibration panels (3–5 practitioners per track), Angoff estimate capture, cut-score derivation and publication, Cronbach's α per level/track, confidence-note text generation, `smart.track.updated`. |
-| `apps/api-core/src/modules/placement/**`        | JD records, shortlist generation and export, `placement_records` outcome ingestion, `smart.placement.matched`.                                                                                  |
-| `apps/api-core/src/modules/analytics/**`        | Cohort readiness aggregates, gap reports, correlation records (interview/offer rate by tier), TPO report endpoints.                                                                             |
-| `packages/prompts/src/templates/goldens/**`     | Golden evaluation sets — the regression suite verifying that a prompt change has not degraded grading quality. Co-owned with Ramansh.                                                          |
+| Path                                        | Deliverable                                                                                                                                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tools/content-pipeline/**`                 | Authoring schema and CLI: `validate`, `seed`, `embed`, `export`, `report`. Item banks are maintained as reviewed files in version control, not as ad-hoc SQL.                                          |
+| `tools/content-pipeline/data/**`            | 25–40 task-based items per track across ten tracks, competency weights, BARS anchor sets, L5 capstone briefs, per-cohort rotation forms.                                                               |
+| `apps/api-core/src/modules/catalog/**`      | Tracks, competencies (Domains A–E), levels, item bank read APIs, parallel-form selection, item retirement on exposure.                                                                                 |
+| `apps/api-core/src/modules/calibration/**`  | Calibration panels (3–5 practitioners per track), Angoff estimate capture, cut-score derivation and publication, Cronbach's α per level/track, confidence-note text generation, `smart.track.updated`. |
+| `apps/api-core/src/modules/placement/**`    | JD records, shortlist generation and export, `placement_records` outcome ingestion, `smart.placement.matched`.                                                                                         |
+| `apps/api-core/src/modules/analytics/**`    | Cohort readiness aggregates, gap reports, correlation records (interview/offer rate by tier), TPO report endpoints.                                                                                    |
+| `packages/prompts/src/templates/goldens/**` | Golden evaluation sets — the regression suite verifying that a prompt change has not degraded grading quality. Co-owned with Ramansh.                                                                  |
 
 **Non-negotiables:** every item must carry a `competency_id`, `real_world_weight`, `difficulty_tag`,
 and a model answer; content must pass `content-pipeline validate` in continuous integration, or the
@@ -223,24 +223,24 @@ and Cronbach's α ≥ 0.70 is recorded in the database.
 
 ### 3.2 Frontend & Shared Packages
 
-| Package / App              | Tino  | Vishal V | Satheswaran | Vishal Bharath | Ramansh | Vedika |
-| --------------------------- | :---: | :------: | :---------: | :------------: | :-----: | :----: |
-| `packages/contracts`       | **O** |    C     |      C      |       C        |    C    |   C    |
-| `packages/scoring-engine`  |   R   |          |             |       C        |  **O**  |   C    |
-| `packages/prompts`         |   R   |          |             |                |  **O**  |   C    |
-| `packages/ui`              |   R   |          |    **O**    |       C        |         |        |
-| `packages/api-client`      |   R   |    C     |    **O**    |       C        |         |        |
-| `packages/observability`   |   R   |  **O**   |      C      |                |         |        |
-| `packages/config-*`        | **O** |    C     |      C      |                |         |        |
-| `apps/web-student`         |   R   |          |    **O**    |       C        |    C    |        |
-| `apps/web-tpo`             |   R   |          |    **O**    |       C        |         |   C    |
-| `apps/web-admin`           |   R   |    C     |      C      |     **O**      |         |   C    |
-| `apps/web-verify`          |   R   |          |      C      |     **O**      |         |        |
-| `tools/content-pipeline`   |   R   |          |             |                |    C    | **O**  |
-| `tools/load-tests`         |   R   |  **O**   |             |       C        |         |        |
-| `tests/e2e`                |   R   |    C     |    **O**    |       C        |    C    |   C    |
-| `infra/**`                 |   R   |  **O**   |             |       C        |         |        |
-| `.github/workflows`        | **O** |    C     |             |                |         |        |
+| Package / App             | Tino  | Vishal V | Satheswaran | Vishal Bharath | Ramansh | Vedika |
+| ------------------------- | :---: | :------: | :---------: | :------------: | :-----: | :----: |
+| `packages/contracts`      | **O** |    C     |      C      |       C        |    C    |   C    |
+| `packages/scoring-engine` |   R   |          |             |       C        |  **O**  |   C    |
+| `packages/prompts`        |   R   |          |             |                |  **O**  |   C    |
+| `packages/ui`             |   R   |          |    **O**    |       C        |         |        |
+| `packages/api-client`     |   R   |    C     |    **O**    |       C        |         |        |
+| `packages/observability`  |   R   |  **O**   |      C      |                |         |        |
+| `packages/config-*`       | **O** |    C     |      C      |                |         |        |
+| `apps/web-student`        |   R   |          |    **O**    |       C        |    C    |        |
+| `apps/web-tpo`            |   R   |          |    **O**    |       C        |         |   C    |
+| `apps/web-admin`          |   R   |    C     |      C      |     **O**      |         |   C    |
+| `apps/web-verify`         |   R   |          |      C      |     **O**      |         |        |
+| `tools/content-pipeline`  |   R   |          |             |                |    C    | **O**  |
+| `tools/load-tests`        |   R   |  **O**   |             |       C        |         |        |
+| `tests/e2e`               |   R   |    C     |    **O**    |       C        |    C    |   C    |
+| `infra/**`                |   R   |  **O**   |             |       C        |         |        |
+| `.github/workflows`       | **O** |    C     |             |                |         |        |
 
 ### 3.3 Kafka Topic Ownership
 
@@ -248,16 +248,16 @@ Each topic has exactly one producer-owner. Any team member may consume a topic. 
 payload schema requires a pull request against `@smart/contracts`, reviewed by Tino and every
 listed consumer of that topic.
 
-| Topic                                                       | Producer-owner    | Consumers                                                     |
-| ------------------------------------------------------------ | ------------------ | ---------------------------------------------------------------- |
-| `smart.user.created` / `smart.user.updated`                 | Vishal V           | Vedika (analytics)                                                |
-| `smart.assessment.started` / `smart.assessment.submitted`   | Vishal Bharath R   | Ramansh (evaluation), Vishal V (cache invalidation)               |
-| `smart.eval.requested`                                       | Ramansh            | Ramansh (ai-gateway)                                              |
-| `smart.eval.completed`                                       | Ramansh            | Vishal Bharath (certificate), Vedika (placement, analytics)       |
-| `smart.track.updated`                                        | Vedika G           | Vishal V (cache invalidation), Vishal Bharath (certificate)       |
-| `smart.certificate.issued`                                   | Vishal Bharath R   | Vishal Bharath (webhooks), Vedika (analytics)                     |
-| `smart.placement.matched`                                    | Vedika G           | Vishal Bharath (webhooks), Vedika (analytics)                     |
-| `smart.rate_limit.exceeded`                                  | Vishal V           | Vishal V (observability), Vishal Bharath (integrity review)       |
+| Topic                                                     | Producer-owner   | Consumers                                                   |
+| --------------------------------------------------------- | ---------------- | ----------------------------------------------------------- |
+| `smart.user.created` / `smart.user.updated`               | Vishal V         | Vedika (analytics)                                          |
+| `smart.assessment.started` / `smart.assessment.submitted` | Vishal Bharath R | Ramansh (evaluation), Vishal V (cache invalidation)         |
+| `smart.eval.requested`                                    | Ramansh          | Ramansh (ai-gateway)                                        |
+| `smart.eval.completed`                                    | Ramansh          | Vishal Bharath (certificate), Vedika (placement, analytics) |
+| `smart.track.updated`                                     | Vedika G         | Vishal V (cache invalidation), Vishal Bharath (certificate) |
+| `smart.certificate.issued`                                | Vishal Bharath R | Vishal Bharath (webhooks), Vedika (analytics)               |
+| `smart.placement.matched`                                 | Vedika G         | Vishal Bharath (webhooks), Vedika (analytics)               |
+| `smart.rate_limit.exceeded`                               | Vishal V         | Vishal V (observability), Vishal Bharath (integrity review) |
 
 ---
 
@@ -306,36 +306,36 @@ main ─────────────────────────
 
 ### 4.3 Escalation Path
 
-| Situation                          | Required Action                                                                          |
-| ------------------------------------ | -------------------------------------------------------------------------------------------- |
-| Blocked on a contract               | Post the blocker in `#smart-contracts` and tag Tino; resolved at the Architecture Review Board. |
-| Blocked on backend internals        | Tag Vishal V; he is the designated backend escalation path.                                  |
-| Blocked on AI output quality or cost | Tag Ramansh. Direct SDK calls that bypass the gateway are not permitted.                      |
-| Missing or incorrect content/items  | Tag Vedika G with the `content` label.                                                       |
-| Cross-module design disagreement    | A fifteen-minute call is held, after which Tino decides and records the decision in an ADR. Design is not resolved by attrition. |
-| Slipping a sprint commitment        | Report the slippage in standup as soon as it is known; do not defer disclosure to the sprint review. |
+| Situation                            | Required Action                                                                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Blocked on a contract                | Post the blocker in `#smart-contracts` and tag Tino; resolved at the Architecture Review Board.                                  |
+| Blocked on backend internals         | Tag Vishal V; he is the designated backend escalation path.                                                                      |
+| Blocked on AI output quality or cost | Tag Ramansh. Direct SDK calls that bypass the gateway are not permitted.                                                         |
+| Missing or incorrect content/items   | Tag Vedika G with the `content` label.                                                                                           |
+| Cross-module design disagreement     | A fifteen-minute call is held, after which Tino decides and records the decision in an ADR. Design is not resolved by attrition. |
+| Slipping a sprint commitment         | Report the slippage in standup as soon as it is known; do not defer disclosure to the sprint review.                             |
 
 ### 4.4 Interfaces Between Owners (Integration Seams)
 
-| Seam                          | Between                        | Agreement                                                                                                                                                  |
-| ------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Player ⇄ Attempt API**       | Satheswaran ⇄ Vishal Bharath     | The server is the clock and the authority. The client sends drafts; the server determines validity, expiry, and the next item. Contract: `AttemptSessionDto`, `NextItemDto`. |
-| **Attempt ⇄ Evaluation**       | Vishal Bharath ⇄ Ramansh         | Handoff occurs exclusively via `smart.assessment.submitted`, never a direct service call. The result returns via `smart.eval.completed`.                    |
-| **Evaluation ⇄ Cut Scores**    | Ramansh ⇄ Vedika                 | Evaluation produces a raw score; calibration owns tier assignment via published `cut_scores`. Ramansh must not hardcode a threshold.                        |
-| **Content ⇄ Delivery**         | Vedika ⇄ Vishal Bharath          | Items are served only from `catalog` parallel forms; delivery must never query `items` directly.                                                            |
+| Seam                        | Between                      | Agreement                                                                                                                                                                    |
+| --------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Player ⇄ Attempt API**    | Satheswaran ⇄ Vishal Bharath | The server is the clock and the authority. The client sends drafts; the server determines validity, expiry, and the next item. Contract: `AttemptSessionDto`, `NextItemDto`. |
+| **Attempt ⇄ Evaluation**    | Vishal Bharath ⇄ Ramansh     | Handoff occurs exclusively via `smart.assessment.submitted`, never a direct service call. The result returns via `smart.eval.completed`.                                     |
+| **Evaluation ⇄ Cut Scores** | Ramansh ⇄ Vedika             | Evaluation produces a raw score; calibration owns tier assignment via published `cut_scores`. Ramansh must not hardcode a threshold.                                         |
+| **Content ⇄ Delivery**      | Vedika ⇄ Vishal Bharath      | Items are served only from `catalog` parallel forms; delivery must never query `items` directly.                                                                             |
 
 ---
 
 ## 5. Capacity & Velocity Assumptions
 
-| Engineer          | Feature Capacity                | Review Load                       |
-| ------------------ | --------------------------------- | ------------------------------------ |
-| Tino                | 0 story points                    | Approximately 100% — all pull requests |
-| Vishal V            | 8 story points per sprint (steady-state rate) | Secondary reviewer, backend            |
-| Satheswaran V       | 8 story points per sprint (steady-state rate) | Secondary reviewer, frontend           |
-| Vishal Bharath R    | 8 story points per sprint (steady-state rate) | Secondary reviewer, full-stack         |
-| Ramansh             | 8 story points per sprint (steady-state rate) | AI/scoring reviews                     |
-| Vedika G            | 8 story points per sprint (steady-state rate) | Content/data reviews                   |
+| Engineer         | Feature Capacity                              | Review Load                            |
+| ---------------- | --------------------------------------------- | -------------------------------------- |
+| Tino             | 0 story points                                | Approximately 100% — all pull requests |
+| Vishal V         | 8 story points per sprint (steady-state rate) | Secondary reviewer, backend            |
+| Satheswaran V    | 8 story points per sprint (steady-state rate) | Secondary reviewer, frontend           |
+| Vishal Bharath R | 8 story points per sprint (steady-state rate) | Secondary reviewer, full-stack         |
+| Ramansh          | 8 story points per sprint (steady-state rate) | AI/scoring reviews                     |
+| Vedika G         | 8 story points per sprint (steady-state rate) | Content/data reviews                   |
 
 Planned team velocity is calculated on the basis of five delivery individual contributors (ICs).
 Any sprint plan that assumes six delivery engineers is invalid, since Tino's capacity is reserved

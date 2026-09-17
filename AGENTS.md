@@ -15,21 +15,21 @@ Project rules under `.cursor/rules/*.mdc` apply at all times. `02-dev-workflow.m
 
 ## Non-negotiable agent behavior
 
-| Rule       | Requirement                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------------------ |
-| Branching  | Never commit directly to `main`, `qa`, or `dev`. Work proceeds on a feature branch from `dev`. See `docs/delivery/BRANCHING.md`. |
-| Quality    | `pnpm lint`, `typecheck`, `test`, and `format:check` pass before a pull request is opened.                  |
-| Hooks      | Git hooks are never bypassed (`--no-verify` is not used).                                                   |
-| Delivery   | Shippable work concludes as a pull request into `dev`, carrying the required labels (promotion follows `dev` → `qa` → `main`). |
-| Commits    | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`.                        |
-| Size       | No more than 400 hand-written lines of code per pull request; one ticket per pull request.                  |
-| Contracts  | Changes to `@smart/contracts` are made first and reviewed by the system architect before dependent work proceeds. |
-| Ownership  | Only owned paths are edited directly; otherwise a pull request is opened for owner review.                  |
-| Secrets    | Environment files and credentials are never committed.                                                       |
-| Merging    | A pull request is merged only on explicit instruction; review authority rests with the system architect role. |
-| Preferences | `.cursor/local/preferences.md` is honored when present.                                                     |
-| Backlog    | `tools/zoho-sprint*/backlog.mjs` is the edited source; synchronization to GitHub Issues runs via `tools/backlog/sync-github.mjs` only. The external sprint-tracking system is not updated unless explicitly requested. |
-| Deployment verification | A deployment is not considered successful on the basis of a green CI run alone. The triggered deployment workflow, and the resulting live environment, are confirmed independently. |
+| Rule                    | Requirement                                                                                                                                                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Branching               | Never commit directly to `main`, `qa`, or `dev`. Work proceeds on a feature branch from `dev`. See `docs/delivery/BRANCHING.md`.                                                                                       |
+| Quality                 | `pnpm lint`, `typecheck`, `test`, and `format:check` pass before a pull request is opened.                                                                                                                             |
+| Hooks                   | Git hooks are never bypassed (`--no-verify` is not used).                                                                                                                                                              |
+| Delivery                | Shippable work concludes as a pull request into `dev`, carrying the required labels (promotion follows `dev` → `qa` → `main`).                                                                                         |
+| Commits                 | `<type>(<scope>): <summary> (<TICKET>)` — see `.cursor/rules/09-commits-and-prs.mdc`.                                                                                                                                  |
+| Size                    | No more than 400 hand-written lines of code per pull request; one ticket per pull request.                                                                                                                             |
+| Contracts               | Changes to `@smart/contracts` are made first and reviewed by the system architect before dependent work proceeds.                                                                                                      |
+| Ownership               | Only owned paths are edited directly; otherwise a pull request is opened for owner review.                                                                                                                             |
+| Secrets                 | Environment files and credentials are never committed.                                                                                                                                                                 |
+| Merging                 | A pull request is merged only on explicit instruction; review authority rests with the system architect role.                                                                                                          |
+| Preferences             | `.cursor/local/preferences.md` is honored when present.                                                                                                                                                                |
+| Backlog                 | `tools/zoho-sprint*/backlog.mjs` is the edited source; synchronization to GitHub Issues runs via `tools/backlog/sync-github.mjs` only. The external sprint-tracking system is not updated unless explicitly requested. |
+| Deployment verification | A deployment is not considered successful on the basis of a green CI run alone. The triggered deployment workflow, and the resulting live environment, are confirmed independently.                                    |
 
 ## Product summary
 
