@@ -54,12 +54,12 @@ export function competencyStatusBadgeVariant(
 
 export function summarizeEvidenceContext(context: SkillEvidenceContext | undefined): string {
   if (!context || context.availableCount === 0) {
-    return 'No application evidence linked yet. You can still verify — evidence may be requested after assessment if your demonstrated level requires it.';
+    return 'No projects or work experience linked to this skill yet. You can still take the assessment.';
   }
   const labels = context.items.slice(0, 3).map((item) => item.label);
   const extra =
     context.availableCount > labels.length
       ? ` and ${String(context.availableCount - labels.length)} more`
       : '';
-  return `Evidence available: ${labels.join(', ')}${extra}. SMART may use this during verification.`;
+  return `Linked on your profile: ${labels.join(', ')}${extra}.`;
 }

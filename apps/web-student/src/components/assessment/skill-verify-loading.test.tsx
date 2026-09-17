@@ -9,7 +9,7 @@ describe('SkillVerifyLoading', () => {
     expect(screen.getByLabelText('Pulse wait game')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Skill verification' })).toBeTruthy();
     expect(screen.queryByText('Questions are generating')).toBeNull();
-    expect(screen.getByText('Warming up your round')).toBeTruthy();
+    expect(screen.getByText('Warming up')).toBeTruthy();
   });
 
   it('surfaces generate errors instead of the game', () => {

@@ -250,6 +250,32 @@ describe('EvaluationService SDE v4 skill form', () => {
     expect(complete).toHaveBeenCalledTimes(2);
   });
 
+  it('accepts six over-generated open LLM items without gateway schema failure', async () => {
+    const overGenerated = Array.from({ length: 6 }, (_, i) => ({
+      format: 'SCENARIO' as const,
+      prompt: `Open scenario ${String(i + 1)}: incremental load with duplicate keys and SLA pressure.`,
+      rubric: 'Names idempotent writes, monitoring, and a recovery path.',
+      modelAnswer: 'Merge on natural key, alert on SLA breach, replay from checkpoint.',
+    }));
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedItems(8, 3) } })
+      .mockResolvedValueOnce({ output: { items: overGenerated } });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+    const result = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_OPERATING_SYSTEMS',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-open-overgen',
+      },
+      OWNER_ID,
+    );
+
+    expect(result.items).toHaveLength(12);
+    expect(result.items.filter((item) => item.format === 'SCENARIO')).toHaveLength(1);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+
   it('uses SCENARIO open items for APPLIED catalog skills on SDE_TESTING blueprint', async () => {
     const closedWithSlots = closedItems(8, 3).map((item, idx) => ({
       ...item,
@@ -459,6 +485,137 @@ describe('EvaluationService SDE v4 skill form', () => {
     expect(result.traceTotal).toBe(3);
     expect(result.itemResults.some((row) => row.format === 'SCENARIO' && row.feedback)).toBe(true);
     expect(generateComplete).toHaveBeenCalledTimes(3);
+  });
+
+  it('accepts 0-based open grader indices and maps them to sealed item indices', async () => {
+    const generateComplete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedItems(8, 3) } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'SCENARIO',
+              prompt: 'Design an idempotent ELT job when upstream sends duplicate keys.',
+              rubric: 'Names dedupe strategy and idempotent writes.',
+              modelAnswer: 'Use merge/upsert with a stable natural key.',
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        output: {
+          grades: [
+            {
+              index: 0,
+              marksAwarded: 9,
+              justification: 'Strong idempotent ELT design with clear dedupe semantics.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(generateComplete));
+    const form = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_OPERATING_SYSTEMS',
+        proficiency: 'BEGINNER',
+        attemptId: 'attempt-elt',
+      },
+      OWNER_ID,
+    );
+    const openIndex = form.items.find((item) => item.format === 'SCENARIO')?.index;
+    expect(openIndex).toBeDefined();
+
+    const result = await service.gradeSkillForm(
+      {
+        skillCode: 'SDE_OPERATING_SYSTEMS',
+        proficiency: 'BEGINNER',
+        scoringToken: form.scoringToken,
+        responses: [
+          ...form.items
+            .filter((item) => item.format === 'MCQ' || item.format === 'TRACE')
+            .map((item) => ({
+              index: item.index,
+              selectedKey: item.format === 'MCQ' ? 'A' : 'B',
+            })),
+          { index: openIndex!, text: 'Upsert on natural key with merge for late-arriving facts.' },
+        ],
+      },
+      OWNER_ID,
+    );
+
+    expect(
+      result.itemResults.some((row) => row.format === 'SCENARIO' && row.marksEarned === 9),
+    ).toBe(true);
+  });
+
+  it('fails closed when the open grader returns fewer grades than open items', async () => {
+    const generateComplete = vi
+      .fn()
+      .mockResolvedValueOnce({ output: { items: closedItems(8, 2) } })
+      .mockResolvedValueOnce({
+        output: {
+          items: [
+            {
+              format: 'SCENARIO',
+              prompt: 'Design an idempotent ELT job when upstream sends duplicate keys.',
+              rubric: 'Names dedupe strategy and idempotent writes.',
+              modelAnswer: 'Use merge/upsert with a stable natural key.',
+            },
+            {
+              format: 'SCENARIO',
+              prompt: 'A nightly batch misses its SLA. What do you check first?',
+              rubric: 'Names orchestration metrics and upstream delays.',
+              modelAnswer: 'Check scheduler run history and upstream freshness.',
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        output: {
+          grades: [
+            {
+              index: 0,
+              marksAwarded: 7,
+              justification: 'Only the first scenario was graded by the model.',
+            },
+          ],
+        },
+      });
+    const service = new EvaluationService(gatewayWithComplete(generateComplete));
+    const form = await service.generateSkillForm(
+      {
+        skillCode: 'SDE_OPERATING_SYSTEMS',
+        proficiency: 'INTERMEDIATE',
+        attemptId: 'attempt-two-open',
+      },
+      OWNER_ID,
+    );
+    const openItems = form.items.filter((item) => item.format === 'SCENARIO');
+    expect(openItems).toHaveLength(2);
+
+    await expect(
+      service.gradeSkillForm(
+        {
+          skillCode: 'SDE_OPERATING_SYSTEMS',
+          proficiency: 'INTERMEDIATE',
+          scoringToken: form.scoringToken,
+          responses: [
+            ...form.items
+              .filter((item) => item.format === 'MCQ' || item.format === 'TRACE')
+              .map((item) => ({
+                index: item.index,
+                selectedKey: item.format === 'MCQ' ? 'A' : 'B',
+              })),
+            ...openItems.map((item) => ({
+              index: item.index,
+              text: 'Idempotent merge on natural key with monitoring and replay.',
+            })),
+          ],
+        },
+        OWNER_ID,
+      ),
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it('fails closed when form generation output is malformed', async () => {

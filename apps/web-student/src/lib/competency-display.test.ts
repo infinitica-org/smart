@@ -15,8 +15,10 @@ describe('competency-display', () => {
   });
 
   it('summarizes empty evidence context for pre-assessment copy', () => {
-    expect(summarizeEvidenceContext(undefined)).toMatch(/no application evidence/i);
-    expect(summarizeEvidenceContext({ availableCount: 0, items: [] })).toMatch(/still verify/i);
+    expect(summarizeEvidenceContext(undefined)).toMatch(/no projects or work experience/i);
+    expect(summarizeEvidenceContext({ availableCount: 0, items: [] })).toMatch(
+      /still take the assessment/i,
+    );
   });
 
   it('summarizes linked evidence items', () => {

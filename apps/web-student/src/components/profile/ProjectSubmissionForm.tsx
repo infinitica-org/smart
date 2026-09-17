@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
 import { createPortal } from 'react-dom';
 import type { GithubRepoSummary, ProjectDto } from '@smart/contracts';
@@ -30,6 +31,8 @@ const POLL_MS = 4_000;
 const README_PREFILL_MAX_CHARS = 7_800;
 
 export function ProjectSubmissionForm() {
+  const searchParams = useSearchParams();
+  const highlightProjectId = searchParams.get('project');
   const canSubmitProjects = useFeatureFlag('project_verification');
   const [fields, setFields] = useState<ProjectFormFields>(EMPTY_PROJECT_FORM);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProjectFormFields, string>>>(
@@ -74,7 +77,7 @@ export function ProjectSubmissionForm() {
     return () => window.clearInterval(timer);
   }, [projects]);
 
-  const viewProject = (project: ProjectDto) => {
+  const viewProject = useCallback((project: ProjectDto) => {
     setDetailProject(project);
     setDetailLoading(true);
     void api.projects
@@ -82,7 +85,13 @@ export function ProjectSubmissionForm() {
       .then((full) => setDetailProject(full))
       .catch(() => undefined)
       .finally(() => setDetailLoading(false));
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!highlightProjectId || !projects?.length) return;
+    const match = projects.find((project) => project.projectId === highlightProjectId);
+    if (match) viewProject(match);
+  }, [highlightProjectId, projects, viewProject]);
 
   const setField = (key: keyof ProjectFormFields, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }));

@@ -5,6 +5,10 @@ import SkillRepositoryPage from './page';
 const push = vi.fn();
 const listSkillClaimsMock = vi.fn();
 const declareSkillClaimMock = vi.fn();
+const listEvidenceMock = vi.fn();
+const listProjectsMock = vi.fn();
+const listWorkExperiencesMock = vi.fn();
+const listProjectSkillMappingsMock = vi.fn();
 
 const profileProgressMock = vi.fn();
 
@@ -17,6 +21,16 @@ vi.mock('@/lib/api', () => ({
     assessment: {
       listSkillClaims: () => listSkillClaimsMock(),
       declareSkillClaim: (...args: unknown[]) => declareSkillClaimMock(...args),
+    },
+    evidence: {
+      list: (...args: unknown[]) => listEvidenceMock(...args),
+      listProjectSkillMappings: (...args: unknown[]) => listProjectSkillMappingsMock(...args),
+    },
+    projects: {
+      listMine: () => listProjectsMock(),
+    },
+    users: {
+      listWorkExperiences: () => listWorkExperiencesMock(),
     },
   },
 }));
@@ -98,6 +112,14 @@ describe('SkillRepositoryPage', () => {
     push.mockReset();
     listSkillClaimsMock.mockReset();
     declareSkillClaimMock.mockReset();
+    listEvidenceMock.mockReset();
+    listEvidenceMock.mockResolvedValue([]);
+    listProjectsMock.mockReset();
+    listProjectsMock.mockResolvedValue({ projects: [] });
+    listWorkExperiencesMock.mockReset();
+    listWorkExperiencesMock.mockResolvedValue([]);
+    listProjectSkillMappingsMock.mockReset();
+    listProjectSkillMappingsMock.mockResolvedValue([]);
     profileProgressMock.mockReset();
     mockIncompleteProfile();
     listSkillClaimsMock.mockResolvedValue([

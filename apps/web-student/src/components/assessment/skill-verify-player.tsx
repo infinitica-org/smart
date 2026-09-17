@@ -325,12 +325,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
       }}
     >
       {!session ? (
-        <SkillVerifyLoading
-          generating={generating}
-          error={error}
-          kioskTitle={kioskTitle}
-          evidenceContext={prepared.evidenceContext}
-        />
+        <SkillVerifyLoading generating={generating} error={error} kioskTitle={kioskTitle} />
       ) : session ? (
         <SkillVerifyExam
           session={session}

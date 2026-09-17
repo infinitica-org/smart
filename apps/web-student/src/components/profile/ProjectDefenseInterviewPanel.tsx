@@ -8,7 +8,12 @@ import type {
   StartProjectDefenseResponse,
 } from '@smart/contracts';
 import { Alert, Badge, Button, Timer } from '@smart/ui';
-import { Bot, CheckCircle2, Loader2, Mic, ShieldCheck, Volume2 } from 'lucide-react';
+import { Bot, CheckCircle2, Loader2, Mic, ShieldCheck, User, Volume2 } from 'lucide-react';
+import {
+  AssessmentSessionShell,
+  SessionAsidePanel,
+  VoiceActivityBars,
+} from '@/components/assessment/assessment-session-shell';
 import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
 import { useProctorLive } from '@/components/proctoring/proctor-live-context';
 import { isFaceAlignmentKind } from '@/lib/proctoring/live-webcam';
@@ -505,25 +510,18 @@ export function ProjectDefenseInterviewPanel({
             ? 'Tap Start speaking when you are ready'
             : 'Starting interview…';
 
-  return (
-    <div className="flex h-full min-h-[100dvh] w-full flex-col bg-[var(--background)] text-[var(--text-primary)]">
-      <header className="flex shrink-0 items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)] px-6 py-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            Project defense — {project.title}
-          </h1>
-          <p className="mt-0.5 text-xs text-[var(--text-muted)]">Voice ownership interview</p>
-        </div>
-        <button
-          type="button"
-          className="shrink-0 text-xs font-medium text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={phase === 'processing'}
-          onClick={() => setExitConfirmOpen(true)}
-        >
-          Leave interview
-        </button>
-      </header>
+  const interviewProgress =
+    timerSession && timerSession.maxDurationSeconds > 0
+      ? 1 - timerSession.secondsRemaining / timerSession.maxDurationSeconds
+      : undefined;
 
+  const progressLabel =
+    timerSession && secondsRemaining !== null
+      ? `About ${String(Math.max(0, Math.ceil(secondsRemaining / 60)))} min left in this session`
+      : 'Interview in progress';
+
+  return (
+    <>
       {exitConfirmOpen ? (
         <div
           className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 p-6"
@@ -567,190 +565,205 @@ export function ProjectDefenseInterviewPanel({
         </div>
       ) : null}
 
-      <div className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-hidden p-6 lg:flex-row">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Badge variant="outline">Voice interview</Badge>
-            <span className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)]">
-              {phase === 'processing' || phase === 'agent_speaking' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-brand-700" />
-              ) : phase === 'listening' ? (
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-60" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-700" />
-                </span>
-              ) : (
-                <Mic className="h-4 w-4 text-brand-700" />
-              )}
-              {statusLabel}
-            </span>
-          </div>
+      <AssessmentSessionShell
+        title={`Project defense — ${project.title}`}
+        subtitle="AI ownership interview — speak naturally, like a mock recruiter round"
+        progressValue={interviewProgress}
+        progressLabel={progressLabel}
+        headerAction={
+          <button
+            type="button"
+            className="text-xs font-medium text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={phase === 'processing'}
+            onClick={() => setExitConfirmOpen(true)}
+          >
+            Leave interview
+          </button>
+        }
+        main={
+          <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Badge variant="outline">Voice interview</Badge>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-sm text-[var(--text-muted)]">
+                {phase === 'processing' || phase === 'agent_speaking' ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-brand-700" />
+                ) : phase === 'listening' ? (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-700" />
+                  </span>
+                ) : (
+                  <Mic className="h-4 w-4 text-brand-700" />
+                )}
+                {statusLabel}
+              </span>
+            </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-            {agentQuestion ? (
-              <article className="w-full shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-5">
-                <div className="flex gap-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500/15 text-brand-700">
-                    <Bot className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                        Interviewer
-                      </p>
-                      <button
-                        type="button"
-                        onClick={replayQuestion}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
-                      >
-                        <Volume2 className="h-3.5 w-3.5" />
-                        Replay
-                      </button>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+              {agentQuestion ? (
+                <article className="w-full shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] border-l-4 border-l-brand-700 bg-[var(--surface)] p-5 shadow-sm">
+                  <div className="flex gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500/15 text-brand-700">
+                      <Bot className="h-5 w-5" />
                     </div>
-                    <p className="mt-3 text-base leading-relaxed lg:text-lg">{agentQuestion}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                          Interviewer
+                        </p>
+                        <button
+                          type="button"
+                          onClick={replayQuestion}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
+                        >
+                          <Volume2 className="h-3.5 w-3.5" />
+                          Replay
+                        </button>
+                      </div>
+                      <p className="mt-3 text-base leading-relaxed lg:text-lg">{agentQuestion}</p>
+                    </div>
+                  </div>
+                </article>
+              ) : null}
+
+              {phase === 'listening' ? (
+                <div className="flex min-h-[12rem] w-full flex-1 flex-col rounded-[var(--radius-card)] border border-brand-500/25 bg-[var(--surface-muted)] p-5">
+                  <div className="flex shrink-0 items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-brand-700">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">
+                        Your response
+                      </p>
+                    </div>
+                    <VoiceActivityBars active />
+                  </div>
+                  <p
+                    className={
+                      liveTranscript
+                        ? 'mt-4 flex-1 overflow-y-auto text-base leading-relaxed text-[var(--text-primary)]'
+                        : 'mt-4 flex-1 text-base leading-relaxed text-[var(--text-muted)]'
+                    }
+                  >
+                    {liveTranscript ||
+                      (startResponse.sttMode === 'server'
+                        ? "Recording — speak clearly, then tap “I'm done speaking”."
+                        : 'Speak clearly — your words appear here as you talk.')}
+                  </p>
+                </div>
+              ) : null}
+
+              {phase === 'processing' ? (
+                <div className="flex flex-1 items-center justify-center gap-3 rounded-[var(--radius-card)] border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] px-6 py-10">
+                  <Loader2 className="h-6 w-6 shrink-0 animate-spin text-brand-700" />
+                  <p className="text-sm text-[var(--text-muted)]">Processing your answer…</p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-3 border-t border-[var(--surface-border)] pt-4">
+              {phase === 'ready' ? (
+                <div className="flex flex-col gap-3">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={() => void startListening()}
+                  >
+                    <Mic className="mr-2 h-5 w-5" />
+                    Start speaking
+                  </Button>
+                  <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      Mic not working?
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                      Type your answer instead — same as speaking your response aloud.
+                    </p>
+                    <textarea
+                      className="mt-3 min-h-[6rem] w-full rounded-md border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                      value={typedAnswer}
+                      onChange={(event) => setTypedAnswer(event.target.value)}
+                      placeholder="Describe your answer in your own words…"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3"
+                      disabled={typedAnswer.trim().length < 8}
+                      onClick={() => void submitTypedAnswer()}
+                    >
+                      Submit typed answer
+                    </Button>
                   </div>
                 </div>
-              </article>
-            ) : null}
+              ) : null}
 
-            {phase === 'listening' ? (
-              <div className="flex min-h-[12rem] w-full flex-1 flex-col rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-5">
-                <p className="shrink-0 text-sm font-medium text-[var(--text-primary)]">
-                  Your response
-                </p>
-                <p
-                  className={
-                    liveTranscript
-                      ? 'mt-3 flex-1 overflow-y-auto text-base leading-relaxed text-[var(--text-primary)]'
-                      : 'mt-3 flex-1 text-base leading-relaxed text-[var(--text-muted)]'
-                  }
-                >
-                  {liveTranscript ||
-                    (startResponse.sttMode === 'server'
-                      ? "Recording — speak clearly, then tap “I'm done speaking”."
-                      : 'Speak clearly — your words appear here as you talk.')}
-                </p>
-              </div>
-            ) : null}
-
-            {phase === 'processing' ? (
-              <div className="flex flex-1 items-center justify-center gap-3 rounded-[var(--radius-card)] border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] px-6 py-10">
-                <Loader2 className="h-6 w-6 shrink-0 animate-spin text-brand-700" />
-                <p className="text-sm text-[var(--text-muted)]">Processing your answer…</p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex shrink-0 flex-col gap-3 border-t border-[var(--surface-border)] pt-4">
-            {phase === 'ready' ? (
-              <div className="flex flex-col gap-3">
+              {phase === 'listening' ? (
                 <Button
                   type="button"
                   variant="primary"
                   size="lg"
                   className="w-full sm:w-auto"
-                  onClick={() => void startListening()}
+                  onClick={() => void finishListening()}
                 >
-                  <Mic className="mr-2 h-5 w-5" />
-                  Start speaking
+                  I&apos;m done speaking
                 </Button>
-                <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Mic not working?</p>
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    Type your answer instead — same as speaking your response aloud.
-                  </p>
-                  <textarea
-                    className="mt-3 min-h-[6rem] w-full rounded-md border border-[var(--surface-border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                    value={typedAnswer}
-                    onChange={(event) => setTypedAnswer(event.target.value)}
-                    placeholder="Describe your answer in your own words…"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3"
-                    disabled={typedAnswer.trim().length < 8}
-                    onClick={() => void submitTypedAnswer()}
-                  >
-                    Submit typed answer
+              ) : null}
+
+              {error && phase !== 'processing' && phase !== 'listening' && phase !== 'ready' ? (
+                <div className="space-y-3">
+                  <Alert tone="danger" title="Could not continue">
+                    {error}
+                  </Alert>
+                  <Button type="button" variant="secondary" onClick={() => void promptForAnswer()}>
+                    Try again
                   </Button>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {phase === 'listening' ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={() => void finishListening()}
-              >
-                I&apos;m done speaking
-              </Button>
-            ) : null}
-
-            {error && phase !== 'processing' && phase !== 'listening' && phase !== 'ready' ? (
-              <div className="space-y-3">
-                <Alert tone="danger" title="Could not continue">
+              {error && phase === 'ready' ? (
+                <Alert tone="warning" title="Microphone issue">
                   {error}
                 </Alert>
-                <Button type="button" variant="secondary" onClick={() => void promptForAnswer()}>
-                  Try again
-                </Button>
-              </div>
-            ) : null}
-
-            {error && phase === 'ready' ? (
-              <Alert tone="warning" title="Microphone issue">
-                {error}
-              </Alert>
-            ) : null}
-          </div>
-        </main>
-
-        <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto lg:w-[22rem]">
-          <CameraIntegrityDock compact />
-
-          {timerSession ? (
-            <div className="shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                Time remaining
-              </p>
-              <Timer {...projectDefenseTimerProps(timerSession)} />
+              ) : null}
             </div>
-          ) : null}
-
-          {tags.length > 0 ? (
-            <div className="shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                Skills to defend
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[11px] text-[var(--text-primary)]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-              Tips
-            </p>
-            <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--text-muted)]">
-              <li>Answer in your own words with concrete examples from the project.</li>
-              <li>Stay in fullscreen — tab switches count as warnings.</li>
-              <li>Tap “I&apos;m done speaking” when you finish each answer.</li>
-            </ul>
           </div>
-        </aside>
-      </div>
-    </div>
+        }
+        aside={
+          <>
+            <CameraIntegrityDock compact />
+            {timerSession ? (
+              <SessionAsidePanel title="Time remaining">
+                <Timer {...projectDefenseTimerProps(timerSession)} />
+              </SessionAsidePanel>
+            ) : null}
+            {tags.length > 0 ? (
+              <SessionAsidePanel title="Skills to defend">
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[11px] text-[var(--text-primary)]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </SessionAsidePanel>
+            ) : null}
+            <SessionAsidePanel title="Tips">
+              <ul className="space-y-2 text-sm leading-relaxed text-[var(--text-muted)]">
+                <li>Answer in your own words with concrete examples from the project.</li>
+                <li>Stay in fullscreen — tab switches count as warnings.</li>
+                <li>Tap “I&apos;m done speaking” when you finish each answer.</li>
+              </ul>
+            </SessionAsidePanel>
+          </>
+        }
+      />
+    </>
   );
 }

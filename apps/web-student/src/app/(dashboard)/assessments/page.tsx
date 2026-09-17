@@ -19,9 +19,12 @@ import {
 import {
   SKILL_DEFINITIONS,
   skillFocusOptions,
+  type ProjectDto,
   type SkillClaimDto,
+  type ProjectSkillMappingDto,
   type SkillDefinition,
 } from '@smart/contracts';
+import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
 import { VerificationBadge, cn } from '@smart/ui';
 import { api } from '@/lib/api';
 import {
@@ -35,6 +38,8 @@ import {
 import { canVerifySkills } from '@/lib/profile-progress';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 import { SkillVerificationInstructions } from '@/components/assessment/skill-verification-instructions';
+import { SkillEvidenceContextPanel } from '@/components/assessment/skill-evidence-context-panel';
+import { buildLinkedSkillEvidenceContext } from '@/lib/skill-evidence-context';
 
 const STREAM_VISUALS: Record<
   string,
@@ -337,6 +342,8 @@ function SkillDetailPanel({
   isBusy,
   isPending,
   onTakeAssessment,
+  evidenceContext,
+  evidenceLoading,
 }: {
   skill: CatalogSkill;
   profilePercent: number;
@@ -348,6 +355,8 @@ function SkillDetailPanel({
   isBusy: boolean;
   isPending: boolean;
   onTakeAssessment: () => void;
+  evidenceContext: SkillEvidenceContextView | undefined;
+  evidenceLoading: boolean;
 }) {
   const visual = streamVisual(skill.streamLabel);
   const Icon = visual.Icon;
@@ -402,6 +411,19 @@ function SkillDetailPanel({
 
       <SkillVerificationInstructions />
 
+      {evidenceLoading ? (
+        <div
+          className="animate-pulse rounded-xl border border-border bg-muted p-4"
+          role="status"
+          aria-label="Loading linked evidence"
+        >
+          <div className="h-3 w-40 rounded bg-muted-foreground/20" />
+          <div className="mt-2 h-2 w-full rounded bg-muted-foreground/15" />
+        </div>
+      ) : (
+        <SkillEvidenceContextPanel context={evidenceContext} />
+      )}
+
       {!profileComplete ? (
         <div
           role="status"
@@ -452,9 +474,78 @@ export default function SkillRepositoryPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'status'>('name');
   const [selectedSkillCode, setSelectedSkillCode] = useState<string | null>(null);
   const [addSkillOpen, setAddSkillOpen] = useState(false);
+  const [selectedEvidenceContext, setSelectedEvidenceContext] = useState<
+    SkillEvidenceContextView | undefined
+  >(undefined);
+  const [projectTitleById, setProjectTitleById] = useState<Map<string, string>>(() => new Map());
+  const [liveProjectIds, setLiveProjectIds] = useState<Set<string>>(() => new Set());
+  const [experienceLabelById, setExperienceLabelById] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  const [liveExperienceIds, setLiveExperienceIds] = useState<Set<string>>(() => new Set());
+  const [myProjects, setMyProjects] = useState<ProjectDto[]>([]);
+  const [projectMappingsById, setProjectMappingsById] = useState<
+    Map<string, ProjectSkillMappingDto[]>
+  >(() => new Map());
+  const [myWorkExperiences, setMyWorkExperiences] = useState<
+    Awaited<ReturnType<typeof api.users.listWorkExperiences>>
+  >([]);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    void (async () => {
+      try {
+        const res = await api.projects.listMine();
+        if (cancelled) return;
+        const projects = res.projects as ProjectDto[];
+        const map = new Map<string, string>();
+        const ids = new Set<string>();
+        for (const project of projects) {
+          map.set(project.projectId, project.title);
+          ids.add(project.projectId);
+        }
+        setMyProjects(projects);
+        setProjectTitleById(map);
+        setLiveProjectIds(ids);
+
+        const mappingEntries = await Promise.all(
+          projects.map(async (project) => {
+            try {
+              const mappings = await api.evidence.listProjectSkillMappings(project.projectId);
+              return [project.projectId, mappings] as const;
+            } catch {
+              return [project.projectId, []] as const;
+            }
+          }),
+        );
+        if (!cancelled) {
+          setProjectMappingsById(new Map(mappingEntries));
+        }
+      } catch {
+        if (!cancelled) {
+          setMyProjects([]);
+          setProjectMappingsById(new Map());
+        }
+      }
+    })();
+
+    void api.users
+      .listWorkExperiences()
+      .then((experiences) => {
+        if (cancelled) return;
+        setMyWorkExperiences(experiences);
+        const labels = new Map<string, string>();
+        const ids = new Set<string>();
+        for (const exp of experiences) {
+          ids.add(exp.id);
+          labels.set(exp.id, `${exp.role} · ${exp.companyName}`);
+        }
+        setExperienceLabelById(labels);
+        setLiveExperienceIds(ids);
+      })
+      .catch(() => undefined);
+
     const run = async () => {
       setLoading(true);
       setError(null);
@@ -525,6 +616,55 @@ export default function SkillRepositoryPage() {
       setSelectedSkillCode(null);
     }
   }, [catalogSkills, selectedSkillCode]);
+
+  useEffect(() => {
+    if (!selectedSkillCode) {
+      setSelectedEvidenceContext(undefined);
+      setEvidenceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEvidenceLoading(true);
+    void (async () => {
+      try {
+        const records = await api.evidence.list({ skillCode: selectedSkillCode });
+        if (cancelled) return;
+        setSelectedEvidenceContext(
+          buildLinkedSkillEvidenceContext(
+            selectedSkillCode,
+            records,
+            myProjects,
+            projectMappingsById,
+            myWorkExperiences,
+            {
+              projectTitles: projectTitleById,
+              experienceLabels: experienceLabelById,
+              liveProjectIds,
+              liveExperienceIds,
+            },
+          ),
+        );
+      } catch {
+        if (!cancelled) {
+          setSelectedEvidenceContext({ availableCount: 0, items: [] });
+        }
+      } finally {
+        if (!cancelled) setEvidenceLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedSkillCode,
+    projectTitleById,
+    experienceLabelById,
+    liveProjectIds,
+    liveExperienceIds,
+    myProjects,
+    projectMappingsById,
+    myWorkExperiences,
+  ]);
 
   const filterOptions = ['All', 'Verified', 'Not Verified'];
 
@@ -857,6 +997,8 @@ export default function SkillRepositoryPage() {
                 onTakeAssessment={() => {
                   verifySkill(selectedSkill.definition.code, selectedSkill.claim);
                 }}
+                evidenceContext={selectedEvidenceContext}
+                evidenceLoading={evidenceLoading}
               />
             ) : (
               <section className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">

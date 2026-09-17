@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { Plus, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
@@ -65,6 +66,10 @@ function validateProofFile(file: File): string | null {
 }
 
 export function WorkExperienceSection() {
+  const searchParams = useSearchParams();
+  const highlightExperienceId = searchParams.get('experience');
+  const openedHighlightRef = useRef<string | null>(null);
+
   const {
     data: experiences = [],
     isLoading: loading,
@@ -183,6 +188,15 @@ export function WorkExperienceSection() {
     setProofValidationError(null);
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!highlightExperienceId || loading || experiences.length === 0) return;
+    if (openedHighlightRef.current === highlightExperienceId) return;
+    const match = experiences.find((exp) => exp.id === highlightExperienceId);
+    if (!match) return;
+    openedHighlightRef.current = highlightExperienceId;
+    openEditModal(match);
+  }, [highlightExperienceId, loading, experiences]);
 
   const tryDispatchEmployerVerification = async (experienceId: string, exp: WorkExperienceDto) => {
     const ruleCheck = validateWorkExperienceLetterRules({
