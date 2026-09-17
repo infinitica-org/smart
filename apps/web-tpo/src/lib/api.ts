@@ -9,9 +9,13 @@ import {
   API_PREFIX,
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
+  CreateMatchRunResponseSchema,
   JobOpeningDtoSchema,
   ListApplicationsResponseSchema,
   ListJobOpeningsResponseSchema,
+  MatchRunDtoSchema,
+  UploadJobOpeningDocumentResponseSchema,
+  UploadJobOpeningLogoResponseSchema,
   ShortlistDtoSchema,
   type AtsStage,
   type CreateApplicationRequest,
@@ -50,12 +54,36 @@ export const openingsApi = {
     apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
       schema: JobOpeningDtoSchema,
     }),
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.postForm(`${API_PREFIX}/placement/openings/logo/upload`, formData, {
+      schema: UploadJobOpeningLogoResponseSchema,
+    });
+  },
+  uploadDocument: (file: File, label?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (label?.trim()) formData.append('label', label.trim());
+    return apiClient.postForm(`${API_PREFIX}/placement/openings/documents/upload`, formData, {
+      schema: UploadJobOpeningDocumentResponseSchema,
+    });
+  },
 };
 
 export const matchingApi = {
+  /** @deprecated use `createRun` + `getRun` (S6-VV-76) — kept for one release. */
   match: (body: MatchRequest) =>
     apiClient.post(`${API_PREFIX}/placement/match`, body, {
       schema: ShortlistDtoSchema,
+    }),
+  createRun: (body: MatchRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/match-runs`, body, {
+      schema: CreateMatchRunResponseSchema,
+    }),
+  getRun: (runId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/match-runs/${runId}`, {
+      schema: MatchRunDtoSchema,
     }),
 };
 

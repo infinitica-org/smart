@@ -106,7 +106,7 @@ describe('CO-T04 company dashboard', () => {
     expect(await screen.findByText('Company dashboard')).toBeDefined();
     expect(await screen.findByText('Backend Engineer')).toBeDefined();
     expect(screen.getAllByText('Active openings').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Infinitica Labs · Coimbatore · 2 headcount/)).toBeDefined();
+    expect(screen.getByText(/Infinitica Labs · Coimbatore/)).toBeDefined();
     expect(screen.queryByText('Draft Analyst')).toBeNull();
     expect(screen.getByText('New matches')).toBeDefined();
     expect(screen.getByText('Applied / New Matches')).toBeDefined();

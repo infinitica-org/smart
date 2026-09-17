@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -8,7 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
+import type { Multipart, MultipartFile } from '@fastify/multipart';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   API_PREFIX,
@@ -20,7 +24,11 @@ import {
   type ApplicationDto,
   type JobOpeningDto,
   type ListApplicationsResponse,
+  UploadJobOpeningDocumentResponseSchema,
+  UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
+  type UploadJobOpeningDocumentResponse,
+  type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
@@ -74,6 +82,112 @@ export class PlacementController {
       user.sub,
       CreateJobOpeningRequestSchema.parse(body),
     );
+  }
+
+  @Post('openings/documents/upload')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Upload a job posting attachment before creating the opening.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Uploaded document metadata for the create payload.' })
+  async uploadOpeningDocument(
+    @CurrentUser() user: RequestUser,
+    @Req() request: FastifyRequest,
+  ): Promise<UploadJobOpeningDocumentResponse> {
+    const partsIter = (
+      request as FastifyRequest & { parts: (opts?: unknown) => AsyncIterableIterator<Multipart> }
+    ).parts({ limits: { fileSize: 10 * 1024 * 1024 } });
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+    let label = '';
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        } else if (part.type === 'field' && part.fieldname === 'label') {
+          label = String(part.value ?? '').trim();
+        }
+      }
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The uploaded file exceeds the 10MB limit or could not be read.',
+        statusCode: 400,
+      });
+    }
+
+    if (!fileBuffer) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Choose a PDF, JPG, or PNG document to upload.',
+        statusCode: 400,
+      });
+    }
+
+    const uploaded = await this.service.uploadOpeningDocument(
+      requireInstitutionId(user),
+      { buffer: fileBuffer, fileName, mimeType },
+      label,
+    );
+    return UploadJobOpeningDocumentResponseSchema.parse(uploaded);
+  }
+
+  @Post('openings/logo/upload')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Upload a company logo image before creating the opening.' })
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 201,
+    description: 'Logo storage key and preview URL for the create payload.',
+  })
+  async uploadOpeningLogo(
+    @CurrentUser() user: RequestUser,
+    @Req() request: FastifyRequest,
+  ): Promise<UploadJobOpeningLogoResponse> {
+    const partsIter = (
+      request as FastifyRequest & { parts: (opts?: unknown) => AsyncIterableIterator<Multipart> }
+    ).parts({ limits: { fileSize: 2 * 1024 * 1024 } });
+
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = 'application/octet-stream';
+
+    try {
+      for await (const part of partsIter) {
+        if (part.type === 'file') {
+          const file = part as MultipartFile;
+          mimeType = file.mimetype;
+          fileName = file.filename;
+          fileBuffer = await file.toBuffer();
+        }
+      }
+    } catch {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'The logo exceeds the 2MB limit or could not be read.',
+        statusCode: 400,
+      });
+    }
+
+    if (!fileBuffer) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'Choose a JPG or PNG logo image to upload.',
+        statusCode: 400,
+      });
+    }
+
+    const uploaded = await this.service.uploadOpeningLogo(requireInstitutionId(user), {
+      buffer: fileBuffer,
+      fileName,
+      mimeType,
+    });
+    return UploadJobOpeningLogoResponseSchema.parse(uploaded);
   }
 
   @Get('openings')

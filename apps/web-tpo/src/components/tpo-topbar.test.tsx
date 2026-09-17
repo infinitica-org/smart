@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PLACEMENT_NAV } from '../lib/tpo-nav';
 import { TpoTopbar } from './tpo-topbar';
 
 const navState = vi.hoisted(() => ({ pathname: '/' }));
@@ -18,15 +17,6 @@ vi.mock('../lib/api', () => ({
   openingsApi: { list: vi.fn().mockResolvedValue({ openings: [] }) },
 }));
 
-function openPlacementMenu() {
-  fireEvent.click(screen.getByRole('button', { name: /placement/i }));
-}
-
-/** Anchored because each item's accessible name is `label + description`. */
-function placementMenuItem(name: string) {
-  return screen.getByRole('menuitem', { name: new RegExp(`^${name}`) });
-}
-
 beforeEach(() => {
   navState.pathname = '/';
 });
@@ -36,66 +26,29 @@ afterEach(() => {
 });
 
 describe('TpoTopbar placement navigation', () => {
-  it('collapses the Placement menu until it is opened', () => {
+  it('links Placement directly to the company repository', () => {
     render(<TpoTopbar />);
 
-    const trigger = screen.getByRole('button', { name: /placement/i });
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('menu', { name: 'Placement' })).toBeNull();
-    expect(screen.queryByRole('menuitem', { name: /^Openings/ })).toBeNull();
-
-    fireEvent.click(trigger);
-
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('menu', { name: 'Placement' })).toBeTruthy();
-  });
-
-  it.each(PLACEMENT_NAV.map((link) => [link.name, link.href, link.description] as const))(
-    'links %s to %s',
-    (name, href, description) => {
-      render(<TpoTopbar />);
-      openPlacementMenu();
-
-      const link = placementMenuItem(name);
-      expect(link.getAttribute('href')).toBe(href);
-      expect(link.textContent).toContain(description);
-    },
-  );
-
-  it('closes the menu on Escape', () => {
-    render(<TpoTopbar />);
-    openPlacementMenu();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
+    const placement = screen.getByRole('link', { name: 'Placement' });
+    expect(placement.getAttribute('href')).toBe('/companies');
     expect(screen.queryByRole('menu', { name: 'Placement' })).toBeNull();
   });
 
-  it('marks the open placement route as the current page', () => {
-    navState.pathname = '/ats';
+  it('marks Placement active on any placement workspace route', () => {
+    navState.pathname = '/openings/create';
     render(<TpoTopbar />);
-    openPlacementMenu();
 
-    expect(placementMenuItem('ATS').getAttribute('aria-current')).toBe('page');
-    expect(placementMenuItem('Review').getAttribute('aria-current')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Placement' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
   });
 
-  it('keeps a query-scoped suggestions route highlighted', () => {
-    navState.pathname = '/suggestions';
+  it('includes Placement in the mobile drawer', () => {
     render(<TpoTopbar />);
-    openPlacementMenu();
-
-    expect(placementMenuItem('Suggestions').getAttribute('aria-current')).toBe('page');
-  });
-
-  it('exposes the placement routes in the mobile drawer', () => {
-    render(<TpoTopbar />);
-
     fireEvent.click(screen.getByRole('button', { name: 'Toggle navigation' }));
 
-    for (const link of PLACEMENT_NAV) {
-      expect(screen.getByRole('link', { name: link.name }).getAttribute('href')).toBe(link.href);
-    }
+    const placementLinks = screen.getAllByRole('link', { name: 'Placement' });
+    expect(placementLinks.every((link) => link.getAttribute('href') === '/companies')).toBe(true);
   });
 });
 
@@ -126,7 +79,6 @@ describe('TpoTopbar existing navigation', () => {
 
   it('does not link the student applications view', () => {
     render(<TpoTopbar />);
-    openPlacementMenu();
 
     const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
     expect(hrefs).not.toContain('/applications');

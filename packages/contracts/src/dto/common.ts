@@ -4,6 +4,8 @@ import { z } from 'zod';
 
 export const UuidSchema = z.uuid();
 export const IsoDateTimeSchema = z.iso.datetime({ offset: true });
+/** Calendar date (YYYY-MM-DD) for drive / deadline fields on job openings. */
+export const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD');
 export const EmailSchema = z.email().max(255).toLowerCase();
 
 /** Percentage score, 0–100 with two decimals of precision in the DB. */
