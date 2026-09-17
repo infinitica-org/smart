@@ -14,7 +14,7 @@ export function TpoShell({ children }: { children: ReactNode }) {
       pollMe={() => api.auth.me()}
       onSignOut={signOut}
     >
-      <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[var(--ds-canvas)] font-sans text-[var(--ds-text)] antialiased selection:bg-[var(--tpo-accent)] selection:text-[var(--ds-text)]">
+      <div className="tpo-console relative flex min-h-screen flex-col overflow-x-hidden bg-[var(--ds-canvas)] text-[var(--ds-text)] antialiased selection:bg-[var(--tpo-accent)] selection:text-[var(--ds-text)]">
         <TpoTopbar />
         <main className="mx-auto w-full max-w-[1440px] flex-1 p-4 md:p-8">{children}</main>
       </div>
