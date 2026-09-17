@@ -2254,7 +2254,7 @@ export const ROUTES: readonly RouteSpec[] = [
     rateLimit: 'placement.opening',
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
-    slaMs: 5000,
+    slaMs: 500,
     summary: 'Upload a job posting attachment (PDF/JPG/PNG) for the create payload.',
   },
   {
@@ -2266,7 +2266,7 @@ export const ROUTES: readonly RouteSpec[] = [
     rateLimit: 'placement.opening',
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
-    slaMs: 5000,
+    slaMs: 500,
     summary: 'Upload a company logo image (JPG/PNG) for the job posting create payload.',
   },
   {
