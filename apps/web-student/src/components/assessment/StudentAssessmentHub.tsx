@@ -4,10 +4,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { ArrowRight } from 'lucide-react';
-import type { SkillClaimDto } from '@smart/contracts';
+import type { EvidenceRecordDto, SkillClaimDto } from '@smart/contracts';
 import { Alert } from '@smart/ui';
 
+import { AssessmentSkillLinkedProjects } from '@/components/assessment/AssessmentSkillLinkedProjects';
 import { api } from '@/lib/api';
+import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
+import {
+  linkedEvidenceContextForSkill,
+  loadProfileLinkedEvidenceBundle,
+  type ProfileLinkedEvidenceBundle,
+} from '@/lib/skill-linked-evidence-bundle';
 import {
   categoryNameForCode,
   skillNameForCode,
@@ -28,6 +35,8 @@ export function StudentAssessmentHub() {
   const router = useRouter();
   const { progress, loading: profileLoading } = useProfileProgress();
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
+  const [evidenceBundle, setEvidenceBundle] = useState<ProfileLinkedEvidenceBundle | null>(null);
+  const [evidenceRecords, setEvidenceRecords] = useState<EvidenceRecordDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
@@ -39,8 +48,16 @@ export function StudentAssessmentHub() {
       setLoading(true);
       setError(null);
       try {
-        const rows = await api.assessment.listSkillClaims();
-        if (!cancelled) setClaims(rows);
+        const [rows, bundle, records] = await Promise.all([
+          api.assessment.listSkillClaims(),
+          loadProfileLinkedEvidenceBundle(),
+          api.evidence.list().catch(() => [] as EvidenceRecordDto[]),
+        ]);
+        if (!cancelled) {
+          setClaims(rows);
+          setEvidenceBundle(bundle);
+          setEvidenceRecords(records);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load assessments.');
@@ -61,6 +78,18 @@ export function StudentAssessmentHub() {
       ),
     [claims],
   );
+
+  const linkedContextBySkill = useMemo(() => {
+    const map = new Map<string, SkillEvidenceContextView>();
+    if (!evidenceBundle) return map;
+    for (const claim of claims) {
+      map.set(
+        claim.skillCode,
+        linkedEvidenceContextForSkill(claim.skillCode, evidenceBundle, evidenceRecords),
+      );
+    }
+    return map;
+  }, [claims, evidenceBundle, evidenceRecords]);
 
   const profileUnlocked = canVerifySkills(progress?.percent);
 
@@ -148,6 +177,9 @@ export function StudentAssessmentHub() {
                           {categoryNameForCode(claim.skillCode)}
                         </p>
                       </div>
+                      <AssessmentSkillLinkedProjects
+                        context={linkedContextBySkill.get(claim.skillCode)}
+                      />
                       <div className="mt-auto space-y-3">
                         <p
                           className={`text-xs font-medium uppercase tracking-wide ${profileMutedTextClass}`}

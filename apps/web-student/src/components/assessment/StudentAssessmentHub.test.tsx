@@ -10,13 +10,28 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
 
+const listEvidenceMock = vi.fn();
+
 vi.mock('@/lib/api', () => ({
   api: {
     assessment: {
       listSkillClaims: () => listSkillClaimsMock(),
     },
+    evidence: {
+      list: () => listEvidenceMock(),
+    },
   },
 }));
+
+const loadBundleMock = vi.fn();
+
+vi.mock('@/lib/skill-linked-evidence-bundle', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    loadProfileLinkedEvidenceBundle: () => loadBundleMock(),
+  };
+});
 
 vi.mock('@/lib/use-profile-progress', () => ({
   useProfileProgress: () => ({
@@ -39,6 +54,18 @@ describe('StudentAssessmentHub', () => {
   beforeEach(() => {
     push.mockClear();
     listSkillClaimsMock.mockReset();
+    listEvidenceMock.mockReset();
+    loadBundleMock.mockReset();
+    listEvidenceMock.mockResolvedValue([]);
+    loadBundleMock.mockResolvedValue({
+      projects: [],
+      projectMappingsById: new Map(),
+      workExperiences: [],
+      projectTitleById: new Map(),
+      experienceLabelById: new Map(),
+      liveProjectIds: new Set(),
+      liveExperienceIds: new Set(),
+    });
   });
 
   it('shows empty state when no skill claims exist', async () => {
@@ -68,5 +95,55 @@ describe('StudentAssessmentHub', () => {
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/assessments/skills/claim-1');
     });
+  });
+
+  it('shows linked project on the skill assessment card', async () => {
+    listSkillClaimsMock.mockResolvedValue([
+      { claimId: 'claim-py', skillCode: 'SE_PYTHON', status: 'DECLARED', lastAttemptId: null },
+    ]);
+    loadBundleMock.mockResolvedValue({
+      projects: [
+        {
+          projectId: 'proj-1',
+          studentId: 'stu-1',
+          title: 'Weather API',
+          problem: '',
+          approach: '',
+          stack: 'Python',
+          outcome: '',
+          status: 'DRAFT',
+          githubUrl: null,
+          liveUrl: null,
+          interviewRequired: false,
+          interviewStatus: 'NOT_REQUIRED',
+          interviewCompletedAt: null,
+          report: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      projectMappingsById: new Map([
+        [
+          'proj-1',
+          [
+            {
+              projectId: 'proj-1',
+              skillCode: 'SE_PYTHON',
+              verificationStatus: 'PENDING',
+            },
+          ],
+        ],
+      ]),
+      workExperiences: [],
+      projectTitleById: new Map([['proj-1', 'Weather API']]),
+      experienceLabelById: new Map(),
+      liveProjectIds: new Set(['proj-1']),
+      liveExperienceIds: new Set(),
+    });
+
+    render(<StudentAssessmentHub />);
+
+    expect(await screen.findByRole('link', { name: 'Weather API' })).toBeDefined();
+    expect(screen.getByText(/Linked project/i)).toBeDefined();
   });
 });
