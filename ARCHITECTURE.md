@@ -1,9 +1,8 @@
 # SMART — Master Technical Architecture & Product Specification
 
-> **Version:** v2.0 — Final Master Architecture Reference  
-> **Last Updated:** 2026-08-20  
+> **Version:** v2.0  
 > **Maintainer:** Infinitica Engineering Team  
-> **Purpose:** Single source of truth for SMART's product vision, microservice architecture, rate limiting specification, Claude AI engine, scoring mechanics, domain taxonomies, placement overlay, public verification, and 5-Sprint delivery plan.
+> **Purpose:** Single source of truth for SMART's product vision, microservice architecture, rate limiting specification, Claude AI engine, scoring mechanics, domain taxonomies, placement overlay, public verification, and phased delivery plan.
 
 ---
 
@@ -39,9 +38,9 @@ SMART is a **role-specific readiness certification platform**. It assesses candi
 - **Student-controlled** and publicly verifiable.
 - **Backed by correlation data** from real hiring outcomes.
 
-### 1.1 One-Liner
+### 1.1 Product Statement
 
-_SMART tells you who's actually ready for the job — and shows its work._
+SMART certifies job readiness against role-specific competency requirements and publishes the methodology behind every score it issues.
 
 ### 1.2 Placement Infrastructure Positioning
 
@@ -82,7 +81,7 @@ To ensure high security while protecting backend databases from token validation
 
 > **Architecture Directives:**
 >
-> 1. **Orion Decoupling:** Orion RAG is being developed separately by a parallel team. SMART does **NOT** depend on or wait for Orion APIs.
+> 1. **Orion Decoupling:** Orion RAG is developed separately by a parallel team. SMART does not depend on, and does not wait for, Orion APIs.
 > 2. **Claude AI Engine & Gemini Fallback:** SMART directly integrates with **Anthropic's Claude 5 Sonnet & Claude 4.7 API** as its core intelligence layer, backed by automatic failover to the **Google Gemini API (Gemini 2.5 Pro / Flash)**.
 > 3. **Native Vector RAG:** SMART manages its own RAG vector store using Postgres **`pgvector`** (or ChromaDB in local development) to store domain competency blueprints, Angoff rubrics, and evaluation benchmarks.
 
@@ -147,7 +146,7 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 │  ┌─────────────────┐   ┌─────────────────┐   ┌──────────────────────────┐   │
 │  │  Auth & User    │   │   Assessment    │   │   Scoring Engine         │   │
 │  │  Service        │   │   Delivery      │   │   (NestJS +              │   │
-│  │  (Clerk / JWT)  │   │   (NestJS Core) │   │   Effect.ts Math)        │   │
+│  │  (JWT / OAuth)  │   │   (NestJS Core) │   │   Effect.ts Math)        │   │
 │  └─────────────────┘   └────────┬────────┘   └──────────────────────────┘   │
 │                                 │                                           │
 │                                 ▼                                           │
@@ -197,7 +196,7 @@ Target Capacity: **1 Million Active Candidates per Placement Season** with a pea
 
 ## 4. Comprehensive Rate Limiting System Architecture
 
-> **Mandate:** Rate limit EVERY interface, service, endpoint, role, and LLM call in explicit detail.
+> **Mandate:** Every interface, service, endpoint, role, and LLM call is rate limited in explicit detail.
 
 ### 4.1 Rate Limiting Technical Mechanics
 - **Algorithm:** Distributed **Sliding Window Counter** combined with **Token Bucket** algorithm implemented in Redis via Lua scripts (`redis-cell` compliant).
@@ -211,7 +210,7 @@ Every response returned by the SMART API MUST include the following headers:
 ```http
 X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 59
-X-RateLimit-Reset: 1771574400
+X-RateLimit-Reset: <unix_epoch_seconds>
 Retry-After: 60
 ````
 
@@ -455,7 +454,7 @@ CREATE TABLE placement_records (
     student_id UUID REFERENCES students(student_id),
     track_id UUID REFERENCES tracks(track_id),
     tier_at_placement VARCHAR(20),
-    placement_cycle VARCHAR(50), -- e.g. '2026-SPRING'
+    placement_cycle VARCHAR(50), -- e.g. '<YYYY>-SPRING'
     interview_offered BOOLEAN DEFAULT FALSE,
     job_offered BOOLEAN DEFAULT FALSE,
     offered_package_lpa NUMERIC(4,2),
@@ -728,10 +727,10 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 ## 15. Detailed 5-Sprint Execution Plan
 
-> **CRITICAL EXECUTION DIRECTIVE:**  
-> The project is structured into **exactly 5 Sprints**.  
-> **Sprints 1 through 4** deliver 100% of product features.  
-> **Sprint 5 is EXCLUSIVELY DEDICATED TO TESTING, SECURITY AUDITING, LOAD TESTING, AND HARDENING.** No new feature engineering is permitted in Sprint 5.
+> **Execution Directive:**  
+> The delivery plan is structured into exactly five ordered phases (Sprints 1–5).  
+> Sprints 1 through 4 deliver the complete feature set.  
+> Sprint 5 is dedicated exclusively to testing, security auditing, load testing, and hardening; no new feature engineering is permitted during this phase.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -754,85 +753,85 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 ---
 
-### Sprint 1 — System Foundation, Database & Rate Limiting (Dev Sprint 1)
+### Sprint 1 — System Foundation, Database & Rate Limiting
 
-**Sprint Goal:** Stand up core repository infrastructure, PostgreSQL schema, Clerk/NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
+**Sprint Goal:** Stand up core repository infrastructure, the PostgreSQL schema, JWT-based NestJS authentication, Redis sliding-window rate limiting middleware, and the decoupled Claude Proxy Engine scaffold.
 
-| Ticket ID  | Story Title                                        | Description & Acceptance Criteria                                                                                                  | Owner        | Points | Priority |
-| ---------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 10, Next.js 14, PostgreSQL 16 + pgvector, Redis 7, and Apache Kafka.                          | Tino         | 5 pts  | Critical |
-| **US-1.2** | PostgreSQL Schema Provisioning                     | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`).  | Tino         | 8 pts  | Critical |
-| **US-1.3** | Auth & RBAC Middleware                             | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public.                              | Satheeswaran | 8 pts  | Critical |
-| **US-1.4** | Redis Sliding Window Rate Limiting Engine          | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits.                                | Tino         | 8 pts  | Critical |
-| **US-1.5** | Granular Endpoint Rate Throttling Matrix           | Implement specific throttles for auth, code execution, audio submit, and verification endpoints.                                   | Tino         | 5 pts  | High     |
-| **US-1.6** | Claude AI Proxy Service Setup                      | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | Ramansh      | 8 pts  | Critical |
-| **US-1.7** | pgvector Vector Store Provisioning                 | Initialize Postgres `pgvector` extension and schema for storing domain competency rubrics and embeddings.                          | Ramansh      | 5 pts  | High     |
-| **US-1.8** | Student Profile & Track Enrollment API             | Build REST endpoints for student onboarding and specialization track assignment.                                                   | Satheeswaran | 5 pts  | High     |
-| **US-1.9** | System Data Contracts & Zod Schemas                | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services.    | Tino         | 5 pts  | High     |
+| Ticket ID  | Story Title                                        | Description & Acceptance Criteria                                                                                                  | Owner                | Points | Priority |
+| ---------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------ | -------- |
+| **US-1.1** | Repository Scaffold & Multi-Container Docker Stack | Provision Docker Compose with NestJS 11, Next.js 16, PostgreSQL 16 + pgvector, Redis 7, and Redpanda (Kafka-compatible streaming). | System Architect     | 5 pts  | Critical |
+| **US-1.2** | PostgreSQL Schema Provisioning                     | Execute DDL migrations for core schema (`tracks`, `competencies`, `levels`, `students`, `attempts`, `responses`, `certificates`).  | System Architect     | 8 pts  | Critical |
+| **US-1.3** | Auth & RBAC Middleware                             | Implement JWT authentication with role-based authorization for Super Admin, TPO, Student, and Public.                              | Full-Stack Engineer  | 8 pts  | Critical |
+| **US-1.4** | Redis Sliding Window Rate Limiting Engine          | Build NestJS rate limiting guards with Redis Lua scripts supporting role-based and IP-based limits.                                | System Architect     | 8 pts  | Critical |
+| **US-1.5** | Granular Endpoint Rate Throttling Matrix           | Implement specific throttles for auth, code execution, audio submit, and verification endpoints.                                   | System Architect     | 5 pts  | High     |
+| **US-1.6** | Claude AI Proxy Service Setup                      | Build decoupled Anthropic API client (`ClaudeProxyService`) with token bucket rate limiting (200 RPM / 10k TPM) + Gemini Fallback. | AI Engineer          | 8 pts  | Critical |
+| **US-1.7** | pgvector Vector Store Provisioning                 | Initialize Postgres `pgvector` extension and schema for storing domain competency rubrics and embeddings.                          | AI Engineer          | 5 pts  | High     |
+| **US-1.8** | Student Profile & Track Enrollment API             | Build REST endpoints for student onboarding and specialization track assignment.                                                   | Full-Stack Engineer  | 5 pts  | High     |
+| **US-1.9** | System Data Contracts & Zod Schemas                | Document and commit shared data contracts (Zod schemas / TypeScript DTOs) between frontend Next.js and backend NestJS services.    | System Architect     | 5 pts  | High     |
 
 **Sprint 1 Summary:** 9 Stories · 57 Story Points · Deliverable: Core infrastructure, Auth, Database, Rate Limiter, and Claude Proxy operational locally.
 
 ---
 
-### Sprint 2 — Assessment Delivery & Claude Evaluation Engine (Dev Sprint 2)
+### Sprint 2 — Assessment Delivery & Claude Evaluation Engine
 
-**Sprint Goal:** Deliver full assessment delivery pipelines (L1–L5), Dockerized code execution sandbox, Claude 5 Sonnet BARS audio grading, and seed item banks for all 10 role tracks.
+**Sprint Goal:** Deliver full assessment delivery pipelines (L1–L5), a Dockerized code execution sandbox, Claude 5 Sonnet BARS audio grading, and seed item banks for all ten role tracks.
 
-| Ticket ID  | Story Title                                         | Description & Acceptance Criteria                                                                                    | Owner        | Points | Priority |
-| ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **US-2.1** | L1 Assessment Delivery Service                      | Build real-time weighted MCQ assessment engine with timer enforcement and anti-cheat event logging.                  | Ramansh      | 8 pts  | Critical |
-| **US-2.2** | L2 Code & SQL Sandbox Execution Engine              | Build isolated Docker container runner for evaluating candidate Python/Node code and SQL queries.                    | Tino         | 8 pts  | Critical |
-| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + NestJS endpoint for uploading candidate audio defenses to Cloudflare R2.                   | Satheeswaran | 5 pts  | High     |
-| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline            | Build async BullMQ pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude.          | Ramansh      | 8 pts  | Critical |
-| **US-2.5** | L4 AI Interactive Defense Engine                    | Implement real-time interactive defense simulation service backed by Claude 5 Sonnet.                                | Ramansh      | 8 pts  | Critical |
-| **US-2.6** | L5 Capstone Submission & Split Scoring              | Build capstone deliverable upload handler and objective checklist auto-checker.                                      | Satheeswaran | 5 pts  | High     |
-| **US-2.7** | IT Track Item Bank Ingestion (5 Roles)              | Seed item banks, competency weights, and rubrics for 5 Tech tracks (Full Stack, AI/ML, DevOps, Cyber, Data Analyst). | Ramansh      | 8 pts  | Critical |
-| **US-2.8** | MBA Track Item Bank Ingestion (5 Roles)             | Seed item banks and rubrics for 5 MBA tracks (Finance, Business Analytics, Marketing, Ops, HR).                      | Satheeswaran | 8 pts  | Critical |
+| Ticket ID  | Story Title                                         | Description & Acceptance Criteria                                                                                    | Owner                | Points | Priority |
+| ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- | ------ | -------- |
+| **US-2.1** | L1 Assessment Delivery Service                      | Build real-time weighted MCQ assessment engine with timer enforcement and anti-cheat event logging.                  | AI Engineer          | 8 pts  | Critical |
+| **US-2.2** | L2 Code & SQL Sandbox Execution Engine              | Build isolated Docker container runner for evaluating candidate Python/Node code and SQL queries.                    | System Architect     | 8 pts  | Critical |
+| **US-2.3** | L3 Audio Spoken Response Recorder & Audio Ingestion | Frontend media recorder + NestJS endpoint for uploading candidate audio defenses to Cloudflare R2.                   | Full-Stack Engineer  | 5 pts  | High     |
+| **US-2.4** | Claude 5 Sonnet BARS Evaluation Pipeline            | Build async BullMQ pipeline to transcribe audio and grade against mode-consensus BARS rubrics using Claude.          | AI Engineer          | 8 pts  | Critical |
+| **US-2.5** | L4 AI Interactive Defense Engine                    | Implement real-time interactive defense simulation service backed by Claude 5 Sonnet.                                | AI Engineer          | 8 pts  | Critical |
+| **US-2.6** | L5 Capstone Submission & Split Scoring              | Build capstone deliverable upload handler and objective checklist auto-checker.                                      | Full-Stack Engineer  | 5 pts  | High     |
+| **US-2.7** | IT Track Item Bank Ingestion (5 Roles)              | Seed item banks, competency weights, and rubrics for 5 Tech tracks (Full Stack, AI/ML, DevOps, Cyber, Data Analyst). | AI Engineer          | 8 pts  | Critical |
+| **US-2.8** | MBA Track Item Bank Ingestion (5 Roles)             | Seed item banks and rubrics for 5 MBA tracks (Finance, Business Analytics, Marketing, Ops, HR).                      | Full-Stack Engineer  | 8 pts  | Critical |
 
 **Sprint 2 Summary:** 8 Stories · 58 Story Points · Deliverable: Complete multi-method L1–L5 evaluation engine working with Claude AI.
 
 ---
 
-### Sprint 3 — Placement Overlay, Vector Matching & Dashboards (Dev Sprint 3)
+### Sprint 3 — Placement Overlay, Vector Matching & Dashboards
 
-**Sprint Goal:** Build the JD NLP parser, candidate-company vector matching algorithm, auto-shortlist generator, Super Admin control center, TPO dashboard, and Student growth portal.
+**Sprint Goal:** Build the JD NLP parser, candidate-company vector matching algorithm, auto-shortlist generator, Super Admin control center, TPO dashboard, and student growth portal.
 
-| Ticket ID  | Story Title                              | Description & Acceptance Criteria                                                                             | Owner        | Points | Priority |
-| ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **US-3.1** | Job Description NLP Ingestion Service    | Build PDF/Text JD upload handler utilizing Claude 5 Sonnet to parse required competency vectors.              | Ramansh      | 8 pts  | Critical |
-| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in NestJS to match candidates to JDs.      | Ramansh      | 8 pts  | Critical |
-| **US-3.3** | TPO Cohort Readiness Dashboard           | Build Next.js dashboard for Placement Directors showing batch readiness, Gold/Silver counts, and gap reports. | Satheeswaran | 8 pts  | Critical |
-| **US-3.4** | Auto-Shortlist Generator & Export        | Implement filterable candidate shortlist view with CSV/PDF export for recruiting drives.                      | Satheeswaran | 5 pts  | High     |
-| **US-3.5** | Student Diagnostic Portal & Gap Feedback | Build student UI displaying test results, itemized competency feedback, and retest scheduler.                 | Satheeswaran | 8 pts  | Critical |
-| **US-3.6** | Super Admin Management Console           | Build platform control center for user management, rate limit overrides, and system health monitoring.        | Tino         | 8 pts  | High     |
-| **US-3.7** | Correlation Record Tracking Module       | Build backend feedback mechanism to log interview/offer outcomes per placement cycle.                         | Tino         | 5 pts  | Medium   |
+| Ticket ID  | Story Title                              | Description & Acceptance Criteria                                                                             | Owner                | Points | Priority |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------- | ------ | -------- |
+| **US-3.1** | Job Description NLP Ingestion Service    | Build PDF/Text JD upload handler utilizing Claude 5 Sonnet to parse required competency vectors.              | AI Engineer          | 8 pts  | Critical |
+| **US-3.2** | Candidate-Company Vector Matching Engine | Implement vector cosine similarity and rule-based filter algorithm in NestJS to match candidates to JDs.      | AI Engineer          | 8 pts  | Critical |
+| **US-3.3** | TPO Cohort Readiness Dashboard           | Build Next.js dashboard for Placement Directors showing batch readiness, Gold/Silver counts, and gap reports. | Full-Stack Engineer  | 8 pts  | Critical |
+| **US-3.4** | Auto-Shortlist Generator & Export        | Implement filterable candidate shortlist view with CSV/PDF export for recruiting drives.                      | Full-Stack Engineer  | 5 pts  | High     |
+| **US-3.5** | Student Diagnostic Portal & Gap Feedback | Build student UI displaying test results, itemized competency feedback, and retest scheduler.                 | Full-Stack Engineer  | 8 pts  | Critical |
+| **US-3.6** | Super Admin Management Console           | Build platform control center for user management, rate limit overrides, and system health monitoring.        | System Architect     | 8 pts  | High     |
+| **US-3.7** | Correlation Record Tracking Module       | Build backend feedback mechanism to log interview/offer outcomes per placement cycle.                         | System Architect     | 5 pts  | Medium   |
 
 **Sprint 3 Summary:** 7 Stories · 50 Story Points · Deliverable: Working Placement Overlay Engine and functional multi-role dashboards.
 
 ---
 
-### Sprint 4 — Certificate Pipeline, Verification & Edge Hardening (Dev Sprint 4)
+### Sprint 4 — Certificate Pipeline, Verification & Edge Hardening
 
-**Sprint Goal:** Build public verification pipeline, QR code generation, Angoff cut-score confidence note calculator, edge gateway rate-limit tuning, and perform complete microservices integration.
+**Sprint Goal:** Build the public verification pipeline, QR code generation, the Angoff cut-score confidence note calculator, edge gateway rate-limit tuning, and complete microservices integration.
 
 | Ticket ID  | Story Title                                     | Description & Acceptance Criteria                                                                              | Owner        | Points | Priority |
 | ---------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **US-4.1** | Public Certificate Generation Pipeline          | Build service to generate shareable certificate records with Tier Trail JSON and unique UUIDs.                 | Satheeswaran | 8 pts  | Critical |
-| **US-4.2** | Public Verification Portal (`verify.smart.com`) | Build public responsive page displaying certified tier, methodology, calibration credits, and confidence note. | Satheeswaran | 8 pts  | Critical |
-| **US-4.3** | Dynamic QR Code & PDF Exporter                  | Implement cryptographically signed QR code generator and PDF certificate exporter.                             | Satheeswaran | 5 pts  | High     |
-| **US-4.4** | Confidence Note & SD Calculator Engine          | Implement automated calculation of Angoff standard deviation confidence bands and Cronbach's alpha.            | Ramansh      | 5 pts  | High     |
-| **US-4.5** | Kong / Edge Gateway Integration & Tuning        | Configure Edge API Gateway rate limits, Cloudflare DDoS rules, and SSL termination.                            | Tino         | 8 pts  | Critical |
-| **US-4.6** | End-to-End Service Integration                  | Interconnect all microservices, message queues, and caching layers into a unified release candidate build.     | Tino         | 8 pts  | Critical |
+| **US-4.1** | Public Certificate Generation Pipeline          | Build service to generate shareable certificate records with Tier Trail JSON and unique UUIDs.                 | Full-Stack Engineer | 8 pts  | Critical |
+| **US-4.2** | Public Verification Portal (`verify.smart.com`) | Build public responsive page displaying certified tier, methodology, calibration credits, and confidence note. | Full-Stack Engineer | 8 pts  | Critical |
+| **US-4.3** | Dynamic QR Code & PDF Exporter                  | Implement cryptographically signed QR code generator and PDF certificate exporter.                             | Full-Stack Engineer | 5 pts  | High     |
+| **US-4.4** | Confidence Note & SD Calculator Engine          | Implement automated calculation of Angoff standard deviation confidence bands and Cronbach's alpha.            | AI Engineer  | 5 pts  | High     |
+| **US-4.5** | Kong / Edge Gateway Integration & Tuning        | Configure Edge API Gateway rate limits, Cloudflare DDoS rules, and SSL termination.                            | System Architect | 8 pts  | Critical |
+| **US-4.6** | End-to-End Service Integration                  | Interconnect all microservices, message queues, and caching layers into a unified release candidate build.     | System Architect | 8 pts  | Critical |
 
-**Sprint 4 Summary:** 6 Stories · 42 Story Points · Deliverable: 100% Feature Complete SMART Platform ready for Sprint 5 Testing.
+**Sprint 4 Summary:** 6 Stories · 42 Story Points · Deliverable: Feature-complete SMART platform ready for Sprint 5 testing.
 
 ---
 
-### Sprint 5 — EXCLUSIVELY TESTING, QA, SECURITY AUDIT & HARDENING
+### Sprint 5 — Testing, Quality Assurance, Security Audit & Hardening
 
-> **SPRINT MANDATE:**  
-> **100% EXCLUSIVE TO TESTING, QUALITY ASSURANCE, LOAD STRESSING, AND SECURITY AUDITING.**  
-> Zero new feature code will be merged during Sprint 5. All engineering capacity is focused on resolving bugs, optimizing performance, and achieving production readiness.
+> **Phase Mandate:**  
+> This phase is dedicated exclusively to testing, quality assurance, load stress testing, and security auditing.  
+> No new feature code is merged during this phase. All engineering capacity is directed toward resolving defects, optimizing performance, and achieving production readiness.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -858,14 +857,14 @@ Taken once by all MBA students: Business Communication, Quantitative Data Interp
 
 | Ticket ID  | Testing Focus Area                               | Test Execution Details & Success Criteria                                                                           | Owner        | Points | Priority |
 | ---------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------ | ------ | -------- |
-| **TS-5.1** | Automated Unit & Integration Testing             | Execute comprehensive backend PyTest and frontend Jest test suites. Target: **>85% Code Coverage**.                 | Tino         | 8 pts  | Critical |
-| **TS-5.2** | End-to-End User Flow Automation                  | Build Playwright test scripts covering complete flow: Auth → Assessment L1–L5 → Certification → Verification.       | Satheeswaran | 8 pts  | Critical |
-| **TS-5.3** | Security Penetration & Vulnerability Audit       | Conduct OWASP Top 10 vulnerability scan, SQL injection, XSS, and JWT manipulation audit.                            | Satheeswaran | 8 pts  | Critical |
-| **TS-5.4** | 1M Scale Load & Stress Testing                   | Run K6 / Locust load simulation testing 50,000 concurrent candidate test sessions. Verify p95 response time <200ms. | Tino         | 8 pts  | Critical |
-| **TS-5.5** | Rate Limit System Stress Testing                 | Stress test Redis sliding window rate limiter under 100,000 req/min floods. Verify HTTP 429 compliance.             | Tino         | 8 pts  | Critical |
-| **TS-5.6** | Claude AI Proxy Load & Error Fallback Test       | Simulate Anthropic API rate limits (HTTP 429) and network failures. Verify retry backoff and queue fallback.        | Ramansh      | 8 pts  | Critical |
-| **TS-5.7** | Pilot Institution UAT & Calibration Verification | Conduct User Acceptance Testing with 1 pilot institution cohort (50 students). Validate Angoff cut scores.          | Ramansh      | 8 pts  | Critical |
-| **TS-5.8** | Production Bug Fixing & Performance Hardening    | Resolve all Priority 1 & 2 bugs identified during testing. Optimize slow database queries and indexes.              | All Team     | 8 pts  | Critical |
+| **TS-5.1** | Automated Unit & Integration Testing             | Execute comprehensive backend PyTest and frontend Jest test suites. Target: **>85% Code Coverage**.                 | System Architect     | 8 pts  | Critical |
+| **TS-5.2** | End-to-End User Flow Automation                  | Build Playwright test scripts covering complete flow: Auth → Assessment L1–L5 → Certification → Verification.       | Full-Stack Engineer  | 8 pts  | Critical |
+| **TS-5.3** | Security Penetration & Vulnerability Audit       | Conduct OWASP Top 10 vulnerability scan, SQL injection, XSS, and JWT manipulation audit.                            | Full-Stack Engineer  | 8 pts  | Critical |
+| **TS-5.4** | 1M Scale Load & Stress Testing                   | Run K6 / Locust load simulation testing 50,000 concurrent candidate test sessions. Verify p95 response time <200ms. | System Architect     | 8 pts  | Critical |
+| **TS-5.5** | Rate Limit System Stress Testing                 | Stress test Redis sliding window rate limiter under 100,000 req/min floods. Verify HTTP 429 compliance.             | System Architect     | 8 pts  | Critical |
+| **TS-5.6** | Claude AI Proxy Load & Error Fallback Test       | Simulate Anthropic API rate limits (HTTP 429) and network failures. Verify retry backoff and queue fallback.        | AI Engineer          | 8 pts  | Critical |
+| **TS-5.7** | Pilot Institution UAT & Calibration Verification | Conduct User Acceptance Testing with 1 pilot institution cohort (50 students). Validate Angoff cut scores.          | AI Engineer          | 8 pts  | Critical |
+| **TS-5.8** | Production Bug Fixing & Performance Hardening    | Resolve all Priority 1 & 2 bugs identified during testing. Optimize slow database queries and indexes.              | All Engineering Roles | 8 pts  | Critical |
 
 **Sprint 5 Summary:** 8 Quality Assurance Tasks · 64 Test Points · Deliverable: Fully audited, load-tested, hardened production-ready platform.
 
@@ -898,7 +897,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: 'Claude Proxy Service token bucket near exhaustion!'
+          summary: 'Claude Proxy Service token bucket approaching exhaustion.'
 ```
 
 ---
@@ -927,4 +926,4 @@ groups:
 
 ---
 
-_This document is the absolute single source of truth for the SMART technical architecture, rate limiting specification, Claude AI integration, domain mapping, and 5-sprint delivery roadmap._
+_This document constitutes the authoritative technical reference for the SMART platform architecture, rate limiting specification, Claude AI integration, domain taxonomy, and phased delivery plan._
