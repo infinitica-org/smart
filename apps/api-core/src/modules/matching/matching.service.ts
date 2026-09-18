@@ -25,7 +25,6 @@ import {
   type MatchRunDto,
   type ShortlistDto,
   type TrackCode,
-  type JobOpeningEligibilityCriteria,
 } from '@smart/contracts';
 import { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -944,20 +943,11 @@ export class MatchingService {
         requiredSkills,
         parsedRequirements: opening.parsedRequirements,
       });
-      const openingEligibility: JobOpeningEligibilityCriteria = {
-        minSscPercentage: opening.minSscPercentage ? Number(opening.minSscPercentage) : undefined,
-        minHscPercentage: opening.minHscPercentage ? Number(opening.minHscPercentage) : undefined,
-        minCollegePercentage: opening.minCollegePercentage
-          ? Number(opening.minCollegePercentage)
-          : undefined,
-        backlogsAllowed: opening.backlogsAllowed,
-      };
       return {
         companyName: opening.companyName,
         roleTitle: opening.roleTitle,
         openingEligibility,
         skillCapabilityJob,
-        openingEligibility,
         ranker: {
           requiredSkills: opening.requiredSkills.map((row) => ({
             code: row.skill.code,
@@ -1021,7 +1011,6 @@ interface ResolvedOpeningJob {
   openingEligibility?: JobOpeningEligibilityCriteria;
   skillCapabilityJob: SkillCapabilityJob;
   ranker: RankerJob;
-  openingEligibility?: JobOpeningEligibilityCriteria;
 }
 
 function hydrateStudents(rows: RawEligibleStudentRow[]): HydratedStudent[] {

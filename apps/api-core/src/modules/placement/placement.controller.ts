@@ -36,9 +36,6 @@ import {
   type PlacementEmployerDetail,
   type PlacementEmployerSummary,
   type PlacementRecordDto,
-  type ListPlacementEmployersResponse,
-  type PlacementEmployerDetail,
-  type PlacementEmployerSummary,
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';

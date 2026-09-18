@@ -237,7 +237,6 @@ export class PlacementService {
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
     @InjectQueue(JD_PARSE_QUEUE) private readonly jdParseQueue: Queue<{ openingId: string }>,
-    @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
     @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
 
