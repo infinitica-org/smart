@@ -136,7 +136,7 @@ describe('SkillVerifyReport', () => {
 
     expect(screen.getByText(/Assessment-supported proficiency/)).toBeDefined();
 
-    expect(screen.getByText(/Intermediate/)).toBeDefined();
+    expect(screen.getByText(/Level 2/)).toBeDefined();
 
     expect(screen.getByText(/Competency map/)).toBeDefined();
 

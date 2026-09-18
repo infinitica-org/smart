@@ -8,7 +8,7 @@ import {
   skillClaimDeclareOrigin,
   type SkillProficiency,
 } from '@smart/contracts';
-import { Prisma } from '../../generated/prisma/index.js';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 const ENTRY_PROFICIENCY: SkillProficiency = 'BEGINNER';

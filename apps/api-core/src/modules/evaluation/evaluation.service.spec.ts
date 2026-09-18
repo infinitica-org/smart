@@ -525,6 +525,9 @@ describe('EvaluationService SDE v4 skill form', () => {
     );
     const openIndex = form.items.find((item) => item.format === 'SCENARIO')?.index;
     expect(openIndex).toBeDefined();
+    if (openIndex === undefined) {
+      throw new Error('Expected SCENARIO item in generated form');
+    }
 
     const result = await service.gradeSkillForm(
       {
@@ -538,7 +541,7 @@ describe('EvaluationService SDE v4 skill form', () => {
               index: item.index,
               selectedKey: item.format === 'MCQ' ? 'A' : 'B',
             })),
-          { index: openIndex!, text: 'Upsert on natural key with merge for late-arriving facts.' },
+          { index: openIndex, text: 'Upsert on natural key with merge for late-arriving facts.' },
         ],
       },
       OWNER_ID,
