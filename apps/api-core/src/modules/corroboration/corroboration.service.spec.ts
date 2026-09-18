@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ACTIVE_TAXONOMY_VERSION } from '@smart/contracts';
+import { DEFAULT_SIGNAL_WEIGHT_MODEL } from '@smart/scoring-engine';
 import { CorroborationService } from './corroboration.service.js';
 import type { CorroborationRedisStore } from './corroboration-redis.store.js';
 
@@ -75,7 +76,10 @@ function createStore(overrides: Partial<CorroborationRedisStore> = {}): Corrobor
   return store as unknown as CorroborationRedisStore;
 }
 
-function createService(store: CorroborationRedisStore) {
+function createService(
+  store: CorroborationRedisStore,
+  prismaOverrides: Record<string, unknown> = {},
+) {
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
   const prisma = {
@@ -86,9 +90,17 @@ function createService(store: CorroborationRedisStore) {
         return null;
       }),
     },
+    skillClaim: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    ...prismaOverrides,
+  };
+  const weightModels = {
+    getActiveModel: vi.fn().mockResolvedValue(DEFAULT_SIGNAL_WEIGHT_MODEL),
   };
   const service = new CorroborationService(
     store,
+    weightModels as never,
     outbox as never,
     auditPublisher as never,
     prisma as never,
@@ -126,6 +138,32 @@ describe('CorroborationService', () => {
         consentScope: undefined,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('accepts QLIX passive ingest with project verification consent scope', async () => {
+    const store = createStore();
+    const { service } = createService(store);
+    await service.ingestPassiveSignal({
+      userId: USER_A,
+      sourceId: 'QLIX',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: '2026-09-11T00:00:00.000Z',
+      consentScope: 'project.verification.qlix',
+      fetchedAt: '2026-09-11T00:00:00.000Z',
+      entries: [
+        {
+          dimension: {
+            taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+            dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+            skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          },
+          sourceId: 'QLIX',
+          score: 0.75,
+          confidence: 0.85,
+        },
+      ],
+    });
+    expect(store.savePassiveSignal).toHaveBeenCalled();
   });
 
   it('rejects passive ingest with unknown consentScope for source', async () => {
@@ -195,6 +233,60 @@ describe('CorroborationService', () => {
         'SQL_QUERY_OPTIMIZATION',
       ]),
     );
+  });
+
+  it('refusions verified skill claims after passive ingest when assessment data exists', async () => {
+    const store = createStore();
+    const { service } = createService(store, {
+      skillClaim: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: CLAIM_A,
+            skill: { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' },
+            verificationAttempts: [
+              {
+                claimedProficiency: 'ADVANCED',
+                scorePercent: 82,
+                passed: true,
+              },
+            ],
+          },
+        ]),
+      },
+    });
+
+    await service.ingestPassiveSignal({
+      userId: USER_A,
+      sourceId: 'QLIX',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: '2026-09-11T00:00:00.000Z',
+      consentScope: 'project.verification.qlix',
+      fetchedAt: '2026-09-11T00:00:00.000Z',
+      entries: [
+        {
+          dimension: {
+            taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+            dimensionKey: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+            skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+          },
+          sourceId: 'QLIX',
+          score: 0.78,
+          confidence: 0.85,
+        },
+      ],
+    });
+
+    await service.refusionVerifiedSkillClaims(USER_A, {
+      skillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+    });
+
+    expect(store.saveSnapshot).toHaveBeenCalled();
+    const snapshot = (store.saveSnapshot as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    expect(
+      snapshot.readouts.some(
+        (row: { assessmentScore: number | null }) => row.assessmentScore === 82,
+      ),
+    ).toBe(true);
   });
 
   it('creates one review flag and audits creation on contradiction', async () => {

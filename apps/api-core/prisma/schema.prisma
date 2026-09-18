@@ -383,6 +383,7 @@ model User {
   professionalCredentials ProfessionalCredential[]
   passiveSignalEvidence PassiveSignalEvidence[]
   evidenceProfile       CandidateEvidenceProfile?
+  studentCapabilities   StudentCapability[]
 
   careerDomainId        String?                  @map("career_domain_id")
   targetRoleId          String?                  @map("target_role_id")
@@ -908,9 +909,11 @@ model Project {
   outcome   String
   loomUrl   String?       @map("loom_url")
   githubUrl String?       @map("github_url")
-  liveUrl   String?       @map("live_url")
-  status    ProjectStatus @default(SUBMITTED)
-  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  liveUrl     String?       @map("live_url")
+  snapshotSha String?       @map("snapshot_sha")
+  qlixCheckId String?       @map("qlix_check_id")
+  status      ProjectStatus @default(SUBMITTED)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   projectType       String?  @map("project_type")
   teamSize          Int?     @map("team_size")
@@ -925,10 +928,60 @@ model Project {
   ndaStatus         String?  @map("nda_status")
   skillMappings     ProjectSkillMapping[]
 
-  report ProjectVerificationReport?
+  report            ProjectVerificationReport?
+  qlixCheckResult   QlixCheckResult?
+  studentCapabilities StudentCapability[]
 
   @@index([studentId, status])
   @@map("projects")
+}
+
+model QlixCheckResult {
+  id                        String   @id @default(uuid()) @db.Uuid
+  projectId                 String   @unique @map("project_id") @db.Uuid
+  project                   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checkId                   String   @map("check_id")
+  status                    String
+  similarityIndex           Float?   @map("similarity_index")
+  similarityExcludingCited  Float?   @map("similarity_excluding_cited")
+  confidence                String?
+  aiLikelihood              Float?   @map("ai_likelihood")
+  suspicionLevel            String?  @map("suspicion_level")
+  agentSummary              String?  @map("agent_summary") @db.Text
+  skillsJson                Json?    @map("skills_json")
+  smartAssessmentJson       Json?    @map("smart_assessment_json")
+  appliedProficiencyCeiling String?  @map("applied_proficiency_ceiling")
+  qualityScore              Float?   @map("quality_score")
+  authenticityScore         Float?   @map("authenticity_score")
+  relevanceScore            Float?   @map("relevance_score")
+  gaps                      String[] @default([])
+  analyzedTokens            Int?     @map("analyzed_tokens")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("qlix_check_results")
+}
+
+model StudentCapability {
+  id                  String   @id @default(uuid()) @db.Uuid
+  studentId           String   @map("student_id") @db.Uuid
+  student             User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  capabilityLabel     String   @map("capability_label")
+  category            String
+  confidenceScore     Float    @map("confidence_score")
+  proficiency         String
+  evidenceRefs        String[] @default([]) @map("evidence_refs")
+  qlixCheckId         String?  @map("qlix_check_id")
+  projectId           String?  @map("project_id") @db.Uuid
+  project             Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  skillCode           String?  @map("skill_code")
+  modelVersion        String   @map("model_version")
+  assessmentVerified  Boolean  @default(false) @map("assessment_verified")
+  inferredAt          DateTime @default(now()) @map("inferred_at") @db.Timestamptz(6)
+
+  @@index([studentId])
+  @@index([projectId])
+  @@map("student_capabilities")
 }
 
 model ProjectVerificationReport {
@@ -973,6 +1026,11 @@ model JobOpening {
   driveSpoc              String?      @map("drive_spoc")
   driveDate              DateTime?    @map("drive_date") @db.Date
   lastDateToApply        DateTime?    @map("last_date_to_apply") @db.Date
+  rawText            String?          @map("raw_text")
+  jdParseStatus      JdParseStatus    @default(PENDING) @map("jd_parse_status")
+  parseConfidence    Decimal?         @map("parse_confidence") @db.Decimal(4, 3)
+  parsedAt           DateTime?        @map("parsed_at") @db.Timestamptz(6)
+  parsedRequirements Json?            @map("parsed_requirements")
   status             JobOpeningStatus @default(DRAFT)
   createdById        String           @map("created_by_id") @db.Uuid
   createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
@@ -1014,6 +1072,7 @@ model MatchRun {
   minCgpa            Decimal?    @map("min_cgpa") @db.Decimal(4, 2)
   requiredSkillCodes String[]    @map("required_skill_codes")
   limit              Int
+  minSkillCoverage   Decimal?    @map("min_skill_coverage") @db.Decimal(4, 3)
   /// PENDING | RUNNING | SUCCEEDED | FAILED — plain String, matching this repo's existing
   /// convention for job-status fields (e.g. ProfessionalCredential.status) rather than an enum.
   status             String      @default("PENDING")

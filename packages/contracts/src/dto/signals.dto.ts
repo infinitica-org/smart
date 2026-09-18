@@ -15,6 +15,7 @@ export const SIGNAL_SOURCE_IDS = [
   'MANUAL',
   'EXTERNALCERT',
   'PROFESSIONALCREDENTIAL',
+  'QLIX',
 ] as const;
 export type SignalSourceId = (typeof SIGNAL_SOURCE_IDS)[number];
 

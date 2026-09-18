@@ -126,15 +126,6 @@ export class VerificationOrchestratorService {
       };
     }
 
-    if (input.recommendedNextStep === 'TARGETED_ASSESSMENT') {
-      return {
-        recommendedNextStep: 'TARGETED_ASSESSMENT',
-        requiresInterview: false,
-        requiresEvidence: false,
-        canFinalizeClaim: false,
-      };
-    }
-
     const interviewPassed = input.interviewPassed === true;
     const needsInterview =
       input.verificationFlags.interviewRequired ||

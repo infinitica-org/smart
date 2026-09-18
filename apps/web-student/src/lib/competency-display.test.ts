@@ -3,7 +3,6 @@ import {
   COMPETENCY_STATUS_LABELS,
   competencyLabel,
   summarizeEvidenceContext,
-  targetedAssessmentSkipMessage,
 } from './competency-display';
 
 describe('competency-display', () => {
@@ -40,11 +39,6 @@ describe('competency-display', () => {
         ],
       }),
     ).toMatch(/API service/);
-  });
-
-  it('explains targeted skip reasons for students', () => {
-    expect(targetedAssessmentSkipMessage('ai_unavailable')).toMatch(/diagnostic only/i);
-    expect(targetedAssessmentSkipMessage('generation_failed')).toMatch(/retry verification/i);
   });
 
   it('labels competency statuses for display', () => {

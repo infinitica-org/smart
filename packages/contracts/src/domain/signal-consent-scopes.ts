@@ -15,6 +15,7 @@ export const PASSIVE_SIGNAL_SOURCE_IDS = [
   'MANUAL',
   'EXTERNALCERT',
   'PROFESSIONALCREDENTIAL',
+  'QLIX',
 ] as const;
 export type PassiveSignalSourceId = (typeof PASSIVE_SIGNAL_SOURCE_IDS)[number];
 
@@ -28,6 +29,7 @@ export const SIGNAL_CONSENT_SCOPES: Readonly<Record<PassiveSignalSourceId, reado
   // Candidate declared and verified the credential themselves — no third-party OAuth grant to scope.
   EXTERNALCERT: ['certificate.candidate.declared'],
   PROFESSIONALCREDENTIAL: ['credential.candidate.declared'],
+  QLIX: ['project.verification.qlix'],
 };
 
 const ALL_SCOPES = new Set(Object.values(SIGNAL_CONSENT_SCOPES).flatMap((scopes) => scopes));

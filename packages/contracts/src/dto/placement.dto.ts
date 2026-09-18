@@ -66,6 +66,28 @@ export const JobDescriptionDtoSchema = z.object({
 });
 export type JobDescriptionDto = z.infer<typeof JobDescriptionDtoSchema>;
 
+export const SkillRequirementSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  minProficiency: SkillProficiencySchema,
+});
+export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
+
+/** LLM output for jd-skill-extract@1 — maps JD prose to skill@1 + blueprint competencies. */
+export const EmphasisedCapabilitySchema = z.object({
+  competencyId: UuidSchema,
+  capability: z.string().min(1).max(500),
+  skillCode: TaxonomySkillCodeSchema,
+  role: z.enum(['critical', 'core', 'supporting']).default('core'),
+});
+export type EmphasisedCapability = z.infer<typeof EmphasisedCapabilitySchema>;
+
+export const JdSkillExtractVectorSchema = z.object({
+  requiredSkills: z.array(SkillRequirementSchema).max(20),
+  emphasisedCapabilities: z.array(EmphasisedCapabilitySchema).max(30),
+  parseConfidence: z.number().min(0).max(1),
+});
+export type JdSkillExtractVector = z.infer<typeof JdSkillExtractVectorSchema>;
+
 /* --------------------------------- matching -------------------------------- */
 
 export const MatchRequestSchema = z.object({
@@ -88,8 +110,48 @@ export const MatchRequestSchema = z.object({
     })
     .optional(),
   limit: z.number().int().min(1).max(500).default(50),
+  /** Minimum verified skill coverage (0–1) before a candidate enters the ranked shortlist. */
+  minSkillCoverage: z.number().min(0).max(1).default(0.6),
 });
 export type MatchRequest = z.infer<typeof MatchRequestSchema>;
+
+export const SKILL_FIT_STATUSES = ['MET', 'PARTIAL', 'MISSING'] as const;
+export const SkillFitStatusSchema = z.enum(SKILL_FIT_STATUSES);
+export type SkillFitStatus = z.infer<typeof SkillFitStatusSchema>;
+
+export const SkillFitRowSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  skillName: z.string(),
+  status: SkillFitStatusSchema,
+  requiredProficiency: SkillProficiencySchema,
+  actualProficiency: SkillProficiencySchema.nullable(),
+});
+export type SkillFitRow = z.infer<typeof SkillFitRowSchema>;
+
+/** Verified skill held by the candidate at match time (TPO card context). */
+export const VerifiedSkillSummarySchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  skillName: z.string(),
+  proficiency: SkillProficiencySchema,
+});
+export type VerifiedSkillSummary = z.infer<typeof VerifiedSkillSummarySchema>;
+
+export const MATCH_EVIDENCE_SOURCES = ['ASSESSMENT', 'INFERRED', 'QLIX', 'NONE'] as const;
+export const MatchEvidenceSourceSchema = z.enum(MATCH_EVIDENCE_SOURCES);
+export type MatchEvidenceSource = z.infer<typeof MatchEvidenceSourceSchema>;
+
+export const CapabilityFitRowSchema = z.object({
+  competencyId: UuidSchema,
+  capability: z.string(),
+  skillCode: TaxonomySkillCodeSchema,
+  hitScore: z.number().min(0).max(1),
+  evidenceSource: MatchEvidenceSourceSchema,
+});
+export type CapabilityFitRow = z.infer<typeof CapabilityFitRowSchema>;
+
+export const POTENTIAL_FIT_BANDS = ['STRONG', 'MODERATE', 'STRETCH'] as const;
+export const PotentialFitSchema = z.enum(POTENTIAL_FIT_BANDS);
+export type PotentialFit = z.infer<typeof PotentialFitSchema>;
 
 /**
  * One matched candidate. `explanation` is required, not optional: a TPO must be
@@ -128,6 +190,21 @@ export const CandidateMatchDtoSchema = z.object({
         location: z.number().min(0).max(1),
       })
       .optional(),
+    skillCoveragePct: z.number().min(0).max(1).optional(),
+    capabilityCoveragePct: z.number().min(0).max(1).optional(),
+    potentialFit: PotentialFitSchema.optional(),
+    skillFit: z.array(SkillFitRowSchema).optional(),
+    capabilityFit: z.array(CapabilityFitRowSchema).optional(),
+    recruiterSummary: z.string().max(500).optional(),
+    studentSummary: z.string().max(500).optional(),
+    skillCapability: z
+      .object({
+        skill: z.number().min(0).max(1),
+        proficiency: z.number().min(0).max(1),
+        capability: z.number().min(0).max(1),
+      })
+      .optional(),
+    verifiedSkills: z.array(VerifiedSkillSummarySchema).optional(),
   }),
 });
 export type CandidateMatchDto = z.infer<typeof CandidateMatchDtoSchema>;
@@ -142,8 +219,41 @@ export const ShortlistDtoSchema = z.object({
   totalCandidatesConsidered: z.number().int(),
   /** S6-VV-76 — pre-ranking eligible-pool size (post batch/CGPA/skill filters). */
   eligiblePoolCount: z.number().int(),
+  matchMethod: MatchMethodSchema.optional(),
+  minSkillCoverageApplied: z.number().min(0).max(1).optional(),
+  jobRequirements: z
+    .object({
+      skills: z.array(SkillRequirementSchema),
+      capabilities: z.array(EmphasisedCapabilitySchema),
+    })
+    .optional(),
 });
 export type ShortlistDto = z.infer<typeof ShortlistDtoSchema>;
+
+/** Single-candidate fit drill-down (TPO or student view). */
+export const MatchFitDtoSchema = z.object({
+  studentId: UuidSchema,
+  openingId: UuidSchema.optional(),
+  applicationId: UuidSchema.optional(),
+  runId: UuidSchema.optional(),
+  roleTitle: z.string(),
+  companyName: z.string(),
+  matchScore: z.number().min(0).max(1),
+  method: MatchMethodSchema,
+  skillCoveragePct: z.number().min(0).max(1),
+  capabilityCoveragePct: z.number().min(0).max(1),
+  potentialFit: PotentialFitSchema,
+  skillFit: z.array(SkillFitRowSchema),
+  capabilityFit: z.array(CapabilityFitRowSchema),
+  skillGaps: z.array(SkillFitRowSchema),
+  competencyGaps: z.array(CapabilityFitRowSchema),
+  strongCompetencies: z.array(z.string()),
+  gapCompetencies: z.array(z.string()),
+  why: z.string().max(280).optional(),
+  recruiterSummary: z.string().max(500).optional(),
+  studentSummary: z.string().max(500).optional(),
+});
+export type MatchFitDto = z.infer<typeof MatchFitDtoSchema>;
 
 /* ------------------------------ async match runs ---------------------------- */
 
@@ -206,12 +316,6 @@ export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
 
 export { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
-export const SkillRequirementSchema = z.object({
-  skillCode: TaxonomySkillCodeSchema,
-  minProficiency: SkillProficiencySchema,
-});
-export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
-
 /**
  * TPO create body. `institutionId` is taken from the access-token `inst`
  * claim in api-core — do not accept it from the client.
@@ -251,6 +355,8 @@ export const JobOpeningFieldsSchema = z.object({
   domain: SkillTaxonomyDomainSchema,
   categoryId: SkillCategoryIdSchema.optional(),
   requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
+  /** Optional free-text JD; parsed asynchronously into skills + capabilities. */
+  rawText: z.string().max(50_000).optional(),
   minYearsExperience: z.number().int().min(0).max(40),
   maxYearsExperience: z.number().int().min(0).max(40),
   location: z.string().min(1).max(120),
@@ -297,8 +403,20 @@ export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   createdAt: IsoDateTimeSchema,
   /** Time-limited signed URL when a logo object key is stored. */
   companyLogoUrl: z.string().url().max(2048).optional(),
+  jdParseStatus: JdParseStatusSchema.optional(),
+  parseConfidence: z.number().min(0).max(1).nullable().optional(),
+  parsedAt: IsoDateTimeSchema.nullable().optional(),
+  extractedRequirements: JdSkillExtractVectorSchema.nullable().optional(),
 });
 export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
+
+export const ParseOpeningJdResponseSchema = z.object({
+  openingId: UuidSchema,
+  jdParseStatus: JdParseStatusSchema,
+  parseConfidence: z.number().min(0).max(1).nullable(),
+  extractedRequirements: JdSkillExtractVectorSchema.nullable(),
+});
+export type ParseOpeningJdResponse = z.infer<typeof ParseOpeningJdResponseSchema>;
 
 export const ListJobOpeningsQuerySchema = z.object({
   status: JobOpeningStatusSchema.optional(),
@@ -420,6 +538,8 @@ export const SkillClaimDtoSchema = z.object({
   /** Most recent settlement outcome when status is VERIFIED. */
   verificationDecision: z.enum(['VERIFIED', 'PROVISIONAL', 'FAILED']).nullable().optional(),
   claimConfidence: z.number().min(0).max(1).nullable().optional(),
+  /** Diagnostic submitted; grading or follow-on verification not finalized yet. */
+  verificationInProgress: z.boolean().optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 

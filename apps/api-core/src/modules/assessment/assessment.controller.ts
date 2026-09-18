@@ -169,8 +169,9 @@ export class AssessmentController {
   startSkillVerifyInterview(
     @CurrentUser() user: RequestUser,
     @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
   ) {
-    return this.skillVerify.startInterview(user, UuidSchema.parse(sessionId));
+    return this.skillVerify.startInterview(user, UuidSchema.parse(sessionId), body ?? {});
   }
 
   @Post('skill-verify/:sessionId/interview/complete')

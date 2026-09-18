@@ -230,48 +230,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Scala', 'Spark', 'Akka'],
     flavorNotes: ['Case classes', 'Higher-order functions', 'RDD/DataFrame'],
   },
-  DISTRIBUTED_SYSTEMS_DESIGN: {
-    topics: [
-      'Distributed systems fundamentals & CAP',
-      'Consistency models & replication',
-      'Partitioning, sharding & load balancing',
-      'Fault tolerance & failure detection',
-      'Distributed transactions & consensus',
-      'Large-scale system architecture trade-offs',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['APIs', 'Caching', 'Scalability'],
-    flavorNotes: ['Leader election', 'Eventual consistency', 'Backpressure'],
-  },
-  MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION: {
-    topics: [
-      'Microservices principles & bounded contexts',
-      'Service decomposition & domain boundaries',
-      'Inter-service communication patterns',
-      'Data ownership & sagas/choreography',
-      'Observability & resilience in microservices',
-      'Microservices platform architecture',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['DDD', 'Service mesh', 'API gateways'],
-    flavorNotes: ['Circuit breakers', 'Strangler fig', 'BFF pattern'],
-  },
-  EVENT_DRIVEN_ARCHITECTURE: {
-    topics: [
-      'Event-driven fundamentals & messaging basics',
-      'Event schemas, versioning & contracts',
-      'Pub/sub, queues & stream processing',
-      'Event sourcing & CQRS patterns',
-      'Reliability, ordering & idempotency',
-      'Event platform architecture at scale',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Kafka', 'Event sourcing', 'CQRS'],
-    flavorNotes: ['Outbox pattern', 'Dead letter queues', 'Schema registry'],
-  },
+
   RESTFUL_GRAPHQL_API_DESIGN: {
     topics: [
       'HTTP/REST fundamentals & resource modeling',
@@ -286,48 +245,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['REST', 'GraphQL', 'OpenAPI'],
     flavorNotes: ['N+1 queries', 'Idempotency keys', 'Error contracts'],
   },
-  SCALABLE_SYSTEM_HIGH_AVAILABILITY_ARCHITECTURE: {
-    topics: [
-      'Scalability patterns & capacity planning',
-      'Load balancing & auto-scaling',
-      'High availability & disaster recovery',
-      'Caching layers & CDN strategies',
-      'Chaos engineering & failure injection',
-      'HA architecture for mission-critical systems',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['HA', 'DR', 'Multi-region'],
-    flavorNotes: ['RTO/RPO', 'Active-active', 'Graceful degradation'],
-  },
-  DOMAIN_DRIVEN_DESIGN_DDD: {
-    topics: [
-      'DDD strategic design & ubiquitous language',
-      'Bounded contexts & context mapping',
-      'Aggregates, entities & value objects',
-      'Domain events & application services',
-      'Tactical patterns in codebases',
-      'DDD-driven system modernization',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Aggregates', 'Bounded contexts', 'Ubiquitous language'],
-    flavorNotes: ['Anti-corruption layer', 'Repository pattern', 'Event storming'],
-  },
-  DESIGN_PATTERNS_CLEAN_ARCHITECTURE: {
-    topics: [
-      'GoF patterns & when to apply them',
-      'SOLID principles in practice',
-      'Clean/hexagonal architecture layers',
-      'Dependency inversion & testability',
-      'Refactoring to patterns under constraints',
-      'Architecture governance & code quality',
-    ],
-    sdeFormCode: 'SDE_OOP',
-    taskFamily: 'CODING',
-    focusOptions: ['SOLID', 'Clean Architecture', 'Design patterns'],
-    flavorNotes: ['Factory vs Strategy', 'Adapter pattern', 'Ports and adapters'],
-  },
+
   ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION: {
     topics: [
       'Big-O analysis & algorithm fundamentals',
@@ -341,20 +259,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     taskFamily: 'CODING',
     focusOptions: ['Arrays & hashing', 'Trees', 'Dynamic programming'],
     flavorNotes: ['Graph BFS/DFS', 'Sliding window', 'Space-time trade-offs'],
-  },
-  API_GATEWAY_SERVICE_MESH_MANAGEMENT: {
-    topics: [
-      'API gateway routing & policy enforcement',
-      'Authentication, mTLS & zero-trust basics',
-      'Service mesh sidecars & traffic management',
-      'Canary, blue-green & traffic splitting',
-      'Mesh observability & security policies',
-      'Platform networking architecture',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Istio', 'Envoy', 'Kong'],
-    flavorNotes: ['mTLS', 'Retry budgets', 'Rate limiting at edge'],
   },
   AMAZON_WEB_SERVICES_AWS_ARCHITECTURE: {
     topics: [
@@ -410,62 +314,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['GKE', 'Cloud Run', 'BigQuery'],
     flavorNotes: ['Workload Identity', 'VPC peering', 'Pub/Sub'],
   },
-  MULTI_CLOUD_HYBRID_CLOUD_STRATEGY: {
-    topics: [
-      'Multi-cloud drivers & vendor neutrality',
-      'Hybrid connectivity & identity federation',
-      'Portable workloads & abstraction layers',
-      'Cross-cloud networking & data sync',
-      'Governance, compliance & cost across clouds',
-      'Multi-cloud reference architecture',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Hybrid cloud', 'Portability', 'Governance'],
-    flavorNotes: ['Cloud exit strategy', 'Shared services', 'Policy as code'],
-  },
-  SERVERLESS_ARCHITECTURE: {
-    topics: [
-      'Serverless compute models & FaaS basics',
-      'Event triggers, cold starts & concurrency',
-      'API Gateway + Lambda/BFF patterns',
-      'State management & durable workflows',
-      'Observability, security & cost controls',
-      'Serverless platform architecture',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Lambda', 'Step Functions', 'EventBridge'],
-    flavorNotes: ['Idempotent handlers', 'Provisioned concurrency', 'DLQ handling'],
-  },
-  CLOUD_COST_OPTIMIZATION_FINOPS: {
-    topics: [
-      'FinOps principles & cloud cost visibility',
-      'Reserved instances, savings plans & rightsizing',
-      'Tagging, chargeback & budget alerts',
-      'Workload optimization & autoscaling policies',
-      'Unit economics & cost anomaly detection',
-      'FinOps operating model & governance',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Cost allocation', 'Rightsizing', 'Reserved capacity'],
-    flavorNotes: ['Showback/chargeback', 'Spot instances', 'Idle resource cleanup'],
-  },
-  INFRASTRUCTURE_AS_CODE_IAC: {
-    topics: [
-      'IaC principles & declarative vs imperative',
-      'Terraform/HCL modules & state management',
-      'CloudFormation/Bicep & ARM templates',
-      'Drift detection, testing & policy as code',
-      'Secrets, environments & pipeline integration',
-      'IaC platform architecture & standards',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Terraform', 'CloudFormation', 'Pulumi'],
-    flavorNotes: ['Remote state', 'Module composition', 'Plan/apply gates'],
-  },
+
   CI_CD_PIPELINE_ENGINEERING: {
     topics: [
       'CI/CD fundamentals & pipeline design',
@@ -494,20 +343,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Docker', 'Kubernetes', 'Helm'],
     flavorNotes: ['Pod lifecycle', 'Liveness/readiness probes', 'Network policies'],
   },
-  SITE_RELIABILITY_ENGINEERING_SRE: {
-    topics: [
-      'SRE principles, SLI/SLO/SLA & error budgets',
-      'Incident response & blameless postmortems',
-      'Toil reduction & automation',
-      'Capacity planning & reliability testing',
-      'On-call practices & runbook design',
-      'SRE operating model at scale',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['SLOs', 'Incident response', 'Error budgets'],
-    flavorNotes: ['MTTR/MTBF', 'Game days', 'Runbooks'],
-  },
+
   OBSERVABILITY_MONITORING: {
     topics: [
       'Metrics, logs & traces fundamentals',
@@ -521,20 +357,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     taskFamily: 'APPLIED',
     focusOptions: ['Prometheus', 'Grafana', 'OpenTelemetry'],
     flavorNotes: ['RED/USE methods', 'Alert fatigue', 'Cardinality control'],
-  },
-  CONFIGURATION_MANAGEMENT_AUTOMATION: {
-    topics: [
-      'Configuration management principles',
-      'Ansible/Chef/Puppet automation patterns',
-      'Desired-state enforcement & idempotency',
-      'Secrets rotation & config drift remediation',
-      'Inventory, roles & environment promotion',
-      'Configuration platform architecture',
-    ],
-    sdeFormCode: 'SDE_DEPLOYMENT_CICD',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Ansible', 'Chef', 'Puppet'],
-    flavorNotes: ['Playbooks', 'Idempotent tasks', 'Inventory groups'],
   },
   GITOPS_CONTINUOUS_DELIVERY: {
     topics: [
@@ -606,20 +428,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Query plans', 'Indexing', 'Locking'],
     flavorNotes: ['Missing indexes', 'Parameter sniffing', 'Read replicas'],
   },
-  DATA_WAREHOUSING: {
-    topics: [
-      'Warehouse fundamentals & Kimball/Inmon approaches',
-      'ETL/ELT into warehouse layers',
-      'Fact/dimension design & aggregations',
-      'Incremental loads & late-arriving data',
-      'Query performance & materialized views',
-      'Modern warehouse architecture (cloud DW)',
-    ],
-    sdeFormCode: 'SDE_DATABASE_SQL',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Snowflake', 'Redshift', 'BigQuery'],
-    flavorNotes: ['Staging layers', 'Conformed dimensions', 'Clustering keys'],
-  },
+
   ETL_ELT_PIPELINE_DEVELOPMENT: {
     topics: [
       'Batch pipeline design & orchestration',
@@ -648,48 +457,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Spark', 'Hadoop', 'Flink'],
     flavorNotes: ['Shuffle optimization', 'Data skew', 'Checkpointing'],
   },
-  STREAM_PROCESSING_MESSAGING_SYSTEMS: {
-    topics: [
-      'Stream processing concepts & event time',
-      'Kafka/Pulsar messaging fundamentals',
-      'Windowing, watermarks & stateful operators',
-      'Exactly-once semantics & delivery guarantees',
-      'Stream monitoring & replay strategies',
-      'Real-time data platform architecture',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Kafka', 'Flink', 'Kafka Streams'],
-    flavorNotes: ['Consumer groups', 'Compaction', 'Late events'],
-  },
-  DATA_LAKE_LAKEHOUSE_ARCHITECTURE: {
-    topics: [
-      'Data lake vs warehouse vs lakehouse concepts',
-      'Object storage layouts & open table formats',
-      'Medallion/bronze-silver-gold layering',
-      'Catalog, governance & access control',
-      'Query engines & performance on lakehouse',
-      'Modern lakehouse reference architecture',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Delta Lake', 'Iceberg', 'Hudi'],
-    flavorNotes: ['ACID on object storage', 'Time travel', 'Z-ordering'],
-  },
-  DATA_GOVERNANCE_QUALITY_ENGINEERING: {
-    topics: [
-      'Data governance frameworks & stewardship',
-      'Data quality dimensions & profiling',
-      'Lineage, catalog & metadata management',
-      'Privacy, PII masking & compliance (GDPR)',
-      'Quality SLAs, alerting & remediation',
-      'Enterprise data governance operating model',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Data catalog', 'Lineage', 'Quality SLAs'],
-    flavorNotes: ['Data contracts', 'PII classification', 'Stewardship roles'],
-  },
+
   MACHINE_LEARNING_MODEL_DEVELOPMENT_DEPLOYMENT: {
     topics: [
       'ML fundamentals & supervised learning workflow',
@@ -816,20 +584,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['IAM', 'CSPM', 'Zero trust'],
     flavorNotes: ['Security groups', 'KMS rotation', 'CloudTrail'],
   },
-  IDENTITY_ACCESS_MANAGEMENT_IAM: {
-    topics: [
-      'Identity fundamentals & directory services',
-      'Authentication protocols (OAuth2, OIDC, SAML)',
-      'Authorization models (RBAC, ABAC)',
-      'MFA, passwordless & privileged access',
-      'Identity governance & lifecycle management',
-      'Enterprise IAM architecture',
-    ],
-    sdeFormCode: 'SDE_TESTING',
-    taskFamily: 'APPLIED',
-    focusOptions: ['OAuth2', 'OIDC', 'RBAC'],
-    flavorNotes: ['Token lifetimes', 'Federation', 'PAM'],
-  },
   PENETRATION_TESTING_VULNERABILITY_ASSESSMENT: {
     topics: [
       'Reconnaissance & vulnerability scanning',
@@ -844,48 +598,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Burp Suite', 'Nmap', 'Metasploit'],
     flavorNotes: ['Scope/rules of engagement', 'Chained exploits', 'PoC reporting'],
   },
-  SECURITY_OPERATIONS_INCIDENT_RESPONSE: {
-    topics: [
-      'SOC fundamentals & log sources',
-      'SIEM rules, detection engineering & tuning',
-      'Incident triage, containment & eradication',
-      'Forensics basics & evidence handling',
-      'Playbooks, tabletop exercises & metrics',
-      'Security operations center architecture',
-    ],
-    sdeFormCode: 'SDE_TESTING',
-    taskFamily: 'APPLIED',
-    focusOptions: ['SIEM', 'Incident response', 'SOAR'],
-    flavorNotes: ['MITRE ATT&CK', 'Chain of custody', 'MTTD/MTTR'],
-  },
-  COMPLIANCE_RISK_MANAGEMENT: {
-    topics: [
-      'Compliance frameworks (SOC2, ISO 27001, PCI)',
-      'Risk assessment & control mapping',
-      'Policy management & audit evidence collection',
-      'Vendor risk & third-party assessments',
-      'Continuous compliance monitoring',
-      'GRC program architecture',
-    ],
-    sdeFormCode: 'SDE_TESTING',
-    taskFamily: 'APPLIED',
-    focusOptions: ['SOC2', 'ISO 27001', 'Risk registers'],
-    flavorNotes: ['Control owners', 'Audit trails', 'Residual risk'],
-  },
-  TEST_AUTOMATION_ENGINEERING: {
-    topics: [
-      'Test pyramid & automation strategy',
-      'Unit/integration test design patterns',
-      'UI/API automation frameworks',
-      'Test data management & environment isolation',
-      'CI integration, flaky test triage & reporting',
-      'Test automation platform architecture',
-    ],
-    sdeFormCode: 'SDE_TESTING',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Unit tests', 'Selenium', 'Playwright'],
-    flavorNotes: ['Page objects', 'Mocking strategies', 'Test parallelism'],
-  },
+
   PERFORMANCE_LOAD_TESTING: {
     topics: [
       'Performance testing types & objectives',
@@ -956,20 +669,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['SwiftUI', 'UIKit', 'Core Data'],
     flavorNotes: ['Delegate patterns', 'App extensions', 'Push notifications'],
   },
-  CROSS_PLATFORM_MOBILE_DEVELOPMENT: {
-    topics: [
-      'Cross-platform trade-offs (RN/Flutter)',
-      'Shared UI/state & platform channels',
-      'Navigation, storage & native module integration',
-      'Performance optimization on mobile devices',
-      'Testing, OTA updates & store deployment',
-      'Cross-platform mobile architecture',
-    ],
-    sdeFormCode: 'SDE_WEB_FRAMEWORKS',
-    taskFamily: 'CODING',
-    focusOptions: ['React Native', 'Flutter', 'Expo'],
-    flavorNotes: ['Bridge performance', 'Platform-specific code', 'Hermes engine'],
-  },
   MODERN_FRONTEND_FRAMEWORKS: {
     topics: [
       'HTML/CSS/JS fundamentals & accessibility basics',
@@ -1012,20 +711,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Redux', 'Zustand', 'Design systems'],
     flavorNotes: ['Selector memoization', 'Atomic design', 'Prop drilling avoidance'],
   },
-  ACCESSIBILITY_ENGINEERING_A11Y: {
-    topics: [
-      'WCAG principles & assistive technology basics',
-      'Semantic HTML & ARIA roles/states',
-      'Keyboard navigation & focus management',
-      'Color contrast, motion & inclusive design',
-      'Automated/manual a11y testing tooling',
-      'Accessibility program & compliance architecture',
-    ],
-    sdeFormCode: 'SDE_WEB_FRAMEWORKS',
-    taskFamily: 'APPLIED',
-    focusOptions: ['WCAG 2.2', 'ARIA', 'Screen readers'],
-    flavorNotes: ['Focus traps', 'Live regions', 'axe-core audits'],
-  },
   NETWORK_ARCHITECTURE_PROTOCOLS: {
     topics: [
       'OSI/TCP-IP & common protocol behavior',
@@ -1053,20 +738,6 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     taskFamily: 'APPLIED',
     focusOptions: ['systemd', 'bash', 'SSH hardening'],
     flavorNotes: ['chmod/chown', 'journalctl', 'Cron vs timers'],
-  },
-  VIRTUALIZATION_HYPERVISOR_MANAGEMENT: {
-    topics: [
-      'Virtualization concepts & hypervisor types',
-      'VM provisioning, snapshots & templates',
-      'Resource allocation & overcommit strategies',
-      'Storage/network virtualization basics',
-      'HA clusters & live migration',
-      'Virtualization platform architecture',
-    ],
-    sdeFormCode: 'SDE_OPERATING_SYSTEMS',
-    taskFamily: 'APPLIED',
-    focusOptions: ['VMware', 'KVM', 'Hyper-V'],
-    flavorNotes: ['vMotion', 'Resource pools', 'Thin provisioning'],
   },
   BLOCKCHAIN_SMART_CONTRACT_DEVELOPMENT: {
     topics: [
@@ -1110,48 +781,7 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     focusOptions: ['Unity XR', 'OpenXR', 'Spatial UX'],
     flavorNotes: ['Frame pacing', 'Hand tracking', 'Locomotion comfort'],
   },
-  EDGE_COMPUTING: {
-    topics: [
-      'Edge computing drivers & topology patterns',
-      'Latency-sensitive workload placement',
-      'Edge orchestration & offline-first sync',
-      'Security & updates at the edge',
-      'Observability across edge-cloud boundaries',
-      'Edge platform reference architecture',
-    ],
-    sdeFormCode: 'SDE_SYSTEM_DESIGN',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Edge nodes', 'Offline sync', 'K3s'],
-    flavorNotes: ['Split inference', 'Store-and-forward', 'Edge gateways'],
-  },
-  AGILE_DELIVERY_LEADERSHIP: {
-    topics: [
-      'Agile values, Scrum/Kanban fundamentals',
-      'Backlog refinement & sprint planning',
-      'Facilitation, retrospectives & team health',
-      'Metrics: velocity, flow & predictability',
-      'Scaling agile (SAFe/LeSS basics)',
-      'Agile transformation leadership',
-    ],
-    sdeFormCode: 'SDE_GIT',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Scrum', 'Kanban', 'Retrospectives'],
-    flavorNotes: ['Definition of ready', 'WIP limits', 'Servant leadership'],
-  },
-  TECHNICAL_PROGRAM_PROJECT_MANAGEMENT: {
-    topics: [
-      'Project charter, scope & stakeholder mapping',
-      'Scheduling, critical path & dependencies',
-      'Risk/issue management & escalation',
-      'Budget, resourcing & vendor coordination',
-      'Status reporting & executive communication',
-      'Technical program governance model',
-    ],
-    sdeFormCode: 'SDE_GIT',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Roadmaps', 'RAID logs', 'Stakeholders'],
-    flavorNotes: ['Milestone planning', 'RACI', 'Change control'],
-  },
+
   VERSION_CONTROL_CODE_COLLABORATION: {
     topics: [
       'Git fundamentals & branching strategies',
@@ -1165,47 +795,5 @@ export const SKILL_REGISTRY_PROFILES: Readonly<Record<string, SkillRegistryProfi
     taskFamily: 'APPLIED',
     focusOptions: ['Git', 'Pull requests', 'Trunk-based development'],
     flavorNotes: ['Merge vs rebase', 'Conventional commits', 'CODEOWNERS'],
-  },
-  TECHNICAL_DOCUMENTATION_KNOWLEDGE_MANAGEMENT: {
-    topics: [
-      'Documentation types & audience analysis',
-      'Docs-as-code & information architecture',
-      'API docs, runbooks & ADR practices',
-      'Knowledge base search & discoverability',
-      'Review workflows & doc quality metrics',
-      'Technical writing program architecture',
-    ],
-    sdeFormCode: 'SDE_GIT',
-    taskFamily: 'APPLIED',
-    focusOptions: ['ADRs', 'Runbooks', 'Docs-as-code'],
-    flavorNotes: ['Diátaxis framework', 'Single sourcing', 'Stale doc detection'],
-  },
-  CROSS_FUNCTIONAL_STAKEHOLDER_COLLABORATION: {
-    topics: [
-      'Stakeholder identification & communication plans',
-      'Requirements elicitation & alignment workshops',
-      'Managing conflicting priorities & trade-offs',
-      'Cross-team dependencies & interface agreements',
-      'Feedback loops with product/design/ops',
-      'Collaboration operating model in tech orgs',
-    ],
-    sdeFormCode: 'SDE_GIT',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Stakeholder maps', 'Workshops', 'RACI'],
-    flavorNotes: ['Expectation setting', 'Decision records', 'Escalation paths'],
-  },
-  MENTORSHIP_TECHNICAL_LEADERSHIP: {
-    topics: [
-      'Technical leadership roles & influence without authority',
-      'Mentoring models & growth plans for engineers',
-      'Architecture decision facilitation & RFCs',
-      'Hiring loops, interviews & bar raising',
-      'Psychological safety & feedback culture',
-      'Engineering leadership & org design basics',
-    ],
-    sdeFormCode: 'SDE_GIT',
-    taskFamily: 'APPLIED',
-    focusOptions: ['Mentorship', 'RFCs', 'Career growth'],
-    flavorNotes: ['Situational leadership', 'Promotion packets', 'Tech vision'],
   },
 };

@@ -247,6 +247,22 @@ export const verificationLookups = new Counter({
   registers: [registry],
 });
 
+/* ------------------------ QLIX recalibration (ORION) ----------------------- */
+
+export const qlixRecalibrationRuns = new Counter({
+  name: 'smart_qlix_recalibration_runs_total',
+  help: 'Monthly QLIX weight recalibration batch runs.',
+  labelNames: ['published'] as const,
+  registers: [registry],
+});
+
+export const qlixRecalibrationWeightVersion = new Gauge({
+  name: 'smart_qlix_recalibration_weight',
+  help: 'Published QLIX.default corroboration weight after recalibration.',
+  labelNames: ['predictor'] as const,
+  registers: [registry],
+});
+
 /* --------------------------- TPO provisioning ---------------------------- */
 
 export const batchImportRows = new Counter({

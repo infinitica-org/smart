@@ -73,6 +73,7 @@ import {
   toStudentPaperFromScorable,
   type CompetencySlot,
   type SdeV4Format,
+  type SdeV4TaskFamily,
 } from '@smart/prompts';
 import { coerceLlmJson } from '../ai-gateway/adapters/llm-json-coerce.js';
 import {
@@ -124,7 +125,7 @@ const SealedSdeFormSchema = z.object({
   intelligenceEnabled: z.boolean().optional(),
   catalogSkillCode: z.string().optional(),
   targetProficiency: z.enum(SDE_V4_PROFICIENCIES).optional(),
-  stage: z.enum(['DIAGNOSTIC', 'TARGETED', 'FULL']).optional(),
+  stage: z.enum(['DIAGNOSTIC', 'FULL']).optional(),
 });
 
 const ExaminerOutputSchema = z.object({
@@ -364,7 +365,7 @@ export class EvaluationService {
       const result = await this.gateway.complete({
         promptRef: SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
         modelRole: 'FAST_EXTRACTION',
-        priority: 'P3_BATCH',
+        priority: 'P2_ASYNC_EVAL',
         variables: { skillCode: request.skillCode, proficiency: request.proficiency },
         correlation: {},
         maxOutputTokens: 400,
@@ -456,8 +457,7 @@ export class EvaluationService {
     const scaled = scaleFormCounts(
       spec.closed,
       spec.openFormats.length,
-      stage === 'FULL' ? 'FULL' : stage,
-      request.targetCompetencyIds?.length ?? 2,
+      stage === 'FULL' ? 'FULL' : 'DIAGNOSTIC',
     );
     const attemptId = request.attemptId ?? randomUUID();
     const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
@@ -493,8 +493,15 @@ export class EvaluationService {
           name: comp.capability,
         }))
       : [];
-    const openFormatsForStage =
+    const rawOpenFormatsForStage =
       stage === 'FULL' ? [...spec.openFormats] : [...spec.openFormats].slice(0, scaled.openCount);
+    const openFormatsForStage = this.openFormatsForCatalogSkill(
+      skill,
+      assessmentSpec,
+      rawOpenFormatsForStage,
+    );
+    const openTaskFamily =
+      assessmentSpec?.taskFamily === 'APPLIED' ? ('APPLIED' as const) : skill.taskFamily;
 
     try {
       const [closedResult, openResult] = await Promise.all([
@@ -526,7 +533,7 @@ export class EvaluationService {
             skillCode: skill.code,
             skillName: skill.name,
             proficiency,
-            taskFamily: skill.taskFamily,
+            taskFamily: openTaskFamily,
             attemptId,
             formats: openFormatsForStage,
             flavorNotes: openFlavorNotes,
@@ -583,7 +590,6 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
-              request.targetCompetencyIds,
             )
           : undefined;
         items.push({
@@ -609,7 +615,6 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
-              request.targetCompetencyIds,
             )
           : undefined;
         items.push({
@@ -757,7 +762,10 @@ export class EvaluationService {
 
       if (openKeys.length > 0) {
         const criteriaGrading = openKeys.some((key) => (key.assessmentCriteria?.length ?? 0) > 0);
-        const completion = await this.gateway.complete({
+        const gradeSchema = criteriaGrading
+          ? SdeOpenBatchGradeCriteriaSchema
+          : SdeOpenBatchGradeSchema;
+        const completion = await this.completeWithRetry({
           promptRef: criteriaGrading
             ? SDE_SKILL_OPEN_BATCH_GRADER_CRITERIA_PROMPT_REF
             : SDE_SKILL_OPEN_BATCH_GRADER_PROMPT_REF,
@@ -793,9 +801,7 @@ export class EvaluationService {
           maxOutputTokens: criteriaGrading ? 3_584 : 3_072,
           temperature: 0,
         });
-        const parsed = (
-          criteriaGrading ? SdeOpenBatchGradeCriteriaSchema : SdeOpenBatchGradeSchema
-        ).parse(completion.output);
+        const parsed = gradeSchema.parse(coerceLlmJson(completion.output));
         const gradeByIndex = new Map(parsed.grades.map((grade) => [grade.index, grade]));
         for (const key of openKeys) {
           const grade = gradeByIndex.get(key.index);
@@ -943,7 +949,6 @@ export class EvaluationService {
     slot: CompetencySlot | undefined,
     format: SdeV4Format,
     index: number,
-    targetCompetencyIds?: readonly string[],
   ): string[] {
     if (slot) {
       const match = /^C(\d)$/i.exec(slot);
@@ -952,7 +957,7 @@ export class EvaluationService {
         if (comp) return [comp.competencyId];
       }
     }
-    return assignCompetencyIds(format, index, blueprint.competencyModel, targetCompetencyIds);
+    return assignCompetencyIds(format, index, blueprint.competencyModel);
   }
 
   private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(
@@ -1020,6 +1025,21 @@ export class EvaluationService {
         return remapped;
       }),
     };
+  }
+
+  /**
+   * Catalog skills marked APPLIED (e.g. penetration testing) may map to a CODING SDE blueprint;
+   * generate scenario-style open items so finish/submit grading stays text-based.
+   */
+  private openFormatsForCatalogSkill(
+    skill: { taskFamily: SdeV4TaskFamily },
+    assessmentSpec: ReturnType<typeof getSkillAssessmentSpec>,
+    openFormats: readonly SdeV4Format[],
+  ): readonly SdeV4Format[] {
+    if (assessmentSpec?.taskFamily !== 'APPLIED' || skill.taskFamily !== 'CODING') {
+      return openFormats;
+    }
+    return openFormats.map(() => 'SCENARIO' as const);
   }
 
   private async completeWithRetry(

@@ -220,7 +220,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToExperienceBuilderStep(1);
 
@@ -250,7 +250,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     const { container } = await openAddExperienceModal();
 
     fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -395,7 +395,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when domain is empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -407,7 +407,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when responsibilities are empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { responsibilities: '' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -439,7 +439,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save for ended employment when End Date is missing', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -457,7 +457,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
     expect(screen.getByText(/^End Date$/)).toBeTruthy();
 
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));
@@ -540,7 +540,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('does not call the API when mandatory validation fails', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '   ' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     goToSubmitStepFromProfessional();
     fireEvent.click(screen.getByRole('button', { name: /Submit Experience/i }));

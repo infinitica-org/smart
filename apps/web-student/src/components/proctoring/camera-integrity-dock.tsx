@@ -4,7 +4,7 @@ import { AlertTriangle, Check } from 'lucide-react';
 import { cameraIntegrityCopy } from '../../lib/proctoring/live-webcam';
 import { useProctorLive } from './proctor-live-context';
 
-export function CameraIntegrityDock() {
+export function CameraIntegrityDock({ compact = false }: { compact?: boolean }) {
   const { cameraEnabled, bindPreview, liveKind, sampled, warningCount, warningLimit } =
     useProctorLive();
   if (!cameraEnabled) return null;
@@ -15,7 +15,11 @@ export function CameraIntegrityDock() {
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)]"
+      className={
+        compact
+          ? 'flex shrink-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)]'
+          : 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)]'
+      }
       aria-label="Live camera integrity"
     >
       <div className="flex items-center justify-between px-3 py-2">

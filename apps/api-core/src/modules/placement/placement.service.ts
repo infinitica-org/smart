@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ConflictException,
@@ -11,6 +12,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import {
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
@@ -18,9 +20,13 @@ import {
   CandidateApplicationDtoSchema,
   EmploymentTypeSchema,
   JobOpeningAttachedDocumentSchema,
+  JdSkillExtractVectorSchema,
   JobOpeningDtoSchema,
+  ParseOpeningJdResponseSchema,
+  PlacementRecordDtoSchema,
   SEND_TO_COMPANY_STAGE,
   SMART_TOPICS,
+  AssessmentResultSchema,
   SkillTaxonomyDomainSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
@@ -40,6 +46,9 @@ import type {
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
   ListMyApplicationsResponse,
+  PlacementRecordDto,
+  ParseOpeningJdResponse,
+  RecordOutcomeRequest,
   SkillProficiency,
 } from '@smart/contracts';
 import { z } from 'zod';
@@ -47,6 +56,7 @@ import type { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { JD_PARSE_QUEUE } from '../../platform/queue/queue.names.js';
 
 const JOB_OPENING_DOC_MAX_BYTES = 10 * 1024 * 1024;
 const JOB_OPENING_LOGO_MAX_BYTES = 2 * 1024 * 1024;
@@ -80,6 +90,11 @@ interface OpeningRow {
   lastDateToApply: Date | null;
   status: string;
   createdAt: Date;
+  rawText?: string | null;
+  jdParseStatus?: string;
+  parseConfidence?: unknown;
+  parsedAt?: Date | null;
+  parsedRequirements?: unknown;
   requiredSkills: { minProficiency: string; skill: { code: string } }[];
 }
 
@@ -182,6 +197,7 @@ export class PlacementService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @InjectQueue(JD_PARSE_QUEUE) private readonly jdParseQueue: Queue<{ openingId: string }>,
     @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
   ) {}
 
@@ -352,13 +368,65 @@ export class PlacementService {
           employmentType: body.employmentType,
           headcount: body.headcount ?? 1,
           ...openingExtendedFields(body),
+          rawText: body.rawText?.trim() || null,
           requiredSkills: { create: requirements },
         },
         include: { requiredSkills: { include: { skill: { select: { code: true } } } } },
       });
     });
 
+    if (body.rawText?.trim()) {
+      await this.jdParseQueue.add('parse-opening-jd', { openingId: row.id });
+    }
+
     return this.toJobOpeningDtoAsync(row as OpeningRow);
+  }
+
+  async parseOpeningJd(institutionId: string, openingId: string): Promise<ParseOpeningJdResponse> {
+    const opening = await this.prisma.jobOpening.findFirst({
+      where: { id: openingId, institutionId },
+      select: {
+        id: true,
+        rawText: true,
+        jdParseStatus: true,
+        parseConfidence: true,
+        parsedRequirements: true,
+      },
+    });
+    if (!opening) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+    if (!opening.rawText?.trim()) {
+      throw new UnprocessableEntityException({
+        error: 'validation_error',
+        message: 'This opening has no job description text to parse.',
+        statusCode: 422,
+      });
+    }
+
+    await this.prisma.jobOpening.update({
+      where: { id: openingId },
+      data: { jdParseStatus: 'PENDING' },
+    });
+    await this.jdParseQueue.add('parse-opening-jd', { openingId });
+
+    const extracted = opening.parsedRequirements
+      ? JdSkillExtractVectorSchema.safeParse(opening.parsedRequirements)
+      : null;
+
+    return ParseOpeningJdResponseSchema.parse({
+      openingId,
+      jdParseStatus: 'PENDING',
+      parseConfidence:
+        opening.parseConfidence === null || opening.parseConfidence === undefined
+          ? null
+          : Number(opening.parseConfidence),
+      extractedRequirements: extracted?.success ? extracted.data : null,
+    });
   }
 
   async listOpenings(
@@ -622,12 +690,18 @@ export class PlacementService {
     applicationId: string,
   ): Promise<ApplicationConfidenceDto> {
     const application = await this.requireApplication(institutionId, applicationId);
-    return this.toConfidenceDto(application.id, application.studentId);
+    const requiredSkillCodes = await this.openingRequiredSkillCodes(application.openingId);
+    return this.toConfidenceDto(application.id, application.studentId, requiredSkillCodes);
   }
 
   async sendToCompany(institutionId: string, applicationId: string): Promise<ApplicationDto> {
     const application = await this.requireApplication(institutionId, applicationId);
-    const confidence = await this.toConfidenceDto(application.id, application.studentId);
+    const requiredSkillCodes = await this.openingRequiredSkillCodes(application.openingId);
+    const confidence = await this.toConfidenceDto(
+      application.id,
+      application.studentId,
+      requiredSkillCodes,
+    );
     if (!confidence.complete) {
       throw new UnprocessableEntityException({
         error: 'validation_failed',
@@ -681,14 +755,30 @@ export class PlacementService {
     return application;
   }
 
+  private async openingRequiredSkillCodes(openingId: string): Promise<string[]> {
+    const opening = await this.prisma.jobOpening.findUnique({
+      where: { id: openingId },
+      select: { requiredSkills: { select: { skill: { select: { code: true } } } } },
+    });
+    return opening?.requiredSkills.map((row) => row.skill.code) ?? [];
+  }
+
   private async toConfidenceDto(
     applicationId: string,
     studentId: string,
+    requiredSkillCodes: readonly string[],
   ): Promise<ApplicationConfidenceDto> {
     const latest = await this.prisma.skillVerificationAttempt.findFirst({
-      where: { claim: { studentId } },
+      where: {
+        claim: {
+          studentId,
+          ...(requiredSkillCodes.length > 0
+            ? { skill: { code: { in: [...requiredSkillCodes] } } }
+            : {}),
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      select: { passed: true, explanation: true },
+      select: { passed: true, explanation: true, assessmentResultJson: true },
     });
 
     const explanation = latest?.explanation?.trim() || null;
@@ -697,11 +787,16 @@ export class PlacementService {
     const complete = passed !== null && explanation !== null && explanation.length >= 10;
     let sendBlockedReason: string | null = null;
     if (!available) {
-      sendBlockedReason = 'No SE-T02 confidence result is on file for this candidate.';
+      sendBlockedReason =
+        requiredSkillCodes.length > 0
+          ? 'No SE-T02 confidence result is on file for this opening’s required skills.'
+          : 'No SE-T02 confidence result is on file for this candidate.';
     } else if (!complete) {
       sendBlockedReason =
         'Confidence result is incomplete — pass/fail or the one-line explanation is missing.';
     }
+
+    const promptRef = seT02GraderPromptRef(latest?.assessmentResultJson ?? null);
 
     return ApplicationConfidenceDtoSchema.parse({
       applicationId,
@@ -710,9 +805,79 @@ export class PlacementService {
       complete,
       passed,
       explanation,
-      // SE-T02 grade does not persist promptRef; do not invent one.
-      promptRef: null,
+      promptRef,
       sendBlockedReason,
+    });
+  }
+
+  /** Closes the placement feedback loop for ORION / QLIX recalibration. */
+  async recordOutcome(
+    institutionId: string,
+    body: RecordOutcomeRequest,
+  ): Promise<PlacementRecordDto> {
+    const student = await this.prisma.user.findFirst({
+      where: { id: body.studentId, institutionId, role: 'STUDENT' },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException({
+        error: 'student_not_found',
+        message: 'Student not found in your institution.',
+        statusCode: 404,
+      });
+    }
+
+    const track = await this.prisma.track.findUnique({
+      where: { code: body.trackCode },
+      select: { id: true, code: true },
+    });
+    if (!track) {
+      throw new UnprocessableEntityException({
+        error: 'unknown_track',
+        message: `Unknown track code ${body.trackCode}.`,
+        statusCode: 422,
+      });
+    }
+
+    const certificate = await this.prisma.certificate.findFirst({
+      where: { userId: body.studentId, status: 'ISSUED' },
+      orderBy: { issuedAt: 'desc' },
+      select: { headlineTier: true },
+    });
+    if (!certificate) {
+      throw new UnprocessableEntityException({
+        error: 'certificate_required',
+        message: 'Record outcomes only for students with an issued certificate.',
+        statusCode: 422,
+      });
+    }
+
+    const row = await this.prisma.placementRecord.create({
+      data: {
+        userId: body.studentId,
+        trackId: track.id,
+        cycle: body.placementCycle,
+        outcome: body.outcome,
+        companyName: body.companyName,
+        packageLpa: body.offeredPackageLpa,
+      },
+    });
+
+    return PlacementRecordDtoSchema.parse({
+      recordId: row.id,
+      studentId: row.userId,
+      trackCode: track.code,
+      tierAtPlacement: certificate.headlineTier,
+      placementCycle: row.cycle,
+      companyName: row.companyName ?? body.companyName,
+      outcome: row.outcome,
+      interviewOffered: body.interviewOffered,
+      jobOffered: body.jobOffered,
+      offeredPackageLpa:
+        row.packageLpa === null || row.packageLpa === undefined
+          ? body.offeredPackageLpa
+          : Number(row.packageLpa),
+      recordedAt: row.createdAt.toISOString(),
     });
   }
 
@@ -732,6 +897,12 @@ export class PlacementService {
       data: ApplicationStageChangedDataSchema.parse(data),
     });
   }
+}
+
+function seT02GraderPromptRef(assessmentResultJson: unknown): string | null {
+  const parsed = AssessmentResultSchema.safeParse(assessmentResultJson);
+  if (!parsed.success) return null;
+  return parsed.data.seT02Interview?.graderPromptRef ?? null;
 }
 
 /** Prisma unique-constraint failure, i.e. this pair is already shortlisted. */
@@ -783,6 +954,9 @@ export function toJobOpeningDto(
   row: OpeningRow,
   options: { companyLogoUrl?: string } = {},
 ): JobOpeningDto {
+  const extracted = row.parsedRequirements
+    ? JdSkillExtractVectorSchema.safeParse(row.parsedRequirements)
+    : null;
   const parsed = JobOpeningDtoSchema.safeParse({
     openingId: row.id,
     institutionId: row.institutionId,
@@ -813,6 +987,14 @@ export function toJobOpeningDto(
     lastDateToApply: row.lastDateToApply ? calendarDateToIso(row.lastDateToApply) : undefined,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
+    rawText: row.rawText ?? undefined,
+    jdParseStatus: row.jdParseStatus ?? undefined,
+    parseConfidence:
+      row.parseConfidence === null || row.parseConfidence === undefined
+        ? null
+        : Number(row.parseConfidence),
+    parsedAt: row.parsedAt?.toISOString() ?? null,
+    extractedRequirements: extracted?.success ? extracted.data : null,
   });
   if (!parsed.success) {
     throw new InternalServerErrorException({

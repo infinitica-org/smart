@@ -20,7 +20,7 @@ describe('skill-competency-registry', () => {
     const blueprint = getSkillBlueprint('COMPUTER_VISION_ENGINEERING');
     expect(blueprint?.competencyModel[2]?.capability).toContain('CNN');
     const spec = getSkillAssessmentSpec('COMPUTER_VISION_ENGINEERING');
-    expect(spec?.catalogSkillName).toBe('Computer Vision Engineering');
+    expect(spec?.catalogSkillName).toBe('Computer Vision');
     expect(spec?.flavorNotes).toContain('IoU/mAP metrics');
     expect(sdeFormCodeForSkill('COMPUTER_VISION_ENGINEERING')).toBe('SDE_PROGRAMMING_FUNDAMENTALS');
   });

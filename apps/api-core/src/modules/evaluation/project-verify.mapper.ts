@@ -6,12 +6,21 @@ import {
   type CreateProjectRequest,
   type GithubRepoSnapshot,
   type ProjectDto,
+  type ProjectExclusionReason,
   type ProjectGithubSnapshot,
+  type ProjectInterviewState,
   type ProjectReviewQueueItemDto,
   type ProjectVerificationReportDto,
 } from '@smart/contracts';
 
 export const REPORT_META_MARK = '\n---smart-verify---\n';
+
+export type QlixDigestMeta = {
+  similarityIndex: number;
+  aiLikelihood: number | null;
+  agentSummary: string;
+  analyzedTokens: number;
+};
 
 export interface StoredReportMeta {
   qualityScore: number;
@@ -20,6 +29,26 @@ export interface StoredReportMeta {
   flags: ProjectVerificationReportDto['flags'];
   promptRef: string;
   auditId: string | null;
+  qlixStatus?: 'POLLING' | 'COMPLETED' | 'FAILED' | 'TIMEOUT';
+  qlixDigest?: QlixDigestMeta;
+  qlixReportDigest?: string;
+  snapshotRepos?: GithubRepoSnapshot[];
+  exclusionReason?: ProjectExclusionReason;
+  reverifyCount?: number;
+  lastReverifyAt?: string;
+}
+
+export function decodeReportMeta(explanation: string): {
+  text: string;
+  meta: StoredReportMeta | null;
+} {
+  const [text, rawMeta] = explanation.split(REPORT_META_MARK);
+  if (!rawMeta) return { text: explanation, meta: null };
+  try {
+    return { text: text || explanation, meta: JSON.parse(rawMeta) as StoredReportMeta };
+  } catch {
+    return { text: text || explanation, meta: null };
+  }
 }
 
 export function encodeReportExplanation(explanation: string, meta: StoredReportMeta): string {
@@ -105,6 +134,8 @@ export type ProjectRow = {
   loomUrl: string | null;
   githubUrl: string | null;
   liveUrl: string | null;
+  snapshotSha: string | null;
+  qlixCheckId: string | null;
   status: string;
   createdAt: Date;
   report: ReportRow | null;
@@ -127,15 +158,7 @@ function num(value: Decimalish): number {
 }
 
 export function toReportDto(row: ReportRow): ProjectVerificationReportDto {
-  const [text, rawMeta] = row.explanation.split(REPORT_META_MARK);
-  let meta: StoredReportMeta | null = null;
-  if (rawMeta) {
-    try {
-      meta = JSON.parse(rawMeta) as StoredReportMeta;
-    } catch {
-      meta = null;
-    }
-  }
+  const { text, meta } = decodeReportMeta(row.explanation);
   return ProjectVerificationReportDtoSchema.parse({
     reportId: row.id,
     projectId: row.projectId,
@@ -155,7 +178,8 @@ export function toReportDto(row: ReportRow): ProjectVerificationReportDto {
   });
 }
 
-export function toProjectDto(row: ProjectRow): ProjectDto {
+export function toProjectDto(row: ProjectRow, interview?: ProjectInterviewState): ProjectDto {
+  const meta = row.report ? decodeReportMeta(row.report.explanation).meta : null;
   return ProjectDtoSchema.parse({
     projectId: row.id,
     studentId: row.studentId,
@@ -170,6 +194,10 @@ export function toProjectDto(row: ProjectRow): ProjectDto {
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     report: row.report ? toReportDto(row.report) : null,
+    interviewRequired: interview?.interviewRequired ?? false,
+    interviewStatus: interview?.interviewStatus ?? 'NOT_REQUIRED',
+    interviewCompletedAt: interview?.interviewCompletedAt ?? null,
+    exclusionReason: meta?.exclusionReason ?? null,
   });
 }
 

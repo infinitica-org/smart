@@ -191,7 +191,7 @@ describe('onboarding-form', () => {
         { type: 'language', name: 'English', proficiency: 'Fluent' },
         {
           type: 'technical',
-          name: 'Version Control & Code Collaboration',
+          name: 'Git & Version Control',
           proficiency: 'INTERMEDIATE',
         },
         { type: 'technical', name: 'Python', proficiency: 'ADVANCED' },

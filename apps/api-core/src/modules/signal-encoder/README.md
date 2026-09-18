@@ -4,11 +4,11 @@
 
 ## Purpose & boundary
 
-Rule-based encoder for passive platform signals. Subscribes to `smart.candidate.skills_discovered`, maps GitHub language breakdown to versioned skill dimensions, and hands vectors to `corroboration`.
+Rule-based encoder for passive platform signals. Project QLIX evidence (post-defense), OAuth-ingested platform profiles, and verified credentials feed `corroboration` fusion.
 
-HackerRank/LeetCode stubs return empty vectors until adapters are implemented.
+Onboarding `smart.candidate.skills_discovered` is **not** encoded here — assessment owns BEGINNER claim auto-declaration from that event; project evidence enters fusion via QLIX after defense.
 
 ## Kafka
 
-- Consumes: `smart.candidate.skills_discovered`
-- Produces: `smart.signal.encoded`
+- Consumes: `smart.signal.ingested`, `smart.credential.verified`, `smart.project.defense.completed`
+- Produces: `smart.signal.encoded` (from `signal.ingested` path)

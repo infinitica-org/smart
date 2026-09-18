@@ -156,6 +156,43 @@ describe('fuseSignals', () => {
     ]);
   });
 
+  it('fuses QLIX passive evidence with aligned skill assessment', () => {
+    const result = fuseSignals({
+      passiveX: {
+        userId: '00000000-0000-4000-8000-000000000001',
+        sourceId: 'QLIX',
+        taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+        encodedAt: '2026-09-11T00:00:00.000Z',
+        entries: [
+          {
+            dimension: dim('PYTHON_APPLICATION_BACKEND_DEVELOPMENT'),
+            sourceId: 'QLIX',
+            score: 0.78,
+            confidence: 0.85,
+          },
+        ],
+      },
+      assessmentY: {
+        userId: '00000000-0000-4000-8000-000000000001',
+        claimId: '00000000-0000-4000-8000-000000000005',
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        assessedAt: '2026-09-11T01:00:00.000Z',
+        entries: [
+          {
+            dimension: dim('PYTHON_APPLICATION_BACKEND_DEVELOPMENT'),
+            scorePercent: 80,
+            passed: true,
+            proficiencyLevel: 'ADVANCED',
+          },
+        ],
+      },
+      weights: DEFAULT_SIGNAL_WEIGHT_MODEL,
+    });
+
+    expect(result.readouts[0]?.corroborationScore).toBeGreaterThan(85);
+    expect(result.readouts[0]?.contradictionFlag).toBe(false);
+  });
+
   it('does not flag when assessment failed even with low passive', () => {
     const result = fuseSignals({
       passiveX: {
