@@ -10,6 +10,10 @@ describe('signal-consent-scopes', () => {
     expect(isValidConsentScope('GITHUB', 'github.onboarding.public_repos')).toBe(true);
   });
 
+  it('accepts registered QLIX project verification scope', () => {
+    expect(isValidConsentScope('QLIX', 'project.verification.qlix')).toBe(true);
+  });
+
   it('rejects unknown scope for a source', () => {
     expect(isValidConsentScope('GITHUB', 'github.admin.override')).toBe(false);
   });

@@ -1,5 +1,19 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../platform/config/env.js', () => ({
+  env: {
+    PROCTORING_CV_PROVIDER: 'real',
+    PROCTORING_FULL: true,
+    NODE_ENV: 'test',
+  },
+}));
+
+vi.mock('./cv-client.js', () => ({
+  analyzeProctoringSnapshot: vi.fn().mockResolvedValue({ violations: [] }),
+}));
+
+import { analyzeProctoringSnapshot } from './cv-client.js';
 import { signViolation } from './hmac.js';
 import { ProctoringService } from './proctoring.service.js';
 
@@ -21,13 +35,17 @@ describe('ProctoringService', () => {
     zadd: vi.fn(),
     zrangebyscore: vi.fn(),
     zrem: vi.fn(),
+    del: vi.fn(),
     publish: vi.fn(),
   };
   const prisma = {
     attempt: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
     integrityEvent: { create: vi.fn() },
   };
-  const outbox = { enqueueEnvelope: vi.fn() };
+  const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const storage = {
+    getSignedUploadUrl: vi.fn().mockResolvedValue('https://minio/upload'),
+  };
   let service: ProctoringService;
 
   beforeEach(() => {
@@ -44,7 +62,12 @@ describe('ProctoringService', () => {
     redis.exists.mockResolvedValue(0);
     redis.lrange.mockResolvedValue([]);
     redis.setex.mockResolvedValue('OK');
-    service = new ProctoringService(prisma as never, redis as never, outbox as never);
+    service = new ProctoringService(
+      prisma as never,
+      redis as never,
+      outbox as never,
+      storage as never,
+    );
   });
 
   it('rejects a replayed nonce', async () => {
@@ -162,5 +185,59 @@ describe('ProctoringService', () => {
     await service.record(ATTEMPT, 'CLEAN', 'TAB_BLUR', undefined, undefined, false);
     expect(prisma.attempt.update).not.toHaveBeenCalled();
     expect(prisma.integrityEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('issues a presigned snapshot upload URL under the attempt prefix', async () => {
+    const result = await service.createSnapshotUploadUrl(USER, ATTEMPT);
+    expect(result.uploadUrl).toBe('https://minio/upload');
+    expect(result.objectKey).toMatch(new RegExp(`^proctoring/${ATTEMPT}/`));
+    expect(storage.getSignedUploadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: 'image/jpeg' }),
+    );
+  });
+
+  it('rejects stub checkpoint keys when proctoring is enabled', async () => {
+    await expect(
+      service.checkpoint(USER, {
+        attemptId: ATTEMPT,
+        objectKey: `stub:${ATTEMPT}:${Date.now()}`,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('records foreign object violations from sync checkpoint', async () => {
+    vi.mocked(analyzeProctoringSnapshot).mockResolvedValue({
+      violations: ['FOREIGN_OBJECT_DETECTED'],
+    });
+    redis.get.mockImplementation(async (key: string) => {
+      if (String(key).includes('warn')) return '0';
+      return null;
+    });
+    const result = await service.checkpoint(USER, {
+      attemptId: ATTEMPT,
+      objectKey: `proctoring/${ATTEMPT}/frame.jpg`,
+    });
+    expect(result.newViolations).toEqual(['FOREIGN_OBJECT_DETECTED']);
+    expect(result.warningCount).toBe(1);
+    expect(redis.setex).toHaveBeenCalledWith(
+      expect.stringContaining('proctor:cv:processed:'),
+      expect.any(Number),
+      '1',
+    );
+  });
+
+  it('accepts a project-defense Redis session for proctoring ingest', async () => {
+    prisma.attempt.findUnique.mockResolvedValue(null);
+    redis.get.mockImplementation(async (key: string) => {
+      if (String(key).includes('project:defense:session')) {
+        return JSON.stringify({ userId: USER, status: 'ACTIVE' });
+      }
+      if (String(key).includes('hmac')) return 'hmac-secret-value-hmac-secret';
+      return null;
+    });
+
+    const subject = await service.assertAttemptOwner(USER, ATTEMPT);
+    expect(subject.id).toBe(ATTEMPT);
+    expect(subject.persistAttempt).toBe(false);
   });
 });

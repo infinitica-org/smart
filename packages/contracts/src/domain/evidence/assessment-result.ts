@@ -37,9 +37,16 @@ export const AssessmentResultSchema = z.object({
   scorePercent: z.number().min(0).max(100).optional(),
   verificationDecision: VerificationDecisionOutcomeSchema.optional(),
   claimConfidence: z.number().min(0).max(1).optional(),
-  /** Targeted follow-up was recommended but could not be generated (AI unavailable or timeout). */
-  targetedAssessmentSkipped: z.boolean().optional(),
-  targetedAssessmentSkipReason: z.enum(['ai_unavailable', 'generation_failed']).optional(),
+  /** Persisted when SE-T02 skill-verify interview ran (examiner + grader prompt refs). */
+  seT02Interview: z
+    .object({
+      examinerPromptRef: z.string().regex(/^[a-z0-9-]+@\d+$/),
+      graderPromptRef: z
+        .string()
+        .regex(/^[a-z0-9-]+@\d+$/)
+        .nullable(),
+    })
+    .optional(),
   evaluatedAt: IsoDateTimeSchema,
 });
 export type AssessmentResult = z.infer<typeof AssessmentResultSchema>;

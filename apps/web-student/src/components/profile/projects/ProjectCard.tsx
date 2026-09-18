@@ -7,7 +7,8 @@ import {
   parseStackTags,
   projectSummaryText,
 } from '@/components/profile/projects/project-presenters';
-import { processingStateCopy } from '@/lib/project-submission';
+import { ProjectDefenseInterviewDialog } from '@/components/profile/ProjectDefenseInterviewDialog';
+import { needsOwnershipInterview, processingStateCopy } from '@/lib/project-submission';
 
 type ProjectCardProps = {
   project: ProjectDto;
@@ -106,6 +107,14 @@ export function ProjectCard({ project, onView }: ProjectCardProps) {
         </div>
       ) : project.status === 'UNDER_REVIEW' ? (
         <p className="mt-4 text-xs text-[var(--ds-text-muted)]">{statusCopy.body}</p>
+      ) : needsOwnershipInterview(project) ? (
+        <p className="mt-4 text-xs text-[var(--ds-text-muted)]">{statusCopy.body}</p>
+      ) : null}
+
+      {needsOwnershipInterview(project) ? (
+        <div className="mt-3">
+          <ProjectDefenseInterviewDialog project={project} />
+        </div>
       ) : null}
 
       <footer className="mt-auto flex justify-end pt-4">

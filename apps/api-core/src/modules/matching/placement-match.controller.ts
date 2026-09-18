@@ -76,6 +76,23 @@ export class PlacementMatchController {
     );
   }
 
+  @Get('match-runs/:runId/candidates/:studentId')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Single candidate fit from a completed match run snapshot.' })
+  @ApiBearerAuth()
+  async getCandidateFit(
+    @CurrentUser() user: RequestUser,
+    @Param('runId') runId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.matching.getCandidateFit(
+      requireInstitutionId(user),
+      UuidSchema.parse(runId),
+      UuidSchema.parse(studentId),
+    );
+  }
+
   @Get('match-runs/:id')
   @HttpCode(200)
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')

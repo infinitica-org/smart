@@ -37,7 +37,7 @@ describe('VerificationBadge', () => {
   it('renders PENDING_REVIEW state correctly', () => {
     render(<VerificationBadge status="PENDING_REVIEW" />);
     const badge = screen.getByRole('status');
-    expect(badge.textContent).toBe('Pending Review');
+    expect(badge.textContent).toBe('Under review');
     expect(badge.className).toContain('bg-warning');
   });
 

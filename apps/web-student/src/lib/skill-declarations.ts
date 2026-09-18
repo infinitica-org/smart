@@ -49,7 +49,6 @@ export function categoryNameForCode(skillCode: string): string {
 
 export const SKILL_VERIFY_STAGE_LABELS = {
   DIAGNOSTIC: 'Short diagnostic',
-  TARGETED: 'Targeted assessment',
   COMPLETE: 'Assessment',
   INTERVIEW: 'Defense interview',
 } as const;
@@ -79,6 +78,7 @@ export function isSdeV4Verifiable(skillCode: string): boolean {
 
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
+  if (claim.verificationInProgress) return 'PENDING_REVIEW';
   if (claim.status === 'VERIFIED' && claim.verificationDecision === 'PROVISIONAL') {
     return 'PROVISIONAL';
   }
@@ -120,6 +120,9 @@ export function isSkillVerifyCooldownActive(claim: SkillClaimDto, now = Date.now
 export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
   if (!isSdeV4Verifiable(claim.skillCode)) {
     return 'This skill does not have a verification challenge yet.';
+  }
+  if (claim.verificationInProgress) {
+    return 'Your assessment is under review. You can start again once processing finishes.';
   }
   if (claim.status === 'VERIFIED') {
     return 'This skill is already verified.';
@@ -191,8 +194,12 @@ export function viewForFocus(
     Date.parse(retryAt) > now;
   const cooling = status !== 'VERIFIED' && (waitOpen || status === 'LOCKED');
   const hasForm = isSdeV4Verifiable(skillCode);
+  const underReview = claim?.verificationInProgress === true;
   const canStart =
-    hasForm && !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
+    hasForm &&
+    !cooling &&
+    !underReview &&
+    (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
   const canEditProficiency =
     !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT' || !claim);
   const synthetic: SkillClaimDto | undefined = claim
@@ -231,7 +238,13 @@ export function isClaimActive(status: SkillClaimStatus): boolean {
 }
 
 export type RepositoryStatusLabel =
-  'Not declared' | 'Declared' | 'Verified' | 'Not verified' | 'Locked' | 'Reattempting';
+  | 'Not declared'
+  | 'Declared'
+  | 'Under review'
+  | 'Verified'
+  | 'Not verified'
+  | 'Locked'
+  | 'Reattempting';
 
 /** Human-readable repository status for a catalog skill with an optional claim. */
 export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
@@ -247,6 +260,9 @@ export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
   }
   if (badge === 'DECLARED') {
     return { displayLabel: 'Declared', badgeStatus: 'DECLARED' };
+  }
+  if (badge === 'PENDING_REVIEW') {
+    return { displayLabel: 'Under review', badgeStatus: 'PENDING_REVIEW' };
   }
   if (badge === 'NOT_VERIFIED') {
     return { displayLabel: 'Not verified', badgeStatus: 'NOT_VERIFIED' };
@@ -269,7 +285,7 @@ export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGI
 export const SKILL_VERIFICATION_ASSESSMENT_STEPS = [
   'Start with a short diagnostic — SMART discovers what you can demonstrate; you do not self-rate proficiency.',
   'Existing projects and work evidence are considered when available, but are not required to begin.',
-  'Targeted questions only appear where competencies are still uncertain — then evidence or interview if your level requires it.',
+  'After the diagnostic, evidence or a short defense interview may be required depending on your demonstrated level.',
   'Your verified badge reflects assessment-supported proficiency plus confidence, not a declared rating.',
 ] as const;
 

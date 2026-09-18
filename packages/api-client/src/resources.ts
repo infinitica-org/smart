@@ -139,6 +139,7 @@ import {
   UploadResumeResponseSchema,
   DeleteResumeResponseSchema,
   ProctoringEnrollResponseSchema,
+  ProctoringSnapshotUploadResponseSchema,
   ProctoringLivenessResponseSchema,
   ProctoringNonceResponseSchema,
   ProctoringOnboardingStatusSchema,
@@ -147,6 +148,12 @@ import {
   ProctoringVoiceResponseSchema,
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
+  AbandonProjectDefenseResponseSchema,
+  PrepareProjectDefenseResponseSchema,
+  StartProjectDefenseResponseSchema,
+  ProjectDefenseAudioUploadResponseSchema,
+  ProjectDefenseReplyResponseSchema,
+  CompleteProjectDefenseResponseSchema,
   SaveDraftResponseSchema,
   RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
@@ -1012,6 +1019,7 @@ export function assessmentApi(client: SmartApiClient) {
     completeSkillVerify: (sessionId: string, body: CompleteSkillVerifyRequest) =>
       client.post(prefixed(`/assessment/skill-verify/${sessionId}/complete`), body, {
         schema: CompleteSkillVerifyResponseSchema,
+        timeoutMs: 30_000,
       }),
 
     startSkillVerifyInterview: (sessionId: string) =>
@@ -1145,6 +1153,10 @@ export function proctoringApi(client: SmartApiClient) {
       ),
     fingerprint: (body: unknown) => client.post(prefixed('/proctoring/fingerprint'), body),
     checkpoint: (body: unknown) => client.post(prefixed('/proctoring/checkpoint'), body),
+    snapshotUploadUrl: (attemptId: string, body: unknown) =>
+      client.post(prefixed(`/proctoring/${attemptId}/snapshot-upload-url`), body, {
+        schema: ProctoringSnapshotUploadResponseSchema,
+      }),
     consent: (body: unknown) =>
       client.post(prefixed('/proctoring/consent'), body, {
         schema: ProctoringOnboardingStatusSchema,
@@ -1153,14 +1165,10 @@ export function proctoringApi(client: SmartApiClient) {
       client.post(prefixed('/proctoring/precheck'), body, {
         schema: ProctoringPrecheckResponseSchema,
       }),
-    enrollFace: (attemptId: string) =>
-      client.post(
-        prefixed('/proctoring/enroll-face'),
-        { attemptId },
-        {
-          schema: ProctoringEnrollResponseSchema,
-        },
-      ),
+    enrollFace: (body: unknown) =>
+      client.post(prefixed('/proctoring/enroll-face'), body, {
+        schema: ProctoringEnrollResponseSchema,
+      }),
     liveness: (body: unknown) =>
       client.post(prefixed('/proctoring/liveness'), body, {
         schema: ProctoringLivenessResponseSchema,
@@ -1233,6 +1241,36 @@ export function projectsApi(client: SmartApiClient) {
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+
+    prepareDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/prepare`), undefined, {
+        schema: PrepareProjectDefenseResponseSchema,
+      }),
+
+    startDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/start`), undefined, {
+        schema: StartProjectDefenseResponseSchema,
+      }),
+
+    abandonDefense: (projectId: string) =>
+      client.post(prefixed(`/projects/${projectId}/defense/abandon`), undefined, {
+        schema: AbandonProjectDefenseResponseSchema,
+      }),
+
+    defenseAudioUploadUrl: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/audio-upload-url`), body, {
+        schema: ProjectDefenseAudioUploadResponseSchema,
+      }),
+
+    defenseReply: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/reply`), body, {
+        schema: ProjectDefenseReplyResponseSchema,
+      }),
+
+    completeDefense: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/complete`), body, {
+        schema: CompleteProjectDefenseResponseSchema,
+      }),
   };
 }
 

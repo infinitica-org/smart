@@ -19,7 +19,6 @@ import {
 
 const SUBMIT_LABEL_BY_STAGE = {
   DIAGNOSTIC: 'Finish diagnostic',
-  TARGETED: 'Submit and see results',
   COMPLETE: 'Submit and see results',
 } as const;
 
@@ -242,11 +241,6 @@ export function SkillVerifyExam({
             ) : (
               <Badge variant="secondary">{session.proficiency}</Badge>
             )}
-            {session.stage === 'TARGETED' && (session.pendingCompetencies?.length ?? 0) > 0 ? (
-              <span className="text-xs">
-                Focusing on: {session.pendingCompetencies?.slice(0, 3).join(', ')}
-              </span>
-            ) : null}
             <span>{FORMAT_LABEL[item.format]}</span>
             <span className="rounded-md border border-[var(--surface-border)] px-2 py-0.5 text-[var(--text-primary)]">
               Total questions: {String(total)}

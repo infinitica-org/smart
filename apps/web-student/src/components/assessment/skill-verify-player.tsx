@@ -48,7 +48,6 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
   const [terminationCooldown, setTerminationCooldown] = useState<string | null>(null);
   const [postAssessment, setPostAssessment] = useState<'summary' | 'pending' | null>(null);
   const [catalogSkillCode, setCatalogSkillCode] = useState<string | null>(null);
-  const [targetedTransitionNote, setTargetedTransitionNote] = useState<string | null>(null);
   const generateStarted = useRef(false);
 
   useEffect(() => {
@@ -192,6 +191,14 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             );
             return;
           }
+          if (settled.gradingAccepted) {
+            await releaseProctoringSession();
+            setCatalogSkillCode(session.skillCode);
+            setReport(null);
+            setSession(null);
+            setPostAssessment('summary');
+            return;
+          }
           if (
             settled.pendingVerification &&
             settled.session &&
@@ -205,25 +212,6 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             setPostAssessment('pending');
             return;
           }
-          if (settled.sessionContinues && settled.session) {
-            const pending = settled.session.pendingCompetencies ?? [];
-            setTargetedTransitionNote(
-              pending.length > 0
-                ? `A few targeted questions on: ${pending.slice(0, 3).join(', ')}${pending.length > 3 ? '…' : ''}.`
-                : 'A short targeted follow-up based on your diagnostic.',
-            );
-            setSession(settled.session);
-            setAnswers({});
-            setCurrentIndex(0);
-            setReport(null);
-            setKioskTitle(
-              formatSkillVerifyKioskTitle(
-                settled.session.skillCode,
-                settled.session.stage ?? 'TARGETED',
-              ),
-            );
-            return;
-          }
           if (settled.grade && !settled.technicalFailure) {
             setReport(settled.grade);
             setAssessmentResult(settled.assessmentResult ?? null);
@@ -231,7 +219,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
             setPostAssessment('summary');
             return;
           }
-          router.push('/skills');
+          router.push('/assessments');
         } catch (err) {
           setError(skillVerifyErrorFromUnknown(err, 'submit'));
         }
@@ -256,7 +244,7 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           ) : null}
           <button
             type="button"
-            onClick={() => router.push('/skills')}
+            onClick={() => router.push('/assessments')}
             className="mt-4 rounded-lg border border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground hover:bg-background"
           >
             Back to Skills
@@ -295,9 +283,13 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
     );
   }
 
-  const backToSkills = () => router.push('/assessment');
+  const backToSkills = () => {
+    void releaseProctoringSession().finally(() => {
+      router.push('/assessment');
+    });
+  };
 
-  if (postAssessment === 'summary' && report) {
+  if (postAssessment === 'summary' && (report || catalogSkillCode)) {
     return (
       <SkillVerifyReport
         grade={report}
@@ -347,8 +339,6 @@ export function SkillVerifyPlayer({ claimId }: { claimId: string }) {
           pending={isPending}
           error={error}
           kioskTitle={kioskTitle}
-          stageNotice={targetedTransitionNote}
-          onDismissStageNotice={() => setTargetedTransitionNote(null)}
           onSelectKey={(itemIndex, key) =>
             setAnswers((prev) => ({
               ...prev,

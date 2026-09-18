@@ -15,13 +15,12 @@ export const ASSESSMENT_CONFIDENCE_LEVELS = ['LOW', 'MEDIUM', 'HIGH'] as const;
 export const AssessmentConfidenceLevelSchema = z.enum(ASSESSMENT_CONFIDENCE_LEVELS);
 export type AssessmentConfidenceLevel = z.infer<typeof AssessmentConfidenceLevelSchema>;
 
-export const ASSESSMENT_STAGES = ['DIAGNOSTIC', 'TARGETED', 'COMPLETE'] as const;
+export const ASSESSMENT_STAGES = ['DIAGNOSTIC', 'COMPLETE'] as const;
 export const AssessmentStageSchema = z.enum(ASSESSMENT_STAGES);
 export type AssessmentStage = z.infer<typeof AssessmentStageSchema>;
 
 export const RECOMMENDED_NEXT_STEPS = [
   'NONE',
-  'TARGETED_ASSESSMENT',
   'EVIDENCE_VERIFICATION',
   'INTERVIEW',
   'REMEDIATION',

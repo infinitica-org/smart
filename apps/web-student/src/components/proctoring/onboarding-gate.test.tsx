@@ -37,6 +37,13 @@ vi.mock('../../lib/proctoring/chromium', () => ({
   isGoogleChrome: () => mocks.chromium(),
 }));
 
+vi.mock('../../lib/proctoring/proctoring-snapshot-upload', () => ({
+  uploadProctoringSnapshot: vi.fn().mockResolvedValue({
+    ok: true,
+    objectKey: 'proctoring/attempt/enroll.jpg',
+  }),
+}));
+
 vi.mock('./face-live-check', () => ({
   FaceLiveCheck: ({ onPassed }: { onPassed: (sample: FaceCheckResult) => void }) => (
     <button
@@ -218,7 +225,7 @@ describe('OnboardingGate', () => {
     expect(screen.getByRole('button', { name: /continue and allow camera/i })).toBeTruthy();
   });
 
-  it('runs a live one-face lighting check instead of enroll and blink liveness', async () => {
+  it('runs face live check then enrolls and liveness before handing off', async () => {
     const onPassed = vi.fn();
     const stream = { id: 'cam', getTracks: () => [] };
     mocks.requestProctoringMedia.mockResolvedValue(stream);
@@ -230,13 +237,20 @@ describe('OnboardingGate', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /enter the challenge/i })).toBeDefined(),
     );
-    expect(mocks.enrollFace).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /enter the challenge/i }));
     await waitFor(() => expect(onPassed).toHaveBeenCalledWith(stream));
     expect(mocks.precheck).toHaveBeenCalledWith(
       expect.objectContaining({ attemptId: ATTEMPT, faceCentered: true, brightness: 140 }),
     );
-    expect(mocks.liveness).not.toHaveBeenCalled();
+    expect(mocks.enrollFace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptId: ATTEMPT,
+        objectKey: 'proctoring/attempt/enroll.jpg',
+      }),
+    );
+    expect(mocks.liveness).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptId: ATTEMPT, challenge: 'BLINK' }),
+    );
   });
 
   it('blocks skill-verify onboarding outside Google Chrome', () => {

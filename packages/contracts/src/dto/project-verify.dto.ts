@@ -1,10 +1,12 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import {
   GithubSnapshotUnavailableReasonSchema,
+  ProjectExclusionReasonSchema,
   ProjectStatusSchema,
   ProjectVerifyFlagSchema,
 } from '../domain/enums.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
+import { ProjectInterviewStatusSchema } from './project-defense.dto.js';
 
 /**
  * SE-T03 / CN-T08 contracts.
@@ -12,7 +14,7 @@ import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
  * Vishal V: GitHub OAuth (repo-read, not login-only), snapshot job, Prisma JSON
  * table `project_github_snapshots`, Redis `github:repos:{userId}` +
  * `project:snapshot:{projectId}` locks. Ramansh consumes `ProjectGithubSnapshot`
- * only — never Octokit. The agent never sets status REJECTED.
+ * only â€” never Octokit. The agent never sets status REJECTED.
  *
  * Owner of this file: Tino (contracts). Implementers: VV / RM / VB / SV.
  */
@@ -195,10 +197,14 @@ export const ProjectDtoSchema = z.object({
   status: ProjectStatusSchema,
   createdAt: IsoDateTimeSchema,
   report: ProjectVerificationReportDtoSchema.nullable(),
+  interviewRequired: z.boolean(),
+  interviewStatus: ProjectInterviewStatusSchema,
+  interviewCompletedAt: IsoDateTimeSchema.nullable(),
+  exclusionReason: ProjectExclusionReasonSchema.nullable().optional(),
 });
 export type ProjectDto = z.infer<typeof ProjectDtoSchema>;
 
-/** CN-T08 — a candidate's own submitted projects, newest first. */
+/** CN-T08 â€” a candidate's own submitted projects, newest first. */
 export const ListMyProjectsResponseSchema = z.object({
   projects: z.array(ProjectDtoSchema),
 });

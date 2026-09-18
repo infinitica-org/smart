@@ -5,7 +5,7 @@ import {
 
 /**
  * Maps skill@1 catalog skill codes (SkillClaim.skillCode) onto SDE v4 form codes.
- * @deprecated Prefer sdeFormCodeForSkill() from skill-competency-registry (81-skill index).
+ * @deprecated Prefer sdeFormCodeForSkill() from skill-competency-registry (67-skill index).
  */
 
 export const SKILL_TO_SDE_V4_FORM_CODE: Readonly<Record<string, string>> = {
@@ -17,9 +17,8 @@ export const SKILL_TO_SDE_V4_FORM_CODE: Readonly<Record<string, string>> = {
   SQL_QUERY_OPTIMIZATION: 'SDE_DATABASE_SQL',
   RELATIONAL_DATABASE_DESIGN_ADMINISTRATION: 'SDE_DATABASE_SQL',
   MODERN_FRONTEND_FRAMEWORKS: 'SDE_WEB_FRAMEWORKS',
-  DISTRIBUTED_SYSTEMS_DESIGN: 'SDE_SYSTEM_DESIGN',
-  MICROSERVICES_ARCHITECTURE_SERVICE_DECOMPOSITION: 'SDE_SYSTEM_DESIGN',
-  TEST_AUTOMATION_ENGINEERING: 'SDE_TESTING',
+  RESTFUL_GRAPHQL_API_DESIGN: 'SDE_SYSTEM_DESIGN',
+  CONTINUOUS_TESTING_QUALITY_ENGINEERING: 'SDE_TESTING',
   CI_CD_PIPELINE_ENGINEERING: 'SDE_DEPLOYMENT_CICD',
   CONTAINERIZATION_ORCHESTRATION: 'SDE_DEPLOYMENT_CICD',
 };
@@ -49,8 +48,8 @@ export const SKILL_FOCUS_OPTIONS: Readonly<Record<string, readonly string[]>> = 
   ],
   SQL_QUERY_OPTIMIZATION: ['Joins', 'Window functions', 'CTEs', 'Query tuning'],
   MODERN_FRONTEND_FRAMEWORKS: ['React', 'Vue', 'Angular'],
-  DISTRIBUTED_SYSTEMS_DESIGN: ['APIs', 'Caching', 'Databases', 'Scalability'],
-  TEST_AUTOMATION_ENGINEERING: ['Unit tests', 'Integration tests', 'Debugging'],
+  RESTFUL_GRAPHQL_API_DESIGN: ['REST', 'GraphQL', 'OpenAPI'],
+  CONTINUOUS_TESTING_QUALITY_ENGINEERING: ['Unit tests', 'Integration tests', 'Debugging'],
   CI_CD_PIPELINE_ENGINEERING: ['Docker', 'CI pipelines', 'Environments', 'Rollback'],
 };
 

@@ -29,33 +29,7 @@ const grade: GradeSdeSkillFormResponse = {
 
   traceTotal: 3,
 
-  itemResults: [
-    {
-      index: 12,
-
-      format: 'CODING',
-
-      marksEarned: 7,
-
-      marksMax: 10,
-
-      testsPassed: 2,
-
-      testsTotal: 3,
-
-      missedTests: [
-        {
-          input: 'nums = [3,3], target = 6',
-
-          expected: '[0,1]',
-
-          reason: 'Did not handle duplicate values.',
-        },
-      ],
-
-      feedback: 'Most cases passed; the duplicate-input path is missing.',
-    },
-  ],
+  itemResults: [],
 };
 
 const assessmentResult: AssessmentResult = {
@@ -75,16 +49,6 @@ const assessmentResult: AssessmentResult = {
 
       evidence: [],
     },
-
-    {
-      competencyId: 'c2',
-
-      status: 'UNCERTAIN',
-
-      confidence: 'LOW',
-
-      evidence: [],
-    },
   ],
 
   highestAssessmentSupportedProficiency: 'INTERMEDIATE',
@@ -95,7 +59,7 @@ const assessmentResult: AssessmentResult = {
 
   assessmentPassed: true,
 
-  uncertainties: ['Optimization'],
+  uncertainties: [],
 
   recommendedNextStep: 'NONE',
 
@@ -107,65 +71,29 @@ const assessmentResult: AssessmentResult = {
 
   confidence: 'MEDIUM',
 
-  targetedAssessmentSkipped: true,
-
-  targetedAssessmentSkipReason: 'generation_failed',
-
   evaluatedAt: new Date().toISOString(),
 };
 
 describe('SkillVerifyReport', () => {
-  it('shows intelligence-first summary with competency map and navigation', () => {
+  it('shows a minimal finished screen with one back action', () => {
     const onDone = vi.fn();
 
     render(
       <SkillVerifyReport
         grade={grade}
-
         assessmentResult={assessmentResult}
-
         catalogSkillCode="SQL_QUERY_OPTIMIZATION"
-
         onDone={onDone}
       />,
     );
 
-    expect(screen.getByText(/Assessment complete/)).toBeDefined();
-
-    expect(screen.getByText(/Assessment-supported proficiency/)).toBeDefined();
-
-    expect(screen.getByText(/Intermediate/)).toBeDefined();
-
-    expect(screen.getByText(/Competency map/)).toBeDefined();
-
-    expect(screen.getByText(/Targeted follow-up skipped/)).toBeDefined();
-
-    expect(screen.queryByText(/80%/)).toBeNull();
-
-    expect(screen.getByRole('button', { name: /back to skills/i })).toBeDefined();
-
-    expect(screen.getByRole('link', { name: /view assessments/i }).getAttribute('href')).toBe(
-      '/assessment',
-    );
+    expect(screen.getByText(/Assessment finished/)).toBeDefined();
+    expect(screen.queryByText(/Competency map/)).toBeNull();
+    expect(screen.queryByText(/Assessment-supported proficiency/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /view skill repository/i })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /back to skills/i }));
 
     expect(onDone).toHaveBeenCalled();
-  });
-
-  it('falls back to score summary when competency results are absent', () => {
-    render(
-      <SkillVerifyReport
-        grade={grade}
-
-        catalogSkillCode="SQL_QUERY_OPTIMIZATION"
-
-        onDone={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText(/80%/)).toBeDefined();
-
-    expect(screen.queryByText(/Competency map/)).toBeNull();
   });
 });

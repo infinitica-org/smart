@@ -204,7 +204,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     const file = new File(['%PDF-1.4 offer'], 'offer.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText('Proof document'), { target: { files: [file] } });
@@ -231,7 +231,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     const { container } = await openAddExperienceModal();
 
     fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
@@ -371,7 +371,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when domain is empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
@@ -382,7 +382,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save when responsibilities are empty', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { responsibilities: '' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
@@ -412,7 +412,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('prevents save for ended employment when End Date is missing', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
@@ -429,7 +429,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
     expect(screen.getByText(/^End date$/i)).toBeTruthy();
 
     fillMandatoryWorkExperienceFields(container);
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
@@ -508,7 +508,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   it('does not call the API when mandatory validation fails', async () => {
     const { container } = await openAddExperienceModal();
     fillMandatoryWorkExperienceFields(container, { domain: '   ' }, { isCurrent: true });
-    selectCatalogSkill('Version Control & Code Collaboration');
+    selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 

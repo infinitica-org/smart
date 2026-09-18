@@ -124,8 +124,19 @@ function setup(
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const employers = { requireEmployer: vi.fn() };
-  const service = new PlacementService(prisma as never, outbox as never, employers as never);
-  return { prisma, outbox, service, controller: new PlacementController(service) };
+  const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
+  const service = new PlacementService(
+    prisma as never,
+    outbox as never,
+    employers as never,
+    jdParseQueue as never,
+  );
+  return {
+    prisma,
+    outbox,
+    service,
+    controller: new PlacementController(service, employers as never),
+  };
 }
 
 function uniqueViolation(): Error & { code: string } {

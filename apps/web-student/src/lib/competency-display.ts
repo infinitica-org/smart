@@ -2,7 +2,6 @@ import {
   getSkillBlueprint,
   getSkillDefinition,
   buildSkillBlueprintForCategory,
-  type AssessmentResult,
   type CompetencyStatus,
   type SkillEvidenceContext,
 } from '@smart/contracts';
@@ -51,18 +50,6 @@ export function competencyStatusBadgeVariant(
   if (status === 'PARTIALLY_DEMONSTRATED') return 'secondary';
   if (status === 'NOT_DEMONSTRATED' || status === 'UNCERTAIN') return 'destructive';
   return 'outline';
-}
-
-export function targetedAssessmentSkipMessage(
-  reason: AssessmentResult['targetedAssessmentSkipReason'],
-): string {
-  if (reason === 'ai_unavailable') {
-    return 'We could not generate targeted follow-up questions because the AI service was unavailable. Your result is based on the diagnostic only — try again later for a fuller assessment.';
-  }
-  if (reason === 'generation_failed') {
-    return 'Targeted follow-up questions could not be prepared in time. Your result is based on the diagnostic only — you can retry verification later.';
-  }
-  return 'Targeted follow-up was skipped. Your result is based on the diagnostic only.';
 }
 
 export function summarizeEvidenceContext(context: SkillEvidenceContext | undefined): string {

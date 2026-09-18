@@ -10,6 +10,7 @@ import {
   ACTIVE_TAXONOMY_VERSION,
   AdminReviewFlagsQuerySchema,
   AdminReviewFlagsResponseSchema,
+  AssessmentPerformanceVectorSchema,
   ResolveReviewFlagResponseSchema,
   SMART_TOPICS,
   StudentCorroborationResponseSchema,
@@ -19,15 +20,12 @@ import {
   type PassiveSignalSourceId,
   type VectorizedSignal,
 } from '@smart/contracts';
-import {
-  DEFAULT_SIGNAL_WEIGHT_MODEL,
-  fuseSignals,
-  verifySignalWeightModel,
-} from '@smart/scoring-engine';
+import { fuseSignals, verifySignalWeightModel } from '@smart/scoring-engine';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CorroborationRedisStore } from './corroboration-redis.store.js';
+import { SignalWeightModelStore } from './signal-weight-model.store.js';
 import type { CorroborationAdminActor } from './corroboration.types.js';
 
 export interface FuseWithAssessmentOptions {
@@ -47,6 +45,7 @@ export class CorroborationService {
 
   constructor(
     @Inject(CorroborationRedisStore) private readonly store: CorroborationRedisStore,
+    @Inject(SignalWeightModelStore) private readonly weightModels: SignalWeightModelStore,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -78,6 +77,61 @@ export class CorroborationService {
       if (!claimed) return;
     }
     await this.recomputeSnapshot(assessment.userId, assessment);
+  }
+
+  /**
+   * Re-fuses passive X with all verified skill assessments after passive ingest
+   * (e.g. QLIX project evidence landed after assessments were already verified).
+   */
+  async refusionVerifiedSkillClaims(
+    userId: string,
+    options: { skillCodes?: readonly string[] } = {},
+  ): Promise<void> {
+    const claims = await this.prisma.skillClaim.findMany({
+      where: { studentId: userId, status: 'VERIFIED' },
+      include: {
+        skill: { select: { code: true } },
+        verificationAttempts: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    const skillFilter = options.skillCodes?.length ? new Set(options.skillCodes) : null;
+    const entries = claims
+      .filter((claim) => !skillFilter || skillFilter.has(claim.skill.code))
+      .flatMap((claim) => {
+        const attempt = claim.verificationAttempts[0];
+        if (!attempt || attempt.scorePercent == null) return [];
+        return [
+          {
+            dimension: {
+              taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+              dimensionKey: claim.skill.code,
+              skillCode: claim.skill.code,
+              proficiencyLevel: attempt.claimedProficiency,
+            },
+            scorePercent: Number(attempt.scorePercent),
+            passed: attempt.passed ?? false,
+            proficiencyLevel: attempt.claimedProficiency,
+          },
+        ];
+      });
+
+    if (entries.length === 0) return;
+
+    const primaryClaim = claims.find(
+      (claim) => claim.skill.code === entries[0]?.dimension.skillCode,
+    );
+    if (!primaryClaim) return;
+
+    const assessment = AssessmentPerformanceVectorSchema.parse({
+      userId,
+      claimId: primaryClaim.id,
+      skillCode: primaryClaim.skill.code,
+      assessedAt: new Date().toISOString(),
+      entries,
+    });
+
+    await this.recomputeSnapshot(userId, assessment);
   }
 
   async getStudentSnapshot(userId: string) {
@@ -192,7 +246,8 @@ export class CorroborationService {
     userId: string,
     assessment: AssessmentPerformanceVector | null,
   ): Promise<void> {
-    if (!verifySignalWeightModel(DEFAULT_SIGNAL_WEIGHT_MODEL)) {
+    const weights = await this.weightModels.getActiveModel();
+    if (!verifySignalWeightModel(weights)) {
       throw new InternalServerErrorException({
         error: 'invalid_weight_model',
         message: 'Signal weight model failed integrity check.',
@@ -203,7 +258,7 @@ export class CorroborationService {
     const { readouts, contradictionDimensions } = fuseSignals({
       passiveX,
       assessmentY: assessment,
-      weights: DEFAULT_SIGNAL_WEIGHT_MODEL,
+      weights,
     });
 
     const existing = await this.store.getSnapshot(userId);

@@ -6,8 +6,15 @@ import {
   duplicateScore,
   jaccard,
   routeProjectVerification,
+  routeQlixResult,
   techAgeFlag,
 } from './project-verify.heuristics.js';
+
+const qlixThresholds = {
+  similarityHardFail: 50,
+  similarityBorderline: 30,
+  aiLikelihoodFlag: 60,
+};
 
 const nearDup =
   'students cannot see live bus location on campus routes I used websockets and a gps ingest';
@@ -100,5 +107,86 @@ describe('routing', () => {
         webSearchFailed: true,
       }),
     ).toContain('LOW_CONFIDENCE');
+  });
+});
+
+describe('routeQlixResult', () => {
+  it('opens the interview gate for clean QLIX scores', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 12,
+      aiLikelihood: 35,
+      analyzedTokens: 0,
+      failed: false,
+      timedOut: false,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.opensInterviewGate).toBe(true);
+    expect(routed.routedToReview).toBe(false);
+  });
+
+  it('opens the interview gate for small repos with low analyzed token counts', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 12,
+      aiLikelihood: 20,
+      analyzedTokens: 1_200,
+      failed: false,
+      timedOut: false,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.opensInterviewGate).toBe(true);
+    expect(routed.routedToReview).toBe(false);
+  });
+
+  it('flags elevated aiLikelihood but still opens the interview gate', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 12,
+      aiLikelihood: 72,
+      analyzedTokens: 0,
+      failed: false,
+      timedOut: false,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.opensInterviewGate).toBe(true);
+    expect(routed.flags).toContain('QLIX_AUTHORSHIP_ELEVATED');
+  });
+
+  it('routes high similarity to review while still opening the interview gate', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 55,
+      aiLikelihood: 20,
+      analyzedTokens: 0,
+      failed: false,
+      timedOut: false,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.opensInterviewGate).toBe(true);
+    expect(routed.routedToReview).toBe(true);
+    expect(routed.exclusionReason).toBe('SOURCE_OVERLAP_ELEVATED');
+  });
+
+  it('opens the interview gate for borderline similarity with review routing', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 35,
+      aiLikelihood: 20,
+      analyzedTokens: 0,
+      failed: false,
+      timedOut: false,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.opensInterviewGate).toBe(true);
+    expect(routed.routedToReview).toBe(true);
+  });
+
+  it('maps poll timeout to verification incomplete', () => {
+    const routed = routeQlixResult({
+      similarityIndex: 0,
+      aiLikelihood: null,
+      analyzedTokens: 0,
+      failed: true,
+      timedOut: true,
+      thresholds: qlixThresholds,
+    });
+    expect(routed.exclusionReason).toBe('VERIFICATION_INCOMPLETE');
+    expect(routed.flags).toContain('QLIX_POLL_TIMEOUT');
   });
 });

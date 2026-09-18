@@ -145,7 +145,7 @@ describe('ProjectSubmissionForm', () => {
     expect(screen.getByText(/Fix the highlighted template fields/i)).toBeTruthy();
   });
 
-  it('queues create, shows an explicit Processing state, and offers to submit another', async () => {
+  it('queues create, shows an explicit Verifying state, and offers to submit another', async () => {
     create.mockResolvedValueOnce(busTracker);
 
     renderForm();
@@ -159,9 +159,11 @@ describe('ProjectSubmissionForm', () => {
       githubUrl: 'https://github.com/org/repo',
     });
     await waitFor(() =>
-      expect(screen.getAllByText(/^Processing$/i).length).toBeGreaterThanOrEqual(1),
+      expect(screen.getAllByText(/^Verifying$/i).length).toBeGreaterThanOrEqual(1),
     );
-    expect(screen.getAllByText(/queued for verification/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Integrity verification is running/i).length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(screen.queryByText(/^Submitting…$/i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));

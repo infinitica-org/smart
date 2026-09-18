@@ -30,8 +30,12 @@ describe('buildCreateProjectRequest', () => {
 });
 
 describe('processing state', () => {
-  it('treats SUBMITTED as explicit processing, not an empty spinner', () => {
-    expect(isProcessingStatus('SUBMITTED')).toBe(true);
+  it('treats SUBMITTED without report as explicit processing, not an empty spinner', () => {
+    const pending = {
+      status: 'SUBMITTED' as const,
+      report: null,
+    };
+    expect(isProcessingStatus(pending)).toBe(true);
     const copy = processingStateCopy({
       projectId: '123e4567-e89b-12d3-a456-426614174000',
       studentId: '123e4567-e89b-12d3-a456-426614174001',
@@ -46,9 +50,12 @@ describe('processing state', () => {
       status: 'SUBMITTED',
       createdAt: '2026-09-02T10:00:00.000Z',
       report: null,
+      interviewRequired: false,
+      interviewStatus: 'NOT_REQUIRED' as const,
+      interviewCompletedAt: null,
     });
-    expect(copy.title).toBe('Processing');
-    expect(copy.body).toMatch(/queued for verification/i);
+    expect(copy.title).toBe('Verifying');
+    expect(copy.body).toMatch(/integrity verification is running/i);
   });
 });
 

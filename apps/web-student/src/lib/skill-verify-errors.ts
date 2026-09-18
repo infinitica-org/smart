@@ -147,7 +147,7 @@ export function skillVerifyErrorFromUnknown(
           kind: 'generation_failed',
           title: 'Could not finish assessment',
           message:
-            'We saved your diagnostic answers but could not start the next stage. Return to Skills and try again shortly.',
+            'We could not score your answers right now. Try finishing again in a moment, or return to Skills and start a new verification.',
         };
       }
       return GENERATION_FAILED;

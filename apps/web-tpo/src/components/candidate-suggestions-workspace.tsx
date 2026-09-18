@@ -5,12 +5,15 @@ import { Briefcase, Loader2, UserSearch } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import {
   SKILL_DEFINITIONS,
-  TIER_LABEL,
   type BatchDto,
   type CandidateMatchDto,
   type JobOpeningDto,
+  type MatchMethod,
+  type ShortlistDto,
+  type SkillFitRow,
 } from '@smart/contracts';
 import { api, applicationsApi, openingsApi } from '../lib/api';
+import { potentialFitLabel } from '../lib/matching-display';
 import { useMatchRun } from '../lib/use-match-run';
 import { FilterMultiSelect } from './matching/filter-multi-select';
 import {
@@ -45,16 +48,28 @@ function errorMessage(caught: unknown, fallback: string): string {
   return fallback;
 }
 
-function tierBadgeClass(tier: CandidateMatchDto['headlineTier']): string {
-  switch (tier) {
-    case 'GOLD':
-      return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'SILVER':
-      return 'border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]';
-    case 'BRONZE':
-      return 'border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] text-[var(--ds-text-muted)]';
+function matchMethodLabel(method: MatchMethod | undefined): string {
+  if (method === 'RULES') return 'Rules-ranked';
+  if (method === 'SKILL_CAPABILITY') return 'Skill + capability match';
+  return 'Matched';
+}
+
+function usesSkillCapabilityUi(
+  shortlist: ShortlistDto | null,
+  candidate: CandidateMatchDto,
+): boolean {
+  const method = shortlist?.matchMethod ?? candidate.method;
+  return method === 'SKILL_CAPABILITY';
+}
+
+function skillFitStatusClass(status: SkillFitRow['status']): string {
+  switch (status) {
+    case 'MET':
+      return 'text-emerald-700';
+    case 'PARTIAL':
+      return 'text-amber-700';
     default:
-      return 'border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-muted)]';
+      return 'text-rose-700';
   }
 }
 
@@ -146,6 +161,7 @@ export function CandidateSuggestionsWorkspace({
       minCgpa: parsedCgpa !== undefined && !Number.isNaN(parsedCgpa) ? parsedCgpa : undefined,
       requiredSkillCodes: requiredSkillCodes.length > 0 ? requiredSkillCodes : undefined,
       limit: 50,
+      minSkillCoverage: 0.6,
     });
   }
 
@@ -238,7 +254,7 @@ export function CandidateSuggestionsWorkspace({
       <PlacementPageHeader
         eyebrow="Placement · Candidate Discovery"
         title="Ranked Candidate Suggestions"
-        description="Rules-ranked candidates for the selected opening. Shortlist to move a candidate into the ATS pipeline."
+        description="Skill-ranked candidates for the selected opening. Shortlist to move a candidate into the ATS pipeline."
         actions={
           <>
             <label className="flex items-center gap-2">
@@ -442,6 +458,17 @@ export function CandidateSuggestionsWorkspace({
                 {sortedCandidates.length}
               </strong>{' '}
               ranked candidates
+              {run.eligiblePoolCount !== null && run.eligiblePoolCount > sortedCandidates.length ? (
+                <>
+                  {' '}
+                  ({run.eligiblePoolCount - sortedCandidates.length} more in the pool did not meet
+                  the role&apos;s minimum skill coverage
+                  {shortlist?.minSkillCoverageApplied !== undefined
+                    ? ` (${Math.round(shortlist.minSkillCoverageApplied * 100)}%)`
+                    : ''}
+                  )
+                </>
+              ) : null}
               {selectedIds.size > 0 ? (
                 <>
                   {' '}
@@ -454,7 +481,9 @@ export function CandidateSuggestionsWorkspace({
               ) : null}
             </p>
             <div className="flex items-center gap-3">
-              <span className={`hidden sm:inline ${sectionLabelClass}`}>Rules-ranked</span>
+              <span className={`hidden sm:inline ${sectionLabelClass}`}>
+                {matchMethodLabel(shortlist?.matchMethod ?? sortedCandidates[0]?.method)}
+              </span>
               <button
                 type="button"
                 className={primaryButtonClass}
@@ -470,9 +499,15 @@ export function CandidateSuggestionsWorkspace({
             {sortedCandidates.map((candidate, index) => {
               const matchPercent = Math.round(candidate.matchScore * 100);
               const rank = index + 1;
+              const skillCapability = usesSkillCapabilityUi(shortlist, candidate);
+              const skillCoveragePct = candidate.explanation.skillCoveragePct;
+              const capabilityCoveragePct = candidate.explanation.capabilityCoveragePct;
               const whyText =
+                candidate.explanation.recruiterSummary ||
                 candidate.explanation.why ||
-                `Matched based on ${candidate.headlineTier} tier status and Level ${candidate.highestLevelCleared} clearance.`;
+                (skillCapability
+                  ? 'Skill and capability profile computed for this role.'
+                  : `Matched based on certification readiness for this role.`);
 
               return (
                 <article key={candidate.studentId} className={`${cardClass} flex flex-col gap-4`}>
@@ -493,21 +528,17 @@ export function CandidateSuggestionsWorkspace({
                         <h2 className="text-base font-semibold text-[var(--ds-text)]">
                           {candidate.studentName}
                         </h2>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--ds-text-muted)]">
-                          <span className={chipClass}>{candidate.trackCode}</span>
-                          <span>·</span>
-                          <span className="font-semibold text-[var(--ds-text-secondary)]">
-                            Level {candidate.highestLevelCleared} Cleared
-                          </span>
-                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className={`${pillClass} ${tierBadgeClass(candidate.headlineTier)}`}>
-                        {candidate.headlineTier} (
-                        {TIER_LABEL[candidate.headlineTier] ?? candidate.headlineTier})
-                      </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {skillCapability && candidate.explanation.potentialFit ? (
+                        <span
+                          className={`${pillClass} border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]`}
+                        >
+                          {potentialFitLabel(candidate.explanation.potentialFit)}
+                        </span>
+                      ) : null}
                       <span
                         className={`${pillClass} border-emerald-200 bg-emerald-50 text-emerald-700`}
                       >
@@ -521,15 +552,79 @@ export function CandidateSuggestionsWorkspace({
                     </div>
                   </div>
 
+                  {skillCapability &&
+                  (skillCoveragePct !== undefined || capabilityCoveragePct !== undefined) ? (
+                    <p className={`text-xs font-medium ${mutedTextClass}`}>
+                      Skill coverage{' '}
+                      <strong className="text-[var(--ds-text)]">
+                        {Math.round((skillCoveragePct ?? 0) * 100)}%
+                      </strong>
+                      {' · '}
+                      Capability coverage{' '}
+                      <strong className="text-[var(--ds-text)]">
+                        {Math.round((capabilityCoveragePct ?? 0) * 100)}%
+                      </strong>
+                      {shortlist?.minSkillCoverageApplied !== undefined ? (
+                        <>
+                          {' '}
+                          (min skill gate {Math.round(shortlist.minSkillCoverageApplied * 100)}%)
+                        </>
+                      ) : null}
+                    </p>
+                  ) : null}
+
+                  {(candidate.explanation.verifiedSkills?.length ?? 0) > 0 ? (
+                    <div className="border-t border-[var(--ds-border-subtle)] pt-3">
+                      <p className={`mb-2 ${sectionLabelClass}`}>Verified skills</p>
+                      <ul className="flex flex-wrap gap-2">
+                        {candidate.explanation.verifiedSkills?.map((skill) => (
+                          <li
+                            key={skill.skillCode}
+                            className={`${chipClass} text-[11px] text-[var(--ds-text-secondary)]`}
+                          >
+                            {skill.skillName}
+                            <span className="text-[var(--ds-text-muted)]">
+                              {' '}
+                              · {skill.proficiency}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
                   <div className="rounded-xl border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] p-4">
-                    <p className={`mb-1 ${sectionLabelClass}`}>Match Explanation</p>
+                    <p className={`mb-1 ${sectionLabelClass}`}>Match explanation</p>
                     <p className="text-sm leading-relaxed font-medium text-[var(--ds-text)]">
                       {whyText}
                     </p>
                   </div>
 
-                  {candidate.explanation.strongCompetencies.length > 0 ||
-                  candidate.explanation.gapCompetencies.length > 0 ? (
+                  {skillCapability && (candidate.explanation.skillFit?.length ?? 0) > 0 ? (
+                    <div className="border-t border-[var(--ds-border-subtle)] pt-3">
+                      <p className={`mb-2 ${sectionLabelClass}`}>Required skills</p>
+                      <ul className="flex flex-col gap-1.5 text-xs font-medium">
+                        {(candidate.explanation.skillFit ?? []).map((row) => (
+                          <li
+                            key={row.skillCode}
+                            className="flex flex-wrap items-center justify-between gap-2"
+                          >
+                            <span className="text-[var(--ds-text)]">{row.skillName}</span>
+                            <span className={skillFitStatusClass(row.status)}>
+                              {row.status}
+                              {row.actualProficiency
+                                ? ` · ${row.actualProficiency} (need ${row.requiredProficiency})`
+                                : ` · need ${row.requiredProficiency}`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {!skillCapability &&
+                  (candidate.explanation.strongCompetencies.length > 0 ||
+                    candidate.explanation.gapCompetencies.length > 0) ? (
                     <div className="flex flex-wrap gap-4 border-t border-[var(--ds-border-subtle)] pt-3 text-xs font-medium">
                       {candidate.explanation.strongCompetencies.length > 0 ? (
                         <div>

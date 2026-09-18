@@ -51,18 +51,44 @@ const candidateA: CandidateMatchDto = {
   studentId: 'aaaaaaa1-1111-4111-8111-111111111111',
   studentName: 'Aarav Sharma',
   trackCode: 'TECH_FULLSTACK',
-  certificateId: 'cert-1111',
-  highestLevelCleared: 3,
-  headlineTier: 'GOLD',
-  similarityScore: 0.92,
+  certificateId: null,
+  highestLevelCleared: 1,
+  headlineTier: 'BRONZE',
+  similarityScore: 0,
   matchScore: 0.92,
-  method: 'RULES',
+  method: 'SKILL_CAPABILITY',
   explanation: {
-    thresholdsMet: [{ level: 3, required: 'GOLD', actual: 'GOLD' }],
+    thresholdsMet: [],
     thresholdsMissed: [],
-    strongCompetencies: ['Algorithms', 'System Design'],
+    strongCompetencies: [],
     gapCompetencies: [],
-    why: 'Demonstrated Gold tier mastery in Fullstack level 3 with strong algorithmic competencies.',
+    why: 'Met Deep Learning; capability training pipeline.',
+    skillCoveragePct: 1,
+    capabilityCoveragePct: 0.8,
+    potentialFit: 'STRONG',
+    skillFit: [
+      {
+        skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
+        skillName: 'Deep Learning',
+        status: 'MET',
+        requiredProficiency: 'BEGINNER',
+        actualProficiency: 'INTERMEDIATE',
+      },
+    ],
+    capabilityFit: [],
+    recruiterSummary: 'Strong verified deep learning fit for this role.',
+    verifiedSkills: [
+      {
+        skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
+        skillName: 'Deep Learning',
+        proficiency: 'INTERMEDIATE',
+      },
+      {
+        skillCode: 'LARGE_LANGUAGE_MODEL_LLM_APPLICATION_ENGINEERING',
+        skillName: 'Large Language Model Application Engineering',
+        proficiency: 'BEGINNER',
+      },
+    ],
   },
 };
 
@@ -70,18 +96,38 @@ const candidateB: CandidateMatchDto = {
   studentId: 'bbbbbbb2-2222-4222-8222-222222222222',
   studentName: 'Bhavna Patel',
   trackCode: 'TECH_FULLSTACK',
-  certificateId: 'cert-2222',
-  highestLevelCleared: 2,
-  headlineTier: 'SILVER',
-  similarityScore: 0.75,
+  certificateId: null,
+  highestLevelCleared: 1,
+  headlineTier: 'BRONZE',
+  similarityScore: 0,
   matchScore: 0.75,
-  method: 'RULES',
+  method: 'SKILL_CAPABILITY',
   explanation: {
-    thresholdsMet: [{ level: 2, required: 'SILVER', actual: 'SILVER' }],
+    thresholdsMet: [],
     thresholdsMissed: [],
-    strongCompetencies: ['Frontend Logic'],
-    gapCompetencies: ['System Design'],
-    why: 'Cleared Silver tier level 2 with core frontend competencies present.',
+    strongCompetencies: [],
+    gapCompetencies: [],
+    why: 'Partial skill coverage on required stack.',
+    skillCoveragePct: 0.75,
+    capabilityCoveragePct: 0.6,
+    potentialFit: 'STRETCH',
+    skillFit: [
+      {
+        skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
+        skillName: 'Deep Learning',
+        status: 'PARTIAL',
+        requiredProficiency: 'INTERMEDIATE',
+        actualProficiency: 'BEGINNER',
+      },
+    ],
+    capabilityFit: [],
+    verifiedSkills: [
+      {
+        skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
+        skillName: 'Deep Learning',
+        proficiency: 'BEGINNER',
+      },
+    ],
   },
 };
 
@@ -94,6 +140,8 @@ const mockShortlist: ShortlistDto = {
   candidates: [candidateB, candidateA], // Deliberately out of order (0.75 then 0.92)
   totalCandidatesConsidered: 15,
   eligiblePoolCount: 15,
+  matchMethod: 'SKILL_CAPABILITY',
+  minSkillCoverageApplied: 0.6,
 };
 
 const runId = '55555555-5555-4555-8555-555555555555';
@@ -160,7 +208,7 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     expect(matchingApi.createRun).not.toHaveBeenCalled();
   });
 
-  it('renders ranked candidate list with score percentage, headline tier, level and explanation.why', async () => {
+  it('renders ranked candidates with match score and skill-capability explanation', async () => {
     vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
     vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
     vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
@@ -176,23 +224,14 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     expect(screen.getByText('92% Match')).toBeDefined();
     expect(screen.getByText('75% Match')).toBeDefined();
 
-    // Plain-language match explanations
-    expect(
-      screen.getByText(
-        'Demonstrated Gold tier mastery in Fullstack level 3 with strong algorithmic competencies.',
-      ),
-    ).toBeDefined();
-    expect(
-      screen.getByText('Cleared Silver tier level 2 with core frontend competencies present.'),
-    ).toBeDefined();
-
-    // Headline tier labels
-    expect(screen.getByText(/GOLD \(Ready Now\)/)).toBeDefined();
-    expect(screen.getByText(/SILVER \(Needs Supervised Onboarding\)/)).toBeDefined();
-
-    // Level clearance
-    expect(screen.getByText(/Level 3 Cleared/)).toBeDefined();
-    expect(screen.getByText(/Level 2 Cleared/)).toBeDefined();
+    expect(screen.getByText('Strong verified deep learning fit for this role.')).toBeDefined();
+    expect(screen.getByText(/Skill \+ capability match/)).toBeDefined();
+    expect(screen.getAllByText('Verified skills').length).toBe(2);
+    expect(screen.getByText(/Large Language Model Application Engineering/)).toBeDefined();
+    expect(screen.getByText('Partial fit — upskilling likely')).toBeDefined();
+    expect(screen.getAllByText(/Deep Learning/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/MET · INTERMEDIATE/)).toBeDefined();
+    expect(screen.queryByText(/GOLD \(Ready Now\)/)).toBeNull();
 
     // KPI strip
     expect(screen.getByText('15 students')).toBeDefined();

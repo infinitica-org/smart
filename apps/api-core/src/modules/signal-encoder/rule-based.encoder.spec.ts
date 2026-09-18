@@ -32,6 +32,33 @@ describe('RuleBasedEncoder', () => {
     expect(python?.confidence).toBeGreaterThan(0.5);
   });
 
+  it('encodes verified QLIX projects as passive QLIX signal entries', () => {
+    const vector = encoder.encodeQlixVerifiedProjects({
+      userId: '00000000-0000-4000-8000-000000000003',
+      encodedAt: '2026-09-11T00:00:00.000Z',
+      projects: [
+        {
+          projectId: '00000000-0000-4000-8000-000000000010',
+          skillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+          appliedProficiencyCeiling: 'ADVANCED',
+          qualityScore: 80,
+          authenticityScore: 75,
+          relevanceScore: 85,
+          qlixConfidence: 'high',
+          defenseScore: 88,
+        },
+      ],
+    });
+
+    expect(vector.sourceId).toBe('QLIX');
+    expect(vector.consentScope).toBe('project.verification.qlix');
+    expect(vector.entries).toHaveLength(1);
+    expect(vector.entries[0]?.dimension.dimensionKey).toBe(
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+    );
+    expect(vector.entries[0]?.score).toBeGreaterThan(0.5);
+  });
+
   it('maps HackerRank Python tag to PYTHON_APPLICATION_BACKEND_DEVELOPMENT dimension', () => {
     const vector = encoder.encodeHackerrank({
       userId: '00000000-0000-4000-8000-000000000002',

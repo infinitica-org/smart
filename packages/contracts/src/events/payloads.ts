@@ -235,11 +235,13 @@ export type CertificateIssuedEvent = z.infer<typeof CertificateIssuedEventSchema
 
 export const PlacementMatchedDataSchema = z.object({
   shortlistId: UuidSchema,
+  runId: UuidSchema.optional(),
   jdId: UuidSchema,
   institutionId: UuidSchema,
   companyName: z.string(),
   roleTitle: z.string(),
   matchedCount: z.number().int(),
+  matchMethod: z.enum(['RULES', 'SKILL_CAPABILITY', 'HYBRID']).optional(),
   /** Identifiers only; the webhook dispatcher hydrates what the partner may see. */
   studentIds: z.array(UuidSchema),
   generatedAt: IsoDateTimeSchema,
@@ -404,6 +406,18 @@ export const ProjectVerifyCompletedEventSchema = envelopeSchema(
 );
 export type ProjectVerifyCompletedEvent = z.infer<typeof ProjectVerifyCompletedEventSchema>;
 
+export const ProjectDefenseCompletedDataSchema = z.object({
+  projectId: UuidSchema,
+  ownershipConcern: z.boolean(),
+  routedToReview: z.boolean(),
+  defenseScore: ScoreSchema,
+});
+export const ProjectDefenseCompletedEventSchema = envelopeSchema(
+  SMART_TOPICS.projectDefenseCompleted,
+  ProjectDefenseCompletedDataSchema,
+);
+export type ProjectDefenseCompletedEvent = z.infer<typeof ProjectDefenseCompletedEventSchema>;
+
 export const ProctoringSnapshotReadyDataSchema = z.object({
   attemptId: UuidSchema,
   objectKey: z.string().min(8).max(512),
@@ -494,6 +508,7 @@ export const EVENT_SCHEMA_BY_TOPIC = {
   [SMART_TOPICS.projectSubmitted]: ProjectSubmittedEventSchema,
   [SMART_TOPICS.projectSnapshotReady]: ProjectSnapshotReadyEventSchema,
   [SMART_TOPICS.projectVerifyCompleted]: ProjectVerifyCompletedEventSchema,
+  [SMART_TOPICS.projectDefenseCompleted]: ProjectDefenseCompletedEventSchema,
   [SMART_TOPICS.proctoringSnapshotReady]: ProctoringSnapshotReadyEventSchema,
   [SMART_TOPICS.candidateSkillsDiscovered]: CandidateSkillsDiscoveredEventSchema,
   [SMART_TOPICS.signalIngested]: SignalIngestedEventSchema,
@@ -521,6 +536,7 @@ export type SmartEvent =
   | ProjectSubmittedEvent
   | ProjectSnapshotReadyEvent
   | ProjectVerifyCompletedEvent
+  | ProjectDefenseCompletedEvent
   | ProctoringSnapshotReadyEvent
   | CandidateSkillsDiscoveredEvent
   | SignalIngestedEvent

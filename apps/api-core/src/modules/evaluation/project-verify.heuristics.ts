@@ -5,6 +5,7 @@ import {
   PROJECT_VERIFY_TECH_AGE_YEARS,
   PROJECT_VERIFY_WEIGHTS,
   type GithubRepoSnapshot,
+  type ProjectExclusionReason,
   type ProjectStatus,
   type ProjectVerifyFlag,
 } from '@smart/contracts';
@@ -99,6 +100,52 @@ export function routeProjectVerification(input: {
     return { status: 'UNDER_REVIEW', routedToReview: true };
   }
   return { status: 'VERIFIED', routedToReview: false };
+}
+
+export function routeQlixResult(input: {
+  similarityIndex: number;
+  aiLikelihood: number | null;
+  analyzedTokens: number;
+  failed: boolean;
+  timedOut: boolean;
+  thresholds: {
+    similarityHardFail: number;
+    similarityBorderline: number;
+    aiLikelihoodFlag: number;
+  };
+}): {
+  opensInterviewGate: boolean;
+  routedToReview: boolean;
+  exclusionReason: ProjectExclusionReason | null;
+  flags: ProjectVerifyFlag[];
+} {
+  const flags: ProjectVerifyFlag[] = [];
+  if (input.timedOut) flags.push('QLIX_POLL_TIMEOUT');
+  if (input.failed || input.timedOut) {
+    return {
+      opensInterviewGate: false,
+      routedToReview: true,
+      exclusionReason: 'VERIFICATION_INCOMPLETE',
+      flags,
+    };
+  }
+  let routedToReview = false;
+  let exclusionReason: ProjectExclusionReason | null = null;
+  if (input.similarityIndex > input.thresholds.similarityHardFail) {
+    routedToReview = true;
+    exclusionReason = 'SOURCE_OVERLAP_ELEVATED';
+  } else if (input.similarityIndex > input.thresholds.similarityBorderline) {
+    routedToReview = true;
+  }
+  if (input.aiLikelihood !== null && input.aiLikelihood >= input.thresholds.aiLikelihoodFlag) {
+    flags.push('QLIX_AUTHORSHIP_ELEVATED');
+  }
+  return {
+    opensInterviewGate: true,
+    routedToReview,
+    exclusionReason,
+    flags,
+  };
 }
 
 export function collectFlags(input: {

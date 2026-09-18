@@ -72,7 +72,7 @@ const STATE_CONFIGS: Record<string, StateStyle> = {
     icon: Clock,
   },
   PENDING_REVIEW: {
-    label: 'Pending Review',
+    label: 'Under review',
     classNameSolid: 'bg-warning text-[#070707] border-transparent',
     classNameOutline: 'bg-warning/10 text-warning border-warning/30',
     icon: AlertTriangle,

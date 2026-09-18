@@ -31,6 +31,19 @@ describe('SDE v4 matrix', () => {
     expect(os?.levels.ADVANCED.flavorNotes.some((note) => note.includes('deadlock'))).toBe(true);
   });
 
+  it('uses only CODING or SCENARIO for open items (no DEBUG or DESIGN_REASONING)', () => {
+    for (const skill of SDE_V4_SKILLS) {
+      const allowed = skill.taskFamily === 'CODING' ? 'CODING' : 'SCENARIO';
+      for (const proficiency of ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'] as const) {
+        const open = skill.levels[proficiency].openFormats;
+        expect(open.every((format) => format === allowed)).toBe(true);
+        expect(open.some((format) => format === 'DEBUG' || format === 'DESIGN_REASONING')).toBe(
+          false,
+        );
+      }
+    }
+  });
+
   it('uses joins/subqueries flavor at SQL advanced, not only Professional', () => {
     const sql = SDE_V4_SKILLS.find((skill) => skill.code === 'SDE_DATABASE_SQL');
     if (!sql) throw new Error('missing SDE_DATABASE_SQL');

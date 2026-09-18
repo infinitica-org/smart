@@ -4,9 +4,11 @@ import {
   API_PREFIX,
   ProctoringCheckpointRequestSchema,
   ProctoringConsentRequestSchema,
+  ProctoringEnrollRequestSchema,
   ProctoringFingerprintRequestSchema,
   ProctoringLivenessRequestSchema,
   ProctoringPrecheckRequestSchema,
+  ProctoringSnapshotUploadRequestSchema,
   ProctoringViolationRequestSchema,
   type BlobWsPayload,
   type ProctoringEnrollResponse,
@@ -14,7 +16,9 @@ import {
   type ProctoringNonceResponse,
   type ProctoringOnboardingStatus,
   type ProctoringPingResponse,
+  type ProctoringCheckpointResponse,
   type ProctoringPrecheckResponse,
+  type ProctoringSnapshotUploadResponse,
   type ProctoringVoiceResponse,
   type ProctoringWarningSnapshot,
 } from '@smart/contracts';
@@ -24,7 +28,6 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { ProctoringService } from './proctoring.service.js';
 
-const AttemptBody = z.object({ attemptId: z.uuid() });
 const VoiceBody = z.object({ attemptId: z.uuid(), phrase: z.string().max(200) });
 const PingBody = z.object({ attemptId: z.uuid() });
 
@@ -99,8 +102,24 @@ export class ProctoringController {
 
   @Post('checkpoint')
   @ApiBearerAuth()
-  checkpoint(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+  @ApiOperation({ summary: 'Upload checkpoint — sync CV analyze and return violations.' })
+  checkpoint(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<ProctoringCheckpointResponse> {
     return this.proctoring.checkpoint(user.sub, ProctoringCheckpointRequestSchema.parse(body));
+  }
+
+  @Post(':attemptId/snapshot-upload-url')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Presigned PUT URL for a proctoring JPEG snapshot.' })
+  snapshotUploadUrl(
+    @CurrentUser() user: RequestUser,
+    @Param('attemptId') attemptId: string,
+    @Body() body: unknown,
+  ): Promise<ProctoringSnapshotUploadResponse> {
+    ProctoringSnapshotUploadRequestSchema.parse(body);
+    return this.proctoring.createSnapshotUploadUrl(user.sub, attemptId);
   }
 
   @Post('consent')
@@ -124,7 +143,8 @@ export class ProctoringController {
     @CurrentUser() user: RequestUser,
     @Body() body: unknown,
   ): Promise<ProctoringEnrollResponse> {
-    return this.proctoring.enrollFace(user.sub, AttemptBody.parse(body).attemptId);
+    const parsed = ProctoringEnrollRequestSchema.parse(body);
+    return this.proctoring.enrollFace(user.sub, parsed.attemptId, parsed.objectKey);
   }
 
   @Post('liveness')

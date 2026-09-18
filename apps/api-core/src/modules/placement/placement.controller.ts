@@ -22,6 +22,7 @@ import {
   ListJobOpeningsQuerySchema,
   ListPlacementEmployersQuerySchema,
   PatchApplicationStageRequestSchema,
+  RecordOutcomeRequestSchema,
   UpdatePlacementEmployerRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
@@ -31,8 +32,10 @@ import {
   UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
   type ListPlacementEmployersResponse,
+  type ParseOpeningJdResponse,
   type PlacementEmployerDetail,
   type PlacementEmployerSummary,
+  type PlacementRecordDto,
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';
@@ -285,6 +288,18 @@ export class PlacementController {
     return this.service.getOpening(requireInstitutionId(user), openingId);
   }
 
+  @Post('openings/:openingId/parse-jd')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Re-parse JD text into skill@1 requirements (async).' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Parse job enqueued or status returned.' })
+  async parseOpeningJd(
+    @CurrentUser() user: RequestUser,
+    @Param('openingId') openingId: string,
+  ): Promise<ParseOpeningJdResponse> {
+    return this.service.parseOpeningJd(requireInstitutionId(user), openingId);
+  }
+
   @Get('openings/:openingId/applications')
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({
@@ -384,5 +399,20 @@ export class PlacementController {
     @Param('applicationId') applicationId: string,
   ): Promise<ApplicationDto> {
     return this.service.sendToCompany(requireInstitutionId(user), applicationId);
+  }
+
+  @Post('outcomes')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Record a real interview/offer outcome for predictive validity.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Placement outcome recorded.' })
+  async recordOutcome(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<PlacementRecordDto> {
+    return this.service.recordOutcome(
+      requireInstitutionId(user),
+      RecordOutcomeRequestSchema.parse(body),
+    );
   }
 }
