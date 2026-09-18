@@ -123,15 +123,20 @@ function setup(
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-  const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
   const employers = { requireEmployer: vi.fn() };
+  const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
   const service = new PlacementService(
     prisma as never,
     outbox as never,
-    jdParseQueue as never,
     employers as never,
+    jdParseQueue as never,
   );
-  return { prisma, outbox, service, controller: new PlacementController(service) };
+  return {
+    prisma,
+    outbox,
+    service,
+    controller: new PlacementController(service, employers as never),
+  };
 }
 
 function uniqueViolation(): Error & { code: string } {

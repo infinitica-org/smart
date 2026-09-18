@@ -20,6 +20,7 @@ import {
   type LevelNumber,
   type MatchFitDto,
   type MatchMethod,
+  type JobOpeningEligibilityCriteria,
   type MatchRequest,
   type MatchRunDto,
   type ShortlistDto,
@@ -128,6 +129,20 @@ interface HydratedStudent {
  * batch/CGPA/required-skill/track pool-scoping filters — same semantics as the Prisma `where`
  * clause this replaced, just expressed as parameterized SQL fragments (never string
  * concatenation) so the dynamic filter lists stay injection-safe. */
+function effectiveMinCgpaForOpening(
+  request: RunMatchingParams,
+  openingEligibility?: JobOpeningEligibilityCriteria,
+): number | undefined {
+  const fromOpening =
+    openingEligibility?.minCollegePercentage !== undefined
+      ? openingEligibility.minCollegePercentage / 10
+      : undefined;
+  if (request.minCgpa !== undefined && fromOpening !== undefined) {
+    return Math.max(request.minCgpa, fromOpening);
+  }
+  return request.minCgpa ?? fromOpening;
+}
+
 function buildEligibleStudentsQuery(
   institutionId: string,
   request: Pick<
@@ -475,7 +490,11 @@ export class MatchingService {
   ): Promise<ShortlistDto> {
     const job = resolved.skillCapabilityJob;
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
-      buildEligibleStudentsQuery(institutionId, request),
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
+        openingEligibility: resolved.openingEligibility,
+      }),
     );
     const students = hydrateStudents(rows);
     const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
@@ -592,21 +611,10 @@ export class MatchingService {
         statusCode: 404,
       });
     }
-    const effectiveMinCgpa = (() => {
-      const fromOpening =
-        resolved.openingEligibility?.minCollegePercentage !== undefined
-          ? resolved.openingEligibility.minCollegePercentage / 10
-          : undefined;
-      if (request.minCgpa !== undefined && fromOpening !== undefined) {
-        return Math.max(request.minCgpa, fromOpening);
-      }
-      return request.minCgpa ?? fromOpening;
-    })();
-
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
       buildEligibleStudentsQuery(institutionId, {
         ...request,
-        minCgpa: effectiveMinCgpa,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
         openingEligibility: resolved.openingEligibility,
       }),
     );
@@ -920,6 +928,14 @@ export class MatchingService {
       },
     });
     if (opening) {
+      const openingEligibility: JobOpeningEligibilityCriteria = {
+        minSscPercentage: opening.minSscPercentage ? Number(opening.minSscPercentage) : undefined,
+        minHscPercentage: opening.minHscPercentage ? Number(opening.minHscPercentage) : undefined,
+        minCollegePercentage: opening.minCollegePercentage
+          ? Number(opening.minCollegePercentage)
+          : undefined,
+        backlogsAllowed: opening.backlogsAllowed,
+      };
       const requiredSkills = opening.requiredSkills.map((row) => ({
         skillCode: row.skill.code,
         minProficiency: row.minProficiency,
@@ -939,6 +955,7 @@ export class MatchingService {
       return {
         companyName: opening.companyName,
         roleTitle: opening.roleTitle,
+        openingEligibility,
         skillCapabilityJob,
         openingEligibility,
         ranker: {
@@ -1001,6 +1018,7 @@ export class MatchingService {
 interface ResolvedOpeningJob {
   companyName: string;
   roleTitle: string;
+  openingEligibility?: JobOpeningEligibilityCriteria;
   skillCapabilityJob: SkillCapabilityJob;
   ranker: RankerJob;
   openingEligibility?: JobOpeningEligibilityCriteria;

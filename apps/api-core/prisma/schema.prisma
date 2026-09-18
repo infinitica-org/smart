@@ -1056,15 +1056,15 @@ model JobOpening {
   driveSpoc              String?      @map("drive_spoc")
   driveDate              DateTime?    @map("drive_date") @db.Date
   lastDateToApply        DateTime?    @map("last_date_to_apply") @db.Date
-  rawText            String?          @map("raw_text")
-  jdParseStatus      JdParseStatus    @default(PENDING) @map("jd_parse_status")
-  parseConfidence    Decimal?         @map("parse_confidence") @db.Decimal(4, 3)
-  parsedAt           DateTime?        @map("parsed_at") @db.Timestamptz(6)
-  parsedRequirements Json?            @map("parsed_requirements")
   minSscPercentage       Decimal?     @map("min_ssc_percentage") @db.Decimal(5, 2)
   minHscPercentage       Decimal?     @map("min_hsc_percentage") @db.Decimal(5, 2)
   minCollegePercentage   Decimal?     @map("min_college_percentage") @db.Decimal(5, 2)
   backlogsAllowed        Boolean      @default(true) @map("backlogs_allowed")
+  rawText                String?      @map("raw_text")
+  jdParseStatus          JdParseStatus @default(PENDING) @map("jd_parse_status")
+  parseConfidence        Decimal?     @map("parse_confidence") @db.Decimal(4, 3)
+  parsedAt               DateTime?    @map("parsed_at") @db.Timestamptz(6)
+  parsedRequirements     Json?        @map("parsed_requirements")
   status             JobOpeningStatus @default(DRAFT)
   createdById        String           @map("created_by_id") @db.Uuid
   createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
