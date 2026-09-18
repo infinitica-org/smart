@@ -1,10 +1,8 @@
 import {
   BarChart3,
   Briefcase,
-  Building2,
   ClipboardList,
   Landmark,
-  Columns3,
   LayoutDashboard,
   LayoutGrid,
   Settings,
@@ -46,12 +44,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
         description: 'Employer profiles, history, and openings',
         icon: Landmark,
       },
-      {
-        name: 'Company Dashboard',
-        href: '/company',
-        description: 'Placement pipeline overview',
-        icon: Building2,
-      },
+      // WIP: Company Dashboard is hidden from the sidebar for now while the
+      // feature is still being finished. Re-enable this entry once it's
+      // ready to ship.
+      // {
+      //   name: 'Company Dashboard',
+      //   href: '/company',
+      //   description: 'Placement pipeline overview',
+      //   icon: Building2,
+      // },
     ],
   },
   {
@@ -81,7 +82,7 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
         icon: UserSearch,
       },
       {
-        name: 'Opportunities',
+        name: 'Applications',
         href: '/opportunities',
         description: 'View placement applications',
         icon: ClipboardList,
@@ -91,12 +92,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
   {
     groupLabel: 'Pipeline',
     items: [
-      {
-        name: 'ATS',
-        href: '/ats',
-        description: 'Manage candidate pipeline',
-        icon: Columns3,
-      },
+      // WIP: ATS (candidate pipeline board) is hidden from the sidebar for
+      // now while the feature is still being finished. Re-enable this entry
+      // once it's ready to ship.
+      // {
+      //   name: 'ATS',
+      //   href: '/ats',
+      //   description: 'Manage candidate pipeline',
+      //   icon: Columns3,
+      // },
       {
         name: 'Review',
         href: '/review',

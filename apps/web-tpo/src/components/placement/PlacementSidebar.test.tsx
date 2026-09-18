@@ -35,7 +35,16 @@ describe('PlacementSidebar', () => {
     render(<PlacementSidebar />);
 
     expect(screen.getByRole('link', { name: 'Review' }).getAttribute('aria-current')).toBe('page');
-    expect(screen.getByRole('link', { name: 'ATS' }).getAttribute('aria-current')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Suggestions' }).getAttribute('aria-current'),
+    ).toBeNull();
+  });
+
+  it('hides the WIP ATS and Company Dashboard entries', () => {
+    render(<PlacementSidebar />);
+
+    expect(screen.queryByRole('link', { name: 'ATS' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Company Dashboard' })).toBeNull();
   });
 
   it('keeps a query-scoped suggestions route highlighted', () => {
@@ -65,11 +74,9 @@ describe('PlacementMobileNav', () => {
   });
 
   it('marks the current route as the active page', () => {
-    navState.pathname = '/company';
+    navState.pathname = '/review';
     render(<PlacementMobileNav />);
 
-    expect(
-      screen.getByRole('link', { name: 'Company Dashboard' }).getAttribute('aria-current'),
-    ).toBe('page');
+    expect(screen.getByRole('link', { name: 'Review' }).getAttribute('aria-current')).toBe('page');
   });
 });

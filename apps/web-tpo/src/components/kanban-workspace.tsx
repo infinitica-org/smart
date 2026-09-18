@@ -3,19 +3,51 @@
 import { useEffect, useState } from 'react';
 import { Columns3, Inbox } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
-import type { ApplicationDto, AtsStage, JobOpeningDto } from '@smart/contracts';
+import {
+  TrackCodeSchema,
+  type ApplicationDto,
+  type AtsStage,
+  type JobOpeningDto,
+  type TrackCode,
+} from '@smart/contracts';
 import { Alert } from '@smart/ui';
-import { applicationsApi, openingsApi } from '../lib/api';
+import { applicationsApi, openingsApi, placementOutcomesApi } from '../lib/api';
 import { ATS_STAGE_ORDER } from '../lib/ats-stage-ui';
 import {
   accentChipClass,
   cardCompactClass,
+  inputClass,
   labelClass,
+  mutedTextClass,
+  primaryButtonClass,
   secondaryButtonClass,
   sectionLabelClass,
 } from '../lib/tpo-ui';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
+
+type HireModalState = {
+  applicationId: string;
+  studentId: string;
+  companyName: string;
+  trackCode: TrackCode | undefined;
+  cycle: string;
+  packageLpa: string;
+};
+
+/** Defaults the placement cycle to the current year + season the RecordOutcomeRequest expects. */
+function defaultPlacementCycle(date = new Date()): string {
+  const month = date.getMonth();
+  const season =
+    month <= 1 || month === 11
+      ? 'WINTER'
+      : month <= 4
+        ? 'SPRING'
+        : month <= 7
+          ? 'SUMMER'
+          : 'AUTUMN';
+  return `${date.getFullYear()}-${season}`;
+}
 
 const selectClass =
   'rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] font-semibold text-[var(--ds-text)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)] disabled:opacity-50';
@@ -42,6 +74,8 @@ export function KanbanWorkspace() {
   const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [hireModal, setHireModal] = useState<HireModalState | null>(null);
+  const [recordingOutcome, setRecordingOutcome] = useState(false);
 
   async function loadOpenings() {
     setLoadingOpenings(true);
@@ -87,9 +121,30 @@ export function KanbanWorkspace() {
     }
   }, [selectedOpeningId]);
 
-  async function handleMoveStage(applicationId: string, targetStage: AtsStage) {
+  function handleMoveStage(applicationId: string, targetStage: AtsStage) {
     const appToMove = applications.find((a) => a.applicationId === applicationId);
     if (!appToMove || appToMove.stage === targetStage) return;
+
+    if (targetStage === 'HIRED') {
+      const parsedTrack = TrackCodeSchema.safeParse(appToMove.primaryTrackCode);
+      setHireModal({
+        applicationId,
+        studentId: appToMove.studentId,
+        companyName: selectedOpening?.companyName ?? '',
+        trackCode: parsedTrack.success ? parsedTrack.data : undefined,
+        cycle: defaultPlacementCycle(),
+        packageLpa: '',
+      });
+      setDraggedAppId(null);
+      return;
+    }
+
+    void moveStage(applicationId, targetStage);
+  }
+
+  async function moveStage(applicationId: string, targetStage: AtsStage): Promise<boolean> {
+    const appToMove = applications.find((a) => a.applicationId === applicationId);
+    if (!appToMove || appToMove.stage === targetStage) return true;
 
     const previousStage = appToMove.stage;
 
@@ -107,6 +162,7 @@ export function KanbanWorkspace() {
       setApplications((current) =>
         current.map((app) => (app.applicationId === applicationId ? updated : app)),
       );
+      return true;
     } catch (caught) {
       // Rollback on failure
       setApplications((current) =>
@@ -117,10 +173,48 @@ export function KanbanWorkspace() {
       setError(
         `Could not move candidate to ${targetStage}: ${errorMessage(caught, 'Stage update failed.')}`,
       );
+      return false;
     } finally {
       setUpdatingId(null);
       setDraggedAppId(null);
     }
+  }
+
+  async function confirmHire() {
+    if (!hireModal) return;
+    const { applicationId, studentId, companyName, trackCode, cycle, packageLpa } = hireModal;
+
+    setRecordingOutcome(true);
+    const moved = await moveStage(applicationId, 'HIRED');
+
+    if (moved && trackCode) {
+      try {
+        await placementOutcomesApi.record({
+          studentId,
+          trackCode,
+          placementCycle: cycle,
+          companyName,
+          outcome: 'ACCEPTED',
+          interviewOffered: true,
+          jobOffered: true,
+          offeredPackageLpa: packageLpa.trim() ? Number(packageLpa) : null,
+        });
+      } catch (caught) {
+        setError(
+          `Candidate marked Hired, but the placement outcome could not be recorded: ${errorMessage(
+            caught,
+            'Recording failed.',
+          )}`,
+        );
+      }
+    } else if (moved && !trackCode) {
+      setError(
+        'Candidate marked Hired, but no track is on file for them — the placement outcome (CTC) was not recorded.',
+      );
+    }
+
+    setRecordingOutcome(false);
+    setHireModal(null);
   }
 
   const selectedOpening = openings.find((o) => o.openingId === selectedOpeningId);
@@ -347,6 +441,68 @@ export function KanbanWorkspace() {
           </section>
         </div>
       )}
+
+      {hireModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className={`${cardCompactClass} w-full max-w-sm p-5`}>
+            <h2 className="text-sm font-semibold text-[var(--ds-text)]">Mark candidate as Hired</h2>
+            <p className={`mt-1 text-xs ${mutedTextClass}`}>
+              Record the placement outcome for {hireModal.companyName || 'this company'} — it powers
+              the company placement-stats page.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Placement cycle</span>
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={hireModal.cycle}
+                  onChange={(e) => setHireModal({ ...hireModal, cycle: e.target.value })}
+                  placeholder="e.g. 2026-AUTUMN"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Offered package (LPA)</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  className={inputClass}
+                  value={hireModal.packageLpa}
+                  onChange={(e) => setHireModal({ ...hireModal, packageLpa: e.target.value })}
+                  placeholder="e.g. 8.5"
+                />
+              </label>
+              {!hireModal.trackCode ? (
+                <p className="text-xs text-[var(--ds-coral)]">
+                  No track is on file for this candidate — the stage will move to Hired, but a CTC
+                  outcome cannot be recorded without a track.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={() => setHireModal(null)}
+                disabled={recordingOutcome}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={primaryButtonClass}
+                onClick={() => void confirmHire()}
+                disabled={recordingOutcome}
+              >
+                {recordingOutcome ? 'Saving…' : 'Confirm Hired'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

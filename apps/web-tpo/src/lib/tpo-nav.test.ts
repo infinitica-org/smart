@@ -28,14 +28,13 @@ describe('TPO_NAV', () => {
   });
 
   it('lists placement sidebar routes including company repository', () => {
+    // ATS and Company Dashboard are WIP and temporarily hidden from the sidebar.
     expect(PLACEMENT_NAV.map((link) => [link.name, link.href])).toEqual([
       ['Company Repository', '/companies'],
-      ['Company Dashboard', '/company'],
       ['Create Job Posting', '/openings/create'],
       ['Listed Openings', '/openings'],
       ['Suggestions', '/suggestions'],
-      ['Opportunities', '/opportunities'],
-      ['ATS', '/ats'],
+      ['Applications', '/opportunities'],
       ['Review', '/review'],
     ]);
   });

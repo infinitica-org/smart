@@ -1,15 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, Download, Filter, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import {
+  Award,
+  BarChart3,
+  Download,
+  Filter,
+  CheckCircle2,
+  Clock,
+  Layers,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import {
   SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
   type InstitutionStudentDto,
   type SkillClaimDto,
 } from '@smart/contracts';
+import { DashboardMetricCard } from '../../../components/dashboard/DashboardMetricCard';
 import { TpoBentoPageHeader } from '../../../components/tpo-bento/TpoBentoPageHeader';
 import { api } from '../../../lib/api';
+import { computeDashboardMetrics } from '../../../lib/tpo-dashboard-metrics';
 import {
   categoryLabel,
   categoryNameForSkillCode,
@@ -52,6 +64,9 @@ export default function ReportsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const metrics = computeDashboardMetrics(students, claims);
+  const categoriesCovered = Object.keys(metrics.categoryCounts).length;
 
   const filteredStudents = students.filter((student) => {
     const studentClaims = claims.filter((c) => c.studentId === student.userId);
@@ -134,6 +149,51 @@ export default function ReportsPage() {
           </button>
         }
       />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+        <DashboardMetricCard
+          label="Total Candidates"
+          value={metrics.totalProvisioned}
+          hint="Onboarded across the cohort"
+          footnote="All-time total"
+          icon={Users}
+          accent="blue"
+          loading={loading}
+        />
+        <DashboardMetricCard
+          label="Verified Skills"
+          value={metrics.verifiedClaimsCount}
+          hint="Autonomous certified credentials"
+          footnote={
+            metrics.verifiedClaimsCount === 0
+              ? 'No verified skills yet'
+              : 'Verified credentials on platform'
+          }
+          icon={Award}
+          accent="mint"
+          loading={loading}
+        />
+        <DashboardMetricCard
+          label="Onboarding Completion"
+          value={`${metrics.onboardingRate}%`}
+          hint="Invites accepted vs. sent"
+          footnote={`${metrics.invitesAccepted} of ${metrics.totalProvisioned} accepted`}
+          icon={CheckCircle2}
+          accent="amber"
+          loading={loading}
+        />
+        <DashboardMetricCard
+          label="Categories Covered"
+          value={categoriesCovered}
+          hint="Skill categories with a verified claim"
+          footnote={
+            categoriesCovered === 0 ? 'No categories verified yet' : 'Across the current cohort'
+          }
+          icon={Layers}
+          accent="lavender"
+          loading={loading}
+        />
+      </div>
 
       <div
         className={`${bentoToolbarClass} flex flex-col gap-3 md:flex-row md:items-center md:justify-between`}

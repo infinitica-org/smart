@@ -17,6 +17,8 @@
     "@smart/contracts": "workspace:*",
     "@smart/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",

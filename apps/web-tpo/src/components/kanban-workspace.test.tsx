@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applicationsApi, openingsApi } from '../lib/api';
+import { applicationsApi, openingsApi, placementOutcomesApi } from '../lib/api';
 import { KanbanWorkspace } from './kanban-workspace';
 
 vi.mock('../lib/api', () => ({
@@ -10,6 +10,9 @@ vi.mock('../lib/api', () => ({
   applicationsApi: {
     listForOpening: vi.fn(),
     patchStage: vi.fn(),
+  },
+  placementOutcomesApi: {
+    record: vi.fn(),
   },
 }));
 
@@ -142,6 +145,51 @@ describe('CO-T02 ATS Kanban Workspace', () => {
     ]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+  });
+
+  it('prompts for a placement outcome before moving a candidate to Hired', async () => {
+    const trackedApplication = { ...mockApplication, primaryTrackCode: 'TECH_FULLSTACK' };
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(applicationsApi.listForOpening).mockResolvedValue({
+      applications: [trackedApplication],
+    });
+    vi.mocked(applicationsApi.patchStage).mockResolvedValue({
+      ...trackedApplication,
+      stage: 'HIRED',
+    });
+    vi.mocked(placementOutcomesApi.record).mockResolvedValue(undefined);
+
+    render(<KanbanWorkspace />);
+
+    await screen.findByText('Aarav Sharma');
+
+    const select = screen.getByLabelText('Change stage for Aarav Sharma');
+    fireEvent.change(select, { target: { value: 'HIRED' } });
+
+    expect(await screen.findByText('Mark candidate as Hired')).toBeDefined();
+    expect(applicationsApi.patchStage).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. 8.5'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Hired' }));
+
+    await waitFor(() => {
+      expect(applicationsApi.patchStage).toHaveBeenCalledWith(
+        trackedApplication.applicationId,
+        'HIRED',
+      );
+    });
+    await waitFor(() => {
+      expect(placementOutcomesApi.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          studentId: trackedApplication.studentId,
+          trackCode: 'TECH_FULLSTACK',
+          companyName: mockOpening.companyName,
+          outcome: 'ACCEPTED',
+          offeredPackageLpa: 12,
+        }),
+      );
+    });
+    expect(screen.queryByText('Mark candidate as Hired')).toBeNull();
   });
 
   it('allows manual refresh', async () => {

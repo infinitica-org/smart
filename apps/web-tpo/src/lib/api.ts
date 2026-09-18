@@ -14,6 +14,7 @@ import {
   ListApplicationsResponseSchema,
   ListJobOpeningsResponseSchema,
   ListPlacementEmployersResponseSchema,
+  ListPlacementOutcomesResponseSchema,
   PlacementEmployerDetailSchema,
   PlacementEmployerSummarySchema,
   MatchRunDtoSchema,
@@ -26,6 +27,7 @@ import {
   type CreatePlacementEmployerRequest,
   type ListJobOpeningsQuery,
   type ListPlacementEmployersQuery,
+  type RecordOutcomeRequest,
   type UpdatePlacementEmployerRequest,
   type MatchRequest,
 } from '@smart/contracts';
@@ -140,4 +142,13 @@ export const applicationsApi = {
       undefined,
       { schema: ApplicationDtoSchema },
     ),
+};
+
+export const placementOutcomesApi = {
+  record: (body: RecordOutcomeRequest) => apiClient.post(`${API_PREFIX}/placement/outcomes`, body),
+  listForCompany: (companyName: string) =>
+    apiClient.get(`${API_PREFIX}/placement/outcomes`, {
+      schema: ListPlacementOutcomesResponseSchema,
+      query: { companyName },
+    }),
 };
