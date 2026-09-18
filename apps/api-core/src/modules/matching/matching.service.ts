@@ -20,6 +20,7 @@ import {
   type LevelNumber,
   type MatchFitDto,
   type MatchMethod,
+  type JobOpeningEligibilityCriteria,
   type MatchRequest,
   type MatchRunDto,
   type ShortlistDto,
@@ -71,6 +72,7 @@ interface RunMatchingParams {
   minCgpa?: number;
   requiredSkillCodes: string[];
   filters?: MatchRequest['filters'];
+  openingEligibility?: JobOpeningEligibilityCriteria;
   limit: number;
   minSkillCoverage: number;
   runId?: string;
@@ -126,9 +128,26 @@ interface HydratedStudent {
  * batch/CGPA/required-skill/track pool-scoping filters — same semantics as the Prisma `where`
  * clause this replaced, just expressed as parameterized SQL fragments (never string
  * concatenation) so the dynamic filter lists stay injection-safe. */
+function effectiveMinCgpaForOpening(
+  request: RunMatchingParams,
+  openingEligibility?: JobOpeningEligibilityCriteria,
+): number | undefined {
+  const fromOpening =
+    openingEligibility?.minCollegePercentage !== undefined
+      ? openingEligibility.minCollegePercentage / 10
+      : undefined;
+  if (request.minCgpa !== undefined && fromOpening !== undefined) {
+    return Math.max(request.minCgpa, fromOpening);
+  }
+  return request.minCgpa ?? fromOpening;
+}
+
 function buildEligibleStudentsQuery(
   institutionId: string,
-  request: Pick<RunMatchingParams, 'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters'>,
+  request: Pick<
+    RunMatchingParams,
+    'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters' | 'openingEligibility'
+  >,
 ): Prisma.Sql {
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
@@ -140,6 +159,24 @@ function buildEligibleStudentsQuery(
   }
   if (request.minCgpa !== undefined) {
     conditions.push(Prisma.sql`u.cgpa >= ${request.minCgpa}`);
+  }
+  const eligibility = request.openingEligibility;
+  if (eligibility?.minSscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.ssc_percentage IS NOT NULL AND u.ssc_percentage >= ${eligibility.minSscPercentage}`,
+    );
+  }
+  if (eligibility?.minHscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.hsc_percentage IS NOT NULL AND u.hsc_percentage >= ${eligibility.minHscPercentage}`,
+    );
+  }
+  if (eligibility?.minCollegePercentage !== undefined && request.minCgpa === undefined) {
+    const minCgpaFromPercent = eligibility.minCollegePercentage / 10;
+    conditions.push(Prisma.sql`u.cgpa IS NOT NULL AND u.cgpa >= ${minCgpaFromPercent}`);
+  }
+  if (eligibility?.backlogsAllowed === false) {
+    conditions.push(Prisma.sql`u.has_active_backlog IS DISTINCT FROM TRUE`);
   }
   // Every required skill must be held VERIFIED (AND) — one EXISTS per code, not a single
   // `IN (...)`, which would only require ANY one of them and under-filter the pool.
@@ -452,7 +489,11 @@ export class MatchingService {
   ): Promise<ShortlistDto> {
     const job = resolved.skillCapabilityJob;
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
-      buildEligibleStudentsQuery(institutionId, request),
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
+        openingEligibility: resolved.openingEligibility,
+      }),
     );
     const students = hydrateStudents(rows);
     const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
@@ -571,7 +612,11 @@ export class MatchingService {
     }
 
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
-      buildEligibleStudentsQuery(institutionId, request),
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
+        openingEligibility: resolved.openingEligibility,
+      }),
     );
     const students = hydrateStudents(rows);
     const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
@@ -883,6 +928,14 @@ export class MatchingService {
       },
     });
     if (opening) {
+      const openingEligibility: JobOpeningEligibilityCriteria = {
+        minSscPercentage: opening.minSscPercentage ? Number(opening.minSscPercentage) : undefined,
+        minHscPercentage: opening.minHscPercentage ? Number(opening.minHscPercentage) : undefined,
+        minCollegePercentage: opening.minCollegePercentage
+          ? Number(opening.minCollegePercentage)
+          : undefined,
+        backlogsAllowed: opening.backlogsAllowed,
+      };
       const requiredSkills = opening.requiredSkills.map((row) => ({
         skillCode: row.skill.code,
         minProficiency: row.minProficiency,
@@ -894,6 +947,7 @@ export class MatchingService {
       return {
         companyName: opening.companyName,
         roleTitle: opening.roleTitle,
+        openingEligibility,
         skillCapabilityJob,
         ranker: {
           requiredSkills: opening.requiredSkills.map((row) => ({
@@ -955,6 +1009,7 @@ export class MatchingService {
 interface ResolvedOpeningJob {
   companyName: string;
   roleTitle: string;
+  openingEligibility?: JobOpeningEligibilityCriteria;
   skillCapabilityJob: SkillCapabilityJob;
   ranker: RankerJob;
 }

@@ -12,7 +12,7 @@ export interface ShineBorderProps extends HTMLAttributes<HTMLDivElement> {
 export function ShineBorder({
   borderWidth = 1,
   duration = 14,
-  shineColor = '#00fad0',
+  shineColor = '#14b8a6',
   className,
   style,
   ...props

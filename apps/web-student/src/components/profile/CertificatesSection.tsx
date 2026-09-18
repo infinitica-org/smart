@@ -1,98 +1,88 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Award } from 'lucide-react';
-import type { CandidateCertificateDto } from '@smart/contracts';
+import Link from 'next/link';
+import { Award, Plus, ShieldCheck } from 'lucide-react';
+import { useQuery } from '@smart/ui';
 import { api } from '@/lib/api';
+import { CertificateEntryCard } from '@/components/profile/CertificateEntryCard';
+import {
+  ProfileBentoEmptyPanel,
+  ProfileSectionError,
+  ProfileSectionHeader,
+} from '@/components/profile/ProfileSectionChrome';
+import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
+import { profileSectionMeta } from '@/lib/profile-sections';
 
 export function CertificatesSection() {
-  const [certificates, setCertificates] = useState<CandidateCertificateDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['me', 'candidate-certificates'] as const,
+    queryFn: () => api.candidateCertificates.listMine(),
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await api.candidateCertificates.listMine();
-        if (!cancelled) setCertificates(res.certificates || []);
-      } catch (err: unknown) {
-        if (!cancelled)
-          setError((err as Error)?.message || 'Failed to load candidate certificates.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const certificates = data?.certificates ?? [];
+  const error = queryError
+    ? (queryError as Error).message || 'Failed to load candidate certificates.'
+    : null;
+  const meta = profileSectionMeta('certifications');
 
   return (
-    <section className="flex flex-col gap-6" aria-labelledby="certificates-heading">
-      <div>
-        <h2
-          id="certificates-heading"
-          className="text-xl font-semibold tracking-tight text-foreground"
-        >
-          Certifications
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Professional certifications and verified credentials that CV and Work Experience can
-          attach to.
-        </p>
-      </div>
+    <section
+      className="flex w-full min-w-0 flex-col gap-4 font-[family-name:var(--tpo-font-sans)]"
+      aria-label="Certifications"
+    >
+      <ProfileSectionHeader
+        title={meta.title}
+        description="External credentials from AWS, Coursera, Google, and other providers — verified and shown on your public profile."
+        action={
+          <Link
+            href="/certificates/add"
+            className={`${profilePrimaryButtonSmClass} justify-center px-4 py-2.5 text-[13px] font-semibold tracking-[-0.01em]`}
+          >
+            <Plus className="size-4" strokeWidth={2} aria-hidden />
+            Add certificate
+          </Link>
+        }
+      />
 
-      {error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {error}
-        </div>
-      ) : null}
+      {error ? <ProfileSectionError>{error}</ProfileSectionError> : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading certificates…</p>
-      ) : certificates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-muted/50 p-8 text-center">
-          <Award className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-medium text-foreground/80">
-            No candidate certificates attached yet
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Certificates earned or imported will be listed here.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {certificates.map((cert) => (
-            <div
-              key={cert.certificateId}
-              className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 p-5"
+        <p className="text-sm text-[var(--ds-text-muted)]">Loading certifications…</p>
+      ) : null}
+
+      {!loading && certificates.length === 0 ? (
+        <ProfileBentoEmptyPanel
+          tipIcon={ShieldCheck}
+          tipIconClassName="text-[#0284c7]"
+          tipTitle="Showcase verified credentials"
+          tipBody="Optional but powerful — attach proof or issuer links so recruiters see skills you have already validated elsewhere."
+          emptyIcon={Award}
+          emptyTitle="No certifications yet"
+          emptyBody="When you add a certificate, it appears here with verification status and linked skills."
+          actions={
+            <Link
+              href="/certificates/add"
+              className={`${profilePrimaryButtonSmClass} justify-center px-5 py-2.5 text-[13px]`}
             >
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground/10 text-foreground">
-                  <Award className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">
-                    {cert.title || 'Untitled Certificate'}
-                  </h3>
-                  <p className="text-sm text-foreground/80">
-                    Issuer: {cert.issuer || 'Unknown Issuer'}
-                  </p>
-                  {cert.issueDate && (
-                    <p className="mt-1 text-xs text-muted-foreground">Issued: {cert.issueDate}</p>
-                  )}
-                </div>
-              </div>
-              <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground">
-                {cert.status}
-              </span>
-            </div>
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              Add your first certificate
+            </Link>
+          }
+        />
+      ) : null}
+
+      {!loading && certificates.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {certificates.map((cert, index) => (
+            <CertificateEntryCard key={cert.certificateId} certificate={cert} accentIndex={index} />
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

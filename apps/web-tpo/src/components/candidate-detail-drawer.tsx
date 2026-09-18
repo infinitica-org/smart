@@ -1,24 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ShieldCheck, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { X, ShieldCheck, Info } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
-import {
-  SKILL_DEFINITIONS,
-  type InstitutionStudentDto,
-  type SkillClaimDto,
-} from '@smart/contracts';
-import { CandidateProfileCard, type CandidateSkill } from '@smart/ui';
+import type { InstitutionStudentDto, SkillClaimDto } from '@smart/contracts';
 import { api } from '../lib/api';
-import { CompetencyBreakdown } from './competency-breakdown';
-
-function skillNameFor(code: string): string {
-  return SKILL_DEFINITIONS.find((s) => s.code === code)?.name ?? code;
-}
-
-function skillCategoryNameFor(code: string): string {
-  return SKILL_DEFINITIONS.find((s) => s.code === code)?.categoryName ?? 'Uncategorized';
-}
+import { CandidateRepositoryProfileView } from './candidates/CandidateRepositoryProfileView';
+import { bentoThemeClass } from '../lib/tpo-dashboard-ui';
 
 export function CandidateDetailDrawer({
   candidate,
@@ -30,22 +18,26 @@ export function CandidateDetailDrawer({
   onClose: () => void;
 }) {
   const [claims, setClaims] = useState<SkillClaimDto[] | null>(null);
-  const [, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !candidate) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setClaims(null);
     api.assessment
       .listSkillClaims()
       .then((all) => {
-        if (!cancelled) setClaims(all.filter((c) => c.studentId === candidate.userId));
+        if (!cancelled) {
+          setClaims(all.filter((c) => c.studentId === candidate.userId));
+        }
       })
       .catch((caught: unknown) => {
-        if (!cancelled)
-          setError(isSmartApiError(caught) ? caught.message : 'Could not load skills.');
+        if (!cancelled) {
+          setError(isSmartApiError(caught) ? caught.message : 'Could not load skill claims.');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -57,136 +49,54 @@ export function CandidateDetailDrawer({
 
   if (!isOpen || !candidate) return null;
 
-  const candidateSkills: CandidateSkill[] = (claims || []).map((claim) => ({
-    name: skillNameFor(claim.skillCode),
-    status: claim.status,
-  }));
-
-  const firstClaim = claims && claims.length > 0 ? claims[0] : null;
-  const primaryCategory = firstClaim
-    ? skillCategoryNameFor(firstClaim.skillCode)
-    : 'Programming Languages';
-
   return (
     <>
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm animate-in fade-in duration-300"
+        className="fixed inset-0 z-40 bg-[#101828]/40 backdrop-blur-[2px] animate-in fade-in duration-200"
         onClick={onClose}
+        aria-hidden
       />
 
-      {/* Drawer Container */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[1280px] bg-zinc-950 border-l border-zinc-800 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col font-sans text-zinc-100">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/90 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-400" />
-              Candidate Profile View
+      <div
+        className={`${bentoThemeClass} fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-[var(--ds-border)] bg-[var(--ds-canvas)] shadow-[0_8px_30px_rgba(15,23,42,0.12)] animate-in slide-in-from-right duration-300 lg:max-w-3xl`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="candidate-profile-drawer-title"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ds-border)] bg-[var(--ds-surface)] px-5 py-3.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <ShieldCheck className="size-4 shrink-0 text-[var(--ds-green)]" aria-hidden />
+            <h2
+              id="candidate-profile-drawer-title"
+              className="truncate text-[13px] font-semibold text-[var(--ds-text)]"
+            >
+              Candidate profile
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700"
-            aria-label="Close Profile View"
+            className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-1.5 text-[var(--ds-text-muted)] transition hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)]"
+            aria-label="Close profile"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </button>
         </div>
 
-        {/* Read-Only Banner */}
-        <div className="bg-zinc-900/80 border-b border-zinc-800 px-6 py-3 text-xs text-zinc-400 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-emerald-400" />
-            <span>
-              <strong className="text-white">Observational Data Only:</strong> Candidate skill
-              choices and verifications are managed autonomously. TPO views are strictly read-only.
-            </span>
-          </div>
+        <div className="flex shrink-0 items-start gap-2 border-b border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] px-5 py-2.5 text-[12px] leading-relaxed text-[var(--ds-text-muted)]">
+          <Info className="mt-0.5 size-3.5 shrink-0 text-[var(--ds-text-subtle)]" aria-hidden />
+          <p>
+            Read-only view for your institution. Skill claims and verification outcomes come from
+            the assessment service; contact and batch fields come from onboarding records.
+          </p>
         </div>
 
-        {/* Profile Content Container */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Metadata Card: Stream, Onboarding, Verification Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-900/80 p-5 rounded-xl border border-zinc-800">
-            <div>
-              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
-                Primary Skill Category
-              </span>
-              <span className="text-xs font-extrabold text-white bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-md inline-block">
-                {primaryCategory}
-              </span>
-              <p className="text-[11px] text-zinc-500 mt-1">
-                Chosen by candidate during onboarding
-              </p>
-            </div>
-
-            <div>
-              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
-                Onboarding Progress
-              </span>
-              {candidate.inviteStatus === 'ACCEPTED' ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-md border border-emerald-500/20">
-                  <CheckCircle2 className="size-3.5" /> Completed
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-md border border-amber-500/20">
-                  <Clock className="size-3.5" /> Invite Sent / Pending
-                </span>
-              )}
-            </div>
-
-            <div>
-              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
-                Skill Credentials
-              </span>
-              <span className="text-xs font-extrabold text-white">
-                {claims
-                  ? `${claims.filter((c) => c.status === 'VERIFIED').length} Verified / ${claims.length} Claims`
-                  : 'Loading...'}
-              </span>
-            </div>
-          </div>
-
-          {claims?.some((claim) => claim.latestAssessmentResult) ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Verified competency breakdown
-              </h3>
-              <div className="mt-3 flex flex-col gap-4">
-                {claims
-                  .filter((claim) => claim.latestAssessmentResult)
-                  .map((claim) => (
-                    <div key={claim.claimId}>
-                      <p className="text-sm font-semibold text-white">
-                        {skillNameFor(claim.skillCode)} · {claim.proficiency}
-                      </p>
-                      {claim.latestAssessmentResult ? (
-                        <CompetencyBreakdown
-                          skillCode={claim.skillCode}
-                          assessmentResult={claim.latestAssessmentResult}
-                        />
-                      ) : null}
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ) : null}
-
-          <CandidateProfileCard
-            candidateId={candidate.userId}
-            displayName={candidate.fullName}
-            trackName={candidate.batchName || primaryCategory}
-            headlineTier="GOLD"
-            skills={candidateSkills}
-            contactInfo={{
-              email: candidate.email,
-              linkedIn: candidate.linkedinUrl ?? undefined,
-              github: candidate.githubUrl ?? undefined,
-            }}
-            academicDetails={{
-              batchName: candidate.batchName ?? undefined,
-            }}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <CandidateRepositoryProfileView
+            candidate={candidate}
+            claims={claims}
+            claimsLoading={loading}
+            claimsError={error}
           />
         </div>
       </div>

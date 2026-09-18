@@ -100,3 +100,22 @@ export function verificationStatusTone(
       return 'neutral';
   }
 }
+
+export { WORK_EXPERIENCE_CARD_ACCENTS } from '@/lib/student-bento-accents';
+
+export function verificationStatusShortLabel(status: WorkExperienceDto['status']): string {
+  switch (status) {
+    case 'VERIFIED':
+      return 'Verified';
+    case 'PENDING_EMPLOYER':
+      return 'Pending employer';
+    case 'EXPIRED':
+      return 'Link expired';
+    case 'REJECTED':
+      return 'Needs attention';
+    case 'SUBMITTED':
+      return 'Ready to verify';
+    default:
+      return 'In progress';
+  }
+}

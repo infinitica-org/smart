@@ -19,6 +19,8 @@ type GithubImportPanelProps = {
   onRetry: () => void;
   onSelectRepo: (repo: GithubRepoSummary) => void;
   onManual: () => void;
+  /** When true, hides duplicate entry controls (wizard already chose GitHub). */
+  wizardMode?: boolean;
 };
 
 export function GithubImportPanel({
@@ -32,31 +34,36 @@ export function GithubImportPanel({
   onRetry,
   onSelectRepo,
   onManual,
+  wizardMode = false,
 }: GithubImportPanelProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)]/40 p-4">
-      <div>
-        <h3 className="text-sm font-semibold text-[var(--ds-text)]">Import from GitHub</h3>
-        <p className="mt-1 text-xs leading-relaxed text-[var(--ds-text-muted)]">
-          Connect your GitHub account and select a repository to prefill project details.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onToggle} className={profileSecondaryButtonSmClass}>
-          <GitBranch className="h-4 w-4" aria-hidden="true" />
-          {showImport ? 'Hide repositories' : 'Import from GitHub'}
-        </button>
-        <button type="button" onClick={onManual} className={profileSecondaryButtonSmClass}>
-          Add manually
-        </button>
-      </div>
+      {!wizardMode ? (
+        <>
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--ds-text)]">Import from GitHub</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--ds-text-muted)]">
+              Connect your GitHub account and select a repository to prefill project details.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onToggle} className={profileSecondaryButtonSmClass}>
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
+              {showImport ? 'Hide repositories' : 'Import from GitHub'}
+            </button>
+            <button type="button" onClick={onManual} className={profileSecondaryButtonSmClass}>
+              Add manually
+            </button>
+          </div>
+        </>
+      ) : null}
 
       {showImport ? (
         <div className="mt-1 flex flex-col gap-2">
           {!githubLogin ? (
             <p className="text-xs text-[var(--ds-text-muted)]">
-              Add your GitHub profile URL under Professional Links or onboarding, then try again —
-              or add project details manually.
+              Add your GitHub URL under Profile → Professional Links, click Save links, then try
+              again — or add project details manually.
             </p>
           ) : reposLoading ? (
             <p className="flex items-center gap-2 text-xs text-[var(--ds-text-muted)]">

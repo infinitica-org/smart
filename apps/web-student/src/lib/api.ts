@@ -385,17 +385,28 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
   if (url.includes('/users/me/onboarding') && method === 'PUT') {
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
-    mockOnboardingDraft = {
-      ...(mockOnboardingDraft as Record<string, unknown> | null),
-      ...body,
-      savedAt: new Date().toISOString(),
-    };
+    const savedAt = new Date().toISOString();
+    if (mockOnboardingCompleted) {
+      mockOnboardingProfile = {
+        ...(mockOnboardingProfile as Record<string, unknown> | null),
+        ...body,
+        savedAt,
+      };
+      mockOnboardingDraft = null;
+    } else {
+      mockOnboardingDraft = {
+        ...(mockOnboardingDraft as Record<string, unknown> | null),
+        ...(mockOnboardingProfile as Record<string, unknown> | null),
+        ...body,
+        savedAt,
+      };
+    }
     saveMockOnboardingState();
     return new Response(
       JSON.stringify({
-        profile: null,
-        draft: mockOnboardingDraft,
-        onboardingCompleted: false,
+        profile: mockOnboardingProfile,
+        draft: mockOnboardingCompleted ? null : mockOnboardingDraft,
+        onboardingCompleted: mockOnboardingCompleted,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );

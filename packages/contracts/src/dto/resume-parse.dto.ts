@@ -118,12 +118,32 @@ export const ParseResumeResponseSchema = z.object({
 });
 export type ParseResumeResponse = z.infer<typeof ParseResumeResponseSchema>;
 
+/** Maximum resume files a candidate may store on their profile. */
+export const CANDIDATE_RESUME_FILES_MAX = 5;
+
+export const CandidateResumeFilesSchema = z
+  .array(CandidateResumeFileSchema)
+  .max(CANDIDATE_RESUME_FILES_MAX);
+
 export const CandidateResumeStateResponseSchema = z.object({
+  /** Most recently uploaded file — kept for older clients. */
   resumeFile: CandidateResumeFileSchema.nullable(),
+  resumeFiles: CandidateResumeFilesSchema.default([]),
 });
 export type CandidateResumeStateResponse = z.infer<typeof CandidateResumeStateResponseSchema>;
 
 export const UploadResumeResponseSchema = z.object({
   resumeFile: CandidateResumeFileSchema,
+  resumeFiles: CandidateResumeFilesSchema,
 });
 export type UploadResumeResponse = z.infer<typeof UploadResumeResponseSchema>;
+
+export const DeleteResumeRequestSchema = z.object({
+  objectKey: z.string().min(1).max(512),
+});
+export type DeleteResumeRequest = z.infer<typeof DeleteResumeRequestSchema>;
+
+export const DeleteResumeResponseSchema = z.object({
+  resumeFiles: CandidateResumeFilesSchema,
+});
+export type DeleteResumeResponse = z.infer<typeof DeleteResumeResponseSchema>;

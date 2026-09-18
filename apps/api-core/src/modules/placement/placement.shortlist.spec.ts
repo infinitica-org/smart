@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  UnprocessableEntityException,
   type ExecutionContext,
 } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
@@ -30,6 +31,14 @@ interface Seed {
   id: string;
   institutionId: string;
   role?: string;
+  minSscPercentage?: number | null;
+  minHscPercentage?: number | null;
+  minCollegePercentage?: number | null;
+  backlogsAllowed?: boolean;
+  cgpa?: number | null;
+  sscPercentage?: number | null;
+  hscPercentage?: number | null;
+  hasActiveBacklog?: boolean | null;
 }
 
 /**
@@ -45,10 +54,27 @@ function setup(
   } = {},
 ) {
   const opening =
-    options.opening === undefined ? { id: openingId, institutionId } : options.opening;
+    options.opening === undefined
+      ? {
+          id: openingId,
+          institutionId,
+          minSscPercentage: null,
+          minHscPercentage: null,
+          minCollegePercentage: null,
+          backlogsAllowed: true,
+        }
+      : options.opening;
   const student =
     options.student === undefined
-      ? { id: studentId, institutionId, role: 'STUDENT' }
+      ? {
+          id: studentId,
+          institutionId,
+          role: 'STUDENT',
+          cgpa: 8,
+          sscPercentage: 85,
+          hscPercentage: 85,
+          hasActiveBacklog: false,
+        }
       : options.student;
 
   const prisma = {
@@ -56,7 +82,7 @@ function setup(
       findFirst: vi.fn(({ where }: { where: Record<string, unknown> }) =>
         Promise.resolve(
           opening && opening.id === where.id && opening.institutionId === where.institutionId
-            ? { id: opening.id }
+            ? opening
             : null,
         ),
       ),
@@ -68,7 +94,13 @@ function setup(
             student.id === where.id &&
             student.institutionId === where.institutionId &&
             student.role === where.role
-            ? { id: student.id }
+            ? {
+                id: student.id,
+                cgpa: student.cgpa ?? null,
+                sscPercentage: student.sscPercentage ?? null,
+                hscPercentage: student.hscPercentage ?? null,
+                hasActiveBacklog: student.hasActiveBacklog ?? null,
+              }
             : null,
         ),
       ),
@@ -91,9 +123,20 @@ function setup(
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const employers = { requireEmployer: vi.fn() };
   const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
-  const service = new PlacementService(prisma as never, outbox as never, jdParseQueue as never);
-  return { prisma, outbox, service, controller: new PlacementController(service) };
+  const service = new PlacementService(
+    prisma as never,
+    outbox as never,
+    employers as never,
+    jdParseQueue as never,
+  );
+  return {
+    prisma,
+    outbox,
+    service,
+    controller: new PlacementController(service, employers as never),
+  };
 }
 
 function uniqueViolation(): Error & { code: string } {
@@ -236,6 +279,35 @@ describe('AC-T05 create application', () => {
     await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toThrow(
       'connection reset',
     );
+  });
+});
+
+describe('AC-T05 drive eligibility', () => {
+  it('rejects shortlist when the student does not meet opening academic criteria', async () => {
+    const { controller, prisma } = setup({
+      opening: {
+        id: openingId,
+        institutionId,
+        minSscPercentage: 80,
+        minHscPercentage: null,
+        minCollegePercentage: null,
+        backlogsAllowed: true,
+      },
+      student: {
+        id: studentId,
+        institutionId,
+        role: 'STUDENT',
+        sscPercentage: 70,
+        hscPercentage: 90,
+        cgpa: 8,
+        hasActiveBacklog: false,
+      },
+    });
+
+    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+    expect(prisma.application.create).not.toHaveBeenCalled();
   });
 });
 

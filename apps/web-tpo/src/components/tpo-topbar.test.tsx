@@ -49,7 +49,7 @@ describe('TpoTopbar visual active states', () => {
   it.each([
     ['/', 'Dashboard'],
     ['/students', 'Candidates'],
-    ['/provisioning', 'Onboarding'],
+    ['/provisioning', 'Candidates'],
     ['/openings/create', 'Placement'],
     ['/reports', 'Reports'],
     ['/settings', 'Settings'],
@@ -78,7 +78,7 @@ describe('TpoTopbar visual active states', () => {
   it('renders text-only primary nav links without page icons', () => {
     const { container } = renderTopbar();
     const nav = container.querySelector('nav[aria-label="Primary"]');
-    expect(nav?.querySelectorAll('a').length).toBe(6);
+    expect(nav?.querySelectorAll('a').length).toBe(5);
     expect(nav?.querySelectorAll('svg').length).toBe(0);
   });
 });
@@ -114,7 +114,6 @@ describe('TpoTopbar existing navigation', () => {
   it.each([
     ['Dashboard', '/'],
     ['Candidates', '/students'],
-    ['Onboarding', '/provisioning'],
     ['Reports', '/reports'],
     ['Settings', '/settings'],
   ])('still links %s to %s', (name, href) => {

@@ -40,19 +40,19 @@ export function VerifiedSkillsPanel({ claims }: VerifiedSkillsPanelProps) {
           <p className="mt-1 text-sm font-medium text-[var(--ds-text)]">Skills you have verified</p>
 
           <p className="mt-1 text-sm leading-relaxed text-[var(--ds-text-muted)]">
-            Only evidence-backed skills appear here. Declare and verify more skills in the Skill
-            Repository.
+            Only evidence-backed skills appear here. Select skills in your profile, then assess them
+            from Assessment.
           </p>
         </div>
 
         <Link
-          href="/assessments"
+          href="/profile?section=skills"
 
           data-tour="manage-skills-link"
 
           className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--ds-link)] transition hover:underline"
         >
-          Browse Skill Repository
+          Manage skills
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </div>
@@ -66,15 +66,15 @@ export function VerifiedSkillsPanel({ claims }: VerifiedSkillsPanelProps) {
           <p className="text-sm font-semibold text-[var(--ds-text)]">No verified skills yet</p>
 
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--ds-text-muted)]">
-            Complete your profile, then pick a skill in the Skill Repository to start verification.
+            Complete your profile, select skills under Profile, then start assessments when ready.
           </p>
 
           <Link
-            href="/assessments"
+            href="/profile?section=skills"
 
             className="mt-5 inline-flex h-10 items-center gap-2 rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 text-sm font-medium text-[var(--ds-icon)] transition hover:bg-[var(--ds-surface-hover)]"
           >
-            Explore Skill Repository
+            Choose skills
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>

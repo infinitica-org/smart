@@ -13,6 +13,9 @@ import {
   JobOpeningDtoSchema,
   ListApplicationsResponseSchema,
   ListJobOpeningsResponseSchema,
+  ListPlacementEmployersResponseSchema,
+  PlacementEmployerDetailSchema,
+  PlacementEmployerSummarySchema,
   MatchRunDtoSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
@@ -20,7 +23,10 @@ import {
   type AtsStage,
   type CreateApplicationRequest,
   type CreateJobOpeningRequest,
+  type CreatePlacementEmployerRequest,
   type ListJobOpeningsQuery,
+  type ListPlacementEmployersQuery,
+  type UpdatePlacementEmployerRequest,
   type MatchRequest,
 } from '@smart/contracts';
 
@@ -41,6 +47,26 @@ export const apiClient = new SmartApiClient({
 });
 
 export const api = createSmartApi(apiClient);
+
+export const employersApi = {
+  list: (query?: ListPlacementEmployersQuery) =>
+    apiClient.get(`${API_PREFIX}/placement/employers`, {
+      schema: ListPlacementEmployersResponseSchema,
+      query,
+    }),
+  get: (employerId: string) =>
+    apiClient.get(`${API_PREFIX}/placement/employers/${employerId}`, {
+      schema: PlacementEmployerDetailSchema,
+    }),
+  create: (body: CreatePlacementEmployerRequest) =>
+    apiClient.post(`${API_PREFIX}/placement/employers`, body, {
+      schema: PlacementEmployerSummarySchema,
+    }),
+  update: (employerId: string, body: UpdatePlacementEmployerRequest) =>
+    apiClient.patch(`${API_PREFIX}/placement/employers/${employerId}`, body, {
+      schema: PlacementEmployerSummarySchema,
+    }),
+};
 
 export const openingsApi = {
   create: (body: CreateJobOpeningRequest) =>

@@ -59,18 +59,21 @@ function renderForm(): ReturnType<typeof render> {
   });
   return render(
     <QueryClientProvider client={client}>
-      <div id="profile-projects-header-actions" />
       <ProjectSubmissionForm />
     </QueryClientProvider>,
   );
 }
 
 async function openAddProjectModal() {
-  const addBtn = await screen.findByRole('button', {
-    name: /Add your first project|Add Project/i,
-  });
+  const addBtn = await screen.findByRole('button', { name: /Add your first project/i });
   fireEvent.click(addBtn);
   await screen.findByRole('dialog');
+}
+
+async function openManualProjectModal() {
+  await openAddProjectModal();
+  fireEvent.click(screen.getByRole('button', { name: /Add manually/i }));
+  await screen.findByLabelText(/^Title$/i);
 }
 
 const busTracker = {
@@ -133,7 +136,7 @@ describe('ProjectSubmissionForm', () => {
 
   it('blocks submit when the problem is too short', async () => {
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     const form = formScope();
     fireEvent.change(form.getByLabelText(/^Title$/i), { target: { value: 'App' } });
     fireEvent.change(form.getByLabelText(/^Problem$/i), { target: { value: 'too short' } });
@@ -146,7 +149,7 @@ describe('ProjectSubmissionForm', () => {
     create.mockResolvedValueOnce(busTracker);
 
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     validFill();
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
 
@@ -165,6 +168,7 @@ describe('ProjectSubmissionForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));
     await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: /Add manually/i }));
     expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe('');
     expect(
       (screen.getByRole('button', { name: /Submit project/i }) as HTMLButtonElement).disabled,
@@ -199,7 +203,7 @@ describe('ProjectSubmissionForm', () => {
     create.mockResolvedValueOnce({ ...busTracker, liveUrl: 'https://bus-tracker.example.com' });
 
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     validFill();
     fireEvent.change(formScope().getByLabelText(/Live link/i), {
       target: { value: 'https://bus-tracker.example.com' },

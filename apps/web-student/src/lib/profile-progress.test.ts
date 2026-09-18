@@ -29,14 +29,14 @@ describe('computeProfileCompletion', () => {
     const result = computeProfileCompletion(emptyInput());
     expect(result.percent).toBe(0);
     expect(result.completedAreas).toEqual([]);
-    expect(result.incompleteAreas).toHaveLength(8);
+    expect(result.incompleteAreas).toHaveLength(7);
   });
 
   it('returns 13% when one area is complete', () => {
     const result = computeProfileCompletion(
       emptyInput({ education: [{ id: 'edu_1', institutionName: 'MIT' } as never] }),
     );
-    expect(result.percent).toBe(13);
+    expect(result.percent).toBe(14);
   });
 
   it('returns 50% when four areas are complete', () => {
@@ -48,10 +48,10 @@ describe('computeProfileCompletion', () => {
         projects: [{ projectId: 'prj_1', title: 'App' } as never],
       }),
     );
-    expect(result.percent).toBe(50);
+    expect(result.percent).toBe(57);
   });
 
-  it('returns 100% when all eight areas are complete', () => {
+  it('returns 100% when all seven areas are complete', () => {
     const result = computeProfileCompletion(
       emptyInput({
         skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
@@ -62,11 +62,6 @@ describe('computeProfileCompletion', () => {
         certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         onboardingProfile: {
           linkedinUrl: 'https://linkedin.com/in/ada',
-          jobPreferences: {
-            expectedCtcLakhs: 8,
-            currentLocation: 'Bengaluru',
-            preferredLocations: ['Bengaluru'],
-          },
         } as never,
       }),
     );
@@ -97,6 +92,17 @@ describe('computeProfileCompletion', () => {
     const result = computeProfileCompletion(
       emptyInput({
         languages: [{ id: 'lang_1', language: 'Tamil', proficiency: 'NATIVE' } as never],
+      }),
+    );
+    expect(result.areaStatus.languages).toBe(true);
+  });
+
+  it('marks languages complete from onboarding language skills', () => {
+    const result = computeProfileCompletion(
+      emptyInput({
+        onboardingDraft: {
+          skills: [{ type: 'language', name: 'English', proficiency: 'Fluent' }],
+        },
       }),
     );
     expect(result.areaStatus.languages).toBe(true);
@@ -164,32 +170,6 @@ describe('computeProfileCompletion', () => {
     expect(result.areaStatus.professionalLinks).toBe(true);
   });
 
-  it('requires all three job preference fields', () => {
-    expect(
-      computeProfileCompletion(
-        emptyInput({
-          onboardingProfile: {
-            jobPreferences: { expectedCtcLakhs: 8, currentLocation: 'Bengaluru' },
-          } as never,
-        }),
-      ).areaStatus.jobPreferences,
-    ).toBe(false);
-
-    expect(
-      computeProfileCompletion(
-        emptyInput({
-          onboardingProfile: {
-            jobPreferences: {
-              expectedCtcLakhs: 8,
-              currentLocation: 'Bengaluru',
-              preferredLocations: ['Bengaluru'],
-            },
-          } as never,
-        }),
-      ).areaStatus.jobPreferences,
-    ).toBe(true);
-  });
-
   it('does not change completion based on verification status', () => {
     const declared = computeProfileCompletion(
       emptyInput({
@@ -211,7 +191,7 @@ describe('recommendNextAction', () => {
   it('recommends adding skills first when there are no skill claims', () => {
     const action = recommendNextAction(emptyInput());
     expect(action.id).toBe('add-skills');
-    expect(action.href).toBe('/assessments');
+    expect(action.href).toBe('/profile?section=skills');
   });
 
   it('prioritizes profile sections over verifying a DECLARED skill', () => {
@@ -247,11 +227,6 @@ describe('recommendNextAction', () => {
         certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         onboardingProfile: {
           linkedinUrl: 'https://linkedin.com/in/ada',
-          jobPreferences: {
-            expectedCtcLakhs: 8,
-            currentLocation: 'Bengaluru',
-            preferredLocations: ['Bengaluru'],
-          },
         } as never,
       }),
     );
@@ -328,21 +303,6 @@ describe('recommendNextAction', () => {
     expect(action.id).toBe('add-professional-links');
   });
 
-  it('recommends job preferences after professional links are complete', () => {
-    const action = recommendNextAction(
-      emptyInput({
-        skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-        languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
-        education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
-        experiences: [{ id: 'exp_1', companyName: 'Acme', role: 'Dev' } as never],
-        projects: [{ projectId: 'prj_1', title: 'App' } as never],
-        certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
-        onboardingProfile: { linkedinUrl: 'https://linkedin.com/in/ada' } as never,
-      }),
-    );
-    expect(action.id).toBe('add-job-preferences');
-  });
-
   it('recommends public profile when everything is complete', () => {
     const action = recommendNextAction(
       emptyInput({
@@ -354,11 +314,6 @@ describe('recommendNextAction', () => {
         certificates: [{ certificateId: 'cert_1', title: 'AWS' } as never],
         onboardingProfile: {
           linkedinUrl: 'https://linkedin.com/in/ada',
-          jobPreferences: {
-            expectedCtcLakhs: 8,
-            currentLocation: 'Bengaluru',
-            preferredLocations: ['Bengaluru'],
-          },
         } as never,
       }),
     );

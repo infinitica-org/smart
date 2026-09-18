@@ -10,12 +10,12 @@ import { PlacementSidebar } from '../../../components/placement/PlacementSidebar
 export default function PlacementLayout({ children }: { children: ReactNode }) {
   return (
     <div className="-mx-4 -my-4 min-w-0 md:-mx-8 md:-my-8">
-      <div className="flex min-h-[calc(100dvh-4rem)] w-full bg-[var(--ds-canvas)]">
+      <div className="flex w-full items-stretch bg-[var(--ds-canvas)] min-h-[calc(100dvh-4rem)]">
         <PlacementSidebar />
         <div className="min-w-0 flex-1">
-          <div className="w-full px-4 py-6 md:px-6 md:py-8 xl:px-8">
+          <div className="w-full px-4 py-4 md:px-6 md:py-5 xl:px-8">
             <PlacementMobileNav />
-            <div className="mt-3 flex flex-col gap-6 md:mt-0">{children}</div>
+            <div className="mt-2 flex flex-col gap-4 md:mt-0">{children}</div>
           </div>
         </div>
       </div>

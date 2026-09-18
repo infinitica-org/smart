@@ -2,18 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { isSmartApiError } from '@smart/api-client';
-import { createPortal } from 'react-dom';
 import type { GithubRepoSummary, ProjectDto } from '@smart/contracts';
 import { AlertCircle, CheckCircle2, GitBranch, Plus, X } from 'lucide-react';
 import { ProjectDetailModal } from '@/components/profile/projects/ProjectDetailModal';
 import { ProjectEmptyState } from '@/components/profile/projects/ProjectEmptyState';
-import { ProjectFormModal } from '@/components/profile/projects/ProjectFormModal';
+import {
+  ProjectFormModal,
+  type ProjectWizardStep,
+} from '@/components/profile/projects/ProjectFormModal';
 import { ProjectList } from '@/components/profile/projects/ProjectList';
 import { api } from '../../lib/api';
 import { useOnboarding } from '../../lib/use-onboarding';
 import { useFeatureFlag } from '../../lib/entitlements';
-import { PROFILE_PROJECTS_HEADER_ACTIONS_ID } from '@/lib/profile-projects-header';
 import { resolveGithubLogin } from '@/lib/github-login';
+import { ProfileSectionHeader } from '@/components/profile/ProfileSectionChrome';
+import { profileSectionMeta } from '@/lib/profile-sections';
 import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
 import {
   EMPTY_PROJECT_FORM,
@@ -43,7 +46,7 @@ export function ProjectSubmissionForm() {
   const [detailProject, setDetailProject] = useState<ProjectDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const [showImport, setShowImport] = useState(false);
+  const [wizardStep, setWizardStep] = useState<ProjectWizardStep>('choose');
   const [repos, setRepos] = useState<GithubRepoSummary[] | null>(null);
   const [reposLoading, setReposLoading] = useState(false);
   const [reposError, setReposError] = useState<string | null>(null);
@@ -91,15 +94,17 @@ export function ProjectSubmissionForm() {
   const openForm = (options?: { showGithubImport?: boolean }) => {
     setFormOpen(true);
     if (options?.showGithubImport) {
-      setShowImport(true);
+      setWizardStep('github-list');
       loadReposIfNeeded();
+    } else {
+      setWizardStep('choose');
     }
   };
 
   const closeForm = () => {
     if (isPending) return;
     setFormOpen(false);
-    setShowImport(false);
+    setWizardStep('choose');
   };
 
   const startAnother = () => {
@@ -139,18 +144,13 @@ export function ProjectSubmissionForm() {
   }, [githubLogin]);
 
   useEffect(() => {
-    if (showImport && githubLogin) {
+    if (wizardStep === 'github-list' && githubLogin) {
       loadReposIfNeeded();
     }
-  }, [showImport, githubLogin, loadReposIfNeeded]);
-
-  const toggleImport = () => {
-    const next = !showImport;
-    setShowImport(next);
-    if (next) loadReposIfNeeded();
-  };
+  }, [wizardStep, githubLogin, loadReposIfNeeded]);
 
   const importRepo = (repo: GithubRepoSummary) => {
+    setWizardStep('github-importing');
     setImportingRepo(repo.fullName);
     setImportNote(null);
     const repoName = repo.fullName.split('/')[1] ?? repo.fullName;
@@ -182,7 +182,7 @@ export function ProjectSubmissionForm() {
       })
       .finally(() => {
         setImportingRepo(null);
-        setShowImport(false);
+        setWizardStep('manual');
       });
   };
 
@@ -213,7 +213,7 @@ export function ProjectSubmissionForm() {
           setJustSubmitted(created);
           setFields(EMPTY_PROJECT_FORM);
           setFormOpen(false);
-          setShowImport(false);
+          setWizardStep('choose');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to submit project.');
         }
@@ -236,29 +236,29 @@ export function ProjectSubmissionForm() {
     : null;
   const topStack = displayProjects.length > 0 ? topStackTags(displayProjects) : [];
 
-  const headerActionsEl =
-    typeof document !== 'undefined'
-      ? document.getElementById(PROFILE_PROJECTS_HEADER_ACTIONS_ID)
-      : null;
-
-  const headerAddButton =
-    canSubmitProjects && headerActionsEl
-      ? createPortal(
-          <button type="button" onClick={() => openForm()} className={profilePrimaryButtonSmClass}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Project
-          </button>,
-          headerActionsEl,
-        )
-      : null;
+  const meta = profileSectionMeta('projects');
 
   return (
-    <section className="flex flex-col gap-6" aria-labelledby="projects-portfolio-heading">
-      {headerAddButton}
-
-      <p id="projects-portfolio-heading" className="sr-only">
-        Project portfolio
-      </p>
+    <section
+      className="flex flex-col gap-4 font-[family-name:var(--tpo-font-sans)]"
+      aria-label="Projects"
+    >
+      <ProfileSectionHeader
+        title={meta.title}
+        description={meta.description}
+        action={
+          canSubmitProjects && displayProjects.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => openForm()}
+              className={`${profilePrimaryButtonSmClass} justify-center px-4 py-2.5 text-[13px] font-semibold tracking-[-0.01em]`}
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              Add project
+            </button>
+          ) : null
+        }
+      />
 
       {processing && justSubmitted ? (
         <div
@@ -305,17 +305,7 @@ export function ProjectSubmissionForm() {
         </div>
       ) : null}
 
-      {!canSubmitProjects ? (
-        <div className="rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-hover)] p-5 text-sm">
-          <p className="font-semibold text-[var(--ds-text)]">Project verification</p>
-          <p className="mt-2 text-[var(--ds-text-muted)]">
-            Project verification isn&apos;t on your institution&apos;s plan. Ask your TPO to upgrade
-            the plan to submit new projects for verification.
-          </p>
-        </div>
-      ) : null}
-
-      {displayProjects.length === 0 && canSubmitProjects ? (
+      {displayProjects.length === 0 ? (
         <ProjectEmptyState
           canSubmit={canSubmitProjects}
           onAdd={() => openForm()}
@@ -349,11 +339,11 @@ export function ProjectSubmissionForm() {
 
       <ProjectFormModal
         open={formOpen && canSubmitProjects}
+        wizardStep={wizardStep}
         fields={fields}
         fieldErrors={fieldErrors}
         isPending={isPending}
         githubLogin={githubLogin}
-        showImport={showImport}
         repos={repos}
         reposLoading={reposLoading}
         reposError={reposError}
@@ -361,10 +351,14 @@ export function ProjectSubmissionForm() {
         onClose={closeForm}
         onFieldChange={setField}
         onSubmit={submit}
-        onToggleImport={toggleImport}
+        onChooseGithub={() => {
+          setWizardStep('github-list');
+          loadReposIfNeeded();
+        }}
+        onChooseManual={() => setWizardStep('manual')}
+        onBackToChoose={() => setWizardStep('choose')}
         onRetryRepos={() => loadReposIfNeeded({ force: true })}
         onSelectRepo={importRepo}
-        onManual={() => setShowImport(false)}
       />
 
       <ProjectDetailModal

@@ -373,32 +373,52 @@ export const JobOpeningFieldsSchema = z.object({
   driveSpoc: z.string().min(1).max(200).optional(),
   driveDate: IsoDateSchema.optional(),
   lastDateToApply: IsoDateSchema.optional(),
+  minSscPercentage: z.number().min(0).max(100).optional(),
+  minHscPercentage: z.number().min(0).max(100).optional(),
+  /** Minimum college score as percentage; matched against student CGPA (`cgpa * 10`). */
+  minCollegePercentage: z.number().min(0).max(100).optional(),
+  /** When false, candidates with active backlogs are ineligible. Omitted or true = allowed. */
+  backlogsAllowed: z.boolean().optional(),
 });
 
 export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.extend({
+  /** Institution-scoped employer from Company Repository (`PlacementEmployer`). */
+  employerId: UuidSchema.optional(),
   /** Object storage key from `POST /placement/openings/logo/upload`. */
   companyLogoStorageKey: z.string().min(1).max(2048).optional(),
-}).superRefine((value, ctx) => {
-  if (value.minYearsExperience > value.maxYearsExperience) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['maxYearsExperience'],
-      message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
-    });
-  }
-  if (value.driveDate && value.lastDateToApply && value.lastDateToApply > value.driveDate) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['lastDateToApply'],
-      message: 'lastDateToApply must be on or before driveDate',
-    });
-  }
-});
+})
+  .partial({ companyName: true })
+  .superRefine((value, ctx) => {
+    const name = value.companyName?.trim() ?? '';
+    if (!value.employerId && name.length < 2) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['companyName'],
+        message: 'Select a company from the repository or enter a company name.',
+      });
+    }
+    if (value.minYearsExperience > value.maxYearsExperience) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['maxYearsExperience'],
+        message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
+      });
+    }
+    if (value.driveDate && value.lastDateToApply && value.lastDateToApply > value.driveDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lastDateToApply'],
+        message: 'lastDateToApply must be on or before driveDate',
+      });
+    }
+  });
 export type CreateJobOpeningRequest = z.infer<typeof CreateJobOpeningRequestSchema>;
 
 export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   openingId: UuidSchema,
   institutionId: UuidSchema,
+  /** Linked institution employer profile when the opening was posted company-first. */
+  employerId: UuidSchema.nullable().optional(),
   status: JobOpeningStatusSchema,
   createdAt: IsoDateTimeSchema,
   /** Time-limited signed URL when a logo object key is stored. */
@@ -427,6 +447,79 @@ export const ListJobOpeningsResponseSchema = z.object({
   openings: z.array(JobOpeningDtoSchema),
 });
 export type ListJobOpeningsResponse = z.infer<typeof ListJobOpeningsResponseSchema>;
+
+/* ------------------------- placement employers (TPO) ------------------------- */
+
+const placementEmployerLongText = z.string().max(8_000);
+const placementEmployerMediumText = z.string().max(4_000);
+
+export const PlacementEmployerFieldsSchema = z.object({
+  name: z.string().trim().min(2).max(150),
+  website: z.string().trim().max(255).optional(),
+  linkedinUrl: z.string().trim().max(512).optional(),
+  sector: z.string().trim().max(80).optional(),
+  location: z.string().trim().max(120).optional(),
+  aboutCompany: placementEmployerLongText.optional(),
+  companyOffers: placementEmployerMediumText.optional(),
+  additionalCompanyDetails: placementEmployerMediumText.optional(),
+  logoStorageKey: z.string().min(1).max(2048).optional(),
+});
+export type PlacementEmployerFields = z.infer<typeof PlacementEmployerFieldsSchema>;
+
+export const CreatePlacementEmployerRequestSchema = PlacementEmployerFieldsSchema;
+export type CreatePlacementEmployerRequest = z.infer<typeof CreatePlacementEmployerRequestSchema>;
+
+export const UpdatePlacementEmployerRequestSchema = PlacementEmployerFieldsSchema.partial();
+export type UpdatePlacementEmployerRequest = z.infer<typeof UpdatePlacementEmployerRequestSchema>;
+
+export const ListPlacementEmployersQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+});
+export type ListPlacementEmployersQuery = z.infer<typeof ListPlacementEmployersQuerySchema>;
+
+export const PlacementEmployerSummarySchema = PlacementEmployerFieldsSchema.extend({
+  employerId: UuidSchema,
+  institutionId: UuidSchema,
+  openingCount: z.number().int().nonnegative(),
+  activeOpeningCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  companyLogoUrl: z.string().url().max(2048).optional(),
+});
+export type PlacementEmployerSummary = z.infer<typeof PlacementEmployerSummarySchema>;
+
+export const PlacementEmployerDriveHistoryItemSchema = z.object({
+  openingId: UuidSchema,
+  roleTitle: z.string(),
+  driveDate: IsoDateSchema.nullable().optional(),
+  status: JobOpeningStatusSchema,
+  applicationCount: z.number().int().nonnegative(),
+  shortlistedCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+});
+export type PlacementEmployerDriveHistoryItem = z.infer<
+  typeof PlacementEmployerDriveHistoryItemSchema
+>;
+
+export const PlacementEmployerDetailSchema = PlacementEmployerSummarySchema.extend({
+  driveHistory: z.array(PlacementEmployerDriveHistoryItemSchema),
+  currentOpenings: z.array(
+    z.object({
+      openingId: UuidSchema,
+      roleTitle: z.string(),
+      status: JobOpeningStatusSchema,
+      location: z.string(),
+      createdAt: IsoDateTimeSchema,
+    }),
+  ),
+});
+export type PlacementEmployerDetail = z.infer<typeof PlacementEmployerDetailSchema>;
+
+export const ListPlacementEmployersResponseSchema = z.object({
+  employers: z.array(PlacementEmployerSummarySchema),
+});
+export type ListPlacementEmployersResponse = z.infer<typeof ListPlacementEmployersResponseSchema>;
 
 export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -23,6 +24,7 @@ import {
   ListGithubReposRequestSchema,
   RepoLanguagesRequestSchema,
   ReverseGeocodeRequestSchema,
+  DeleteResumeRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply } from 'fastify';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -164,6 +166,15 @@ export class UsersController {
       fileName,
       mimeType,
     });
+  }
+
+  @Delete('me/resume')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Remove one stored resume file by object key.' })
+  deleteResume(@CurrentUser() user: RequestUser, @Query('objectKey') objectKey: string) {
+    return this.service.deleteResume(user.sub, DeleteResumeRequestSchema.parse({ objectKey }));
   }
 
   @Post('me/profile-photo')

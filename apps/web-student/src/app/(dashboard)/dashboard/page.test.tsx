@@ -43,11 +43,21 @@ vi.mock('@/components/tour/ProductTour', () => ({
   ProductTour: () => null,
 }));
 
+vi.mock('@/components/profile/ProfilePhotoEditControl', () => ({
+  ProfilePhotoEditControl: () => null,
+}));
+
+vi.mock('@/components/profile/ProfilePublicLinkCard', () => ({
+  ProfilePublicLinkCard: () => <div>Public profile link</div>,
+}));
+
 vi.mock('@/lib/use-profile-progress', () => ({
   useProfileProgress: () => ({
     loading: false,
     error: null,
-    input: null,
+    input: { education: [] },
+    linkedinVerified: false,
+    githubVerified: true,
     progress: {
       percent: 37,
       completedAreas: ['skills', 'languages', 'projects'],
@@ -60,7 +70,6 @@ vi.mock('@/lib/use-profile-progress', () => ({
         projects: true,
         certifications: false,
         professionalLinks: false,
-        jobPreferences: false,
       },
     },
     visibleRecommendedAction: {
@@ -80,19 +89,19 @@ vi.mock('@/lib/use-profile-progress', () => ({
 }));
 
 describe('DashboardPage', () => {
-  it('renders greeting, profile progress, unlock message, and verified skills only', () => {
+  it('renders profile hero, public link, progress cards, and verified skills', () => {
     render(<DashboardPage />);
 
     expect(screen.getByRole('heading', { name: /Welcome back, Ada/i })).toBeTruthy();
-    expect(screen.getByText('Profile Completion')).toBeTruthy();
-    expect(screen.getByText('38%')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Go to Profile' }).getAttribute('href')).toBe(
-      '/profile',
-    );
-    expect(screen.getByText('Profile Sections')).toBeTruthy();
+    expect(screen.getByTestId('profile-hero-banner')).toBeTruthy();
+    expect(screen.getByText('Ada Lovelace')).toBeTruthy();
+    expect(screen.getByText('Public profile link')).toBeTruthy();
+    expect(screen.getByText('37%')).toBeTruthy();
     expect(
-      screen.getByText('Complete all profile sections to unlock skill verification.'),
-    ).toBeTruthy();
+      screen.getByRole('link', { name: /3 of 7 sections complete/i }).getAttribute('href'),
+    ).toBe('/profile');
+    expect(screen.getByText('Profile Sections')).toBeTruthy();
+    expect(screen.queryByText('Why complete your profile?')).toBeNull();
     expect(screen.getByText('Recommended Next Step')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Complete your Education profile' })).toBeTruthy();
     expect(screen.getByRole('link', { name: /Continue to Education/i }).getAttribute('href')).toBe(
@@ -103,8 +112,8 @@ describe('DashboardPage', () => {
     expect(screen.getByText('REACT')).toBeTruthy();
     expect(screen.queryByText('NODE')).toBeNull();
 
-    const skillRepositoryLink = screen.getByRole('link', { name: /Browse Skill Repository/i });
-    expect(skillRepositoryLink.getAttribute('href')).toBe('/assessments');
+    const manageSkillsLink = screen.getByRole('link', { name: /Manage skills/i });
+    expect(manageSkillsLink.getAttribute('href')).toBe('/profile?section=skills');
 
     expect(screen.queryByText('Skills Declared')).toBeNull();
     expect(screen.queryByText(/Application tracker/i)).toBeNull();
