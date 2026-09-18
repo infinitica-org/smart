@@ -44,8 +44,8 @@ describe('SkillsSection', () => {
 
     expect(await screen.findByRole('heading', { name: 'Skills' })).toBeDefined();
     expect(screen.getByPlaceholderText('Search skills…')).toBeDefined();
-    expect(screen.getByText('My selected skills')).toBeDefined();
-    expect(screen.getByText('React')).toBeDefined();
+    expect(screen.queryByText('My selected skills')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Available skills' })).toBeDefined();
   });
 
   it('persists selection through declareSkillClaim API', async () => {

@@ -21,7 +21,7 @@ import {
   skillNameForCode,
   takeAssessmentBlockMessage,
 } from '@/lib/skill-declarations';
-import { canVerifySkills } from '@/lib/profile-progress';
+import { canVerifySkills, PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT } from '@/lib/profile-progress';
 import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 import { assessmentCardStateForClaim } from '@/lib/student-assessment-ui';
 import { profileSectionHref } from '@/lib/profile-sections';
@@ -205,7 +205,7 @@ export function StudentAssessmentHub() {
                 const busy = isPending && pendingClaimId === claim.claimId;
                 const blocked =
                   !profileUnlocked && claim.status !== 'VERIFIED'
-                    ? 'Complete at least 50% of your profile to start assessments.'
+                    ? `Complete at least ${String(PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT)}% of your profile to start assessments.`
                     : takeAssessmentBlockMessage(claim);
                 const disabled = card.disabled || Boolean(blocked) || busy;
 

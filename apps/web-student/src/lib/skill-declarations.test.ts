@@ -151,8 +151,8 @@ describe('skill-declarations helpers', () => {
   });
 
   it('gates Take Assessment on profile completion only', () => {
-    expect(canEnableTakeAssessment({ profilePercent: 49 })).toBe(false);
-    expect(canEnableTakeAssessment({ profilePercent: 50 })).toBe(true);
+    expect(canEnableTakeAssessment({ profilePercent: 9 })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 10 })).toBe(true);
     expect(canEnableTakeAssessment({ profilePercent: 100 })).toBe(true);
   });
 

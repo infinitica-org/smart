@@ -43,7 +43,7 @@ function mockIncompleteProfile() {
   profileProgressMock.mockReturnValue({
     loading: false,
     progress: {
-      percent: 38,
+      percent: 5,
       completedAreas: ['skills', 'languages', 'education'],
       incompleteAreas: [
         'experience',
@@ -161,7 +161,7 @@ describe('SkillRepositoryPage', () => {
     expect(screen.queryByText('Select proficiency')).toBeNull();
   });
 
-  it('keeps Take Assessment disabled when profile is below 50%', async () => {
+  it('keeps Take Assessment disabled when profile is below 10%', async () => {
     render(<SkillRepositoryPage />);
     await selectSkill('JavaScript / TypeScript');
 
@@ -176,7 +176,7 @@ describe('SkillRepositoryPage', () => {
     );
   });
 
-  it('enables Take Assessment when profile is at least 50% complete', async () => {
+  it('enables Take Assessment when profile is at least 10% complete', async () => {
     mockCompleteProfile();
     render(<SkillRepositoryPage />);
     await selectSkill('JavaScript / TypeScript');

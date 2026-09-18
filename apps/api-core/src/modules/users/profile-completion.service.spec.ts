@@ -112,7 +112,7 @@ describe('ProfileCompletionService', () => {
     expect(await service.isCompleteForSkillVerification(STUDENT_ID)).toBe(true);
   });
 
-  it('reports 88% when one area is missing and still allows verification at 50% gate', async () => {
+  it('reports 88% when one area is missing and still allows verification at 10% gate', async () => {
     const prisma = completePrismaMocks();
     prisma.candidateCertificate.findMany.mockResolvedValue([]);
     const service = new ProfileCompletionService(prisma as never);
@@ -123,33 +123,27 @@ describe('ProfileCompletionService', () => {
     expect(await service.isCompleteForSkillVerification(STUDENT_ID)).toBe(true);
   });
 
-  it('throws profile_incomplete when profile is below 50%', async () => {
+  it('throws profile_incomplete when profile is below 10%', async () => {
     const prisma = completePrismaMocks();
+    prisma.skillClaim.findMany.mockResolvedValue([]);
+    prisma.candidateLanguage.findMany.mockResolvedValue([]);
+    prisma.candidateEducation.findMany.mockResolvedValue([]);
     prisma.workExperience.findMany.mockResolvedValue([]);
     prisma.project.findMany.mockResolvedValue([]);
     prisma.candidateCertificate.findMany.mockResolvedValue([]);
     prisma.user.findUnique.mockResolvedValue({
-      onboardingCompleted: true,
-      onboardingDetails: {
-        interestDomain: 'CS_IT',
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-        phoneCountryCode: '+91',
-        phoneNumber: '9876543210',
-        dpdpConsent: true,
-        dpdpConsentAt: '2026-01-01T00:00:00.000Z',
-        completedAt: '2026-01-01T00:00:00.000Z',
-      },
+      onboardingCompleted: false,
+      onboardingDetails: null,
     });
     const service = new ProfileCompletionService(prisma as never);
 
     const progress = await service.getProgressForStudent(STUDENT_ID);
-    expect(progress.percent).toBe(38);
+    expect(progress.percent).toBe(0);
 
     await expect(service.assertCompleteForSkillVerification(STUDENT_ID)).rejects.toMatchObject({
       response: expect.objectContaining({
         error: 'profile_incomplete',
-        message: 'Reach at least 50% profile completion to unlock skill verification.',
+        message: 'Reach at least 10% profile completion to unlock skill verification.',
       }),
     });
   });
