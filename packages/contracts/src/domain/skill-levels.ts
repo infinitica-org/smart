@@ -117,3 +117,53 @@ export function assertSkillQuestionCounts(skill: {
     }
   }
 }
+
+/** Canonical proficiency ordering for UI level numbers (1–4). */
+export const PROFICIENCY_LEVEL_ORDER: readonly ProficiencyLevel[] = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'PROFESSIONAL',
+];
+
+export const PROFICIENCY_TRADITIONAL_LABELS: Readonly<Record<ProficiencyLevel, string>> = {
+  BEGINNER: 'Beginner',
+  INTERMEDIATE: 'Intermediate',
+  ADVANCED: 'Advanced',
+  PROFESSIONAL: 'Professional',
+};
+
+export function proficiencyLevelIndex(level: string): number {
+  return PROFICIENCY_LEVEL_ORDER.indexOf(level as ProficiencyLevel);
+}
+
+/** Maps BEGINNER → 1 … PROFESSIONAL → 4; unknown → 0. */
+export function proficiencyLevelNumber(level: string): number {
+  const idx = proficiencyLevelIndex(level);
+  return idx >= 0 ? idx + 1 : 0;
+}
+
+/** UI-facing label — backend enums stay unchanged. */
+export function proficiencyLevelUiLabel(level: string): string {
+  const n = proficiencyLevelNumber(level);
+  return n > 0 ? `Level ${String(n)}` : level;
+}
+
+export function proficiencyLegendEntries(): ReadonlyArray<{
+  level: number;
+  traditionalLabel: string;
+}> {
+  return PROFICIENCY_LEVEL_ORDER.map((key, index) => ({
+    level: index + 1,
+    traditionalLabel: PROFICIENCY_TRADITIONAL_LABELS[key],
+  }));
+}
+
+/** Competency evidence bands for placement gap visuals (not proficiency tiers). */
+export const COMPETENCY_GAP_DEMONSTRATION_LEVEL = 2;
+
+export function competencyDemonstrationLevel(hitScore: number): number {
+  if (hitScore >= 0.5) return 2;
+  if (hitScore >= 0.25) return 1;
+  return 0;
+}

@@ -48,14 +48,16 @@ export function skillEvidenceTitle(
   const payload = readPayload(record);
   if (record.evidenceType === 'PROJECT') {
     if (entityId && titleOptions?.projectTitles?.has(entityId)) {
-      return titleOptions.projectTitles.get(entityId)!;
+      const title = titleOptions.projectTitles.get(entityId);
+      if (title) return title;
     }
     const fromPayload = payload?.title;
     if (typeof fromPayload === 'string' && fromPayload.trim()) return fromPayload.trim();
   }
   if (record.evidenceType === 'WORK_EXPERIENCE') {
     if (entityId && titleOptions?.experienceLabels?.has(entityId)) {
-      return titleOptions.experienceLabels.get(entityId)!;
+      const label = titleOptions.experienceLabels.get(entityId);
+      if (label) return label;
     }
     if (payload) {
       const jobTitle = typeof payload.jobTitle === 'string' ? payload.jobTitle.trim() : '';

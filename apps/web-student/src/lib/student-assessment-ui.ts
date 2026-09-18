@@ -6,7 +6,7 @@ import {
 } from './skill-claim-origin-ui';
 import { repositoryStatusForClaim, viewForFocus } from './skill-declarations';
 
-export type AssessmentCardAction = 'start' | 'continue' | 'locked' | 'practice';
+export type AssessmentCardAction = 'start' | 'continue' | 'locked' | 'verified';
 
 export function assessmentCardStateForClaim(claim: SkillClaimDto): {
   statusLabel: string;
@@ -29,9 +29,9 @@ export function assessmentCardStateForClaim(claim: SkillClaimDto): {
   if (claim.status === 'VERIFIED') {
     return {
       statusLabel: 'Verified',
-      action: 'practice',
-      buttonLabel: 'Practice Assessment',
-      disabled: false,
+      action: 'verified',
+      buttonLabel: '',
+      disabled: true,
     };
   }
 

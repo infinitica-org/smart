@@ -12,6 +12,7 @@ import {
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
+  proficiencyLevelUiLabel,
 } from '@smart/contracts';
 import { canVerifySkills } from './profile-progress';
 
@@ -29,10 +30,10 @@ export const PROFICIENCY_OPTIONS = [
 ] as const satisfies readonly SkillProficiency[];
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
-  PROFESSIONAL: 'Professional',
+  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
+  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
+  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
+  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
 };
 
 export function skillsForCategory(categoryId: SkillCategoryId) {
@@ -296,7 +297,7 @@ export function canEnableTakeAssessment(params: {
   return isProfileCompleteForSkillVerification(params.profilePercent);
 }
 
-/** Block message for Take Assessment — verified skills may still practice. */
+/** Block message for Take Assessment (verified skills use the repository detail view only). */
 export function takeAssessmentBlockMessage(claim?: SkillClaimDto | null): string | null {
   if (!claim) return null;
   const message = skillVerifyBlockMessage(claim);

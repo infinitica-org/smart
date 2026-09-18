@@ -77,7 +77,7 @@ describe('CandidateRepositoryProfileView', () => {
     );
 
     expect(screen.getAllByText(/JavaScript \/ TypeScript/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Intermediate proficiency/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Level 2 proficiency/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
   });
 });

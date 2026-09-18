@@ -18,6 +18,7 @@ import {
   SKILL_CATEGORY_IDS,
   SKILL_CATEGORIES,
   SKILL_DEFINITIONS,
+  proficiencyLevelUiLabel,
   type BatchDto,
   type InstitutionStudentDto,
   type SkillCategoryId,
@@ -475,7 +476,9 @@ export function SkillVerificationWorkspace() {
                               <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px] block">
                                 Proficiency
                               </span>
-                              <span className="font-extrabold text-white">{claim.proficiency}</span>
+                              <span className="font-extrabold text-white">
+                                {proficiencyLevelUiLabel(claim.proficiency)}
+                              </span>
                             </div>
                             <div>
                               <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px] block">

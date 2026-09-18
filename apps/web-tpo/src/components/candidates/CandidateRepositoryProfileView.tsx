@@ -3,6 +3,7 @@
 import { Mail, ExternalLink, GraduationCap, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
+  proficiencyLevelUiLabel,
   type InstitutionStudentDto,
   type SkillClaimDto,
 } from '@smart/contracts';
@@ -21,7 +22,7 @@ function skillDisplayName(code: string): string {
 }
 
 function formatProficiency(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase().replaceAll('_', ' ');
+  return proficiencyLevelUiLabel(value);
 }
 
 function formatDate(iso: string | null | undefined): string {

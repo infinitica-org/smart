@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CandidateMatchDto, MatchRunDto, ShortlistDto } from '@smart/contracts';
 import { SmartApiError } from '@smart/api-client';
@@ -221,21 +221,37 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     expect(screen.getByText('Bhavna Patel')).toBeDefined();
 
     // Percentage match scores
-    expect(screen.getByText('92% Match')).toBeDefined();
-    expect(screen.getByText('75% Match')).toBeDefined();
+    expect(screen.getByText('92% match')).toBeDefined();
+    expect(screen.getByText('75% match')).toBeDefined();
 
     expect(screen.getByText('Strong verified deep learning fit for this role.')).toBeDefined();
     expect(screen.getByText(/Skill \+ capability match/)).toBeDefined();
-    expect(screen.getAllByText('Verified skills').length).toBe(2);
+    expect(screen.getAllByText(/Verified on profile/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Large Language Model Application Engineering/)).toBeDefined();
     expect(screen.getByText('Partial fit — upskilling likely')).toBeDefined();
     expect(screen.getAllByText(/Deep Learning/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/MET · INTERMEDIATE/)).toBeDefined();
+    expect(screen.getByText('Meets opening')).toBeDefined();
     expect(screen.queryByText(/GOLD \(Ready Now\)/)).toBeNull();
 
     // KPI strip
     expect(screen.getByText('15 students')).toBeDefined();
     expect(screen.getByText('2 candidates')).toBeDefined();
+  });
+
+  it('opens the skill gap sidebar when View skill gap is clicked', async () => {
+    vi.mocked(openingsApi.list).mockResolvedValue({ openings: [mockOpening] });
+    vi.mocked(matchingApi.createRun).mockResolvedValue({ runId, status: 'PENDING' });
+    vi.mocked(matchingApi.getRun).mockResolvedValue(succeededRun());
+
+    renderWorkspace({ initialOpeningId: mockOpening.openingId });
+    await runMatchingToSuccess();
+
+    const bhavnaHeading = await screen.findByRole('heading', { name: 'Bhavna Patel' });
+    const card = bhavnaHeading.closest('article');
+    if (!card) throw new Error('Expected candidate card');
+    fireEvent.click(within(card).getByRole('button', { name: 'View skill gap' }));
+    expect(await screen.findByRole('dialog', { name: /skill gap — bhavna patel/i })).toBeDefined();
+    expect(screen.getByText(/Skills required by this opening/i)).toBeDefined();
   });
 
   it('orders candidates in descending matchScore order', async () => {
@@ -248,10 +264,10 @@ describe('AC-T04 CandidateSuggestionsWorkspace', () => {
     await runMatchingToSuccess();
 
     await screen.findByText('Aarav Sharma');
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    const names = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent?.trim());
 
     // Aarav (0.92) must come before Bhavna (0.75)
-    expect(headings).toEqual(['Aarav Sharma', 'Bhavna Patel']);
+    expect(names).toEqual(['Aarav Sharma', 'Bhavna Patel']);
   });
 
   it('shows a safe error message when triggering a run fails, and allows retrying', async () => {

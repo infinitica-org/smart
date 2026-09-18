@@ -3,6 +3,7 @@
 import {
   buildSkillBlueprintForCategory,
   getSkillDefinition,
+  proficiencyLevelUiLabel,
   type AssessmentResult,
 } from '@smart/contracts';
 
@@ -75,8 +76,8 @@ export function CompetencyBreakdown({
           isLight ? 'mt-1 text-xs text-[var(--ds-text-secondary)]' : 'mt-1 text-xs text-zinc-300'
         }
       >
-        Supported: {assessmentResult.highestAssessmentSupportedProficiency} · Confidence:{' '}
-        {assessmentResult.confidence.toLowerCase()}
+        Supported: {proficiencyLevelUiLabel(assessmentResult.highestAssessmentSupportedProficiency)}{' '}
+        · Confidence: {assessmentResult.confidence.toLowerCase()}
       </p>
       <ul className="mt-2 flex flex-col gap-1.5">
         {rows.map((row) => (

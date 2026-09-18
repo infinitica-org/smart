@@ -210,12 +210,13 @@ describe('SkillRepositoryPage', () => {
     });
   });
 
-  it('keeps Take Assessment disabled for verified skills when profile is below 50%', async () => {
+  it('does not show Take Assessment for verified skills', async () => {
     render(<SkillRepositoryPage />);
     await selectSkill('Python');
 
-    const takeAssessment = await screen.findByRole('button', { name: /Practice Assessment/i });
-    expect(takeAssessment.hasAttribute('disabled')).toBe(true);
+    const details = await screen.findByRole('region', { name: 'Skill details' });
+    expect(within(details).queryByRole('button', { name: /Take Assessment/i })).toBeNull();
+    expect(within(details).queryByRole('button', { name: /Practice Assessment/i })).toBeNull();
   });
 
   it('preserves verified status display for verified claims', async () => {

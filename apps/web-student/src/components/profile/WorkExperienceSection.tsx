@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createPortal } from 'react-dom';
 import { Plus, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   validateWorkExperienceEffectiveUpdate,

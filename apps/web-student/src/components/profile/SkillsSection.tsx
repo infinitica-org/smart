@@ -8,7 +8,7 @@ import {
   type SkillCategoryId,
   type SkillClaimDto,
 } from '@smart/contracts';
-import { Alert } from '@smart/ui';
+import { Alert, cn } from '@smart/ui';
 
 import { api } from '@/lib/api';
 import {
@@ -17,6 +17,7 @@ import {
 } from '@/lib/skill-declarations';
 import { skillClaimOriginHint } from '@/lib/skill-claim-origin-ui';
 import { CATEGORY_OPTIONS } from '@/lib/skills-catalog';
+import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 import {
   profileCardClass,
   profileHeadingClass,
@@ -27,12 +28,14 @@ import {
 } from '@/lib/profile-ui-classes';
 
 type CategoryFilter = SkillCategoryId | 'ALL';
+type VerifyFilter = 'All' | 'Verified' | 'Not Verified';
 
 export function SkillsSection() {
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('ALL');
+  const [verifyFilter, setVerifyFilter] = useState<VerifyFilter>('All');
   const [error, setError] = useState<string | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -70,6 +73,18 @@ export function SkillsSection() {
       ),
     [claims],
   );
+
+  const verifyFilterOptions: VerifyFilter[] = ['All', 'Verified', 'Not Verified'];
+
+  const filteredSelectedClaims = useMemo(() => {
+    if (verifyFilter === 'Verified') {
+      return selectedClaims.filter((claim) => claim.status === 'VERIFIED');
+    }
+    if (verifyFilter === 'Not Verified') {
+      return selectedClaims.filter((claim) => claim.status !== 'VERIFIED');
+    }
+    return selectedClaims;
+  }, [selectedClaims, verifyFilter]);
 
   const availableSkills = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -132,29 +147,72 @@ export function SkillsSection() {
 
       {selectedClaims.length > 0 ? (
         <div className="space-y-3">
-          <h3
-            className={`text-sm font-semibold uppercase tracking-[0.12em] ${profileMutedTextClass}`}
-          >
-            My selected skills
-          </h3>
-          <ul className="flex flex-wrap gap-2">
-            {selectedClaims.map((claim) => {
-              const hint = skillClaimOriginHint(claim);
-              return (
-                <li
-                  key={claim.claimId}
-                  className="inline-flex max-w-full flex-col rounded-full border border-[var(--student-success-border)] bg-[var(--student-accent-soft)] px-3 py-1.5 text-sm font-medium text-[var(--student-text-primary)]"
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3
+              className={`text-sm font-semibold uppercase tracking-[0.12em] ${profileMutedTextClass}`}
+            >
+              My selected skills
+            </h3>
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filter selected skills by verification"
+            >
+              {verifyFilterOptions.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setVerifyFilter(opt)}
+                  className={
+                    verifyFilter === opt
+                      ? profilePrimaryButtonSmClass
+                      : `${profileSecondaryButtonClass} !py-1.5 !text-xs`
+                  }
                 >
-                  <span>{skillNameForCode(claim.skillCode)}</span>
-                  {hint ? (
-                    <span className="text-[11px] font-normal text-[var(--ds-text-muted)]">
-                      {hint}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+          {filteredSelectedClaims.length === 0 ? (
+            <p className={`text-sm ${profileMutedTextClass}`}>
+              No skills match this verification filter.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {filteredSelectedClaims.map((claim) => {
+                const hint = skillClaimOriginHint(claim);
+                const verified = claim.status === 'VERIFIED';
+                return (
+                  <li
+                    key={claim.claimId}
+                    className={cn(
+                      'flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between',
+                      verified
+                        ? 'border-[var(--student-success-border)] bg-[var(--student-accent-soft)]'
+                        : 'border-[var(--ds-border)] bg-[var(--ds-surface)]',
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--student-text-primary)]">
+                        {skillNameForCode(claim.skillCode)}
+                      </p>
+                      {hint ? (
+                        <p className="text-[11px] text-[var(--ds-text-muted)]">{hint}</p>
+                      ) : null}
+                    </div>
+                    {verified && claim.proficiency ? (
+                      <ProficiencyLevelCircles proficiency={claim.proficiency} size="sm" />
+                    ) : (
+                      <span className="text-xs font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                        Not verified
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       ) : null}
 

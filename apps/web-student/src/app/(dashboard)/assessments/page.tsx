@@ -25,10 +25,9 @@ import {
   type SkillDefinition,
 } from '@smart/contracts';
 import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
-import { VerificationBadge, cn } from '@smart/ui';
+import { ProficiencyLevelHint, VerificationBadge, cn } from '@smart/ui';
 import { api } from '@/lib/api';
 import {
-  PROFICIENCY_LABELS,
   SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
   SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
   canEnableTakeAssessment,
@@ -40,6 +39,7 @@ import { useProfileProgress } from '@/lib/use-profile-progress';
 import { SkillVerificationInstructions } from '@/components/assessment/skill-verification-instructions';
 import { SkillEvidenceContextPanel } from '@/components/assessment/skill-evidence-context-panel';
 import { buildLinkedSkillEvidenceContext } from '@/lib/skill-evidence-context';
+import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 
 const STREAM_VISUALS: Record<
   string,
@@ -131,13 +131,18 @@ function CatalogSkillRow({
         <h3 className="truncate text-[15px] font-bold text-foreground">{skill.definition.name}</h3>
         <code className="font-mono text-xs text-muted-foreground">{skill.definition.code}</code>
       </div>
-      {skill.badgeStatus ? (
-        <VerificationBadge status={skill.badgeStatus} variant="outline" />
-      ) : (
-        <span className="inline-flex shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          Not declared
-        </span>
-      )}
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        {skill.badgeStatus ? (
+          <VerificationBadge status={skill.badgeStatus} variant="outline" />
+        ) : (
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Not declared
+          </span>
+        )}
+        {skill.verified && skill.claim?.proficiency ? (
+          <ProficiencyLevelCircles proficiency={skill.claim.proficiency} size="sm" />
+        ) : null}
+      </div>
     </button>
   );
 }
@@ -395,11 +400,12 @@ function SkillDetailPanel({
           )}
         </div>
         {skill.claim?.status === 'VERIFIED' && skill.claim.proficiency ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Verified proficiency</span>
-            <span className="font-semibold text-foreground">
-              {PROFICIENCY_LABELS[skill.claim.proficiency] ?? skill.claim.proficiency}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              Verified proficiency
+              <ProficiencyLevelHint />
             </span>
+            <ProficiencyLevelCircles proficiency={skill.claim.proficiency} />
           </div>
         ) : skill.claim?.status === 'DECLARED' || skill.claim?.status === 'BEGINNER_REATTEMPT' ? (
           <div className="flex items-center justify-between gap-3">
@@ -446,15 +452,17 @@ function SkillDetailPanel({
         </p>
       ) : null}
 
-      <button
-        type="button"
-        disabled={!canTakeAssessment || isBusy || isPending || Boolean(blockMessage)}
-        onClick={onTakeAssessment}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isBusy ? 'Loading…' : skill.verified ? 'Practice Assessment' : 'Take Assessment'}
-        <ArrowRight className="h-3.5 w-3.5" />
-      </button>
+      {!skill.verified ? (
+        <button
+          type="button"
+          disabled={!canTakeAssessment || isBusy || isPending || Boolean(blockMessage)}
+          onClick={onTakeAssessment}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isBusy ? 'Loading…' : 'Take Assessment'}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
     </section>
   );
 }

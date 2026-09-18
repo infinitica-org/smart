@@ -10,15 +10,13 @@ import {
   type JobOpeningDto,
   type MatchMethod,
   type ShortlistDto,
-  type SkillFitRow,
 } from '@smart/contracts';
 import { api, applicationsApi, openingsApi } from '../lib/api';
-import { potentialFitLabel } from '../lib/matching-display';
+import { CandidateSkillGapDrawer } from './matching/CandidateSkillGapDrawer';
+import { CandidateSuggestionCard } from './matching/CandidateSuggestionCard';
 import { useMatchRun } from '../lib/use-match-run';
 import { FilterMultiSelect } from './matching/filter-multi-select';
 import {
-  cardClass,
-  chipClass,
   errorNoticeClass,
   inputClass,
   labelClass,
@@ -34,9 +32,6 @@ import { JobOpeningIdLabel } from './placement/JobOpeningIdLabel';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
 const SKILL_OPTIONS = SKILL_DEFINITIONS.map((skill) => ({ id: skill.code, label: skill.name }));
-
-const pillClass =
-  'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold';
 
 const openingSelectClass = `${selectClass} min-w-[240px]`;
 
@@ -60,17 +55,6 @@ function usesSkillCapabilityUi(
 ): boolean {
   const method = shortlist?.matchMethod ?? candidate.method;
   return method === 'SKILL_CAPABILITY';
-}
-
-function skillFitStatusClass(status: SkillFitRow['status']): string {
-  switch (status) {
-    case 'MET':
-      return 'text-emerald-700';
-    case 'PARTIAL':
-      return 'text-amber-700';
-    default:
-      return 'text-rose-700';
-  }
 }
 
 function noticeClass(tone: 'success' | 'danger' | 'info'): string {
@@ -105,6 +89,7 @@ export function CandidateSuggestionsWorkspace({
   } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [skillGapStudentId, setSkillGapStudentId] = useState<string | null>(null);
 
   // S6-VV-76 pool-scoping filters — batches, min CGPA, required verified skills (all optional).
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
@@ -510,146 +495,39 @@ export function CandidateSuggestionsWorkspace({
                   : `Matched based on certification readiness for this role.`);
 
               return (
-                <article key={candidate.studentId} className={`${cardClass} flex flex-col gap-4`}>
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 cursor-pointer rounded border-[var(--ds-border)] accent-[var(--ds-green)]"
-                        aria-label={`Select ${candidate.studentName}`}
-                        checked={selectedIds.has(candidate.studentId)}
-                        disabled={sending || sentIds.has(candidate.studentId)}
-                        onChange={() => toggleCandidate(candidate.studentId)}
-                      />
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--tpo-accent-tint)] text-xs font-semibold text-[var(--ds-text)]">
-                        #{rank}
-                      </span>
-                      <div>
-                        <h2 className="text-base font-semibold text-[var(--ds-text)]">
-                          {candidate.studentName}
-                        </h2>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {skillCapability && candidate.explanation.potentialFit ? (
-                        <span
-                          className={`${pillClass} border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]`}
-                        >
-                          {potentialFitLabel(candidate.explanation.potentialFit)}
-                        </span>
-                      ) : null}
-                      <span
-                        className={`${pillClass} border-emerald-200 bg-emerald-50 text-emerald-700`}
-                      >
-                        {matchPercent}% Match
-                      </span>
-                      {sentIds.has(candidate.studentId) ? (
-                        <span className={`${pillClass} border-sky-200 bg-sky-50 text-sky-700`}>
-                          Opportunity sent
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {skillCapability &&
-                  (skillCoveragePct !== undefined || capabilityCoveragePct !== undefined) ? (
-                    <p className={`text-xs font-medium ${mutedTextClass}`}>
-                      Skill coverage{' '}
-                      <strong className="text-[var(--ds-text)]">
-                        {Math.round((skillCoveragePct ?? 0) * 100)}%
-                      </strong>
-                      {' · '}
-                      Capability coverage{' '}
-                      <strong className="text-[var(--ds-text)]">
-                        {Math.round((capabilityCoveragePct ?? 0) * 100)}%
-                      </strong>
-                      {shortlist?.minSkillCoverageApplied !== undefined ? (
-                        <>
-                          {' '}
-                          (min skill gate {Math.round(shortlist.minSkillCoverageApplied * 100)}%)
-                        </>
-                      ) : null}
-                    </p>
-                  ) : null}
-
-                  {(candidate.explanation.verifiedSkills?.length ?? 0) > 0 ? (
-                    <div className="border-t border-[var(--ds-border-subtle)] pt-3">
-                      <p className={`mb-2 ${sectionLabelClass}`}>Verified skills</p>
-                      <ul className="flex flex-wrap gap-2">
-                        {candidate.explanation.verifiedSkills?.map((skill) => (
-                          <li
-                            key={skill.skillCode}
-                            className={`${chipClass} text-[11px] text-[var(--ds-text-secondary)]`}
-                          >
-                            {skill.skillName}
-                            <span className="text-[var(--ds-text-muted)]">
-                              {' '}
-                              · {skill.proficiency}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-xl border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] p-4">
-                    <p className={`mb-1 ${sectionLabelClass}`}>Match explanation</p>
-                    <p className="text-sm leading-relaxed font-medium text-[var(--ds-text)]">
-                      {whyText}
-                    </p>
-                  </div>
-
-                  {skillCapability && (candidate.explanation.skillFit?.length ?? 0) > 0 ? (
-                    <div className="border-t border-[var(--ds-border-subtle)] pt-3">
-                      <p className={`mb-2 ${sectionLabelClass}`}>Required skills</p>
-                      <ul className="flex flex-col gap-1.5 text-xs font-medium">
-                        {(candidate.explanation.skillFit ?? []).map((row) => (
-                          <li
-                            key={row.skillCode}
-                            className="flex flex-wrap items-center justify-between gap-2"
-                          >
-                            <span className="text-[var(--ds-text)]">{row.skillName}</span>
-                            <span className={skillFitStatusClass(row.status)}>
-                              {row.status}
-                              {row.actualProficiency
-                                ? ` · ${row.actualProficiency} (need ${row.requiredProficiency})`
-                                : ` · need ${row.requiredProficiency}`}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  {!skillCapability &&
-                  (candidate.explanation.strongCompetencies.length > 0 ||
-                    candidate.explanation.gapCompetencies.length > 0) ? (
-                    <div className="flex flex-wrap gap-4 border-t border-[var(--ds-border-subtle)] pt-3 text-xs font-medium">
-                      {candidate.explanation.strongCompetencies.length > 0 ? (
-                        <div>
-                          <span className="text-[var(--ds-text-muted)]">Strong competencies:</span>{' '}
-                          <span className="font-semibold text-emerald-700">
-                            {candidate.explanation.strongCompetencies.join(', ')}
-                          </span>
-                        </div>
-                      ) : null}
-                      {candidate.explanation.gapCompetencies.length > 0 ? (
-                        <div>
-                          <span className="text-[var(--ds-text-muted)]">Gaps identified:</span>{' '}
-                          <span className="font-semibold text-amber-700">
-                            {candidate.explanation.gapCompetencies.join(', ')}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </article>
+                <CandidateSuggestionCard
+                  key={candidate.studentId}
+                  candidate={candidate}
+                  rank={rank}
+                  skillCapability={skillCapability}
+                  matchPercent={matchPercent}
+                  whyText={whyText}
+                  skillCoveragePct={skillCoveragePct}
+                  capabilityCoveragePct={capabilityCoveragePct}
+                  minSkillCoverageApplied={shortlist?.minSkillCoverageApplied}
+                  selected={selectedIds.has(candidate.studentId)}
+                  opportunitySent={sentIds.has(candidate.studentId)}
+                  sending={sending}
+                  onToggleSelect={() => toggleCandidate(candidate.studentId)}
+                  onViewSkillGap={() => setSkillGapStudentId(candidate.studentId)}
+                />
               );
             })}
           </div>
         </section>
       )}
+
+      <CandidateSkillGapDrawer
+        candidate={
+          skillGapStudentId
+            ? (sortedCandidates.find((row) => row.studentId === skillGapStudentId) ?? null)
+            : null
+        }
+        roleTitle={shortlist?.roleTitle ?? 'this opening'}
+        companyName={shortlist?.companyName ?? ''}
+        isOpen={skillGapStudentId !== null}
+        onClose={() => setSkillGapStudentId(null)}
+      />
     </>
   );
 }
