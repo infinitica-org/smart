@@ -10,13 +10,15 @@ import {
 type TpoBentoPageHeaderProps = {
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   badge?: ReactNode;
   actions?: ReactNode;
   aside?: ReactNode;
   accent?: keyof typeof dashboardAccentStyles;
   /** Tighter padding and type scale for operational sub-pages. */
   compact?: boolean;
+  /** Flat page title — no card chrome or hero icon (subsection nav carries section context). */
+  minimal?: boolean;
 };
 
 export function TpoBentoPageHeader({
@@ -28,8 +30,29 @@ export function TpoBentoPageHeader({
   aside,
   accent = 'blue',
   compact = false,
+  minimal = false,
 }: TpoBentoPageHeaderProps) {
   const accentStyle = dashboardAccentStyles[accent];
+
+  if (minimal) {
+    return (
+      <header className="flex flex-col gap-3 border-b border-[var(--ds-border-subtle)] pb-5 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h1 className="text-lg font-semibold tracking-tight text-[var(--ds-text)] md:text-xl">
+              {title}
+            </h1>
+            {badge ? <div className="shrink-0">{badge}</div> : null}
+          </div>
+          <p className="max-w-2xl text-[13px] leading-relaxed text-[var(--ds-text-muted)] md:text-sm">
+            {description}
+          </p>
+          {actions ? <div className="flex flex-wrap items-center gap-2 pt-1">{actions}</div> : null}
+        </div>
+        {aside ? <div className="shrink-0 md:pl-4">{aside}</div> : null}
+      </header>
+    );
+  }
 
   return (
     <header
@@ -42,13 +65,15 @@ export function TpoBentoPageHeader({
           <h1
             className={`${compact ? 'text-lg font-semibold tracking-tight text-[var(--ds-text)] md:text-xl' : bentoPageTitleClass} flex items-center gap-2`}
           >
-            <span
-              className={`flex shrink-0 items-center justify-center rounded-xl ${accentStyle.iconWrap} ${
-                compact ? 'size-9 rounded-lg' : 'size-10 rounded-2xl'
-              }`}
-            >
-              <Icon className={compact ? 'size-4' : 'size-[18px]'} strokeWidth={1.5} />
-            </span>
+            {Icon ? (
+              <span
+                className={`flex shrink-0 items-center justify-center rounded-xl ${accentStyle.iconWrap} ${
+                  compact ? 'size-9 rounded-lg' : 'size-10 rounded-2xl'
+                }`}
+              >
+                <Icon className={compact ? 'size-4' : 'size-[18px]'} strokeWidth={1.5} />
+              </span>
+            ) : null}
             {title}
           </h1>
           {badge}

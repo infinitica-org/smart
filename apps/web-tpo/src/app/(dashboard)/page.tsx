@@ -6,7 +6,7 @@ import { isSmartApiError } from '@smart/api-client';
 import type { AuthenticatedUser, InstitutionStudentDto, SkillClaimDto } from '@smart/contracts';
 import { DashboardHero } from '../../components/dashboard/DashboardHero';
 import { DashboardMetricCard } from '../../components/dashboard/DashboardMetricCard';
-import { OnboardingTrendCard } from '../../components/dashboard/OnboardingTrendCard';
+import { PlacementSnapshotCard } from '../../components/dashboard/PlacementSnapshotCard';
 import { QuickActionsCard } from '../../components/dashboard/QuickActionsCard';
 import { RecentCandidatesCard } from '../../components/dashboard/RecentCandidatesCard';
 import { UpcomingActivitiesCard } from '../../components/dashboard/UpcomingActivitiesCard';
@@ -102,11 +102,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
-        <OnboardingTrendCard
-          inviteBreakdown={metrics.inviteBreakdown}
-          totalProvisioned={metrics.totalProvisioned}
-          loading={loading}
-        />
+        <PlacementSnapshotCard />
         <UpcomingActivitiesCard />
       </div>
 

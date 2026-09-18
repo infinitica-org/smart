@@ -5,6 +5,18 @@
  * workspace (apps/web-student/src/app/globals.css) so both consoles read as one
  * product; accent aligns with SMART brand teal (#14b8a6).
  */
+
+/*
+ * Without this, the browser paints unstyled viewport slivers (e.g. the
+ * scrollbar gutter) with its own default off-white/grey instead of the
+ * console's canvas color — visible as a faint grey edge on any scrollable
+ * page.
+ */
+html,
+body {
+  background-color: var(--ds-canvas);
+}
+
 :root {
   color-scheme: light;
 
@@ -153,6 +165,12 @@
   --tpo-dash-accent-amber-soft: #fff8ed;
   --tpo-dash-accent-rose: #e58ba6;
   --tpo-dash-accent-rose-soft: #fdf2f6;
+
+  --tpo-section-nav-active: #172033;
+  --tpo-section-nav-idle: #64748b;
+  --tpo-section-nav-hover: #334155;
+  --tpo-section-nav-underline: #0f9f8f;
+  --tpo-section-nav-divider: #e2e8f0;
 }
 
 /*

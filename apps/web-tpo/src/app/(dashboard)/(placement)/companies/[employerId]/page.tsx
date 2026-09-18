@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { PlacementEmployerDetail } from '@smart/contracts';
-import { employersApi } from '../../../../../lib/api';
+import type { PlacementEmployerDetail, PlacementRecordDto } from '@smart/contracts';
+import { employersApi, placementOutcomesApi } from '../../../../../lib/api';
 import { tpoApiErrorMessage } from '../../../../../lib/api-errors';
+import { computeCompanyPlacementStats } from '../../../../../lib/company-placement-stats';
 import {
   bentoPageStackClass,
   dashboardErrorNoticeClass,
@@ -14,10 +15,15 @@ import { cardClass, mutedTextClass, sectionTitleClass } from '../../../../../lib
 import { JobOpeningIdLabel } from '../../../../../components/placement/JobOpeningIdLabel';
 import { PlacementPageHeader } from '../../../../../components/placement/PlacementPageHeader';
 
+function ctcLabel(value: number | null): string {
+  return value === null ? '—' : `${value.toFixed(1)} LPA`;
+}
+
 export default function CompanyProfilePage() {
   const params = useParams();
   const employerId = typeof params.employerId === 'string' ? params.employerId : '';
   const [detail, setDetail] = useState<PlacementEmployerDetail | null>(null);
+  const [outcomes, setOutcomes] = useState<PlacementRecordDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,10 +32,18 @@ export default function CompanyProfilePage() {
     setLoading(true);
     employersApi
       .get(employerId)
-      .then(setDetail)
+      .then((employer) => {
+        setDetail(employer);
+        return placementOutcomesApi
+          .listForCompany(employer.name)
+          .then((res) => setOutcomes(res.records))
+          .catch(() => setOutcomes([]));
+      })
       .catch((caught) => setError(tpoApiErrorMessage(caught, 'Could not load company.')))
       .finally(() => setLoading(false));
   }, [employerId]);
+
+  const stats = computeCompanyPlacementStats(outcomes);
 
   return (
     <div className={bentoPageStackClass}>
@@ -55,6 +69,77 @@ export default function CompanyProfilePage() {
             <p className={`mt-2 text-sm whitespace-pre-wrap ${mutedTextClass}`}>
               {detail.aboutCompany?.trim() || 'No description recorded yet.'}
             </p>
+          </section>
+          <section className={cardClass}>
+            <h2 className={sectionTitleClass}>Placement outcomes</h2>
+            <p className={`mt-1 text-sm ${mutedTextClass}`}>
+              Recorded hires for this company — yearwise numbers and CTC range.
+            </p>
+            <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <dt className={`text-xs ${mutedTextClass}`}>Total placed</dt>
+                <dd className="mt-1 text-xl font-semibold text-[var(--ds-text)]">
+                  {stats.totalPlaced}
+                </dd>
+              </div>
+              <div>
+                <dt className={`text-xs ${mutedTextClass}`}>Highest CTC ever</dt>
+                <dd className="mt-1 text-xl font-semibold text-[var(--ds-text)]">
+                  {ctcLabel(stats.highestCtc)}
+                </dd>
+              </div>
+              <div>
+                <dt className={`text-xs ${mutedTextClass}`}>Median CTC</dt>
+                <dd className="mt-1 text-xl font-semibold text-[var(--ds-text)]">
+                  {ctcLabel(stats.medianCtc)}
+                </dd>
+              </div>
+              <div>
+                <dt className={`text-xs ${mutedTextClass}`}>Lowest CTC</dt>
+                <dd className="mt-1 text-xl font-semibold text-[var(--ds-text)]">
+                  {ctcLabel(stats.lowestCtc)}
+                </dd>
+              </div>
+            </dl>
+
+            {stats.yearly.length === 0 ? (
+              <p className={`mt-4 text-sm ${mutedTextClass}`}>
+                No placement outcomes recorded yet — mark a candidate as Hired in the ATS to record
+                one here.
+              </p>
+            ) : (
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--ds-border-subtle)] text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      <th className="py-2 pr-4">Year</th>
+                      <th className="py-2 pr-4">Placed</th>
+                      <th className="py-2 pr-4">Highest CTC</th>
+                      <th className="py-2 pr-4">Average CTC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.yearly.map((row) => (
+                      <tr
+                        key={row.year}
+                        className="border-b border-[var(--ds-border-subtle)] last:border-0"
+                      >
+                        <td className="py-2.5 pr-4 font-semibold text-[var(--ds-text)]">
+                          {row.year}
+                        </td>
+                        <td className={`py-2.5 pr-4 ${mutedTextClass}`}>{row.placed}</td>
+                        <td className={`py-2.5 pr-4 ${mutedTextClass}`}>
+                          {ctcLabel(row.highestCtc)}
+                        </td>
+                        <td className={`py-2.5 pr-4 ${mutedTextClass}`}>
+                          {row.averageCtc === null ? '—' : `${row.averageCtc.toFixed(1)} LPA`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
           <section className={cardClass}>
             <h2 className={sectionTitleClass}>Previous placement drives</h2>

@@ -48,6 +48,7 @@ import type {
   ListJobOpeningsQuery,
   ListJobOpeningsResponse,
   ListMyApplicationsResponse,
+  ListPlacementOutcomesResponse,
   PlacementRecordDto,
   ParseOpeningJdResponse,
   RecordOutcomeRequest,
@@ -969,6 +970,54 @@ export class PlacementService {
           : Number(row.packageLpa),
       recordedAt: row.createdAt.toISOString(),
     });
+  }
+
+  /**
+   * Company placement-stats page: every recorded outcome for one company,
+   * scoped to the caller's institution via the student relation (this table
+   * has no institutionId column of its own). `interviewOffered`/`jobOffered`
+   * aren't persisted columns — they're derived from `outcome`, the one
+   * source of truth this row actually stores for the hiring funnel stage.
+   */
+  async listOutcomesForCompany(
+    institutionId: string,
+    companyName: string,
+  ): Promise<ListPlacementOutcomesResponse> {
+    const rows = await this.prisma.placementRecord.findMany({
+      where: { companyName, user: { institutionId } },
+      include: {
+        track: { select: { code: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const certificatesByUser = new Map(
+      (
+        await this.prisma.certificate.findMany({
+          where: { userId: { in: rows.map((row) => row.userId) }, status: 'ISSUED' },
+          orderBy: { issuedAt: 'desc' },
+          select: { userId: true, headlineTier: true },
+        })
+      ).map((cert) => [cert.userId, cert.headlineTier] as const),
+    );
+
+    return {
+      records: rows.map((row) =>
+        PlacementRecordDtoSchema.parse({
+          recordId: row.id,
+          studentId: row.userId,
+          trackCode: row.track.code,
+          tierAtPlacement: certificatesByUser.get(row.userId) ?? 'BRONZE',
+          placementCycle: row.cycle,
+          companyName: row.companyName ?? companyName,
+          outcome: row.outcome,
+          interviewOffered: row.outcome !== 'NOT_SHORTLISTED',
+          jobOffered: ['OFFERED', 'ACCEPTED', 'DECLINED'].includes(row.outcome),
+          offeredPackageLpa: row.packageLpa === null ? null : Number(row.packageLpa),
+          recordedAt: row.createdAt.toISOString(),
+        }),
+      ),
+    };
   }
 
   private async enqueueStageChanged(data: {

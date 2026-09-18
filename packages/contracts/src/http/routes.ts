@@ -2359,6 +2359,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/placement/outcomes',
+    module: 'placement',
+    owner: 'Vedika G',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    rateLimit: 'role.placementStaff',
+    criticality: 'REPORTING',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'List recorded placement outcomes for one company (yearwise CTC stats).',
+  },
+  {
+    method: 'GET',
     path: '/placement/employers',
     module: 'placement',
     owner: 'Vedika G',

@@ -1,10 +1,8 @@
 import {
   BarChart3,
   Briefcase,
-  Building2,
   ClipboardList,
   Landmark,
-  Columns3,
   LayoutDashboard,
   LayoutGrid,
   Settings,
@@ -32,9 +30,8 @@ export type TpoNavItem =
   | { kind: 'group'; name: string; icon: LucideIcon; children: TpoNavLink[] };
 
 /**
- * Placement workspace navigation. Grouped for the placement sidebar; the flat
- * `PLACEMENT_NAV` projection below backs the global topbar so both surfaces
- * share one source of truth.
+ * Placement workspace navigation. Grouped labels for documentation; the flat
+ * `PLACEMENT_NAV` projection backs the placement pill row under the global topbar.
  */
 export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
   {
@@ -46,12 +43,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
         description: 'Employer profiles, history, and openings',
         icon: Landmark,
       },
-      {
-        name: 'Company Dashboard',
-        href: '/company',
-        description: 'Placement pipeline overview',
-        icon: Building2,
-      },
+      // WIP: Company Dashboard is hidden from the sidebar for now while the
+      // feature is still being finished. Re-enable this entry once it's
+      // ready to ship.
+      // {
+      //   name: 'Company Dashboard',
+      //   href: '/company',
+      //   description: 'Placement pipeline overview',
+      //   icon: Building2,
+      // },
     ],
   },
   {
@@ -81,7 +81,7 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
         icon: UserSearch,
       },
       {
-        name: 'Opportunities',
+        name: 'Applications',
         href: '/opportunities',
         description: 'View placement applications',
         icon: ClipboardList,
@@ -91,12 +91,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
   {
     groupLabel: 'Pipeline',
     items: [
-      {
-        name: 'ATS',
-        href: '/ats',
-        description: 'Manage candidate pipeline',
-        icon: Columns3,
-      },
+      // WIP: ATS (candidate pipeline board) is hidden from the sidebar for
+      // now while the feature is still being finished. Re-enable this entry
+      // once it's ready to ship.
+      // {
+      //   name: 'ATS',
+      //   href: '/ats',
+      //   description: 'Manage candidate pipeline',
+      //   icon: Columns3,
+      // },
       {
         name: 'Review',
         href: '/review',
@@ -109,7 +112,7 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
 
 export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
 
-/** Candidates workspace — sidebar + mobile pills (URLs unchanged). */
+/** Candidates workspace — pill row under the global topbar (URLs unchanged). */
 export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
   {
     groupLabel: 'Workspace',

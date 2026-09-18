@@ -121,3 +121,7 @@ allowBuilds:
   "@google/genai": false
   protobufjs: false
   msgpackr-extract: true
+  # core-js's postinstall only prints a funding notice — no native build, no
+  # code-execution need. Denying it is the safe default (matches @scarf/scarf,
+  # @google/genai, protobufjs above).
+  core-js: false
