@@ -53,8 +53,16 @@ export function competencyStatusBadgeVariant(
   return 'outline';
 }
 
+export type TargetedAssessmentSkipReason = 'ai_unavailable' | 'generation_failed';
+
+/** API may attach skip metadata before contracts catch up. */
+export type AssessmentResultView = AssessmentResult & {
+  targetedAssessmentSkipped?: boolean;
+  targetedAssessmentSkipReason?: TargetedAssessmentSkipReason;
+};
+
 export function targetedAssessmentSkipMessage(
-  reason: AssessmentResult['targetedAssessmentSkipReason'],
+  reason: TargetedAssessmentSkipReason | undefined | null,
 ): string {
   if (reason === 'ai_unavailable') {
     return 'We could not generate targeted follow-up questions because the AI service was unavailable. Your result is based on the diagnostic only — try again later for a fuller assessment.';

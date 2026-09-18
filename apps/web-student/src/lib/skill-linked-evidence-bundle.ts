@@ -47,13 +47,13 @@ export async function loadProfileLinkedEvidenceBundle(): Promise<ProfileLinkedEv
     liveProjectIds.add(project.projectId);
   }
 
-  const mappingEntries = await Promise.all(
-    projects.map(async (project) => {
+  const mappingEntries: [string, ProjectSkillMappingDto[]][] = await Promise.all(
+    projects.map(async (project): Promise<[string, ProjectSkillMappingDto[]]> => {
       try {
         const mappings = await api.evidence.listProjectSkillMappings(project.projectId);
-        return [project.projectId, mappings] as const;
+        return [project.projectId, mappings];
       } catch {
-        return [project.projectId, []] as const;
+        return [project.projectId, []];
       }
     }),
   );

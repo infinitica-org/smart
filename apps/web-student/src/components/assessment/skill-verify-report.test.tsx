@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
+import type { GradeSdeSkillFormResponse } from '@smart/contracts';
+
+import type { AssessmentResultView } from '@/lib/competency-display';
 
 import { SkillVerifyReport } from './skill-verify-report';
 
@@ -58,7 +60,7 @@ const grade: GradeSdeSkillFormResponse = {
   ],
 };
 
-const assessmentResult: AssessmentResult = {
+const assessmentResult: AssessmentResultView = {
   skillCode: 'SQL_QUERY_OPTIMIZATION',
 
   assessmentVersion: 'v1',

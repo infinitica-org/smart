@@ -14,6 +14,7 @@ function baseProject(overrides: Partial<ProjectDto>): ProjectDto {
     stack: '',
     outcome: '',
     status: 'SUBMITTED',
+    loomUrl: null,
     githubUrl: null,
     liveUrl: null,
     interviewRequired: false,
@@ -21,7 +22,6 @@ function baseProject(overrides: Partial<ProjectDto>): ProjectDto {
     interviewCompletedAt: null,
     report: null,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
     ...overrides,
   };
 }

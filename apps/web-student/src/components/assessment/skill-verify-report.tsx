@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
+import type { GradeSdeSkillFormResponse } from '@smart/contracts';
 import { Badge, Button, VerificationBadge } from '@smart/ui';
 import { PROFICIENCY_LABELS, skillNameForCode } from '@/lib/skill-declarations';
-import { targetedAssessmentSkipMessage } from '@/lib/competency-display';
+import { type AssessmentResultView, targetedAssessmentSkipMessage } from '@/lib/competency-display';
 import { CompetencyResultsGrid } from './competency-results-grid';
 
 export function SkillVerifyReport({
@@ -14,7 +14,7 @@ export function SkillVerifyReport({
   onDone,
 }: {
   grade?: GradeSdeSkillFormResponse | null;
-  assessmentResult?: AssessmentResult | null;
+  assessmentResult?: AssessmentResultView | null;
   catalogSkillCode?: string;
   onDone: () => void;
 }) {

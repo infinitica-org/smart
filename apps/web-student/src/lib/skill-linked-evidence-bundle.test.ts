@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ProjectDto } from '@smart/contracts';
+import type { ProjectDto, ProjectSkillMappingDto } from '@smart/contracts';
 
 import {
   linkedEvidenceContextForSkill,
@@ -8,23 +8,21 @@ import {
   type ProfileLinkedEvidenceBundle,
 } from './skill-linked-evidence-bundle';
 
+const sampleMapping: ProjectSkillMappingDto = {
+  skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+  specificContribution: 'Built API endpoints',
+  actionsPerformed: [],
+  decisionsMade: [],
+  constraintsHandled: [],
+  verificationStatus: 'PENDING',
+};
+
 function emptyBundle(projects: ProjectDto[] = []): ProfileLinkedEvidenceBundle {
   const projectTitleById = new Map(projects.map((p) => [p.projectId, p.title]));
   const liveProjectIds = new Set(projects.map((p) => p.projectId));
   return {
     projects,
-    projectMappingsById: new Map([
-      [
-        'proj-1',
-        [
-          {
-            projectId: 'proj-1',
-            skillCode: 'SE_PYTHON',
-            verificationStatus: 'PENDING',
-          },
-        ],
-      ],
-    ]),
+    projectMappingsById: new Map([['proj-1', [sampleMapping]]]),
     workExperiences: [],
     projectTitleById,
     experienceLabelById: new Map(),
@@ -43,7 +41,8 @@ describe('skill-linked-evidence-bundle', () => {
       approach: '',
       stack: 'Python',
       outcome: '',
-      status: 'DRAFT',
+      status: 'SUBMITTED',
+      loomUrl: null,
       githubUrl: null,
       liveUrl: null,
       interviewRequired: false,
@@ -51,9 +50,11 @@ describe('skill-linked-evidence-bundle', () => {
       interviewCompletedAt: null,
       report: null,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
-    const context = linkedEvidenceContextForSkill('SE_PYTHON', emptyBundle([project]));
+    const context = linkedEvidenceContextForSkill(
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      emptyBundle([project]),
+    );
     const projects = linkedProjectItems(context);
     expect(projects).toHaveLength(1);
     expect(projects[0]?.label).toBe('Weather API');
