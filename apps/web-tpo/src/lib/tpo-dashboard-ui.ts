@@ -10,7 +10,8 @@ export const candidatesPageStackClass = 'mx-auto w-full max-w-[1500px] space-y-4
 export const bentoCompactCardClass =
   'relative overflow-hidden rounded-[16px] border border-[var(--ds-border)] bg-[var(--ds-surface)] p-4 shadow-[var(--ds-card-shadow)] md:rounded-[18px] md:p-5';
 
-export const bentoCompactToolbarClass = bentoCompactCardClass;
+export const bentoCompactToolbarClass =
+  'rounded-[10px] border border-[var(--ds-border,#e2e8f0)] bg-[var(--ds-surface)] p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:p-3.5';
 
 /** One-row filter toolbar on xl+ (search ~45%, three equal filters). */
 export const candidatesFilterGridClass =
@@ -18,7 +19,7 @@ export const candidatesFilterGridClass =
 
 /** Shared height/radius for search + selects in Candidates (no teal focus ring). */
 export const candidatesControlClass =
-  'h-10 w-full min-w-0 rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 text-[13px] text-[var(--ds-text)] placeholder:text-[var(--ds-text-subtle)] transition focus:border-[#c7d2e0] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-dash-primary)] disabled:opacity-50';
+  'h-11 w-full min-w-0 rounded-[10px] border border-[var(--ds-border,#e2e8f0)] bg-[var(--ds-surface)] px-3 text-[13px] text-[var(--ds-text)] placeholder:text-[var(--ds-text-subtle)] transition focus:border-[#c7d2e0] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-section-nav-underline,#0f9f8f)] disabled:opacity-50';
 
 export const candidatesTableHeadCellClass = 'px-4 py-2.5 font-semibold';
 

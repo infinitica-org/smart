@@ -165,6 +165,12 @@ body {
   --tpo-dash-accent-amber-soft: #fff8ed;
   --tpo-dash-accent-rose: #e58ba6;
   --tpo-dash-accent-rose-soft: #fdf2f6;
+
+  --tpo-section-nav-active: #172033;
+  --tpo-section-nav-idle: #64748b;
+  --tpo-section-nav-hover: #334155;
+  --tpo-section-nav-underline: #0f9f8f;
+  --tpo-section-nav-divider: #e2e8f0;
 }
 
 /*

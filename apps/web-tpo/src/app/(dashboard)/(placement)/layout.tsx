@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
-import { PlacementMobileNav } from '../../../components/placement/PlacementMobileNav';
+import { PlacementWorkspaceNav } from '../../../components/placement/PlacementWorkspaceNav';
 
-/**
- * Placement workspace: global topbar above, horizontal pill sub-nav, then page content.
- */
+/** Placement workspace: topbar → section rail → page content. */
 export default function PlacementLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <PlacementMobileNav />
-      <div className="mt-4 flex flex-col gap-4">{children}</div>
+      <PlacementWorkspaceNav />
+      <div className="flex flex-col gap-4">{children}</div>
     </div>
   );
 }
