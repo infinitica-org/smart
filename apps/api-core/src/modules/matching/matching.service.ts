@@ -72,6 +72,7 @@ interface RunMatchingParams {
   minCgpa?: number;
   requiredSkillCodes: string[];
   filters?: MatchRequest['filters'];
+  openingEligibility?: JobOpeningEligibilityCriteria;
   limit: number;
   minSkillCoverage: number;
   runId?: string;
