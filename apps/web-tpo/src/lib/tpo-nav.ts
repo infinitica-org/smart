@@ -30,9 +30,8 @@ export type TpoNavItem =
   | { kind: 'group'; name: string; icon: LucideIcon; children: TpoNavLink[] };
 
 /**
- * Placement workspace navigation. Grouped for the placement sidebar; the flat
- * `PLACEMENT_NAV` projection below backs the global topbar so both surfaces
- * share one source of truth.
+ * Placement workspace navigation. Grouped labels for documentation; the flat
+ * `PLACEMENT_NAV` projection backs the placement pill row under the global topbar.
  */
 export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
   {

@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PLACEMENT_NAV, isNavLinkActive } from '../../lib/tpo-nav';
 
-/** Horizontal pill row below the topbar, mirroring the profile mobile nav. */
+/** Horizontal pill row for placement routes (all breakpoints; topbar stays global). */
 export function PlacementMobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Placement sections" className="lg:hidden">
+    <nav aria-label="Placement sections">
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {PLACEMENT_NAV.map((item) => {
           const active = isNavLinkActive(pathname, item.href);
