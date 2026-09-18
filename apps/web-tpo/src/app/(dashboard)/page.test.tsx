@@ -6,6 +6,8 @@ const apiMock = vi.hoisted(() => ({
   listTpoStudents: vi.fn(),
   listSkillClaims: vi.fn(),
   me: vi.fn(),
+  listOpenings: vi.fn(),
+  listApplicationsForOpening: vi.fn(),
 }));
 
 vi.mock('../../lib/api', () => ({
@@ -14,6 +16,8 @@ vi.mock('../../lib/api', () => ({
     assessment: { listSkillClaims: apiMock.listSkillClaims },
     auth: { me: apiMock.me },
   },
+  openingsApi: { list: apiMock.listOpenings },
+  applicationsApi: { listForOpening: apiMock.listApplicationsForOpening },
 }));
 
 beforeEach(() => {
@@ -45,6 +49,8 @@ beforeEach(() => {
     },
   ]);
   apiMock.me.mockResolvedValue({ fullName: 'Pilot TPO', role: 'INSTITUTION_ADMIN' });
+  apiMock.listOpenings.mockResolvedValue({ openings: [] });
+  apiMock.listApplicationsForOpening.mockResolvedValue({ applications: [] });
 });
 
 afterEach(() => {

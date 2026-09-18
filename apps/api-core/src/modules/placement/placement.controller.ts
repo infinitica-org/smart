@@ -21,6 +21,7 @@ import {
   CreatePlacementEmployerRequestSchema,
   ListJobOpeningsQuerySchema,
   ListPlacementEmployersQuerySchema,
+  ListPlacementOutcomesQuerySchema,
   PatchApplicationStageRequestSchema,
   RecordOutcomeRequestSchema,
   UpdatePlacementEmployerRequestSchema,
@@ -32,6 +33,7 @@ import {
   UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
   type ListPlacementEmployersResponse,
+  type ListPlacementOutcomesResponse,
   type ParseOpeningJdResponse,
   type PlacementEmployerDetail,
   type PlacementEmployerSummary,
@@ -414,5 +416,18 @@ export class PlacementController {
       requireInstitutionId(user),
       RecordOutcomeRequestSchema.parse(body),
     );
+  }
+
+  @Get('outcomes')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'List recorded placement outcomes for one company.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Outcomes for the requested company.' })
+  async listOutcomes(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ): Promise<ListPlacementOutcomesResponse> {
+    const parsed = ListPlacementOutcomesQuerySchema.parse(query);
+    return this.service.listOutcomesForCompany(requireInstitutionId(user), parsed.companyName);
   }
 }

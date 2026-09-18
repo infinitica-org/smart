@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Users, Search, CheckCircle2, Clock } from 'lucide-react';
+import { Search, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
 
 import {
   SKILL_CATEGORY_IDS,
@@ -38,11 +38,7 @@ import {
   candidatesTableHeadCellClass,
   dashboardMintBadgeClass,
   dashboardPendingBadgeClass,
-  dashboardPillClass,
-  dashboardStatusNeutralClass,
 } from '../../../../lib/tpo-dashboard-ui';
-
-import { secondaryButtonSmClass } from '../../../../lib/tpo-ui';
 
 function candidateCountLabel(count: number): string {
   return count === 1 ? '1 candidate' : `${count} candidates`;
@@ -138,14 +134,9 @@ export default function CandidatesPage() {
   return (
     <div className={candidatesPageStackClass}>
       <TpoBentoPageHeader
-        compact
-
+        minimal
         title="Candidates Repository"
-
-        description="Search and review onboarded candidates — streams, onboarding progress, and skill verification status."
-
-        icon={Users}
-
+        description="Search and review onboarded candidates, their onboarding progress, and skill verification status."
         badge={<span className={bentoChipClass}>{candidateCountLabel(students.length)}</span>}
       />
 
@@ -161,7 +152,7 @@ export default function CandidatesPage() {
             <input
               type="search"
 
-              placeholder="Search candidates by name or email..."
+              placeholder="Search candidates…"
 
               aria-label="Search candidates"
 
@@ -182,7 +173,7 @@ export default function CandidatesPage() {
 
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="ALL">All Categories</option>
+            <option value="ALL">Category</option>
 
             {SKILL_CATEGORY_IDS.map((categoryId) => (
               <option key={categoryId} value={categoryId}>
@@ -200,7 +191,7 @@ export default function CandidatesPage() {
 
             onChange={(e) => setSkillFilter(e.target.value)}
           >
-            <option value="ALL">All Skills</option>
+            <option value="ALL">Skills</option>
 
             {SKILL_DEFINITIONS.map((skill) => (
               <option key={skill.code} value={skill.code}>
@@ -218,7 +209,7 @@ export default function CandidatesPage() {
 
             onChange={(e) => setProficiencyFilter(e.target.value)}
           >
-            <option value="ALL">All Proficiencies</option>
+            <option value="ALL">Level</option>
 
             <option value="PROFESSIONAL">{proficiencyLevelUiLabel('PROFESSIONAL')}</option>
 
@@ -279,7 +270,7 @@ export default function CandidatesPage() {
                     <tr key={student.userId} className={bentoTableBodyRowClass}>
                       <td className={candidatesTableCellClass}>
                         <div className="flex items-center gap-3">
-                          <span className="flex size-8 items-center justify-center rounded-full bg-[#eef2f6] text-[11px] font-semibold text-[var(--ds-text-secondary)]">
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] text-[12px] font-semibold text-[var(--ds-text-secondary)]">
                             {student.fullName.charAt(0)}
                           </span>
 
@@ -296,7 +287,9 @@ export default function CandidatesPage() {
                       </td>
 
                       <td className={candidatesTableCellClass}>
-                        <span className={dashboardPillClass}>{candidateCategory}</span>
+                        <span className="text-[13px] font-medium text-[var(--ds-text-secondary)]">
+                          {candidateCategory}
+                        </span>
                       </td>
 
                       <td className={candidatesTableCellClass}>
@@ -317,19 +310,20 @@ export default function CandidatesPage() {
                             <CheckCircle2 className="size-3" /> {verifiedCount} Verified
                           </span>
                         ) : (
-                          <span className={dashboardStatusNeutralClass}>In Evaluation</span>
+                          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--tpo-dash-accent-blue,#3b82f6)]">
+                            In Evaluation
+                          </span>
                         )}
                       </td>
 
                       <td className={`${candidatesTableCellClass} text-right`}>
                         <button
                           type="button"
-
                           onClick={() => setSelectedStudent(student)}
-
-                          className={secondaryButtonSmClass}
+                          className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-[var(--tpo-section-nav-underline,#0f9f8f)] transition hover:text-[var(--ds-green-hover,#007a68)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)]"
                         >
                           View Details
+                          <ChevronRight className="size-4" strokeWidth={2} aria-hidden />
                         </button>
                       </td>
                     </tr>

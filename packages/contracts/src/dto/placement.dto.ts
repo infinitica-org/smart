@@ -310,6 +310,17 @@ export const RecordOutcomeRequestSchema = PlacementRecordDtoSchema.omit({
 });
 export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 
+/** Company placement-stats page: every recorded outcome for one company (yearwise CTC). */
+export const ListPlacementOutcomesQuerySchema = z.object({
+  companyName: z.string().trim().min(1).max(150),
+});
+export type ListPlacementOutcomesQuery = z.infer<typeof ListPlacementOutcomesQuerySchema>;
+
+export const ListPlacementOutcomesResponseSchema = z.object({
+  records: z.array(PlacementRecordDtoSchema),
+});
+export type ListPlacementOutcomesResponse = z.infer<typeof ListPlacementOutcomesResponseSchema>;
+
 /* ----------------------- structured openings (PRD MMP) ---------------------- */
 
 export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);

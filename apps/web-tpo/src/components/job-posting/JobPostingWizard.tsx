@@ -18,6 +18,7 @@ import {
   JOB_POSTING_STEPS,
   buildCreateOpeningPayload,
   clearJobPostingDraft,
+  friendlyOpeningError,
   isCreateOpeningPayload,
   labelFor,
   proficiencyLabelFor,
@@ -121,7 +122,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
 
     const parsed = buildCreateOpeningPayload(form, skills, attachedDocuments, companyLogo);
     if (!isCreateOpeningPayload(parsed)) {
-      setFormError(parsed.error.issues[0]?.message ?? 'Check the opening details.');
+      setFormError(friendlyOpeningError(parsed.error.issues));
       return;
     }
 
@@ -255,7 +256,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'about-company' ? (
+          {step === 'company-role' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>About the Company</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -284,7 +285,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'role-details' ? (
+          {step === 'role-requirements' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Role Details</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -309,7 +310,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'requirements' ? (
+          {step === 'role-requirements' ? (
             <section className={cardClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -485,7 +486,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'hiring-process' ? (
+          {step === 'hiring-drive' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Hiring Process</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -515,7 +516,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'drive-details' ? (
+          {step === 'hiring-drive' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Drive Details</h2>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -532,15 +533,6 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                   onChange={(event) => updateForm({ lastDateToApply: event.target.value })}
                 />
               </div>
-              {form.driveSpoc.trim() ? (
-                <p className={`mt-4 text-sm ${mutedTextClass}`}>
-                  Drive SPOC:{' '}
-                  <span className="font-semibold text-[var(--ds-text)]">
-                    {form.driveSpoc.trim()}
-                  </span>{' '}
-                  (edit on Hiring Process)
-                </p>
-              ) : null}
             </section>
           ) : null}
 
