@@ -980,6 +980,11 @@ export function evidenceApi(client: SmartApiClient) {
       client.get(prefixed(`/users/me/projects/${projectId}/skill-mappings`), {
         schema: z.array(ProjectSkillMappingDtoSchema),
       }),
+
+    replaceProjectSkillMappings: (projectId: string, body: unknown) =>
+      client.patch(prefixed(`/users/me/projects/${projectId}/skill-mappings`), body, {
+        schema: z.array(ProjectSkillMappingDtoSchema),
+      }),
   };
 }
 

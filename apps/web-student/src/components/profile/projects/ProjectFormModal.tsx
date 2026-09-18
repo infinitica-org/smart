@@ -4,6 +4,8 @@ import type { GithubRepoSummary } from '@smart/contracts';
 import { Input } from '@smart/ui';
 import { GitBranch, Loader2, PenLine, X } from 'lucide-react';
 import { GithubImportPanel } from '@/components/profile/projects/GithubImportPanel';
+import { ProjectSkillsPicker } from '@/components/profile/projects/ProjectSkillsPicker';
+import type { ProjectSkillOption } from '@/lib/project-form-skills';
 import type { ProjectFormFields } from '@/lib/project-submission';
 import { profilePrimaryButtonClass, profileSecondaryButtonSmClass } from '@/lib/profile-ui-classes';
 
@@ -20,8 +22,11 @@ type ProjectFormModalProps = {
   reposLoading: boolean;
   reposError: string | null;
   importingRepo: string | null;
+  skillOptions: readonly ProjectSkillOption[];
+  skillsLoading: boolean;
   onClose: () => void;
   onFieldChange: (key: keyof ProjectFormFields, value: string) => void;
+  onSkillCodesChange: (codes: string[]) => void;
   onSubmit: () => void;
   onChooseGithub: () => void;
   onChooseManual: () => void;
@@ -44,8 +49,11 @@ export function ProjectFormModal({
   reposLoading,
   reposError,
   importingRepo,
+  skillOptions,
+  skillsLoading,
   onClose,
   onFieldChange,
+  onSkillCodesChange,
   onSubmit,
   onChooseGithub,
   onChooseManual,
@@ -229,13 +237,13 @@ export function ProjectFormModal({
                   Implementation
                 </h3>
                 <div className="mt-3 grid gap-4">
-                  <Input
-                    label="Technology stack"
-                    name="stack"
-                    value={fields.stack}
-                    error={fieldErrors.stack}
+                  <ProjectSkillsPicker
+                    options={skillOptions}
+                    selectedCodes={fields.skillCodes}
+                    onChange={onSkillCodesChange}
+                    error={fieldErrors.skillCodes}
                     disabled={isPending}
-                    onChange={(event) => onFieldChange('stack', event.target.value)}
+                    loading={skillsLoading}
                   />
                   <div className="flex flex-col gap-1.5 text-sm">
                     <label className="font-medium text-[var(--ds-text)]" htmlFor="outcome">

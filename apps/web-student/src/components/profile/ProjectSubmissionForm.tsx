@@ -20,6 +20,11 @@ import { ProfileSectionHeader } from '@/components/profile/ProfileSectionChrome'
 import { profileSectionMeta } from '@/lib/profile-sections';
 import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
 import {
+  defaultSkillContribution,
+  flattenSkillLibrary,
+  type ProjectSkillOption,
+} from '@/lib/project-form-skills';
+import {
   EMPTY_PROJECT_FORM,
   buildCreateProjectRequest,
   fieldErrorsFromZod,
@@ -55,6 +60,8 @@ export function ProjectSubmissionForm() {
   const [reposError, setReposError] = useState<string | null>(null);
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
   const [importNote, setImportNote] = useState<string | null>(null);
+  const [skillOptions, setSkillOptions] = useState<ProjectSkillOption[]>([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
 
   const { data: onboardingData } = useOnboarding();
   const githubLogin = useMemo(
@@ -99,6 +106,36 @@ export function ProjectSubmissionForm() {
   const setField = (key: keyof ProjectFormFields, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }));
   };
+
+  const setSkillCodes = (skillCodes: string[]) => {
+    setFields((prev) => ({ ...prev, skillCodes }));
+    setFieldErrors((prev) => {
+      if (!prev.skillCodes) return prev;
+      const next = { ...prev };
+      delete next.skillCodes;
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!formOpen || skillOptions.length > 0) return;
+    let cancelled = false;
+    setSkillsLoading(true);
+    void api.catalog
+      .skillLibrary()
+      .then((library) => {
+        if (!cancelled) setSkillOptions(flattenSkillLibrary(library));
+      })
+      .catch(() => {
+        if (!cancelled) setSkillOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSkillsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [formOpen, skillOptions.length]);
 
   const openForm = (options?: { showGithubImport?: boolean }) => {
     setFormOpen(true);
@@ -170,7 +207,6 @@ export function ProjectSubmissionForm() {
           ...prev,
           title: prev.title || repoName,
           approach: res.readme ? res.readme.slice(0, README_PREFILL_MAX_CHARS) : prev.approach,
-          stack: prev.stack || (repo.primaryLanguage ?? prev.stack),
           githubUrl: repo.htmlUrl,
         }));
         if (!res.readme)
@@ -182,7 +218,6 @@ export function ProjectSubmissionForm() {
         setFields((prev) => ({
           ...prev,
           title: prev.title || repoName,
-          stack: prev.stack || (repo.primaryLanguage ?? prev.stack),
           githubUrl: repo.htmlUrl,
         }));
         setImportNote(
@@ -198,6 +233,11 @@ export function ProjectSubmissionForm() {
   const submit = () => {
     setError(null);
     setFieldErrors({});
+    if (fields.skillCodes.length === 0) {
+      setFieldErrors({ skillCodes: 'Select at least one skill.' });
+      setError('Fix the highlighted template fields before submitting.');
+      return;
+    }
     let body;
     try {
       body = buildCreateProjectRequest(fields);
@@ -214,6 +254,14 @@ export function ProjectSubmissionForm() {
       void (async () => {
         try {
           const created = await api.projects.create(body);
+          const contribution = defaultSkillContribution(fields.approach);
+          await api.evidence.replaceProjectSkillMappings(
+            created.projectId,
+            fields.skillCodes.map((skillCode) => ({
+              skillCode,
+              specificContribution: contribution,
+            })),
+          );
           setProjects((prev) =>
             (prev ?? []).some((p) => p.projectId === created.projectId)
               ? prev
@@ -357,8 +405,11 @@ export function ProjectSubmissionForm() {
         reposLoading={reposLoading}
         reposError={reposError}
         importingRepo={importingRepo}
+        skillOptions={skillOptions}
+        skillsLoading={skillsLoading}
         onClose={closeForm}
         onFieldChange={setField}
+        onSkillCodesChange={setSkillCodes}
         onSubmit={submit}
         onChooseGithub={() => {
           setWizardStep('github-list');
