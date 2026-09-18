@@ -76,7 +76,10 @@ export function CompetencyBreakdown({
           isLight ? 'mt-1 text-xs text-[var(--ds-text-secondary)]' : 'mt-1 text-xs text-zinc-300'
         }
       >
-        Supported: {proficiencyLevelUiLabel(assessmentResult.highestAssessmentSupportedProficiency)}{' '}
+        Supported:{' '}
+        {assessmentResult.highestAssessmentSupportedProficiency
+          ? proficiencyLevelUiLabel(assessmentResult.highestAssessmentSupportedProficiency)
+          : 'Not assessed'}{' '}
         · Confidence: {assessmentResult.confidence.toLowerCase()}
       </p>
       <ul className="mt-2 flex flex-col gap-1.5">
