@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CandidatesSidebar } from './CandidatesSidebar';
+import { CandidatesMobileNav } from './CandidatesMobileNav';
 
 const navState = vi.hoisted(() => ({ pathname: '/students' }));
 
@@ -8,14 +8,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => navState.pathname,
 }));
 
-describe('CandidatesSidebar', () => {
+describe('CandidatesMobileNav', () => {
   afterEach(() => {
     cleanup();
     navState.pathname = '/students';
   });
 
   it('lists repository and onboarding sections with correct hrefs', () => {
-    render(<CandidatesSidebar />);
+    render(<CandidatesMobileNav />);
 
     expect(screen.getByRole('link', { name: 'Candidates Repository' }).getAttribute('href')).toBe(
       '/students',
@@ -28,7 +28,7 @@ describe('CandidatesSidebar', () => {
 
   it('marks the active subsection', () => {
     navState.pathname = '/provisioning';
-    render(<CandidatesSidebar />);
+    render(<CandidatesMobileNav />);
 
     expect(
       screen.getByRole('link', { name: 'Candidate Onboarding' }).getAttribute('aria-current'),

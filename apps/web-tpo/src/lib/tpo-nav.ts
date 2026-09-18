@@ -112,7 +112,7 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
 
 export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
 
-/** Candidates workspace — sidebar + mobile pills (URLs unchanged). */
+/** Candidates workspace — pill row under the global topbar (URLs unchanged). */
 export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
   {
     groupLabel: 'Workspace',
