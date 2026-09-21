@@ -4,6 +4,7 @@ import {
   SKILL_DEFINITIONS,
   type SkillCategoryId,
   type SkillDefinition,
+  proficiencyLevelUiLabel,
 } from '@smart/contracts';
 
 export const ALL_SKILLS: readonly SkillDefinition[] = SKILL_DEFINITIONS;
@@ -39,10 +40,10 @@ export const SELF_DECLARED_PROFICIENCIES = [
 ] as const;
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
-  PROFESSIONAL: 'Professional',
+  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
+  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
+  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
+  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
 };
 
 export const CONTROLLED_PROGRAMMING_LANGUAGES = [

@@ -151,12 +151,12 @@ describe('skill-declarations helpers', () => {
   });
 
   it('gates Take Assessment on profile completion only', () => {
-    expect(canEnableTakeAssessment({ profilePercent: 49 })).toBe(false);
-    expect(canEnableTakeAssessment({ profilePercent: 50 })).toBe(true);
+    expect(canEnableTakeAssessment({ profilePercent: 9 })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 10 })).toBe(true);
     expect(canEnableTakeAssessment({ profilePercent: 100 })).toBe(true);
   });
 
-  it('allows practice for verified skills by clearing the verified block message', () => {
+  it('does not block verified claims via takeAssessmentBlockMessage', () => {
     expect(takeAssessmentBlockMessage(claim({ status: 'VERIFIED' }))).toBeNull();
     expect(takeAssessmentBlockMessage(claim({ status: 'LOCKED' }))).toMatch(/locked/i);
   });

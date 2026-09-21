@@ -1,5 +1,6 @@
 import {
   CreateJobOpeningRequestSchema,
+  proficiencyLevelUiLabel,
   SKILL_DEFINITIONS,
   SKILL_TAXONOMY_DOMAINS,
   type CreateJobOpeningRequest,
@@ -91,6 +92,10 @@ export function labelFor(value: string): string {
     .split('_')
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(' ');
+}
+
+export function proficiencyLabelFor(level: SkillProficiency): string {
+  return proficiencyLevelUiLabel(level);
 }
 
 export function skillNameFor(code: string): string {

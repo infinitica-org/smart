@@ -88,6 +88,7 @@ import { getSkillDefinition, type SkillBlueprint } from '@smart/contracts';
 import { Effect, Either } from 'effect';
 import { z } from 'zod';
 import { AiGatewayService } from '../ai-gateway/ai-gateway.service.js';
+import { normalizeOpenBatchGradeIndices } from './open-batch-grade-normalize.js';
 import { sealSdeFormPayload, unsealSdeFormPayload } from './sde-form-seal.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 
@@ -765,6 +766,7 @@ export class EvaluationService {
         const gradeSchema = criteriaGrading
           ? SdeOpenBatchGradeCriteriaSchema
           : SdeOpenBatchGradeSchema;
+        const expectedOpenIndices = openKeys.map((key) => key.index);
         const completion = await this.completeWithRetry({
           promptRef: criteriaGrading
             ? SDE_SKILL_OPEN_BATCH_GRADER_CRITERIA_PROMPT_REF
@@ -801,7 +803,8 @@ export class EvaluationService {
           maxOutputTokens: criteriaGrading ? 3_584 : 3_072,
           temperature: 0,
         });
-        const parsed = gradeSchema.parse(coerceLlmJson(completion.output));
+        const rawParsed = gradeSchema.parse(coerceLlmJson(completion.output));
+        const parsed = normalizeOpenBatchGradeIndices(rawParsed, expectedOpenIndices);
         const gradeByIndex = new Map(parsed.grades.map((grade) => [grade.index, grade]));
         for (const key of openKeys) {
           const grade = gradeByIndex.get(key.index);

@@ -610,7 +610,6 @@ export class MatchingService {
         statusCode: 404,
       });
     }
-
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
       buildEligibleStudentsQuery(institutionId, {
         ...request,

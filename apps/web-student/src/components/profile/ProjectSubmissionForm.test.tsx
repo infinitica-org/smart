@@ -5,6 +5,7 @@ import type {
   CandidateOnboardingProfile,
   CandidateOnboardingProfileResponse,
 } from '@smart/contracts';
+import { buildSkillLibraryResponse } from '@smart/contracts';
 import { ProjectSubmissionForm } from './ProjectSubmissionForm';
 
 const emptyOnboardingResponse = (): CandidateOnboardingProfileResponse => ({
@@ -17,6 +18,10 @@ const emptyOnboardingResponse = (): CandidateOnboardingProfileResponse => ({
 const useFeatureFlag = vi.fn(() => true);
 const useOnboarding = vi.fn(() => ({
   data: emptyOnboardingResponse(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/lib/entitlements', () => ({
@@ -34,6 +39,8 @@ const getOnboarding = vi.fn();
 const listGithubRepos = vi.fn();
 const githubRepoReadme = vi.fn();
 const studentEntitlements = vi.fn();
+const skillLibrary = vi.fn();
+const replaceProjectSkillMappings = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -41,6 +48,12 @@ vi.mock('@/lib/api', () => ({
       create: (...args: unknown[]) => create(...args),
       get: (...args: unknown[]) => get(...args),
       listMine: (...args: unknown[]) => listMine(...args),
+    },
+    catalog: {
+      skillLibrary: (...args: unknown[]) => skillLibrary(...args),
+    },
+    evidence: {
+      replaceProjectSkillMappings: (...args: unknown[]) => replaceProjectSkillMappings(...args),
     },
     users: {
       getOnboarding: (...args: unknown[]) => getOnboarding(...args),
@@ -105,8 +118,8 @@ const validFill = () => {
   fireEvent.change(form.getByLabelText(/^Approach$/i), {
     target: { value: 'I used websockets and a small GPS ingest service.' },
   });
-  fireEvent.change(form.getByLabelText(/^Technology stack$/i), {
-    target: { value: 'TypeScript, Nest' },
+  fireEvent.change(form.getByLabelText(/^Skills$/i), {
+    target: { value: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' },
   });
   fireEvent.change(form.getByLabelText(/^Outcome$/i), {
     target: { value: 'Average wait time dropped in a 30-student pilot.' },
@@ -132,6 +145,8 @@ describe('ProjectSubmissionForm', () => {
       planCode: 'PRO',
       flags: [{ key: 'project_verification', name: 'Project verification', enabled: true }],
     });
+    skillLibrary.mockReset().mockResolvedValue(buildSkillLibraryResponse());
+    replaceProjectSkillMappings.mockReset().mockResolvedValue([]);
   });
 
   it('blocks submit when the problem is too short', async () => {
@@ -158,6 +173,7 @@ describe('ProjectSubmissionForm', () => {
       title: 'Campus bus tracker',
       githubUrl: 'https://github.com/org/repo',
     });
+    await waitFor(() => expect(replaceProjectSkillMappings).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getAllByText(/^Verifying$/i).length).toBeGreaterThanOrEqual(1),
     );
@@ -233,7 +249,7 @@ describe('ProjectSubmissionForm', () => {
     await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
   });
 
-  it('imports a picked repo, prefilling title, stack, GitHub link, and README as the approach', async () => {
+  it('imports a picked repo, prefilling title, GitHub link, and README as the approach', async () => {
     useOnboarding.mockReturnValue({
       data: {
         ...emptyOnboardingResponse(),
@@ -273,9 +289,6 @@ describe('ProjectSubmissionForm', () => {
       expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe(
         'bus-tracker',
       ),
-    );
-    expect((formScope().getByLabelText(/^Technology stack$/i) as HTMLInputElement).value).toBe(
-      'TypeScript',
     );
     expect((formScope().getByLabelText(/GitHub link/i) as HTMLInputElement).value).toBe(
       'https://github.com/octocat/bus-tracker',

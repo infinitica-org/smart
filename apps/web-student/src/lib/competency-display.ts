@@ -2,6 +2,7 @@ import {
   getSkillBlueprint,
   getSkillDefinition,
   buildSkillBlueprintForCategory,
+  type AssessmentResult,
   type CompetencyStatus,
   type SkillEvidenceContext,
 } from '@smart/contracts';
@@ -52,14 +53,34 @@ export function competencyStatusBadgeVariant(
   return 'outline';
 }
 
+export type TargetedAssessmentSkipReason = 'ai_unavailable' | 'generation_failed';
+
+/** API may attach skip metadata before contracts catch up. */
+export type AssessmentResultView = AssessmentResult & {
+  targetedAssessmentSkipped?: boolean;
+  targetedAssessmentSkipReason?: TargetedAssessmentSkipReason;
+};
+
+export function targetedAssessmentSkipMessage(
+  reason: TargetedAssessmentSkipReason | undefined | null,
+): string {
+  if (reason === 'ai_unavailable') {
+    return 'We could not generate targeted follow-up questions because the AI service was unavailable. Your result is based on the diagnostic only — try again later for a fuller assessment.';
+  }
+  if (reason === 'generation_failed') {
+    return 'Targeted follow-up questions could not be prepared in time. Your result is based on the diagnostic only — you can retry verification later.';
+  }
+  return 'Targeted follow-up was skipped. Your result is based on the diagnostic only.';
+}
+
 export function summarizeEvidenceContext(context: SkillEvidenceContext | undefined): string {
   if (!context || context.availableCount === 0) {
-    return 'No application evidence linked yet. You can still verify — evidence may be requested after assessment if your demonstrated level requires it.';
+    return 'No projects or work experience linked to this skill yet. You can still take the assessment.';
   }
   const labels = context.items.slice(0, 3).map((item) => item.label);
   const extra =
     context.availableCount > labels.length
       ? ` and ${String(context.availableCount - labels.length)} more`
       : '';
-  return `Evidence available: ${labels.join(', ')}${extra}. SMART may use this during verification.`;
+  return `Linked on your profile: ${labels.join(', ')}${extra}.`;
 }

@@ -15,6 +15,7 @@ import {
 import {
   SKILL_CATEGORY_IDS,
   SKILL_DEFINITIONS,
+  proficiencyLevelUiLabel,
   type InstitutionStudentDto,
   type SkillClaimDto,
 } from '@smart/contracts';
@@ -236,9 +237,9 @@ export default function ReportsPage() {
             onChange={(e) => setProficiencyFilter(e.target.value)}
           >
             <option value="ALL">All Proficiencies</option>
-            <option value="ADVANCED">Advanced</option>
-            <option value="INTERMEDIATE">Intermediate</option>
-            <option value="BEGINNER">Beginner</option>
+            <option value="ADVANCED">{proficiencyLevelUiLabel('ADVANCED')}</option>
+            <option value="INTERMEDIATE">{proficiencyLevelUiLabel('INTERMEDIATE')}</option>
+            <option value="BEGINNER">{proficiencyLevelUiLabel('BEGINNER')}</option>
           </select>
         </div>
       </div>

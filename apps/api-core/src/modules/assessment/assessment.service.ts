@@ -37,6 +37,7 @@ import {
   resolveSkillFocus,
   skillFocusFromMetadata,
   skillClaimVerificationInProgress,
+  skillClaimDeclareOrigin,
 } from '@smart/contracts';
 import {
   BadRequestException,
@@ -410,6 +411,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       strikes: number;
       lockedUntil: Date | null;
       lastAttemptId: string | null;
+      source?: string | null;
       sourceMetadata?: unknown;
       skill: { code: string };
     }>,
@@ -477,6 +479,10 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         retryAvailableAt: selected?.retryAvailableAt ?? null,
         latestAssessmentResult: latestAssessment.get(row.id) ?? null,
         verificationInProgress,
+        declareOrigin: skillClaimDeclareOrigin({
+          source: row.source,
+          sourceMetadata: row.sourceMetadata,
+        }),
       });
     });
   }

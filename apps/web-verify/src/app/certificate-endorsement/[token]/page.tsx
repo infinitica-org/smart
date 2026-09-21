@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { isSmartApiError } from '@smart/api-client';
-import type { GetCertificateEndorsementResponse } from '@smart/contracts';
+import { proficiencyLevelUiLabel, type GetCertificateEndorsementResponse } from '@smart/contracts';
 import { api } from '@/lib/api';
 
 function Icon({ path, className }: { path: string; className?: string }) {
@@ -20,9 +20,10 @@ const ICON_PATH = {
 };
 
 const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
+  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
+  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
+  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
+  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
   EXPERT: 'Expert',
 };
 

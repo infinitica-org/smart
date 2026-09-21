@@ -9,6 +9,10 @@ import {
   type SkillVerifySessionDto,
 } from '@smart/contracts';
 import { AnswerOption, Badge, Button, ProgressIndicator, QuestionCard, Timer } from '@smart/ui';
+import {
+  AssessmentSessionShell,
+  SessionAsidePanel,
+} from '@/components/assessment/assessment-session-shell';
 import { CameraIntegrityDock } from '@/components/proctoring/camera-integrity-dock';
 import { formatSkillVerifyKioskTitle } from '@/lib/skill-declarations';
 import {
@@ -182,6 +186,9 @@ export function SkillVerifyExam({
       : 'Submit and see results';
   const allAnswered = areAllSkillVerifyItemsAnswered(session, answers);
   const canSubmit = !pending && allAnswered;
+  const answeredCount = session.items.filter((row) =>
+    isSkillVerifyAnswered(answers[row.index]),
+  ).length;
 
   const runCode = async () => {
     if (!onRunCode || !coding) return;
@@ -204,37 +211,41 @@ export function SkillVerifyExam({
     }
   };
 
+  const stageSubtitle =
+    session.stage === 'DIAGNOSTIC'
+      ? 'Diagnostic round — calibrates your next questions'
+      : 'Skill verification — answer every question before time runs out';
+
   return (
-    <div className="flex h-full min-h-[100dvh] w-full flex-col bg-[var(--background)] text-[var(--text-primary)]">
-      <header className="flex shrink-0 items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface)] px-6 py-3">
-        <h1 className="truncate pr-3 text-lg font-semibold tracking-tight">{heading}</h1>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" disabled={pending} onClick={onExit}>
-            Exit
-          </Button>
-        </div>
-      </header>
-
-      {stageNotice ? (
-        <div
-          role="status"
-          className="mx-6 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-foreground/30 bg-foreground/10 px-4 py-3 text-sm text-foreground"
-        >
-          <p>{stageNotice}</p>
-          {onDismissStageNotice ? (
-            <button
-              type="button"
-              className="shrink-0 text-xs font-semibold text-foreground hover:underline"
-              onClick={onDismissStageNotice}
-            >
-              Dismiss
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="grid min-h-0 flex-1 gap-6 overflow-hidden p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <AssessmentSessionShell
+      title={heading}
+      subtitle={stageSubtitle}
+      progressValue={total > 0 ? (currentIndex + 1) / total : 0}
+      progressLabel={`Question ${String(currentIndex + 1)} of ${String(total)} · ${String(answeredCount)} answered`}
+      headerAction={
+        <Button type="button" variant="outline" disabled={pending} onClick={onExit}>
+          Exit
+        </Button>
+      }
+      main={
         <div className="flex min-h-0 flex-col overflow-hidden">
+          {stageNotice ? (
+            <div
+              role="status"
+              className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-foreground/30 bg-foreground/10 px-4 py-3 text-sm text-foreground"
+            >
+              <p>{stageNotice}</p>
+              {onDismissStageNotice ? (
+                <button
+                  type="button"
+                  className="shrink-0 text-xs font-semibold text-foreground hover:underline"
+                  onClick={onDismissStageNotice}
+                >
+                  Dismiss
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
             {session.intelligenceEnabled && session.stageLabel ? (
               <Badge variant="outline">{session.stageLabel}</Badge>
@@ -374,18 +385,15 @@ export function SkillVerifyExam({
             </div>
           </div>
         </div>
-
-        <aside className="flex min-h-0 flex-col gap-4 overflow-hidden">
+      }
+      aside={
+        <>
           <CameraIntegrityDock />
-          <div className="shrink-0 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-              Time remaining
-            </p>
+          <SessionAsidePanel title="Time remaining">
             <Timer {...skillVerifyTimerProps(session)} />
-          </div>
+          </SessionAsidePanel>
 
-          <div className="shrink-0 overflow-y-auto rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
-            <p className="mb-3 text-sm font-medium">Questions</p>
+          <SessionAsidePanel title="Question map" className="min-h-0 flex-1 overflow-y-auto">
             <div className="grid grid-cols-5 gap-2">
               {session.items.map((row, index) => {
                 const answered = isSkillVerifyAnswered(answers[row.index]);
@@ -398,7 +406,7 @@ export function SkillVerifyExam({
                     aria-label={`Question ${String(index + 1)}${answered ? ', answered' : ''}`}
                     className={
                       active
-                        ? 'h-9 rounded-md bg-brand-700 text-sm font-medium text-paper'
+                        ? 'h-9 rounded-md bg-brand-700 text-sm font-medium text-paper ring-2 ring-brand-500/40 ring-offset-1 ring-offset-[var(--surface)]'
                         : answered
                           ? 'h-9 rounded-md bg-brand-500/20 text-sm font-medium text-[var(--text-primary)]'
                           : 'h-9 rounded-md border border-[var(--surface-border)] bg-[var(--surface)] text-sm text-[var(--text-primary)]'
@@ -420,10 +428,20 @@ export function SkillVerifyExam({
                 Unanswered
               </span>
             </div>
-          </div>
-        </aside>
-      </div>
-    </div>
+          </SessionAsidePanel>
+
+          <SessionAsidePanel title="Tips">
+            <ul className="space-y-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              <li>
+                Use the map to jump between questions — your latest answer is saved when you move.
+              </li>
+              <li>Stay in fullscreen; integrity warnings can end the attempt.</li>
+              <li>Submit only when every question shows as answered.</li>
+            </ul>
+          </SessionAsidePanel>
+        </>
+      }
+    />
   );
 }
 

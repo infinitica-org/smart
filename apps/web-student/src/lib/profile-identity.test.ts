@@ -30,6 +30,15 @@ describe('primaryInstitutionName', () => {
   it('returns null when no institution data exists', () => {
     expect(primaryInstitutionName([], undefined)).toBeNull();
   });
+
+  it('shows school only when institution includes a board suffix', () => {
+    expect(
+      primaryInstitutionName(
+        [{ institutionName: 'Delhi Public School · CBSE', current: true } as never],
+        undefined,
+      ),
+    ).toBe('Delhi Public School');
+  });
 });
 
 describe('primaryDepartmentName', () => {

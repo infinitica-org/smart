@@ -326,6 +326,7 @@ export function validateWorkExperienceEffectiveUpdate(
 function applyWorkExperienceSubmissionRefinements(
   data: WorkExperienceValidationInput,
   ctx: z.RefinementCtx,
+  options?: { skipDocumentRules?: boolean },
 ): void {
   const result = validateWorkExperienceSubmission({
     companyName: data.companyName,
@@ -342,7 +343,10 @@ function applyWorkExperienceSubmissionRefinements(
     companyLinkedinUrl: data.companyLinkedinUrl,
     documents: data.documents,
   });
-  for (const issue of result.issues) {
+  const issues = options?.skipDocumentRules
+    ? result.issues.filter((issue) => issue.path !== 'documents')
+    : result.issues;
+  for (const issue of issues) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: issue.message,
@@ -406,7 +410,8 @@ export function validateWorkExperienceLetterRules(params: {
 
 export const CreateWorkExperienceSchema = CreateWorkExperienceBaseSchema.superRefine(
   (data, ctx) => {
-    applyWorkExperienceSubmissionRefinements(data, ctx);
+    const skipDocumentRules = (data.documents ?? []).length === 0;
+    applyWorkExperienceSubmissionRefinements(data, ctx, { skipDocumentRules });
   },
 );
 export type CreateWorkExperienceDto = z.infer<typeof CreateWorkExperienceSchema>;

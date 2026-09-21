@@ -3,17 +3,26 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { cn, ProficiencyLevelHint } from '@smart/ui';
 import { ArrowRight } from 'lucide-react';
-import type { SkillClaimDto } from '@smart/contracts';
+import type { EvidenceRecordDto, SkillClaimDto } from '@smart/contracts';
 import { Alert } from '@smart/ui';
 
+import { AssessmentSkillLinkedProjects } from '@/components/assessment/AssessmentSkillLinkedProjects';
 import { api } from '@/lib/api';
+import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
+import {
+  linkedEvidenceContextForSkill,
+  loadProfileLinkedEvidenceBundle,
+  type ProfileLinkedEvidenceBundle,
+} from '@/lib/skill-linked-evidence-bundle';
 import {
   categoryNameForCode,
   skillNameForCode,
   takeAssessmentBlockMessage,
 } from '@/lib/skill-declarations';
-import { canVerifySkills } from '@/lib/profile-progress';
+import { canVerifySkills, PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT } from '@/lib/profile-progress';
+import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 import { assessmentCardStateForClaim } from '@/lib/student-assessment-ui';
 import { profileSectionHref } from '@/lib/profile-sections';
 import { useProfileProgress } from '@/lib/use-profile-progress';
@@ -28,9 +37,12 @@ export function StudentAssessmentHub() {
   const router = useRouter();
   const { progress, loading: profileLoading } = useProfileProgress();
   const [claims, setClaims] = useState<SkillClaimDto[]>([]);
+  const [evidenceBundle, setEvidenceBundle] = useState<ProfileLinkedEvidenceBundle | null>(null);
+  const [evidenceRecords, setEvidenceRecords] = useState<EvidenceRecordDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
+  const [verifyFilter, setVerifyFilter] = useState<'All' | 'Verified' | 'Not Verified'>('All');
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -39,8 +51,16 @@ export function StudentAssessmentHub() {
       setLoading(true);
       setError(null);
       try {
-        const rows = await api.assessment.listSkillClaims();
-        if (!cancelled) setClaims(rows);
+        const [rows, bundle, records] = await Promise.all([
+          api.assessment.listSkillClaims(),
+          loadProfileLinkedEvidenceBundle(),
+          api.evidence.list().catch(() => [] as EvidenceRecordDto[]),
+        ]);
+        if (!cancelled) {
+          setClaims(rows);
+          setEvidenceBundle(bundle);
+          setEvidenceRecords(records);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load assessments.');
@@ -61,6 +81,30 @@ export function StudentAssessmentHub() {
       ),
     [claims],
   );
+
+  const filterOptions = ['All', 'Verified', 'Not Verified'] as const;
+
+  const filteredClaims = useMemo(() => {
+    if (verifyFilter === 'Verified') {
+      return sortedClaims.filter((claim) => claim.status === 'VERIFIED');
+    }
+    if (verifyFilter === 'Not Verified') {
+      return sortedClaims.filter((claim) => claim.status !== 'VERIFIED');
+    }
+    return sortedClaims;
+  }, [sortedClaims, verifyFilter]);
+
+  const linkedContextBySkill = useMemo(() => {
+    const map = new Map<string, SkillEvidenceContextView>();
+    if (!evidenceBundle) return map;
+    for (const claim of claims) {
+      map.set(
+        claim.skillCode,
+        linkedEvidenceContextForSkill(claim.skillCode, evidenceBundle, evidenceRecords),
+      );
+    }
+    return map;
+  }, [claims, evidenceBundle, evidenceRecords]);
 
   const profileUnlocked = canVerifySkills(progress?.percent);
 
@@ -124,16 +168,44 @@ export function StudentAssessmentHub() {
           </div>
         ) : (
           <div className="mt-8">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ds-text-muted)]">
-              My assessments
-            </h2>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ds-text-muted)]">
+                My assessments
+              </h2>
+              <div
+                className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none sm:pb-0"
+                role="group"
+                aria-label="Filter by verification status"
+              >
+                {filterOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setVerifyFilter(opt)}
+                    className={cn(
+                      'whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-all duration-200',
+                      verifyFilter === opt
+                        ? 'border border-[var(--ds-green)] bg-[var(--student-accent-soft)] font-bold text-[var(--student-text-primary)] shadow-sm'
+                        : 'border border-[var(--ds-border)] bg-[var(--ds-surface)] text-[var(--ds-text-muted)] hover:border-[var(--ds-green)]/40 hover:text-[var(--ds-text)]',
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredClaims.length === 0 ? (
+              <p className={`mt-4 text-sm ${profileMutedTextClass}`}>
+                No skills match this verification filter.
+              </p>
+            ) : null}
             <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {sortedClaims.map((claim) => {
+              {filteredClaims.map((claim) => {
                 const card = assessmentCardStateForClaim(claim);
                 const busy = isPending && pendingClaimId === claim.claimId;
                 const blocked =
                   !profileUnlocked && claim.status !== 'VERIFIED'
-                    ? 'Complete at least 50% of your profile to start assessments.'
+                    ? `Complete at least ${String(PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT)}% of your profile to start assessments.`
                     : takeAssessmentBlockMessage(claim);
                 const disabled = card.disabled || Boolean(blocked) || busy;
 
@@ -148,6 +220,9 @@ export function StudentAssessmentHub() {
                           {categoryNameForCode(claim.skillCode)}
                         </p>
                       </div>
+                      <AssessmentSkillLinkedProjects
+                        context={linkedContextBySkill.get(claim.skillCode)}
+                      />
                       <div className="mt-auto space-y-3">
                         <p
                           className={`text-xs font-medium uppercase tracking-wide ${profileMutedTextClass}`}
@@ -157,20 +232,33 @@ export function StudentAssessmentHub() {
                         <p className={`text-sm font-medium ${profileHeadingClass}`}>
                           {card.statusLabel}
                         </p>
+                        {claim.status === 'VERIFIED' && claim.proficiency ? (
+                          <div className="space-y-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs ${profileMutedTextClass}`}
+                            >
+                              Verified level
+                              <ProficiencyLevelHint />
+                            </span>
+                            <ProficiencyLevelCircles proficiency={claim.proficiency} size="sm" />
+                          </div>
+                        ) : null}
                         {blocked ? (
                           <p className={`text-xs leading-snug ${profileMutedTextClass}`}>
                             {blocked}
                           </p>
                         ) : null}
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => openAssessment(claim)}
-                          className={`${profilePrimaryButtonClass} w-full justify-center disabled:opacity-50`}
-                        >
-                          {busy ? 'Loading…' : card.buttonLabel}
-                          <ArrowRight className="size-4" aria-hidden="true" />
-                        </button>
+                        {card.action !== 'verified' ? (
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => openAssessment(claim)}
+                            className={`${profilePrimaryButtonClass} w-full justify-center disabled:opacity-50`}
+                          >
+                            {busy ? 'Loading…' : card.buttonLabel}
+                            <ArrowRight className="size-4" aria-hidden="true" />
+                          </button>
+                        ) : null}
                       </div>
                     </article>
                   </li>
@@ -182,8 +270,7 @@ export function StudentAssessmentHub() {
 
         {!profileUnlocked && sortedClaims.length > 0 ? (
           <p className={`mt-6 text-sm ${profileMutedTextClass}`}>
-            Complete more profile sections to unlock new skill assessments. Verified skills can
-            still be practiced anytime.
+            Complete more profile sections to unlock new skill assessments.
           </p>
         ) : null}
       </div>

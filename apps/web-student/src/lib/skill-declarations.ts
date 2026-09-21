@@ -12,6 +12,7 @@ import {
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
+  proficiencyLevelUiLabel,
 } from '@smart/contracts';
 import { canVerifySkills } from './profile-progress';
 
@@ -29,10 +30,10 @@ export const PROFICIENCY_OPTIONS = [
 ] as const satisfies readonly SkillProficiency[];
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
-  PROFESSIONAL: 'Professional',
+  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
+  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
+  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
+  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
 };
 
 export function skillsForCategory(categoryId: SkillCategoryId) {
@@ -282,12 +283,9 @@ export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
 /** Default claim proficiency for diagnostic-first verification (candidate does not self-select). */
 export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGINNER';
 
-export const SKILL_VERIFICATION_ASSESSMENT_STEPS = [
-  'Start with a short diagnostic — SMART discovers what you can demonstrate; you do not self-rate proficiency.',
-  'Existing projects and work evidence are considered when available, but are not required to begin.',
-  'After the diagnostic, evidence or a short defense interview may be required depending on your demonstrated level.',
-  'Your verified badge reflects assessment-supported proficiency plus confidence, not a declared rating.',
-] as const;
+/** Student-facing copy — high level only (no item formats or gating mechanics). */
+export const SKILL_VERIFICATION_ASSESSMENT_SUMMARY =
+  'You complete a timed, proctored assessment for the skill you selected. Your result reflects what you demonstrated in that session; linked profile evidence is shown below when you have it.';
 
 export function isProfileCompleteForSkillVerification(percent: number | null | undefined): boolean {
   return canVerifySkills(percent);
@@ -299,7 +297,7 @@ export function canEnableTakeAssessment(params: {
   return isProfileCompleteForSkillVerification(params.profilePercent);
 }
 
-/** Block message for Take Assessment — verified skills may still practice. */
+/** Block message for Take Assessment (verified skills use the repository detail view only). */
 export function takeAssessmentBlockMessage(claim?: SkillClaimDto | null): string | null {
   if (!claim) return null;
   const message = skillVerifyBlockMessage(claim);

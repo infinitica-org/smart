@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   validateWorkExperienceEffectiveUpdate,
@@ -12,7 +13,7 @@ import {
   type WorkExperienceProofValidationResult,
 } from '@smart/contracts';
 import { isSmartApiError, queryKeys } from '@smart/api-client';
-import { useQuery } from '@smart/ui';
+import { useQuery, useQueryClient } from '@smart/ui';
 import { api } from '@/lib/api';
 import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
 import { validateVerifierEmailForEmployerSend } from '@/lib/work-experience-verification-ui';
@@ -26,6 +27,11 @@ import {
 import { profileSectionMeta } from '@/lib/profile-sections';
 import { usePerActionCooldown } from '@/lib/use-per-action-cooldown';
 import { WORK_EXPERIENCE_RESEND_COOLDOWN_MS } from '@/lib/work-experience-verification-ui';
+import {
+  applyWorkExperienceSaveValidation,
+  normalizeOptionalHttpUrl,
+  shouldSkipWorkExperienceDocumentRules,
+} from '@/lib/work-experience-save-validation';
 
 function workExperienceSaveErrorMessage(err: unknown, fallback: string): string {
   if (isSmartApiError(err)) {
@@ -68,6 +74,11 @@ function validateProofFile(file: File): string | null {
 }
 
 export function WorkExperienceSection() {
+  const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const highlightExperienceId = searchParams.get('experience');
+  const openedHighlightRef = useRef<string | null>(null);
+
   const {
     data: experiences = [],
     isLoading: loading,
@@ -128,6 +139,7 @@ export function WorkExperienceSection() {
   const [modalNewProofFile, setModalNewProofFile] = useState<File | null>(null);
 
   const fetchExperiences = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.myWorkExperiences() });
     await refetchExperiences();
   };
 
@@ -186,6 +198,15 @@ export function WorkExperienceSection() {
     setProofValidationError(null);
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!highlightExperienceId || loading || experiences.length === 0) return;
+    if (openedHighlightRef.current === highlightExperienceId) return;
+    const match = experiences.find((exp) => exp.id === highlightExperienceId);
+    if (!match) return;
+    openedHighlightRef.current = highlightExperienceId;
+    openEditModal(match);
+  }, [highlightExperienceId, loading, experiences]);
 
   const tryDispatchEmployerVerification = async (experienceId: string, exp: WorkExperienceDto) => {
     const ruleCheck = validateWorkExperienceLetterRules({
@@ -276,6 +297,9 @@ export function WorkExperienceSection() {
         ...modalPendingDocs.map((doc) => ({ documentType: doc.documentType })),
       ];
 
+      const normalizedCompanyWebsite = normalizeOptionalHttpUrl(companyWebsite);
+      const normalizedCompanyLinkedinUrl = normalizeOptionalHttpUrl(companyLinkedinUrl);
+
       const submissionInput = {
         companyName,
         role,
@@ -287,8 +311,8 @@ export function WorkExperienceSection() {
         responsibilities,
         skillsClaimed: selectedSkillCodes,
         companyId: editingExp?.companyId ?? null,
-        companyWebsite: companyWebsite || null,
-        companyLinkedinUrl: companyLinkedinUrl || null,
+        companyWebsite: normalizedCompanyWebsite,
+        companyLinkedinUrl: normalizedCompanyLinkedinUrl,
         documents: documentsForValidation,
       };
 
@@ -333,8 +357,14 @@ export function WorkExperienceSection() {
             )
           : validateWorkExperienceSubmission(submissionInput);
 
-      if (!validation.valid) {
-        setError(validation.issues[0]?.message || 'Please complete all required fields.');
+      const skipDocumentRules = shouldSkipWorkExperienceDocumentRules({
+        existingDocumentCount: existingDocs.length,
+        pendingUploadCount: modalPendingDocs.length,
+      });
+      const saveValidation = applyWorkExperienceSaveValidation(validation, { skipDocumentRules });
+
+      if (!saveValidation.valid) {
+        setError(saveValidation.issues[0]?.message || 'Please complete all required fields.');
         setSubmitting(false);
         return;
       }
@@ -365,8 +395,8 @@ export function WorkExperienceSection() {
 
       const payload: Omit<CreateWorkExperienceDto, 'documents'> = {
         companyName,
-        companyWebsite: companyWebsite.trim() || null,
-        companyLinkedinUrl: companyLinkedinUrl.trim() || null,
+        companyWebsite: normalizeOptionalHttpUrl(companyWebsite),
+        companyLinkedinUrl: normalizeOptionalHttpUrl(companyLinkedinUrl),
         role,
         employmentType: employmentType as WorkExperienceDto['employmentType'],
         department: department.trim() || null,

@@ -13,6 +13,10 @@ const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
 const removeWorkExperienceDocument = vi.fn();
 
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     users: {
@@ -144,6 +148,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     deleteWorkExperience.mockReset();
     sendWorkExperienceVerification.mockReset();
     restartWorkExperienceVerification.mockReset();
+    uploadWorkExperienceProofDocument.mockReset();
   });
 
   it('renders ongoing role with active employment metadata', async () => {
@@ -227,7 +232,13 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     });
   });
 
-  it('prevents submission client-side if required offer letter is missing', async () => {
+  it('allows saving a draft without proof documents when mandatory fields are complete', async () => {
+    createWorkExperience.mockResolvedValue({
+      ...mockOngoingExp,
+      id: 'exp-draft',
+      documents: [],
+    });
+
     const { container } = await openAddExperienceModal();
 
     fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
@@ -235,10 +246,10 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
-    expect(createWorkExperience).not.toHaveBeenCalled();
-    expect(
-      screen.getAllByText(/An offer letter is required for all work experience claims/i).length,
-    ).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(createWorkExperience).toHaveBeenCalled();
+    });
+    expect(uploadWorkExperienceProofDocument).not.toHaveBeenCalled();
   });
 
   it('renders student claim status tracker with document proof, document check, employer verification, and status copy (WE-T04)', async () => {
@@ -356,6 +367,7 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
     listWorkExperiences.mockReset().mockResolvedValue([mockOngoingExp]);
     createWorkExperience.mockReset();
     updateWorkExperience.mockReset().mockResolvedValue(mockOngoingExp);
+    uploadWorkExperienceProofDocument.mockReset();
   });
 
   it('renders the Professional Domain field', async () => {
@@ -423,20 +435,26 @@ describe('WorkExperienceSection mandatory fields (S6-VB-01)', () => {
   });
 
   it('keeps End Date optional when currently employed', async () => {
+    createWorkExperience.mockResolvedValue({
+      ...mockOngoingExp,
+      id: 'exp-current',
+      isCurrent: true,
+      endDate: null,
+    });
+
     const { container } = await openAddExperienceModal();
-    fireEvent.click(screen.getByLabelText(/I currently work in this role/i));
+    fillMandatoryWorkExperienceFields(container, {}, { isCurrent: true });
     expect(screen.queryByText('End date *')).toBeNull();
     expect(screen.getByText(/^End date$/i)).toBeTruthy();
-
-    fillMandatoryWorkExperienceFields(container);
     selectCatalogSkill('Git & Version Control');
 
     fireEvent.click(screen.getByRole('button', { name: /Submit experience/i }));
 
-    expect(createWorkExperience).not.toHaveBeenCalled();
-    expect(
-      screen.getAllByText(/An offer letter is required for all work experience claims/i).length,
-    ).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(createWorkExperience).toHaveBeenCalledWith(
+        expect.objectContaining({ isCurrent: true, endDate: null }),
+      );
+    });
     expect(screen.queryByText(/End date is required if not currently employed/i)).toBeNull();
   });
 

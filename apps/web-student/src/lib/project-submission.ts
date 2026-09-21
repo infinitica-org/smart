@@ -4,11 +4,13 @@ import {
   type ProjectDto,
 } from '@smart/contracts';
 
+import { stackLabelFromSkillCodes } from '@/lib/project-form-skills';
+
 export type ProjectFormFields = {
   title: string;
   problem: string;
   approach: string;
-  stack: string;
+  skillCodes: string[];
   outcome: string;
   githubUrl: string;
   liveUrl: string;
@@ -18,18 +20,19 @@ export const EMPTY_PROJECT_FORM: ProjectFormFields = {
   title: '',
   problem: '',
   approach: '',
-  stack: '',
+  skillCodes: [],
   outcome: '',
   githubUrl: '',
   liveUrl: '',
 };
 
 export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProjectRequest {
+  const stack = stackLabelFromSkillCodes(fields.skillCodes);
   return CreateProjectRequestSchema.parse({
     title: fields.title.trim(),
     problem: fields.problem.trim(),
     approach: fields.approach.trim(),
-    stack: fields.stack.trim(),
+    stack,
     outcome: fields.outcome.trim(),
     githubUrl: fields.githubUrl.trim() || undefined,
     liveUrl: fields.liveUrl.trim() || undefined,

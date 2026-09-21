@@ -124,6 +124,7 @@ import {
   EvidenceRecordDtoSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
+  ProjectSkillMappingDtoSchema,
   VerificationDecisionDtoSchema,
   SkillVerifyInterviewDtoSchema,
   SkillVerifyPrepareDtoSchema,
@@ -973,6 +974,16 @@ export function evidenceApi(client: SmartApiClient) {
     createVerificationDecision: (body: CreateVerificationDecisionRequest) =>
       client.post(prefixed('/users/me/verification-decisions'), body, {
         schema: VerificationDecisionDtoSchema,
+      }),
+
+    listProjectSkillMappings: (projectId: string) =>
+      client.get(prefixed(`/users/me/projects/${projectId}/skill-mappings`), {
+        schema: z.array(ProjectSkillMappingDtoSchema),
+      }),
+
+    replaceProjectSkillMappings: (projectId: string, body: unknown) =>
+      client.patch(prefixed(`/users/me/projects/${projectId}/skill-mappings`), body, {
+        schema: z.array(ProjectSkillMappingDtoSchema),
       }),
   };
 }

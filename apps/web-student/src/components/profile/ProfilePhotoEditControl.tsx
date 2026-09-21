@@ -1,13 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
-import { queryKeys } from '@smart/api-client';
+import { isSmartApiError, queryKeys } from '@smart/api-client';
+import type { AuthenticatedUser } from '@smart/contracts';
 import { useQueryClient } from '@smart/ui';
 
 import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
 import { api } from '@/lib/api';
-import { PROFILE_PHOTO_ACCEPT, validateProfilePhotoFile } from '@/lib/profile-photo';
+import {
+  PROFILE_PHOTO_ACCEPT,
+  profilePhotoDisplayUrl,
+  validateProfilePhotoFile,
+} from '@/lib/profile-photo';
 
 interface ProfilePhotoEditControlProps {
   fullName: string | undefined;
@@ -26,6 +31,14 @@ export function ProfilePhotoEditControl({
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [displayPhotoUrl, setDisplayPhotoUrl] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setDisplayPhotoUrl(undefined);
+  }, [profilePhotoUrl]);
+
+  const resolvedPhotoUrl =
+    displayPhotoUrl !== undefined ? displayPhotoUrl : (profilePhotoUrl ?? null);
 
   const handleSelect = async (file: File | undefined) => {
     if (!file) return;
@@ -38,10 +51,22 @@ export function ProfilePhotoEditControl({
     setError(null);
     setUploading(true);
     try {
-      await api.users.uploadProfilePhoto(file, file.name);
+      const response = await api.users.uploadProfilePhoto(file, file.name);
+      const cacheKey = Date.now();
+      const bustedUrl = profilePhotoDisplayUrl(response.profilePhotoUrl, cacheKey);
+      setDisplayPhotoUrl(bustedUrl);
+      queryClient.setQueryData<AuthenticatedUser | undefined>(queryKeys.me(), (previous) =>
+        previous ? { ...previous, profilePhotoUrl: response.profilePhotoUrl } : previous,
+      );
       await queryClient.invalidateQueries({ queryKey: queryKeys.me() });
-    } catch {
-      setError('Could not upload your profile photo. Try again.');
+    } catch (err: unknown) {
+      if (isSmartApiError(err) && err.code === 'storage_unavailable') {
+        setError(err.message);
+      } else if (isSmartApiError(err) && err.message && !err.message.startsWith('Request failed')) {
+        setError(err.message);
+      } else {
+        setError('Could not upload your profile photo. Try again.');
+      }
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -52,7 +77,7 @@ export function ProfilePhotoEditControl({
     <div className="relative shrink-0">
       <CandidateAvatar
         fullName={fullName}
-        profilePhotoUrl={profilePhotoUrl}
+        profilePhotoUrl={resolvedPhotoUrl}
         className={
           avatarClassName ??
           'h-[72px] w-[72px] shrink-0 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-xl font-semibold text-[var(--ds-text)]'
@@ -67,7 +92,7 @@ export function ProfilePhotoEditControl({
         disabled={uploading}
         aria-label={profilePhotoUrl ? 'Change profile photo' : 'Upload profile photo'}
         onClick={() => inputRef.current?.click()}
-        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface)] text-[var(--ds-icon)] shadow-[var(--ds-card-shadow)] transition hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)] disabled:opacity-60"
+        className="absolute bottom-0 right-0 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface)] text-[var(--ds-icon)] shadow-[var(--ds-card-shadow)] transition hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)] disabled:opacity-60"
       >
         {uploading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

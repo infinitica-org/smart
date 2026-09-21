@@ -21,6 +21,7 @@ import {
   friendlyOpeningError,
   isCreateOpeningPayload,
   labelFor,
+  proficiencyLabelFor,
   loadJobPostingDraft,
   saveJobPostingDraft,
   skillNameFor,
@@ -472,7 +473,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                           >
                             {SKILL_PROFICIENCIES.map((level) => (
                               <option key={level} value={level}>
-                                {labelFor(level)}
+                                {proficiencyLabelFor(level)}
                               </option>
                             ))}
                           </select>
@@ -639,7 +640,9 @@ function ReviewSections({
           value={
             skills.size === 0
               ? 'None'
-              : [...skills].map(([code, p]) => `${skillNameFor(code)} (${labelFor(p)})`).join(', ')
+              : [...skills]
+                  .map(([code, p]) => `${skillNameFor(code)} (${proficiencyLabelFor(p)})`)
+                  .join(', ')
           }
           fullWidth
         />

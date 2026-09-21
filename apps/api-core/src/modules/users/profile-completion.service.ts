@@ -2,6 +2,7 @@ import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { CandidateOnboardingDraftSchema, CandidateOnboardingProfileSchema } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import {
+  PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT,
   computeProfileCompletion,
   isProfileCompleteForSkillVerification,
   type ProfileProgressInput,
@@ -27,7 +28,7 @@ export class ProfileCompletionService {
       if (!complete) {
         throw new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Reach at least 50% profile completion to unlock skill verification.',
+          message: `Reach at least ${String(PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT)}% profile completion to unlock skill verification.`,
           statusCode: 403,
         });
       }

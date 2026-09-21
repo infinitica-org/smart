@@ -42,7 +42,7 @@ export const DASHBOARD_AREA_LABELS: Record<ProfileAreaId, string> = {
 const AREA_COUNT = PROFILE_AREA_IDS.length;
 const DISMISSAL_STORAGE_PREFIX = 'smart.profile.next-action.dismissed.';
 export const RECOMMENDED_ACTION_DISMISSAL_MS = 7 * 24 * 60 * 60 * 1000;
-export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 50;
+export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 10;
 
 /** UI copy — verification unlocks when all profile areas are complete (100%). */
 export const PROFILE_VERIFICATION_UNLOCK_MESSAGE =

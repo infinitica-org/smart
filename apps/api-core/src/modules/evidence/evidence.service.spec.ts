@@ -26,14 +26,26 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const credentialVerificationQueue = { add: vi.fn().mockResolvedValue({ id: 'job-1' }) };
   const dedup = new CredentialDedupService(prisma as never);
 
+  const skillClaimAutoDeclare = {
+    ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new EvidenceService(
     prisma as any,
     reconciliation as any,
     storageService as any,
     credentialVerificationQueue as any,
     dedup,
+    skillClaimAutoDeclare as any,
   );
-  return { service, prisma, reconciliation, storageService, credentialVerificationQueue, dedup };
+  return {
+    service,
+    prisma,
+    reconciliation,
+    storageService,
+    credentialVerificationQueue,
+    dedup,
+    skillClaimAutoDeclare,
+  };
 }
 
 describe('EvidenceService credentials', () => {
@@ -131,6 +143,40 @@ describe('EvidenceService credentials', () => {
       }),
     ).rejects.toThrow();
     expect(storageService.upload).not.toHaveBeenCalled();
+  });
+
+  it('auto-declares skill claims when project skill mappings are saved', async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: 'proj-1', studentId: 'student-1' });
+    const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const createMapping = vi.fn().mockResolvedValue({});
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        projectId: 'proj-1',
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        verificationStatus: 'PENDING',
+      },
+    ]);
+    const { service, skillClaimAutoDeclare } = buildService({
+      prisma: {
+        project: { findFirst },
+        projectSkillMapping: { deleteMany, create: createMapping, findMany },
+        $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
+      },
+    });
+
+    await service.replaceProjectSkillMappings('student-1', 'proj-1', [
+      {
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        specificContribution: 'Built the API layer for the capstone.',
+        componentWorkedOn: 'Backend',
+      },
+    ]);
+
+    expect(skillClaimAutoDeclare.ensureClaimsForProjectTags).toHaveBeenCalledWith(
+      'student-1',
+      'proj-1',
+      ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+    );
   });
 
   it('rejects a disallowed mime type before uploading', async () => {

@@ -86,6 +86,30 @@ describe('startLiveWebcamMonitor', () => {
     monitor.stop();
   });
 
+  it('does not emit violations during warmup', async () => {
+    const onViolation = vi.fn();
+    let now = 0;
+    const video = { videoWidth: 640 } as HTMLVideoElement;
+    const monitor = startLiveWebcamMonitor({
+      getVideo: () => video,
+      onViolation,
+      detect: () => [],
+      brightnessOf: () => 90,
+      sampleMs: 60_000,
+      emitCooldownMs: 0,
+      warmupMs: 5_000,
+      now: () => now,
+    });
+
+    for (let i = 0; i < 3; i += 1) await monitor.tick();
+    expect(onViolation).not.toHaveBeenCalled();
+
+    now = 6_000;
+    await monitor.tick();
+    expect(onViolation).toHaveBeenCalledWith('NO_FACE');
+    monitor.stop();
+  });
+
   it('skips a tick while a previous detect is still running', async () => {
     const onViolation = vi.fn();
     let release!: (boxes: NormalizedFaceBox[]) => void;

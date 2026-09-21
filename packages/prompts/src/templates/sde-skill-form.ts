@@ -148,8 +148,9 @@ export const SdeOpenItemSchema = z
     }
   });
 
+/** Gateway allows modest over-generation; api-core `orderOpen` trims to the requested formats. */
 export const SdeSkillFormOpenOutputSchema = z.object({
-  items: z.array(SdeOpenItemSchema).min(1).max(3),
+  items: z.array(SdeOpenItemSchema).min(1).max(6),
 });
 
 export const sdeSkillFormOpenTemplate: PromptTemplate<SdeSkillFormOpenVariables> = {
@@ -280,7 +281,7 @@ export const SdeOpenItemV3Schema = SdeOpenItemSchema.and(
 );
 
 export const SdeSkillFormOpenOutputSchemaV3 = z.object({
-  items: z.array(SdeOpenItemV3Schema).min(1).max(3),
+  items: z.array(SdeOpenItemV3Schema).min(1).max(6),
 });
 
 export const sdeSkillFormOpenTemplateV3: PromptTemplate<SdeSkillFormOpenVariablesV3> = {
@@ -472,7 +473,8 @@ export const SdeOpenBatchGradeSchema = z.object({
   grades: z
     .array(
       z.object({
-        index: z.number().int().min(1),
+        /** Models often emit 0-based positions; api-core maps to sealed item indices before scoring. */
+        index: z.number().int().min(0),
         marksAwarded: z.number().min(0).max(10),
         justification: z.string().min(10).max(2_000),
         testsPassed: z.number().int().min(0).max(20).optional(),

@@ -580,7 +580,7 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Reach at least 50% profile completion to unlock skill verification.',
+          message: 'Reach at least 10% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),
@@ -599,7 +599,7 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Reach at least 50% profile completion to unlock skill verification.',
+          message: 'Reach at least 10% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),

@@ -47,10 +47,10 @@ export function LoginForm() {
     <section className="flex w-full max-w-[420px] flex-col items-center text-center">
       <SmartLogo kind="mark" tone="on-light" className="mx-auto size-11" title="SMART" />
 
-      <h1 className="mt-10 text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.125rem]">
+      <h1 className="mt-10 text-[2.5rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.875rem]">
         Hello, there !
       </h1>
-      <p className="mt-2 text-[15px] leading-relaxed tracking-[-0.01em] text-[#64748b]">
+      <p className="mt-3 text-[17px] leading-relaxed tracking-[-0.01em] text-[#64748b] sm:text-lg">
         The future, together.
       </p>
 

@@ -40,13 +40,13 @@ function completeInput(): ProfileProgressInput {
 }
 
 describe('canVerifySkills', () => {
-  it('blocks profiles below 50%', () => {
+  it('blocks profiles below 10%', () => {
     expect(canVerifySkills(0)).toBe(false);
-    expect(canVerifySkills(49)).toBe(false);
+    expect(canVerifySkills(9)).toBe(false);
   });
 
-  it('allows 50% and does not block values above 50%', () => {
-    expect(canVerifySkills(50)).toBe(true);
+  it('allows 10% and does not block values above 10%', () => {
+    expect(canVerifySkills(10)).toBe(true);
     expect(canVerifySkills(100)).toBe(true);
     expect(canVerifySkills(101)).toBe(true);
   });
@@ -58,14 +58,17 @@ describe('canVerifySkills', () => {
 });
 
 describe('isProfileCompleteForSkillVerification', () => {
-  it('returns false below 50% profile completion', () => {
+  it('returns false at 0% profile completion', () => {
+    expect(isProfileCompleteForSkillVerification(emptyInput())).toBe(false);
+    expect(computeProfileCompletion(emptyInput()).percent).toBe(0);
+  });
+
+  it('returns true once profile reaches the unlock threshold (one of eight areas)', () => {
     const input = emptyInput({
       skillClaims: [{ claimId: 'clm_1', skillCode: 'REACT', status: 'VERIFIED' } as never],
-      languages: [{ id: 'lang_1', language: 'English', proficiency: 'FLUENT' } as never],
-      education: [{ id: 'edu_1', institutionName: 'MIT' } as never],
     });
-    expect(isProfileCompleteForSkillVerification(input)).toBe(false);
-    expect(computeProfileCompletion(input).percent).toBe(38);
+    expect(isProfileCompleteForSkillVerification(input)).toBe(true);
+    expect(computeProfileCompletion(input).percent).toBe(13);
   });
 
   it('returns true at 50% profile completion (four of eight areas)', () => {

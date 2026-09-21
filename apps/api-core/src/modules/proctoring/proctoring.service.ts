@@ -11,6 +11,7 @@ import {
   BlobWsPayloadSchema,
   DEFAULT_VIOLATION_SEVERITY,
   PROCTORING_CHECKPOINT_DEDUP_MS,
+  PROCTORING_INGEST_DEDUP_MS,
   PROCTORING_SNAPSHOT_KEY_PREFIX,
   PROCTORING_WARNING_LIMIT_DEFAULT,
   REDIS_TTL_SECONDS,
@@ -278,6 +279,19 @@ export class ProctoringService {
     const classified: ProctoringEventClass =
       eventClass ?? (TECHNICAL_VIOLATION_KINDS.includes(kind) ? 'TECHNICAL' : 'INTEGRITY');
     const stored: StoredViolation = { kind, severity, ts: Date.now() };
+    const eventsBefore = await this.loadEvents(attemptId);
+    const ingestDuplicate =
+      classified === 'INTEGRITY' &&
+      eventsBefore.some(
+        (event) => event.kind === kind && event.ts >= Date.now() - PROCTORING_INGEST_DEDUP_MS,
+      );
+    if (ingestDuplicate) {
+      this.logger.debug(
+        { attemptId, kind, dedupMs: PROCTORING_INGEST_DEDUP_MS },
+        'proctoring.ingest_deduped',
+      );
+      return this.buildWarningSnapshot(attemptId, currentFlag);
+    }
     await this.redis.lpush(EVENTS(attemptId), JSON.stringify(stored));
     await this.redis.expire(EVENTS(attemptId), REDIS_TTL_SECONDS.proctoringWarning);
     let warningCount = Number((await this.redis.get(WARN(attemptId))) ?? '0');

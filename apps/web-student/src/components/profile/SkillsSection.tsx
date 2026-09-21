@@ -11,10 +11,7 @@ import {
 import { Alert } from '@smart/ui';
 
 import { api } from '@/lib/api';
-import {
-  SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
-  skillNameForCode,
-} from '@/lib/skill-declarations';
+import { SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY } from '@/lib/skill-declarations';
 import { CATEGORY_OPTIONS } from '@/lib/skills-catalog';
 import {
   profileCardClass,
@@ -61,14 +58,6 @@ export function SkillsSection() {
   }, [refreshClaims]);
 
   const claimByCode = useMemo(() => new Map(claims.map((row) => [row.skillCode, row])), [claims]);
-
-  const selectedClaims = useMemo(
-    () =>
-      [...claims].sort((a, b) =>
-        skillNameForCode(a.skillCode).localeCompare(skillNameForCode(b.skillCode)),
-      ),
-    [claims],
-  );
 
   const availableSkills = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -128,26 +117,6 @@ export function SkillsSection() {
           appear on your Assessment page.
         </p>
       </div>
-
-      {selectedClaims.length > 0 ? (
-        <div className="space-y-3">
-          <h3
-            className={`text-sm font-semibold uppercase tracking-[0.12em] ${profileMutedTextClass}`}
-          >
-            My selected skills
-          </h3>
-          <ul className="flex flex-wrap gap-2">
-            {selectedClaims.map((claim) => (
-              <li
-                key={claim.claimId}
-                className="inline-flex items-center rounded-full border border-[var(--student-success-border)] bg-[var(--student-accent-soft)] px-3 py-1 text-sm font-medium text-[var(--student-text-primary)]"
-              >
-                {skillNameForCode(claim.skillCode)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
       <div className={`${profileCardClass} space-y-5 !p-5 md:!p-6`}>
         <div className="relative">

@@ -118,7 +118,7 @@ export function skillVerifyErrorFromUnknown(
       return {
         kind: 'profile_incomplete',
         title: 'Profile incomplete',
-        message: 'Reach at least 50% profile completion before taking skill assessments.',
+        message: 'Reach at least 10% profile completion before taking skill assessments.',
       };
     }
     if (error.statusCode === 404 || error.code === 'not_found') {

@@ -6,6 +6,14 @@ function primaryEducationEntry(
   return education.find((entry) => entry.current) ?? education[0];
 }
 
+/** School/college only — board is stored in `institutionName` as "School · Board" for K-12. */
+export function institutionNameWithoutBoard(institutionName: string): string {
+  const trimmed = institutionName.trim();
+  if (!trimmed.includes(' · ')) return trimmed;
+  const [school] = trimmed.split(' · ', 2);
+  return school?.trim() || trimmed;
+}
+
 function yearFromEducationDate(value: string | null | undefined): number | null {
   if (!value?.trim()) return null;
   const year = Number.parseInt(value.slice(0, 4), 10);
@@ -19,10 +27,10 @@ export function primaryInstitutionName(
 ): string | null {
   const entry = primaryEducationEntry(education);
   const fromEducation = entry?.institutionName?.trim();
-  if (fromEducation) return fromEducation;
+  if (fromEducation) return institutionNameWithoutBoard(fromEducation);
 
   const fromAccount = user?.institutionName?.trim();
-  if (fromAccount) return fromAccount;
+  if (fromAccount) return institutionNameWithoutBoard(fromAccount);
 
   return null;
 }

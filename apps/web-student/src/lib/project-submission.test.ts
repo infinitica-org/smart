@@ -10,7 +10,7 @@ const valid = {
   title: 'Campus bus tracker',
   problem: 'Students cannot see live bus location on campus routes.',
   approach: 'I used websockets and a small GPS ingest service.',
-  stack: 'TypeScript, Nest, Redis',
+  skillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
   outcome: 'Average wait time dropped in a 30-student pilot.',
   githubUrl: 'https://github.com/org/repo',
   liveUrl: '',
@@ -19,6 +19,7 @@ const valid = {
 describe('buildCreateProjectRequest', () => {
   it('maps the CN-T08 template and omits empty optional links', () => {
     const body = buildCreateProjectRequest(valid);
+    expect(body.stack).toContain('Python');
     expect(body.githubUrl).toBe('https://github.com/org/repo');
     expect(body.loomUrl).toBeUndefined();
     expect(body.githubRepos).toEqual([]);
@@ -42,7 +43,7 @@ describe('processing state', () => {
       title: valid.title,
       problem: valid.problem,
       approach: valid.approach,
-      stack: valid.stack,
+      stack: 'Python Application & Backend Development',
       outcome: valid.outcome,
       loomUrl: null,
       githubUrl: null,

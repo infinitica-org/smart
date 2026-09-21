@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { attachProctorSensors, classifyProctorKey, classifyTrackpadGesture } from './sensors';
+import {
+  attachProctorSensors,
+  classifyProctorKey,
+  classifyTrackpadGesture,
+  devtoolsDockOpenedSinceBaseline,
+} from './sensors';
 
 function key(partial: Partial<KeyboardEvent> & Pick<KeyboardEvent, 'key'>): KeyboardEvent {
   return {
@@ -40,6 +45,15 @@ describe('classifyProctorKey', () => {
     expect(classifyProctorKey(key({ key: 'u', ctrlKey: true }))).toBe('DEVTOOLS_OPEN');
     expect(classifyProctorKey(key({ key: 's', ctrlKey: true }))).toBe('OS_KEY');
     expect(classifyProctorKey(key({ key: 'a' }))).toBeNull();
+  });
+});
+
+describe('devtoolsDockOpenedSinceBaseline', () => {
+  it('ignores stable browser chrome and flags a large gap increase', () => {
+    const baseline = { widthGap: 12, heightGap: 88 };
+    expect(devtoolsDockOpenedSinceBaseline(baseline, { widthGap: 14, heightGap: 90 })).toBe(false);
+    expect(devtoolsDockOpenedSinceBaseline(baseline, { widthGap: 400, heightGap: 90 })).toBe(true);
+    expect(devtoolsDockOpenedSinceBaseline(baseline, { widthGap: 12, heightGap: 240 })).toBe(true);
   });
 });
 

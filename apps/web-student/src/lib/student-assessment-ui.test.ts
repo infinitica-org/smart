@@ -26,7 +26,18 @@ describe('assessmentCardStateForClaim', () => {
     expect(state.action).toBe('continue');
   });
 
-  it('returns verified practice for verified claims', () => {
+  it('shows proficiency discovery copy for project-tagged claims', () => {
+    const state = assessmentCardStateForClaim({
+      claimId: 'clm_pt',
+      skillCode: 'PYTHON',
+      status: 'DECLARED',
+      lastAttemptId: null,
+      declareOrigin: 'PROJECT_TAGGED',
+    } as never);
+    expect(state.statusLabel).toBe('Find out your proficiency');
+  });
+
+  it('returns verified state without a practice action', () => {
     const state = assessmentCardStateForClaim({
       claimId: 'clm_3',
       skillCode: 'JAVA',
@@ -34,6 +45,7 @@ describe('assessmentCardStateForClaim', () => {
       proficiency: 'INTERMEDIATE',
     } as never);
     expect(state.statusLabel).toBe('Verified');
-    expect(state.action).toBe('practice');
+    expect(state.action).toBe('verified');
+    expect(state.buttonLabel).toBe('');
   });
 });

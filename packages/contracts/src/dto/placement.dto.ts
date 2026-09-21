@@ -644,6 +644,8 @@ export const SkillClaimDtoSchema = z.object({
   claimConfidence: z.number().min(0).max(1).nullable().optional(),
   /** Diagnostic submitted; grading or follow-on verification not finalized yet. */
   verificationInProgress: z.boolean().optional(),
+  /** Why this skill is on the assessment list (manual pick vs project tag vs GitHub). */
+  declareOrigin: z.enum(['MANUAL', 'PROJECT_TAGGED', 'GITHUB_DERIVED']).optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 

@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -38,9 +39,11 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { AuthService, hashPassword, verifyPassword } from '../auth/auth.service.js';
+import {
+  isAllowedProfilePhotoMimeType,
+  normalizeProfilePhotoMimeType,
+} from './profile-photo.mime.js';
 import { resolveProfilePhotoUrl, toAuthenticatedUserWithPhoto } from './profile-photo.util.js';
-
-const PROFILE_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 const RESUME_MIME_TYPES = new Set([
   'application/pdf',
@@ -91,7 +94,8 @@ export class UsersService {
       });
     }
 
-    if (!PROFILE_PHOTO_MIME_TYPES.has(file.mimeType)) {
+    const contentType = normalizeProfilePhotoMimeType(file.fileName, file.mimeType);
+    if (!isAllowedProfilePhotoMimeType(contentType)) {
       throw new BadRequestException({
         error: 'validation_failed',
         message: 'Only JPEG, PNG, and WebP images are accepted.',
@@ -106,12 +110,22 @@ export class UsersService {
       });
     }
 
-    const objectKey = await this.storage.upload({
-      buffer: file.buffer,
-      namespace: `profile-photos/${userId}`,
-      fileName: file.fileName,
-      contentType: file.mimeType,
-    });
+    let objectKey: string;
+    try {
+      objectKey = await this.storage.upload({
+        buffer: file.buffer,
+        namespace: `profile-photos/${userId}`,
+        fileName: file.fileName,
+        contentType,
+      });
+    } catch {
+      throw new ServiceUnavailableException({
+        error: 'storage_unavailable',
+        message:
+          'Profile photo storage is unavailable. Check that MinIO is running and S3_ACCESS_KEY / S3_SECRET_KEY match MINIO_ROOT_USER / MINIO_ROOT_PASSWORD, then restart the API.',
+        statusCode: 503,
+      });
+    }
 
     await this.prisma.user.update({
       where: { id: userId },
