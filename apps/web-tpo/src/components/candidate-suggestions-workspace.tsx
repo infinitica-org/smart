@@ -1,21 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Loader2, UserSearch } from 'lucide-react';
+import {
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Loader2,
+  UserSearch,
+} from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import {
   SKILL_DEFINITIONS,
-  TIER_LABEL,
   type BatchDto,
   type CandidateMatchDto,
   type JobOpeningDto,
+  type MatchMethod,
+  type ShortlistDto,
 } from '@smart/contracts';
 import { api, applicationsApi, openingsApi } from '../lib/api';
+import {
+  buildSuggestionsCsv,
+  buildSuggestionsPdf,
+  downloadTextFile,
+} from '../lib/suggestions-export';
+import { CandidateSkillGapDrawer } from './matching/CandidateSkillGapDrawer';
+import { CandidateSuggestionCard } from './matching/CandidateSuggestionCard';
 import { useMatchRun } from '../lib/use-match-run';
 import { FilterMultiSelect } from './matching/filter-multi-select';
 import {
-  cardClass,
-  chipClass,
   errorNoticeClass,
   inputClass,
   labelClass,
@@ -27,12 +41,12 @@ import {
   surfaceClass,
 } from '../lib/tpo-ui';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
+import { JobOpeningIdLabel } from './placement/JobOpeningIdLabel';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
 const SKILL_OPTIONS = SKILL_DEFINITIONS.map((skill) => ({ id: skill.code, label: skill.name }));
 
-const pillClass =
-  'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold';
+const PAGE_SIZE = 10;
 
 const openingSelectClass = `${selectClass} min-w-[240px]`;
 
@@ -44,17 +58,18 @@ function errorMessage(caught: unknown, fallback: string): string {
   return fallback;
 }
 
-function tierBadgeClass(tier: CandidateMatchDto['headlineTier']): string {
-  switch (tier) {
-    case 'GOLD':
-      return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'SILVER':
-      return 'border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]';
-    case 'BRONZE':
-      return 'border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] text-[var(--ds-text-muted)]';
-    default:
-      return 'border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-muted)]';
-  }
+function matchMethodLabel(method: MatchMethod | undefined): string {
+  if (method === 'RULES') return 'Rules-ranked';
+  if (method === 'SKILL_CAPABILITY') return 'Skill + capability match';
+  return 'Matched';
+}
+
+function usesSkillCapabilityUi(
+  shortlist: ShortlistDto | null,
+  candidate: CandidateMatchDto,
+): boolean {
+  const method = shortlist?.matchMethod ?? candidate.method;
+  return method === 'SKILL_CAPABILITY';
 }
 
 function noticeClass(tone: 'success' | 'danger' | 'info'): string {
@@ -89,6 +104,8 @@ export function CandidateSuggestionsWorkspace({
   } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [skillGapStudentId, setSkillGapStudentId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   // S6-VV-76 pool-scoping filters — batches, min CGPA, required verified skills (all optional).
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
@@ -133,8 +150,13 @@ export function CandidateSuggestionsWorkspace({
     setSelectedIds(new Set());
     setSentIds(new Set());
     setSendNotice(null);
+    setPage(1);
     reset();
   }, [selectedOpeningId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [run?.runId]);
 
   async function runMatching() {
     if (!selectedOpeningId) return;
@@ -145,6 +167,7 @@ export function CandidateSuggestionsWorkspace({
       minCgpa: parsedCgpa !== undefined && !Number.isNaN(parsedCgpa) ? parsedCgpa : undefined,
       requiredSkillCodes: requiredSkillCodes.length > 0 ? requiredSkillCodes : undefined,
       limit: 50,
+      minSkillCoverage: 0.6,
     });
   }
 
@@ -154,6 +177,38 @@ export function CandidateSuggestionsWorkspace({
   const sortedCandidates = shortlist?.candidates
     ? [...shortlist.candidates].sort((a, b) => b.matchScore - a.matchScore)
     : [];
+
+  const totalPages = Math.max(1, Math.ceil(sortedCandidates.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedCandidates = sortedCandidates.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  function exportRows() {
+    return sortedCandidates.map((candidate, index) => ({
+      rank: index + 1,
+      candidate,
+      sent: sentIds.has(candidate.studentId),
+    }));
+  }
+
+  function handleExportCsv() {
+    if (!selectedOpening) return;
+    const today = new Date().toISOString().slice(0, 10);
+    downloadTextFile(
+      `smart_suggestions_${selectedOpening.companyName}_${today}.csv`.replace(/\s+/g, '_'),
+      buildSuggestionsCsv(selectedOpening, exportRows()),
+      'text/csv;charset=utf-8;',
+    );
+  }
+
+  function handleExportPdf() {
+    if (!selectedOpening) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const doc = buildSuggestionsPdf(selectedOpening, exportRows());
+    doc.save(`smart_suggestions_${selectedOpening.companyName}_${today}.pdf`.replace(/\s+/g, '_'));
+  }
 
   function toggleCandidate(studentId: string) {
     setSelectedIds((current) => {
@@ -237,7 +292,7 @@ export function CandidateSuggestionsWorkspace({
       <PlacementPageHeader
         eyebrow="Placement · Candidate Discovery"
         title="Ranked Candidate Suggestions"
-        description="Rules-ranked candidates for the selected opening. Shortlist to move a candidate into the ATS pipeline."
+        description="Skill-ranked candidates for the selected opening. Shortlist to move a candidate into the ATS pipeline."
         actions={
           <>
             <label className="flex items-center gap-2">
@@ -385,6 +440,9 @@ export function CandidateSuggestionsWorkspace({
               <p className={statValueClass}>{run.suggestedCount} candidates</p>
             </div>
           ) : null}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-5">
+            <JobOpeningIdLabel openingId={selectedOpening.openingId} />
+          </div>
         </section>
       ) : null}
 
@@ -435,9 +493,26 @@ export function CandidateSuggestionsWorkspace({
             <p className={`text-sm ${mutedTextClass}`}>
               Showing{' '}
               <strong className="font-semibold text-[var(--ds-text)]">
+                {pagedCandidates.length === 0
+                  ? 0
+                  : `${(currentPage - 1) * PAGE_SIZE + 1}–${(currentPage - 1) * PAGE_SIZE + pagedCandidates.length}`}
+              </strong>{' '}
+              of{' '}
+              <strong className="font-semibold text-[var(--ds-text)]">
                 {sortedCandidates.length}
               </strong>{' '}
               ranked candidates
+              {run.eligiblePoolCount !== null && run.eligiblePoolCount > sortedCandidates.length ? (
+                <>
+                  {' '}
+                  ({run.eligiblePoolCount - sortedCandidates.length} more in the pool did not meet
+                  the role&apos;s minimum skill coverage
+                  {shortlist?.minSkillCoverageApplied !== undefined
+                    ? ` (${Math.round(shortlist.minSkillCoverageApplied * 100)}%)`
+                    : ''}
+                  )
+                </>
+              ) : null}
               {selectedIds.size > 0 ? (
                 <>
                   {' '}
@@ -449,8 +524,26 @@ export function CandidateSuggestionsWorkspace({
                 </>
               ) : null}
             </p>
-            <div className="flex items-center gap-3">
-              <span className={`hidden sm:inline ${sectionLabelClass}`}>Rules-ranked</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`hidden sm:inline ${sectionLabelClass}`}>
+                {matchMethodLabel(shortlist?.matchMethod ?? sortedCandidates[0]?.method)}
+              </span>
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={handleExportCsv}
+                title="Download this shortlist as a CSV file"
+              >
+                <Download className="h-4 w-4" /> CSV
+              </button>
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={handleExportPdf}
+                title="Download a SMART-branded PDF of this shortlist"
+              >
+                <FileText className="h-4 w-4" /> PDF
+              </button>
               <button
                 type="button"
                 className={primaryButtonClass}
@@ -463,94 +556,84 @@ export function CandidateSuggestionsWorkspace({
           </div>
 
           <div className="flex flex-col gap-4">
-            {sortedCandidates.map((candidate, index) => {
+            {pagedCandidates.map((candidate, index) => {
               const matchPercent = Math.round(candidate.matchScore * 100);
-              const rank = index + 1;
+              const rank = (currentPage - 1) * PAGE_SIZE + index + 1;
+              const skillCapability = usesSkillCapabilityUi(shortlist, candidate);
+              const skillCoveragePct = candidate.explanation.skillCoveragePct;
+              const capabilityCoveragePct = candidate.explanation.capabilityCoveragePct;
               const whyText =
+                candidate.explanation.recruiterSummary ||
                 candidate.explanation.why ||
-                `Matched based on ${candidate.headlineTier} tier status and Level ${candidate.highestLevelCleared} clearance.`;
+                (skillCapability
+                  ? 'Skill and capability profile computed for this role.'
+                  : `Matched based on certification readiness for this role.`);
 
               return (
-                <article key={candidate.studentId} className={`${cardClass} flex flex-col gap-4`}>
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 cursor-pointer rounded border-[var(--ds-border)] accent-[var(--ds-green)]"
-                        aria-label={`Select ${candidate.studentName}`}
-                        checked={selectedIds.has(candidate.studentId)}
-                        disabled={sending || sentIds.has(candidate.studentId)}
-                        onChange={() => toggleCandidate(candidate.studentId)}
-                      />
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--tpo-accent-tint)] text-xs font-semibold text-[var(--ds-text)]">
-                        #{rank}
-                      </span>
-                      <div>
-                        <h2 className="text-base font-semibold text-[var(--ds-text)]">
-                          {candidate.studentName}
-                        </h2>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--ds-text-muted)]">
-                          <span className={chipClass}>{candidate.trackCode}</span>
-                          <span>·</span>
-                          <span className="font-semibold text-[var(--ds-text-secondary)]">
-                            Level {candidate.highestLevelCleared} Cleared
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`${pillClass} ${tierBadgeClass(candidate.headlineTier)}`}>
-                        {candidate.headlineTier} (
-                        {TIER_LABEL[candidate.headlineTier] ?? candidate.headlineTier})
-                      </span>
-                      <span
-                        className={`${pillClass} border-emerald-200 bg-emerald-50 text-emerald-700`}
-                      >
-                        {matchPercent}% Match
-                      </span>
-                      {sentIds.has(candidate.studentId) ? (
-                        <span className={`${pillClass} border-sky-200 bg-sky-50 text-sky-700`}>
-                          Opportunity sent
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-[var(--tpo-accent-border)] bg-[var(--tpo-accent-tint)] p-4">
-                    <p className={`mb-1 ${sectionLabelClass}`}>Match Explanation</p>
-                    <p className="text-sm leading-relaxed font-medium text-[var(--ds-text)]">
-                      {whyText}
-                    </p>
-                  </div>
-
-                  {candidate.explanation.strongCompetencies.length > 0 ||
-                  candidate.explanation.gapCompetencies.length > 0 ? (
-                    <div className="flex flex-wrap gap-4 border-t border-[var(--ds-border-subtle)] pt-3 text-xs font-medium">
-                      {candidate.explanation.strongCompetencies.length > 0 ? (
-                        <div>
-                          <span className="text-[var(--ds-text-muted)]">Strong competencies:</span>{' '}
-                          <span className="font-semibold text-emerald-700">
-                            {candidate.explanation.strongCompetencies.join(', ')}
-                          </span>
-                        </div>
-                      ) : null}
-                      {candidate.explanation.gapCompetencies.length > 0 ? (
-                        <div>
-                          <span className="text-[var(--ds-text-muted)]">Gaps identified:</span>{' '}
-                          <span className="font-semibold text-amber-700">
-                            {candidate.explanation.gapCompetencies.join(', ')}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </article>
+                <CandidateSuggestionCard
+                  key={candidate.studentId}
+                  candidate={candidate}
+                  rank={rank}
+                  skillCapability={skillCapability}
+                  matchPercent={matchPercent}
+                  whyText={whyText}
+                  skillCoveragePct={skillCoveragePct}
+                  capabilityCoveragePct={capabilityCoveragePct}
+                  minSkillCoverageApplied={shortlist?.minSkillCoverageApplied}
+                  selected={selectedIds.has(candidate.studentId)}
+                  opportunitySent={sentIds.has(candidate.studentId)}
+                  sending={sending}
+                  onToggleSelect={() => toggleCandidate(candidate.studentId)}
+                  onViewSkillGap={() => setSkillGapStudentId(candidate.studentId)}
+                />
               );
             })}
           </div>
+
+          {totalPages > 1 ? (
+            <div
+              className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-3`}
+            >
+              <p className={`text-xs ${mutedTextClass}`}>
+                Page <strong className="font-semibold text-[var(--ds-text)]">{currentPage}</strong>{' '}
+                of <strong className="font-semibold text-[var(--ds-text)]">{totalPages}</strong>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={currentPage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Prev
+                </button>
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Next page"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
+
+      <CandidateSkillGapDrawer
+        candidate={
+          skillGapStudentId
+            ? (sortedCandidates.find((row) => row.studentId === skillGapStudentId) ?? null)
+            : null
+        }
+        roleTitle={shortlist?.roleTitle ?? 'this opening'}
+        companyName={shortlist?.companyName ?? ''}
+        isOpen={skillGapStudentId !== null}
+        onClose={() => setSkillGapStudentId(null)}
+      />
     </>
   );
 }

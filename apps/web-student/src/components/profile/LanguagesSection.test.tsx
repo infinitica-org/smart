@@ -47,14 +47,14 @@ describe('LanguagesSection', () => {
     createLanguage.mockResolvedValueOnce(mockLangItem);
 
     renderWithQueryClient(<LanguagesSection />);
-    const addButton = await screen.findByRole('button', { name: /Add Language/i });
+    const addButton = await screen.findByRole('button', { name: /Add your first language/i });
     fireEvent.click(addButton);
 
     fireEvent.change(screen.getByPlaceholderText(/English, German, Spanish/i), {
       target: { value: 'French' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /^Create$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Add language$/i }));
 
     await waitFor(() => expect(createLanguage).toHaveBeenCalledTimes(1));
     expect(createLanguage).toHaveBeenCalledWith({

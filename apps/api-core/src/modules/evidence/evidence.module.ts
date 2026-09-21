@@ -11,8 +11,10 @@ import { EvidenceService } from './evidence.service.js';
 import { CredentialVerificationProcessor } from './verification/credential-verification.processor.js';
 import { CredentialVerificationService } from './verification/credential-verification.service.js';
 import { VerificationOrchestratorService } from './verification-orchestrator.service.js';
+import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.module.js';
 
 @Module({
+  imports: [SkillClaimDeclareModule],
   controllers: [EvidenceController],
   providers: [
     EvidenceService,

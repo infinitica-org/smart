@@ -10,6 +10,7 @@ import {
   type VectorizedSignal,
   type VectorizedSignalEntry,
 } from '@smart/contracts';
+import { encodeQlixFusionEntries, type QlixProjectFusionInput } from '@smart/scoring-engine';
 import {
   CERTIFICATE_PROFICIENCY_SCORE,
   confidenceForCertificateTier,
@@ -62,6 +63,14 @@ export interface EncodeProfessionalCredentialInput {
   readonly coveredSkillCodes: readonly string[];
   /** The credential's persisted verificationMethod, or null if never automatable/verified. */
   readonly verificationMethod: EvidenceVerificationMethod | null;
+  readonly encodedAt: string;
+  readonly consentScope?: string;
+  readonly fetchedAt?: string;
+}
+
+export interface EncodeQlixVerifiedProjectsInput {
+  readonly userId: string;
+  readonly projects: readonly QlixProjectFusionInput[];
   readonly encodedAt: string;
   readonly consentScope?: string;
   readonly fetchedAt?: string;
@@ -139,6 +148,30 @@ export class RuleBasedEncoder {
       encodedAt: input.encodedAt,
       entries,
       consentScope: input.consentScope ?? 'certificate.candidate.declared',
+      fetchedAt: input.fetchedAt ?? input.encodedAt,
+    };
+  }
+
+  encodeQlixVerifiedProjects(input: EncodeQlixVerifiedProjectsInput): VectorizedSignal {
+    const encoded = encodeQlixFusionEntries(input.projects);
+    const entries: VectorizedSignalEntry[] = encoded.map((row) => ({
+      dimension: {
+        taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+        dimensionKey: row.dimensionKey,
+        skillCode: row.skillCode,
+      },
+      sourceId: 'QLIX',
+      score: row.score,
+      confidence: row.confidence,
+    }));
+
+    return {
+      userId: input.userId,
+      sourceId: 'QLIX',
+      taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
+      encodedAt: input.encodedAt,
+      entries,
+      consentScope: input.consentScope ?? 'project.verification.qlix',
       fetchedAt: input.fetchedAt ?? input.encodedAt,
     };
   }

@@ -3,18 +3,16 @@ import {
   EMPTY_JOB_POSTING_FORM,
   JOB_POSTING_STEPS,
   buildCreateOpeningPayload,
+  friendlyOpeningError,
   isCreateOpeningPayload,
 } from './job-posting';
 
 describe('job posting payload', () => {
-  it('exposes seven wizard steps without job-details or eligibility steps', () => {
+  it('exposes four consolidated wizard steps including requirements (skills + eligibility)', () => {
     expect(JOB_POSTING_STEPS.map((step) => step.id)).toEqual([
       'company-role',
-      'about-company',
-      'role-details',
-      'requirements',
-      'hiring-process',
-      'drive-details',
+      'role-requirements',
+      'hiring-drive',
       'review',
     ]);
   });
@@ -57,6 +55,32 @@ describe('job posting payload', () => {
     expect('companyLogoUrl' in parsed.data).toBe(false);
   });
 
+  it('includes optional eligibility criteria on the create payload', () => {
+    const parsed = buildCreateOpeningPayload(
+      {
+        ...EMPTY_JOB_POSTING_FORM,
+        companyName: 'Infinitica Labs',
+        roleTitle: 'Backend Engineer',
+        location: 'Coimbatore',
+        minSscPercentage: '60',
+        minHscPercentage: '65',
+        minCollegePercentage: '70',
+        backlogsAllowedChoice: 'no',
+      },
+      new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'BEGINNER']]),
+      [],
+      null,
+    );
+    expect(isCreateOpeningPayload(parsed)).toBe(true);
+    if (!isCreateOpeningPayload(parsed)) return;
+    expect(parsed.data).toMatchObject({
+      minSscPercentage: 60,
+      minHscPercentage: 65,
+      minCollegePercentage: 70,
+      backlogsAllowed: false,
+    });
+  });
+
   it('rejects an inverted experience range with the shared contract', () => {
     const parsed = buildCreateOpeningPayload(
       {
@@ -73,5 +97,45 @@ describe('job posting payload', () => {
     );
 
     expect(parsed.success).toBe(false);
+  });
+
+  it('turns a blank required field into a plain-language error', () => {
+    const parsed = buildCreateOpeningPayload(
+      { ...EMPTY_JOB_POSTING_FORM, companyName: 'Infinitica Labs', roleTitle: 'Backend Engineer' },
+      new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'BEGINNER']]),
+      [],
+      null,
+    );
+
+    expect(isCreateOpeningPayload(parsed)).toBe(false);
+    if (isCreateOpeningPayload(parsed)) return;
+    expect(friendlyOpeningError(parsed.error.issues)).toBe('Location is required.');
+  });
+
+  it('passes the custom company-selection message through unchanged', () => {
+    const parsed = buildCreateOpeningPayload(
+      { ...EMPTY_JOB_POSTING_FORM, roleTitle: 'Backend Engineer', location: 'Coimbatore' },
+      new Map([['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION', 'BEGINNER']]),
+      [],
+      null,
+    );
+
+    expect(isCreateOpeningPayload(parsed)).toBe(false);
+    if (isCreateOpeningPayload(parsed)) return;
+    expect(friendlyOpeningError(parsed.error.issues)).toBe(
+      'Select a company from the repository or enter a company name.',
+    );
+  });
+
+  it('names the field for a too-long value instead of echoing the raw Zod message', () => {
+    expect(
+      friendlyOpeningError([
+        { path: ['roleTitle'], code: 'too_big', message: 'raw', maximum: 150, origin: 'string' },
+      ]),
+    ).toBe('Role title must be at most 150 characters.');
+  });
+
+  it('falls back to a generic message when there are no issues', () => {
+    expect(friendlyOpeningError([])).toBe('Check the opening details and try again.');
   });
 });

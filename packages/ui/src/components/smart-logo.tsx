@@ -1,5 +1,8 @@
 import type { HTMLAttributes } from 'react';
+import { SMART_MARK_TEAL } from '../brand/colors';
 import { cn } from '../lib/cn';
+
+export { SMART_MARK_TEAL } from '../brand/colors';
 
 const WORD_PATHS = [
   'M208.79,106.76l11.08-11.75c4.53,8.22,14.6,16.61,29.2,16.61,8.06,0,13.26-2.85,13.26-8.73s-6.21-8.06-15.27-10.24l-10.91-2.68c-12.92-3.02-24.84-8.73-24.84-23.66s12.25-24.5,31.05-24.5c17.45,0,29.7,8.39,34.74,17.62l-11.08,11.75c-5.71-9.06-14.43-14.43-25-14.43-7.22,0-12.08,3.02-12.08,8.56,0,5.87,4.36,8.06,15.44,10.91l9.9,2.52c18.29,4.7,25,12.08,25,23.83,0,16.11-13.59,24.17-30.88,24.17s-33.4-7.05-39.6-19.97Z',
@@ -14,9 +17,6 @@ const WORDMARK_MARK_PATH =
 
 const MARK_PATH =
   'M138.45,73.34l-24.78,25.1c3.92,5.59,3.41,13.35-1.56,18.38-4.96,5.02-12.71,5.63-18.34,1.78l-35.17,35.63-35.29,35.79h48.38l11.43-11.57,30.73-31.18,24.22-24.42,46.91,46.35v-49.9l-46.51-45.97ZM131.32,23.09l-11.43,11.57-30.72,31.18-24.22,24.42L18.03,43.9v49.89l46.51,45.97,25.11-25.44c-3.47-5.54-2.81-12.91,1.97-17.76,4.78-4.83,12.14-5.57,17.72-2.19l35.05-35.51,35.3-35.79h-48.38Z';
-
-/** Teal from COLOURED LOGO / FAVICON COLOURED. */
-export const SMART_MARK_TEAL = '#00fad0';
 
 export type SmartLogoKind = 'wordmark' | 'mark';
 export type SmartLogoTone = 'auto' | 'on-light' | 'on-dark';
@@ -45,7 +45,12 @@ function markFillForTone(tone: SmartLogoTone): string {
   return SMART_MARK_TEAL;
 }
 
+function wordmarkMarkFill(lettersFill: string): string {
+  return lettersFill === '#131313' ? '#131313' : SMART_MARK_TEAL;
+}
+
 function WordmarkSvg({ lettersFill, title }: { lettersFill: string; title: string }) {
+  const markFill = wordmarkMarkFill(lettersFill);
   return (
     <svg
       viewBox="0 0 605.34 166.94"
@@ -59,7 +64,7 @@ function WordmarkSvg({ lettersFill, title }: { lettersFill: string; title: strin
           <path key={d.slice(0, 24)} d={d} />
         ))}
       </g>
-      <path fill={SMART_MARK_TEAL} d={WORDMARK_MARK_PATH} />
+      <path fill={markFill} d={WORDMARK_MARK_PATH} />
     </svg>
   );
 }
@@ -79,7 +84,7 @@ function MarkSvg({ title, fill }: { title: string; fill: string }) {
 }
 
 /**
- * COLOURED SMART lockup. The diamond stays #00fad0; the word tracks the
+ * COLOURED SMART lockup. The diamond uses SMART brand teal; the word tracks the
  * surrounding text colour so it stays visible on light and dark chrome.
  */
 export function SmartLogo({

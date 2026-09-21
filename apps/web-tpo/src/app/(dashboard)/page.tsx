@@ -1,20 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Award, CheckCircle2, UserCheck, Users } from 'lucide-react';
+import { Award, Users } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import type { AuthenticatedUser, InstitutionStudentDto, SkillClaimDto } from '@smart/contracts';
 import { DashboardHero } from '../../components/dashboard/DashboardHero';
 import { DashboardMetricCard } from '../../components/dashboard/DashboardMetricCard';
-import { DomainReadinessCard } from '../../components/dashboard/DomainReadinessCard';
-import { OnboardingTrendCard } from '../../components/dashboard/OnboardingTrendCard';
+import { PlacementSnapshotCard } from '../../components/dashboard/PlacementSnapshotCard';
 import { QuickActionsCard } from '../../components/dashboard/QuickActionsCard';
 import { RecentCandidatesCard } from '../../components/dashboard/RecentCandidatesCard';
 import { UpcomingActivitiesCard } from '../../components/dashboard/UpcomingActivitiesCard';
 import { api } from '../../lib/api';
 import { computeDashboardMetrics, greetingForHour } from '../../lib/tpo-dashboard-metrics';
-import { dashboardCanvasClass } from '../../lib/tpo-dashboard-ui';
-import { errorNoticeClass } from '../../lib/tpo-ui';
+import { dashboardCanvasClass, dashboardErrorNoticeClass } from '../../lib/tpo-dashboard-ui';
 
 export default function DashboardPage() {
   const [students, setStudents] = useState<InstitutionStudentDto[]>([]);
@@ -65,8 +63,8 @@ export default function DashboardPage() {
   const displayName = user?.fullName ?? 'Pilot TPO';
 
   return (
-    <div className={dashboardCanvasClass}>
-      {error ? <div className={errorNoticeClass}>{error}</div> : null}
+    <div className={`tpo-dashboard ${dashboardCanvasClass}`}>
+      {error ? <div className={dashboardErrorNoticeClass}>{error}</div> : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
         <DashboardHero
@@ -78,32 +76,14 @@ export default function DashboardPage() {
         <QuickActionsCard />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:gap-5">
         <DashboardMetricCard
           label="Total Onboarded"
           value={metrics.totalProvisioned}
           hint="Total candidate accounts onboarded"
           footnote="Current total"
           icon={Users}
-          iconWrapClass="bg-[#eff6ff] text-[#2563eb]"
-          loading={loading}
-        />
-        <DashboardMetricCard
-          label="Invites Accepted"
-          value={metrics.invitesAccepted}
-          hint="Candidates active on platform"
-          footnote="Current total"
-          icon={UserCheck}
-          iconWrapClass="bg-[#ecfdf5] text-[#059669]"
-          loading={loading}
-        />
-        <DashboardMetricCard
-          label="Onboarding Completion"
-          value={`${metrics.onboardingRate}%`}
-          hint="Onboarding flow completed"
-          footnote="Current rate"
-          icon={CheckCircle2}
-          iconWrapClass="bg-[#f5f3ff] text-[#7c3aed]"
+          accent="blue"
           loading={loading}
         />
         <DashboardMetricCard
@@ -116,23 +96,18 @@ export default function DashboardPage() {
               : 'Verified credentials on platform'
           }
           icon={Award}
-          iconWrapClass="bg-[#fff7ed] text-[#ea580c]"
+          accent="amber"
           loading={loading}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
-        <DomainReadinessCard categoryCounts={metrics.categoryCounts} loading={loading} />
-        <OnboardingTrendCard
-          inviteBreakdown={metrics.inviteBreakdown}
-          totalProvisioned={metrics.totalProvisioned}
-          loading={loading}
-        />
+        <PlacementSnapshotCard />
+        <UpcomingActivitiesCard />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
         <RecentCandidatesCard students={students} claims={claims} loading={loading} />
-        <UpcomingActivitiesCard />
       </div>
     </div>
   );

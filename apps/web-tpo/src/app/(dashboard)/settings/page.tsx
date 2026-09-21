@@ -2,9 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { Building2, Globe, Shield, Lock, CheckCircle2, Cpu } from 'lucide-react';
-import { Card } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
+import { TpoBentoPageHeader } from '../../../components/tpo-bento/TpoBentoPageHeader';
 import { api } from '../../../lib/api';
+import {
+  bentoCardClass,
+  bentoCardMutedClass,
+  bentoChipClass,
+  bentoPageStackClass,
+  dashboardErrorNoticeClass,
+  dashboardMintBadgeClass,
+  dashboardPendingBadgeClass,
+  dashboardSectionSubtitleClass,
+  dashboardSectionTitleClass,
+} from '../../../lib/tpo-dashboard-ui';
+import { labelClass } from '../../../lib/tpo-ui';
+
 export default function SettingsPage() {
   const [domain, setDomain] = useState<string | null>(null);
   const [institutionName, setInstitutionName] = useState<string | null>(null);
@@ -19,7 +32,6 @@ export default function SettingsPage() {
     let active = true;
     setLoading(true);
     setError(null);
-
     api.onboarding
       .tpoEntitlements()
       .then((entitlements) => {
@@ -38,146 +50,126 @@ export default function SettingsPage() {
       .finally(() => {
         if (active) setLoading(false);
       });
-
     return () => {
       active = false;
     };
   }, []);
 
   return (
-    <main className="max-w-[1400px] mx-auto space-y-5 font-sans select-none pb-12 text-zinc-100">
-      {/* Header Banner */}
-      <div className="bg-zinc-900/90 p-6 md:p-7 rounded-xl border border-zinc-800 shadow-md">
-        <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[11px] font-bold px-2.5 py-0.5 rounded-md inline-block mb-2">
-          Institution Settings
-        </span>
-        <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-          <Building2 className="size-6 text-zinc-300" />
-          Institution Profile & Entitlements
-        </h1>
-        <p className="text-zinc-400 text-xs md:text-sm font-medium mt-1">
-          Read-only institutional identity, locked email domain rules, and plan entitlements.
+    <div className={bentoPageStackClass}>
+      <TpoBentoPageHeader
+        title="Institution Profile & Entitlements"
+        description="Read-only institutional identity, locked email domain rules, and plan entitlements."
+        icon={Building2}
+        accent="amber"
+        badge={<span className={bentoChipClass}>Institution Settings</span>}
+      />
+
+      {error ? <div className={dashboardErrorNoticeClass}>{error}</div> : null}
+
+      <section className="space-y-3">
+        <h2 className={dashboardSectionTitleClass}>Institutional Profile (Read-Only)</h2>
+        <p className={dashboardSectionSubtitleClass}>
+          Identity and domain enforcement for your cohort.
         </p>
-      </div>
-
-      {/* Institution Profile Card */}
-      <div className="space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-          <Building2 className="size-4 text-zinc-400" /> Institutional Profile (Read-Only)
-        </h2>
-
-        <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl space-y-5 shadow-xs">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className={`${bentoCardClass} space-y-5`}>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                Institution Name
-              </label>
-              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white flex items-center gap-2.5">
-                <Building2 className="size-4 text-emerald-400" />{' '}
+              <label className={labelClass}>Institution Name</label>
+              <div
+                className={`${bentoCardMutedClass} mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-[var(--ds-text)]`}
+              >
+                <Building2 className="size-4 text-[var(--tpo-dash-accent-blue)]" />
                 {institutionName ?? 'Institution Account'}
               </div>
             </div>
-
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                Locked Email Domain(s)
-              </label>
-              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono font-bold text-emerald-400 flex items-center gap-2.5">
-                <Lock className="size-4 text-emerald-400" />{' '}
+              <label className={labelClass}>Locked Email Domain(s)</label>
+              <div
+                className={`${bentoCardMutedClass} mt-1.5 flex items-center gap-2 font-mono text-[13px] font-semibold text-[var(--ds-text)]`}
+              >
+                <Lock className="size-4 text-[var(--tpo-dash-accent-amber)]" />
                 {domain ? `@${domain}` : 'Domain Unset'}
               </div>
             </div>
-
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                Verification Status
-              </label>
-              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-bold flex items-center gap-2.5">
+              <label className={labelClass}>Verification Status</label>
+              <div className={`${bentoCardMutedClass} mt-1.5 text-[13px] font-semibold`}>
                 {verificationStatus === 'APPROVED' || verificationStatus === 'VERIFIED' ? (
-                  <span className="text-emerald-400 flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-emerald-400" /> Verified Institution
+                  <span className={dashboardMintBadgeClass}>
+                    <CheckCircle2 className="size-3" /> Verified Institution
                   </span>
                 ) : verificationStatus === 'PENDING' ? (
-                  <span className="text-amber-400 flex items-center gap-2">
-                    <Shield className="size-4 text-amber-400" /> Pending Verification
+                  <span className={dashboardPendingBadgeClass}>
+                    <Shield className="size-3" /> Pending Verification
                   </span>
                 ) : (
-                  <span className="text-rose-400 flex items-center gap-2">
-                    <Shield className="size-4 text-rose-400" /> {verificationStatus ?? 'Unverified'}
+                  <span className={dashboardErrorNoticeClass}>
+                    <Shield className="size-3" /> {verificationStatus ?? 'Unverified'}
                   </span>
                 )}
               </div>
             </div>
           </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-lg text-xs text-zinc-400 flex items-center gap-2.5">
-            <Globe className="size-4 text-zinc-400 shrink-0" />
+          <div
+            className={`${bentoCardMutedClass} flex items-start gap-2.5 text-[13px] text-[var(--ds-text-muted)]`}
+          >
+            <Globe className="mt-0.5 size-4 shrink-0 text-[var(--ds-text-subtle)]" />
             <span>
-              <strong className="text-white">Domain Enforcement:</strong> Candidate provisioning and
-              invitations are strictly locked to candidate emails ending with{' '}
+              <strong className="text-[var(--ds-text)]">Domain Enforcement:</strong> Candidate
+              provisioning and invitations are strictly locked to candidate emails ending with{' '}
               {domain ? `@${domain}` : 'the institutional domain'}.
             </span>
           </div>
-        </Card>
-      </div>
+        </div>
+      </section>
 
-      {/* Plan Entitlements Card */}
-      <div className="space-y-3 pt-2">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-          <Shield className="size-4 text-zinc-400" /> Plan & Entitlements
-        </h2>
-
-        {error && (
-          <div className="bg-amber-950/40 border border-amber-800/80 text-amber-200 p-4 rounded-xl text-xs font-medium">
-            <strong className="font-bold">Note:</strong> {error}
-          </div>
-        )}
-
-        <Card className="bg-zinc-900/80 border border-zinc-800 p-6 rounded-xl shadow-xs">
+      <section className="space-y-3">
+        <h2 className={dashboardSectionTitleClass}>Plan & Entitlements</h2>
+        <div className={bentoCardClass}>
           {loading ? (
-            <p className="text-xs text-zinc-400 font-medium">Loading entitlements...</p>
+            <p className="text-[13px] text-[var(--ds-text-muted)]">Loading entitlements…</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className={bentoCardMutedClass}>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
                   Active Subscription Tier
                 </span>
-                <div className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Cpu className="size-4 text-emerald-400" /> {tier ?? 'INSTITUTION_PRO'}
+                <div className="mt-2 flex items-center gap-2 text-base font-semibold text-[var(--ds-text)]">
+                  <Cpu className="size-4 text-[var(--tpo-dash-accent-lavender)]" />
+                  {tier ?? 'INSTITUTION_PRO'}
                 </div>
               </div>
-
-              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+              <div className={bentoCardMutedClass}>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
                   Candidate Entitlement Capacity
                 </span>
-                <div className="text-base font-extrabold text-white">
+                <div className="mt-2 text-base font-semibold text-[var(--ds-text)]">
                   {capacity !== undefined && capacity !== null
                     ? `${studentCount} / ${capacity} Candidate${studentCount === 1 ? '' : 's'}`
                     : `${studentCount} Candidate${studentCount === 1 ? '' : 's'} · Unlimited`}
                 </div>
                 {capacity !== undefined && capacity !== null ? (
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--ds-surface)]">
                     <div
-                      className={`h-full rounded-full ${studentCount >= capacity ? 'bg-rose-400' : 'bg-emerald-400'}`}
+                      className={`h-full rounded-full ${studentCount >= capacity ? 'bg-[var(--tpo-dash-accent-rose)]' : 'bg-[var(--tpo-dash-accent-mint)]'}`}
                       style={{ width: `${Math.min(100, (studentCount / capacity) * 100)}%` }}
                     />
                   </div>
                 ) : null}
               </div>
-
-              <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+              <div className={bentoCardMutedClass}>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
                   Currently Provisioned
                 </span>
-                <div className="text-base font-extrabold text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-emerald-400" /> {studentCount} Active
+                <div className="mt-2 flex items-center gap-2 text-base font-semibold text-[#047857]">
+                  <CheckCircle2 className="size-4" /> {studentCount} Active
                 </div>
               </div>
             </div>
           )}
-        </Card>
-      </div>
-    </main>
+        </div>
+      </section>
+    </div>
   );
 }

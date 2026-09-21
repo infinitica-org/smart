@@ -17,7 +17,7 @@ export const TOKENS = {
   tealDeep: '#0f5c63',
   tealSoft: '#eefaf7',
   gradFrom: '#004c63',
-  gradTo: '#00fad0',
+  gradTo: '#14b8a6',
   gray100: '#f1efec',
   gray200: '#e4e2dd',
   gray300: '#cfccc6',
@@ -34,7 +34,7 @@ export const TOKENS = {
 
 // packages/ui/src/assets/brand/wordmark-on-light.svg — full colour wordmark, transparent bg, for light headers.
 export const WORDMARK_COLOURED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 605.34 166.94" role="img" aria-label="SMART">
-<defs><radialGradient id="smart-grad" cx="-72.92" cy="196.04" fx="-72.92" fy="196.04" r="297.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#004c63"/><stop offset="1" stop-color="#00fad0"/></radialGradient></defs>
+<defs><radialGradient id="smart-grad" cx="-72.92" cy="196.04" fx="-72.92" fy="196.04" r="297.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#004c63"/><stop offset="1" stop-color="#14b8a6"/></radialGradient></defs>
 <g fill="#131313">
 <path d="M208.79,106.76l11.08-11.75c4.53,8.22,14.6,16.61,29.2,16.61,8.06,0,13.26-2.85,13.26-8.73s-6.21-8.06-15.27-10.24l-10.91-2.68c-12.92-3.02-24.84-8.73-24.84-23.66s12.25-24.5,31.05-24.5c17.45,0,29.7,8.39,34.74,17.62l-11.08,11.75c-5.71-9.06-14.43-14.43-25-14.43-7.22,0-12.08,3.02-12.08,8.56,0,5.87,4.36,8.06,15.44,10.91l9.9,2.52c18.29,4.7,25,12.08,25,23.83,0,16.11-13.59,24.17-30.88,24.17s-33.4-7.05-39.6-19.97Z"/>
 <path d="M282.3,125.05V43.32h18.79v22.32c3.02-12.92,11.08-24,26.52-24s22.99,8.73,23.83,24.17c2.85-12.92,10.91-24.17,26.52-24.17s23.83,9.57,23.83,26.52v56.89h-18.8v-51.18c0-11.24-4.7-16.95-15.77-16.95s-15.78,8.89-15.78,22.32v45.81h-18.79v-51.18c0-11.24-4.7-16.95-15.77-16.95s-15.78,8.89-15.78,22.32v45.81h-18.79Z"/>
@@ -59,6 +59,6 @@ export const WORDMARK_WHITE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="
 
 // packages/ui/src/assets/brand/mark-coloured.svg — icon-only mark, gradient fill, for compact/minimal headers.
 export const MARK_COLOURED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 202.67 211.56" role="img" aria-label="SMART">
-<defs><radialGradient id="smart-mark-grad" cx="-72.92" cy="196.04" fx="-72.92" fy="196.04" r="297.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#004c63"/><stop offset="1" stop-color="#00fad0"/></radialGradient></defs>
+<defs><radialGradient id="smart-mark-grad" cx="-72.92" cy="196.04" fx="-72.92" fy="196.04" r="297.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#004c63"/><stop offset="1" stop-color="#14b8a6"/></radialGradient></defs>
 <path fill="url(#smart-mark-grad)" d="M138.45,73.34l-24.78,25.1c3.92,5.59,3.41,13.35-1.56,18.38-4.96,5.02-12.71,5.63-18.34,1.78l-35.17,35.63-35.29,35.79h48.38l11.43-11.57,30.73-31.18,24.22-24.42,46.91,46.35v-49.9l-46.51-45.97ZM131.32,23.09l-11.43,11.57-30.72,31.18-24.22,24.42L18.03,43.9v49.89l46.51,45.97,25.11-25.44c-3.47-5.54-2.81-12.91,1.97-17.76,4.78-4.83,12.14-5.57,17.72-2.19l35.05-35.51,35.3-35.79h-48.38Z"/>
 </svg>`;

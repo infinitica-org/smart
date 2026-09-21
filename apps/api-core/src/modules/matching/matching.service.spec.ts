@@ -25,6 +25,7 @@ const openingRow = {
   minYearsExperience: 1,
   maxYearsExperience: 4,
   location: 'Coimbatore',
+  parsedRequirements: null,
   requiredSkills: [
     {
       minProficiency: 'INTERMEDIATE',
@@ -64,6 +65,7 @@ function setup(
     jd?: unknown;
     students?: unknown[];
     matchRun?: unknown;
+    useRulesRanker?: boolean;
   } = {},
 ) {
   const prisma = {
@@ -92,10 +94,36 @@ function setup(
           Promise.resolve({ ...(options.matchRun as Record<string, unknown>), ...data }),
         ),
     },
+    studentCapability: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    project: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    skillVerificationAttempt: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    application: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const matchRunQueue = { add: vi.fn().mockResolvedValue(undefined) };
-  const service = new MatchingService(prisma as never, outbox as never, matchRunQueue as never);
+  const institutions = {
+    resolveInstitutionEntitlements: vi.fn().mockResolvedValue({
+      flags: options.useRulesRanker
+        ? [{ key: 'matching.use_rules_ranker', name: 'Rules ranker', enabled: true }]
+        : [],
+    }),
+  };
+  const narratives = { summarize: vi.fn().mockResolvedValue(null) };
+  const service = new MatchingService(
+    prisma as never,
+    outbox as never,
+    institutions as never,
+    narratives as never,
+    matchRunQueue as never,
+  );
   return {
     prisma,
     service,
@@ -115,6 +143,7 @@ function matchRunRow(overrides: Record<string, unknown> = {}) {
     minCgpa: null,
     requiredSkillCodes: [],
     limit: 50,
+    minSkillCoverage: null,
     status: 'PENDING',
     errorMessage: null,
     eligiblePoolCount: null,
@@ -171,21 +200,16 @@ describe('SE-T05 POST /placement/match', () => {
       studentId,
       studentName: 'Pilot Student',
       trackCode: 'TECH_FULLSTACK',
-      method: 'RULES',
+      method: 'SKILL_CAPABILITY',
       similarityScore: 0,
-      matchScore: 1,
+      matchScore: expect.any(Number),
       certificateId: null,
       highestLevelCleared: 1,
       headlineTier: 'BRONZE',
     });
     expect(dto.candidates[0]?.explanation.why).toBeTruthy();
-    expect(dto.candidates[0]?.explanation.rules).toEqual({
-      skill: 1,
-      proficiency: 1,
-      domain: 1,
-      experience: 1,
-      location: 1,
-    });
+    expect(dto.candidates[0]?.explanation.skillCapability).toBeDefined();
+    expect(dto.matchMethod).toBe('SKILL_CAPABILITY');
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where).toEqual({
       id: openingId,
       institutionId,
@@ -217,13 +241,55 @@ describe('SE-T05 POST /placement/match', () => {
     expect(prisma.$queryRaw.mock.calls[0][0].sql).toContain("status = 'VERIFIED'");
   });
 
-  it('keeps a verified-but-partial student on the list', async () => {
+  it('keeps a verified-but-partial student on the list when coverage meets the gate', async () => {
     const { controller } = setup({
       students: [
         verifiedStudent({
           skills: [
             {
               code: 'ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION',
+              domain: 'SOFTWARE_IT',
+              proficiency: 'BEGINNER',
+            },
+            {
+              code: 'SQL_QUERY_OPTIMIZATION',
+              domain: 'SOFTWARE_IT',
+              proficiency: 'BEGINNER',
+            },
+          ],
+        }),
+      ],
+    });
+
+    const dto = await controller.match(tpoAdmin as never, {
+      jdId: openingId,
+      minSkillCoverage: 0.5,
+    });
+
+    expect(dto.candidates).toHaveLength(1);
+    expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
+    expect(dto.candidates[0]?.explanation.skillFit?.some((row) => row.status === 'PARTIAL')).toBe(
+      true,
+    );
+  });
+
+  it('enriches explainability with QLIX gaps and verified student capabilities without changing matchScore', async () => {
+    const { controller, prisma } = setup({
+      useRulesRanker: true,
+      opening: {
+        ...openingRow,
+        requiredSkills: [
+          {
+            minProficiency: 'INTERMEDIATE',
+            skill: { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT', domain: 'SOFTWARE_IT' },
+          },
+        ],
+      },
+      students: [
+        verifiedStudent({
+          skills: [
+            {
+              code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
               domain: 'SOFTWARE_IT',
               proficiency: 'INTERMEDIATE',
             },
@@ -232,11 +298,36 @@ describe('SE-T05 POST /placement/match', () => {
       ],
     });
 
+    prisma.studentCapability.findMany.mockResolvedValue([
+      {
+        studentId,
+        capabilityLabel: 'Build tested REST APIs using FastAPI',
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        assessmentVerified: true,
+        confidenceScore: 0.82,
+      },
+    ]);
+    prisma.project.findMany.mockResolvedValue([
+      {
+        studentId,
+        skillMappings: [{ skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' }],
+        qlixCheckResult: {
+          gaps: ['Missing Dockerfile'],
+          smartAssessmentJson: {
+            appliedProficiencyCeiling: 'INTERMEDIATE',
+            competencyObservations: [],
+          },
+        },
+      },
+    ]);
+
     const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
 
-    expect(dto.candidates).toHaveLength(1);
-    expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
-    expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('SQL_QUERY_OPTIMIZATION');
+    expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('Missing Dockerfile');
+    expect(dto.candidates[0]?.explanation.strongCompetencies).toContain(
+      'Build tested REST APIs using FastAPI',
+    );
+    expect(dto.candidates[0]?.explanation.why).toContain('QLIX project ceiling: INTERMEDIATE');
   });
 
   it('rejects an invalid jdId before touching the database', async () => {
@@ -279,6 +370,7 @@ describe('S6-VV-76 async match runs', () => {
         minCgpa: 8,
         requiredSkillCodes: ['SQL_QUERY_OPTIMIZATION'],
         limit: 50,
+        minSkillCoverage: 0.6,
       }),
     });
     expect(matchRunQueue.add).toHaveBeenCalledWith('run-match', { matchRunId: result.runId });

@@ -91,7 +91,7 @@ export default function OpportunitiesPage() {
     <>
       <PlacementPageHeader
         eyebrow="Placement · Candidate Discovery"
-        title="Opportunities"
+        title="Applications"
         description="View placement applications and their current ATS stage across every opening."
       />
 

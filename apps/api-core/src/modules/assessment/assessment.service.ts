@@ -36,6 +36,8 @@ import {
   focusProgressFor,
   resolveSkillFocus,
   skillFocusFromMetadata,
+  skillClaimVerificationInProgress,
+  skillClaimDeclareOrigin,
 } from '@smart/contracts';
 import {
   BadRequestException,
@@ -409,6 +411,7 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       strikes: number;
       lockedUntil: Date | null;
       lastAttemptId: string | null;
+      source?: string | null;
       sourceMetadata?: unknown;
       skill: { code: string };
     }>,
@@ -457,6 +460,11 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         skillFocusFromMetadata(row.sourceMetadata),
       );
       const selected = skillFocus ? focusProgressFor(progress, skillFocus) : null;
+      const lastAttemptId = selected?.lastAttemptId ?? row.lastAttemptId;
+      const verificationInProgress = skillClaimVerificationInProgress({
+        lastAttemptId,
+        sourceMetadata: row.sourceMetadata,
+      });
       return SkillClaimDtoSchema.parse({
         claimId: row.id,
         studentId: row.studentId,
@@ -465,11 +473,16 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
         status: selected?.status ?? row.status,
         strikes: selected?.strikes ?? row.strikes,
         lockedUntil: selected?.lockedUntil ?? row.lockedUntil?.toISOString() ?? null,
-        lastAttemptId: selected?.lastAttemptId ?? row.lastAttemptId,
+        lastAttemptId,
         skillFocus,
         focusProgress: progress,
         retryAvailableAt: selected?.retryAvailableAt ?? null,
         latestAssessmentResult: latestAssessment.get(row.id) ?? null,
+        verificationInProgress,
+        declareOrigin: skillClaimDeclareOrigin({
+          source: row.source,
+          sourceMetadata: row.sourceMetadata,
+        }),
       });
     });
   }

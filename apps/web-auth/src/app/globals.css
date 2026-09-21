@@ -2,3 +2,9 @@
 
 /* App-local scan so shared UI classes always emit. */
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+:root {
+  --auth-font-sans:
+    'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+    sans-serif;
+}

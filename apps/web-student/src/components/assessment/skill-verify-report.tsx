@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
+import type { GradeSdeSkillFormResponse } from '@smart/contracts';
 import { Badge, Button, VerificationBadge } from '@smart/ui';
 import { PROFICIENCY_LABELS, skillNameForCode } from '@/lib/skill-declarations';
-import { targetedAssessmentSkipMessage } from '@/lib/competency-display';
+import { type AssessmentResultView, targetedAssessmentSkipMessage } from '@/lib/competency-display';
 import { CompetencyResultsGrid } from './competency-results-grid';
 
 export function SkillVerifyReport({
@@ -13,12 +13,14 @@ export function SkillVerifyReport({
   catalogSkillCode,
   onDone,
 }: {
-  grade: GradeSdeSkillFormResponse;
-  assessmentResult?: AssessmentResult | null;
+  grade?: GradeSdeSkillFormResponse | null;
+  assessmentResult?: AssessmentResultView | null;
   catalogSkillCode?: string;
   onDone: () => void;
 }) {
-  const skillLabel = catalogSkillCode ? skillNameForCode(catalogSkillCode) : grade.skillCode;
+  const skillLabel = catalogSkillCode
+    ? skillNameForCode(catalogSkillCode)
+    : (grade?.skillCode ?? 'Skill verification');
   const demonstrated = assessmentResult?.highestAssessmentSupportedProficiency;
   const demonstratedLabel = demonstrated
     ? (PROFICIENCY_LABELS[demonstrated] ?? demonstrated)
@@ -60,7 +62,7 @@ export function SkillVerifyReport({
             </p>
           ) : null}
         </section>
-      ) : (
+      ) : grade ? (
         <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-medium">Overall score</p>
@@ -79,7 +81,7 @@ export function SkillVerifyReport({
             </p>
           ) : null}
         </section>
-      )}
+      ) : null}
 
       {assessmentResult?.targetedAssessmentSkipped ? (
         <section
@@ -114,10 +116,10 @@ export function SkillVerifyReport({
           Back to Skills
         </Button>
         <Link
-          href="/assessments"
+          href="/assessment"
           className="inline-flex flex-1 items-center justify-center rounded-lg border border-border bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-background"
         >
-          View skill repository
+          View assessments
         </Link>
       </div>
     </div>

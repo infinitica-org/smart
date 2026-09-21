@@ -27,6 +27,7 @@ export { Card, CardDescription, CardHeader, CardTitle } from './components/card'
 export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
 export { LevelStepper, type LevelState, type LevelStepperProps } from './components/level-stepper';
+export { ProficiencyLevelHint } from './components/proficiency-level-hint';
 export { AppShell, type AppShellProps } from './components/app-shell';
 export {
   SmartLogo,

@@ -18,8 +18,13 @@ import {
   API_PREFIX,
   CreateApplicationRequestSchema,
   CreateJobOpeningRequestSchema,
+  CreatePlacementEmployerRequestSchema,
   ListJobOpeningsQuerySchema,
+  ListPlacementEmployersQuerySchema,
+  ListPlacementOutcomesQuerySchema,
   PatchApplicationStageRequestSchema,
+  RecordOutcomeRequestSchema,
+  UpdatePlacementEmployerRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
   type JobOpeningDto,
@@ -27,12 +32,19 @@ import {
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   type ListJobOpeningsResponse,
+  type ListPlacementEmployersResponse,
+  type ListPlacementOutcomesResponse,
+  type ParseOpeningJdResponse,
+  type PlacementEmployerDetail,
+  type PlacementEmployerSummary,
+  type PlacementRecordDto,
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
 
 function requireInstitutionId(user: RequestUser): string {
@@ -49,7 +61,10 @@ function requireInstitutionId(user: RequestUser): string {
 @ApiTags('placement')
 @Controller(`${API_PREFIX}/placement`)
 export class PlacementController {
-  constructor(@Inject(PlacementService) private readonly service: PlacementService) {}
+  constructor(
+    @Inject(PlacementService) private readonly service: PlacementService,
+    @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
+  ) {}
 
   @Get('_meta')
   meta() {
@@ -66,6 +81,61 @@ export class PlacementController {
    * roles post a JD. The contract route still lists `B2B_PARTNER` for a later
    * company surface — that is deliberately not authorized here.
    */
+  @Get('employers')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'List institution employer profiles (Company Repository).' })
+  @ApiBearerAuth()
+  async listEmployers(
+    @CurrentUser() user: RequestUser,
+    @Query() query: unknown,
+  ): Promise<ListPlacementEmployersResponse> {
+    return this.employers.listEmployers(
+      requireInstitutionId(user),
+      ListPlacementEmployersQuerySchema.parse(query),
+    );
+  }
+
+  @Post('employers')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Create an employer profile for the Company Repository.' })
+  @ApiBearerAuth()
+  async createEmployer(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<PlacementEmployerSummary> {
+    return this.employers.createEmployer(
+      requireInstitutionId(user),
+      CreatePlacementEmployerRequestSchema.parse(body),
+    );
+  }
+
+  @Get('employers/:employerId')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Employer profile with drive history and current openings.' })
+  @ApiBearerAuth()
+  async getEmployer(
+    @CurrentUser() user: RequestUser,
+    @Param('employerId') employerId: string,
+  ): Promise<PlacementEmployerDetail> {
+    return this.employers.getEmployer(requireInstitutionId(user), employerId);
+  }
+
+  @Patch('employers/:employerId')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Update an employer profile.' })
+  @ApiBearerAuth()
+  async updateEmployer(
+    @CurrentUser() user: RequestUser,
+    @Param('employerId') employerId: string,
+    @Body() body: unknown,
+  ): Promise<PlacementEmployerSummary> {
+    return this.employers.updateEmployer(
+      requireInstitutionId(user),
+      employerId,
+      UpdatePlacementEmployerRequestSchema.parse(body),
+    );
+  }
+
   @Post('openings')
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({ summary: 'Create a structured job opening from INF-05 taxonomy skills.' })
@@ -220,6 +290,18 @@ export class PlacementController {
     return this.service.getOpening(requireInstitutionId(user), openingId);
   }
 
+  @Post('openings/:openingId/parse-jd')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Re-parse JD text into skill@1 requirements (async).' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Parse job enqueued or status returned.' })
+  async parseOpeningJd(
+    @CurrentUser() user: RequestUser,
+    @Param('openingId') openingId: string,
+  ): Promise<ParseOpeningJdResponse> {
+    return this.service.parseOpeningJd(requireInstitutionId(user), openingId);
+  }
+
   @Get('openings/:openingId/applications')
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({
@@ -319,5 +401,33 @@ export class PlacementController {
     @Param('applicationId') applicationId: string,
   ): Promise<ApplicationDto> {
     return this.service.sendToCompany(requireInstitutionId(user), applicationId);
+  }
+
+  @Post('outcomes')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'Record a real interview/offer outcome for predictive validity.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Placement outcome recorded.' })
+  async recordOutcome(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<PlacementRecordDto> {
+    return this.service.recordOutcome(
+      requireInstitutionId(user),
+      RecordOutcomeRequestSchema.parse(body),
+    );
+  }
+
+  @Get('outcomes')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({ summary: 'List recorded placement outcomes for one company.' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Outcomes for the requested company.' })
+  async listOutcomes(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ): Promise<ListPlacementOutcomesResponse> {
+    const parsed = ListPlacementOutcomesQuerySchema.parse(query);
+    return this.service.listOutcomesForCompany(requireInstitutionId(user), parsed.companyName);
   }
 }

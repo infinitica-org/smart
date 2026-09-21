@@ -8,6 +8,21 @@ import {
 } from './candidate-profile.dto.js';
 
 describe('Candidate Education & Language DTO Schemas', () => {
+  it('validates CreateCandidateEducation with degreeDetails', () => {
+    const parsed = CreateCandidateEducationSchema.safeParse({
+      institutionName: 'College',
+      degree: 'Full-time — B.Tech',
+      degreeDetails: {
+        rollNumber: '22ALR110',
+        currentSemester: 5,
+        semestersPerYear: 2,
+        lateralEntry: false,
+        semesters: [{ semester: 1, performancePercent: 78, backlogsTotal: 0, backlogsOngoing: 0 }],
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   it('validates a valid CreateCandidateEducation payload', () => {
     const valid = {
       institutionName: 'Stanford University',

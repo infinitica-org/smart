@@ -8,7 +8,6 @@ import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
 import {
   LayoutDashboard,
   Users,
-  UserPlus,
   BarChart3,
   Settings,
   GraduationCap,
@@ -24,10 +23,27 @@ interface NavItem {
   subItems?: { name: string; href: string }[];
 }
 
+function isSidebarItemActive(pathname: string, item: NavItem): boolean {
+  if (item.subItems?.length) {
+    return item.subItems.some(
+      (sub) => pathname === sub.href || pathname.startsWith(`${sub.href}/`),
+    );
+  }
+  return pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+}
+
 const mainNav: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Candidates', href: '/students', icon: Users },
-  { name: 'Provisioning', href: '/provisioning', icon: UserPlus },
+  {
+    name: 'Candidates',
+    href: '/students',
+    icon: Users,
+    subItems: [
+      { name: 'Candidates Repository', href: '/students' },
+      { name: 'Candidate Onboarding', href: '/provisioning' },
+      { name: 'Batches', href: '/batches' },
+    ],
+  },
   {
     name: 'Work Experience',
     href: '/work-experience-verification',
@@ -62,8 +78,7 @@ export function TpoSidebar() {
       <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         <ul className="space-y-1">
           {mainNav.map((item) => {
-            const isActive =
-              pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            const isActive = isSidebarItemActive(pathname, item);
             const Icon = item.icon;
 
             return (
@@ -96,15 +111,23 @@ export function TpoSidebar() {
                 {/* Sub-items (Tree View) if Active */}
                 {item.subItems && isActive && (
                   <div className="ml-5 pl-4 border-l border-[#004C63]/20 space-y-1.5 pt-2 pb-1">
-                    {item.subItems.map((sub) => (
-                      <Link
-                        key={sub.name}
-                        href={sub.href}
-                        className="block text-xs font-semibold text-slate-500 hover:text-[#004C63] transition-colors py-1"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
+                    {item.subItems.map((sub) => {
+                      const subActive =
+                        pathname === sub.href || pathname.startsWith(`${sub.href}/`);
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.href}
+                          aria-current={subActive ? 'page' : undefined}
+                          className={cn(
+                            'block py-1 text-xs font-semibold transition-colors',
+                            subActive ? 'text-[#004C63]' : 'text-slate-500 hover:text-[#004C63]',
+                          )}
+                        >
+                          {sub.name}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </li>

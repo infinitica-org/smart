@@ -14,6 +14,7 @@ describe('CameraIntegrityDock', () => {
           warningCount: 0,
           warningLimit: 5,
           bindPreview: vi.fn(),
+          prepareMicForSpeech: vi.fn(),
         }}
       >
         <CameraIntegrityDock />
@@ -33,6 +34,7 @@ describe('CameraIntegrityDock', () => {
           warningCount: 2,
           warningLimit: 5,
           bindPreview: vi.fn(),
+          prepareMicForSpeech: vi.fn(),
         }}
       >
         <CameraIntegrityDock />

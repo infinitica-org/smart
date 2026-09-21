@@ -2,14 +2,15 @@ import {
   CreateProjectRequestSchema,
   type CreateProjectRequest,
   type ProjectDto,
-  type ProjectStatus,
 } from '@smart/contracts';
+
+import { stackLabelFromSkillCodes } from '@/lib/project-form-skills';
 
 export type ProjectFormFields = {
   title: string;
   problem: string;
   approach: string;
-  stack: string;
+  skillCodes: string[];
   outcome: string;
   githubUrl: string;
   liveUrl: string;
@@ -19,18 +20,19 @@ export const EMPTY_PROJECT_FORM: ProjectFormFields = {
   title: '',
   problem: '',
   approach: '',
-  stack: '',
+  skillCodes: [],
   outcome: '',
   githubUrl: '',
   liveUrl: '',
 };
 
 export function buildCreateProjectRequest(fields: ProjectFormFields): CreateProjectRequest {
+  const stack = stackLabelFromSkillCodes(fields.skillCodes);
   return CreateProjectRequestSchema.parse({
     title: fields.title.trim(),
     problem: fields.problem.trim(),
     approach: fields.approach.trim(),
-    stack: fields.stack.trim(),
+    stack,
     outcome: fields.outcome.trim(),
     githubUrl: fields.githubUrl.trim() || undefined,
     liveUrl: fields.liveUrl.trim() || undefined,
@@ -59,8 +61,15 @@ export function fieldErrorsFromZod(error: { issues: { path: PropertyKey[]; messa
   return map;
 }
 
-export function isProcessingStatus(status: ProjectStatus): boolean {
-  return status === 'SUBMITTED';
+export function isProcessingStatus(project: Pick<ProjectDto, 'status' | 'report'>): boolean {
+  return project.status === 'SUBMITTED' && !project.report;
+}
+
+export function needsOwnershipInterview(project: ProjectDto): boolean {
+  return (
+    project.interviewRequired &&
+    (project.interviewStatus === 'PENDING' || project.interviewStatus === 'IN_PROGRESS')
+  );
 }
 
 export interface StackTagCount {
@@ -93,11 +102,18 @@ export function processingStateCopy(project: ProjectDto): {
   title: string;
   body: string;
 } {
-  if (project.status === 'SUBMITTED') {
+  if (project.status === 'SUBMITTED' && !project.report) {
     return {
       tone: 'info',
-      title: 'Processing',
-      body: 'Your project is queued for verification. This page will update when scoring finishes — this is not a silent wait.',
+      title: 'Verifying',
+      body: 'Integrity verification is running. This page will update when it finishes — then complete the ownership interview.',
+    };
+  }
+  if (needsOwnershipInterview(project)) {
+    return {
+      tone: 'warning',
+      title: 'Interview required',
+      body: 'Automated verification finished. Complete the voice ownership interview when you are ready.',
     };
   }
   if (project.status === 'UNDER_REVIEW') {

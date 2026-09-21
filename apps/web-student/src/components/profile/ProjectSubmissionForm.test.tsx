@@ -5,6 +5,7 @@ import type {
   CandidateOnboardingProfile,
   CandidateOnboardingProfileResponse,
 } from '@smart/contracts';
+import { buildSkillLibraryResponse } from '@smart/contracts';
 import { ProjectSubmissionForm } from './ProjectSubmissionForm';
 
 const emptyOnboardingResponse = (): CandidateOnboardingProfileResponse => ({
@@ -17,6 +18,10 @@ const emptyOnboardingResponse = (): CandidateOnboardingProfileResponse => ({
 const useFeatureFlag = vi.fn(() => true);
 const useOnboarding = vi.fn(() => ({
   data: emptyOnboardingResponse(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/lib/entitlements', () => ({
@@ -34,6 +39,8 @@ const getOnboarding = vi.fn();
 const listGithubRepos = vi.fn();
 const githubRepoReadme = vi.fn();
 const studentEntitlements = vi.fn();
+const skillLibrary = vi.fn();
+const replaceProjectSkillMappings = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -41,6 +48,12 @@ vi.mock('@/lib/api', () => ({
       create: (...args: unknown[]) => create(...args),
       get: (...args: unknown[]) => get(...args),
       listMine: (...args: unknown[]) => listMine(...args),
+    },
+    catalog: {
+      skillLibrary: (...args: unknown[]) => skillLibrary(...args),
+    },
+    evidence: {
+      replaceProjectSkillMappings: (...args: unknown[]) => replaceProjectSkillMappings(...args),
     },
     users: {
       getOnboarding: (...args: unknown[]) => getOnboarding(...args),
@@ -59,18 +72,21 @@ function renderForm(): ReturnType<typeof render> {
   });
   return render(
     <QueryClientProvider client={client}>
-      <div id="profile-projects-header-actions" />
       <ProjectSubmissionForm />
     </QueryClientProvider>,
   );
 }
 
 async function openAddProjectModal() {
-  const addBtn = await screen.findByRole('button', {
-    name: /Add your first project|Add Project/i,
-  });
+  const addBtn = await screen.findByRole('button', { name: /Add your first project/i });
   fireEvent.click(addBtn);
   await screen.findByRole('dialog');
+}
+
+async function openManualProjectModal() {
+  await openAddProjectModal();
+  fireEvent.click(screen.getByRole('button', { name: /Add manually/i }));
+  await screen.findByLabelText(/^Title$/i);
 }
 
 const busTracker = {
@@ -102,8 +118,8 @@ const validFill = () => {
   fireEvent.change(form.getByLabelText(/^Approach$/i), {
     target: { value: 'I used websockets and a small GPS ingest service.' },
   });
-  fireEvent.change(form.getByLabelText(/^Technology stack$/i), {
-    target: { value: 'TypeScript, Nest' },
+  fireEvent.change(form.getByLabelText(/^Skills$/i), {
+    target: { value: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' },
   });
   fireEvent.change(form.getByLabelText(/^Outcome$/i), {
     target: { value: 'Average wait time dropped in a 30-student pilot.' },
@@ -129,11 +145,13 @@ describe('ProjectSubmissionForm', () => {
       planCode: 'PRO',
       flags: [{ key: 'project_verification', name: 'Project verification', enabled: true }],
     });
+    skillLibrary.mockReset().mockResolvedValue(buildSkillLibraryResponse());
+    replaceProjectSkillMappings.mockReset().mockResolvedValue([]);
   });
 
   it('blocks submit when the problem is too short', async () => {
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     const form = formScope();
     fireEvent.change(form.getByLabelText(/^Title$/i), { target: { value: 'App' } });
     fireEvent.change(form.getByLabelText(/^Problem$/i), { target: { value: 'too short' } });
@@ -142,11 +160,11 @@ describe('ProjectSubmissionForm', () => {
     expect(screen.getByText(/Fix the highlighted template fields/i)).toBeTruthy();
   });
 
-  it('queues create, shows an explicit Processing state, and offers to submit another', async () => {
+  it('queues create, shows an explicit Verifying state, and offers to submit another', async () => {
     create.mockResolvedValueOnce(busTracker);
 
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     validFill();
     fireEvent.click(screen.getByRole('button', { name: /Submit project/i }));
 
@@ -155,14 +173,18 @@ describe('ProjectSubmissionForm', () => {
       title: 'Campus bus tracker',
       githubUrl: 'https://github.com/org/repo',
     });
+    await waitFor(() => expect(replaceProjectSkillMappings).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(screen.getAllByText(/^Processing$/i).length).toBeGreaterThanOrEqual(1),
+      expect(screen.getAllByText(/^Verifying$/i).length).toBeGreaterThanOrEqual(1),
     );
-    expect(screen.getAllByText(/queued for verification/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Integrity verification is running/i).length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(screen.queryByText(/^Submitting…$/i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Submit another project/i }));
     await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: /Add manually/i }));
     expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe('');
     expect(
       (screen.getByRole('button', { name: /Submit project/i }) as HTMLButtonElement).disabled,
@@ -197,7 +219,7 @@ describe('ProjectSubmissionForm', () => {
     create.mockResolvedValueOnce({ ...busTracker, liveUrl: 'https://bus-tracker.example.com' });
 
     renderForm();
-    await openAddProjectModal();
+    await openManualProjectModal();
     validFill();
     fireEvent.change(formScope().getByLabelText(/Live link/i), {
       target: { value: 'https://bus-tracker.example.com' },
@@ -227,7 +249,7 @@ describe('ProjectSubmissionForm', () => {
     await waitFor(() => expect(listGithubRepos).toHaveBeenCalledWith({ login: 'octocat' }));
   });
 
-  it('imports a picked repo, prefilling title, stack, GitHub link, and README as the approach', async () => {
+  it('imports a picked repo, prefilling title, GitHub link, and README as the approach', async () => {
     useOnboarding.mockReturnValue({
       data: {
         ...emptyOnboardingResponse(),
@@ -267,9 +289,6 @@ describe('ProjectSubmissionForm', () => {
       expect((formScope().getByLabelText(/^Title$/i) as HTMLInputElement).value).toBe(
         'bus-tracker',
       ),
-    );
-    expect((formScope().getByLabelText(/^Technology stack$/i) as HTMLInputElement).value).toBe(
-      'TypeScript',
     );
     expect((formScope().getByLabelText(/GitHub link/i) as HTMLInputElement).value).toBe(
       'https://github.com/octocat/bus-tracker',

@@ -10,7 +10,7 @@ const valid = {
   title: 'Campus bus tracker',
   problem: 'Students cannot see live bus location on campus routes.',
   approach: 'I used websockets and a small GPS ingest service.',
-  stack: 'TypeScript, Nest, Redis',
+  skillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
   outcome: 'Average wait time dropped in a 30-student pilot.',
   githubUrl: 'https://github.com/org/repo',
   liveUrl: '',
@@ -19,6 +19,7 @@ const valid = {
 describe('buildCreateProjectRequest', () => {
   it('maps the CN-T08 template and omits empty optional links', () => {
     const body = buildCreateProjectRequest(valid);
+    expect(body.stack).toContain('Python');
     expect(body.githubUrl).toBe('https://github.com/org/repo');
     expect(body.loomUrl).toBeUndefined();
     expect(body.githubRepos).toEqual([]);
@@ -30,15 +31,19 @@ describe('buildCreateProjectRequest', () => {
 });
 
 describe('processing state', () => {
-  it('treats SUBMITTED as explicit processing, not an empty spinner', () => {
-    expect(isProcessingStatus('SUBMITTED')).toBe(true);
+  it('treats SUBMITTED without report as explicit processing, not an empty spinner', () => {
+    const pending = {
+      status: 'SUBMITTED' as const,
+      report: null,
+    };
+    expect(isProcessingStatus(pending)).toBe(true);
     const copy = processingStateCopy({
       projectId: '123e4567-e89b-12d3-a456-426614174000',
       studentId: '123e4567-e89b-12d3-a456-426614174001',
       title: valid.title,
       problem: valid.problem,
       approach: valid.approach,
-      stack: valid.stack,
+      stack: 'Python Application & Backend Development',
       outcome: valid.outcome,
       loomUrl: null,
       githubUrl: null,
@@ -46,9 +51,12 @@ describe('processing state', () => {
       status: 'SUBMITTED',
       createdAt: '2026-09-02T10:00:00.000Z',
       report: null,
+      interviewRequired: false,
+      interviewStatus: 'NOT_REQUIRED' as const,
+      interviewCompletedAt: null,
     });
-    expect(copy.title).toBe('Processing');
-    expect(copy.body).toMatch(/queued for verification/i);
+    expect(copy.title).toBe('Verifying');
+    expect(copy.body).toMatch(/integrity verification is running/i);
   });
 });
 

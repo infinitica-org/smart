@@ -5,7 +5,7 @@
  * MAIN BRAND
  * black   #131313
  * white   #F4F4F4
- * teal    #00FAD0
+ * teal    #14B8A6
  * blue    #004C63
  *
  * STATUS
@@ -45,12 +45,12 @@
   --color-black: #131313;
   --color-white: #f4f4f4;
 
-  --color-teal: #00fad0;
+  --color-teal: #14b8a6;
   --color-blue: #004c63;
 
   --color-ink: #131313;
   --color-paper: #f4f4f4;
-  --color-accent: #00fad0;
+  --color-accent: #14b8a6;
   --color-accent-deep: #004c63;
 
   /* -------------------------
@@ -60,9 +60,9 @@
   --color-brand-50: #e8fffb;
   --color-brand-100: #c2fef2;
   --color-brand-200: #8ffce7;
-  --color-brand-300: #99fdea;
-  --color-brand-400: #4dfbdf;
-  --color-brand-500: #00fad0;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
   --color-brand-600: #00b39a;
   --color-brand-700: #004c63;
   --color-brand-800: #003a4d;
@@ -141,7 +141,7 @@
      GRADIENT
      ------------------------- */
 
-  --color-gradient-start: #00fad0;
+  --color-gradient-start: #14b8a6;
   --color-gradient-end: #004c63;
 
   /* -------------------------
@@ -215,7 +215,7 @@
 .light {
   --brand-ink: #131313;
   --brand-paper: #f4f4f4;
-  --brand-teal: #00fad0;
+  --brand-teal: #14b8a6;
   --brand-teal-deep: #004c63;
   --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
   --brand-gray-100: #f1efec;
@@ -274,7 +274,7 @@
 .dark {
   --brand-ink: #131313;
   --brand-paper: #f4f4f4;
-  --brand-teal: #00fad0;
+  --brand-teal: #14b8a6;
   --brand-teal-deep: #004c63;
   --brand-gradient: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-deep));
   --brand-gray-100: #f1efec;
@@ -387,7 +387,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #00fad0;
+    outline: 2px solid #14b8a6;
     outline-offset: 2px;
   }
 
@@ -409,11 +409,11 @@
 
   .brand-gradient,
   .bg-gradient {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
+    background: linear-gradient(135deg, #14b8a6 0%, #004c63 100%);
   }
 
   .brand-text {
-    background: linear-gradient(135deg, #00fad0 0%, #004c63 100%);
+    background: linear-gradient(135deg, #14b8a6 0%, #004c63 100%);
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;

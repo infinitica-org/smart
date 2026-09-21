@@ -127,6 +127,14 @@ describe('WorkExperience DTO & Letter Validation Rules (WE-T01)', () => {
     expect(res.message).toContain('completion or relieving letter');
   });
 
+  it('CreateWorkExperienceSchema allows draft create without proof documents', () => {
+    const result = CreateWorkExperienceSchema.safeParse({
+      ...buildValidOngoingSubmission(),
+      documents: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('validates CreateWorkExperienceSchema requires end date when not current', () => {
     const invalidResult = CreateWorkExperienceSchema.safeParse(
       buildValidOngoingSubmission({

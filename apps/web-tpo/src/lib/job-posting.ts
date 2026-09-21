@@ -1,5 +1,6 @@
 import {
   CreateJobOpeningRequestSchema,
+  proficiencyLevelUiLabel,
   SKILL_DEFINITIONS,
   SKILL_TAXONOMY_DOMAINS,
   type CreateJobOpeningRequest,
@@ -15,6 +16,7 @@ export type JobPostingCompanyLogo = {
 };
 
 export type JobPostingFormState = {
+  employerId: string;
   companyName: string;
   roleTitle: string;
   domain: string;
@@ -32,9 +34,15 @@ export type JobPostingFormState = {
   driveSpoc: string;
   driveDate: string;
   lastDateToApply: string;
+  minSscPercentage: string;
+  minHscPercentage: string;
+  minCollegePercentage: string;
+  /** 'yes' | 'no' — whether active backlogs are allowed. */
+  backlogsAllowedChoice: 'yes' | 'no';
 };
 
 export const EMPTY_JOB_POSTING_FORM: JobPostingFormState = {
+  employerId: '',
   companyName: '',
   roleTitle: '',
   domain: 'SOFTWARE_IT',
@@ -52,15 +60,23 @@ export const EMPTY_JOB_POSTING_FORM: JobPostingFormState = {
   driveSpoc: '',
   driveDate: '',
   lastDateToApply: '',
+  minSscPercentage: '',
+  minHscPercentage: '',
+  minCollegePercentage: '',
+  backlogsAllowedChoice: 'yes',
 };
 
+/**
+ * Consolidated from an earlier 7-step flow (company-role, about-company,
+ * role-details, requirements, hiring-process, drive-details, review) down to
+ * 4 — each step below groups two of the old ones under one heading. No field
+ * was dropped; `JobPostingWizard` renders every merged group's inputs inside
+ * its matching step.
+ */
 export const JOB_POSTING_STEPS = [
   { id: 'company-role', label: 'Company & Role', shortLabel: 'Company' },
-  { id: 'about-company', label: 'About the Company', shortLabel: 'About' },
-  { id: 'role-details', label: 'Role Details', shortLabel: 'Role' },
-  { id: 'requirements', label: 'Requirements', shortLabel: 'Requirements' },
-  { id: 'hiring-process', label: 'Hiring Process', shortLabel: 'Hiring' },
-  { id: 'drive-details', label: 'Drive Details', shortLabel: 'Drive' },
+  { id: 'role-requirements', label: 'Role & Requirements', shortLabel: 'Role' },
+  { id: 'hiring-drive', label: 'Hiring & Drive', shortLabel: 'Hiring' },
   { id: 'review', label: 'Review & Post', shortLabel: 'Review' },
 ] as const;
 
@@ -78,6 +94,10 @@ export function labelFor(value: string): string {
     .join(' ');
 }
 
+export function proficiencyLabelFor(level: SkillProficiency): string {
+  return proficiencyLevelUiLabel(level);
+}
+
 export function skillNameFor(code: string): string {
   return SKILL_DEFINITIONS.find((skill) => skill.code === code)?.name ?? code;
 }
@@ -90,6 +110,14 @@ function optionalText(value: string): string | undefined {
 function optionalDate(value: string): string | undefined {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function optionalPercent(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const num = Number(trimmed);
+  if (Number.isNaN(num) || num < 0 || num > 100) return undefined;
+  return num;
 }
 
 export function saveJobPostingDraft(
@@ -153,7 +181,8 @@ export function buildCreateOpeningPayload(
   companyLogo: JobPostingCompanyLogo | null,
 ) {
   return CreateJobOpeningRequestSchema.safeParse({
-    companyName: form.companyName.trim(),
+    ...(form.employerId ? { employerId: form.employerId } : {}),
+    companyName: form.companyName.trim() || undefined,
     roleTitle: form.roleTitle.trim(),
     domain: form.domain as SkillTaxonomyDomain,
     companyLogoStorageKey: companyLogo?.storageKey,
@@ -171,6 +200,10 @@ export function buildCreateOpeningPayload(
     driveSpoc: optionalText(form.driveSpoc),
     driveDate: optionalDate(form.driveDate),
     lastDateToApply: optionalDate(form.lastDateToApply),
+    minSscPercentage: optionalPercent(form.minSscPercentage),
+    minHscPercentage: optionalPercent(form.minHscPercentage),
+    minCollegePercentage: optionalPercent(form.minCollegePercentage),
+    backlogsAllowed: form.backlogsAllowedChoice === 'yes',
     attachedDocuments: attachedDocuments.length > 0 ? [...attachedDocuments] : undefined,
     requiredSkills: [...skills].map(([skillCode, minProficiency]) => ({
       skillCode,
@@ -183,4 +216,60 @@ export function isCreateOpeningPayload(
   value: ReturnType<typeof buildCreateOpeningPayload>,
 ): value is { success: true; data: CreateJobOpeningRequest } {
   return value.success;
+}
+
+const OPENING_FIELD_LABELS: Record<string, string> = {
+  employerId: 'Company',
+  companyName: 'Company name',
+  roleTitle: 'Role title',
+  domain: 'Job domain',
+  location: 'Location',
+  employmentType: 'Job type',
+  minYearsExperience: 'Minimum years experience',
+  maxYearsExperience: 'Maximum years experience',
+  requiredSkills: 'Required skills',
+  driveDate: 'Drive date',
+  lastDateToApply: 'Last date to apply',
+  minSscPercentage: 'Minimum SSC percentage',
+  minHscPercentage: 'Minimum HSC percentage',
+  minCollegePercentage: 'Minimum college percentage',
+};
+
+/** The shape of a Zod v4 issue this cares about — kept structural so this file doesn't need its own `zod` dependency. */
+type OpeningValidationIssue = {
+  path: readonly PropertyKey[];
+  code: string;
+  message: string;
+  minimum?: number | bigint;
+  maximum?: number | bigint;
+  origin?: string;
+};
+
+/**
+ * Zod's default messages ("Too small: expected string to have >=1
+ * characters") are accurate but meaningless to a TPO filling in a form —
+ * this turns the first failing issue into a plain sentence naming the field.
+ */
+export function friendlyOpeningError(issues: readonly OpeningValidationIssue[]): string {
+  const issue = issues[0];
+  if (!issue) return 'Check the opening details and try again.';
+
+  const key = issue.path[0] !== undefined ? String(issue.path[0]) : '';
+  const field = OPENING_FIELD_LABELS[key] ?? (key || 'This opening');
+  const unit = issue.origin === 'string' ? ' characters' : issue.origin === 'array' ? ' items' : '';
+
+  switch (issue.code) {
+    case 'invalid_type':
+      return `${field} is required.`;
+    case 'too_small':
+      return issue.minimum === 1 || issue.minimum === undefined
+        ? `${field} is required.`
+        : `${field} must be at least ${issue.minimum}${unit}.`;
+    case 'too_big':
+      return `${field} must be at most ${issue.maximum}${unit}.`;
+    case 'custom':
+      return issue.message;
+    default:
+      return `${field}: ${issue.message}`;
+  }
 }

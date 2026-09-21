@@ -348,10 +348,19 @@ export const CompleteSkillVerifyResponseSchema = z.object({
   technicalFailure: z.boolean(),
   grade: GradeSdeSkillFormResponseSchema.nullable(),
   assessmentResult: AssessmentResultSchema.nullable().optional(),
-  sessionContinues: z.boolean().optional(),
   session: SkillVerifySessionDtoSchema.nullable().optional(),
   pendingVerification: z.boolean().optional(),
+  /** Answers accepted; LLM grading and claim settlement run asynchronously. */
+  gradingAccepted: z.boolean().optional(),
 });
+
+export const StartSkillVerifyInterviewRequestSchema = z.object({
+  /** When true, regenerate questions (capped server-side). Default reuses cached questions. */
+  regenerate: z.boolean().optional().default(false),
+});
+export type StartSkillVerifyInterviewRequest = z.infer<
+  typeof StartSkillVerifyInterviewRequestSchema
+>;
 
 export const CompleteSkillVerifyInterviewRequestSchema = z.object({
   items: z

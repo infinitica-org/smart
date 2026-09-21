@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import {
+  AssessmentResultSchema,
   CandidateMatchDtoSchema,
   CreateMatchRunResponseSchema,
   JdThresholdVectorSchema,
+  MatchFitDtoSchema,
   MatchRunDtoSchema,
   PlacementMatchedDataSchema,
   SKILL_CODE_SET,
@@ -16,6 +18,9 @@ import {
   type CertifiableTier,
   type CreateMatchRunResponse,
   type LevelNumber,
+  type MatchFitDto,
+  type MatchMethod,
+  type JobOpeningEligibilityCriteria,
   type MatchRequest,
   type MatchRunDto,
   type ShortlistDto,
@@ -25,13 +30,34 @@ import { Prisma } from '../../generated/prisma/index.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { MATCH_RUN_QUEUE } from '../../platform/queue/queue.names.js';
+import { InstitutionsService } from '../institutions/institutions.service.js';
+import { QlixSmartAssessmentSchema } from '../evaluation/qlix-client.js';
+import { buildSkillCapabilityJob } from './job-profile.js';
 import {
-  PROFICIENCY_RANK,
+  jobRequirementsFromProfile,
+  mapVerifiedSkillsSummary,
+  toCandidateMatchDto,
+} from './matching-fit.mapper.js';
+import {
+  mergeMatchExplainability,
+  type QlixProjectExplainability,
+} from './matching-explainability.js';
+import { MatchNarrativeService } from './match-narrative.service.js';
+import {
+  PROFICIENCY_RANK as RULES_PROFICIENCY_RANK,
   rankCandidates,
   type ProficiencyName,
   type RankerCandidate,
   type RankerJob,
 } from './rules-ranker.js';
+import {
+  PROFICIENCY_RANK,
+  rankSkillCapabilityCandidates,
+  type InferredCapabilityRow,
+  type QlixCompetencyObservation,
+  type SkillCapabilityCandidate,
+  type SkillCapabilityJob,
+} from './skill-capability-ranker.js';
 
 const FALLBACK_TRACK: TrackCode = 'TECH_FULLSTACK';
 
@@ -46,8 +72,23 @@ interface RunMatchingParams {
   minCgpa?: number;
   requiredSkillCodes: string[];
   filters?: MatchRequest['filters'];
+  openingEligibility?: JobOpeningEligibilityCriteria;
   limit: number;
+  minSkillCoverage: number;
+  runId?: string;
 }
+
+const RULES_RANKER_FLAG = 'matching.use_rules_ranker' as const;
+const NARRATIVE_TOP_N = 20;
+const STUDENT_FIT_STAGES = new Set([
+  'SHORTLISTED',
+  'AI_VERIFIED',
+  'INTERVIEW',
+  'OFFERED',
+  'HIRED',
+  'REJECTED',
+  'WITHDRAWN',
+]);
 
 /** Prisma returns `MatchRun.minCgpa` as a `Decimal`; duck-type rather than import generated internals. */
 type Decimalish = { toNumber?: () => number } | number;
@@ -87,9 +128,26 @@ interface HydratedStudent {
  * batch/CGPA/required-skill/track pool-scoping filters — same semantics as the Prisma `where`
  * clause this replaced, just expressed as parameterized SQL fragments (never string
  * concatenation) so the dynamic filter lists stay injection-safe. */
+function effectiveMinCgpaForOpening(
+  request: RunMatchingParams,
+  openingEligibility?: JobOpeningEligibilityCriteria,
+): number | undefined {
+  const fromOpening =
+    openingEligibility?.minCollegePercentage !== undefined
+      ? openingEligibility.minCollegePercentage / 10
+      : undefined;
+  if (request.minCgpa !== undefined && fromOpening !== undefined) {
+    return Math.max(request.minCgpa, fromOpening);
+  }
+  return request.minCgpa ?? fromOpening;
+}
+
 function buildEligibleStudentsQuery(
   institutionId: string,
-  request: Pick<RunMatchingParams, 'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters'>,
+  request: Pick<
+    RunMatchingParams,
+    'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters' | 'openingEligibility'
+  >,
 ): Prisma.Sql {
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
@@ -101,6 +159,24 @@ function buildEligibleStudentsQuery(
   }
   if (request.minCgpa !== undefined) {
     conditions.push(Prisma.sql`u.cgpa >= ${request.minCgpa}`);
+  }
+  const eligibility = request.openingEligibility;
+  if (eligibility?.minSscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.ssc_percentage IS NOT NULL AND u.ssc_percentage >= ${eligibility.minSscPercentage}`,
+    );
+  }
+  if (eligibility?.minHscPercentage !== undefined) {
+    conditions.push(
+      Prisma.sql`u.hsc_percentage IS NOT NULL AND u.hsc_percentage >= ${eligibility.minHscPercentage}`,
+    );
+  }
+  if (eligibility?.minCollegePercentage !== undefined && request.minCgpa === undefined) {
+    const minCgpaFromPercent = eligibility.minCollegePercentage / 10;
+    conditions.push(Prisma.sql`u.cgpa IS NOT NULL AND u.cgpa >= ${minCgpaFromPercent}`);
+  }
+  if (eligibility?.backlogsAllowed === false) {
+    conditions.push(Prisma.sql`u.has_active_backlog IS DISTINCT FROM TRUE`);
   }
   // Every required skill must be held VERIFIED (AND) — one EXISTS per code, not a single
   // `IN (...)`, which would only require ANY one of them and under-filter the pool.
@@ -146,11 +222,13 @@ function buildEligibleStudentsQuery(
 @Injectable()
 export class MatchingService {
   readonly owner = 'Ramansh';
-  readonly purpose = 'Rules ranker (SE-T05 / ADR 0012); cosine optional later.';
+  readonly purpose = 'Skill+capability ranker (default) with rules-ranker rollback flag.';
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(InstitutionsService) private readonly institutions: InstitutionsService,
+    @Inject(MatchNarrativeService) private readonly narratives: MatchNarrativeService,
     @InjectQueue(MATCH_RUN_QUEUE) private readonly matchRunQueue: Queue<{ matchRunId: string }>,
   ) {}
 
@@ -163,6 +241,7 @@ export class MatchingService {
       requiredSkillCodes: request.requiredSkillCodes ?? [],
       filters: request.filters,
       limit: request.limit,
+      minSkillCoverage: request.minSkillCoverage ?? 0.6,
     });
   }
 
@@ -172,7 +251,7 @@ export class MatchingService {
     userId: string,
     request: MatchRequest,
   ): Promise<CreateMatchRunResponse> {
-    await this.resolveJob(institutionId, request.jdId); // fail fast on an unknown/foreign jdId
+    await this.resolveOpeningJob(institutionId, request.jdId); // fail fast on an unknown/foreign jdId
 
     const batchIds = request.batchIds ?? (request.cohortId ? [request.cohortId] : []);
     const run = await this.prisma.matchRun.create({
@@ -184,6 +263,7 @@ export class MatchingService {
         minCgpa: request.minCgpa ?? null,
         requiredSkillCodes: request.requiredSkillCodes ?? [],
         limit: request.limit,
+        minSkillCoverage: request.minSkillCoverage ?? 0.6,
       },
     });
 
@@ -206,6 +286,8 @@ export class MatchingService {
         minCgpa: decimalToNumber(run.minCgpa),
         requiredSkillCodes: run.requiredSkillCodes,
         limit: run.limit,
+        minSkillCoverage: decimalToNumber(run.minSkillCoverage) ?? 0.6,
+        runId: run.id,
       });
 
       await this.prisma.matchRun.update({
@@ -255,29 +337,287 @@ export class MatchingService {
     });
   }
 
+  async getCandidateFit(
+    institutionId: string,
+    runId: string,
+    studentId: string,
+  ): Promise<MatchFitDto> {
+    const run = await this.prisma.matchRun.findFirst({
+      where: { id: runId, institutionId, status: 'SUCCEEDED' },
+    });
+    if (!run?.resultSnapshot) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Match run not found.',
+        statusCode: 404,
+      });
+    }
+    const shortlist = ShortlistDtoSchema.parse(run.resultSnapshot);
+    const candidate = shortlist.candidates.find((row) => row.studentId === studentId);
+    if (!candidate) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Candidate not found in this match run.',
+        statusCode: 404,
+      });
+    }
+    return MatchFitDtoSchema.parse({
+      studentId: candidate.studentId,
+      openingId: shortlist.jdId,
+      runId,
+      roleTitle: shortlist.roleTitle,
+      companyName: shortlist.companyName,
+      matchScore: candidate.matchScore,
+      method: candidate.method,
+      skillCoveragePct: candidate.explanation.skillCoveragePct ?? 0,
+      capabilityCoveragePct: candidate.explanation.capabilityCoveragePct ?? 0,
+      potentialFit: candidate.explanation.potentialFit ?? 'STRETCH',
+      skillFit: candidate.explanation.skillFit ?? [],
+      capabilityFit: candidate.explanation.capabilityFit ?? [],
+      skillGaps: (candidate.explanation.skillFit ?? []).filter((row) => row.status !== 'MET'),
+      competencyGaps: (candidate.explanation.capabilityFit ?? []).filter(
+        (row) => row.hitScore < 0.5,
+      ),
+      strongCompetencies: candidate.explanation.strongCompetencies,
+      gapCompetencies: candidate.explanation.gapCompetencies,
+      why: candidate.explanation.why,
+      recruiterSummary: candidate.explanation.recruiterSummary,
+      studentSummary: candidate.explanation.studentSummary,
+    });
+  }
+
+  async getApplicationFit(studentId: string, applicationId: string): Promise<MatchFitDto> {
+    const application = await this.prisma.application.findFirst({
+      where: { id: applicationId, studentId },
+      include: {
+        opening: {
+          select: { id: true, institutionId: true, companyName: true, roleTitle: true },
+        },
+      },
+    });
+    if (!application) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Application not found.',
+        statusCode: 404,
+      });
+    }
+    if (!STUDENT_FIT_STAGES.has(application.stage)) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Fit details are available after shortlisting.',
+        statusCode: 403,
+      });
+    }
+
+    const latestRun = await this.prisma.matchRun.findFirst({
+      where: {
+        jdId: application.openingId,
+        institutionId: application.opening.institutionId,
+        status: 'SUCCEEDED',
+      },
+      orderBy: { completedAt: 'desc' },
+    });
+    if (latestRun) {
+      try {
+        return await this.getCandidateFit(
+          application.opening.institutionId,
+          latestRun.id,
+          studentId,
+        );
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) throw error;
+      }
+    }
+
+    const shortlist = await this.runMatching(application.opening.institutionId, {
+      jdId: application.openingId,
+      batchIds: [],
+      requiredSkillCodes: [],
+      limit: 500,
+      minSkillCoverage: decimalToNumber(latestRun?.minSkillCoverage ?? null) ?? 0.6,
+    });
+    const candidate = shortlist.candidates.find((row) => row.studentId === studentId);
+    if (!candidate) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'No fit computed for this application.',
+        statusCode: 404,
+      });
+    }
+    return MatchFitDtoSchema.parse({
+      studentId: candidate.studentId,
+      openingId: application.openingId,
+      applicationId,
+      roleTitle: shortlist.roleTitle,
+      companyName: shortlist.companyName,
+      matchScore: candidate.matchScore,
+      method: candidate.method,
+      skillCoveragePct: candidate.explanation.skillCoveragePct ?? 0,
+      capabilityCoveragePct: candidate.explanation.capabilityCoveragePct ?? 0,
+      potentialFit: candidate.explanation.potentialFit ?? 'STRETCH',
+      skillFit: candidate.explanation.skillFit ?? [],
+      capabilityFit: candidate.explanation.capabilityFit ?? [],
+      skillGaps: (candidate.explanation.skillFit ?? []).filter((row) => row.status !== 'MET'),
+      competencyGaps: (candidate.explanation.capabilityFit ?? []).filter(
+        (row) => row.hitScore < 0.5,
+      ),
+      strongCompetencies: candidate.explanation.strongCompetencies,
+      gapCompetencies: candidate.explanation.gapCompetencies,
+      why: candidate.explanation.why,
+      recruiterSummary: candidate.explanation.recruiterSummary,
+      studentSummary: candidate.explanation.studentSummary,
+    });
+  }
+
   private async runMatching(
     institutionId: string,
     request: RunMatchingParams,
   ): Promise<ShortlistDto> {
-    const job = await this.resolveJob(institutionId, request.jdId);
+    const resolved = await this.resolveOpeningJob(institutionId, request.jdId);
+    const useRules = await this.useRulesRanker(institutionId);
+    if (useRules && resolved.ranker) {
+      return this.runRulesMatching(institutionId, request, resolved);
+    }
+    return this.runSkillCapabilityMatching(institutionId, request, resolved);
+  }
 
+  private async runSkillCapabilityMatching(
+    institutionId: string,
+    request: RunMatchingParams,
+    resolved: ResolvedOpeningJob,
+  ): Promise<ShortlistDto> {
+    const job = resolved.skillCapabilityJob;
     const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
-      buildEligibleStudentsQuery(institutionId, request),
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
+        openingEligibility: resolved.openingEligibility,
+      }),
     );
-    const students: HydratedStudent[] = rows.map((row) => ({
-      id: row.id,
-      fullName: row.fullName,
-      primaryTrackCode: row.primaryTrackCode,
-      certificate: row.certificateId
-        ? {
-            id: row.certificateId,
-            highestLevelCleared: row.highestLevelCleared ?? 1,
-            headlineTier: row.headlineTier ?? 'BRONZE',
-          }
-        : null,
-      verifiedSkills: row.skills ?? [],
+    const students = hydrateStudents(rows);
+    const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
+    const studentIds = filtered.map((student) => student.id);
+    const evidence = await this.loadSkillCapabilityEvidence(studentIds);
+
+    const pool: SkillCapabilityCandidate[] = filtered.map((student) => ({
+      studentId: student.id,
+      verified: student.verifiedSkills.map((claim) => ({
+        code: claim.code,
+        rank: proficiencyRank(claim.proficiency),
+        proficiency: claim.proficiency,
+      })),
+      competencyResults: evidence.competencyResultsByStudent.get(student.id) ?? [],
+      inferredCapabilities: evidence.inferredByStudent.get(student.id) ?? [],
+      qlixObservations: evidence.qlixByStudent.get(student.id) ?? [],
     }));
 
+    const ranked = rankSkillCapabilityCandidates(
+      job,
+      pool,
+      request.limit,
+      request.minSkillCoverage,
+    );
+    const byId = new Map(filtered.map((student) => [student.id, student]));
+    const generatedAt = new Date().toISOString();
+    const shortlistId = randomUUID();
+    const method: MatchMethod = 'SKILL_CAPABILITY';
+    const jobRequirements = jobRequirementsFromProfile({
+      requiredSkills: job.requiredSkills.map((skill) => ({
+        code: skill.code,
+        minProficiency: skill.minProficiency,
+      })),
+      requiredCapabilities: job.requiredCapabilities,
+    });
+
+    const candidates = [];
+    for (const [index, score] of ranked.entries()) {
+      const student = byId.get(score.studentId);
+      if (!student) continue;
+      const cert = student.certificate;
+      let recruiterSummary: string | undefined;
+      let studentSummary: string | undefined;
+      if (index < NARRATIVE_TOP_N) {
+        const narrative = await this.narratives.summarize({
+          roleTitle: resolved.roleTitle,
+          companyName: resolved.companyName,
+          matchFacts: {
+            matchScore: score.matchScore,
+            skillCoveragePct: score.skillCoveragePct,
+            capabilityCoveragePct: score.capabilityCoveragePct,
+            potentialFit: score.potentialFit,
+            skillFit: score.skillFit,
+            capabilityFit: score.capabilityFit.filter((row) => row.hitScore > 0),
+            gaps: score.gapCompetencies,
+          },
+        });
+        recruiterSummary = narrative?.recruiterSummary;
+        studentSummary = narrative?.studentSummary;
+      }
+      candidates.push(
+        toCandidateMatchDto({
+          score,
+          studentName: student.fullName,
+          trackCode: parseTrackCode(student.primaryTrackCode ?? undefined),
+          certificateId: cert?.id ?? null,
+          highestLevelCleared: parseLevel(cert?.highestLevelCleared),
+          headlineTier: parseHeadline(cert?.headlineTier),
+          verifiedSkills: student.verifiedSkills,
+          method,
+          recruiterSummary,
+          studentSummary,
+        }),
+      );
+    }
+
+    await this.publishPlacementMatched({
+      shortlistId,
+      runId: request.runId,
+      jdId: request.jdId,
+      institutionId,
+      companyName: resolved.companyName,
+      roleTitle: resolved.roleTitle,
+      studentIds: candidates.map((candidate) => candidate.studentId),
+      generatedAt,
+      matchMethod: method,
+    });
+
+    return ShortlistDtoSchema.parse({
+      shortlistId,
+      jdId: request.jdId,
+      companyName: resolved.companyName,
+      roleTitle: resolved.roleTitle,
+      generatedAt,
+      candidates,
+      totalCandidatesConsidered: pool.length,
+      eligiblePoolCount: filtered.length,
+      matchMethod: method,
+      minSkillCoverageApplied: request.minSkillCoverage,
+      jobRequirements,
+    });
+  }
+
+  private async runRulesMatching(
+    institutionId: string,
+    request: RunMatchingParams,
+    resolved: ResolvedOpeningJob,
+  ): Promise<ShortlistDto> {
+    const ranker = resolved.ranker;
+    if (!ranker) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Job opening not found.',
+        statusCode: 404,
+      });
+    }
+    const rows = await this.prisma.$queryRaw<RawEligibleStudentRow[]>(
+      buildEligibleStudentsQuery(institutionId, {
+        ...request,
+        minCgpa: effectiveMinCgpaForOpening(request, resolved.openingEligibility),
+        openingEligibility: resolved.openingEligibility,
+      }),
+    );
+    const students = hydrateStudents(rows);
     const filtered = students.filter((student) => passesOptionalFilters(student, request.filters));
 
     const pool: RankerCandidate[] = filtered.map((student) => ({
@@ -291,10 +631,12 @@ export class MatchingService {
       location: null,
     }));
 
-    const ranked = rankCandidates(job.ranker, pool, request.limit);
+    const ranked = rankCandidates(ranker, pool, request.limit);
     const byId = new Map(filtered.map((student) => [student.id, student]));
     const generatedAt = new Date().toISOString();
     const shortlistId = randomUUID();
+    const rankedStudentIds = ranked.map((score) => score.studentId);
+    const explainability = await this.loadExplainabilityContext(rankedStudentIds);
 
     const candidates = ranked.map((score) => {
       const student = byId.get(score.studentId);
@@ -302,6 +644,19 @@ export class MatchingService {
         throw new Error(`Ranker returned unknown student ${score.studentId}`);
       }
       const cert = student.certificate;
+      const verifiedSkillCodes = student.verifiedSkills.map((skill) => skill.code);
+      const mergedExplanation = mergeMatchExplainability(
+        {
+          strongCompetencies: score.strongCompetencies,
+          gapCompetencies: score.gapCompetencies,
+          why: score.why,
+        },
+        {
+          verifiedSkillCodes,
+          capabilityRows: explainability.capabilitiesByStudent.get(student.id) ?? [],
+          qlixProjects: explainability.qlixProjectsByStudent.get(student.id) ?? [],
+        },
+      );
       return CandidateMatchDtoSchema.parse({
         studentId: student.id,
         studentName: student.fullName,
@@ -315,9 +670,10 @@ export class MatchingService {
         explanation: {
           thresholdsMet: [],
           thresholdsMissed: [],
-          strongCompetencies: [...score.strongCompetencies],
-          gapCompetencies: [...score.gapCompetencies],
-          why: score.why,
+          strongCompetencies: mergedExplanation.strongCompetencies,
+          gapCompetencies: mergedExplanation.gapCompetencies,
+          why: mergedExplanation.why,
+          verifiedSkills: mapVerifiedSkillsSummary(student.verifiedSkills),
           rules: {
             skill: score.s / 1000,
             proficiency: score.p / 1000,
@@ -331,42 +687,143 @@ export class MatchingService {
 
     await this.publishPlacementMatched({
       shortlistId,
+      runId: request.runId,
       jdId: request.jdId,
       institutionId,
-      companyName: job.companyName,
-      roleTitle: job.roleTitle,
+      companyName: resolved.companyName,
+      roleTitle: resolved.roleTitle,
       studentIds: candidates.map((candidate) => candidate.studentId),
       generatedAt,
+      matchMethod: 'RULES',
     });
 
     return ShortlistDtoSchema.parse({
       shortlistId,
       jdId: request.jdId,
-      companyName: job.companyName,
-      roleTitle: job.roleTitle,
+      companyName: resolved.companyName,
+      roleTitle: resolved.roleTitle,
       generatedAt,
       candidates,
       totalCandidatesConsidered: pool.length,
       eligiblePoolCount: filtered.length,
+      matchMethod: 'RULES',
     });
+  }
+
+  private async useRulesRanker(institutionId: string): Promise<boolean> {
+    const resolved = await this.institutions.resolveInstitutionEntitlements(institutionId);
+    return resolved.flags.find((flag) => flag.key === RULES_RANKER_FLAG)?.enabled ?? false;
+  }
+
+  private async loadSkillCapabilityEvidence(studentIds: readonly string[]): Promise<{
+    competencyResultsByStudent: Map<string, SkillCapabilityCandidate['competencyResults']>;
+    inferredByStudent: Map<string, SkillCapabilityCandidate['inferredCapabilities']>;
+    qlixByStudent: Map<string, SkillCapabilityCandidate['qlixObservations']>;
+  }> {
+    const competencyResultsByStudent = new Map<
+      string,
+      SkillCapabilityCandidate['competencyResults']
+    >();
+    const inferredByStudent = new Map<string, InferredCapabilityRow[]>();
+    const qlixByStudent = new Map<string, QlixCompetencyObservation[]>();
+
+    if (studentIds.length === 0) {
+      return { competencyResultsByStudent, inferredByStudent, qlixByStudent };
+    }
+
+    const [attempts, inferred, projects] = await Promise.all([
+      this.prisma.skillVerificationAttempt.findMany({
+        where: {
+          passed: true,
+          claim: { studentId: { in: [...studentIds] }, status: 'VERIFIED' },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          assessmentResultJson: true,
+          claim: { select: { studentId: true } },
+        },
+      }),
+      this.prisma.studentCapability.findMany({
+        where: { studentId: { in: [...studentIds] } },
+        select: {
+          studentId: true,
+          capabilityLabel: true,
+          skillCode: true,
+          confidenceScore: true,
+          assessmentVerified: true,
+        },
+      }),
+      this.prisma.project.findMany({
+        where: { studentId: { in: [...studentIds] }, qlixCheckResult: { isNot: null } },
+        include: { qlixCheckResult: { select: { smartAssessmentJson: true } } },
+      }),
+    ]);
+
+    const seenAttemptByStudent = new Set<string>();
+    for (const attempt of attempts) {
+      const studentId = attempt.claim.studentId;
+      if (seenAttemptByStudent.has(studentId)) continue;
+      const parsed = AssessmentResultSchema.safeParse(attempt.assessmentResultJson);
+      if (!parsed.success) continue;
+      seenAttemptByStudent.add(studentId);
+      competencyResultsByStudent.set(
+        studentId,
+        parsed.data.competencyResults.map((row) => ({
+          competencyId: row.competencyId,
+          status: row.status,
+        })),
+      );
+    }
+
+    for (const row of inferred) {
+      const bucket = inferredByStudent.get(row.studentId) ?? [];
+      bucket.push({
+        capabilityLabel: row.capabilityLabel,
+        skillCode: row.skillCode,
+        confidenceScore: row.confidenceScore,
+        assessmentVerified: row.assessmentVerified,
+      });
+      inferredByStudent.set(row.studentId, bucket);
+    }
+
+    for (const project of projects) {
+      const parsed = QlixSmartAssessmentSchema.safeParse(
+        project.qlixCheckResult?.smartAssessmentJson,
+      );
+      if (!parsed.success) continue;
+      const bucket = qlixByStudent.get(project.studentId) ?? [];
+      for (const obs of parsed.data.competencyObservations ?? []) {
+        bucket.push({
+          competencyId: obs.competencyId,
+          status: obs.status,
+        });
+      }
+      qlixByStudent.set(project.studentId, bucket);
+    }
+
+    return { competencyResultsByStudent, inferredByStudent, qlixByStudent };
   }
 
   private async publishPlacementMatched(params: {
     shortlistId: string;
+    runId?: string;
     jdId: string;
     institutionId: string;
     companyName: string;
     roleTitle: string;
     studentIds: string[];
     generatedAt: string;
+    matchMethod: MatchMethod;
   }): Promise<void> {
     const data = PlacementMatchedDataSchema.parse({
       shortlistId: params.shortlistId,
+      ...(params.runId ? { runId: params.runId } : {}),
       jdId: params.jdId,
       institutionId: params.institutionId,
       companyName: params.companyName,
       roleTitle: params.roleTitle,
       matchedCount: params.studentIds.length,
+      matchMethod: params.matchMethod,
       studentIds: params.studentIds,
       generatedAt: params.generatedAt,
     });
@@ -379,10 +836,90 @@ export class MatchingService {
     });
   }
 
-  private async resolveJob(
+  private async loadExplainabilityContext(studentIds: readonly string[]): Promise<{
+    capabilitiesByStudent: Map<
+      string,
+      Array<{
+        capabilityLabel: string;
+        skillCode: string | null;
+        assessmentVerified: boolean;
+        confidenceScore: number;
+      }>
+    >;
+    qlixProjectsByStudent: Map<string, QlixProjectExplainability[]>;
+  }> {
+    const capabilitiesByStudent = new Map<
+      string,
+      Array<{
+        capabilityLabel: string;
+        skillCode: string | null;
+        assessmentVerified: boolean;
+        confidenceScore: number;
+      }>
+    >();
+    const qlixProjectsByStudent = new Map<string, QlixProjectExplainability[]>();
+
+    if (studentIds.length === 0) {
+      return { capabilitiesByStudent, qlixProjectsByStudent };
+    }
+
+    const [capabilities, projects] = await Promise.all([
+      this.prisma.studentCapability.findMany({
+        where: { studentId: { in: [...studentIds] } },
+        select: {
+          studentId: true,
+          capabilityLabel: true,
+          skillCode: true,
+          assessmentVerified: true,
+          confidenceScore: true,
+        },
+      }),
+      this.prisma.project.findMany({
+        where: {
+          studentId: { in: [...studentIds] },
+          qlixCheckResult: { isNot: null },
+        },
+        include: {
+          skillMappings: { select: { skillCode: true } },
+          qlixCheckResult: {
+            select: {
+              gaps: true,
+              smartAssessmentJson: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    for (const row of capabilities) {
+      const bucket = capabilitiesByStudent.get(row.studentId) ?? [];
+      bucket.push({
+        capabilityLabel: row.capabilityLabel,
+        skillCode: row.skillCode,
+        assessmentVerified: row.assessmentVerified,
+        confidenceScore: row.confidenceScore,
+      });
+      capabilitiesByStudent.set(row.studentId, bucket);
+    }
+
+    for (const project of projects) {
+      if (!project.qlixCheckResult) continue;
+      const bucket = qlixProjectsByStudent.get(project.studentId) ?? [];
+      bucket.push({
+        skillCodes: project.skillMappings.map((mapping) => mapping.skillCode),
+        gaps: project.qlixCheckResult.gaps,
+        smartAssessmentJson: project.qlixCheckResult.smartAssessmentJson,
+      });
+      qlixProjectsByStudent.set(project.studentId, bucket);
+    }
+
+    return { capabilitiesByStudent, qlixProjectsByStudent };
+  }
+
+  private async resolveOpeningJob(
     institutionId: string,
     jdId: string,
-  ): Promise<{ companyName: string; roleTitle: string; ranker: RankerJob }> {
+  ): Promise<ResolvedOpeningJob> {
     const opening = await this.prisma.jobOpening.findFirst({
       where: { id: jdId, institutionId },
       include: {
@@ -390,9 +927,27 @@ export class MatchingService {
       },
     });
     if (opening) {
+      const openingEligibility: JobOpeningEligibilityCriteria = {
+        minSscPercentage: opening.minSscPercentage ? Number(opening.minSscPercentage) : undefined,
+        minHscPercentage: opening.minHscPercentage ? Number(opening.minHscPercentage) : undefined,
+        minCollegePercentage: opening.minCollegePercentage
+          ? Number(opening.minCollegePercentage)
+          : undefined,
+        backlogsAllowed: opening.backlogsAllowed,
+      };
+      const requiredSkills = opening.requiredSkills.map((row) => ({
+        skillCode: row.skill.code,
+        minProficiency: row.minProficiency,
+      }));
+      const skillCapabilityJob = buildSkillCapabilityJob({
+        requiredSkills,
+        parsedRequirements: opening.parsedRequirements,
+      });
       return {
         companyName: opening.companyName,
         roleTitle: opening.roleTitle,
+        openingEligibility,
+        skillCapabilityJob,
         ranker: {
           requiredSkills: opening.requiredSkills.map((row) => ({
             code: row.skill.code,
@@ -420,7 +975,10 @@ export class MatchingService {
 
     const requiredSkills = parsed.data.emphasisedCompetencies
       .filter((code) => SKILL_CODE_SET.has(code))
-      .map((code) => ({ code, minRank: PROFICIENCY_RANK.BEGINNER }));
+      .map((code) => ({
+        skillCode: code,
+        minProficiency: 'BEGINNER' as const,
+      }));
     if (requiredSkills.length === 0) {
       throw new NotFoundException({
         error: 'not_found',
@@ -432,8 +990,12 @@ export class MatchingService {
     return {
       companyName: jd.companyName,
       roleTitle: jd.roleTitle,
+      skillCapabilityJob: buildSkillCapabilityJob({ requiredSkills }),
       ranker: {
-        requiredSkills,
+        requiredSkills: requiredSkills.map((skill) => ({
+          code: skill.skillCode,
+          minRank: RULES_PROFICIENCY_RANK.BEGINNER,
+        })),
         domainCode: 'SOFTWARE_IT',
         minYearsExperience: null,
         maxYearsExperience: null,
@@ -441,6 +1003,30 @@ export class MatchingService {
       },
     };
   }
+}
+
+interface ResolvedOpeningJob {
+  companyName: string;
+  roleTitle: string;
+  openingEligibility?: JobOpeningEligibilityCriteria;
+  skillCapabilityJob: SkillCapabilityJob;
+  ranker: RankerJob;
+}
+
+function hydrateStudents(rows: RawEligibleStudentRow[]): HydratedStudent[] {
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    primaryTrackCode: row.primaryTrackCode,
+    certificate: row.certificateId
+      ? {
+          id: row.certificateId,
+          highestLevelCleared: row.highestLevelCleared ?? 1,
+          headlineTier: row.headlineTier ?? 'BRONZE',
+        }
+      : null,
+    verifiedSkills: row.skills ?? [],
+  }));
 }
 
 function proficiencyRank(value: string): number {

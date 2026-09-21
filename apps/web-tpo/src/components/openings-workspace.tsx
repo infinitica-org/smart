@@ -6,7 +6,7 @@ import { Briefcase, RefreshCw, Search } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import { JOB_OPENING_STATUSES, type JobOpeningDto, type JobOpeningStatus } from '@smart/contracts';
 import { openingsApi } from '../lib/api';
-import { labelFor, skillNameFor } from '../lib/job-posting';
+import { labelFor, proficiencyLabelFor, skillNameFor } from '../lib/job-posting';
 import {
   chipClass,
   errorNoticeClass,
@@ -25,6 +25,7 @@ import {
   tableHeadCellClass,
   tableRowClass,
 } from '../lib/tpo-ui';
+import { JobOpeningIdLabel } from './placement/JobOpeningIdLabel';
 import { PlacementEmptyState } from './placement/PlacementEmptyState';
 import { PlacementPageHeader } from './placement/PlacementPageHeader';
 
@@ -105,6 +106,7 @@ export function OpeningsWorkspace() {
     return (
       opening.roleTitle.toLowerCase().includes(query) ||
       opening.companyName.toLowerCase().includes(query) ||
+      opening.openingId.toLowerCase().includes(query) ||
       (opening.location && opening.location.toLowerCase().includes(query)) ||
       labelFor(opening.domain).toLowerCase().includes(query)
     );
@@ -200,6 +202,11 @@ export function OpeningsWorkspace() {
                 <p className={`mt-1 text-sm ${mutedTextClass}`}>
                   {inspectedOpening?.companyName ?? 'Loading details…'}
                 </p>
+                {inspectedOpening ? (
+                  <JobOpeningIdLabel openingId={inspectedOpening.openingId} className="mt-2" />
+                ) : selectedOpeningId ? (
+                  <JobOpeningIdLabel openingId={selectedOpeningId} className="mt-2" />
+                ) : null}
               </div>
               <button
                 type="button"
@@ -242,6 +249,9 @@ export function OpeningsWorkspace() {
                         new Date(inspectedOpening.createdAt),
                       )}
                     />
+                    <div className="sm:col-span-2 md:col-span-3">
+                      <JobOpeningIdLabel openingId={inspectedOpening.openingId} />
+                    </div>
                   </dl>
                   <div className="mt-5">
                     <h4 className={`mb-3 ${sectionTitleClass}`}>Required Taxonomy Skills</h4>
@@ -269,7 +279,9 @@ export function OpeningsWorkspace() {
                                   {req.skillCode}
                                 </td>
                                 <td className={tableCellClass}>
-                                  <span className={chipClass}>{labelFor(req.minProficiency)}</span>
+                                  <span className={chipClass}>
+                                    {proficiencyLabelFor(req.minProficiency)}
+                                  </span>
                                 </td>
                               </tr>
                             ))}
@@ -333,6 +345,7 @@ export function OpeningsWorkspace() {
                         <span className={`mt-0.5 block text-xs ${mutedTextClass}`}>
                           {opening.companyName}
                         </span>
+                        <JobOpeningIdLabel openingId={opening.openingId} className="mt-1.5" />
                       </td>
                       <td className={tableCellClass}>{labelFor(opening.domain)}</td>
                       <td className={tableCellClass}>

@@ -162,13 +162,11 @@ import {
   type WorkExperienceWithEvidenceRelations,
 } from './work-experience-evidence.adapter.js';
 import { z } from 'zod';
+import {
+  isAllowedWorkExperienceProofMimeType,
+  normalizeWorkExperienceProofMimeType,
+} from './work-experience-proof.mime.js';
 
-const WE_PROOF_ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-]);
 const WE_PROOF_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
@@ -772,7 +770,8 @@ export class WorkExperienceService {
       });
     }
 
-    if (!WE_PROOF_ALLOWED_MIME_TYPES.has(file.mimeType)) {
+    const normalizedMime = normalizeWorkExperienceProofMimeType(file.fileName, file.mimeType);
+    if (!isAllowedWorkExperienceProofMimeType(normalizedMime)) {
       throw new BadRequestException({
         error: 'validation_failed',
         message: 'Only PDF, JPG, and PNG files are accepted.',
@@ -791,7 +790,7 @@ export class WorkExperienceService {
       buffer: file.buffer,
       namespace: `work-experience-proofs/${studentId}`,
       fileName: file.fileName,
-      contentType: file.mimeType,
+      contentType: normalizedMime,
     });
 
     return this.attachDocument(studentId, experienceId, {
@@ -799,7 +798,7 @@ export class WorkExperienceService {
       fileUrl: objectKey,
       fileName: file.fileName,
       fileSizeBytes: file.buffer.byteLength,
-      mimeType: file.mimeType,
+      mimeType: normalizedMime,
     });
   }
 

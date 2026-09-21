@@ -1,6 +1,7 @@
 import type { JobOpeningAttachedDocument, SkillProficiency } from '@smart/contracts';
 import {
   labelFor,
+  proficiencyLabelFor,
   skillNameFor,
   type JobPostingCompanyLogo,
   type JobPostingFormState,
@@ -95,7 +96,9 @@ export function JobPostingPreview({
                 className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] px-2.5 py-1.5 text-xs text-[var(--ds-text)]"
               >
                 {skillNameFor(code)}
-                <span className={`mt-0.5 block ${mutedTextClass}`}>{labelFor(proficiency)}</span>
+                <span className={`mt-0.5 block ${mutedTextClass}`}>
+                  {proficiencyLabelFor(proficiency)}
+                </span>
               </li>
             ))}
           </ul>

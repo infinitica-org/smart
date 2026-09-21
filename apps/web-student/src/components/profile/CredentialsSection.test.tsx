@@ -48,7 +48,7 @@ describe('CredentialsSection', () => {
 
   it('shows an empty state when there are no credentials', async () => {
     render(<CredentialsSection />);
-    expect(await screen.findByText('No credentials added yet')).toBeDefined();
+    expect(await screen.findByText('No credentials yet')).toBeDefined();
   });
 
   it('creates a credential and always shows it as pending, never trusting a pre-set status', async () => {
@@ -70,9 +70,9 @@ describe('CredentialsSection', () => {
     ]);
 
     render(<CredentialsSection />);
-    await screen.findByText('No credentials added yet');
+    await screen.findByText('No credentials yet');
 
-    fireEvent.click(screen.getByText('Add credential'));
+    fireEvent.click(screen.getByRole('button', { name: /Add your first credential/i }));
     fireEvent.change(screen.getByPlaceholderText('e.g. Amazon Web Services'), {
       target: { value: 'Amazon Web Services' },
     });

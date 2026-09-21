@@ -225,6 +225,48 @@ describe('CandidateEducationService', () => {
       );
     });
 
+    it('persists degreeDetails for college course metadata', async () => {
+      const now = new Date();
+      const degreeDetails = {
+        rollNumber: '22ALR110',
+        currentSemester: 7,
+        semestersPerYear: 2,
+        lateralEntry: false,
+        overallScorePercent: 80.2,
+        semesters: [
+          { semester: 1, performancePercent: 77.8, backlogsTotal: 0, backlogsOngoing: 0 },
+        ],
+      };
+      prismaMock.candidateEducation.create.mockResolvedValue({
+        id: eduId,
+        studentId,
+        institutionName: 'College · Anna University',
+        degree: 'Full-time — B.Tech',
+        fieldOfStudy: 'AIML',
+        startDate: '2021-01-01',
+        endDate: '2026-01-01',
+        current: true,
+        grade: '8.7 CGPA',
+        degreeDetails,
+        status: 'unverified',
+        rejectionReason: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await service.create(studentId, {
+        institutionName: 'College · Anna University',
+        degree: 'Full-time — B.Tech',
+        fieldOfStudy: 'AIML',
+        degreeDetails,
+      });
+
+      expect(result.degreeDetails?.rollNumber).toBe('22ALR110');
+      expect(prismaMock.candidateEducation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ degreeDetails }),
+      });
+    });
+
     it('resets status to unverified when student updates an existing record', async () => {
       const now = new Date();
       prismaMock.candidateEducation.findUnique.mockResolvedValue({

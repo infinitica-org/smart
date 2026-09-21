@@ -3,7 +3,6 @@ import {
   COMPETENCY_STATUS_LABELS,
   competencyLabel,
   summarizeEvidenceContext,
-  targetedAssessmentSkipMessage,
 } from './competency-display';
 
 describe('competency-display', () => {
@@ -16,8 +15,10 @@ describe('competency-display', () => {
   });
 
   it('summarizes empty evidence context for pre-assessment copy', () => {
-    expect(summarizeEvidenceContext(undefined)).toMatch(/no application evidence/i);
-    expect(summarizeEvidenceContext({ availableCount: 0, items: [] })).toMatch(/still verify/i);
+    expect(summarizeEvidenceContext(undefined)).toMatch(/no projects or work experience/i);
+    expect(summarizeEvidenceContext({ availableCount: 0, items: [] })).toMatch(
+      /still take the assessment/i,
+    );
   });
 
   it('summarizes linked evidence items', () => {
@@ -40,11 +41,6 @@ describe('competency-display', () => {
         ],
       }),
     ).toMatch(/API service/);
-  });
-
-  it('explains targeted skip reasons for students', () => {
-    expect(targetedAssessmentSkipMessage('ai_unavailable')).toMatch(/diagnostic only/i);
-    expect(targetedAssessmentSkipMessage('generation_failed')).toMatch(/retry verification/i);
   });
 
   it('labels competency statuses for display', () => {

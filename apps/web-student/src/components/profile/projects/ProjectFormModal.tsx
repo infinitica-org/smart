@@ -2,29 +2,37 @@
 
 import type { GithubRepoSummary } from '@smart/contracts';
 import { Input } from '@smart/ui';
-import { X } from 'lucide-react';
+import { GitBranch, Loader2, PenLine, X } from 'lucide-react';
 import { GithubImportPanel } from '@/components/profile/projects/GithubImportPanel';
+import { ProjectSkillsPicker } from '@/components/profile/projects/ProjectSkillsPicker';
+import type { ProjectSkillOption } from '@/lib/project-form-skills';
 import type { ProjectFormFields } from '@/lib/project-submission';
 import { profilePrimaryButtonClass, profileSecondaryButtonSmClass } from '@/lib/profile-ui-classes';
 
+export type ProjectWizardStep = 'choose' | 'github-list' | 'github-importing' | 'manual';
+
 type ProjectFormModalProps = {
   open: boolean;
+  wizardStep: ProjectWizardStep;
   fields: ProjectFormFields;
   fieldErrors: Partial<Record<keyof ProjectFormFields, string>>;
   isPending: boolean;
   githubLogin: string | null;
-  showImport: boolean;
   repos: GithubRepoSummary[] | null;
   reposLoading: boolean;
   reposError: string | null;
   importingRepo: string | null;
+  skillOptions: readonly ProjectSkillOption[];
+  skillsLoading: boolean;
   onClose: () => void;
   onFieldChange: (key: keyof ProjectFormFields, value: string) => void;
+  onSkillCodesChange: (codes: string[]) => void;
   onSubmit: () => void;
-  onToggleImport: () => void;
+  onChooseGithub: () => void;
+  onChooseManual: () => void;
+  onBackToChoose: () => void;
   onRetryRepos: () => void;
   onSelectRepo: (repo: GithubRepoSummary) => void;
-  onManual: () => void;
 };
 
 const textareaClass =
@@ -32,24 +40,30 @@ const textareaClass =
 
 export function ProjectFormModal({
   open,
+  wizardStep,
   fields,
   fieldErrors,
   isPending,
   githubLogin,
-  showImport,
   repos,
   reposLoading,
   reposError,
   importingRepo,
+  skillOptions,
+  skillsLoading,
   onClose,
   onFieldChange,
+  onSkillCodesChange,
   onSubmit,
-  onToggleImport,
+  onChooseGithub,
+  onChooseManual,
+  onBackToChoose,
   onRetryRepos,
   onSelectRepo,
-  onManual,
 }: ProjectFormModalProps) {
   if (!open) return null;
+
+  const showManualForm = wizardStep === 'manual';
 
   return (
     <div
@@ -70,7 +84,13 @@ export function ProjectFormModal({
               Add project
             </h2>
             <p className="mt-1 text-sm text-[var(--ds-text-muted)]">
-              Build a clear project story that SMART can evaluate.
+              {wizardStep === 'choose'
+                ? 'Choose how you want to add your project.'
+                : wizardStep === 'github-list'
+                  ? 'Pick a repository to import details from GitHub.'
+                  : wizardStep === 'github-importing'
+                    ? 'Fetching repository details…'
+                    : 'Complete your project story for SMART evaluation.'}
             </p>
           </div>
           <button
@@ -84,169 +104,224 @@ export function ProjectFormModal({
         </header>
 
         <div className="flex flex-col gap-6 px-6 py-5">
-          <GithubImportPanel
-            githubLogin={githubLogin}
-            showImport={showImport}
-            repos={repos}
-            reposLoading={reposLoading}
-            reposError={reposError}
-            importingRepo={importingRepo}
-            onToggle={onToggleImport}
-            onRetry={onRetryRepos}
-            onSelectRepo={onSelectRepo}
-            onManual={onManual}
-          />
-
-          <section aria-labelledby="project-overview-heading">
-            <h3
-              id="project-overview-heading"
-              className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
-            >
-              Step 1 · Project overview
-            </h3>
-            <div className="mt-3 grid gap-4">
-              <Input
-                label="Title"
-                name="title"
-                value={fields.title}
-                error={fieldErrors.title}
-                disabled={isPending}
-                onChange={(event) => onFieldChange('title', event.target.value)}
-              />
-              <div className="flex flex-col gap-1.5 text-sm">
-                <label className="font-medium text-[var(--ds-text)]" htmlFor="problem">
-                  Problem
-                </label>
-                <p className="text-xs text-[var(--ds-text-muted)]">
-                  What problem were you solving?
-                </p>
-                <textarea
-                  id="problem"
-                  name="problem"
-                  rows={4}
-                  value={fields.problem}
-                  disabled={isPending}
-                  onChange={(event) => onFieldChange('problem', event.target.value)}
-                  className={textareaClass}
-                  aria-invalid={fieldErrors.problem ? true : undefined}
-                />
-                {fieldErrors.problem ? (
-                  <span className="text-xs text-red-600">{fieldErrors.problem}</span>
-                ) : null}
-              </div>
-              <div className="flex flex-col gap-1.5 text-sm">
-                <label className="font-medium text-[var(--ds-text)]" htmlFor="approach">
-                  Approach
-                </label>
-                <p className="text-xs text-[var(--ds-text-muted)]">
-                  How did you approach the problem?
-                </p>
-                <textarea
-                  id="approach"
-                  name="approach"
-                  rows={4}
-                  value={fields.approach}
-                  disabled={isPending}
-                  onChange={(event) => onFieldChange('approach', event.target.value)}
-                  className={textareaClass}
-                />
-                {fieldErrors.approach ? (
-                  <span className="text-xs text-red-600">{fieldErrors.approach}</span>
-                ) : null}
-              </div>
+          {wizardStep === 'choose' ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onChooseGithub}
+                className="flex flex-col items-start gap-2 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-hover)]/30 p-4 text-left transition hover:border-[var(--ds-green)]/40 hover:bg-[var(--ds-green-soft)]/20"
+              >
+                <GitBranch className="size-5 text-[var(--ds-green)]" aria-hidden="true" />
+                <span className="text-sm font-semibold text-[var(--ds-text)]">
+                  Import from GitHub
+                </span>
+                <span className="text-xs leading-relaxed text-[var(--ds-text-muted)]">
+                  Pull repo metadata and README into the form automatically.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onChooseManual}
+                className="flex flex-col items-start gap-2 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-hover)]/30 p-4 text-left transition hover:border-[var(--ds-green)]/40 hover:bg-[var(--ds-green-soft)]/20"
+              >
+                <PenLine className="size-5 text-[var(--ds-green)]" aria-hidden="true" />
+                <span className="text-sm font-semibold text-[var(--ds-text)]">Add manually</span>
+                <span className="text-xs leading-relaxed text-[var(--ds-text-muted)]">
+                  Enter project details yourself without linking a repository first.
+                </span>
+              </button>
             </div>
-          </section>
+          ) : null}
 
-          <section aria-labelledby="project-implementation-heading">
-            <h3
-              id="project-implementation-heading"
-              className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
-            >
-              Step 2 · Implementation
-            </h3>
-            <div className="mt-3 grid gap-4">
-              <Input
-                label="Technology stack"
-                name="stack"
-                value={fields.stack}
-                error={fieldErrors.stack}
-                disabled={isPending}
-                onChange={(event) => onFieldChange('stack', event.target.value)}
+          {wizardStep === 'github-list' ? (
+            <>
+              <GithubImportPanel
+                githubLogin={githubLogin}
+                showImport
+                repos={repos}
+                reposLoading={reposLoading}
+                reposError={reposError}
+                importingRepo={importingRepo}
+                onToggle={onBackToChoose}
+                onRetry={onRetryRepos}
+                onSelectRepo={onSelectRepo}
+                onManual={onChooseManual}
+                wizardMode
               />
-              <p className="-mt-2 text-xs text-[var(--ds-text-muted)]">
-                Separate technologies with commas.
+              <button
+                type="button"
+                onClick={onBackToChoose}
+                className={profileSecondaryButtonSmClass}
+              >
+                Back
+              </button>
+            </>
+          ) : null}
+
+          {wizardStep === 'github-importing' ? (
+            <div
+              className="flex flex-col items-center justify-center gap-3 rounded-xl border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)]/60 px-6 py-12 text-center"
+              aria-live="polite"
+            >
+              <Loader2 className="size-8 animate-spin text-[var(--ds-green)]" aria-hidden="true" />
+              <p className="text-sm font-semibold text-[var(--ds-text)]">Importing from GitHub</p>
+              <p className="max-w-sm text-xs text-[var(--ds-text-muted)]">
+                {importingRepo
+                  ? `Reading ${importingRepo} and preparing your project draft…`
+                  : 'Preparing your project draft…'}
               </p>
-              <div className="flex flex-col gap-1.5 text-sm">
-                <label className="font-medium text-[var(--ds-text)]" htmlFor="outcome">
-                  Outcome
-                </label>
-                <p className="text-xs text-[var(--ds-text-muted)]">What did the project achieve?</p>
-                <textarea
-                  id="outcome"
-                  name="outcome"
-                  rows={4}
-                  value={fields.outcome}
-                  disabled={isPending}
-                  onChange={(event) => onFieldChange('outcome', event.target.value)}
-                  className={textareaClass}
-                />
-                {fieldErrors.outcome ? (
-                  <span className="text-xs text-red-600">{fieldErrors.outcome}</span>
-                ) : null}
-              </div>
             </div>
-          </section>
+          ) : null}
 
-          <section aria-labelledby="project-links-heading">
-            <h3
-              id="project-links-heading"
-              className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
-            >
-              Step 3 · Links & evidence
-            </h3>
-            <div className="mt-3 grid gap-4">
-              <Input
-                label="GitHub link (optional)"
-                name="githubUrl"
-                type="url"
-                placeholder="https://github.com/org/repo"
-                value={fields.githubUrl}
-                error={fieldErrors.githubUrl}
-                disabled={isPending}
-                onChange={(event) => onFieldChange('githubUrl', event.target.value)}
-              />
-              <Input
-                label="Live link (optional)"
-                name="liveUrl"
-                type="url"
-                placeholder="https://your-project.example.com"
-                value={fields.liveUrl}
-                error={fieldErrors.liveUrl}
-                disabled={isPending}
-                onChange={(event) => onFieldChange('liveUrl', event.target.value)}
-              />
-            </div>
-          </section>
+          {showManualForm ? (
+            <>
+              <section aria-labelledby="project-overview-heading">
+                <h3
+                  id="project-overview-heading"
+                  className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
+                >
+                  Project overview
+                </h3>
+                <div className="mt-3 grid gap-4">
+                  <Input
+                    label="Title"
+                    name="title"
+                    value={fields.title}
+                    error={fieldErrors.title}
+                    disabled={isPending}
+                    onChange={(event) => onFieldChange('title', event.target.value)}
+                  />
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <label className="font-medium text-[var(--ds-text)]" htmlFor="problem">
+                      Problem
+                    </label>
+                    <textarea
+                      id="problem"
+                      name="problem"
+                      rows={4}
+                      value={fields.problem}
+                      disabled={isPending}
+                      onChange={(event) => onFieldChange('problem', event.target.value)}
+                      className={textareaClass}
+                      aria-invalid={fieldErrors.problem ? true : undefined}
+                    />
+                    {fieldErrors.problem ? (
+                      <span className="text-xs text-red-600">{fieldErrors.problem}</span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <label className="font-medium text-[var(--ds-text)]" htmlFor="approach">
+                      Approach
+                    </label>
+                    <textarea
+                      id="approach"
+                      name="approach"
+                      rows={4}
+                      value={fields.approach}
+                      disabled={isPending}
+                      onChange={(event) => onFieldChange('approach', event.target.value)}
+                      className={textareaClass}
+                    />
+                    {fieldErrors.approach ? (
+                      <span className="text-xs text-red-600">{fieldErrors.approach}</span>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+
+              <section aria-labelledby="project-implementation-heading">
+                <h3
+                  id="project-implementation-heading"
+                  className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
+                >
+                  Implementation
+                </h3>
+                <div className="mt-3 grid gap-4">
+                  <ProjectSkillsPicker
+                    options={skillOptions}
+                    selectedCodes={fields.skillCodes}
+                    onChange={onSkillCodesChange}
+                    error={fieldErrors.skillCodes}
+                    disabled={isPending}
+                    loading={skillsLoading}
+                  />
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <label className="font-medium text-[var(--ds-text)]" htmlFor="outcome">
+                      Outcome
+                    </label>
+                    <textarea
+                      id="outcome"
+                      name="outcome"
+                      rows={4}
+                      value={fields.outcome}
+                      disabled={isPending}
+                      onChange={(event) => onFieldChange('outcome', event.target.value)}
+                      className={textareaClass}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section aria-labelledby="project-links-heading">
+                <h3
+                  id="project-links-heading"
+                  className="text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]"
+                >
+                  Links & evidence
+                </h3>
+                <div className="mt-3 grid gap-4">
+                  <Input
+                    label="GitHub link (optional)"
+                    name="githubUrl"
+                    type="url"
+                    placeholder="https://github.com/org/repo"
+                    value={fields.githubUrl}
+                    error={fieldErrors.githubUrl}
+                    disabled={isPending}
+                    onChange={(event) => onFieldChange('githubUrl', event.target.value)}
+                  />
+                  <Input
+                    label="Live link (optional)"
+                    name="liveUrl"
+                    type="url"
+                    placeholder="https://your-project.example.com"
+                    value={fields.liveUrl}
+                    error={fieldErrors.liveUrl}
+                    disabled={isPending}
+                    onChange={(event) => onFieldChange('liveUrl', event.target.value)}
+                  />
+                </div>
+              </section>
+            </>
+          ) : null}
         </div>
 
-        <footer className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className={profileSecondaryButtonSmClass}
-            disabled={isPending}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            className={profilePrimaryButtonClass}
-            disabled={isPending}
-          >
-            {isPending ? 'Submitting…' : 'Submit project'}
-          </button>
-        </footer>
+        {showManualForm ? (
+          <footer className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-6 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className={profileSecondaryButtonSmClass}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              className={profilePrimaryButtonClass}
+              disabled={isPending}
+            >
+              {isPending ? 'Submitting…' : 'Submit project'}
+            </button>
+          </footer>
+        ) : wizardStep === 'choose' ? (
+          <footer className="sticky bottom-0 border-t border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-6 py-4">
+            <button type="button" onClick={onClose} className={profileSecondaryButtonSmClass}>
+              Cancel
+            </button>
+          </footer>
+        ) : null}
       </div>
     </div>
   );

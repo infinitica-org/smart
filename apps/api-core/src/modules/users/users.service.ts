@@ -4,10 +4,14 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type {
+  CandidateResumeFile,
   CandidateResumeStateResponse,
+  DeleteResumeResponse,
   UploadProfilePhotoResponse,
   UploadResumeResponse,
 } from '@smart/contracts';
@@ -22,8 +26,11 @@ import type {
 import {
   CandidateOnboardingDraftSchema,
   CandidateOnboardingProfileSchema,
+  CANDIDATE_RESUME_FILES_MAX,
   CandidateResumeFileSchema,
+  CandidateResumeFilesSchema,
   CompleteCandidateOnboardingRequestSchema,
+  DeleteResumeRequestSchema,
   SaveCandidateOnboardingDraftRequestSchema,
   SMART_TOPICS,
 } from '@smart/contracts';
@@ -32,9 +39,11 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { AuthService, hashPassword, verifyPassword } from '../auth/auth.service.js';
+import {
+  isAllowedProfilePhotoMimeType,
+  normalizeProfilePhotoMimeType,
+} from './profile-photo.mime.js';
 import { resolveProfilePhotoUrl, toAuthenticatedUserWithPhoto } from './profile-photo.util.js';
-
-const PROFILE_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 const RESUME_MIME_TYPES = new Set([
   'application/pdf',
@@ -85,7 +94,8 @@ export class UsersService {
       });
     }
 
-    if (!PROFILE_PHOTO_MIME_TYPES.has(file.mimeType)) {
+    const contentType = normalizeProfilePhotoMimeType(file.fileName, file.mimeType);
+    if (!isAllowedProfilePhotoMimeType(contentType)) {
       throw new BadRequestException({
         error: 'validation_failed',
         message: 'Only JPEG, PNG, and WebP images are accepted.',
@@ -100,12 +110,22 @@ export class UsersService {
       });
     }
 
-    const objectKey = await this.storage.upload({
-      buffer: file.buffer,
-      namespace: `profile-photos/${userId}`,
-      fileName: file.fileName,
-      contentType: file.mimeType,
-    });
+    let objectKey: string;
+    try {
+      objectKey = await this.storage.upload({
+        buffer: file.buffer,
+        namespace: `profile-photos/${userId}`,
+        fileName: file.fileName,
+        contentType,
+      });
+    } catch {
+      throw new ServiceUnavailableException({
+        error: 'storage_unavailable',
+        message:
+          'Profile photo storage is unavailable. Check that MinIO is running and S3_ACCESS_KEY / S3_SECRET_KEY match MINIO_ROOT_USER / MINIO_ROOT_PASSWORD, then restart the API.',
+        statusCode: 503,
+      });
+    }
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -201,6 +221,9 @@ export class UsersService {
         ...(parsed.data.academicScores?.hscPercentage !== undefined
           ? { hscPercentage: parsed.data.academicScores.hscPercentage }
           : {}),
+        ...(parsed.data.academicScores?.hasActiveBacklog !== undefined
+          ? { hasActiveBacklog: parsed.data.academicScores.hasActiveBacklog }
+          : {}),
       },
     });
 
@@ -218,6 +241,15 @@ export class UsersService {
     };
   }
 
+  private readResumeFiles(details: Record<string, unknown>): CandidateResumeFile[] {
+    const parsedArray = CandidateResumeFilesSchema.safeParse(details.resumeFiles);
+    if (parsedArray.success && parsedArray.data.length > 0) {
+      return parsedArray.data;
+    }
+    const single = CandidateResumeFileSchema.safeParse(details.resumeFile);
+    return single.success ? [single.data] : [];
+  }
+
   async getResumeState(userId: string): Promise<CandidateResumeStateResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.role !== 'STUDENT') {
@@ -232,8 +264,8 @@ export class UsersService {
       user.onboardingDetails && typeof user.onboardingDetails === 'object'
         ? (user.onboardingDetails as Record<string, unknown>)
         : {};
-    const parsed = CandidateResumeFileSchema.safeParse(details.resumeFile);
-    return { resumeFile: parsed.success ? parsed.data : null };
+    const resumeFiles = this.readResumeFiles(details);
+    return { resumeFile: resumeFiles[0] ?? null, resumeFiles };
   }
 
   async uploadResume(
@@ -285,14 +317,68 @@ export class UsersService {
       user.onboardingDetails && typeof user.onboardingDetails === 'object'
         ? (user.onboardingDetails as Record<string, unknown>)
         : {};
-    const merged = this.mergeProgressiveProfileDetails(existing, { resumeFile });
+    const currentFiles = this.readResumeFiles(existing);
+    if (currentFiles.length >= CANDIDATE_RESUME_FILES_MAX) {
+      throw new UnprocessableEntityException({
+        error: 'resume_limit_reached',
+        message: `You can store up to ${CANDIDATE_RESUME_FILES_MAX} resume files. Remove one before uploading another.`,
+        statusCode: 422,
+      });
+    }
+
+    const resumeFiles = [resumeFile, ...currentFiles];
+    const merged = this.mergeProgressiveProfileDetails(existing, {
+      resumeFile,
+      resumeFiles,
+    });
 
     await this.prisma.user.update({
       where: { id: userId },
       data: { onboardingDetails: merged as Prisma.InputJsonValue },
     });
 
-    return { resumeFile };
+    return { resumeFile, resumeFiles };
+  }
+
+  async deleteResume(userId: string, body: unknown): Promise<DeleteResumeResponse> {
+    const { objectKey } = DeleteResumeRequestSchema.parse(body);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'STUDENT') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Only students may manage resume files.',
+        statusCode: 403,
+      });
+    }
+
+    const existing =
+      user.onboardingDetails && typeof user.onboardingDetails === 'object'
+        ? (user.onboardingDetails as Record<string, unknown>)
+        : {};
+    const currentFiles = this.readResumeFiles(existing);
+    const resumeFiles = currentFiles.filter((file) => file.objectKey !== objectKey);
+    if (resumeFiles.length === currentFiles.length) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Resume file not found.',
+        statusCode: 404,
+      });
+    }
+
+    const merged = this.mergeProgressiveProfileDetails(existing, {
+      resumeFiles,
+      resumeFile: resumeFiles[0] ?? null,
+    });
+    if (!resumeFiles[0]) {
+      delete merged.resumeFile;
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardingDetails: merged as Prisma.InputJsonValue },
+    });
+
+    return { resumeFiles };
   }
 
   private mergeProgressiveProfileDetails(
@@ -412,6 +498,7 @@ export class UsersService {
         cgpa: request.academicScores?.cgpa ?? undefined,
         sscPercentage: request.academicScores?.sscPercentage ?? undefined,
         hscPercentage: request.academicScores?.hscPercentage ?? undefined,
+        hasActiveBacklog: request.academicScores?.hasActiveBacklog ?? undefined,
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });

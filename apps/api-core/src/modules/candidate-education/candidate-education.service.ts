@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { CandidateEducationDocumentDto, CandidateEducationDto } from '@smart/contracts';
 import {
+  CandidateDegreeDetailsSchema,
   CandidateEducationDocumentSchema,
   CandidateEducationSchema,
   CreateCandidateEducationDocumentSchema,
@@ -14,6 +15,7 @@ import {
   RejectCandidateEducationSchema,
   UpdateCandidateEducationSchema,
 } from '@smart/contracts';
+import { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 
@@ -118,6 +120,7 @@ export class CandidateEducationService {
         endDate: parsed.data.endDate || null,
         current: parsed.data.current ?? false,
         grade: parsed.data.grade || null,
+        degreeDetails: this.parseDegreeDetailsForDb(parsed.data.degreeDetails),
         status: 'unverified',
         rejectionReason: null,
       },
@@ -154,6 +157,9 @@ export class CandidateEducationService {
         ...(parsed.data.endDate !== undefined ? { endDate: parsed.data.endDate || null } : {}),
         ...(parsed.data.current !== undefined ? { current: parsed.data.current } : {}),
         ...(parsed.data.grade !== undefined ? { grade: parsed.data.grade || null } : {}),
+        ...(parsed.data.degreeDetails !== undefined
+          ? { degreeDetails: this.parseDegreeDetailsForDb(parsed.data.degreeDetails) }
+          : {}),
         status: 'unverified',
         rejectionReason: null,
       },
@@ -331,6 +337,30 @@ export class CandidateEducationService {
     });
   }
 
+  private parseDegreeDetailsForDb(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    if (value === null || value === undefined) {
+      return Prisma.DbNull;
+    }
+    const parsed = CandidateDegreeDetailsSchema.safeParse(value);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Invalid degree details payload.',
+        statusCode: 400,
+        details: parsed.error.flatten(),
+      });
+    }
+    return parsed.data as Prisma.InputJsonValue;
+  }
+
+  private mapDegreeDetailsFromDb(value: unknown) {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = CandidateDegreeDetailsSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+  }
+
   private mapToDto(r: {
     id: string;
     studentId: string;
@@ -341,6 +371,7 @@ export class CandidateEducationService {
     endDate: string | null;
     current: boolean;
     grade: string | null;
+    degreeDetails?: unknown;
     status: string;
     rejectionReason: string | null;
     createdAt: Date;
@@ -366,6 +397,7 @@ export class CandidateEducationService {
       endDate: r.endDate,
       current: r.current,
       grade: r.grade,
+      degreeDetails: this.mapDegreeDetailsFromDb(r.degreeDetails),
       status: r.status,
       rejectionReason: r.rejectionReason,
       documents: (r.documents ?? []).map((doc) => this.mapDocumentToDto(doc)),

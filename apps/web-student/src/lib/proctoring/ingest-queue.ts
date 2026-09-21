@@ -1,6 +1,6 @@
 import type { ProctoringViolationKind } from '@smart/contracts';
 
-const DEFAULT_DEBOUNCE_MS = 400;
+const DEFAULT_DEBOUNCE_MS = 3_000;
 
 /**
  * Ingests HMAC-signed violations. Queues until the snapshot secret exists so the

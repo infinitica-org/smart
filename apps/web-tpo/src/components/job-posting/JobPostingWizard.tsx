@@ -18,8 +18,10 @@ import {
   JOB_POSTING_STEPS,
   buildCreateOpeningPayload,
   clearJobPostingDraft,
+  friendlyOpeningError,
   isCreateOpeningPayload,
   labelFor,
+  proficiencyLabelFor,
   loadJobPostingDraft,
   saveJobPostingDraft,
   skillNameFor,
@@ -42,6 +44,7 @@ import { JobPostingAttachedDocuments } from './JobPostingAttachedDocuments';
 import { JobPostingCompanyLogoField } from './JobPostingCompanyLogo';
 import { JobPostingPreview } from './JobPostingPreview';
 import { JobPostingStepper } from './JobPostingStepper';
+import { CompanyEmployerSelect } from '../placement/CompanyEmployerSelect';
 import {
   JobPostingSelectField,
   JobPostingTextArea,
@@ -119,13 +122,13 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
 
     const parsed = buildCreateOpeningPayload(form, skills, attachedDocuments, companyLogo);
     if (!isCreateOpeningPayload(parsed)) {
-      setFormError(parsed.error.issues[0]?.message ?? 'Check the opening details.');
+      setFormError(friendlyOpeningError(parsed.error.issues));
       return;
     }
 
     setSubmitting(true);
     try {
-      await openingsApi.create(parsed.data);
+      const created = await openingsApi.create(parsed.data);
       setForm(EMPTY_JOB_POSTING_FORM);
       setSkills(new Map());
       setSkillToAdd('');
@@ -133,7 +136,9 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
       setCompanyLogo(null);
       setStep('company-role');
       clearJobPostingDraft();
-      setSuccess('Job opening saved in Draft status.');
+      setSuccess(
+        `Job opening saved in Draft status. Job ID: ${created.openingId} — use this reference in Listed Openings and matching.`,
+      );
       await onCreated();
     } catch (caught) {
       setFormError(errorMessage(caught, 'Could not create the job opening.'));
@@ -199,13 +204,25 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                 Basic organization and role information for students.
               </p>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <JobPostingTextField
-                  label="Company name"
-                  value={form.companyName}
-                  onChange={(event) => updateForm({ companyName: event.target.value })}
-                  required
-                  placeholder="e.g. Infinitica Labs"
-                />
+                <div className="md:col-span-2">
+                  <CompanyEmployerSelect
+                    employerId={form.employerId}
+                    companyName={form.companyName}
+                    onSelect={(employer) =>
+                      updateForm({
+                        employerId: employer.employerId,
+                        companyName: employer.name,
+                        location: form.location || employer.location || '',
+                        aboutCompany: form.aboutCompany || employer.aboutCompany || '',
+                        companyOffers: form.companyOffers || employer.companyOffers || '',
+                        additionalCompanyDetails:
+                          form.additionalCompanyDetails || employer.additionalCompanyDetails || '',
+                      })
+                    }
+                    onClear={() => updateForm({ employerId: '', companyName: '' })}
+                    onCompanyNameDraft={(name) => updateForm({ companyName: name, employerId: '' })}
+                  />
+                </div>
                 <JobPostingTextField
                   label="Role title"
                   value={form.roleTitle}
@@ -239,7 +256,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'about-company' ? (
+          {step === 'company-role' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>About the Company</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -268,7 +285,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'role-details' ? (
+          {step === 'role-requirements' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Role Details</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -293,7 +310,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'requirements' ? (
+          {step === 'role-requirements' ? (
             <section className={cardClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -305,6 +322,65 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                 <button type="button" className={primaryButtonClass} onClick={() => go(1)}>
                   Save & Continue
                 </button>
+              </div>
+              <div className="mt-6 border-t border-[var(--ds-border-subtle)] pt-6">
+                <h3 className="text-sm font-semibold text-[var(--ds-text)]">
+                  Eligibility criteria
+                </h3>
+                <p className={`mt-1 text-sm ${mutedTextClass}`}>
+                  Students must meet these thresholds to appear in matching and be shortlisted for
+                  this drive. Leave blank to skip a rule.
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <JobPostingTextField
+                    label="Minimum 10th / SSC (%)"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={form.minSscPercentage}
+                    onChange={(event) => updateForm({ minSscPercentage: event.target.value })}
+                    placeholder="e.g. 60"
+                  />
+                  <JobPostingTextField
+                    label="Minimum 12th / diploma (%)"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={form.minHscPercentage}
+                    onChange={(event) => updateForm({ minHscPercentage: event.target.value })}
+                    placeholder="e.g. 65"
+                  />
+                  <JobPostingTextField
+                    label="Minimum college (%)"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={form.minCollegePercentage}
+                    onChange={(event) => updateForm({ minCollegePercentage: event.target.value })}
+                    placeholder="CGPA × 10 — e.g. 70 for 7.0 CGPA"
+                  />
+                  <label className="grid gap-1.5">
+                    <span className="text-sm font-semibold text-[var(--ds-text)]">
+                      Active backlogs allowed?
+                    </span>
+                    <select
+                      className={inputClass}
+                      value={form.backlogsAllowedChoice}
+                      onChange={(event) =>
+                        updateForm({
+                          backlogsAllowedChoice: event.target.value as 'yes' | 'no',
+                        })
+                      }
+                      aria-label="Active backlogs allowed"
+                    >
+                      <option value="yes">Yes — students with backlogs may apply</option>
+                      <option value="no">No — only students without active backlogs</option>
+                    </select>
+                  </label>
+                </div>
               </div>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <JobPostingTextField
@@ -397,7 +473,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                           >
                             {SKILL_PROFICIENCIES.map((level) => (
                               <option key={level} value={level}>
-                                {labelFor(level)}
+                                {proficiencyLabelFor(level)}
                               </option>
                             ))}
                           </select>
@@ -410,7 +486,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'hiring-process' ? (
+          {step === 'hiring-drive' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Hiring Process</h2>
               <div className="mt-5 flex flex-col gap-4">
@@ -440,7 +516,7 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
             </section>
           ) : null}
 
-          {step === 'drive-details' ? (
+          {step === 'hiring-drive' ? (
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>Drive Details</h2>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -457,15 +533,6 @@ export function JobPostingWizard({ onCreated }: { onCreated: () => Promise<void>
                   onChange={(event) => updateForm({ lastDateToApply: event.target.value })}
                 />
               </div>
-              {form.driveSpoc.trim() ? (
-                <p className={`mt-4 text-sm ${mutedTextClass}`}>
-                  Drive SPOC:{' '}
-                  <span className="font-semibold text-[var(--ds-text)]">
-                    {form.driveSpoc.trim()}
-                  </span>{' '}
-                  (edit on Hiring Process)
-                </p>
-              ) : null}
             </section>
           ) : null}
 
@@ -573,9 +640,18 @@ function ReviewSections({
           value={
             skills.size === 0
               ? 'None'
-              : [...skills].map(([code, p]) => `${skillNameFor(code)} (${labelFor(p)})`).join(', ')
+              : [...skills]
+                  .map(([code, p]) => `${skillNameFor(code)} (${proficiencyLabelFor(p)})`)
+                  .join(', ')
           }
           fullWidth
+        />
+        <ReviewItem label="10th min (%)" value={form.minSscPercentage.trim() || 'Any'} />
+        <ReviewItem label="12th / diploma min (%)" value={form.minHscPercentage.trim() || 'Any'} />
+        <ReviewItem label="College min (%)" value={form.minCollegePercentage.trim() || 'Any'} />
+        <ReviewItem
+          label="Backlogs"
+          value={form.backlogsAllowedChoice === 'yes' ? 'Allowed' : 'Not allowed'}
         />
       </ReviewGroup>
       <ReviewGroup title="Hiring Process">

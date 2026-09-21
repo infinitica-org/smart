@@ -70,22 +70,26 @@ function level(
   };
 }
 
-type OpenSpec = {
-  readonly open: readonly SdeV4Format[];
-  readonly flavors: readonly string[];
+type FlavorSpec = {
+  readonly beginner: readonly string[];
+  readonly intermediate: readonly string[];
+  readonly advanced: readonly string[];
+  readonly professional: readonly string[];
 };
 
-function codingLevels(
-  beginner: OpenSpec,
-  intermediate: OpenSpec,
-  advanced: OpenSpec,
-  professional: OpenSpec,
+/** Open items are only CODING (coding family) or SCENARIO (applied family) — no DEBUG / DESIGN_REASONING. */
+function levelsForFamily(
+  taskFamily: SdeV4TaskFamily,
+  flavors: FlavorSpec,
 ): SdeV4SkillDefinition['levels'] {
+  const openFormat: SdeV4Format = taskFamily === 'CODING' ? 'CODING' : 'SCENARIO';
+  const open = (count: number): readonly SdeV4Format[] =>
+    Array.from({ length: count }, () => openFormat);
   return {
-    BEGINNER: level('BEGINNER', beginner.open, beginner.flavors),
-    INTERMEDIATE: level('INTERMEDIATE', intermediate.open, intermediate.flavors),
-    ADVANCED: level('ADVANCED', advanced.open, advanced.flavors),
-    PROFESSIONAL: level('PROFESSIONAL', professional.open, professional.flavors),
+    BEGINNER: level('BEGINNER', open(1), flavors.beginner),
+    INTERMEDIATE: level('INTERMEDIATE', open(2), flavors.intermediate),
+    ADVANCED: level('ADVANCED', open(3), flavors.advanced),
+    PROFESSIONAL: level('PROFESSIONAL', open(3), flavors.professional),
   };
 }
 
@@ -94,185 +98,126 @@ export const SDE_V4_SKILLS: readonly SdeV4SkillDefinition[] = [
     code: 'SDE_PROGRAMMING_FUNDAMENTALS',
     name: 'Programming Fundamentals',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Easy coding task'] },
-      { open: ['CODING', 'CODING'], flavors: ['Two medium coding tasks'] },
-      { open: ['CODING', 'CODING', 'DEBUG'], flavors: ['Two hard coding tasks', 'Debug task'] },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Optimised coding', 'Multi-bug debug', 'Design reasoning'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Easy coding task'],
+      intermediate: ['Two medium coding tasks'],
+      advanced: ['Two hard coding tasks', 'Third hard coding task'],
+      professional: ['Optimised coding', 'Integration coding', 'Hard coding with trade-offs'],
+    }),
   },
   {
     code: 'SDE_DSA',
     name: 'Data Structures & Algorithms',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Easy coding task'] },
-      { open: ['CODING', 'CODING'], flavors: ['Two medium coding tasks'] },
-      { open: ['CODING', 'CODING', 'DEBUG'], flavors: ['Two hard coding tasks', 'Debug task'] },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard coding', 'Debug', 'Design: pick the right structure'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Easy coding task'],
+      intermediate: ['Two medium coding tasks'],
+      advanced: ['Two hard coding tasks', 'Third hard coding task'],
+      professional: ['Hard coding', 'Complexity-aware coding', 'Pick the right structure'],
+    }),
   },
   {
     code: 'SDE_OOP',
     name: 'OOP Concepts',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Easy class/method coding'] },
-      { open: ['CODING', 'CODING'], flavors: ['Class design', 'Second medium coding task'] },
-      {
-        open: ['CODING', 'CODING', 'DEBUG'],
-        flavors: ['Multi-class coding', 'Hard coding', 'Debug task'],
-      },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard coding', 'Debug', 'Design: pattern refactor'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Easy class/method coding'],
+      intermediate: ['Class design', 'Second medium coding task'],
+      advanced: ['Multi-class coding', 'Hard coding', 'Third OOP coding task'],
+      professional: ['Hard coding', 'Refactor coding', 'Pattern-oriented coding'],
+    }),
   },
   {
     code: 'SDE_DATABASE_SQL',
     name: 'Database & SQL',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Write a simple query'] },
-      { open: ['CODING', 'CODING'], flavors: ['Write query', 'Second query task'] },
-      {
-        open: ['CODING', 'CODING', 'DEBUG'],
-        flavors: ['Joins/subqueries', 'Hard SQL', 'Debug task'],
-      },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard query', 'Debug: perf/index', 'Design: schema'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Write a simple query'],
+      intermediate: ['Write query', 'Second query task'],
+      advanced: ['Joins/subqueries', 'Hard SQL', 'Third SQL coding task'],
+      professional: ['Hard query', 'Performance-oriented SQL', 'Schema-oriented SQL task'],
+    }),
   },
   {
     code: 'SDE_OPERATING_SYSTEMS',
     name: 'Operating Systems',
     taskFamily: 'APPLIED',
-    levels: codingLevels(
-      { open: ['SCENARIO'], flavors: ['Easy applied OS scenario'] },
-      { open: ['SCENARIO', 'SCENARIO'], flavors: ['Two medium OS scenarios'] },
-      {
-        open: ['SCENARIO', 'SCENARIO', 'DEBUG'],
-        flavors: ['Two hard OS scenarios', 'Debug: trace deadlock'],
-      },
-      {
-        open: ['SCENARIO', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard OS scenario', 'Debug: trace analysis', 'Design reasoning'],
-      },
-    ),
+    levels: levelsForFamily('APPLIED', {
+      beginner: ['Easy applied OS scenario'],
+      intermediate: ['Two medium OS scenarios'],
+      advanced: ['Two hard OS scenarios', 'Third OS scenario (e.g. deadlock)'],
+      professional: ['Hard OS scenario', 'Trace/analysis scenario', 'Design trade-off scenario'],
+    }),
   },
   {
     code: 'SDE_COMPUTER_NETWORKS',
     name: 'Computer Networks',
     taskFamily: 'APPLIED',
-    levels: codingLevels(
-      { open: ['SCENARIO'], flavors: ['Easy applied networking scenario'] },
-      { open: ['SCENARIO', 'SCENARIO'], flavors: ['Two medium networking scenarios'] },
-      {
-        open: ['SCENARIO', 'SCENARIO', 'DEBUG'],
-        flavors: ['Two hard networking scenarios', 'Debug: fix misconfig'],
-      },
-      {
-        open: ['SCENARIO', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard networking scenario', 'Debug: log analysis', 'Design: topology'],
-      },
-    ),
+    levels: levelsForFamily('APPLIED', {
+      beginner: ['Easy applied networking scenario'],
+      intermediate: ['Two medium networking scenarios'],
+      advanced: ['Two hard networking scenarios', 'Third networking scenario'],
+      professional: ['Hard networking scenario', 'Troubleshooting scenario', 'Topology trade-offs'],
+    }),
   },
   {
     code: 'SDE_GIT',
     name: 'Git & Version Control',
     taskFamily: 'APPLIED',
-    levels: codingLevels(
-      { open: ['SCENARIO'], flavors: ['Easy Git scenario'] },
-      { open: ['SCENARIO', 'SCENARIO'], flavors: ['Branch/merge scenario', 'Second medium Git'] },
-      {
-        open: ['SCENARIO', 'SCENARIO', 'DEBUG'],
-        flavors: ['Two hard Git scenarios', 'Debug: broken history'],
-      },
-      {
-        open: ['SCENARIO', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard Git scenario', 'Debug: repo recovery', 'Design: branching strategy'],
-      },
-    ),
+    levels: levelsForFamily('APPLIED', {
+      beginner: ['Easy Git scenario'],
+      intermediate: ['Branch/merge scenario', 'Second medium Git scenario'],
+      advanced: ['Two hard Git scenarios', 'Third Git scenario'],
+      professional: ['Hard Git scenario', 'Recovery scenario', 'Branching strategy scenario'],
+    }),
   },
   {
     code: 'SDE_WEB_FRAMEWORKS',
     name: 'Web Frameworks (React/Node)',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Easy component or endpoint'] },
-      {
-        open: ['CODING', 'CODING'],
-        flavors: ['Component/endpoint', 'Second medium coding task'],
-      },
-      {
-        open: ['CODING', 'CODING', 'DEBUG'],
-        flavors: ['Stateful coding', 'Hard coding', 'Debug task'],
-      },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Integration coding', 'Debug', 'Design reasoning'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Easy component or endpoint'],
+      intermediate: ['Component/endpoint', 'Second medium coding task'],
+      advanced: ['Stateful coding', 'Hard coding', 'Third UI/API coding task'],
+      professional: ['Integration coding', 'Hard coding', 'Architecture trade-off coding'],
+    }),
   },
   {
     code: 'SDE_SYSTEM_DESIGN',
     name: 'System Design & Architecture',
     taskFamily: 'APPLIED',
-    levels: codingLevels(
-      { open: ['SCENARIO'], flavors: ['Easy design scenario'] },
-      { open: ['SCENARIO', 'SCENARIO'], flavors: ['Basic design', 'Second medium scenario'] },
-      {
-        open: ['SCENARIO', 'DESIGN_REASONING', 'DEBUG'],
-        flavors: ['Hard scenario', 'Design reasoning', 'Debug: spot flaw'],
-      },
-      {
-        open: ['SCENARIO', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard scenario', 'Debug: bottleneck', 'Design: deep'],
-      },
-    ),
+    levels: levelsForFamily('APPLIED', {
+      beginner: ['Easy design scenario'],
+      intermediate: ['Basic design', 'Second medium scenario'],
+      advanced: ['Hard scenario', 'Design trade-offs scenario', 'Spot-the-flaw scenario'],
+      professional: ['Hard scenario', 'Bottleneck scenario', 'Deep design scenario'],
+    }),
   },
   {
     code: 'SDE_TESTING',
     name: 'Testing & Debugging',
     taskFamily: 'CODING',
-    levels: codingLevels(
-      { open: ['CODING'], flavors: ['Easy coding: write a test'] },
-      { open: ['CODING', 'CODING'], flavors: ['Write tests', 'Second medium coding'] },
-      {
-        open: ['CODING', 'CODING', 'DEBUG'],
-        flavors: ['Test suite', 'Hard coding', 'Debug task'],
-      },
-      {
-        open: ['CODING', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Edge-case suite', 'Debug: root cause', 'Design reasoning'],
-      },
-    ),
+    levels: levelsForFamily('CODING', {
+      beginner: ['Easy coding: write a test'],
+      intermediate: ['Write tests', 'Second medium coding'],
+      advanced: ['Test suite coding', 'Hard coding', 'Third testing-focused coding task'],
+      professional: ['Edge-case suite', 'Root-cause coding', 'Test design coding'],
+    }),
   },
   {
     code: 'SDE_DEPLOYMENT_CICD',
     name: 'Deployment & CI/CD',
     taskFamily: 'APPLIED',
-    levels: codingLevels(
-      { open: ['SCENARIO'], flavors: ['Easy pipeline/deploy scenario'] },
-      { open: ['SCENARIO', 'SCENARIO'], flavors: ['Pipeline config', 'Second medium scenario'] },
-      {
-        open: ['SCENARIO', 'SCENARIO', 'DEBUG'],
-        flavors: ['Two hard deploy scenarios', 'Debug: fix pipeline'],
-      },
-      {
-        open: ['SCENARIO', 'DEBUG', 'DESIGN_REASONING'],
-        flavors: ['Hard deploy scenario', 'Debug: deploy failure', 'Design: release strategy'],
-      },
-    ),
+    levels: levelsForFamily('APPLIED', {
+      beginner: ['Easy pipeline/deploy scenario'],
+      intermediate: ['Pipeline config', 'Second medium scenario'],
+      advanced: ['Two hard deploy scenarios', 'Third deploy scenario'],
+      professional: [
+        'Hard deploy scenario',
+        'Pipeline failure scenario',
+        'Release strategy scenario',
+      ],
+    }),
   },
 ];
 

@@ -66,6 +66,28 @@ export const JobDescriptionDtoSchema = z.object({
 });
 export type JobDescriptionDto = z.infer<typeof JobDescriptionDtoSchema>;
 
+export const SkillRequirementSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  minProficiency: SkillProficiencySchema,
+});
+export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
+
+/** LLM output for jd-skill-extract@1 — maps JD prose to skill@1 + blueprint competencies. */
+export const EmphasisedCapabilitySchema = z.object({
+  competencyId: UuidSchema,
+  capability: z.string().min(1).max(500),
+  skillCode: TaxonomySkillCodeSchema,
+  role: z.enum(['critical', 'core', 'supporting']).default('core'),
+});
+export type EmphasisedCapability = z.infer<typeof EmphasisedCapabilitySchema>;
+
+export const JdSkillExtractVectorSchema = z.object({
+  requiredSkills: z.array(SkillRequirementSchema).max(20),
+  emphasisedCapabilities: z.array(EmphasisedCapabilitySchema).max(30),
+  parseConfidence: z.number().min(0).max(1),
+});
+export type JdSkillExtractVector = z.infer<typeof JdSkillExtractVectorSchema>;
+
 /* --------------------------------- matching -------------------------------- */
 
 export const MatchRequestSchema = z.object({
@@ -88,8 +110,48 @@ export const MatchRequestSchema = z.object({
     })
     .optional(),
   limit: z.number().int().min(1).max(500).default(50),
+  /** Minimum verified skill coverage (0–1) before a candidate enters the ranked shortlist. */
+  minSkillCoverage: z.number().min(0).max(1).default(0.6),
 });
 export type MatchRequest = z.infer<typeof MatchRequestSchema>;
+
+export const SKILL_FIT_STATUSES = ['MET', 'PARTIAL', 'MISSING'] as const;
+export const SkillFitStatusSchema = z.enum(SKILL_FIT_STATUSES);
+export type SkillFitStatus = z.infer<typeof SkillFitStatusSchema>;
+
+export const SkillFitRowSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  skillName: z.string(),
+  status: SkillFitStatusSchema,
+  requiredProficiency: SkillProficiencySchema,
+  actualProficiency: SkillProficiencySchema.nullable(),
+});
+export type SkillFitRow = z.infer<typeof SkillFitRowSchema>;
+
+/** Verified skill held by the candidate at match time (TPO card context). */
+export const VerifiedSkillSummarySchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  skillName: z.string(),
+  proficiency: SkillProficiencySchema,
+});
+export type VerifiedSkillSummary = z.infer<typeof VerifiedSkillSummarySchema>;
+
+export const MATCH_EVIDENCE_SOURCES = ['ASSESSMENT', 'INFERRED', 'QLIX', 'NONE'] as const;
+export const MatchEvidenceSourceSchema = z.enum(MATCH_EVIDENCE_SOURCES);
+export type MatchEvidenceSource = z.infer<typeof MatchEvidenceSourceSchema>;
+
+export const CapabilityFitRowSchema = z.object({
+  competencyId: UuidSchema,
+  capability: z.string(),
+  skillCode: TaxonomySkillCodeSchema,
+  hitScore: z.number().min(0).max(1),
+  evidenceSource: MatchEvidenceSourceSchema,
+});
+export type CapabilityFitRow = z.infer<typeof CapabilityFitRowSchema>;
+
+export const POTENTIAL_FIT_BANDS = ['STRONG', 'MODERATE', 'STRETCH'] as const;
+export const PotentialFitSchema = z.enum(POTENTIAL_FIT_BANDS);
+export type PotentialFit = z.infer<typeof PotentialFitSchema>;
 
 /**
  * One matched candidate. `explanation` is required, not optional: a TPO must be
@@ -128,6 +190,21 @@ export const CandidateMatchDtoSchema = z.object({
         location: z.number().min(0).max(1),
       })
       .optional(),
+    skillCoveragePct: z.number().min(0).max(1).optional(),
+    capabilityCoveragePct: z.number().min(0).max(1).optional(),
+    potentialFit: PotentialFitSchema.optional(),
+    skillFit: z.array(SkillFitRowSchema).optional(),
+    capabilityFit: z.array(CapabilityFitRowSchema).optional(),
+    recruiterSummary: z.string().max(500).optional(),
+    studentSummary: z.string().max(500).optional(),
+    skillCapability: z
+      .object({
+        skill: z.number().min(0).max(1),
+        proficiency: z.number().min(0).max(1),
+        capability: z.number().min(0).max(1),
+      })
+      .optional(),
+    verifiedSkills: z.array(VerifiedSkillSummarySchema).optional(),
   }),
 });
 export type CandidateMatchDto = z.infer<typeof CandidateMatchDtoSchema>;
@@ -142,8 +219,41 @@ export const ShortlistDtoSchema = z.object({
   totalCandidatesConsidered: z.number().int(),
   /** S6-VV-76 — pre-ranking eligible-pool size (post batch/CGPA/skill filters). */
   eligiblePoolCount: z.number().int(),
+  matchMethod: MatchMethodSchema.optional(),
+  minSkillCoverageApplied: z.number().min(0).max(1).optional(),
+  jobRequirements: z
+    .object({
+      skills: z.array(SkillRequirementSchema),
+      capabilities: z.array(EmphasisedCapabilitySchema),
+    })
+    .optional(),
 });
 export type ShortlistDto = z.infer<typeof ShortlistDtoSchema>;
+
+/** Single-candidate fit drill-down (TPO or student view). */
+export const MatchFitDtoSchema = z.object({
+  studentId: UuidSchema,
+  openingId: UuidSchema.optional(),
+  applicationId: UuidSchema.optional(),
+  runId: UuidSchema.optional(),
+  roleTitle: z.string(),
+  companyName: z.string(),
+  matchScore: z.number().min(0).max(1),
+  method: MatchMethodSchema,
+  skillCoveragePct: z.number().min(0).max(1),
+  capabilityCoveragePct: z.number().min(0).max(1),
+  potentialFit: PotentialFitSchema,
+  skillFit: z.array(SkillFitRowSchema),
+  capabilityFit: z.array(CapabilityFitRowSchema),
+  skillGaps: z.array(SkillFitRowSchema),
+  competencyGaps: z.array(CapabilityFitRowSchema),
+  strongCompetencies: z.array(z.string()),
+  gapCompetencies: z.array(z.string()),
+  why: z.string().max(280).optional(),
+  recruiterSummary: z.string().max(500).optional(),
+  studentSummary: z.string().max(500).optional(),
+});
+export type MatchFitDto = z.infer<typeof MatchFitDtoSchema>;
 
 /* ------------------------------ async match runs ---------------------------- */
 
@@ -200,17 +310,22 @@ export const RecordOutcomeRequestSchema = PlacementRecordDtoSchema.omit({
 });
 export type RecordOutcomeRequest = z.infer<typeof RecordOutcomeRequestSchema>;
 
+/** Company placement-stats page: every recorded outcome for one company (yearwise CTC). */
+export const ListPlacementOutcomesQuerySchema = z.object({
+  companyName: z.string().trim().min(1).max(150),
+});
+export type ListPlacementOutcomesQuery = z.infer<typeof ListPlacementOutcomesQuerySchema>;
+
+export const ListPlacementOutcomesResponseSchema = z.object({
+  records: z.array(PlacementRecordDtoSchema),
+});
+export type ListPlacementOutcomesResponse = z.infer<typeof ListPlacementOutcomesResponseSchema>;
+
 /* ----------------------- structured openings (PRD MMP) ---------------------- */
 
 export const SkillTaxonomyDomainSchema = z.enum(SKILL_TAXONOMY_DOMAINS);
 
 export { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
-
-export const SkillRequirementSchema = z.object({
-  skillCode: TaxonomySkillCodeSchema,
-  minProficiency: SkillProficiencySchema,
-});
-export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
 
 /**
  * TPO create body. `institutionId` is taken from the access-token `inst`
@@ -251,6 +366,8 @@ export const JobOpeningFieldsSchema = z.object({
   domain: SkillTaxonomyDomainSchema,
   categoryId: SkillCategoryIdSchema.optional(),
   requiredSkills: z.array(SkillRequirementSchema).min(1).max(20),
+  /** Optional free-text JD; parsed asynchronously into skills + capabilities. */
+  rawText: z.string().max(50_000).optional(),
   minYearsExperience: z.number().int().min(0).max(40),
   maxYearsExperience: z.number().int().min(0).max(40),
   location: z.string().min(1).max(120),
@@ -267,38 +384,70 @@ export const JobOpeningFieldsSchema = z.object({
   driveSpoc: z.string().min(1).max(200).optional(),
   driveDate: IsoDateSchema.optional(),
   lastDateToApply: IsoDateSchema.optional(),
+  minSscPercentage: z.number().min(0).max(100).optional(),
+  minHscPercentage: z.number().min(0).max(100).optional(),
+  /** Minimum college score as percentage; matched against student CGPA (`cgpa * 10`). */
+  minCollegePercentage: z.number().min(0).max(100).optional(),
+  /** When false, candidates with active backlogs are ineligible. Omitted or true = allowed. */
+  backlogsAllowed: z.boolean().optional(),
 });
 
 export const CreateJobOpeningRequestSchema = JobOpeningFieldsSchema.extend({
+  /** Institution-scoped employer from Company Repository (`PlacementEmployer`). */
+  employerId: UuidSchema.optional(),
   /** Object storage key from `POST /placement/openings/logo/upload`. */
   companyLogoStorageKey: z.string().min(1).max(2048).optional(),
-}).superRefine((value, ctx) => {
-  if (value.minYearsExperience > value.maxYearsExperience) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['maxYearsExperience'],
-      message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
-    });
-  }
-  if (value.driveDate && value.lastDateToApply && value.lastDateToApply > value.driveDate) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['lastDateToApply'],
-      message: 'lastDateToApply must be on or before driveDate',
-    });
-  }
-});
+})
+  .partial({ companyName: true })
+  .superRefine((value, ctx) => {
+    const name = value.companyName?.trim() ?? '';
+    if (!value.employerId && name.length < 2) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['companyName'],
+        message: 'Select a company from the repository or enter a company name.',
+      });
+    }
+    if (value.minYearsExperience > value.maxYearsExperience) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['maxYearsExperience'],
+        message: 'maxYearsExperience must be greater than or equal to minYearsExperience',
+      });
+    }
+    if (value.driveDate && value.lastDateToApply && value.lastDateToApply > value.driveDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lastDateToApply'],
+        message: 'lastDateToApply must be on or before driveDate',
+      });
+    }
+  });
 export type CreateJobOpeningRequest = z.infer<typeof CreateJobOpeningRequestSchema>;
 
 export const JobOpeningDtoSchema = JobOpeningFieldsSchema.extend({
   openingId: UuidSchema,
   institutionId: UuidSchema,
+  /** Linked institution employer profile when the opening was posted company-first. */
+  employerId: UuidSchema.nullable().optional(),
   status: JobOpeningStatusSchema,
   createdAt: IsoDateTimeSchema,
   /** Time-limited signed URL when a logo object key is stored. */
   companyLogoUrl: z.string().url().max(2048).optional(),
+  jdParseStatus: JdParseStatusSchema.optional(),
+  parseConfidence: z.number().min(0).max(1).nullable().optional(),
+  parsedAt: IsoDateTimeSchema.nullable().optional(),
+  extractedRequirements: JdSkillExtractVectorSchema.nullable().optional(),
 });
 export type JobOpeningDto = z.infer<typeof JobOpeningDtoSchema>;
+
+export const ParseOpeningJdResponseSchema = z.object({
+  openingId: UuidSchema,
+  jdParseStatus: JdParseStatusSchema,
+  parseConfidence: z.number().min(0).max(1).nullable(),
+  extractedRequirements: JdSkillExtractVectorSchema.nullable(),
+});
+export type ParseOpeningJdResponse = z.infer<typeof ParseOpeningJdResponseSchema>;
 
 export const ListJobOpeningsQuerySchema = z.object({
   status: JobOpeningStatusSchema.optional(),
@@ -309,6 +458,79 @@ export const ListJobOpeningsResponseSchema = z.object({
   openings: z.array(JobOpeningDtoSchema),
 });
 export type ListJobOpeningsResponse = z.infer<typeof ListJobOpeningsResponseSchema>;
+
+/* ------------------------- placement employers (TPO) ------------------------- */
+
+const placementEmployerLongText = z.string().max(8_000);
+const placementEmployerMediumText = z.string().max(4_000);
+
+export const PlacementEmployerFieldsSchema = z.object({
+  name: z.string().trim().min(2).max(150),
+  website: z.string().trim().max(255).optional(),
+  linkedinUrl: z.string().trim().max(512).optional(),
+  sector: z.string().trim().max(80).optional(),
+  location: z.string().trim().max(120).optional(),
+  aboutCompany: placementEmployerLongText.optional(),
+  companyOffers: placementEmployerMediumText.optional(),
+  additionalCompanyDetails: placementEmployerMediumText.optional(),
+  logoStorageKey: z.string().min(1).max(2048).optional(),
+});
+export type PlacementEmployerFields = z.infer<typeof PlacementEmployerFieldsSchema>;
+
+export const CreatePlacementEmployerRequestSchema = PlacementEmployerFieldsSchema;
+export type CreatePlacementEmployerRequest = z.infer<typeof CreatePlacementEmployerRequestSchema>;
+
+export const UpdatePlacementEmployerRequestSchema = PlacementEmployerFieldsSchema.partial();
+export type UpdatePlacementEmployerRequest = z.infer<typeof UpdatePlacementEmployerRequestSchema>;
+
+export const ListPlacementEmployersQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+});
+export type ListPlacementEmployersQuery = z.infer<typeof ListPlacementEmployersQuerySchema>;
+
+export const PlacementEmployerSummarySchema = PlacementEmployerFieldsSchema.extend({
+  employerId: UuidSchema,
+  institutionId: UuidSchema,
+  openingCount: z.number().int().nonnegative(),
+  activeOpeningCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  companyLogoUrl: z.string().url().max(2048).optional(),
+});
+export type PlacementEmployerSummary = z.infer<typeof PlacementEmployerSummarySchema>;
+
+export const PlacementEmployerDriveHistoryItemSchema = z.object({
+  openingId: UuidSchema,
+  roleTitle: z.string(),
+  driveDate: IsoDateSchema.nullable().optional(),
+  status: JobOpeningStatusSchema,
+  applicationCount: z.number().int().nonnegative(),
+  shortlistedCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+});
+export type PlacementEmployerDriveHistoryItem = z.infer<
+  typeof PlacementEmployerDriveHistoryItemSchema
+>;
+
+export const PlacementEmployerDetailSchema = PlacementEmployerSummarySchema.extend({
+  driveHistory: z.array(PlacementEmployerDriveHistoryItemSchema),
+  currentOpenings: z.array(
+    z.object({
+      openingId: UuidSchema,
+      roleTitle: z.string(),
+      status: JobOpeningStatusSchema,
+      location: z.string(),
+      createdAt: IsoDateTimeSchema,
+    }),
+  ),
+});
+export type PlacementEmployerDetail = z.infer<typeof PlacementEmployerDetailSchema>;
+
+export const ListPlacementEmployersResponseSchema = z.object({
+  employers: z.array(PlacementEmployerSummarySchema),
+});
+export type ListPlacementEmployersResponse = z.infer<typeof ListPlacementEmployersResponseSchema>;
 
 export const ApplicationDtoSchema = z.object({
   applicationId: UuidSchema,
@@ -420,6 +642,10 @@ export const SkillClaimDtoSchema = z.object({
   /** Most recent settlement outcome when status is VERIFIED. */
   verificationDecision: z.enum(['VERIFIED', 'PROVISIONAL', 'FAILED']).nullable().optional(),
   claimConfidence: z.number().min(0).max(1).nullable().optional(),
+  /** Diagnostic submitted; grading or follow-on verification not finalized yet. */
+  verificationInProgress: z.boolean().optional(),
+  /** Why this skill is on the assessment list (manual pick vs project tag vs GitHub). */
+  declareOrigin: z.enum(['MANUAL', 'PROJECT_TAGGED', 'GITHUB_DERIVED']).optional(),
 });
 export type SkillClaimDto = z.infer<typeof SkillClaimDtoSchema>;
 

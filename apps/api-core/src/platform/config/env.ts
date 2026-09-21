@@ -70,6 +70,8 @@ const EnvSchema = z.object({
   INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
+  /** Browser-reachable S3/MinIO base URL for presigned PUT/GET (defaults to S3_ENDPOINT). */
+  S3_PUBLIC_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('smart'),
   S3_ACCESS_KEY: z.string().default('smart'),
@@ -82,6 +84,14 @@ const EnvSchema = z.object({
    * 5,000/hr. No user-facing GitHub OAuth: we only ever read public data.
    */
   GITHUB_API_TOKEN: z.string().optional(),
+
+  QLIX_API_KEY: z.string().optional(),
+  QLIX_BASE_URL: z.string().default('https://qlix.exora.solutions/api/v1'),
+  QLIX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(10_000),
+  QLIX_POLL_HARD_CAP_MS: z.coerce.number().int().positive().default(1_800_000),
+  QLIX_SIMILARITY_HARD_FAIL: z.coerce.number().min(0).max(100).default(50),
+  QLIX_SIMILARITY_BORDERLINE: z.coerce.number().min(0).max(100).default(30),
+  QLIX_AI_LIKELIHOOD_FLAG: z.coerce.number().min(0).max(100).default(60),
 
   /**
    * CN-T01 LinkedIn identity verification. LinkedIn has no public profile-
@@ -102,6 +112,13 @@ const EnvSchema = z.object({
   AI_PRIMARY_PROVIDER: z.enum(['ANTHROPIC', 'GOOGLE', 'OPENROUTER']).optional(),
   AI_MONTHLY_CEILING_USD: z.coerce.number().nonnegative().default(500),
 
+  /** stub = client Web Speech transcript + browser TTS; whisper/google when wired. */
+  SPEECH_STT_PROVIDER: z.enum(['stub', 'whisper', 'google']).default('stub'),
+  SPEECH_TTS_PROVIDER: z.enum(['stub', 'google', 'openai']).default('stub'),
+  /** OpenAI Whisper API — used when SPEECH_STT_PROVIDER=whisper. */
+  OPENAI_API_KEY: z.string().optional(),
+  SPEECH_WHISPER_MODEL: z.string().default('whisper-1'),
+
   CREDLY_API_KEY: z.string().optional(),
   ACCREDIBLE_API_KEY: z.string().optional(),
   AWS_CERT_API_KEY: z.string().optional(),
@@ -113,6 +130,7 @@ const EnvSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
   PROCTORING_CV_URL: z.string().default('http://127.0.0.1:8091'),
+  PROCTORING_CV_PROVIDER: z.enum(['stub', 'real']).default('stub'),
 
   ITEM_RETIREMENT_THRESHOLD: z.coerce.number().int().positive().default(500),
 
@@ -143,6 +161,24 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>;
 
+/**
+ * Local MinIO uses MINIO_ROOT_* as the S3 API identity. When S3_ACCESS_KEY matches
+ * MINIO_ROOT_USER but S3_SECRET_KEY drifted (common after copying .env snippets),
+ * prefer the MinIO root password so uploads do not fail with InvalidAccessKeyId.
+ */
+export function alignS3CredentialsWithMinioRoot(
+  data: Env,
+  source: NodeJS.ProcessEnv = process.env,
+): Env {
+  const minioUser = source.MINIO_ROOT_USER?.trim();
+  const minioPassword = source.MINIO_ROOT_PASSWORD?.trim();
+  if (!minioUser || !minioPassword) return data;
+  if (data.S3_ACCESS_KEY === minioUser && data.S3_SECRET_KEY !== minioPassword) {
+    return { ...data, S3_SECRET_KEY: minioPassword };
+  }
+  return data;
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
   if (!parsed.success) {
@@ -152,7 +188,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment: ${issues}`);
   }
 
-  const data = parsed.data;
+  const data = alignS3CredentialsWithMinioRoot(parsed.data, source);
   const defaultJwt = 'local-dev-jwt-secret-change-me-now!!';
   if (data.NODE_ENV === 'production' && data.JWT_SECRET === defaultJwt) {
     throw new Error(

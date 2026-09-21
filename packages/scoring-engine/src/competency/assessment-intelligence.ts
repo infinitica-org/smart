@@ -36,7 +36,7 @@ export type AssessmentIntelligenceInput = {
   readonly items: readonly ScoredCompetencyItem[];
   readonly targetProficiency: ProficiencyLevel;
   readonly verificationMode?: VerificationMode;
-  /** When false, do not request another upward probe (post-targeted finalize). */
+  /** When false, do not request another upward probe after the diagnostic form. */
   readonly allowUpwardProbe?: boolean;
 };
 
@@ -300,8 +300,8 @@ export function recommendAssessmentNextStep(input: {
         : [];
   if (!input.stageComplete && (blocking.length > 0 || probeIds.length > 0)) {
     return {
-      recommendedNextStep: 'TARGETED_ASSESSMENT',
-      requiresAdditionalAssessment: true,
+      recommendedNextStep: 'REMEDIATION',
+      requiresAdditionalAssessment: false,
     };
   }
 
@@ -367,9 +367,7 @@ export function evaluateAssessmentIntelligence(
       allowUpwardProbe,
     });
     const assessmentComplete =
-      highestAssessmentSupportedProficiency !== null &&
-      next.recommendedNextStep !== 'REMEDIATION' &&
-      next.recommendedNextStep !== 'TARGETED_ASSESSMENT';
+      highestAssessmentSupportedProficiency !== null && next.recommendedNextStep !== 'REMEDIATION';
 
     return {
       competencyResults,

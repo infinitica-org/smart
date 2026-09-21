@@ -8,23 +8,21 @@ import {
   Link2,
   Shield,
   BadgeCheck,
-  SlidersHorizontal,
-  UserRound,
+  Sparkles,
 } from 'lucide-react';
 
 import type { ProfileAreaId } from '@/lib/profile-progress';
 
 /** Stable query param values for /profile?section=… */
 export const PROFILE_SECTION_IDS = [
-  'about',
+  'education',
   'experience',
   'projects',
-  'education',
   'certifications',
   'credentials',
   'languages',
+  'skills',
   'links',
-  'preferences',
   'resume',
 ] as const;
 
@@ -41,21 +39,21 @@ export function profileSectionHref(section: ProfileSectionId): string {
 
 /** Maps completion checklist areas to subsection URLs (not business logic). */
 export const PROFILE_AREA_TO_SECTION: Record<ProfileAreaId, ProfileSectionId> = {
-  skills: 'about',
+  skills: 'skills',
   languages: 'languages',
   education: 'education',
   experience: 'experience',
   projects: 'projects',
   certifications: 'certifications',
   professionalLinks: 'links',
-  jobPreferences: 'preferences',
 };
 
 export interface ProfileSectionNavItem {
   id: ProfileSectionId;
   label: string;
+  /** Shorter copy for the profile top nav (accessible name stays `label`). */
+  navLabel?: string;
   icon: LucideIcon;
-  /** Page title when this subsection is active (except About uses custom copy). */
   title: string;
   description: string;
 }
@@ -67,24 +65,19 @@ export interface ProfileSectionNavGroup {
 
 export const PROFILE_SECTION_NAV: ProfileSectionNavGroup[] = [
   {
-    groupLabel: 'Profile',
-    items: [
-      {
-        id: 'about',
-        label: 'About',
-        icon: UserRound,
-        title: 'About You',
-        description:
-          'Introduce yourself with a short professional summary. This helps employers understand you better.',
-      },
-    ],
-  },
-  {
     groupLabel: 'Career',
     items: [
       {
+        id: 'education',
+        label: 'Education',
+        icon: GraduationCap,
+        title: 'Education',
+        description: 'Add your academic background and supporting documents.',
+      },
+      {
         id: 'experience',
         label: 'Work Experience',
+        navLabel: 'Experience',
         icon: Briefcase,
         title: 'Work Experience',
         description: 'Build your professional journey with evidence-backed experience.',
@@ -99,15 +92,8 @@ export const PROFILE_SECTION_NAV: ProfileSectionNavGroup[] = [
     ],
   },
   {
-    groupLabel: 'Education',
+    groupLabel: 'Credentials & skills',
     items: [
-      {
-        id: 'education',
-        label: 'Education',
-        icon: GraduationCap,
-        title: 'Education',
-        description: 'Add your academic background and supporting documents.',
-      },
       {
         id: 'certifications',
         label: 'Certifications',
@@ -130,6 +116,14 @@ export const PROFILE_SECTION_NAV: ProfileSectionNavGroup[] = [
         title: 'Languages',
         description: 'Language proficiencies employers may look for.',
       },
+      {
+        id: 'skills',
+        label: 'Skills',
+        icon: Sparkles,
+        title: 'Skills',
+        description:
+          'Select skills from the SMART catalog to assess and build verified credentials.',
+      },
     ],
   },
   {
@@ -138,16 +132,10 @@ export const PROFILE_SECTION_NAV: ProfileSectionNavGroup[] = [
       {
         id: 'links',
         label: 'Professional Links',
+        navLabel: 'Links',
         icon: Link2,
         title: 'Professional Links',
         description: 'LinkedIn and GitHub help employers learn more about you.',
-      },
-      {
-        id: 'preferences',
-        label: 'Job Preferences',
-        icon: SlidersHorizontal,
-        title: 'Job Preferences',
-        description: 'Tell SMART where and how you want to work.',
       },
     ],
   },
@@ -172,17 +160,25 @@ const SECTION_BY_ID = new Map<ProfileSectionId, ProfileSectionNavItem>(
 export function profileSectionMeta(id: ProfileSectionId): ProfileSectionNavItem {
   const item = SECTION_BY_ID.get(id);
   if (item) return item;
-  const aboutDefault = PROFILE_SECTION_NAV[0]?.items[0];
+  const fallback = PROFILE_SECTION_NAV[0]?.items[0];
   return (
-    aboutDefault ?? {
-      id: 'about',
-      label: 'About',
-      icon: UserRound,
-      title: 'About You',
-      description:
-        'Introduce yourself with a short professional summary. This helps employers understand you better.',
+    fallback ?? {
+      id: 'education',
+      label: 'Education',
+      icon: GraduationCap,
+      title: 'Education',
+      description: 'Add your academic background and supporting documents.',
     }
   );
 }
 
-export const DEFAULT_PROFILE_SECTION: ProfileSectionId = 'about';
+export const DEFAULT_PROFILE_SECTION: ProfileSectionId = 'education';
+
+/** Legacy ?section=about (and hash skills) map to a real subsection. */
+export function resolveProfileSection(raw: string | null | undefined): ProfileSectionId {
+  if (raw === 'about') return DEFAULT_PROFILE_SECTION;
+  if (raw === 'skills') return 'skills';
+  if (raw === 'preferences') return 'resume';
+  if (isProfileSectionId(raw)) return raw;
+  return DEFAULT_PROFILE_SECTION;
+}

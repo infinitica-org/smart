@@ -1,17 +1,22 @@
 import type { ProctoringViolationKind } from '@smart/contracts';
 import { captureVideoFrame, ovalBrightness, type NormalizedFaceBox } from './face-check';
+import {
+  estimateHeadPoseFromVideo,
+  isHeadPoseLookingAway,
+  type HeadPoseEstimate,
+} from './mediapipe-face-landmarker';
 import { detectionsToCoverBoxes, getBlazeFaceDetector } from './mediapipe-face-detector';
 
 /** Fast enough that a missing face blacks the exam on the next detector tick. */
 export const LIVE_WEBCAM_SAMPLE_MS = 150;
 /** Same kind must wait this long before another HMAC ingest (rate-limit budget). */
-export const LIVE_WEBCAM_EMIT_COOLDOWN_MS = 10_000;
+export const LIVE_WEBCAM_EMIT_COOLDOWN_MS = 8_000;
 
 const CONFIRM_SAMPLES: Partial<Record<ProctoringViolationKind, number>> = {
   MULTIPLE_FACES: 2,
-  NO_FACE: 4,
-  LOOKING_AWAY: 4,
-  CAMERA_OBSTRUCTED: 4,
+  NO_FACE: 3,
+  LOOKING_AWAY: 3,
+  CAMERA_OBSTRUCTED: 3,
 };
 
 const LOOK_AWAY_X = 0.32;
@@ -35,13 +40,14 @@ export function isLookingAway(box: NormalizedFaceBox): boolean {
 export function classifyLiveWebcam(
   boxes: readonly NormalizedFaceBox[],
   brightness: number,
+  headPoseAway = false,
 ): ProctoringViolationKind | null {
   if (boxes.length > 1) return 'MULTIPLE_FACES';
   if (boxes.length === 0) {
     return brightness > 0 && brightness < OBSTRUCTED_LUMA ? 'CAMERA_OBSTRUCTED' : 'NO_FACE';
   }
   const box = boxes[0];
-  if (box && isLookingAway(box)) return 'LOOKING_AWAY';
+  if (headPoseAway || (box && isLookingAway(box))) return 'LOOKING_AWAY';
   return null;
 }
 
@@ -102,15 +108,20 @@ export function startLiveWebcamMonitor(options: {
     timestampMs: number,
   ) => Promise<NormalizedFaceBox[]> | NormalizedFaceBox[];
   brightnessOf?: (video: HTMLVideoElement) => number;
+  estimatePose?: (video: HTMLVideoElement) => Promise<HeadPoseEstimate | null>;
   sampleMs?: number;
   emitCooldownMs?: number;
+  /** Ignore violation ingests until the camera stream has stabilized (ms). */
+  warmupMs?: number;
   now?: () => number;
   setIntervalFn?: typeof setInterval;
   clearIntervalFn?: typeof clearInterval;
 }): { stop: () => void; tick: () => Promise<void> } {
   const sampleMs = options.sampleMs ?? LIVE_WEBCAM_SAMPLE_MS;
   const emitCooldownMs = options.emitCooldownMs ?? LIVE_WEBCAM_EMIT_COOLDOWN_MS;
+  const warmupMs = options.warmupMs ?? 0;
   const now = options.now ?? Date.now;
+  const startedAt = now();
   const schedule = options.setIntervalFn ?? setInterval;
   const unschedule = options.clearIntervalFn ?? clearInterval;
 
@@ -142,13 +153,17 @@ export function startLiveWebcamMonitor(options: {
           const frame = captureVideoFrame(video, 96, 54, 'cover');
           return frame ? ovalBrightness(frame) : 0;
         })();
-      const nextKind = classifyLiveWebcam(boxes, brightness);
+      const estimatePose = options.estimatePose ?? estimateHeadPoseFromVideo;
+      const pose = boxes.length === 1 ? await estimatePose(video) : null;
+      const headPoseAway = pose ? isHeadPoseLookingAway(pose) : false;
+      const nextKind = classifyLiveWebcam(boxes, brightness, headPoseAway);
       options.onSample?.(nextKind);
       const stepped = confirmLiveWebcamIssue(streakKind, streak, nextKind);
       streakKind = stepped.kind;
       streak = stepped.streak;
       if (!stepped.emit || !stepped.kind) return;
       const t = now();
+      if (warmupMs > 0 && t - startedAt < warmupMs) return;
       if (t - (lastEmitAt[stepped.kind] ?? 0) < emitCooldownMs) return;
       lastEmitAt[stepped.kind] = t;
       streak = 0;

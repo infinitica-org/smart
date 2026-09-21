@@ -18,7 +18,6 @@ export const PROFILE_AREA_IDS = [
   'projects',
   'certifications',
   'professionalLinks',
-  'jobPreferences',
 ] as const;
 
 export type ProfileAreaId = (typeof PROFILE_AREA_IDS)[number];
@@ -31,7 +30,6 @@ export const PROFILE_AREA_LABELS: Record<ProfileAreaId, string> = {
   projects: 'Projects',
   certifications: 'Certifications',
   professionalLinks: 'Professional links',
-  jobPreferences: 'Job preferences',
 };
 
 /** Dashboard section grid labels (same 8 areas; skills shown as basic profile details). */
@@ -39,27 +37,25 @@ export const DASHBOARD_AREA_LABELS: Record<ProfileAreaId, string> = {
   ...PROFILE_AREA_LABELS,
   skills: 'Basic details',
   professionalLinks: 'Professional Links',
-  jobPreferences: 'Job Preferences',
 };
 
 const AREA_COUNT = PROFILE_AREA_IDS.length;
 const DISMISSAL_STORAGE_PREFIX = 'smart.profile.next-action.dismissed.';
 export const RECOMMENDED_ACTION_DISMISSAL_MS = 7 * 24 * 60 * 60 * 1000;
-export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 50;
+export const PROFILE_SKILL_VERIFICATION_UNLOCK_PERCENT = 10;
 
-/** UI copy — verification unlocks when all eight profile areas are complete (100%). */
+/** UI copy — verification unlocks when all profile areas are complete (100%). */
 export const PROFILE_VERIFICATION_UNLOCK_MESSAGE =
   'Complete all profile sections to unlock skill verification.';
 
 export const PROFILE_AREA_HREFS: Record<ProfileAreaId, string> = {
-  skills: '/assessments',
+  skills: '/profile?section=skills',
   languages: '/profile?section=languages',
   education: '/profile?section=education',
   experience: '/profile?section=experience',
   projects: '/profile?section=projects',
   certifications: '/profile?section=certifications',
   professionalLinks: '/profile?section=links',
-  jobPreferences: '/profile?section=preferences',
 };
 
 export type ProfileStrengthTier = 'getting_started' | 'building' | 'strong' | 'verification_ready';
@@ -135,13 +131,6 @@ function onboardingSkills(
   return profile?.skills ?? draft?.skills ?? [];
 }
 
-function jobPreferencesFromOnboarding(
-  profile: CandidateOnboardingProfile | null,
-  draft: CandidateOnboardingDraft | null,
-) {
-  return profile?.jobPreferences ?? draft?.jobPreferences ?? null;
-}
-
 function urlFromOnboarding(
   profile: CandidateOnboardingProfile | null,
   draft: CandidateOnboardingDraft | null,
@@ -159,7 +148,10 @@ export function isSkillsAreaComplete(input: ProfileProgressInput): boolean {
 }
 
 export function isLanguagesAreaComplete(input: ProfileProgressInput): boolean {
-  return input.languages.length > 0;
+  if (input.languages.length > 0) return true;
+  return onboardingSkills(input.onboardingProfile, input.onboardingDraft).some(
+    (skill) => skill.type === 'language' && Boolean(skill.name?.trim()),
+  );
 }
 
 export function isEducationAreaComplete(input: ProfileProgressInput): boolean {
@@ -184,18 +176,6 @@ export function isProfessionalLinksAreaComplete(input: ProfileProgressInput): bo
   return linkedin.length > 0 || github.length > 0;
 }
 
-export function isJobPreferencesAreaComplete(input: ProfileProgressInput): boolean {
-  const prefs = jobPreferencesFromOnboarding(input.onboardingProfile, input.onboardingDraft);
-  if (!prefs) return false;
-  const hasExpected =
-    prefs.expectedCtcLakhs !== undefined &&
-    prefs.expectedCtcLakhs !== null &&
-    Number(prefs.expectedCtcLakhs) > 0;
-  const hasLocation = Boolean(prefs.currentLocation?.trim());
-  const hasPreferred = (prefs.preferredLocations?.length ?? 0) > 0;
-  return hasExpected && hasLocation && hasPreferred;
-}
-
 export function computeAreaStatus(input: ProfileProgressInput): Record<ProfileAreaId, boolean> {
   return {
     skills: isSkillsAreaComplete(input),
@@ -205,7 +185,6 @@ export function computeAreaStatus(input: ProfileProgressInput): Record<ProfileAr
     projects: isProjectsAreaComplete(input),
     certifications: isCertificationsAreaComplete(input),
     professionalLinks: isProfessionalLinksAreaComplete(input),
-    jobPreferences: isJobPreferencesAreaComplete(input),
   };
 }
 
@@ -240,7 +219,7 @@ function profileSectionActions(input: ProfileProgressInput): RecommendedAction[]
       title: 'Add your skills',
       description: 'Tell SMART what you already know.',
       ctaLabel: 'Add skills',
-      href: '/assessments',
+      href: '/profile?section=skills',
     });
   }
   if (!isLanguagesAreaComplete(input)) {
@@ -298,16 +277,6 @@ function profileSectionActions(input: ProfileProgressInput): RecommendedAction[]
       href: '/profile?section=links',
     });
   }
-  if (!isJobPreferencesAreaComplete(input)) {
-    actions.push({
-      id: 'add-job-preferences',
-      title: 'Add job preferences',
-      description: 'Tell SMART where and how you want to work.',
-      ctaLabel: 'Add preferences',
-      href: '/profile?section=preferences',
-    });
-  }
-
   return actions;
 }
 
@@ -385,11 +354,36 @@ export function dismissRecommendedAction(actionId: string, nowMs: number = Date.
   );
 }
 
+function isRecommendedActionStillRelevant(
+  action: RecommendedAction,
+  input: ProfileProgressInput,
+): boolean {
+  switch (action.id) {
+    case 'add-skills':
+      return !isSkillsAreaComplete(input);
+    case 'add-languages':
+      return !isLanguagesAreaComplete(input);
+    case 'add-education':
+      return !isEducationAreaComplete(input);
+    case 'add-experience':
+      return !isExperienceAreaComplete(input);
+    case 'add-project':
+      return !isProjectsAreaComplete(input);
+    case 'add-certification':
+      return !isCertificationsAreaComplete(input);
+    case 'add-professional-links':
+      return !isProfessionalLinksAreaComplete(input);
+    default:
+      return true;
+  }
+}
+
 export function resolveVisibleRecommendedAction(
   input: ProfileProgressInput,
   nowMs: number = Date.now(),
 ): RecommendedAction | null {
   for (const action of recommendNextActionCandidates(input)) {
+    if (!isRecommendedActionStillRelevant(action, input)) continue;
     if (!isRecommendedActionDismissed(action.id, nowMs)) return action;
   }
   return null;

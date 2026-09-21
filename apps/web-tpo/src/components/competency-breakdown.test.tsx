@@ -34,7 +34,7 @@ describe('CompetencyBreakdown', () => {
       <CompetencyBreakdown skillCode="SQL_QUERY_OPTIMIZATION" assessmentResult={sampleResult} />,
     );
     expect(screen.getByText(/Competency breakdown \(read-only\)/i)).toBeDefined();
-    expect(screen.getByText(/Supported: ADVANCED/i)).toBeDefined();
+    expect(screen.getByText(/Supported: Level 3/i)).toBeDefined();
     expect(screen.getByText(/demonstrated · high/i)).toBeDefined();
   });
 });

@@ -60,11 +60,11 @@ describe('skill@1 library (catalog.dto)', () => {
     expect(() => assertSkillTaxonomyMatchesCanonical(tampered)).toThrow(/drifts from contracts/);
   });
 
-  it('SkillLibraryResponseSchema lists 81 skills in 14 categories', () => {
+  it('SkillLibraryResponseSchema lists 51 skills in 14 categories', () => {
     const parsed = SkillLibraryResponseSchema.parse(buildSkillLibraryResponse());
     expect(parsed.taxonomyVersion).toBe('skill@1');
     expect(parsed.categories).toHaveLength(14);
-    expect(parsed.categories.flatMap((category) => category.skills)).toHaveLength(81);
+    expect(parsed.categories.flatMap((category) => category.skills)).toHaveLength(51);
     expect(groupSkillsByCategory()).toHaveLength(14);
   });
 });

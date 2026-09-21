@@ -1,11 +1,10 @@
 import {
   BarChart3,
   Briefcase,
-  Building2,
   ClipboardList,
   Landmark,
-  Columns3,
   LayoutDashboard,
+  LayoutGrid,
   Settings,
   ShieldCheck,
   UserPlus,
@@ -31,11 +30,30 @@ export type TpoNavItem =
   | { kind: 'group'; name: string; icon: LucideIcon; children: TpoNavLink[] };
 
 /**
- * Placement workspace navigation. Grouped for the placement sidebar; the flat
- * `PLACEMENT_NAV` projection below backs the global topbar so both surfaces
- * share one source of truth.
+ * Placement workspace navigation. Grouped labels for documentation; the flat
+ * `PLACEMENT_NAV` projection backs the placement pill row under the global topbar.
  */
 export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
+  {
+    groupLabel: 'Company',
+    items: [
+      {
+        name: 'Company Repository',
+        href: '/companies',
+        description: 'Employer profiles, history, and openings',
+        icon: Landmark,
+      },
+      // WIP: Company Dashboard is hidden from the sidebar for now while the
+      // feature is still being finished. Re-enable this entry once it's
+      // ready to ship.
+      // {
+      //   name: 'Company Dashboard',
+      //   href: '/company',
+      //   description: 'Placement pipeline overview',
+      //   icon: Building2,
+      // },
+    ],
+  },
   {
     groupLabel: 'Job Management',
     items: [
@@ -63,7 +81,7 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
         icon: UserSearch,
       },
       {
-        name: 'Opportunities',
+        name: 'Applications',
         href: '/opportunities',
         description: 'View placement applications',
         icon: ClipboardList,
@@ -73,12 +91,15 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
   {
     groupLabel: 'Pipeline',
     items: [
-      {
-        name: 'ATS',
-        href: '/ats',
-        description: 'Manage candidate pipeline',
-        icon: Columns3,
-      },
+      // WIP: ATS (candidate pipeline board) is hidden from the sidebar for
+      // now while the feature is still being finished. Re-enable this entry
+      // once it's ready to ship.
+      // {
+      //   name: 'ATS',
+      //   href: '/ats',
+      //   description: 'Manage candidate pipeline',
+      //   icon: Columns3,
+      // },
       {
         name: 'Review',
         href: '/review',
@@ -87,31 +108,42 @@ export const PLACEMENT_NAV_GROUPS: TpoNavGroup[] = [
       },
     ],
   },
+];
+
+export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
+
+/** Candidates workspace — pill row under the global topbar (URLs unchanged). */
+export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
   {
-    groupLabel: 'Company',
+    groupLabel: 'Workspace',
     items: [
       {
-        name: 'Company Repository',
-        href: '/companies',
-        description: 'Recruiters and partners on campus',
-        icon: Landmark,
+        name: 'Candidates Repository',
+        href: '/students',
+        description: 'Search and review onboarded candidates',
+        icon: Users,
       },
       {
-        name: 'Company Dashboard',
-        href: '/company',
-        description: 'View placement pipeline overview',
-        icon: Building2,
+        name: 'Candidate Onboarding',
+        href: '/provisioning',
+        description: 'Invite candidates and manage batch roster',
+        icon: UserPlus,
+      },
+      {
+        name: 'Batches',
+        href: '/batches',
+        description: 'Group candidates into cohorts for filtering and access',
+        icon: LayoutGrid,
       },
     ],
   },
 ];
 
-export const PLACEMENT_NAV: TpoNavLink[] = PLACEMENT_NAV_GROUPS.flatMap((group) => group.items);
+export const CANDIDATES_NAV: TpoNavLink[] = CANDIDATES_NAV_GROUPS.flatMap((group) => group.items);
 
 export const TPO_NAV: TpoNavItem[] = [
   { kind: 'link', name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { kind: 'link', name: 'Candidates', href: '/students', icon: Users },
-  { kind: 'link', name: 'Onboarding', href: '/provisioning', icon: UserPlus },
   { kind: 'link', name: 'Placement', href: '/companies', icon: Briefcase },
   { kind: 'link', name: 'Reports', href: '/reports', icon: BarChart3 },
   { kind: 'link', name: 'Settings', href: '/settings', icon: Settings },
@@ -135,6 +167,11 @@ export function isPlacementTopNavActive(pathname: string): boolean {
   return pathname === '/companies' || isPlacementRoute(pathname);
 }
 
+/** Topbar Candidates link — active on repository and onboarding routes. */
+export function isCandidatesTopNavActive(pathname: string): boolean {
+  return isCandidatesRoute(pathname);
+}
+
 export function isNavItemActive(pathname: string, item: TpoNavItem): boolean {
   return item.kind === 'group'
     ? item.children.some((child) => isNavLinkActive(pathname, child.href))
@@ -146,4 +183,9 @@ export function isPlacementRoute(pathname: string): boolean {
   return (
     pathname === '/companies' || PLACEMENT_NAV.some((link) => isNavLinkActive(pathname, link.href))
   );
+}
+
+/** True on candidates workspace routes (repository or onboarding). */
+export function isCandidatesRoute(pathname: string): boolean {
+  return CANDIDATES_NAV.some((link) => isNavLinkActive(pathname, link.href));
 }

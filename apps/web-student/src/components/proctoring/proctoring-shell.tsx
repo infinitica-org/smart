@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { PROCTORING_WARNING_LIMIT_DEFAULT, type ProctoringViolationKind } from '@smart/contracts';
+import {
+  ProctoringCheckpointResponseSchema,
+  PROCTORING_SNAPSHOT_INTERVAL_MS,
+  PROCTORING_WARNING_LIMIT_DEFAULT,
+  type ProctoringCheckpointResponse,
+  type ProctoringViolationKind,
+} from '@smart/contracts';
 import { api } from '../../lib/api';
 import {
   deviceFingerprintHash,
@@ -19,6 +25,7 @@ import {
 } from '../../lib/proctoring/fullscreen';
 import { attachProctorSensors } from '../../lib/proctoring/sensors';
 import { createProctorIngest } from '../../lib/proctoring/ingest-queue';
+import { uploadProctoringSnapshot } from '../../lib/proctoring/proctoring-snapshot-upload';
 import { DisplayGate, FullscreenGate } from './fullscreen-gate';
 import { hasExtendedDisplay } from '../../lib/proctoring/display';
 import { OnboardingGate } from './onboarding-gate';
@@ -102,6 +109,17 @@ export function ProctoringShell({
   );
   const terminateIfLockedRef = useRef(terminateIfLocked);
   terminateIfLockedRef.current = terminateIfLocked;
+
+  const applyCheckpointResult = useCallback((result: ProctoringCheckpointResponse) => {
+    setLocked(result.locked);
+    setWarnings({ count: result.warningCount, limit: result.warningLimit });
+    if (result.newViolations.length > 0 && !result.locked) {
+      const kind = result.newViolations[result.newViolations.length - 1];
+      if (kind && isFaceAlignmentKind(kind)) setFaceBlackout(true);
+      else setWarningOpen(true);
+    }
+    terminateIfLockedRef.current(result.locked);
+  }, []);
   const dismissWarning = useCallback(() => setWarningOpen(false), []);
   const dismissFaceBlackout = useCallback(() => setFaceBlackout(false), []);
 
@@ -208,11 +226,27 @@ export function ProctoringShell({
       () => void api.proctoring.ping(attemptId).catch(() => undefined),
       15_000,
     );
+    let snapshotBusy = false;
     const checkpoint = window.setInterval(() => {
-      void api.proctoring
-        .checkpoint({ attemptId, objectKey: `stub:${attemptId}:${Date.now()}` })
-        .catch(() => undefined);
-    }, 18_000);
+      if (!cameraEnabled || snapshotBusy) return;
+      const video = previewRef.current ?? fallbackPreviewRef.current;
+      if (!video || video.videoWidth === 0) return;
+      snapshotBusy = true;
+      void uploadProctoringSnapshot(attemptId, video)
+        .then(async (uploaded) => {
+          if (!uploaded.ok) return;
+          const raw = await api.proctoring.checkpoint({
+            attemptId,
+            objectKey: uploaded.objectKey,
+          });
+          const parsed = ProctoringCheckpointResponseSchema.safeParse(raw);
+          if (parsed.success) applyCheckpointResult(parsed.data);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          snapshotBusy = false;
+        });
+    }, PROCTORING_SNAPSHOT_INTERVAL_MS);
     return () => {
       cancelled = true;
       detach();
@@ -222,12 +256,13 @@ export function ProctoringShell({
       window.clearInterval(ping);
       window.clearInterval(checkpoint);
     };
-  }, [attemptId, enabled, ready, locked]);
+  }, [applyCheckpointResult, attemptId, cameraEnabled, enabled, ready, locked]);
 
   useEffect(() => {
     if (!enabled || !ready || locked || !cameraEnabled) return undefined;
     const monitor = startLiveWebcamMonitor({
       getVideo: () => previewRef.current ?? fallbackPreviewRef.current,
+      warmupMs: 5_000,
       onViolation: (kind) => ingestRef.current.report(kind),
       onSample: (kind) => {
         setLiveKind(kind);
@@ -287,7 +322,7 @@ export function ProctoringShell({
       setLockSecondsLeft(left);
       if (left > 0) return;
       window.clearInterval(tick);
-      router.replace('/assessments');
+      router.replace('/assessment');
     }, 250);
     return () => window.clearInterval(tick);
   }, [locked, releaseMedia, router]);
@@ -306,6 +341,15 @@ export function ProctoringShell({
     else if (fallback) fallback.srcObject = mediaRef.current;
   }, [cameraEnabled, ready, previewHosted]);
 
+  const prepareMicForSpeech = useCallback(() => {
+    const stream = mediaRef.current;
+    if (!stream) return;
+    for (const track of stream.getAudioTracks()) {
+      track.stop();
+      stream.removeTrack(track);
+    }
+  }, []);
+
   if (!enabled) return children;
   if (!mounted) return null;
 
@@ -317,6 +361,7 @@ export function ProctoringShell({
     warningCount: warnings.count,
     warningLimit: warnings.limit,
     bindPreview,
+    prepareMicForSpeech,
   };
   const kiosk = (
     <ProctorLiveProvider value={liveValue}>
@@ -349,10 +394,10 @@ export function ProctoringShell({
         ) : (
           <>
             <div
-              className={hideExam ? 'hidden' : 'relative flex h-full min-h-full flex-col'}
+              className={hideExam ? 'hidden' : 'relative flex h-full min-h-full w-full flex-col'}
               aria-hidden={hideExam}
             >
-              <div className="min-h-0 flex-1">{children}</div>
+              <div className="flex min-h-0 w-full flex-1 flex-col">{children}</div>
               {cameraEnabled && !previewHosted ? (
                 <video
                   ref={fallbackPreviewRef}

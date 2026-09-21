@@ -1,11 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileText, Loader2, Upload } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Plus, Upload } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import type { CandidateResumeFile } from '@smart/contracts';
 import { api } from '@/lib/api';
-import { profilePrimaryButtonClass } from '@/lib/profile-ui-classes';
+import { ResumeEntryCard } from '@/components/profile/ResumeEntryCard';
+import {
+  ProfileBentoEmptyPanel,
+  ProfileSectionError,
+  ProfileSectionHeader,
+} from '@/components/profile/ProfileSectionChrome';
+import { profilePrimaryButtonSmClass } from '@/lib/profile-ui-classes';
+import { profileSectionMeta } from '@/lib/profile-sections';
+import { CANDIDATE_RESUME_FILES_MAX, canAddResume, normalizeResumeFiles } from '@/lib/resume-list';
 import { extractResumeRawText } from '@/lib/extract-resume-text';
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -15,17 +23,19 @@ type UploadStatus = 'idle' | 'uploading' | 'parsing' | 'success' | 'failed';
 export function ResumeSection() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
-  const [resumeFile, setResumeFile] = useState<CandidateResumeFile | null>(null);
+  const [resumeFiles, setResumeFiles] = useState<CandidateResumeFile[]>([]);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [parseMessage, setParseMessage] = useState<string | null>(null);
+  const meta = profileSectionMeta('resume');
 
   const loadResume = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await api.users.getResume();
-      setResumeFile(response.resumeFile);
+      setResumeFiles(normalizeResumeFiles(response));
     } catch (err: unknown) {
       setError(isSmartApiError(err) ? err.message : 'Could not load resume status.');
     } finally {
@@ -38,6 +48,13 @@ export function ResumeSection() {
   }, []);
 
   const startUpload = async (file: File) => {
+    if (!canAddResume(resumeFiles)) {
+      setError(
+        `You can store up to ${CANDIDATE_RESUME_FILES_MAX} resumes. Remove one to upload another.`,
+      );
+      return;
+    }
+
     const allowed = [
       'application/pdf',
       'application/msword',
@@ -60,13 +77,16 @@ export function ResumeSection() {
 
     try {
       const uploaded = await api.users.uploadResume(file, file.name);
-      setResumeFile(uploaded.resumeFile);
+      const nextFiles = normalizeResumeFiles(uploaded);
+      setResumeFiles(nextFiles);
       setUploadStatus('parsing');
 
       const rawText = await extractResumeRawText(file);
       const parsed = await api.users.parseResume({ rawText });
       if (parsed.status === 'PARSED') {
-        setParseMessage('Resume uploaded and parsed successfully.');
+        setParseMessage(
+          'Resume uploaded and parsed — check other profile sections for pre-fill suggestions.',
+        );
         setUploadStatus('success');
       } else {
         setParseMessage('Resume uploaded. Parsing could not extract structured data this time.');
@@ -78,60 +98,101 @@ export function ResumeSection() {
     }
   };
 
-  const busy = uploadStatus === 'uploading' || uploadStatus === 'parsing';
+  const handleDelete = async (objectKey: string) => {
+    if (!confirm('Remove this resume from your profile?')) return;
+    setDeletingKey(objectKey);
+    setError(null);
+    try {
+      const response = await api.users.deleteResume(objectKey);
+      setResumeFiles(response.resumeFiles);
+    } catch (err: unknown) {
+      setError(isSmartApiError(err) ? err.message : 'Could not remove resume.');
+    } finally {
+      setDeletingKey(null);
+    }
+  };
 
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading resume…</p>;
-  }
+  const busy = uploadStatus === 'uploading' || uploadStatus === 'parsing';
+  const slotsRemaining = CANDIDATE_RESUME_FILES_MAX - resumeFiles.length;
 
   return (
-    <section aria-labelledby="resume-heading" className="space-y-4">
-      <div>
-        <h2
-          id="resume-heading"
-          className="flex items-center gap-2 text-xl font-semibold text-foreground"
-        >
-          <FileText className="h-5 w-5 text-foreground" />
-          Resume Upload
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload or replace your resume. SMART can parse it to help pre-fill profile details.
-        </p>
-      </div>
+    <section
+      className="flex w-full min-w-0 flex-col gap-4 font-[family-name:var(--tpo-font-sans)]"
+      aria-label="Resume"
+    >
+      <ProfileSectionHeader
+        title={meta.title}
+        description={meta.description}
+        action={
+          !loading && canAddResume(resumeFiles) ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileInputRef.current?.click()}
+              className={`${profilePrimaryButtonSmClass} justify-center px-4 py-2.5 text-[13px] font-semibold tracking-[-0.01em] disabled:opacity-50`}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Plus className="size-4" strokeWidth={2} aria-hidden />
+              )}
+              Add resume
+            </button>
+          ) : null
+        }
+      />
 
-      {resumeFile ? (
-        <div className="rounded-2xl border border-border bg-muted/50 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">{resumeFile.fileName}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Uploaded {new Date(resumeFile.uploadedAt).toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {(resumeFile.fileSizeBytes / 1024).toFixed(0)} KB · {resumeFile.mimeType}
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              On file
-            </span>
+      {loading ? <p className="text-sm text-[var(--ds-text-muted)]">Loading resumes…</p> : null}
+
+      {!loading && resumeFiles.length === 0 ? (
+        <ProfileBentoEmptyPanel
+          tipIcon={FileText}
+          tipIconClassName="text-[var(--student-info)]"
+          tipTitle="Keep versions ready for different roles"
+          tipBody={`Store up to ${CANDIDATE_RESUME_FILES_MAX} PDF or Word resumes. SMART can parse the latest upload to suggest profile pre-fill.`}
+          emptyIcon={Upload}
+          emptyTitle="No resumes yet"
+          emptyBody="Upload a resume to attach it to your profile and optionally parse it for faster data entry."
+          actions={
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileInputRef.current?.click()}
+              className={`${profilePrimaryButtonSmClass} justify-center px-5 py-2.5 text-[13px] disabled:opacity-50`}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Plus className="size-4" strokeWidth={2} aria-hidden />
+              )}
+              Upload your first resume
+            </button>
+          }
+        />
+      ) : null}
+
+      {!loading && resumeFiles.length > 0 ? (
+        <>
+          <p className="text-[13px] text-[var(--ds-text-muted)]">
+            {resumeFiles.length} of {CANDIDATE_RESUME_FILES_MAX} slots used
+            {slotsRemaining > 0
+              ? ` · ${slotsRemaining} remaining`
+              : ' · remove a file to upload another'}
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {resumeFiles.map((file, index) => (
+              <ResumeEntryCard
+                key={file.objectKey}
+                file={file}
+                accentIndex={index}
+                isPrimary={index === 0}
+                deleting={deletingKey === file.objectKey}
+                onDelete={() => void handleDelete(file.objectKey)}
+              />
+            ))}
           </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-6 text-sm text-muted-foreground">
-          No resume uploaded yet.
-        </div>
-      )}
-
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => fileInputRef.current?.click()}
-        className={profilePrimaryButtonClass}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {resumeFile ? 'Replace resume' : 'Upload resume'}
-      </button>
+        </>
+      ) : null}
 
       <input
         ref={fileInputRef}
@@ -146,22 +207,24 @@ export function ResumeSection() {
       />
 
       {busy ? (
-        <p className="text-sm text-foreground/80">
+        <p className="text-sm text-[var(--ds-text-secondary)]">
           {uploadStatus === 'uploading' ? 'Uploading resume…' : 'Parsing resume…'}
         </p>
       ) : null}
 
       {parseMessage ? (
-        <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
+        <div className="rounded-[18px] border border-[var(--ds-green)]/20 bg-[var(--ds-green-soft)]/50 px-4 py-3.5 text-sm text-[var(--ds-text)]">
           {parseMessage}
-        </p>
+        </div>
       ) : null}
 
       {error ? (
-        <p className="inline-flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {error}
-        </p>
+        <ProfileSectionError>
+          <span className="inline-flex items-start gap-2">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {error}
+          </span>
+        </ProfileSectionError>
       ) : null}
     </section>
   );

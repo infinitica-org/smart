@@ -13,7 +13,9 @@ import { PrismaClient } from '../src/generated/prisma/index.js';
 import { hashPassword } from '../src/modules/auth/auth.service.js';
 import {
   resolveSeedEmailDomain,
+  resolveSeedInstitutionName,
   resolveSeedPassword,
+  resolveSeedTpoFullName,
   seedAccountEmails,
 } from '../src/platform/prisma/seed-accounts.js';
 
@@ -155,12 +157,14 @@ async function main(): Promise<void> {
   const seedDomain = resolveSeedEmailDomain();
   const seedPassword = resolveSeedPassword();
   const seedEmails = seedAccountEmails(seedDomain);
+  const institutionName = resolveSeedInstitutionName();
+  const tpoFullName = resolveSeedTpoFullName();
 
   const institution = await prisma.institution.upsert({
     where: { domain: seedDomain },
-    update: {},
+    update: { name: institutionName },
     create: {
-      name: 'SMART Pilot Institute',
+      name: institutionName,
       domain: seedDomain,
       planId: proPlan.id,
     },
@@ -253,7 +257,7 @@ async function main(): Promise<void> {
     },
     {
       email: seedEmails.tpo,
-      fullName: 'Pilot TPO',
+      fullName: tpoFullName,
       role: 'INSTITUTION_ADMIN',
       primaryTrackId: null,
     },
@@ -269,7 +273,7 @@ async function main(): Promise<void> {
   for (const account of accounts) {
     const user = await prisma.user.upsert({
       where: { email: account.email },
-      update: { passwordHash },
+      update: { passwordHash, fullName: account.fullName },
       create: {
         email: account.email,
         fullName: account.fullName,

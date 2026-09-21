@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { SkillVerificationService } from './skill-verification.service.js';
@@ -60,11 +56,11 @@ function makeService(deps: {
   prisma?: Record<string, unknown>;
   redis?: Record<string, unknown>;
   evaluation?: Record<string, unknown>;
-  aiGateway?: Record<string, unknown>;
   outbox?: Record<string, unknown>;
   intelligence?: Record<string, unknown>;
   verification?: Record<string, unknown>;
   profile?: Record<string, unknown>;
+  gradeQueue?: { add: ReturnType<typeof vi.fn> };
 }) {
   return new SkillVerificationService(
     (deps.prisma ?? {
@@ -79,15 +75,138 @@ function makeService(deps: {
       exists: vi.fn().mockResolvedValue(0),
     }) as never,
     (deps.evaluation ?? { generateSkillForm: vi.fn(), gradeSkillForm: vi.fn() }) as never,
-    (deps.aiGateway ?? { hasCallableProvider: vi.fn().mockReturnValue(true) }) as never,
     (deps.outbox ?? { enqueueEnvelope: vi.fn() }) as never,
     intelligenceService(deps.intelligence) as never,
     verificationService(deps.verification) as never,
     profileCompletion(deps.profile) as never,
+    deps.gradeQueue as never,
   );
 }
 
 describe('SkillVerificationService', () => {
+  it('accepts complete and enqueues background grading when the grade queue is wired', async () => {
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
+      skillName: 'Git',
+      sdeSkillCode: 'SDE_GIT',
+      proficiency: 'BEGINNER',
+      scoringToken: 'token',
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [{ index: 1, selectedKey: 'A' }],
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
+    };
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn().mockImplementation(({ data }: { data: { lastAttemptId: string } }) =>
+          Promise.resolve({
+            ...declaredClaim(),
+            lastAttemptId: data.lastAttemptId,
+            sourceMetadata: {
+              skillVerificationPending: {
+                sessionId: SESSION_ID,
+                since: '2026-01-01T00:00:00.000Z',
+              },
+            },
+          }),
+        ),
+      },
+      skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const gradeQueue = { add: vi.fn().mockResolvedValue(undefined) };
+    const evaluation = { gradeSkillForm: vi.fn() };
+    const service = makeService({ prisma, redis, evaluation, gradeQueue });
+    const gradingSpy = vi.spyOn(service, 'processQueuedComplete').mockResolvedValue(undefined);
+
+    const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
+
+    expect(result.gradingAccepted).toBe(true);
+    expect(result.grade).toBeNull();
+    expect(result.claim?.verificationInProgress).toBe(true);
+    expect(gradingSpy).toHaveBeenCalledWith(SESSION_ID, STUDENT_ID);
+    expect(gradeQueue.add).toHaveBeenCalledWith(
+      'grade',
+      { sessionId: SESSION_ID, userId: STUDENT_ID },
+      { jobId: `skill-verify-grade:${SESSION_ID}` },
+    );
+  });
+
+  it('re-enqueues background grading when complete is called again while grading is queued', async () => {
+    const stored = {
+      sessionId: SESSION_ID,
+      userId: STUDENT_ID,
+      claimId: CLAIM_ID,
+      catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
+      skillName: 'Git',
+      sdeSkillCode: 'SDE_GIT',
+      proficiency: 'BEGINNER',
+      scoringToken: 'token',
+      items: [
+        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
+      ],
+      timeMinutes: 20,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      answers: [{ index: 1, selectedKey: 'A' }],
+      gradingStatus: 'QUEUED' as const,
+    };
+    const redis = {
+      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
+      setex: vi.fn().mockResolvedValue('OK'),
+      exists: vi.fn().mockResolvedValue(0),
+    };
+    const prisma = {
+      skillClaim: {
+        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
+        update: vi.fn().mockImplementation(({ data }: { data: { lastAttemptId: string } }) =>
+          Promise.resolve({
+            ...declaredClaim(),
+            lastAttemptId: data.lastAttemptId,
+            sourceMetadata: {
+              skillVerificationPending: {
+                sessionId: SESSION_ID,
+                since: '2026-01-01T00:00:00.000Z',
+              },
+            },
+          }),
+        ),
+      },
+      skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const gradeQueue = { add: vi.fn().mockResolvedValue(undefined) };
+    const service = makeService({
+      prisma,
+      redis,
+      evaluation: { gradeSkillForm: vi.fn() },
+      gradeQueue,
+    });
+    const gradingSpy = vi.spyOn(service, 'processQueuedComplete').mockResolvedValue(undefined);
+
+    const result = await service.complete(student(), SESSION_ID, {});
+
+    expect(result.gradingAccepted).toBe(true);
+    expect(result.claim?.verificationInProgress).toBe(true);
+    expect(gradeQueue.add).toHaveBeenCalled();
+    expect(gradingSpy).toHaveBeenCalledWith(SESSION_ID, STUDENT_ID);
+  });
+
+  it('processQueuedComplete is a no-op when the redis session was already cleared', async () => {
+    const redis = { get: vi.fn().mockResolvedValue(null) };
+    const service = makeService({ prisma: {}, redis, evaluation: {} });
+
+    await expect(service.processQueuedComplete(SESSION_ID, STUDENT_ID)).resolves.toBeUndefined();
+  });
+
   it('prepareOnly skips LLM generate after the claim/cooldown gate', async () => {
     const evaluation = { generateSkillForm: vi.fn() };
     const redis = { setex: vi.fn().mockResolvedValue('OK') };
@@ -461,7 +580,7 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Reach at least 50% profile completion to unlock skill verification.',
+          message: 'Reach at least 10% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),
@@ -480,7 +599,7 @@ describe('SkillVerificationService', () => {
       assertCompleteForSkillVerification: vi.fn().mockRejectedValue(
         new ForbiddenException({
           error: 'profile_incomplete',
-          message: 'Reach at least 50% profile completion to unlock skill verification.',
+          message: 'Reach at least 10% profile completion to unlock skill verification.',
           statusCode: 403,
         }),
       ),
@@ -498,7 +617,7 @@ describe('SkillVerificationService', () => {
     expect(profile.assertCompleteForSkillVerification).toHaveBeenCalledWith(STUDENT_ID);
   });
 
-  it('skips targeted generation immediately when no AI provider is callable', async () => {
+  it('finalizes after diagnostic without a second targeted form', async () => {
     const diagnosticGrade = {
       skillCode: 'SDE_DATABASE_SQL',
       proficiency: 'BEGINNER',
@@ -556,9 +675,9 @@ describe('SkillVerificationService', () => {
         targetProficiency: 'BEGINNER',
         assessmentPassed: true,
         uncertainties: [],
-        recommendedNextStep: 'TARGETED_ASSESSMENT',
+        recommendedNextStep: 'REMEDIATION',
         requiresInterview: false,
-        requiresAdditionalAssessment: true,
+        requiresAdditionalAssessment: false,
         confidence: 'MEDIUM',
         evaluatedAt: new Date().toISOString(),
       }),
@@ -584,139 +703,12 @@ describe('SkillVerificationService', () => {
         reasons: [],
       }),
     });
-    const service = makeService({
-      prisma,
-      redis,
-      evaluation,
-      intelligence,
-      verification,
-      aiGateway: { hasCallableProvider: vi.fn().mockReturnValue(false) },
-    });
-
-    const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
-
-    expect(evaluation.generateSkillForm).not.toHaveBeenCalled();
-    expect(result.assessmentResult?.targetedAssessmentSkipped).toBe(true);
-    expect(result.assessmentResult?.targetedAssessmentSkipReason).toBe('ai_unavailable');
-  });
-
-  it('finalizes diagnostic-only when targeted assessment generation fails', async () => {
-    const diagnosticGrade = {
-      skillCode: 'SDE_ML',
-      proficiency: 'BEGINNER',
-      marksEarned: 8,
-      marksTotal: 10,
-      scorePercent: 80,
-      passed: true,
-      promptRef: 'sde-skill-open-batch-grader@2',
-      mcqCorrect: 4,
-      mcqTotal: 4,
-      traceCorrect: 2,
-      traceTotal: 3,
-      itemResults: [
-        {
-          index: 1,
-          format: 'MCQ' as const,
-          marksEarned: 1,
-          marksMax: 1,
-          correct: true,
-          selectedKey: 'A' as const,
-          correctKey: 'A' as const,
-          feedback: 'Correct.',
-        },
-      ],
-    };
-    const stored = {
-      sessionId: SESSION_ID,
-      userId: STUDENT_ID,
-      claimId: CLAIM_ID,
-      catalogSkillCode: 'SQL_QUERY_OPTIMIZATION',
-      skillName: 'SQL Query Optimization',
-      sdeSkillCode: 'SDE_DATABASE_SQL',
-      proficiency: 'BEGINNER',
-      scoringToken: 'x'.repeat(24),
-      items: [
-        { index: 1, format: 'MCQ', prompt: 'q', options: { A: 'a', B: 'b', C: 'c', D: 'd' } },
-      ],
-      timeMinutes: 20,
-      passMarkPercent: 80,
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
-      answers: [{ index: 1, selectedKey: 'A' }],
-      intelligenceEnabled: true,
-      stage: 'DIAGNOSTIC' as const,
-    };
-    const redis = {
-      get: vi.fn().mockResolvedValue(JSON.stringify(stored)),
-      del: vi.fn().mockResolvedValue(1),
-      setex: vi.fn().mockResolvedValue('OK'),
-      exists: vi.fn().mockResolvedValue(0),
-    };
-    const updated = {
-      ...declaredClaim(),
-      status: 'VERIFIED',
-      lastAttemptId: SESSION_ID,
-    };
-    const prisma = {
-      skillClaim: {
-        findUnique: vi.fn().mockResolvedValue(declaredClaim()),
-        update: vi.fn(),
-      },
-      skillVerificationAttempt: {
-        findFirst: vi.fn().mockResolvedValue(null),
-        create: vi.fn(),
-      },
-      $transaction: vi.fn().mockResolvedValue([updated]),
-    };
-    const evaluation = {
-      gradeSkillForm: vi.fn().mockResolvedValue(diagnosticGrade),
-      generateSkillForm: vi.fn().mockRejectedValue(
-        new ServiceUnavailableException({
-          error: 'ai_provider_unavailable',
-          message: 'No AI provider available.',
-        }),
-      ),
-    };
-    const intelligence = intelligenceService({
-      resolveBlueprint: vi.fn().mockReturnValue({
-        skillCode: 'SQL_QUERY_OPTIMIZATION',
-        competencyModel: [{ id: 'c1', capability: 'Pipelines' }],
-      }),
-      buildAssessmentResult: vi.fn().mockReturnValue({
-        skillCode: 'SQL_QUERY_OPTIMIZATION',
-        assessmentVersion: 'v1',
-        attemptId: SESSION_ID,
-        competencyResults: [],
-        highestAssessmentSupportedProficiency: 'BEGINNER',
-        targetProficiency: 'BEGINNER',
-        assessmentPassed: true,
-        uncertainties: [],
-        recommendedNextStep: 'TARGETED_ASSESSMENT',
-        requiresInterview: false,
-        requiresAdditionalAssessment: true,
-        confidence: 'MEDIUM',
-        evaluatedAt: new Date().toISOString(),
-      }),
-      claimPassesFromAssessment: vi.fn().mockReturnValue(true),
-    });
-    const verification = verificationService({
-      evaluateClaimVerification: vi.fn().mockResolvedValue({
-        recommendedNextStep: 'NONE',
-        requiresInterview: false,
-        requiresEvidence: false,
-        canFinalizeClaim: true,
-        reasons: [],
-      }),
-    });
     const service = makeService({ prisma, redis, evaluation, intelligence, verification });
 
     const result = await service.complete(student(), SESSION_ID, { responses: stored.answers });
 
-    expect(evaluation.generateSkillForm).toHaveBeenCalled();
-    expect(result.sessionContinues).not.toBe(true);
+    expect(evaluation.generateSkillForm).not.toHaveBeenCalled();
     expect(result.grade?.marksEarned).toBe(8);
-    expect(result.assessmentResult?.targetedAssessmentSkipped).toBe(true);
-    expect(result.assessmentResult?.targetedAssessmentSkipReason).toBe('generation_failed');
-    expect(prisma.skillClaim.update).toHaveBeenCalled();
   });
 
   it('allows verification start when the eight-area profile is complete', async () => {

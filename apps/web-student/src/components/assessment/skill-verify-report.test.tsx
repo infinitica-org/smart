@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AssessmentResult, GradeSdeSkillFormResponse } from '@smart/contracts';
+import type { GradeSdeSkillFormResponse } from '@smart/contracts';
+
+import type { AssessmentResultView } from '@/lib/competency-display';
 
 import { SkillVerifyReport } from './skill-verify-report';
 
@@ -58,7 +60,7 @@ const grade: GradeSdeSkillFormResponse = {
   ],
 };
 
-const assessmentResult: AssessmentResult = {
+const assessmentResult: AssessmentResultView = {
   skillCode: 'SQL_QUERY_OPTIMIZATION',
 
   assessmentVersion: 'v1',
@@ -134,7 +136,7 @@ describe('SkillVerifyReport', () => {
 
     expect(screen.getByText(/Assessment-supported proficiency/)).toBeDefined();
 
-    expect(screen.getByText(/Intermediate/)).toBeDefined();
+    expect(screen.getByText(/Level 2/)).toBeDefined();
 
     expect(screen.getByText(/Competency map/)).toBeDefined();
 
@@ -144,8 +146,8 @@ describe('SkillVerifyReport', () => {
 
     expect(screen.getByRole('button', { name: /back to skills/i })).toBeDefined();
 
-    expect(screen.getByRole('link', { name: /view skill repository/i }).getAttribute('href')).toBe(
-      '/assessments',
+    expect(screen.getByRole('link', { name: /view assessments/i }).getAttribute('href')).toBe(
+      '/assessment',
     );
 
     fireEvent.click(screen.getByRole('button', { name: /back to skills/i }));

@@ -10,14 +10,14 @@ Governing references: team charter and ownership — [`TEAM.md`](./TEAM.md); del
 
 Module and path ownership is authoritative in [`TEAM.md`](./TEAM.md) and enforced by [`.github/CODEOWNERS`](./.github/CODEOWNERS). At a system level, ownership is organized as:
 
-| Domain                       | Scope                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| Architecture & Review        | System architecture, `@smart/contracts`, quality gates. No feature code.     |
-| Platform / Backend Core      | Authentication, Prisma, Redis, Kafka, rate limiting, sandboxing, infrastructure |
-| Frontend & Full-Stack        | `@smart/ui`, `@smart/api-client`, student and TPO applications                |
-| Full-Stack & Backend         | Assessment lifecycle, certificates, verification and admin applications      |
-| AI Engineering               | AI gateway, evaluation, matching, `@smart/prompts`, `@smart/scoring-engine`   |
-| Data & AI/Backend            | Catalog, calibration, item banks, placement records, analytics               |
+| Domain                  | Scope                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| Architecture & Review   | System architecture, `@smart/contracts`, quality gates. No feature code.        |
+| Platform / Backend Core | Authentication, Prisma, Redis, Kafka, rate limiting, sandboxing, infrastructure |
+| Frontend & Full-Stack   | `@smart/ui`, `@smart/api-client`, student and TPO applications                  |
+| Full-Stack & Backend    | Assessment lifecycle, certificates, verification and admin applications         |
+| AI Engineering          | AI gateway, evaluation, matching, `@smart/prompts`, `@smart/scoring-engine`     |
+| Data & AI/Backend       | Catalog, calibration, item banks, placement records, analytics                  |
 
 New engineers: [`ENGINEER_START_CHECKLIST.md`](./docs/delivery/ENGINEER_START_CHECKLIST.md) · Day-to-day guidance: [`ENGINEER_GUIDES.md`](./docs/delivery/ENGINEER_GUIDES.md) · [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
@@ -44,13 +44,13 @@ pnpm dev:web            # student / TPO / admin / verify / auth (`@smart/web-*`)
 
 ### Data plane (`pnpm infra:up`)
 
-| Service       | Host URL / port                          | Notes                                   |
-| ------------- | ----------------------------------------- | ---------------------------------------- |
-| Postgres      | `localhost:5432`                         | `pgvector/pgvector:pg16`                |
-| Redis         | `localhost:6380` → container `6379`      | Windows commonly binds host `6379` already |
-| Redpanda      | `localhost:19092`                        | Kafka-compatible                        |
-| MinIO         | `localhost:9000` / console `:9001`       | S3-compatible                           |
-| Mailpit       | UI `http://localhost:8025`, SMTP `:1025` | Captures outbound mail                  |
+| Service       | Host URL / port                          | Notes                                                     |
+| ------------- | ---------------------------------------- | --------------------------------------------------------- |
+| Postgres      | `localhost:5432`                         | `pgvector/pgvector:pg16`                                  |
+| Redis         | `localhost:6380` → container `6379`      | Windows commonly binds host `6379` already                |
+| Redpanda      | `localhost:19092`                        | Kafka-compatible                                          |
+| MinIO         | `localhost:9000` / console `:9001`       | S3-compatible                                             |
+| Mailpit       | UI `http://localhost:8025`, SMTP `:1025` | Captures outbound mail                                    |
 | Prisma Studio | `http://localhost:5555`                  | Browse and edit rows against the same database as the API |
 
 Optional Compose profiles:
@@ -62,24 +62,24 @@ Optional Compose profiles:
 
 ### API probes (after `pnpm dev:api`)
 
-| Path        | Purpose                                 |
+| Path        | Purpose                                  |
 | ----------- | ---------------------------------------- |
-| `/health`   | Liveness                                |
+| `/health`   | Liveness                                 |
 | `/ready`    | Readiness (Postgres and Redis reachable) |
-| `/api/docs` | Swagger UI                              |
+| `/api/docs` | Swagger UI                               |
 
 Seeded accounts exist for local and non-production environments only; credentials are environment-specific and are not documented here. See [`docs/delivery/DATABASE.md`](./docs/delivery/DATABASE.md) for the seeding mechanism.
 
 Sign in at **http://localhost:3005/login** — the session redirects to the portal appropriate to the authenticated role.
 
-| App     | Port | Notes                                |
-| ------- | ---- | -------------------------------------- |
-| API     | 3000 | `/health`, `/ready`, `/api/docs`      |
-| Student | 3001 | Candidate portal                      |
-| TPO     | 3002 | Batch management and student invitations |
-| Admin   | 3003 | Institution and platform operations   |
+| App     | Port | Notes                                         |
+| ------- | ---- | --------------------------------------------- |
+| API     | 3000 | `/health`, `/ready`, `/api/docs`              |
+| Student | 3001 | Candidate portal                              |
+| TPO     | 3002 | Batch management and student invitations      |
+| Admin   | 3003 | Institution and platform operations           |
 | Verify  | 3004 | Public certificate lookup (no authentication) |
-| Auth    | 3005 | Login, invitation acceptance, password setup |
+| Auth    | 3005 | Login, invitation acceptance, password setup  |
 
 Invitation emails are captured by Mailpit (`http://localhost:8025`) in local development. Invitation links resolve on the auth application (`/invite/:token`).
 

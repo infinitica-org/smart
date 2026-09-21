@@ -383,6 +383,38 @@ describe('UsersService uploadProfilePhoto', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('accepts jpeg inferred from the file name when mime type is generic', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.user.update.mockResolvedValueOnce(user);
+
+    await service.uploadProfilePhoto(user.id, {
+      buffer: Buffer.from('fake-image'),
+      fileName: 'avatar.jpg',
+      mimeType: 'application/octet-stream',
+    });
+
+    expect(storage.upload).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: 'image/jpeg', fileName: 'avatar.jpg' }),
+    );
+  });
+
+  it('returns storage_unavailable when object storage rejects the upload', async () => {
+    const user = studentRow();
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    storage.upload.mockRejectedValueOnce(new Error('InvalidAccessKeyId'));
+
+    await expect(
+      service.uploadProfilePhoto(user.id, {
+        buffer: Buffer.from('fake-image'),
+        fileName: 'avatar.png',
+        mimeType: 'image/png',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'storage_unavailable' }),
+    });
+  });
 });
 
 describe('UsersService saveOnboardingDraft', () => {

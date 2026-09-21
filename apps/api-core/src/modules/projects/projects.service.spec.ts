@@ -35,6 +35,7 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     liveUrl: null,
     status: 'SUBMITTED',
     createdAt: new Date('2026-09-02T10:00:00.000Z'),
+    report: null,
     ...overrides,
   };
 }
@@ -43,13 +44,27 @@ function setup() {
   const prisma = {
     project: {
       create: vi.fn().mockResolvedValue(projectRow()),
-      findUnique: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue(projectRow()),
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
-  const service = new ProjectsService(prisma as never, outbox as never);
+  const verifyRunner = { runForProject: vi.fn().mockResolvedValue(undefined) };
+  const interviewGate = {
+    getState: vi.fn().mockResolvedValue({
+      interviewRequired: false,
+      interviewStatus: 'NOT_REQUIRED',
+      interviewCompletedAt: null,
+    }),
+  };
+  const service = new ProjectsService(
+    prisma as never,
+    outbox as never,
+    verifyRunner as never,
+    interviewGate as never,
+  );
   const controller = new ProjectsController(service);
-  return { prisma, outbox, service, controller };
+  return { prisma, outbox, verifyRunner, interviewGate, service, controller };
 }
 
 describe('CN-T08 project submission', () => {
@@ -80,7 +95,7 @@ describe('CN-T08 project submission', () => {
   });
 
   it('persists the template, queues smart.project.submitted, and returns SUBMITTED', async () => {
-    const { service, prisma, outbox } = setup();
+    const { service, prisma, outbox, verifyRunner } = setup();
     const dto = await service.create(studentId, template);
 
     expect(prisma.project.create).toHaveBeenCalledWith({
@@ -100,24 +115,9 @@ describe('CN-T08 project submission', () => {
       source: 'platform',
       data: { projectId, studentId },
     });
+    expect(verifyRunner.runForProject).toHaveBeenCalledWith(projectId, studentId);
     expect(dto.status).toBe('SUBMITTED');
-    expect(dto.report).toBeNull();
-  });
-
-  it('persists an optional live link', async () => {
-    const { service, prisma } = setup();
-    prisma.project.create.mockResolvedValueOnce(
-      projectRow({ liveUrl: 'https://bus-tracker.example.com' }),
-    );
-    const dto = await service.create(studentId, {
-      ...template,
-      liveUrl: 'https://bus-tracker.example.com',
-    });
-
-    expect(prisma.project.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ liveUrl: 'https://bus-tracker.example.com' }),
-    });
-    expect(dto.liveUrl).toBe('https://bus-tracker.example.com');
+    expect(dto.interviewStatus).toBe('NOT_REQUIRED');
   });
 
   it('returns the owned project for processing polls', async () => {

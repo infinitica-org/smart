@@ -78,10 +78,10 @@ describe('skill-declarations helpers', () => {
   it('coerces optional focus-progress timestamps to null', () => {
     const rows = progressForClaim(
       claim({
-        skillCode: 'DISTRIBUTED_SYSTEMS_DESIGN',
+        skillCode: 'RESTFUL_GRAPHQL_API_DESIGN',
         focusProgress: [
           {
-            focus: 'APIs',
+            focus: 'REST',
             status: 'DECLARED',
             strikes: 0,
             lockedUntil: null,
@@ -110,6 +110,15 @@ describe('skill-declarations helpers', () => {
     expect(claimToBadgeStatus(claim({ status: 'DECLARED' }))).toBe('DECLARED');
     expect(
       claimToBadgeStatus(
+        claim({
+          status: 'DECLARED',
+          lastAttemptId: '55555555-5555-4555-8555-555555555555',
+          verificationInProgress: true,
+        }),
+      ),
+    ).toBe('PENDING_REVIEW');
+    expect(
+      claimToBadgeStatus(
         claim({ status: 'DECLARED', lastAttemptId: '55555555-5555-4555-8555-555555555555' }),
       ),
     ).toBe('NOT_VERIFIED');
@@ -129,16 +138,25 @@ describe('skill-declarations helpers', () => {
   it('maps repository status labels for catalog skills', () => {
     expect(repositoryStatusForClaim(undefined).displayLabel).toBe('Not declared');
     expect(repositoryStatusForClaim(claim({ status: 'DECLARED' })).displayLabel).toBe('Declared');
+    expect(
+      repositoryStatusForClaim(
+        claim({
+          status: 'DECLARED',
+          lastAttemptId: '55555555-5555-4555-8555-555555555555',
+          verificationInProgress: true,
+        }),
+      ).displayLabel,
+    ).toBe('Under review');
     expect(repositoryStatusForClaim(claim({ status: 'VERIFIED' })).displayLabel).toBe('Verified');
   });
 
   it('gates Take Assessment on profile completion only', () => {
-    expect(canEnableTakeAssessment({ profilePercent: 49 })).toBe(false);
-    expect(canEnableTakeAssessment({ profilePercent: 50 })).toBe(true);
+    expect(canEnableTakeAssessment({ profilePercent: 9 })).toBe(false);
+    expect(canEnableTakeAssessment({ profilePercent: 10 })).toBe(true);
     expect(canEnableTakeAssessment({ profilePercent: 100 })).toBe(true);
   });
 
-  it('allows practice for verified skills by clearing the verified block message', () => {
+  it('does not block verified claims via takeAssessmentBlockMessage', () => {
     expect(takeAssessmentBlockMessage(claim({ status: 'VERIFIED' }))).toBeNull();
     expect(takeAssessmentBlockMessage(claim({ status: 'LOCKED' }))).toMatch(/locked/i);
   });

@@ -5,6 +5,10 @@ import SkillRepositoryPage from './page';
 const push = vi.fn();
 const listSkillClaimsMock = vi.fn();
 const declareSkillClaimMock = vi.fn();
+const listEvidenceMock = vi.fn();
+const listProjectsMock = vi.fn();
+const listWorkExperiencesMock = vi.fn();
+const listProjectSkillMappingsMock = vi.fn();
 
 const profileProgressMock = vi.fn();
 
@@ -18,6 +22,16 @@ vi.mock('@/lib/api', () => ({
       listSkillClaims: () => listSkillClaimsMock(),
       declareSkillClaim: (...args: unknown[]) => declareSkillClaimMock(...args),
     },
+    evidence: {
+      list: (...args: unknown[]) => listEvidenceMock(...args),
+      listProjectSkillMappings: (...args: unknown[]) => listProjectSkillMappingsMock(...args),
+    },
+    projects: {
+      listMine: () => listProjectsMock(),
+    },
+    users: {
+      listWorkExperiences: () => listWorkExperiencesMock(),
+    },
   },
 }));
 
@@ -29,7 +43,7 @@ function mockIncompleteProfile() {
   profileProgressMock.mockReturnValue({
     loading: false,
     progress: {
-      percent: 38,
+      percent: 5,
       completedAreas: ['skills', 'languages', 'education'],
       incompleteAreas: [
         'experience',
@@ -98,6 +112,14 @@ describe('SkillRepositoryPage', () => {
     push.mockReset();
     listSkillClaimsMock.mockReset();
     declareSkillClaimMock.mockReset();
+    listEvidenceMock.mockReset();
+    listEvidenceMock.mockResolvedValue([]);
+    listProjectsMock.mockReset();
+    listProjectsMock.mockResolvedValue({ projects: [] });
+    listWorkExperiencesMock.mockReset();
+    listWorkExperiencesMock.mockResolvedValue([]);
+    listProjectSkillMappingsMock.mockReset();
+    listProjectSkillMappingsMock.mockResolvedValue([]);
     profileProgressMock.mockReset();
     mockIncompleteProfile();
     listSkillClaimsMock.mockResolvedValue([
@@ -121,8 +143,8 @@ describe('SkillRepositoryPage', () => {
   it('renders the Skill Repository heading and catalog skills', async () => {
     render(<SkillRepositoryPage />);
     expect(await screen.findByRole('heading', { name: 'Skill Repository' })).toBeDefined();
-    expect(screen.getByText('Python (Application & Backend Development)')).toBeDefined();
-    expect(screen.getByText('JavaScript / TypeScript (Full-Stack Development)')).toBeDefined();
+    expect(screen.getByText('Python')).toBeDefined();
+    expect(screen.getByText('JavaScript / TypeScript')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Declared').length).toBeGreaterThan(0);
   });
@@ -139,7 +161,7 @@ describe('SkillRepositoryPage', () => {
     expect(screen.queryByText('Select proficiency')).toBeNull();
   });
 
-  it('keeps Take Assessment disabled when profile is below 50%', async () => {
+  it('keeps Take Assessment disabled when profile is below 10%', async () => {
     render(<SkillRepositoryPage />);
     await selectSkill('JavaScript / TypeScript');
 
@@ -154,7 +176,7 @@ describe('SkillRepositoryPage', () => {
     );
   });
 
-  it('enables Take Assessment when profile is at least 50% complete', async () => {
+  it('enables Take Assessment when profile is at least 10% complete', async () => {
     mockCompleteProfile();
     render(<SkillRepositoryPage />);
     await selectSkill('JavaScript / TypeScript');
@@ -188,12 +210,13 @@ describe('SkillRepositoryPage', () => {
     });
   });
 
-  it('keeps Take Assessment disabled for verified skills when profile is below 50%', async () => {
+  it('does not show Take Assessment for verified skills', async () => {
     render(<SkillRepositoryPage />);
     await selectSkill('Python');
 
-    const takeAssessment = await screen.findByRole('button', { name: /Practice Assessment/i });
-    expect(takeAssessment.hasAttribute('disabled')).toBe(true);
+    const details = await screen.findByRole('region', { name: 'Skill details' });
+    expect(within(details).queryByRole('button', { name: /Take Assessment/i })).toBeNull();
+    expect(within(details).queryByRole('button', { name: /Practice Assessment/i })).toBeNull();
   });
 
   it('preserves verified status display for verified claims', async () => {
@@ -206,8 +229,8 @@ describe('SkillRepositoryPage', () => {
 
   it('does not list catalog skills until they are added', async () => {
     render(<SkillRepositoryPage />);
-    await screen.findByText('Python (Application & Backend Development)');
-    expect(screen.queryByText(/High-Performance Services/i)).toBeNull();
+    await screen.findByText('Python');
+    expect(screen.queryByRole('button', { name: /^Go$/i })).toBeNull();
   });
 
   it('adds a skill from the category picker dialog', async () => {
@@ -220,14 +243,16 @@ describe('SkillRepositoryPage', () => {
     });
 
     render(<SkillRepositoryPage />);
-    await screen.findByText('Python (Application & Backend Development)');
+    await screen.findByText('Python');
 
     fireEvent.click(screen.getByRole('button', { name: /Add skill/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Add skill' });
     fireEvent.change(within(dialog).getByPlaceholderText('Search skills...'), {
-      target: { value: 'High-Performance Services' },
+      target: { value: 'Go' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: /High-Performance Services/i }));
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /Go GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES/i }),
+    );
 
     await waitFor(() => {
       expect(declareSkillClaimMock).toHaveBeenCalledWith(
@@ -238,9 +263,7 @@ describe('SkillRepositoryPage', () => {
       );
     });
     expect(
-      await screen.findByRole('button', {
-        name: /Go \(Golang\) for High-Performance Services/i,
-      }),
+      await screen.findByRole('button', { name: /Go GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES/i }),
     ).toBeDefined();
   });
 });

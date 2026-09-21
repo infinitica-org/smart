@@ -17,6 +17,8 @@ const PRACTITIONER_WEIGHTS = {
   // platform-observed source until issuer APIs replace OCR/stub verification.
   EXTERNALCERT: { default: 0.5 },
   PROFESSIONALCREDENTIAL: { default: 0.55 },
+  /** Frozen v1 placeholder until ORION recalibration publishes a trained weight. */
+  QLIX: { default: 0.85 },
 } satisfies Record<SignalSourceId, Record<string, number>>;
 
 const PRACTITIONER_BASE = {

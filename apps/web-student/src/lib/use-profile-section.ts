@@ -3,22 +3,17 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo } from 'react';
 
-import {
-  DEFAULT_PROFILE_SECTION,
-  isProfileSectionId,
-  type ProfileSectionId,
-} from '@/lib/profile-sections';
+import { resolveProfileSection, type ProfileSectionId } from '@/lib/profile-sections';
 
 const LEGACY_HASH_TO_SECTION: Record<string, ProfileSectionId> = {
-  about: 'about',
-  skills: 'about',
+  about: 'experience',
+  skills: 'experience',
   education: 'education',
   experience: 'experience',
   languages: 'languages',
   certificates: 'certifications',
   links: 'links',
   projects: 'projects',
-  preferences: 'preferences',
   resume: 'resume',
 };
 
@@ -27,9 +22,7 @@ export function useProfileSection() {
   const searchParams = useSearchParams();
 
   const section = useMemo((): ProfileSectionId => {
-    const raw = searchParams.get('section');
-    if (isProfileSectionId(raw)) return raw;
-    return DEFAULT_PROFILE_SECTION;
+    return resolveProfileSection(searchParams.get('section'));
   }, [searchParams]);
 
   const setSection = useCallback(
@@ -43,9 +36,10 @@ export function useProfileSection() {
 
   useEffect(() => {
     const raw = searchParams.get('section');
-    if (!raw) {
+    const resolved = resolveProfileSection(raw);
+    if (!raw || raw !== resolved) {
       const params = new URLSearchParams(searchParams.toString());
-      params.set('section', DEFAULT_PROFILE_SECTION);
+      params.set('section', resolved);
       router.replace(`/profile?${params.toString()}`, { scroll: false });
     }
   }, [router, searchParams]);

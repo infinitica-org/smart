@@ -19,13 +19,15 @@ import {
 import {
   SKILL_DEFINITIONS,
   skillFocusOptions,
+  type ProjectDto,
   type SkillClaimDto,
+  type ProjectSkillMappingDto,
   type SkillDefinition,
 } from '@smart/contracts';
-import { VerificationBadge, cn } from '@smart/ui';
+import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
+import { ProficiencyLevelHint, VerificationBadge, cn } from '@smart/ui';
 import { api } from '@/lib/api';
 import {
-  PROFICIENCY_LABELS,
   SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY,
   SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE,
   canEnableTakeAssessment,
@@ -35,6 +37,9 @@ import {
 import { canVerifySkills } from '@/lib/profile-progress';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 import { SkillVerificationInstructions } from '@/components/assessment/skill-verification-instructions';
+import { SkillEvidenceContextPanel } from '@/components/assessment/skill-evidence-context-panel';
+import { buildLinkedSkillEvidenceContext } from '@/lib/skill-evidence-context';
+import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 
 const STREAM_VISUALS: Record<
   string,
@@ -126,13 +131,18 @@ function CatalogSkillRow({
         <h3 className="truncate text-[15px] font-bold text-foreground">{skill.definition.name}</h3>
         <code className="font-mono text-xs text-muted-foreground">{skill.definition.code}</code>
       </div>
-      {skill.badgeStatus ? (
-        <VerificationBadge status={skill.badgeStatus} variant="outline" />
-      ) : (
-        <span className="inline-flex shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          Not declared
-        </span>
-      )}
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        {skill.badgeStatus ? (
+          <VerificationBadge status={skill.badgeStatus} variant="outline" />
+        ) : (
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Not declared
+          </span>
+        )}
+        {skill.verified && skill.claim?.proficiency ? (
+          <ProficiencyLevelCircles proficiency={skill.claim.proficiency} size="sm" />
+        ) : null}
+      </div>
     </button>
   );
 }
@@ -337,6 +347,8 @@ function SkillDetailPanel({
   isBusy,
   isPending,
   onTakeAssessment,
+  evidenceContext,
+  evidenceLoading,
 }: {
   skill: CatalogSkill;
   profilePercent: number;
@@ -348,6 +360,8 @@ function SkillDetailPanel({
   isBusy: boolean;
   isPending: boolean;
   onTakeAssessment: () => void;
+  evidenceContext: SkillEvidenceContextView | undefined;
+  evidenceLoading: boolean;
 }) {
   const visual = streamVisual(skill.streamLabel);
   const Icon = visual.Icon;
@@ -386,11 +400,12 @@ function SkillDetailPanel({
           )}
         </div>
         {skill.claim?.status === 'VERIFIED' && skill.claim.proficiency ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Verified proficiency</span>
-            <span className="font-semibold text-foreground">
-              {PROFICIENCY_LABELS[skill.claim.proficiency] ?? skill.claim.proficiency}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              Verified proficiency
+              <ProficiencyLevelHint />
             </span>
+            <ProficiencyLevelCircles proficiency={skill.claim.proficiency} />
           </div>
         ) : skill.claim?.status === 'DECLARED' || skill.claim?.status === 'BEGINNER_REATTEMPT' ? (
           <div className="flex items-center justify-between gap-3">
@@ -401,6 +416,19 @@ function SkillDetailPanel({
       </div>
 
       <SkillVerificationInstructions />
+
+      {evidenceLoading ? (
+        <div
+          className="animate-pulse rounded-xl border border-border bg-muted p-4"
+          role="status"
+          aria-label="Loading linked evidence"
+        >
+          <div className="h-3 w-40 rounded bg-muted-foreground/20" />
+          <div className="mt-2 h-2 w-full rounded bg-muted-foreground/15" />
+        </div>
+      ) : (
+        <SkillEvidenceContextPanel context={evidenceContext} />
+      )}
 
       {!profileComplete ? (
         <div
@@ -424,15 +452,17 @@ function SkillDetailPanel({
         </p>
       ) : null}
 
-      <button
-        type="button"
-        disabled={!canTakeAssessment || isBusy || isPending || Boolean(blockMessage)}
-        onClick={onTakeAssessment}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isBusy ? 'Loading…' : skill.verified ? 'Practice Assessment' : 'Take Assessment'}
-        <ArrowRight className="h-3.5 w-3.5" />
-      </button>
+      {!skill.verified ? (
+        <button
+          type="button"
+          disabled={!canTakeAssessment || isBusy || isPending || Boolean(blockMessage)}
+          onClick={onTakeAssessment}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isBusy ? 'Loading…' : 'Take Assessment'}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -452,9 +482,78 @@ export default function SkillRepositoryPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'status'>('name');
   const [selectedSkillCode, setSelectedSkillCode] = useState<string | null>(null);
   const [addSkillOpen, setAddSkillOpen] = useState(false);
+  const [selectedEvidenceContext, setSelectedEvidenceContext] = useState<
+    SkillEvidenceContextView | undefined
+  >(undefined);
+  const [projectTitleById, setProjectTitleById] = useState<Map<string, string>>(() => new Map());
+  const [liveProjectIds, setLiveProjectIds] = useState<Set<string>>(() => new Set());
+  const [experienceLabelById, setExperienceLabelById] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  const [liveExperienceIds, setLiveExperienceIds] = useState<Set<string>>(() => new Set());
+  const [myProjects, setMyProjects] = useState<ProjectDto[]>([]);
+  const [projectMappingsById, setProjectMappingsById] = useState<
+    Map<string, ProjectSkillMappingDto[]>
+  >(() => new Map());
+  const [myWorkExperiences, setMyWorkExperiences] = useState<
+    Awaited<ReturnType<typeof api.users.listWorkExperiences>>
+  >([]);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    void (async () => {
+      try {
+        const res = await api.projects.listMine();
+        if (cancelled) return;
+        const projects = res.projects as ProjectDto[];
+        const map = new Map<string, string>();
+        const ids = new Set<string>();
+        for (const project of projects) {
+          map.set(project.projectId, project.title);
+          ids.add(project.projectId);
+        }
+        setMyProjects(projects);
+        setProjectTitleById(map);
+        setLiveProjectIds(ids);
+
+        const mappingEntries = await Promise.all(
+          projects.map(async (project) => {
+            try {
+              const mappings = await api.evidence.listProjectSkillMappings(project.projectId);
+              return [project.projectId, mappings] as [string, ProjectSkillMappingDto[]];
+            } catch {
+              return [project.projectId, []] as [string, ProjectSkillMappingDto[]];
+            }
+          }),
+        );
+        if (!cancelled) {
+          setProjectMappingsById(new Map<string, ProjectSkillMappingDto[]>(mappingEntries));
+        }
+      } catch {
+        if (!cancelled) {
+          setMyProjects([]);
+          setProjectMappingsById(new Map());
+        }
+      }
+    })();
+
+    void api.users
+      .listWorkExperiences()
+      .then((experiences) => {
+        if (cancelled) return;
+        setMyWorkExperiences(experiences);
+        const labels = new Map<string, string>();
+        const ids = new Set<string>();
+        for (const exp of experiences) {
+          ids.add(exp.id);
+          labels.set(exp.id, `${exp.role} · ${exp.companyName}`);
+        }
+        setExperienceLabelById(labels);
+        setLiveExperienceIds(ids);
+      })
+      .catch(() => undefined);
+
     const run = async () => {
       setLoading(true);
       setError(null);
@@ -525,6 +624,55 @@ export default function SkillRepositoryPage() {
       setSelectedSkillCode(null);
     }
   }, [catalogSkills, selectedSkillCode]);
+
+  useEffect(() => {
+    if (!selectedSkillCode) {
+      setSelectedEvidenceContext(undefined);
+      setEvidenceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEvidenceLoading(true);
+    void (async () => {
+      try {
+        const records = await api.evidence.list({ skillCode: selectedSkillCode });
+        if (cancelled) return;
+        setSelectedEvidenceContext(
+          buildLinkedSkillEvidenceContext(
+            selectedSkillCode,
+            records,
+            myProjects,
+            projectMappingsById,
+            myWorkExperiences,
+            {
+              projectTitles: projectTitleById,
+              experienceLabels: experienceLabelById,
+              liveProjectIds,
+              liveExperienceIds,
+            },
+          ),
+        );
+      } catch {
+        if (!cancelled) {
+          setSelectedEvidenceContext({ availableCount: 0, items: [] });
+        }
+      } finally {
+        if (!cancelled) setEvidenceLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedSkillCode,
+    projectTitleById,
+    experienceLabelById,
+    liveProjectIds,
+    liveExperienceIds,
+    myProjects,
+    projectMappingsById,
+    myWorkExperiences,
+  ]);
 
   const filterOptions = ['All', 'Verified', 'Not Verified'];
 
@@ -857,6 +1005,8 @@ export default function SkillRepositoryPage() {
                 onTakeAssessment={() => {
                   verifySkill(selectedSkill.definition.code, selectedSkill.claim);
                 }}
+                evidenceContext={selectedEvidenceContext}
+                evidenceLoading={evidenceLoading}
               />
             ) : (
               <section className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">

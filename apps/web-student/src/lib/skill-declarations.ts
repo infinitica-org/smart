@@ -12,6 +12,7 @@ import {
   sdeV4FormCodeForCatalogSkill,
   type SkillClaimDto,
   type SkillClaimStatus,
+  proficiencyLevelUiLabel,
 } from '@smart/contracts';
 import { canVerifySkills } from './profile-progress';
 
@@ -29,10 +30,10 @@ export const PROFICIENCY_OPTIONS = [
 ] as const satisfies readonly SkillProficiency[];
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
-  ADVANCED: 'Advanced',
-  PROFESSIONAL: 'Professional',
+  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
+  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
+  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
+  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
 };
 
 export function skillsForCategory(categoryId: SkillCategoryId) {
@@ -49,7 +50,6 @@ export function categoryNameForCode(skillCode: string): string {
 
 export const SKILL_VERIFY_STAGE_LABELS = {
   DIAGNOSTIC: 'Short diagnostic',
-  TARGETED: 'Targeted assessment',
   COMPLETE: 'Assessment',
   INTERVIEW: 'Defense interview',
 } as const;
@@ -79,6 +79,7 @@ export function isSdeV4Verifiable(skillCode: string): boolean {
 
 export function claimToBadgeStatus(claim: SkillClaimDto): string {
   if (claim.status === 'LOCKED') return 'LOCKED';
+  if (claim.verificationInProgress) return 'PENDING_REVIEW';
   if (claim.status === 'VERIFIED' && claim.verificationDecision === 'PROVISIONAL') {
     return 'PROVISIONAL';
   }
@@ -120,6 +121,9 @@ export function isSkillVerifyCooldownActive(claim: SkillClaimDto, now = Date.now
 export function skillVerifyBlockMessage(claim: SkillClaimDto): string | null {
   if (!isSdeV4Verifiable(claim.skillCode)) {
     return 'This skill does not have a verification challenge yet.';
+  }
+  if (claim.verificationInProgress) {
+    return 'Your assessment is under review. You can start again once processing finishes.';
   }
   if (claim.status === 'VERIFIED') {
     return 'This skill is already verified.';
@@ -191,8 +195,12 @@ export function viewForFocus(
     Date.parse(retryAt) > now;
   const cooling = status !== 'VERIFIED' && (waitOpen || status === 'LOCKED');
   const hasForm = isSdeV4Verifiable(skillCode);
+  const underReview = claim?.verificationInProgress === true;
   const canStart =
-    hasForm && !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
+    hasForm &&
+    !cooling &&
+    !underReview &&
+    (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT');
   const canEditProficiency =
     !cooling && (status === 'DECLARED' || status === 'BEGINNER_REATTEMPT' || !claim);
   const synthetic: SkillClaimDto | undefined = claim
@@ -231,7 +239,13 @@ export function isClaimActive(status: SkillClaimStatus): boolean {
 }
 
 export type RepositoryStatusLabel =
-  'Not declared' | 'Declared' | 'Verified' | 'Not verified' | 'Locked' | 'Reattempting';
+  | 'Not declared'
+  | 'Declared'
+  | 'Under review'
+  | 'Verified'
+  | 'Not verified'
+  | 'Locked'
+  | 'Reattempting';
 
 /** Human-readable repository status for a catalog skill with an optional claim. */
 export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
@@ -247,6 +261,9 @@ export function repositoryStatusForClaim(claim?: SkillClaimDto | null): {
   }
   if (badge === 'DECLARED') {
     return { displayLabel: 'Declared', badgeStatus: 'DECLARED' };
+  }
+  if (badge === 'PENDING_REVIEW') {
+    return { displayLabel: 'Under review', badgeStatus: 'PENDING_REVIEW' };
   }
   if (badge === 'NOT_VERIFIED') {
     return { displayLabel: 'Not verified', badgeStatus: 'NOT_VERIFIED' };
@@ -266,12 +283,9 @@ export const SKILL_VERIFICATION_PROFILE_UNLOCK_MESSAGE =
 /** Default claim proficiency for diagnostic-first verification (candidate does not self-select). */
 export const SKILL_VERIFICATION_DIAGNOSTIC_PROFICIENCY: SkillProficiency = 'BEGINNER';
 
-export const SKILL_VERIFICATION_ASSESSMENT_STEPS = [
-  'Start with a short diagnostic — SMART discovers what you can demonstrate; you do not self-rate proficiency.',
-  'Existing projects and work evidence are considered when available, but are not required to begin.',
-  'Targeted questions only appear where competencies are still uncertain — then evidence or interview if your level requires it.',
-  'Your verified badge reflects assessment-supported proficiency plus confidence, not a declared rating.',
-] as const;
+/** Student-facing copy — high level only (no item formats or gating mechanics). */
+export const SKILL_VERIFICATION_ASSESSMENT_SUMMARY =
+  'You complete a timed, proctored assessment for the skill you selected. Your result reflects what you demonstrated in that session; linked profile evidence is shown below when you have it.';
 
 export function isProfileCompleteForSkillVerification(percent: number | null | undefined): boolean {
   return canVerifySkills(percent);
@@ -283,7 +297,7 @@ export function canEnableTakeAssessment(params: {
   return isProfileCompleteForSkillVerification(params.profilePercent);
 }
 
-/** Block message for Take Assessment — verified skills may still practice. */
+/** Block message for Take Assessment (verified skills use the repository detail view only). */
 export function takeAssessmentBlockMessage(claim?: SkillClaimDto | null): string | null {
   if (!claim) return null;
   const message = skillVerifyBlockMessage(claim);

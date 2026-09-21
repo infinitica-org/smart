@@ -20,6 +20,7 @@ describe('classifyLiveWebcam', () => {
     expect(classifyLiveWebcam([], 10)).toBe('CAMERA_OBSTRUCTED');
     expect(classifyLiveWebcam([box(), box({ xMin: 0.05, xMax: 0.25 })], 80)).toBe('MULTIPLE_FACES');
     expect(classifyLiveWebcam([box({ xMin: 0.7, xMax: 0.95 })], 80)).toBe('LOOKING_AWAY');
+    expect(classifyLiveWebcam([box()], 80, true)).toBe('LOOKING_AWAY');
     expect(classifyLiveWebcam([box()], 80)).toBeNull();
     expect(cameraIntegrityCopy(null).title).toBe('Camera clear');
     expect(cameraIntegrityCopy('NO_FACE').ok).toBe(false);
@@ -42,7 +43,7 @@ describe('confirmLiveWebcamIssue', () => {
   });
 
   it('resets the streak when the issue clears', () => {
-    const mid = confirmLiveWebcamIssue('NO_FACE', 2, 'NO_FACE');
+    const mid = confirmLiveWebcamIssue('NO_FACE', 1, 'NO_FACE');
     expect(mid.emit).toBe(false);
     const cleared = confirmLiveWebcamIssue(mid.kind, mid.streak, null);
     expect(cleared).toEqual({ kind: null, streak: 0, emit: false });
@@ -85,6 +86,30 @@ describe('startLiveWebcamMonitor', () => {
     monitor.stop();
   });
 
+  it('does not emit violations during warmup', async () => {
+    const onViolation = vi.fn();
+    let now = 0;
+    const video = { videoWidth: 640 } as HTMLVideoElement;
+    const monitor = startLiveWebcamMonitor({
+      getVideo: () => video,
+      onViolation,
+      detect: () => [],
+      brightnessOf: () => 90,
+      sampleMs: 60_000,
+      emitCooldownMs: 0,
+      warmupMs: 5_000,
+      now: () => now,
+    });
+
+    for (let i = 0; i < 3; i += 1) await monitor.tick();
+    expect(onViolation).not.toHaveBeenCalled();
+
+    now = 6_000;
+    await monitor.tick();
+    expect(onViolation).toHaveBeenCalledWith('NO_FACE');
+    monitor.stop();
+  });
+
   it('skips a tick while a previous detect is still running', async () => {
     const onViolation = vi.fn();
     let release!: (boxes: NormalizedFaceBox[]) => void;
@@ -102,6 +127,7 @@ describe('startLiveWebcamMonitor', () => {
         return pending;
       },
       brightnessOf: () => 90,
+      estimatePose: async () => null,
       sampleMs: 60_000,
     });
 

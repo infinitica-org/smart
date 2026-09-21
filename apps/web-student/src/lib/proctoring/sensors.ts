@@ -66,6 +66,24 @@ export function classifyTrackpadGesture(event: {
   return null;
 }
 
+/** DevTools docked to the side/bottom grows outer−inner gap; normal tab chrome is stable at attach. */
+export function devtoolsDockOpenedSinceBaseline(
+  baseline: { widthGap: number; heightGap: number },
+  current: { widthGap: number; heightGap: number },
+  deltaThreshold = 120,
+): boolean {
+  const deltaW = current.widthGap - baseline.widthGap;
+  const deltaH = current.heightGap - baseline.heightGap;
+  return deltaW > deltaThreshold || deltaH > deltaThreshold;
+}
+
+export function readWindowChromeGap(): { widthGap: number; heightGap: number } {
+  return {
+    widthGap: window.outerWidth - window.innerWidth,
+    heightGap: window.outerHeight - window.innerHeight,
+  };
+}
+
 export async function scrambleScreenshotClipboard(): Promise<void> {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return;
   try {
@@ -203,15 +221,21 @@ export function attachProctorSensors(
     report('AUTOMATION_DETECTED');
   }
 
+  const chromeBaseline = readWindowChromeGap();
+  let devtoolsDockSuspicious = false;
   let skipDevtoolsProbe = true;
   const devtoolsTick = window.setInterval(() => {
     if (skipDevtoolsProbe) {
       skipDevtoolsProbe = false;
       return;
     }
-    const gap =
-      window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
-    if (gap) report('DEVTOOLS_OPEN');
+    const suspicious = devtoolsDockOpenedSinceBaseline(chromeBaseline, readWindowChromeGap());
+    if (suspicious && !devtoolsDockSuspicious) {
+      devtoolsDockSuspicious = true;
+      report('DEVTOOLS_OPEN');
+    } else if (!suspicious) {
+      devtoolsDockSuspicious = false;
+    }
   }, 2000);
 
   return () => {
