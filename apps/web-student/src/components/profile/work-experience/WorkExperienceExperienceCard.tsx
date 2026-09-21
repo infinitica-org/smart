@@ -31,7 +31,6 @@ import {
 import {
   formatExperienceMonthYear,
   formatProofFileSize,
-  getExperienceProjectLabels,
   getManagerEndorsementStatus,
   getNextActionGuidance,
   VERIFICATION_STATUS_LABELS,
@@ -117,9 +116,6 @@ export function WorkExperienceExperienceCard({
   const docCount = exp.documents?.length ?? 0;
   const dateRangeLabel = `${formatExperienceMonthYear(exp.startDate)} — ${exp.isCurrent ? 'Present' : exp.endDate ? formatExperienceMonthYear(exp.endDate) : 'N/A'}`;
   const managerEndorsementStatus = getManagerEndorsementStatus(exp);
-  const projectLabels = getExperienceProjectLabels(exp.projects);
-  const visibleProjects = projectLabels.slice(0, 2);
-  const hiddenProjectCount = Math.max(0, projectLabels.length - visibleProjects.length);
   const isVerified = exp.status === 'VERIFIED';
 
   const employmentMeta = [
@@ -296,27 +292,6 @@ export function WorkExperienceExperienceCard({
                   {SKILL_NAME_BY_CODE.get(skillCode) ?? skillCode}
                 </span>
               ))}
-            </div>
-          </div>
-        ) : null}
-
-        {projectLabels.length > 0 ? (
-          <div className="mt-4">
-            <p className="text-xs font-semibold text-[var(--ds-text)]">Projects</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {visibleProjects.map((label) => (
-                <span
-                  key={label}
-                  className="rounded-md border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)] px-2 py-0.5 text-[11px] text-[var(--ds-text-secondary)]"
-                >
-                  {label}
-                </span>
-              ))}
-              {hiddenProjectCount > 0 ? (
-                <span className="rounded-md border border-dashed border-[var(--ds-border)] px-2 py-0.5 text-[11px] text-[var(--ds-text-muted)]">
-                  + {hiddenProjectCount} more
-                </span>
-              ) : null}
             </div>
           </div>
         ) : null}

@@ -200,6 +200,8 @@ export const PROCTORING_SNAPSHOT_HEIGHT = 360;
 export const PROCTORING_SNAPSHOT_INTERVAL_MS = 1_000;
 /** Server CV: suppress repeat kinds until this window elapses (≈ two snapshot cycles). */
 export const PROCTORING_CHECKPOINT_DEDUP_MS = 2_000;
+/** Client HMAC ingest: same kind must not increment warning count again within this window. */
+export const PROCTORING_INGEST_DEDUP_MS = 45_000;
 
 export const ProctoringCheckpointResponseSchema = z.object({
   attemptId: UuidSchema,

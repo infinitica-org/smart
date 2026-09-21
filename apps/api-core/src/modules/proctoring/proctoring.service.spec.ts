@@ -140,6 +140,19 @@ describe('ProctoringService', () => {
     );
   });
 
+  it('dedupes repeated integrity ingests of the same kind within the window', async () => {
+    const ts = Date.now() - 1_000;
+    redis.lrange.mockResolvedValue([
+      JSON.stringify({ kind: 'DEVTOOLS_OPEN', severity: 'medium', ts }),
+    ]);
+    redis.get.mockResolvedValue('2');
+    const snap = await service.record(ATTEMPT, 'CLEAN', 'DEVTOOLS_OPEN');
+    expect(redis.incr).not.toHaveBeenCalled();
+    expect(redis.lpush).not.toHaveBeenCalled();
+    expect(prisma.integrityEvent.create).not.toHaveBeenCalled();
+    expect(snap.warningCount).toBe(2);
+  });
+
   it('increments for right-click and writes an integrity event', async () => {
     redis.incr.mockResolvedValue(1);
     const snap = await service.record(ATTEMPT, 'CLEAN', 'RIGHT_CLICK');

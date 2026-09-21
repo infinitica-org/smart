@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { cn } from '@smart/ui';
+import { cn, ProficiencyLevelHint } from '@smart/ui';
 import { ArrowRight } from 'lucide-react';
 import type { EvidenceRecordDto, SkillClaimDto } from '@smart/contracts';
 import { Alert } from '@smart/ui';
@@ -233,7 +233,15 @@ export function StudentAssessmentHub() {
                           {card.statusLabel}
                         </p>
                         {claim.status === 'VERIFIED' && claim.proficiency ? (
-                          <ProficiencyLevelCircles proficiency={claim.proficiency} size="sm" />
+                          <div className="space-y-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs ${profileMutedTextClass}`}
+                            >
+                              Verified level
+                              <ProficiencyLevelHint />
+                            </span>
+                            <ProficiencyLevelCircles proficiency={claim.proficiency} size="sm" />
+                          </div>
                         ) : null}
                         {blocked ? (
                           <p className={`text-xs leading-snug ${profileMutedTextClass}`}>

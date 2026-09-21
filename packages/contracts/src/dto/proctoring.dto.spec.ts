@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PROCTORING_CHECKPOINT_DEDUP_MS,
+  PROCTORING_INGEST_DEDUP_MS,
   PROCTORING_SNAPSHOT_HEIGHT,
   PROCTORING_SNAPSHOT_INTERVAL_MS,
   PROCTORING_SNAPSHOT_WIDTH,
@@ -36,6 +37,7 @@ describe('proctoring contracts', () => {
   it('keeps snapshot cadence aligned with dedup and jpeg size', () => {
     expect(PROCTORING_SNAPSHOT_INTERVAL_MS).toBe(1_000);
     expect(PROCTORING_CHECKPOINT_DEDUP_MS).toBe(PROCTORING_SNAPSHOT_INTERVAL_MS * 2);
+    expect(PROCTORING_INGEST_DEDUP_MS).toBe(45_000);
     expect(PROCTORING_SNAPSHOT_WIDTH).toBe(640);
     expect(PROCTORING_SNAPSHOT_HEIGHT).toBe(360);
   });

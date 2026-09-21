@@ -277,10 +277,61 @@ describe('WorkExperienceService', () => {
       expect(result.companyName).toBe('Beta Corp');
     });
 
-    it('rejects creating ongoing role without offer letter', async () => {
+    it('allows draft create without proof documents (letter rules enforced at verification)', async () => {
       const payload = buildValidCreatePayload({ documents: [] });
+      const experienceId = randomUUID();
 
-      await expect(service.create(mockStudentId, payload)).rejects.toThrow(BadRequestException);
+      prisma.organization.findFirst.mockResolvedValue(null);
+      prisma.organization.create.mockResolvedValue({
+        id: 'org-draft',
+        name: 'Acme Corp',
+        domain: 'acme.com',
+        verificationStatus: 'PENDING',
+      });
+      prisma.company.findFirst.mockResolvedValue(null);
+      prisma.workExperience.create.mockResolvedValueOnce({
+        id: experienceId,
+        studentId: mockStudentId,
+        companyName: payload.companyName,
+        role: payload.role,
+        employmentType: payload.employmentType,
+        department: null,
+        domain: payload.domain,
+        workLocation: null,
+        responsibilities: payload.responsibilities,
+        startDate: new Date(payload.startDate),
+        endDate: null,
+        isCurrent: true,
+        status: 'SUBMITTED',
+        skills: payload.skillsClaimed,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [],
+        structuredResponsibilities: [],
+      });
+      prisma.workExperience.findUnique.mockResolvedValueOnce({
+        id: experienceId,
+        studentId: mockStudentId,
+        companyName: payload.companyName,
+        role: payload.role,
+        employmentType: payload.employmentType,
+        department: null,
+        domain: payload.domain,
+        workLocation: null,
+        responsibilities: payload.responsibilities,
+        startDate: new Date(payload.startDate),
+        endDate: null,
+        isCurrent: true,
+        status: 'SUBMITTED',
+        skills: payload.skillsClaimed,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        documents: [],
+        structuredResponsibilities: [],
+      });
+
+      const result = await service.create(mockStudentId, payload);
+      expect(result.id).toBe(experienceId);
     });
 
     it('rejects creating ended role without offer letter', async () => {

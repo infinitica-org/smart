@@ -18,7 +18,7 @@ describe('ProfileHeroBanner', () => {
         education={[
           {
             fieldOfStudy: 'Computer Science',
-            institutionName: 'SMART Pilot Institute',
+            institutionName: 'Sona College of Technology',
             startDate: '2022-01-01',
             endDate: '2026-01-01',
             current: true,
@@ -36,7 +36,7 @@ describe('ProfileHeroBanner', () => {
     expect(screen.getByText('Ada Lovelace')).toBeTruthy();
     expect(screen.getByText('Computer Science')).toBeTruthy();
     expect(screen.getByText('Batch 2022 – 2026')).toBeTruthy();
-    expect(screen.getByText('SMART Pilot Institute')).toBeTruthy();
+    expect(screen.getByText('Sona College of Technology')).toBeTruthy();
     expect(screen.getByText('GitHub')).toBeTruthy();
     expect(screen.queryByText('Career focus')).toBeNull();
     expect(screen.queryByText('Job preferences')).toBeNull();

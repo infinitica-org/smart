@@ -80,6 +80,41 @@ let mockSkillClaims: Array<{
 }> = [];
 const mockProjects = new Map<string, Record<string, unknown>>();
 
+let mockWorkExperiences: Record<string, unknown>[] = [];
+
+function mockWorkExperienceFromBody(
+  body: Record<string, unknown>,
+  id: string,
+): Record<string, unknown> {
+  const now = new Date().toISOString();
+  return {
+    id,
+    studentId: MOCK_USER_ID,
+    companyId: body.companyId ?? null,
+    companyName: body.companyName ?? '',
+    companyWebsite: body.companyWebsite ?? null,
+    companyLinkedinUrl: body.companyLinkedinUrl ?? null,
+    role: body.role ?? '',
+    employmentType: body.employmentType ?? 'FULL_TIME',
+    department: body.department ?? null,
+    domain: body.domain ?? null,
+    workLocation: body.workLocation ?? null,
+    startDate: body.startDate ?? now,
+    endDate: body.endDate ?? null,
+    isCurrent: Boolean(body.isCurrent),
+    responsibilities: body.responsibilities ?? null,
+    skillsClaimed: body.skillsClaimed ?? [],
+    projects: null,
+    verifierName: body.verifierName ?? null,
+    verifierEmail: body.verifierEmail ?? null,
+    verifierDesignation: body.verifierDesignation ?? null,
+    status: 'SUBMITTED',
+    documents: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 let mockEducations: Record<string, unknown>[] = [
   {
     id: 'edu-mock-1',
@@ -195,7 +230,7 @@ function mockStudentUser(overrides: Record<string, unknown> = {}) {
     fullName: 'Test Student',
     role: 'STUDENT',
     institutionId: '223e4567-e89b-12d3-a456-426614174000',
-    institutionName: 'Mock Institution',
+    institutionName: 'Sona College of Technology',
     primaryTrack: mockPrimaryTrack ?? 'TECH_FULLSTACK',
     secondaryTrack: null,
     provider: 'GOOGLE',
@@ -331,7 +366,7 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
           },
           education: [
             {
-              institutionName: 'Mock University',
+              institutionName: 'Sona College of Technology',
               degree: 'B.Tech',
               fieldOfStudy: 'Computer Science',
             },
@@ -803,6 +838,13 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     );
   }
 
+  if (url.match(/\/projects\/?(\?|$)/) && method === 'GET' && !url.includes('github')) {
+    return new Response(JSON.stringify({ projects: [...mockProjects.values()] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (url.includes('/projects') && method === 'POST' && !url.includes('github')) {
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     const projectId = crypto.randomUUID();
@@ -840,6 +882,115 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (url.includes('/work-experiences')) {
+    const uploadMatch = url.match(/\/work-experiences\/([0-9a-f-]{36})\/documents\/upload/i);
+    if (uploadMatch && method === 'POST') {
+      const experienceId = uploadMatch[1] ?? '';
+      const idx = mockWorkExperiences.findIndex((row) => row.id === experienceId);
+      if (idx === -1) {
+        return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+      }
+      const doc = {
+        id: crypto.randomUUID(),
+        experienceId,
+        documentType: 'OFFER_LETTER',
+        fileName: 'proof.pdf',
+        fileUrl: `work-experience-proofs/${MOCK_USER_ID}/proof.pdf`,
+        fileSizeBytes: 512,
+        mimeType: 'application/pdf',
+        createdAt: new Date().toISOString(),
+      };
+      const row = mockWorkExperiences.at(idx);
+      if (row === undefined) {
+        return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+      }
+      const existing = (row.documents as unknown[]) ?? [];
+      mockWorkExperiences[idx] = {
+        ...row,
+        documents: [...existing, doc],
+        updatedAt: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(doc), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const itemMatch = url.match(/\/work-experiences\/([0-9a-f-]{36})/i);
+    const itemId = itemMatch?.[1];
+
+    if (method === 'GET' && itemId) {
+      const item = mockWorkExperiences.find((row) => row.id === itemId);
+      if (!item) {
+        return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+      }
+      return new Response(JSON.stringify(item), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (method === 'GET') {
+      return new Response(JSON.stringify(mockWorkExperiences), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (method === 'POST' && !itemId) {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      const id = crypto.randomUUID();
+      const row = mockWorkExperienceFromBody(body, id);
+      mockWorkExperiences = [row, ...mockWorkExperiences];
+      return new Response(JSON.stringify(row), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (method === 'PUT' && itemId) {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      const idx = mockWorkExperiences.findIndex((row) => row.id === itemId);
+      if (idx === -1) {
+        return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+      }
+      mockWorkExperiences[idx] = {
+        ...mockWorkExperiences[idx],
+        ...body,
+        updatedAt: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(mockWorkExperiences[idx]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (method === 'DELETE' && itemId) {
+      mockWorkExperiences = mockWorkExperiences.filter((row) => row.id !== itemId);
+      return new Response(null, { status: 204 });
+    }
+
+    if (itemId && url.includes('/send-verification') && method === 'POST') {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Employer verification email queued for delivery.',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (itemId && url.includes('/restart-verification') && method === 'POST') {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Verification request restarted successfully.',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
   }
 
   if (url.includes('/users/me/education') || url.includes('/me/education')) {

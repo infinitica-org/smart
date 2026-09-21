@@ -111,13 +111,17 @@ export function startLiveWebcamMonitor(options: {
   estimatePose?: (video: HTMLVideoElement) => Promise<HeadPoseEstimate | null>;
   sampleMs?: number;
   emitCooldownMs?: number;
+  /** Ignore violation ingests until the camera stream has stabilized (ms). */
+  warmupMs?: number;
   now?: () => number;
   setIntervalFn?: typeof setInterval;
   clearIntervalFn?: typeof clearInterval;
 }): { stop: () => void; tick: () => Promise<void> } {
   const sampleMs = options.sampleMs ?? LIVE_WEBCAM_SAMPLE_MS;
   const emitCooldownMs = options.emitCooldownMs ?? LIVE_WEBCAM_EMIT_COOLDOWN_MS;
+  const warmupMs = options.warmupMs ?? 0;
   const now = options.now ?? Date.now;
+  const startedAt = now();
   const schedule = options.setIntervalFn ?? setInterval;
   const unschedule = options.clearIntervalFn ?? clearInterval;
 
@@ -159,6 +163,7 @@ export function startLiveWebcamMonitor(options: {
       streak = stepped.streak;
       if (!stepped.emit || !stepped.kind) return;
       const t = now();
+      if (warmupMs > 0 && t - startedAt < warmupMs) return;
       if (t - (lastEmitAt[stepped.kind] ?? 0) < emitCooldownMs) return;
       lastEmitAt[stepped.kind] = t;
       streak = 0;

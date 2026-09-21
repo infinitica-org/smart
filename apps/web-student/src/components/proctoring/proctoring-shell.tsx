@@ -262,6 +262,7 @@ export function ProctoringShell({
     if (!enabled || !ready || locked || !cameraEnabled) return undefined;
     const monitor = startLiveWebcamMonitor({
       getVideo: () => previewRef.current ?? fallbackPreviewRef.current,
+      warmupMs: 5_000,
       onViolation: (kind) => ingestRef.current.report(kind),
       onSample: (kind) => {
         setLiveKind(kind);

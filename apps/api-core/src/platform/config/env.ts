@@ -161,6 +161,24 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>;
 
+/**
+ * Local MinIO uses MINIO_ROOT_* as the S3 API identity. When S3_ACCESS_KEY matches
+ * MINIO_ROOT_USER but S3_SECRET_KEY drifted (common after copying .env snippets),
+ * prefer the MinIO root password so uploads do not fail with InvalidAccessKeyId.
+ */
+export function alignS3CredentialsWithMinioRoot(
+  data: Env,
+  source: NodeJS.ProcessEnv = process.env,
+): Env {
+  const minioUser = source.MINIO_ROOT_USER?.trim();
+  const minioPassword = source.MINIO_ROOT_PASSWORD?.trim();
+  if (!minioUser || !minioPassword) return data;
+  if (data.S3_ACCESS_KEY === minioUser && data.S3_SECRET_KEY !== minioPassword) {
+    return { ...data, S3_SECRET_KEY: minioPassword };
+  }
+  return data;
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
   if (!parsed.success) {
@@ -170,7 +188,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment: ${issues}`);
   }
 
-  const data = parsed.data;
+  const data = alignS3CredentialsWithMinioRoot(parsed.data, source);
   const defaultJwt = 'local-dev-jwt-secret-change-me-now!!';
   if (data.NODE_ENV === 'production' && data.JWT_SECRET === defaultJwt) {
     throw new Error(
