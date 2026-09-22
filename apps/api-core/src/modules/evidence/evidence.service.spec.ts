@@ -23,7 +23,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     },
     evidenceRecord: {
       create: vi.fn().mockResolvedValue({}),
+      findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({}),
     },
     skillClaim: {
       findFirst: vi.fn().mockResolvedValue(null),
@@ -797,6 +799,106 @@ describe('EvidenceService associateEvidenceWithClaim (VER-01)', () => {
         console.error('Validation error:', JSON.stringify(parsed.error.format(), null, 2));
       }
       expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('EvidenceService audit event emissions (VER-01 retain history)', () => {
+    it('emits evidence.created audit event when createEvidence succeeds', async () => {
+      const createdRow = {
+        id: EVIDENCE_ID_1,
+        studentId: STUDENT_ID,
+        evidenceType: 'PROJECT',
+        source: 'CANDIDATE',
+        verificationStatus: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        artifacts: [],
+      };
+      const { service, prisma, auditPublisher } = buildService({
+        prisma: {
+          evidenceRecord: {
+            create: vi.fn().mockResolvedValue(createdRow),
+          },
+        },
+      });
+
+      await service.createEvidence(STUDENT_ID, {
+        evidenceType: 'PROJECT',
+        source: 'CANDIDATE',
+        claim: 'Built full stack project',
+        relatedSkillIds: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      });
+
+      expect(prisma.evidenceRecord.create).toHaveBeenCalled();
+      expect(auditPublisher.record).toHaveBeenCalledWith({
+        actorId: STUDENT_ID,
+        action: 'evidence.created',
+        resourceType: 'evidence_record',
+        resourceId: EVIDENCE_ID_1,
+        reasonCode: null,
+        metadata: {
+          priorState: null,
+          newState: {
+            verificationStatus: 'PENDING',
+            source: 'CANDIDATE',
+            evidenceType: 'PROJECT',
+          },
+          source: 'CANDIDATE',
+          evidenceType: 'PROJECT',
+        },
+      });
+    });
+
+    it('emits evidence.updated audit event when updateEvidence succeeds', async () => {
+      const existingRow = {
+        id: EVIDENCE_ID_1,
+        studentId: STUDENT_ID,
+        evidenceType: 'PROJECT',
+        source: 'CANDIDATE',
+        verificationStatus: 'PENDING',
+        claim: 'Old Claim',
+        relatedSkillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        artifacts: [],
+      };
+      const updatedRow = {
+        ...existingRow,
+        claim: 'Updated Claim',
+        relatedSkillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      };
+      const { service, prisma, auditPublisher } = buildService({
+        prisma: {
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValue(existingRow),
+            update: vi.fn().mockResolvedValue(updatedRow),
+          },
+        },
+      });
+
+      await service.updateEvidence(STUDENT_ID, EVIDENCE_ID_1, {
+        claim: 'Updated Claim',
+        relatedSkillIds: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      });
+
+      expect(prisma.evidenceRecord.update).toHaveBeenCalled();
+      expect(auditPublisher.record).toHaveBeenCalledWith({
+        actorId: STUDENT_ID,
+        action: 'evidence.updated',
+        resourceType: 'evidence_record',
+        resourceId: EVIDENCE_ID_1,
+        reasonCode: null,
+        metadata: expect.objectContaining({
+          priorState: expect.objectContaining({
+            verificationStatus: 'PENDING',
+            claim: 'Old Claim',
+          }),
+          newState: expect.objectContaining({
+            verificationStatus: 'PENDING',
+            claim: 'Updated Claim',
+          }),
+        }),
+      });
     });
   });
 });

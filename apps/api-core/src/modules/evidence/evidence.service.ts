@@ -145,6 +145,27 @@ export class EvidenceService {
     });
 
     await this.reconciliation.reconcileForStudent(studentId);
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: studentId,
+        action: 'evidence.created',
+        resourceType: 'evidence_record',
+        resourceId: row.id,
+        reasonCode: null,
+        metadata: {
+          priorState: null,
+          newState: {
+            verificationStatus: row.verificationStatus,
+            source: row.source,
+            evidenceType: row.evidenceType,
+          },
+          source: row.source,
+          evidenceType: row.evidenceType,
+        },
+      });
+    }
+
     return toEvidenceRecordDto(row);
   }
 
@@ -153,7 +174,7 @@ export class EvidenceService {
     evidenceId: string,
     body: unknown,
   ): Promise<EvidenceRecordDto> {
-    await this.getEvidence(studentId, evidenceId);
+    const existing = await this.getEvidence(studentId, evidenceId);
     const input = UpdateEvidenceRequestSchema.parse(body);
     const candidate = {
       claim: input.claim,
@@ -188,6 +209,35 @@ export class EvidenceService {
       include: { artifacts: true },
     });
     await this.reconciliation.reconcileForStudent(studentId);
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: studentId,
+        action: 'evidence.updated',
+        resourceType: 'evidence_record',
+        resourceId: row.id,
+        reasonCode: null,
+        metadata: {
+          priorState: {
+            verificationStatus: existing.verificationStatus,
+            source: existing.source,
+            evidenceType: existing.evidenceType,
+            claim: existing.claim ?? null,
+            relatedSkillCodes: existing.relatedSkillIds ?? [],
+          },
+          newState: {
+            verificationStatus: row.verificationStatus,
+            source: row.source,
+            evidenceType: row.evidenceType,
+            claim: row.claim ?? null,
+            relatedSkillCodes: row.relatedSkillCodes ?? [],
+          },
+          source: row.source,
+          evidenceType: row.evidenceType,
+        },
+      });
+    }
+
     return toEvidenceRecordDto(row);
   }
 
