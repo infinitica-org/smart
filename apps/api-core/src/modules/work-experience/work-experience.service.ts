@@ -2452,7 +2452,7 @@ export class WorkExperienceService {
       success: true,
       status: newStatus as SubmitManagerEndorsementResponseDto['status'],
       message: parsedPayload.confirmed
-        ? "Thank you for confirming the candidate's role, employment dates, and responsibilities. Your endorsement has been recorded."
+        ? "Thank you for confirming the candidate's role, employment dates, and responsibilities as their manager. Your manager endorsement has been recorded."
         : 'Your response has been recorded. The candidate has been notified.',
     };
   }

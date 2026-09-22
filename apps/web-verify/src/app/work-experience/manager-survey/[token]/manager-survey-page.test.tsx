@@ -64,6 +64,21 @@ describe('ManagerSurveyPage', () => {
     expect(await screen.findByText(/Manager Endorsement Request/i)).toBeDefined();
   }
 
+  it('shows the existing manager relationship and contact on file', async () => {
+    await renderPage();
+
+    expect(screen.getByText(/Professional relationship/i)).toBeDefined();
+    expect(screen.getByText(/^Manager$/i)).toBeDefined();
+    expect(
+      screen.getByText(
+        /You were invited as Jane Candidate's manager to endorse this work experience/i,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText(/manager@acme.com/i)).toBeDefined();
+    expect(screen.getByText(/Jane Manager/i)).toBeDefined();
+    expect(screen.getByText(/Your manager contact on file/i)).toBeDefined();
+  });
+
   it('renders candidate role, employment dates, and responsibilities as read-only claim details', async () => {
     await renderPage();
 
@@ -92,7 +107,7 @@ describe('ManagerSurveyPage', () => {
       success: true,
       status: 'CONFIRMED',
       message:
-        "Thank you for confirming the candidate's role, employment dates, and responsibilities. Your endorsement has been recorded.",
+        "Thank you for confirming the candidate's role, employment dates, and responsibilities as their manager. Your manager endorsement has been recorded.",
     });
 
     await renderPage();
@@ -115,7 +130,7 @@ describe('ManagerSurveyPage', () => {
       success: true,
       status: 'CONFIRMED',
       message:
-        "Thank you for confirming the candidate's role, employment dates, and responsibilities. Your endorsement has been recorded.",
+        "Thank you for confirming the candidate's role, employment dates, and responsibilities as their manager. Your manager endorsement has been recorded.",
     });
 
     await renderPage();
@@ -123,7 +138,7 @@ describe('ManagerSurveyPage', () => {
 
     expect(
       await screen.findByText(
-        /Thank you for confirming the candidate's role, employment dates, and responsibilities/i,
+        /Thank you for confirming the candidate's role, employment dates, and responsibilities as their manager/i,
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: /Confirm & Endorse Claim/i })).toBeNull();

@@ -150,6 +150,17 @@ export default function ManagerSurveyPage({ params }: PageProps) {
           </div>
         </div>
 
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
+            Professional relationship
+          </span>
+          <p className="mt-1 text-sm font-semibold text-white">Manager</p>
+          <p className="mt-2 text-xs text-white/60 leading-relaxed">
+            You were invited as {data.candidateName}&apos;s manager to endorse this work experience.
+            Review the claim below and respond as their manager.
+          </p>
+        </div>
+
         {/* Success Banner */}
         {submitSuccess && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4 text-sm font-medium text-emerald-300">
@@ -261,8 +272,13 @@ export default function ManagerSurveyPage({ params }: PageProps) {
           )}
 
           <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 text-xs text-white/60">
-            Manager Email: <strong className="text-white/90">{data.managerEmail}</strong>
-            {data.managerName && <span className="ml-2">({data.managerName})</span>}
+            <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
+              Your manager contact on file
+            </span>
+            <p className="mt-1">
+              Manager Email: <strong className="text-white/90">{data.managerEmail}</strong>
+              {data.managerName && <span className="ml-2">({data.managerName})</span>}
+            </p>
           </div>
         </div>
 

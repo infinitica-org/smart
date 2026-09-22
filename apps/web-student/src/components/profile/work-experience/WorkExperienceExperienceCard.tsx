@@ -468,13 +468,14 @@ export function WorkExperienceExperienceCard({
 
                 {managerEndorsement?.status === 'CONFIRMED' ? (
                   <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-                    <p className="font-medium">Work experience claim confirmed</p>
+                    <p className="font-medium">Manager endorsement confirmed</p>
                     <p className="mt-1">
                       {managerEndorsement.managerName
                         ? `${managerEndorsement.managerName} (${managerEndorsement.managerEmail})`
                         : managerEndorsement.managerEmail}{' '}
-                      confirmed your {exp.role} role ({dateRangeLabel})
-                      {exp.responsibilities ? ', including your stated responsibilities' : ''}.
+                      confirmed your work experience as your manager, including your {exp.role} role
+                      ({dateRangeLabel}){exp.responsibilities ? ' and stated responsibilities' : ''}
+                      .
                     </p>
                   </div>
                 ) : managerEndorsement?.status === 'PENDING' ? (
