@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -61,6 +62,17 @@ type TpoSidebarProps = {
 export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) {
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onMobileOpenChange(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onMobileOpenChange]);
+
   return (
     <>
       {mobileOpen ? (
@@ -73,36 +85,45 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
       ) : null}
 
       <aside
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? 'true' : undefined}
+        aria-label="University console sidebar"
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200/80 bg-white font-sans shadow-xl transition-transform duration-200 select-none lg:z-30 lg:translate-x-0 lg:shadow-none',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 px-5">
-          <Link href="/" className="flex items-center" aria-label="SMART home">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 px-4">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]"
+            aria-label="SMART home"
+          >
             <Image
               src={textLogo}
               alt="SMART"
-              width={120}
-              height={28}
+              width={100}
+              height={24}
               priority
-              className="h-7 w-auto object-contain"
+              className="h-6 w-auto object-contain"
             />
           </Link>
-          <span className="text-xs font-semibold text-slate-400">v{UI_VERSION}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            v{UI_VERSION}
+          </span>
         </div>
 
         <button
           type="button"
           aria-label="Close menu"
-          className="absolute right-3 top-3.5 rounded-lg p-1 text-slate-500 hover:bg-slate-100 lg:hidden"
+          className="absolute right-3 top-3.5 rounded-lg p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63] lg:hidden"
           onClick={() => onMobileOpenChange(false)}
         >
           <X className="size-5" />
         </button>
 
         <nav
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+          className="flex-1 overflow-y-auto overscroll-contain bg-white px-3 py-4"
           aria-label="University console"
         >
           <ul className="space-y-1">
@@ -116,21 +137,27 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
                     onClick={() => onMobileOpenChange(false)}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all group',
+                      'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
                       isActive
-                        ? 'border border-[#CCFBF1]/80 bg-[#F0FDFA] font-bold text-[#004C63] shadow-[0_1px_2px_rgba(0,76,99,0.05)]'
-                        : 'text-slate-600 hover:bg-slate-50/80 hover:text-slate-900',
+                        ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
                     )}
                   >
                     <Icon
                       className={cn(
-                        'size-4.5 shrink-0 transition-colors',
+                        'size-4 shrink-0 transition-colors',
                         isActive
-                          ? 'stroke-[2.2] text-[#004C63]'
+                          ? 'stroke-[2.2] text-slate-900'
                           : 'text-slate-400 group-hover:text-slate-600',
                       )}
                     />
                     <span className="truncate">{item.name}</span>
+                    {item.name === 'Whitelist' ? (
+                      <span
+                        className="ml-auto size-2 rounded-full bg-blue-600 shrink-0"
+                        aria-hidden
+                      />
+                    ) : null}
                   </Link>
                 </li>
               );
@@ -141,16 +168,16 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
                 onClick={() => onMobileOpenChange(false)}
                 aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all group',
+                  'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
                   pathname.startsWith('/settings')
-                    ? 'border border-[#CCFBF1]/80 bg-[#F0FDFA] font-bold text-[#004C63]'
-                    : 'text-slate-600 hover:bg-slate-50/80 hover:text-slate-900',
+                    ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
                 )}
               >
                 <Settings
                   className={cn(
-                    'size-4.5 shrink-0',
-                    pathname.startsWith('/settings') ? 'text-[#004C63]' : 'text-slate-400',
+                    'size-4 shrink-0',
+                    pathname.startsWith('/settings') ? 'text-slate-900' : 'text-slate-400',
                   )}
                 />
                 <span className="truncate">Settings</span>

@@ -1,8 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, GraduationCap, LogOut, Menu, Search, UserRound } from 'lucide-react';
+
+const TOP_NAV_ITEMS = [
+  { name: 'Dashboard', href: '/' },
+  { name: 'Students', href: '/students' },
+  { name: 'Whitelist', href: '/whitelist' },
+  { name: 'Employers', href: '/companies' },
+  { name: 'Reports', href: '/reports' },
+];
 import { Avatar, AvatarFallback } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
@@ -127,10 +136,16 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
   }
 
   const hasResults = candidateResults.length > 0 || openingResults.length > 0;
+  const pathname = usePathname() || '/';
+
+  function isItemActive(href: string): boolean {
+    if (href === '/') return pathname === '/' || pathname === '/dashboard';
+    return pathname.startsWith(href);
+  }
 
   return (
     <header
-      className={`${topbarFontClass} fixed top-0 right-0 z-40 flex h-14 shrink-0 items-center border-b border-[var(--ds-border)] bg-[var(--ds-surface)] px-4 text-[var(--ds-text)] antialiased lg:left-64 lg:px-6 left-0`}
+      className={`${topbarFontClass} fixed top-0 right-0 z-40 flex h-14 shrink-0 items-center border-b border-slate-200/80 bg-white px-4 text-[var(--ds-text)] antialiased lg:left-64 lg:px-6 left-0`}
     >
       <button
         type="button"
@@ -141,7 +156,28 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
         <Menu strokeWidth={1.5} className="size-[18px]" />
       </button>
 
-      <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 md:gap-0">
+      {/* Horizontal Navigation Tabs (matching reference UI top bar) */}
+      <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 ml-2">
+        {TOP_NAV_ITEMS.map((item) => {
+          const active = isItemActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative py-4 transition-colors hover:text-slate-900 ${
+                active ? 'font-extrabold text-slate-900' : ''
+              }`}
+            >
+              {item.name}
+              {active ? (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#004C63]" />
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
         <div ref={searchBoxRef} className="relative min-w-0 flex-1 md:flex-none">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center md:justify-end">
             <Search
