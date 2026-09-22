@@ -1,5 +1,11 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import { z } from 'zod';
 import {
@@ -15,6 +21,9 @@ import {
   type AssociateEvidenceWithClaimRequest,
   type AssociateEvidenceWithClaimResponse,
   type CandidateEvidenceProfileDto,
+  type CandidateEvidenceProvenanceResponse,
+  type EvidenceProvenanceItemDto,
+  type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
@@ -27,8 +36,10 @@ import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
+import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
 import {
   toEvidenceRecordDto,
   toPassiveSignalEvidenceDto,
@@ -590,5 +601,153 @@ export class EvidenceService {
         statusCode: 404,
       });
     }
+  }
+
+  /**
+   * VER-01 — Authorized employer/placement read endpoint for candidate evidence provenance readout.
+   * Categorizes existing evidence records into provenance categories (SELF_DECLARED, SOURCE_VERIFIED, ASSESSED, HUMAN_REVIEWED).
+   * Enforces strict server-side authorization:
+   * - INSTITUTION_ADMIN / PLACEMENT_STAFF: candidate must belong to the caller's institution (user.inst).
+   * - COMPANY / B2B_PARTNER: candidate must have an active Application for a JobOpening owned by user.companyId.
+   * - SUPER_ADMIN: unrestricted read access.
+   */
+  async getCandidateEvidenceProvenance(
+    caller: RequestUser,
+    studentId: string,
+  ): Promise<CandidateEvidenceProvenanceResponse> {
+    const candidate = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, role: true, institutionId: true },
+    });
+
+    if (!candidate || candidate.role !== 'STUDENT') {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Candidate not found.',
+        statusCode: 404,
+      });
+    }
+
+    // Authorization checks
+    if (caller.role === 'SUPER_ADMIN') {
+      // Allowed
+    } else if (caller.role === 'INSTITUTION_ADMIN' || caller.role === 'PLACEMENT_STAFF') {
+      if (!caller.inst || caller.inst !== candidate.institutionId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'You do not have access to candidate evidence outside your institution.',
+          statusCode: 403,
+        });
+      }
+    } else if (caller.role === 'COMPANY' || caller.role === 'B2B_PARTNER') {
+      if (!caller.companyId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Company account is not associated with a registered company.',
+          statusCode: 403,
+        });
+      }
+
+      const applicationCount = await this.prisma.application.count({
+        where: {
+          studentId,
+          opening: {
+            companyId: caller.companyId,
+          },
+        },
+      });
+
+      if (applicationCount === 0) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'You do not have authorization to view evidence for this candidate.',
+          statusCode: 403,
+        });
+      }
+    } else {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Unauthorized role to view candidate evidence provenance.',
+        statusCode: 403,
+      });
+    }
+
+    const [evidenceRows, decisions] = await Promise.all([
+      this.prisma.evidenceRecord.findMany({
+        where: { studentId },
+        select: {
+          id: true,
+          evidenceType: true,
+          source: true,
+          verificationStatus: true,
+          verificationMetadata: true,
+          claim: true,
+          context: true,
+          relatedSkillCodes: true,
+          evidenceStrength: true,
+          evidenceReliability: true,
+          sourceOwner: true,
+          sourceReference: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.verificationDecision.findMany({
+        where: { claim: { studentId }, reviewerId: { not: null } },
+        select: { claimId: true, reviewerId: true },
+      }),
+    ]);
+
+    const hasReviewerDecisionMap = decisions.length > 0;
+
+    const summary: EvidenceProvenanceSummary = {
+      SELF_DECLARED: 0,
+      SOURCE_VERIFIED: 0,
+      ASSESSED: 0,
+      HUMAN_REVIEWED: 0,
+    };
+
+    const items: EvidenceProvenanceItemDto[] = evidenceRows.map((row) => {
+      const categories = deriveEvidenceCategories({
+        evidenceType: row.evidenceType,
+        source: row.source,
+        verificationStatus: row.verificationStatus,
+        verificationMetadata: row.verificationMetadata as Record<string, unknown> | null,
+        hasReviewerDecision: hasReviewerDecisionMap,
+      });
+
+      for (const cat of categories) {
+        summary[cat]++;
+      }
+
+      return {
+        evidenceId: row.id,
+        evidenceType: row.evidenceType as EvidenceProvenanceItemDto['evidenceType'],
+        source: row.source as EvidenceProvenanceItemDto['source'],
+        verificationStatus:
+          row.verificationStatus as EvidenceProvenanceItemDto['verificationStatus'],
+        categories,
+        claim: row.claim ?? undefined,
+        context: row.context ?? undefined,
+        relatedSkillIds: row.relatedSkillCodes,
+        evidenceStrength:
+          (row.evidenceStrength as EvidenceProvenanceItemDto['evidenceStrength']) ?? undefined,
+        evidenceReliability:
+          (row.evidenceReliability as EvidenceProvenanceItemDto['evidenceReliability']) ??
+          undefined,
+        sourceOwner: row.sourceOwner ?? undefined,
+        sourceReference: row.sourceReference ?? undefined,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+      };
+    });
+
+    return {
+      studentId,
+      total: items.length,
+      summary,
+      items,
+    };
   }
 }

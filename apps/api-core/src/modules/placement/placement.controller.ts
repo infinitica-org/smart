@@ -44,8 +44,10 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { EvidenceService } from '../evidence/evidence.service.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
+import type { CandidateEvidenceProvenanceResponse } from '@smart/contracts';
 
 function requireInstitutionId(user: RequestUser): string {
   if (!user.inst) {
@@ -64,7 +66,19 @@ export class PlacementController {
   constructor(
     @Inject(PlacementService) private readonly service: PlacementService,
     @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
+    @Inject(EvidenceService) private readonly evidenceService: EvidenceService,
   ) {}
+
+  @Get('candidates/:studentId/evidence')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Get candidate evidence records categorized by provenance (VER-01).' })
+  @ApiBearerAuth()
+  async getCandidateEvidenceProvenance(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+  ): Promise<CandidateEvidenceProvenanceResponse> {
+    return this.evidenceService.getCandidateEvidenceProvenance(user, studentId);
+  }
 
   @Get('_meta')
   meta() {

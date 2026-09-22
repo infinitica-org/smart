@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceService } from './evidence.service.js';
 
@@ -479,5 +481,322 @@ describe('EvidenceService associateEvidenceWithClaim (VER-01)', () => {
 
     expect(link.claimId).toBe(CLAIM_ID_1);
     expect(link.evidenceId).toBe(EVIDENCE_ID_1);
+  });
+
+  describe('getCandidateEvidenceProvenance (VER-01)', () => {
+    const INST_ID_1 = '00000000-0000-0000-0000-000000000001';
+    const INST_ID_2 = '00000000-0000-0000-0000-000000000002';
+    const COMPANY_ID_1 = '11111111-1111-1111-1111-111111111111';
+    const COMPANY_ID_2 = '22222222-2222-2222-2222-222222222222';
+
+    const candidateUser = {
+      id: STUDENT_ID,
+      role: 'STUDENT',
+      institutionId: INST_ID_1,
+    };
+
+    const mockEvidenceRecords = [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        studentId: STUDENT_ID,
+        evidenceType: 'SELF_REPORT',
+        source: 'CANDIDATE',
+        verificationStatus: 'PENDING',
+        verificationMetadata: { verificationMethod: 'SELF_ATTESTED' },
+        claim: 'TypeScript Mastery',
+        context: 'Self report',
+        relatedSkillCodes: ['ts'],
+        evidenceStrength: 'WEAK',
+        evidenceReliability: 'LOW',
+        sourceOwner: 'Candidate',
+        sourceReference: null,
+        createdAt: new Date('2026-09-01T00:00:00Z'),
+        updatedAt: new Date('2026-09-01T00:00:00Z'),
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        studentId: STUDENT_ID,
+        evidenceType: 'CREDENTIAL',
+        source: 'ISSUER',
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: { verificationMethod: 'ISSUER' },
+        claim: 'AWS Certified Developer',
+        context: 'Certification',
+        relatedSkillCodes: ['aws'],
+        evidenceStrength: 'DIRECT',
+        evidenceReliability: 'VERIFIED',
+        sourceOwner: 'AWS',
+        sourceReference: 'AWS-123',
+        createdAt: new Date('2026-09-02T00:00:00Z'),
+        updatedAt: new Date('2026-09-02T00:00:00Z'),
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000003',
+        studentId: STUDENT_ID,
+        evidenceType: 'ASSESSMENT',
+        source: 'PLATFORM',
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: { verificationMethod: 'ASSESSMENT', verifiedBy: 'evaluator-1' },
+        claim: 'Fullstack Assessment',
+        context: 'Platform evaluation',
+        relatedSkillCodes: ['node', 'react'],
+        evidenceStrength: 'STRONG',
+        evidenceReliability: 'HIGH',
+        sourceOwner: 'SMART Engine',
+        sourceReference: 'ASM-999',
+        createdAt: new Date('2026-09-03T00:00:00Z'),
+        updatedAt: new Date('2026-09-03T00:00:00Z'),
+      },
+    ];
+
+    it('1. COMPANY successfully retrieves candidate evidence with valid application relationship', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          application: { count: vi.fn().mockResolvedValue(1) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue(mockEvidenceRecords) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const companyUser: RequestUser = {
+        sub: 'usr-company-1',
+        role: 'COMPANY',
+        inst: null,
+        companyId: COMPANY_ID_1,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(companyUser, STUDENT_ID);
+
+      expect(result.studentId).toBe(STUDENT_ID);
+      expect(result.total).toBe(3);
+      expect(result.summary.SELF_DECLARED).toBe(1);
+      expect(result.summary.SOURCE_VERIFIED).toBe(1);
+      expect(result.summary.ASSESSED).toBe(1);
+      expect(result.summary.HUMAN_REVIEWED).toBe(1);
+      expect(result.items.length).toBe(3);
+    });
+
+    it('2. COMPANY cannot retrieve candidate with no Application relationship', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          application: { count: vi.fn().mockResolvedValue(0) },
+        },
+      });
+
+      const companyUser: RequestUser = {
+        sub: 'usr-company-1',
+        role: 'COMPANY',
+        inst: null,
+        companyId: COMPANY_ID_1,
+      };
+
+      await expect(service.getCandidateEvidenceProvenance(companyUser, STUDENT_ID)).rejects.toThrow(
+        'You do not have authorization to view evidence for this candidate.',
+      );
+    });
+
+    it('3. COMPANY cannot access candidate belonging to another company', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          application: { count: vi.fn().mockResolvedValue(0) },
+        },
+      });
+
+      const companyUser2: RequestUser = {
+        sub: 'usr-company-2',
+        role: 'COMPANY',
+        inst: null,
+        companyId: COMPANY_ID_2,
+      };
+
+      await expect(
+        service.getCandidateEvidenceProvenance(companyUser2, STUDENT_ID),
+      ).rejects.toThrow('You do not have authorization to view evidence for this candidate.');
+    });
+
+    it('4. INSTITUTION_ADMIN can retrieve candidate from same institution', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue(mockEvidenceRecords) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const instAdminUser: RequestUser = {
+        sub: 'usr-tpo-1',
+        role: 'INSTITUTION_ADMIN',
+        inst: INST_ID_1,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(instAdminUser, STUDENT_ID);
+      expect(result.total).toBe(3);
+    });
+
+    it('5. INSTITUTION_ADMIN cannot retrieve candidate from another institution', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+        },
+      });
+
+      const instAdminOther: RequestUser = {
+        sub: 'usr-tpo-2',
+        role: 'INSTITUTION_ADMIN',
+        inst: INST_ID_2,
+      };
+
+      await expect(
+        service.getCandidateEvidenceProvenance(instAdminOther, STUDENT_ID),
+      ).rejects.toThrow('You do not have access to candidate evidence outside your institution.');
+    });
+
+    it('6. PLACEMENT_STAFF same institution access', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue(mockEvidenceRecords) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const staffUser: RequestUser = {
+        sub: 'usr-staff-1',
+        role: 'PLACEMENT_STAFF',
+        inst: INST_ID_1,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(staffUser, STUDENT_ID);
+      expect(result.total).toBe(3);
+    });
+
+    it('7. Unauthorized role rejected', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+        },
+      });
+
+      const studentUser: RequestUser = {
+        sub: 'usr-student-2',
+        role: 'STUDENT',
+        inst: INST_ID_1,
+      };
+
+      await expect(service.getCandidateEvidenceProvenance(studentUser, STUDENT_ID)).rejects.toThrow(
+        'Unauthorized role to view candidate evidence provenance.',
+      );
+    });
+
+    it('8. SUPER_ADMIN behavior allows unrestricted access', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue(mockEvidenceRecords) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const superAdmin: RequestUser = {
+        sub: 'usr-super-1',
+        role: 'SUPER_ADMIN',
+        inst: null,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(superAdmin, STUDENT_ID);
+      expect(result.total).toBe(3);
+    });
+
+    it('9. Empty evidence returns explicit empty state', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue([]) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const superAdmin: RequestUser = {
+        sub: 'usr-super-1',
+        role: 'SUPER_ADMIN',
+        inst: null,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(superAdmin, STUDENT_ID);
+      expect(result.studentId).toBe(STUDENT_ID);
+      expect(result.total).toBe(0);
+      expect(result.items).toEqual([]);
+      expect(result.summary).toEqual({
+        SELF_DECLARED: 0,
+        SOURCE_VERIFIED: 0,
+        ASSESSED: 0,
+        HUMAN_REVIEWED: 0,
+      });
+    });
+
+    it('14. Multiple categories can be returned for the same evidence (ASSESSED + HUMAN_REVIEWED)', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findMany: vi.fn().mockResolvedValue([
+              {
+                id: '00000000-0000-4000-8000-000000000004',
+                studentId: STUDENT_ID,
+                evidenceType: 'ASSESSMENT',
+                source: 'PLATFORM',
+                verificationStatus: 'VERIFIED',
+                verificationMetadata: {
+                  verificationMethod: 'ASSESSMENT',
+                  verifiedBy: 'reviewer-user-id',
+                },
+                claim: 'Algorithm Assessment',
+                context: null,
+                relatedSkillCodes: ['dsa'],
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ]),
+          },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const superAdmin: RequestUser = {
+        sub: 'usr-super-1',
+        role: 'SUPER_ADMIN',
+        inst: null,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(superAdmin, STUDENT_ID);
+      expect(result.items[0].categories).toContain('ASSESSED');
+      expect(result.items[0].categories).toContain('HUMAN_REVIEWED');
+    });
+
+    it('18. CandidateEvidenceProvenanceResponseSchema validates response structure', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findMany: vi.fn().mockResolvedValue(mockEvidenceRecords) },
+          verificationDecision: { findMany: vi.fn().mockResolvedValue([]) },
+        },
+      });
+
+      const superAdmin: RequestUser = {
+        sub: 'usr-super-1',
+        role: 'SUPER_ADMIN',
+        inst: null,
+      };
+
+      const result = await service.getCandidateEvidenceProvenance(superAdmin, STUDENT_ID);
+      const parsed = CandidateEvidenceProvenanceResponseSchema.safeParse(result);
+      if (!parsed.success) {
+        console.error('Validation error:', JSON.stringify(parsed.error.format(), null, 2));
+      }
+      expect(parsed.success).toBe(true);
+    });
   });
 });

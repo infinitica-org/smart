@@ -7,6 +7,11 @@ import {
   CreateEvidenceRecordSchema,
   CreateVerificationDecisionSchema,
   EvidenceRecordSchema,
+  EvidenceReliabilitySchema,
+  EvidenceSourceSchema,
+  EvidenceStrengthSchema,
+  EvidenceTypeSchema,
+  EvidenceVerificationStatusSchema,
   FrameworkSkillClaimSchema,
   PassiveSignalEvidenceSchema,
   ProfessionalCredentialSchema,
@@ -146,3 +151,49 @@ export const RecommendedSkillsResponseSchema = z.object({
   optionalSkillIds: z.array(TaxonomySkillCodeSchema),
 });
 export type RecommendedSkillsResponse = z.infer<typeof RecommendedSkillsResponseSchema>;
+
+export const EVIDENCE_PROVENANCE_CATEGORIES = [
+  'SELF_DECLARED',
+  'SOURCE_VERIFIED',
+  'ASSESSED',
+  'HUMAN_REVIEWED',
+] as const;
+
+export const EvidenceProvenanceCategorySchema = z.enum(EVIDENCE_PROVENANCE_CATEGORIES);
+export type EvidenceProvenanceCategory = z.infer<typeof EvidenceProvenanceCategorySchema>;
+
+export const EvidenceProvenanceSummarySchema = z.object({
+  SELF_DECLARED: z.number().int().min(0),
+  SOURCE_VERIFIED: z.number().int().min(0),
+  ASSESSED: z.number().int().min(0),
+  HUMAN_REVIEWED: z.number().int().min(0),
+});
+export type EvidenceProvenanceSummary = z.infer<typeof EvidenceProvenanceSummarySchema>;
+
+export const EvidenceProvenanceItemDtoSchema = z.object({
+  evidenceId: UuidSchema,
+  evidenceType: EvidenceTypeSchema,
+  source: EvidenceSourceSchema,
+  verificationStatus: EvidenceVerificationStatusSchema,
+  categories: z.array(EvidenceProvenanceCategorySchema),
+  claim: z.string().optional(),
+  context: z.string().optional(),
+  relatedSkillIds: z.array(z.string()).default([]),
+  evidenceStrength: EvidenceStrengthSchema.optional(),
+  evidenceReliability: EvidenceReliabilitySchema.optional(),
+  sourceOwner: z.string().optional(),
+  sourceReference: z.string().optional(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type EvidenceProvenanceItemDto = z.infer<typeof EvidenceProvenanceItemDtoSchema>;
+
+export const CandidateEvidenceProvenanceResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  summary: EvidenceProvenanceSummarySchema,
+  items: z.array(EvidenceProvenanceItemDtoSchema),
+});
+export type CandidateEvidenceProvenanceResponse = z.infer<
+  typeof CandidateEvidenceProvenanceResponseSchema
+>;

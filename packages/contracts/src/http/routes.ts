@@ -2563,6 +2563,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/placement/candidates/:studentId/evidence',
+    module: 'evidence',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN'],
+    rateLimit: 'role.placementStaff',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Get candidate evidence records categorized by provenance (VER-01).',
+  },
+  {
+    method: 'GET',
     path: '/me/notifications',
     module: 'notifications',
     owner: 'Vishal V',
