@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../../platform/audit/audit.module.js';
 import { Tier1IssuerRegistry } from '../candidate-certificates/verification/tier1-issuer-registry.js';
 import { Tier2PublicUrlVerifier } from '../candidate-certificates/verification/tier2-public-url-verifier.js';
 import { Tier3OcrVerifier } from '../candidate-certificates/verification/tier3-ocr-verifier.js';
@@ -7,6 +8,7 @@ import { EvidenceCatalogService } from './evidence-catalog.service.js';
 import { EvidenceController } from './evidence.controller.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
 import { EvidenceService } from './evidence.service.js';
 import { CredentialVerificationProcessor } from './verification/credential-verification.processor.js';
 import { CredentialVerificationService } from './verification/credential-verification.service.js';
@@ -14,10 +16,11 @@ import { VerificationOrchestratorService } from './verification-orchestrator.ser
 import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.module.js';
 
 @Module({
-  imports: [SkillClaimDeclareModule],
+  imports: [SkillClaimDeclareModule, AuditModule],
   controllers: [EvidenceController],
   providers: [
     EvidenceService,
+    EvidenceVersionService,
     EvidenceCatalogService,
     EvidenceReconciliationService,
     EvidenceSyncService,
@@ -31,6 +34,7 @@ import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.modul
   ],
   exports: [
     EvidenceService,
+    EvidenceVersionService,
     EvidenceCatalogService,
     EvidenceReconciliationService,
     EvidenceSyncService,

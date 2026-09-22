@@ -13,6 +13,8 @@ import {
   evidenceRequiresRelatedSkills,
   type CandidateEvidenceProfileDto,
   type EvidenceRecordDto,
+  type EvidenceRecordVersionDto,
+  type ListEvidenceRecordVersionsResponse,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
@@ -20,6 +22,7 @@ import {
   type VerificationDecisionDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
@@ -35,6 +38,8 @@ import {
 } from './evidence.mapper.js';
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
+import type { EvidenceRecordRow } from './evidence-version.snapshot.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -55,6 +60,8 @@ export class EvidenceService {
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
+    @Inject(EvidenceVersionService)
+    private readonly evidenceVersions: EvidenceVersionService,
   ) {}
 
   async listEvidence(
@@ -104,31 +111,78 @@ export class EvidenceService {
       });
     }
 
-    const row = await this.prisma.evidenceRecord.create({
-      data: {
-        studentId,
-        evidenceType: input.evidenceType,
-        source: input.source,
-        sourceOwner: input.sourceOwner,
-        sourceReference: input.sourceReference,
-        evidenceDate: input.evidenceDate,
-        submissionDate: input.submissionDate ? new Date(input.submissionDate) : new Date(),
-        claim: input.claim,
-        context: input.context,
-        provenance: input.provenance as Prisma.InputJsonValue | undefined,
-        accessibility: input.accessibility ?? 'PRIVATE',
-        relatedSkillCodes: input.relatedSkillIds ?? [],
-        verificationStatus: 'PENDING',
-        freshness: input.freshness as Prisma.InputJsonValue | undefined,
-        sourceEntityId: input.sourceEntityId,
-        sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
-        verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
-      },
-      include: { artifacts: true },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.evidenceRecord.create({
+        data: {
+          studentId,
+          evidenceType: input.evidenceType,
+          source: input.source,
+          sourceOwner: input.sourceOwner,
+          sourceReference: input.sourceReference,
+          evidenceDate: input.evidenceDate,
+          submissionDate: input.submissionDate ? new Date(input.submissionDate) : new Date(),
+          claim: input.claim,
+          context: input.context,
+          provenance: input.provenance as Prisma.InputJsonValue | undefined,
+          accessibility: input.accessibility ?? 'PRIVATE',
+          relatedSkillCodes: input.relatedSkillIds ?? [],
+          verificationStatus: 'PENDING',
+          freshness: input.freshness as Prisma.InputJsonValue | undefined,
+          sourceEntityId: input.sourceEntityId,
+          sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
+          verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
+        },
+        include: { artifacts: true },
+      });
+
+      const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+      await this.evidenceVersions.createInitialVersion(tx, created, {
+        mutationKey: `create:${created.id}`,
+        actorId: studentId,
+        organizationId,
+        source: created.source,
+        priorVerificationStatus: null,
+        newVerificationStatus: created.verificationStatus,
+      });
+
+      return created;
     });
 
     await this.reconciliation.reconcileForStudent(studentId);
     return toEvidenceRecordDto(row);
+  }
+
+  async listEvidenceVersions(
+    studentId: string,
+    evidenceId: string,
+  ): Promise<ListEvidenceRecordVersionsResponse> {
+    return this.evidenceVersions.listStudentEvidenceVersions(studentId, evidenceId);
+  }
+
+  async getEvidenceVersion(
+    studentId: string,
+    evidenceId: string,
+    versionNumber: number,
+  ): Promise<EvidenceRecordVersionDto> {
+    return this.evidenceVersions.getStudentEvidenceVersion(studentId, evidenceId, versionNumber);
+  }
+
+  async listCandidateEvidenceVersions(caller: RequestUser, studentId: string, evidenceId: string) {
+    return this.evidenceVersions.listCandidateEvidenceVersions(caller, studentId, evidenceId);
+  }
+
+  async getCandidateEvidenceVersion(
+    caller: RequestUser,
+    studentId: string,
+    evidenceId: string,
+    versionNumber: number,
+  ) {
+    return this.evidenceVersions.getCandidateEvidenceVersion(
+      caller,
+      studentId,
+      evidenceId,
+      versionNumber,
+    );
   }
 
   async updateEvidence(
@@ -136,7 +190,18 @@ export class EvidenceService {
     evidenceId: string,
     body: unknown,
   ): Promise<EvidenceRecordDto> {
-    await this.getEvidence(studentId, evidenceId);
+    const existingRow = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!existingRow) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found.',
+        statusCode: 404,
+      });
+    }
+
     const input = UpdateEvidenceRequestSchema.parse(body);
     const candidate = {
       claim: input.claim,
@@ -150,26 +215,70 @@ export class EvidenceService {
       });
     }
 
-    const row = await this.prisma.evidenceRecord.update({
-      where: { id: evidenceId },
-      data: {
-        source: input.source,
-        sourceOwner: input.sourceOwner,
-        sourceReference: input.sourceReference,
-        evidenceDate: input.evidenceDate,
-        submissionDate: input.submissionDate ? new Date(input.submissionDate) : undefined,
-        claim: input.claim,
-        context: input.context,
-        provenance: input.provenance as Prisma.InputJsonValue | undefined,
-        accessibility: input.accessibility,
-        relatedSkillCodes: input.relatedSkillIds,
-        freshness: input.freshness as Prisma.InputJsonValue | undefined,
-        sourceEntityId: input.sourceEntityId,
-        sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
-        verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
-      },
-      include: { artifacts: true },
+    const mergedCandidate = {
+      ...existingRow,
+      source: input.source ?? existingRow.source,
+      sourceOwner: input.sourceOwner ?? existingRow.sourceOwner,
+      sourceReference: input.sourceReference ?? existingRow.sourceReference,
+      evidenceDate: input.evidenceDate ?? existingRow.evidenceDate,
+      submissionDate: input.submissionDate
+        ? new Date(input.submissionDate)
+        : existingRow.submissionDate,
+      claim: input.claim ?? existingRow.claim,
+      context: input.context ?? existingRow.context,
+      provenance: (input.provenance as Prisma.InputJsonValue | undefined) ?? existingRow.provenance,
+      accessibility: input.accessibility ?? existingRow.accessibility,
+      relatedSkillCodes: input.relatedSkillIds ?? existingRow.relatedSkillCodes,
+      freshness: (input.freshness as Prisma.InputJsonValue | undefined) ?? existingRow.freshness,
+      sourceEntityId: input.sourceEntityId ?? existingRow.sourceEntityId,
+      sourcePayload:
+        (input.sourcePayload as Prisma.InputJsonValue | undefined) ?? existingRow.sourcePayload,
+      verificationMetadata:
+        (input.verificationMetadata as Prisma.InputJsonValue | undefined) ??
+        existingRow.verificationMetadata,
+    } as EvidenceRecordRow;
+
+    if (this.evidenceVersions.contentEquals(existingRow, mergedCandidate)) {
+      return toEvidenceRecordDto(existingRow);
+    }
+
+    const contentHash = this.evidenceVersions.hashContent(mergedCandidate);
+    const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.evidenceRecord.update({
+        where: { id: evidenceId },
+        data: {
+          source: input.source,
+          sourceOwner: input.sourceOwner,
+          sourceReference: input.sourceReference,
+          evidenceDate: input.evidenceDate,
+          submissionDate: input.submissionDate ? new Date(input.submissionDate) : undefined,
+          claim: input.claim,
+          context: input.context,
+          provenance: input.provenance as Prisma.InputJsonValue | undefined,
+          accessibility: input.accessibility,
+          relatedSkillCodes: input.relatedSkillIds,
+          freshness: input.freshness as Prisma.InputJsonValue | undefined,
+          sourceEntityId: input.sourceEntityId,
+          sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
+          verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
+        },
+        include: { artifacts: true },
+      });
+
+      await this.evidenceVersions.appendVersion(tx, updated, {
+        mutationKey: `update:${evidenceId}:${contentHash}`,
+        actorId: studentId,
+        organizationId,
+        source: updated.source,
+        priorVerificationStatus: existingRow.verificationStatus,
+        newVerificationStatus: updated.verificationStatus,
+      });
+
+      return updated;
     });
+
     await this.reconciliation.reconcileForStudent(studentId);
     return toEvidenceRecordDto(row);
   }
@@ -294,16 +403,29 @@ export class EvidenceService {
       },
     });
 
-    await this.prisma.evidenceRecord.create({
-      data: {
-        studentId,
-        evidenceType: 'CREDENTIAL',
-        source: 'CANDIDATE',
-        relatedSkillCodes: input.coveredSkills ?? [],
-        sourceEntityId: row.id,
-        claim: input.credentialName,
-        verificationStatus: 'PENDING',
-      },
+    const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+    await this.prisma.$transaction(async (tx) => {
+      const evidence = await tx.evidenceRecord.create({
+        data: {
+          studentId,
+          evidenceType: 'CREDENTIAL',
+          source: 'CANDIDATE',
+          relatedSkillCodes: input.coveredSkills ?? [],
+          sourceEntityId: row.id,
+          claim: input.credentialName,
+          verificationStatus: 'PENDING',
+        },
+        include: { artifacts: true },
+      });
+
+      await this.evidenceVersions.createInitialVersion(tx, evidence, {
+        mutationKey: `create:${evidence.id}`,
+        actorId: studentId,
+        organizationId,
+        source: evidence.source,
+        priorVerificationStatus: null,
+        newVerificationStatus: evidence.verificationStatus,
+      });
     });
 
     await this.reconciliation.reconcileForStudent(studentId);

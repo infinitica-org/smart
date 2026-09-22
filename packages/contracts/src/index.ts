@@ -74,6 +74,7 @@ export * from './dto/raw-signals.dto.js';
 export * from './dto/signal-connections.dto.js';
 export * from './dto/corroboration.dto.js';
 export * from './dto/evidence.dto.js';
+export * from './dto/evidence-version.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

@@ -14,17 +14,31 @@ function buildService(
 ) {
   const reconciliation = { reconcileForStudent: vi.fn().mockResolvedValue(undefined) };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
+  const evidenceVersions = {
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
+    contentEquals: vi.fn().mockReturnValue(false),
+    appendVersion: vi.fn().mockResolvedValue('created'),
+  };
+  const prisma = {
+    $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback(mockPrisma),
+    ),
+    ...(mockPrisma as object),
+  };
   return {
     service: new CredentialVerificationService(
-      mockPrisma as any,
+      prisma as any,
       reconciliation as any,
       overrides?.tier1 ?? new Tier1IssuerRegistry(),
       overrides?.tier2 ?? new Tier2PublicUrlVerifier(),
       overrides?.tier3 ?? new Tier3OcrVerifier(),
       outbox as any,
+      evidenceVersions as any,
     ),
     reconciliation,
     outbox,
+    evidenceVersions,
+    prisma,
   };
 }
 
@@ -43,6 +57,16 @@ function baseCredential(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function evidenceRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'evidence-1',
+    verificationStatus: 'PENDING',
+    verificationMetadata: null,
+    artifacts: [],
+    ...overrides,
+  };
+}
+
 describe('CredentialVerificationService', () => {
   it('marks the credential ACTIVE and the evidence record VERIFIED when a tier verifies it', async () => {
     const mockPrisma = {
@@ -51,8 +75,8 @@ describe('CredentialVerificationService', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       evidenceRecord: {
-        findFirst: vi.fn().mockResolvedValue({ id: 'evidence-1' }),
-        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(evidenceRow()),
+        update: vi.fn().mockResolvedValue(evidenceRow({ verificationStatus: 'VERIFIED' })),
       },
     };
 
@@ -64,17 +88,22 @@ describe('CredentialVerificationService', () => {
       reason: 'Verified public registry page',
     });
 
-    const { service, reconciliation, outbox } = buildService(mockPrisma, { tier2 });
+    const { service, reconciliation, outbox, evidenceVersions } = buildService(mockPrisma, {
+      tier2,
+    });
     await service.runVerification('cred-1');
 
     expect(mockPrisma.professionalCredential.update).toHaveBeenCalledWith({
       where: { id: 'cred-1' },
       data: { status: 'ACTIVE', verificationMethod: 'ISSUER' },
     });
-    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith({
-      where: { id: 'evidence-1' },
-      data: expect.objectContaining({ verificationStatus: 'VERIFIED' }),
-    });
+    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'evidence-1' },
+        data: expect.objectContaining({ verificationStatus: 'VERIFIED' }),
+      }),
+    );
+    expect(evidenceVersions.appendVersion).toHaveBeenCalled();
     expect(reconciliation.reconcileForStudent).toHaveBeenCalledWith('student-1');
     expect(outbox.enqueueEnvelope).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -95,8 +124,8 @@ describe('CredentialVerificationService', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       evidenceRecord: {
-        findFirst: vi.fn().mockResolvedValue({ id: 'evidence-1' }),
-        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(evidenceRow()),
+        update: vi.fn().mockResolvedValue(evidenceRow({ verificationStatus: 'REJECTED' })),
       },
     };
 
@@ -115,10 +144,12 @@ describe('CredentialVerificationService', () => {
       where: { id: 'cred-1' },
       data: {},
     });
-    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith({
-      where: { id: 'evidence-1' },
-      data: expect.objectContaining({ verificationStatus: 'REJECTED' }),
-    });
+    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'evidence-1' },
+        data: expect.objectContaining({ verificationStatus: 'REJECTED' }),
+      }),
+    );
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
@@ -152,8 +183,8 @@ describe('CredentialVerificationService', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       evidenceRecord: {
-        findFirst: vi.fn().mockResolvedValue({ id: 'evidence-1' }),
-        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(evidenceRow()),
+        update: vi.fn().mockResolvedValue(evidenceRow({ verificationStatus: 'REJECTED' })),
       },
     };
 
@@ -164,9 +195,11 @@ describe('CredentialVerificationService', () => {
       where: { id: 'cred-1' },
       data: {},
     });
-    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith({
-      where: { id: 'evidence-1' },
-      data: expect.objectContaining({ verificationStatus: 'PENDING' }),
-    });
+    expect(mockPrisma.evidenceRecord.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'evidence-1' },
+        data: expect.objectContaining({ verificationStatus: 'PENDING' }),
+      }),
+    );
   });
 });
