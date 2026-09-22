@@ -1,4 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
+
+/** Raw manager endorsement tokens are 32 bytes encoded as lowercase hex (WE-T03). */
+const MANAGER_ENDORSEMENT_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 import {
   BadRequestException,
   ConflictException,
@@ -46,6 +49,7 @@ import {
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
   SendManagerEndorsementSchema,
+  SubmitManagerEndorsementSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
   validateWorkExperienceEffectiveUpdate,
@@ -366,6 +370,16 @@ export class WorkExperienceService {
         ? `Manager endorsement request is already pending for ${endorsement.managerEmail}.`
         : `Manager endorsement request dispatched to ${endorsement.managerEmail}. Valid for 5 days.`,
     };
+  }
+
+  private assertManagerEndorsementTokenFormat(rawToken: string): void {
+    if (
+      !rawToken ||
+      typeof rawToken !== 'string' ||
+      !MANAGER_ENDORSEMENT_TOKEN_PATTERN.test(rawToken)
+    ) {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
   }
 
   private managerContactsMatch(
@@ -2239,11 +2253,15 @@ export class WorkExperienceService {
 
     if (this.emailQueue) {
       // Initial invite
-      await this.emailQueue.add('send', {
-        to: managerEmail,
-        template: 'work-experience-manager-invite',
-        data: emailData,
-      });
+      await this.emailQueue.add(
+        'send',
+        {
+          to: managerEmail,
+          template: 'work-experience-manager-invite',
+          data: emailData,
+        },
+        { jobId: `manager-invite:${endorsement.id}` },
+      );
 
       // Day-3 (72h) reminder
       await this.emailQueue.add(
@@ -2254,14 +2272,20 @@ export class WorkExperienceService {
           template: 'work-experience-manager-reminder',
           data: { ...emailData, expiresAtFormatted: '2 days' },
         } as WorkExperienceManagerReminderJobPayload,
-        { delay: 72 * 60 * 60 * 1000 },
+        {
+          delay: 72 * 60 * 60 * 1000,
+          jobId: `manager-reminder:${endorsement.id}`,
+        },
       );
 
       // Day-5 (120h) expiry marker
       await this.emailQueue.add(
         'expire-manager-endorsement',
         { endorsementId: endorsement.id, experienceId },
-        { delay: TTL_120H },
+        {
+          delay: TTL_120H,
+          jobId: `manager-expire:${endorsement.id}`,
+        },
       );
     }
 
@@ -2293,9 +2317,7 @@ export class WorkExperienceService {
    * Returns minimal candidate info; no excess PII.
    */
   async getManagerEndorsementByToken(rawToken: string): Promise<GetManagerEndorsementSurveyDto> {
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new NotFoundException('Invalid endorsement token.');
-    }
+    this.assertManagerEndorsementTokenFormat(rawToken);
 
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
@@ -2350,9 +2372,8 @@ export class WorkExperienceService {
     payload: SubmitManagerEndorsementDto,
     meta?: { ip?: string; userAgent?: string },
   ): Promise<SubmitManagerEndorsementResponseDto> {
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new NotFoundException('Invalid endorsement token.');
-    }
+    this.assertManagerEndorsementTokenFormat(rawToken);
+    const parsedPayload = SubmitManagerEndorsementSchema.parse(payload);
 
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
@@ -2374,7 +2395,7 @@ export class WorkExperienceService {
 
     const exp = endorsement.experience;
     const now = new Date();
-    const newStatus = payload.confirmed ? 'CONFIRMED' : 'DISPUTED';
+    const newStatus = parsedPayload.confirmed ? 'CONFIRMED' : 'DISPUTED';
 
     // Update endorsement record
     await this.prisma.workExperienceManagerEndorsement.update({
@@ -2382,18 +2403,18 @@ export class WorkExperienceService {
       data: {
         respondedAt: now,
         status: newStatus,
-        confirmed: payload.confirmed,
-        skillRatings: payload.skillRatings
-          ? (payload.skillRatings as unknown as Prisma.InputJsonValue)
+        confirmed: parsedPayload.confirmed,
+        skillRatings: parsedPayload.skillRatings
+          ? (parsedPayload.skillRatings as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull,
-        comments: payload.comments ?? null,
+        comments: parsedPayload.comments ?? null,
         ipAddress: meta?.ip ?? null,
         userAgent: meta?.userAgent ?? null,
       },
     });
 
     // Recalculate overall_verified
-    const completedConfirmed = payload.confirmed === true;
+    const completedConfirmed = parsedPayload.confirmed === true;
     // docOk: check if experience already has doc_ok set, or if at least one doc is VALIDATED
     const currentExp = await this.prisma.workExperience.findUnique({
       where: { id: exp.id },
@@ -2412,16 +2433,16 @@ export class WorkExperienceService {
 
     await this.auditPublisher.record({
       actorId: null,
-      action: payload.confirmed
+      action: parsedPayload.confirmed
         ? 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED'
         : 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
       resourceType: 'WorkExperience',
       resourceId: exp.id,
-      reasonCode: payload.confirmed ? 'manager_confirmed' : 'manager_disputed',
+      reasonCode: parsedPayload.confirmed ? 'manager_confirmed' : 'manager_disputed',
       metadata: {
         endorsementId: endorsement.id,
         overallVerified,
-        skillRatings: payload.skillRatings ?? null,
+        skillRatings: parsedPayload.skillRatings ?? null,
       },
     });
 
@@ -2430,7 +2451,7 @@ export class WorkExperienceService {
     return {
       success: true,
       status: newStatus as SubmitManagerEndorsementResponseDto['status'],
-      message: payload.confirmed
+      message: parsedPayload.confirmed
         ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
         : 'Your response has been recorded. The candidate has been notified.',
     };
