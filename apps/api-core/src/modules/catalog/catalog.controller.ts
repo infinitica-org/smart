@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } fro
 import {
   API_PREFIX,
   type CreateSkillDto,
+  type MergeSkillsDto,
   type SkillQueryDto,
   type UpdateSkillDto,
 } from '@smart/contracts';
@@ -54,6 +55,13 @@ export class CatalogController {
   @Post('skills')
   createSkill(@Body() dto: CreateSkillDto) {
     return this.catalog.createSkill(dto);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Post('skills/merge')
+  mergeSkills(@Body() dto: MergeSkillsDto) {
+    return this.catalog.mergeSkills(dto);
   }
 
   @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')

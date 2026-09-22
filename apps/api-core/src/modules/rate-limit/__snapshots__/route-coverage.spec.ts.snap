@@ -197,6 +197,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /candidate-certificates/:id/skills": "role.student",
   "POST /candidate-certificates/:id/upload": "role.student",
   "POST /catalog/skills": "catalog.write",
+  "POST /catalog/skills/merge": "catalog.write",
   "POST /certificate-endorsements/:token": "verify.certificateEndorsement",
   "POST /certificates/issue": "certificate.issue",
   "POST /defense/reply": "assessment.evaluateL3L4",

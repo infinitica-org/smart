@@ -1,5 +1,11 @@
 import { Buffer } from 'node:buffer';
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
   SKILL_CATEGORIES,
@@ -9,11 +15,14 @@ import {
   buildSeSkillLibraryResponse,
   buildSkillLibraryResponse,
   CreateSkillDtoSchema,
+  MergeSkillsDtoSchema,
   UpdateSkillDtoSchema,
   type CreateSkillDto,
+  type MergeSkillsDto,
   type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type SkillManagementRecord,
+  type SkillMergeResultDto,
   type SkillQueryDto,
   type TrackDto,
   type UpdateSkillDto,
@@ -105,6 +114,7 @@ export class CatalogService {
       corroborationEligible: parsed.corroborationEligible ?? true,
       assessmentRequiredForClaim: parsed.assessmentRequiredForClaim ?? true,
       status: parsed.status || 'ACTIVE',
+      aliases: parsed.aliases || [],
       createdAt: now,
       updatedAt: now,
     };
@@ -136,6 +146,7 @@ export class CatalogService {
         corroborationEligible: predefined.corroborationEligible,
         assessmentRequiredForClaim: predefined.assessmentRequiredForClaim,
         status: 'ACTIVE',
+        aliases: [],
         createdAt: now,
         updatedAt: now,
       };
@@ -168,6 +179,95 @@ export class CatalogService {
     return updatedRecord;
   }
 
+  mergeSkills(dto: MergeSkillsDto): SkillMergeResultDto {
+    const parsed = MergeSkillsDtoSchema.parse(dto);
+    const targetCode = parsed.targetSkillCode.toUpperCase();
+
+    const targetRecord =
+      this.customSkills.get(targetCode) || this.getPredefinedAsRecord(targetCode);
+    if (!targetRecord) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Target skill ${targetCode} not found.`,
+      });
+    }
+
+    const mergedCodes: string[] = [];
+    const aliasesAdded: string[] = [];
+    let recordsReboundCount = 0;
+
+    for (const sourceCodeRaw of parsed.sourceSkillCodes) {
+      const sourceCode = sourceCodeRaw.toUpperCase();
+      if (sourceCode === targetCode) {
+        throw new BadRequestException({
+          error: 'invalid_merge_source',
+          message: `Source skill code ${sourceCode} cannot be the same as target skill code.`,
+        });
+      }
+
+      const sourceRecord =
+        this.customSkills.get(sourceCode) || this.getPredefinedAsRecord(sourceCode);
+      if (!sourceRecord) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: `Source skill ${sourceCode} not found.`,
+        });
+      }
+
+      mergedCodes.push(sourceCode);
+      recordsReboundCount += 1;
+
+      if (parsed.addAsAliases !== false) {
+        if (!aliasesAdded.includes(sourceRecord.name)) aliasesAdded.push(sourceRecord.name);
+        if (!aliasesAdded.includes(sourceCode)) aliasesAdded.push(sourceCode);
+      }
+
+      const archivedSource: SkillManagementRecord = {
+        ...sourceRecord,
+        status: 'ARCHIVED',
+        description: `Merged into ${targetCode}`,
+        updatedAt: new Date().toISOString(),
+      };
+      this.customSkills.set(sourceCode, archivedSource);
+    }
+
+    const updatedAliases = Array.from(new Set([...(targetRecord.aliases || []), ...aliasesAdded]));
+    const updatedTarget: SkillManagementRecord = {
+      ...targetRecord,
+      aliases: updatedAliases,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.customSkills.set(targetCode, updatedTarget);
+
+    return {
+      targetSkillCode: targetCode,
+      mergedSkillCodes: mergedCodes,
+      aliasesAdded,
+      recordsReboundCount,
+      mergedAt: new Date().toISOString(),
+    };
+  }
+
+  private getPredefinedAsRecord(code: string): SkillManagementRecord | undefined {
+    const def = SKILL_DEFINITIONS.find((s) => s.code === code);
+    if (!def) return undefined;
+    const now = new Date().toISOString();
+    return {
+      code: def.code,
+      name: def.name,
+      categoryId: def.categoryId,
+      categoryName: def.categoryName,
+      description: '',
+      corroborationEligible: def.corroborationEligible,
+      assessmentRequiredForClaim: def.assessmentRequiredForClaim,
+      status: 'ACTIVE',
+      aliases: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
   listManagedSkills(query?: SkillQueryDto): SkillManagementRecord[] {
     const map = new Map<string, SkillManagementRecord>();
     const now = new Date().toISOString();
@@ -182,6 +282,7 @@ export class CatalogService {
         corroborationEligible: def.corroborationEligible,
         assessmentRequiredForClaim: def.assessmentRequiredForClaim,
         status: 'ACTIVE',
+        aliases: [],
         createdAt: now,
         updatedAt: now,
       });
@@ -202,7 +303,10 @@ export class CatalogService {
     if (query?.search) {
       const term = query.search.toLowerCase();
       list = list.filter(
-        (s) => s.name.toLowerCase().includes(term) || s.code.toLowerCase().includes(term),
+        (s) =>
+          s.name.toLowerCase().includes(term) ||
+          s.code.toLowerCase().includes(term) ||
+          (s.aliases && s.aliases.some((alias) => alias.toLowerCase().includes(term))),
       );
     }
 

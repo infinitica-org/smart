@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { CatalogService } from '../catalog.service.js';
 
-describe('CatalogService - Skill Management (Th6-I297)', () => {
+describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
   let service: CatalogService;
 
   beforeEach(() => {
@@ -97,5 +97,60 @@ describe('CatalogService - Skill Management (Th6-I297)', () => {
     const searchResult = service.listManagedSkills({ search: 'visionOS' });
     expect(searchResult.length).toBe(1);
     expect(searchResult[0]?.name).toBe('visionOS Spatial Development');
+  });
+
+  it('merges duplicate skills and registers aliases successfully (Th6-I298)', () => {
+    service.createSkill({
+      code: 'JS_LEGACY',
+      name: 'JS',
+      categoryId: 'PROGRAMMING_LANGUAGES',
+      status: 'ACTIVE',
+    });
+
+    service.createSkill({
+      code: 'ECMASCRIPT_6',
+      name: 'ECMAScript',
+      categoryId: 'PROGRAMMING_LANGUAGES',
+      status: 'ACTIVE',
+    });
+
+    const mergeResult = service.mergeSkills({
+      targetSkillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      sourceSkillCodes: ['JS_LEGACY', 'ECMASCRIPT_6'],
+      addAsAliases: true,
+    });
+
+    expect(mergeResult.targetSkillCode).toBe('JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT');
+    expect(mergeResult.mergedSkillCodes).toEqual(['JS_LEGACY', 'ECMASCRIPT_6']);
+    expect(mergeResult.aliasesAdded).toContain('JS');
+    expect(mergeResult.aliasesAdded).toContain('ECMAScript');
+
+    // Searching by newly added alias should return target skill
+    const searchByAlias = service.listManagedSkills({ search: 'ECMAScript' });
+    expect(
+      searchByAlias.some((s) => s.code === 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT'),
+    ).toBe(true);
+
+    // Source skills should be archived
+    const archivedList = service.listManagedSkills({ status: 'ARCHIVED' });
+    expect(archivedList.some((s) => s.code === 'JS_LEGACY')).toBe(true);
+  });
+
+  it('throws BadRequestException if source skill equals target skill during merge', () => {
+    expect(() =>
+      service.mergeSkills({
+        targetSkillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+        sourceSkillCodes: ['JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT'],
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('throws NotFoundException if target skill code is unknown', () => {
+    expect(() =>
+      service.mergeSkills({
+        targetSkillCode: 'UNKNOWN_TARGET_CODE',
+        sourceSkillCodes: ['JS_LEGACY'],
+      }),
+    ).toThrow(NotFoundException);
   });
 });

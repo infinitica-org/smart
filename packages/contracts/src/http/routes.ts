@@ -3530,6 +3530,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Update an existing taxonomy skill.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/skills/merge',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Merge duplicate skills into a canonical target skill and record aliases.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {
