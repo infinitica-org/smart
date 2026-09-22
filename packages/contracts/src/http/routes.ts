@@ -2574,6 +2574,19 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Get candidate evidence records categorized by provenance (VER-01).',
   },
   {
+    method: 'POST',
+    path: '/placement/candidates/:studentId/evidence/:evidenceId/review',
+    module: 'evidence',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'],
+    rateLimit: 'role.placementStaff',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary:
+      'Reviewer marks candidate evidence accepted, rejected, or needing information (VER-01).',
+  },
+  {
     method: 'GET',
     path: '/me/notifications',
     module: 'notifications',

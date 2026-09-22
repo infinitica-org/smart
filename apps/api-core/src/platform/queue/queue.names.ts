@@ -32,6 +32,8 @@ export const EVIDENCE_EXPIRATION_QUEUE = 'evidence_expiration' as const;
 export const EVIDENCE_EXPIRATION_JOB_ID = 'evidence-expiration-daily' as const;
 export const EVIDENCE_EXPIRATION_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+export const EVIDENCE_RECONCILIATION_QUEUE = 'evidence_reconciliation' as const;
+
 export const DEFAULT_JOB_OPTIONS = {
   attempts: 5,
   backoff: { type: 'exponential' as const, delay: 2_000 },

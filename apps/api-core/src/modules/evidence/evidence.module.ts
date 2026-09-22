@@ -7,6 +7,7 @@ import { EvidenceCatalogService } from './evidence-catalog.service.js';
 import { EvidenceController } from './evidence.controller.js';
 import { EvidenceExpirationProcessor } from './evidence-expiration.processor.js';
 import { EvidenceExpirationService } from './evidence-expiration.service.js';
+import { EvidenceReconciliationProcessor } from './evidence-reconciliation.processor.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
 import { EvidenceService } from './evidence.service.js';
@@ -25,6 +26,7 @@ import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.modul
     EvidenceExpirationService,
     EvidenceSyncService,
     EvidenceExpirationProcessor,
+    EvidenceReconciliationProcessor,
     VerificationOrchestratorService,
     Tier1IssuerRegistry,
     Tier2PublicUrlVerifier,

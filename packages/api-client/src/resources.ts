@@ -30,6 +30,7 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
+  ReviewEvidenceRequest,
   IntegrityQueueStatus,
   SaveDraftRequest,
   StartAttemptRequest,
@@ -119,8 +120,10 @@ import {
   CareerDomainDtoSchema,
   TargetRoleDtoSchema,
   RecommendedSkillsResponseSchema,
+  ReviewEvidenceResponseSchema,
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
+  CandidateEvidenceProvenanceResponseSchema,
   EvidenceRecordDtoSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
@@ -1240,6 +1243,20 @@ export function placementApi(client: SmartApiClient) {
     /** Candidate My Applications. Identity is the access token; no studentId query. */
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
+
+    getCandidateEvidenceProvenance: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence`), {
+        schema: CandidateEvidenceProvenanceResponseSchema,
+      }),
+
+    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
+      client.post(
+        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
+        body,
+        {
+          schema: ReviewEvidenceResponseSchema,
+        },
+      ),
   };
 }
 

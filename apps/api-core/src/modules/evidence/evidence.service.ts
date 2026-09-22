@@ -1,6 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -15,6 +16,7 @@ import {
   LinkEvidenceToClaimRequestSchema,
   ProfessionalCredentialSchema,
   ProjectSkillMappingSchema,
+  ReviewEvidenceRequestSchema,
   SaveOnboardingSelectionRequestSchema,
   UpdateEvidenceRequestSchema,
   evidenceRequiresRelatedSkills,
@@ -25,21 +27,39 @@ import {
   type EvidenceProvenanceItemDto,
   type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
+  type EvidenceVerificationStatus,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
+  type ReviewEvidenceResponse,
   type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
-import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
+import {
+  CREDENTIAL_VERIFICATION_QUEUE,
+  DEFAULT_JOB_OPTIONS,
+  EVIDENCE_RECONCILIATION_QUEUE,
+} from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
+import {
+  isIdempotentReviewRequest,
+  mapReviewDecisionToVerificationStatus,
+  mergeReviewVerificationMetadata,
+  reviewBlocksTerminalStatus,
+  reviewDecisionConflict,
+} from './evidence-review.logic.js';
+import { assertReviewerCanMutateCandidateEvidence } from './evidence-reviewer-auth.helper.js';
+import {
+  evidenceReconciliationJobId,
+  type EvidenceReconciliationJobPayload,
+} from './evidence-reconciliation.processor.js';
 import {
   toEvidenceRecordDto,
   toPassiveSignalEvidenceDto,
@@ -67,6 +87,8 @@ export class EvidenceService {
     @Inject(StorageService) private readonly storageService: StorageService,
     @InjectQueue(CREDENTIAL_VERIFICATION_QUEUE)
     private readonly credentialVerificationQueue: Queue<CredentialVerificationJobPayload>,
+    @InjectQueue(EVIDENCE_RECONCILIATION_QUEUE)
+    private readonly evidenceReconciliationQueue: Queue<EvidenceReconciliationJobPayload>,
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
@@ -799,5 +821,218 @@ export class EvidenceService {
       summary,
       items,
     };
+  }
+
+  /**
+   * VER-01 — Institution reviewer marks evidence accepted, rejected, or needing information.
+   * Uses compare-and-set on verificationStatus; idempotent on identical reviewer decisions.
+   */
+  async reviewEvidence(
+    caller: RequestUser,
+    studentId: string,
+    evidenceId: string,
+    body: unknown,
+  ): Promise<ReviewEvidenceResponse> {
+    const input = ReviewEvidenceRequestSchema.parse(body);
+    await assertReviewerCanMutateCandidateEvidence(this.prisma, caller, studentId);
+
+    const record = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found for this candidate.',
+        statusCode: 404,
+      });
+    }
+
+    const currentStatus = record.verificationStatus as EvidenceVerificationStatus;
+    const existingMetadata =
+      (record.verificationMetadata as Record<string, unknown> | null) ?? null;
+
+    if (reviewBlocksTerminalStatus(currentStatus)) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Expired evidence cannot be reviewed.',
+        statusCode: 400,
+      });
+    }
+
+    if (reviewDecisionConflict(currentStatus, input.decision)) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'Rejected evidence cannot be accepted without a new review workflow.',
+        statusCode: 409,
+      });
+    }
+
+    if (isIdempotentReviewRequest(currentStatus, existingMetadata, input.decision, caller.sub)) {
+      const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+      return {
+        evidence: toEvidenceRecordDto(record),
+        decision: input.decision,
+        idempotent: true,
+        reconciliation,
+      };
+    }
+
+    const targetStatus = mapReviewDecisionToVerificationStatus(input.decision);
+
+    const nowIso = new Date().toISOString();
+    const mergedMetadata = mergeReviewVerificationMetadata(existingMetadata, {
+      decision: input.decision,
+      reviewerId: caller.sub,
+      reviewerDisplay: caller.sub,
+      reason: input.reason,
+      requestedInformation: input.requestedInformation,
+      nowIso,
+    });
+
+    const priorState = {
+      verificationStatus: currentStatus,
+      source: record.source,
+      evidenceType: record.evidenceType,
+      reviewRequired: existingMetadata?.reviewRequired ?? false,
+    };
+
+    const updateResult = await this.prisma.evidenceRecord.updateMany({
+      where: {
+        id: evidenceId,
+        studentId,
+        verificationStatus: currentStatus,
+      },
+      data: {
+        verificationStatus: targetStatus,
+        verificationMetadata: mergedMetadata as Prisma.InputJsonValue,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      const refreshed = await this.prisma.evidenceRecord.findFirst({
+        where: { id: evidenceId, studentId },
+        include: { artifacts: true },
+      });
+      if (!refreshed) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Evidence not found for this candidate.',
+          statusCode: 404,
+        });
+      }
+
+      const refreshedMetadata =
+        (refreshed.verificationMetadata as Record<string, unknown> | null) ?? null;
+      if (
+        isIdempotentReviewRequest(
+          refreshed.verificationStatus as EvidenceVerificationStatus,
+          refreshedMetadata,
+          input.decision,
+          caller.sub,
+        )
+      ) {
+        const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+        return {
+          evidence: toEvidenceRecordDto(refreshed),
+          decision: input.decision,
+          idempotent: true,
+          reconciliation,
+        };
+      }
+
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'Evidence review conflict — another reviewer updated this record.',
+        statusCode: 409,
+      });
+    }
+
+    const updated = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found after review.',
+        statusCode: 404,
+      });
+    }
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.updated',
+        resourceType: 'evidence_record',
+        resourceId: evidenceId,
+        reasonCode: input.reason?.trim() ?? null,
+        metadata: {
+          priorState,
+          newState: {
+            verificationStatus: targetStatus,
+            source: record.source,
+            evidenceType: record.evidenceType,
+            reviewRequired: mergedMetadata.reviewRequired ?? false,
+          },
+          source: record.source,
+          evidenceType: record.evidenceType,
+          decision: input.decision,
+          institutionId: caller.inst ?? null,
+          trigger: 'evidence_review',
+          requestedInformation: input.requestedInformation ?? null,
+        },
+      });
+    }
+
+    const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+
+    return {
+      evidence: toEvidenceRecordDto(updated),
+      decision: input.decision,
+      idempotent: false,
+      reconciliation,
+    };
+  }
+
+  private async ensureEvidenceReconciliationQueued(
+    studentId: string,
+    evidenceId: string,
+  ): Promise<ReviewEvidenceResponse['reconciliation']> {
+    const jobId = evidenceReconciliationJobId(studentId, evidenceId);
+    const existing = await this.evidenceReconciliationQueue.getJob(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === 'failed') {
+        await existing.retry();
+        return { status: 'QUEUED', jobId };
+      }
+      if (state === 'completed') {
+        return { status: 'COMPLETED', jobId };
+      }
+      if (state === 'active') {
+        return { status: 'PROCESSING', jobId };
+      }
+      return { status: 'QUEUED', jobId };
+    }
+
+    try {
+      await this.evidenceReconciliationQueue.add(
+        'reconcile-student',
+        { studentId, evidenceId, trigger: 'evidence_review' },
+        { jobId, ...DEFAULT_JOB_OPTIONS },
+      );
+      return { status: 'QUEUED', jobId };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/job.*exist/i.test(message)) {
+        return { status: 'QUEUED', jobId };
+      }
+      const raced = await this.evidenceReconciliationQueue.getJob(jobId);
+      if (raced) {
+        return { status: 'QUEUED', jobId };
+      }
+      return { status: 'FAILED', jobId };
+    }
   }
 }

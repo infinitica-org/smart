@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -25,7 +30,12 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
       create: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    user: {
+      findUnique: vi.fn().mockResolvedValue(null),
     },
     skillClaim: {
       findFirst: vi.fn().mockResolvedValue(null),
@@ -53,6 +63,10 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     upload: vi.fn().mockResolvedValue('credential-documents/student-1/file.pdf'),
   };
   const credentialVerificationQueue = { add: vi.fn().mockResolvedValue({ id: 'job-1' }) };
+  const evidenceReconciliationQueue = {
+    add: vi.fn().mockResolvedValue({ id: 'reconcile-1' }),
+    getJob: vi.fn().mockResolvedValue(null),
+  };
   const dedup = new CredentialDedupService(prisma as never);
   const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
 
@@ -64,6 +78,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     reconciliation as any,
     storageService as any,
     credentialVerificationQueue as any,
+    evidenceReconciliationQueue as any,
     dedup,
     skillClaimAutoDeclare as any,
     auditPublisher as any,
@@ -74,6 +89,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     reconciliation,
     storageService,
     credentialVerificationQueue,
+    evidenceReconciliationQueue,
     dedup,
     skillClaimAutoDeclare,
     auditPublisher,
@@ -1097,6 +1113,686 @@ describe('EvidenceService associateEvidenceWithClaim (VER-01)', () => {
           }),
         }),
       });
+    });
+  });
+
+  describe('reviewEvidence (VER-01 reviewer workflow)', () => {
+    const INST_ID_1 = '00000000-0000-0000-0000-000000000001';
+    const INST_ID_2 = '00000000-0000-0000-0000-000000000002';
+    const REVIEWER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+    const candidateUser = {
+      id: STUDENT_ID,
+      role: 'STUDENT',
+      institutionId: INST_ID_1,
+    };
+
+    const staffUser: RequestUser = {
+      sub: REVIEWER_ID,
+      role: 'PLACEMENT_STAFF',
+      inst: INST_ID_1,
+    };
+
+    function mockEvidenceRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: EVIDENCE_ID_1,
+        studentId: STUDENT_ID,
+        evidenceType: 'SELF_REPORT',
+        source: 'CANDIDATE',
+        verificationStatus: 'PENDING',
+        verificationMetadata: { verificationMethod: 'SELF_ATTESTED', auditTrail: [] },
+        claim: 'TypeScript mastery',
+        context: 'Self report',
+        relatedSkillCodes: ['ts'],
+        evidenceStrength: 'WEAK',
+        evidenceReliability: 'LOW',
+        sourceOwner: 'Candidate',
+        sourceReference: null,
+        sourceEntityId: null,
+        sourcePayload: null,
+        provenance: null,
+        accessibility: 'PRIVATE',
+        evidenceDate: null,
+        submissionDate: new Date('2026-09-01T00:00:00Z'),
+        freshness: null,
+        createdAt: new Date('2026-09-01T00:00:00Z'),
+        updatedAt: new Date('2026-09-01T00:00:00Z'),
+        artifacts: [],
+        ...overrides,
+      };
+    }
+
+    it('1. authorized reviewer ACCEPTED maps to VERIFIED', async () => {
+      const pending = mockEvidenceRow();
+      const verified = mockEvidenceRow({ verificationStatus: 'VERIFIED' });
+      const { service, prisma, auditPublisher, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(pending).mockResolvedValueOnce(verified),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+
+      expect(result.decision).toBe('ACCEPTED');
+      expect(result.evidence.verificationStatus).toBe('VERIFIED');
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ verificationStatus: 'PENDING' }),
+          data: expect.objectContaining({ verificationStatus: 'VERIFIED' }),
+        }),
+      );
+      expect(auditPublisher.record).toHaveBeenCalledTimes(1);
+      expect(evidenceReconciliationQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('2. authorized reviewer REJECTED maps to REJECTED', async () => {
+      const pending = mockEvidenceRow();
+      const rejected = mockEvidenceRow({ verificationStatus: 'REJECTED' });
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(pending).mockResolvedValueOnce(rejected),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'REJECTED',
+        reason: 'Insufficient supporting documentation provided.',
+      });
+
+      expect(result.evidence.verificationStatus).toBe('REJECTED');
+    });
+
+    it('3. NEEDS_INFORMATION keeps PENDING verificationStatus', async () => {
+      const pending = mockEvidenceRow();
+      const updated = mockEvidenceRow({
+        verificationMetadata: {
+          verificationMethod: 'SELF_ATTESTED',
+          reviewRequired: true,
+          auditTrail: [
+            {
+              at: new Date().toISOString(),
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_NEEDS_INFORMATION',
+            },
+          ],
+        },
+      });
+      const { service, prisma } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(pending).mockResolvedValueOnce(updated),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'NEEDS_INFORMATION',
+        requestedInformation: 'Upload employer verification letter for this role.',
+      });
+
+      expect(result.evidence.verificationStatus).toBe('PENDING');
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ verificationStatus: 'PENDING' }),
+        }),
+      );
+    });
+
+    it('4. NEEDS_INFORMATION sets reviewRequired in metadata merge', async () => {
+      const pending = mockEvidenceRow();
+      const { service, prisma } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(
+                mockEvidenceRow({
+                  verificationMetadata: {
+                    verificationMethod: 'SELF_ATTESTED',
+                    reviewRequired: true,
+                    auditTrail: [],
+                  },
+                }),
+              ),
+            updateMany: vi.fn().mockImplementation(({ data }) => {
+              expect((data.verificationMetadata as Record<string, unknown>).reviewRequired).toBe(
+                true,
+              );
+              return Promise.resolve({ count: 1 });
+            }),
+          },
+        },
+      });
+
+      await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'NEEDS_INFORMATION',
+        reason: 'Need clearer scope of personal contribution in this project.',
+      });
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalled();
+    });
+
+    it('5. preserves existing verification metadata fields', async () => {
+      const pending = mockEvidenceRow({
+        verificationMetadata: {
+          verificationMethod: 'DOCUMENT',
+          linkedEvidenceIds: ['link-1'],
+          contradictions: [],
+        },
+      });
+      const { service, prisma } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(mockEvidenceRow({ verificationStatus: 'VERIFIED' })),
+            updateMany: vi.fn().mockImplementation(({ data }) => {
+              const metadata = data.verificationMetadata as Record<string, unknown>;
+              expect(metadata.linkedEvidenceIds).toEqual(['link-1']);
+              expect(metadata.verificationMethod).toBe('DOCUMENT');
+              return Promise.resolve({ count: 1 });
+            }),
+          },
+        },
+      });
+
+      await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalled();
+    });
+
+    it('6. captures reason in auditTrail and audit event', async () => {
+      const pending = mockEvidenceRow();
+      const { service, auditPublisher, prisma } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(mockEvidenceRow({ verificationStatus: 'REJECTED' })),
+            updateMany: vi.fn().mockImplementation(({ data }) => {
+              const metadata = data.verificationMetadata as {
+                auditTrail: Array<{ note?: string }>;
+              };
+              expect(metadata.auditTrail.at(-1)?.note).toContain('does not meet institution bar');
+              return Promise.resolve({ count: 1 });
+            }),
+          },
+        },
+      });
+
+      await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'REJECTED',
+        reason: 'Evidence does not meet institution bar for direct skill proof.',
+      });
+
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: REVIEWER_ID,
+          action: 'evidence.updated',
+          resourceType: 'evidence_record',
+          resourceId: EVIDENCE_ID_1,
+          metadata: expect.objectContaining({
+            priorState: expect.objectContaining({ verificationStatus: 'PENDING' }),
+            newState: expect.objectContaining({ verificationStatus: 'REJECTED' }),
+            source: 'CANDIDATE',
+            decision: 'REJECTED',
+            institutionId: INST_ID_1,
+            trigger: 'evidence_review',
+          }),
+        }),
+      );
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalled();
+    });
+
+    it('7. unauthorized role cannot review', async () => {
+      const { service } = buildService();
+      const studentUser: RequestUser = { sub: 'student', role: 'STUDENT', inst: INST_ID_1 };
+      await expect(
+        service.reviewEvidence(studentUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('8. wrong institution reviewer rejected', async () => {
+      const { service } = buildService({
+        prisma: { user: { findUnique: vi.fn().mockResolvedValue(candidateUser) } },
+      });
+      const otherStaff: RequestUser = {
+        sub: REVIEWER_ID,
+        role: 'PLACEMENT_STAFF',
+        inst: INST_ID_2,
+      };
+      await expect(
+        service.reviewEvidence(otherStaff, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toThrow('outside your institution');
+    });
+
+    it('9. COMPANY role cannot mutate evidence', async () => {
+      const { service } = buildService({
+        prisma: { user: { findUnique: vi.fn().mockResolvedValue(candidateUser) } },
+      });
+      const companyUser: RequestUser = {
+        sub: 'company-user',
+        role: 'COMPANY',
+        inst: null,
+        companyId: 'company-1',
+      };
+      await expect(
+        service.reviewEvidence(companyUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toThrow('Unauthorized role to review candidate evidence.');
+    });
+
+    it('10. evidence belonging to another student returns not found', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findFirst: vi.fn().mockResolvedValue(null) },
+        },
+      });
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('11. invalid decision fails validation', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findFirst: vi.fn().mockResolvedValue(mockEvidenceRow()) },
+        },
+      });
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+          decision: 'MAYBE' as never,
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('12. missing required reason for REJECTED fails validation', async () => {
+      const { service } = buildService();
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+          decision: 'REJECTED',
+          reason: 'short',
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('13. EXPIRED evidence cannot be reviewed', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValue(mockEvidenceRow({ verificationStatus: 'EXPIRED' })),
+          },
+        },
+      });
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('14. REJECTED then ACCEPTED returns conflict', async () => {
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValue(mockEvidenceRow({ verificationStatus: 'REJECTED' })),
+          },
+        },
+      });
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('15. repeated identical submission is idempotent without duplicate audit', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          verificationMethod: 'HUMAN_REVIEW',
+          verifiedBy: REVIEWER_ID,
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const { service, auditPublisher, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findFirst: vi.fn().mockResolvedValue(verified) },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+
+      expect(result.idempotent).toBe(true);
+      expect(result.reconciliation.status).toBe('QUEUED');
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+      expect(evidenceReconciliationQueue.getJob).toHaveBeenCalled();
+      expect(evidenceReconciliationQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('15b. idempotent replay re-ensures queue after initial enqueue failure', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          verificationMethod: 'HUMAN_REVIEW',
+          verifiedBy: REVIEWER_ID,
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const { service, auditPublisher, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(verified).mockResolvedValueOnce(verified),
+          },
+        },
+      });
+
+      evidenceReconciliationQueue.getJob.mockResolvedValue(null);
+      evidenceReconciliationQueue.add.mockRejectedValueOnce(new Error('redis unavailable'));
+
+      const first = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+      expect(first.idempotent).toBe(true);
+      expect(first.reconciliation.status).toBe('FAILED');
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+
+      evidenceReconciliationQueue.add.mockResolvedValueOnce({ id: 'reconcile-1' });
+      const second = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+      expect(second.idempotent).toBe(true);
+      expect(second.reconciliation.status).toBe('QUEUED');
+      expect(evidenceReconciliationQueue.add).toHaveBeenCalledTimes(2);
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+
+    it('16. conflicting repeated submission after transition returns conflict', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          verificationMethod: 'HUMAN_REVIEW',
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(verified).mockResolvedValueOnce(verified),
+            updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+        },
+      });
+
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+          decision: 'REJECTED',
+          reason: 'New review decision conflicts with prior acceptance.',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('17. conditional update count 0 surfaces concurrent conflict', async () => {
+      const pending = mockEvidenceRow();
+      const otherReviewerAccepted = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: 'other-reviewer',
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const { service } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(otherReviewerAccepted),
+            updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+        },
+      });
+
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toThrow('another reviewer updated');
+    });
+
+    it('18. audit emitted exactly once on success', async () => {
+      const pending = mockEvidenceRow();
+      const { service, auditPublisher } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(mockEvidenceRow({ verificationStatus: 'VERIFIED' })),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' });
+      expect(auditPublisher.record).toHaveBeenCalledTimes(1);
+    });
+
+    it('19. reconciliation enqueue exactly once on success', async () => {
+      const pending = mockEvidenceRow();
+      const { service, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi
+              .fn()
+              .mockResolvedValueOnce(pending)
+              .mockResolvedValueOnce(mockEvidenceRow({ verificationStatus: 'VERIFIED' })),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' });
+      expect(evidenceReconciliationQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('20. updateMany failure leaves state unchanged (no audit/enqueue)', async () => {
+      const pending = mockEvidenceRow();
+      const { service, auditPublisher, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValue(pending),
+            updateMany: vi.fn().mockRejectedValue(new Error('db unavailable')),
+          },
+        },
+      });
+
+      await expect(
+        service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, { decision: 'ACCEPTED' }),
+      ).rejects.toThrow('db unavailable');
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+      expect(evidenceReconciliationQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('21. CAS success with enqueue failure returns recoverable FAILED reconciliation', async () => {
+      const pending = mockEvidenceRow();
+      const verified = mockEvidenceRow({ verificationStatus: 'VERIFIED' });
+      const { service, auditPublisher, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(pending).mockResolvedValueOnce(verified),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+      evidenceReconciliationQueue.add.mockRejectedValueOnce(new Error('redis unavailable'));
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+
+      expect(result.idempotent).toBe(false);
+      expect(result.reconciliation.status).toBe('FAILED');
+      expect(auditPublisher.record).toHaveBeenCalledTimes(1);
+    });
+
+    it('22. VERIFIED to REJECTED transition is allowed', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          verificationMethod: 'HUMAN_REVIEW',
+          verifiedBy: REVIEWER_ID,
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const rejected = mockEvidenceRow({ verificationStatus: 'REJECTED' });
+      const { service, prisma } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: {
+            findFirst: vi.fn().mockResolvedValueOnce(verified).mockResolvedValueOnce(rejected),
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'REJECTED',
+        reason: 'Overturning prior acceptance after new contradictory evidence.',
+      });
+
+      expect(result.evidence.verificationStatus).toBe('REJECTED');
+      expect(prisma.evidenceRecord.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ verificationStatus: 'VERIFIED' }),
+          data: expect.objectContaining({ verificationStatus: 'REJECTED' }),
+        }),
+      );
+    });
+
+    it('23. unrelated auditTrail entries do not break reviewer idempotency detection', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          verificationMethod: 'HUMAN_REVIEW',
+          verifiedBy: REVIEWER_ID,
+          auditTrail: [
+            {
+              at: '2026-08-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: null,
+              action: 'SYSTEM_SYNC',
+              note: 'Unrelated downstream sync marker',
+            },
+          ],
+        },
+      });
+      const { service, auditPublisher } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findFirst: vi.fn().mockResolvedValue(verified) },
+        },
+      });
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+
+      expect(result.idempotent).toBe(true);
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+
+    it('24. idempotent replay does not duplicate queue when job already exists', async () => {
+      const verified = mockEvidenceRow({
+        verificationStatus: 'VERIFIED',
+        verificationMetadata: {
+          auditTrail: [
+            {
+              at: '2026-09-01T00:00:00.000Z',
+              actorId: REVIEWER_ID,
+              action: 'EVIDENCE_REVIEW_ACCEPTED',
+            },
+          ],
+        },
+      });
+      const existingJob = { getState: vi.fn().mockResolvedValue('waiting'), retry: vi.fn() };
+      const { service, evidenceReconciliationQueue } = buildService({
+        prisma: {
+          user: { findUnique: vi.fn().mockResolvedValue(candidateUser) },
+          evidenceRecord: { findFirst: vi.fn().mockResolvedValue(verified) },
+        },
+      });
+      evidenceReconciliationQueue.getJob.mockResolvedValue(existingJob);
+
+      const result = await service.reviewEvidence(staffUser, STUDENT_ID, EVIDENCE_ID_1, {
+        decision: 'ACCEPTED',
+      });
+
+      expect(result.idempotent).toBe(true);
+      expect(result.reconciliation.status).toBe('QUEUED');
+      expect(evidenceReconciliationQueue.add).not.toHaveBeenCalled();
     });
   });
 });

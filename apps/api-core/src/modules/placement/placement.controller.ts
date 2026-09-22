@@ -24,6 +24,7 @@ import {
   ListPlacementOutcomesQuerySchema,
   PatchApplicationStageRequestSchema,
   RecordOutcomeRequestSchema,
+  ReviewEvidenceRequestSchema,
   UpdatePlacementEmployerRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
@@ -47,7 +48,7 @@ import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
-import type { CandidateEvidenceProvenanceResponse } from '@smart/contracts';
+import type { CandidateEvidenceProvenanceResponse, ReviewEvidenceResponse } from '@smart/contracts';
 
 function requireInstitutionId(user: RequestUser): string {
   if (!user.inst) {
@@ -78,6 +79,31 @@ export class PlacementController {
     @Param('studentId') studentId: string,
   ): Promise<CandidateEvidenceProvenanceResponse> {
     return this.evidenceService.getCandidateEvidenceProvenance(user, studentId);
+  }
+
+  @Post('candidates/:studentId/evidence/:evidenceId/review')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN')
+  @ApiOperation({
+    summary: 'Mark candidate evidence accepted, rejected, or needing information (VER-01).',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Evidence review committed or idempotent replay.' })
+  async reviewCandidateEvidence(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('evidenceId') evidenceId: string,
+    @Body() body: unknown,
+  ): Promise<ReviewEvidenceResponse> {
+    const parsed = ReviewEvidenceRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: parsed.error.issues[0]?.message ?? 'Invalid review request.',
+        statusCode: 400,
+        details: parsed.error.flatten(),
+      });
+    }
+    return this.evidenceService.reviewEvidence(user, studentId, evidenceId, parsed.data);
   }
 
   @Get('_meta')
