@@ -42,7 +42,7 @@ export function FormLabel({
   );
 }
 
-export interface FormDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
+export type FormDescriptionProps = HTMLAttributes<HTMLParagraphElement>;
 
 export function FormDescription({ className, children, ...props }: FormDescriptionProps) {
   return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { User, LogOut, ChevronDown, Shield, Building } from 'lucide-react';
+import { LogOut, ChevronDown, Shield, Building } from 'lucide-react';
 import type { UserRole } from '../navigation/role-nav-config';
 
 export interface UserMenuProps {

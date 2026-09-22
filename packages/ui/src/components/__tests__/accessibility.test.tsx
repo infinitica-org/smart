@@ -39,7 +39,7 @@ describe('Accessibility & WCAG Compliance Unit Tests', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     const errorId = input.getAttribute('aria-describedby');
     expect(errorId).toBe('email-error');
-    const errorEl = document.getElementById(errorId!);
+    const errorEl = errorId ? document.getElementById(errorId) : null;
     expect(errorEl?.textContent).toBe('Email is required');
     expect(errorEl?.getAttribute('role')).toBe('alert');
   });
