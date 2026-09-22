@@ -1,0 +1,10 @@
+@import '@smart/ui/styles.css';
+
+@source '../**/*.{ts,tsx}';
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+@layer components {
+  .company-canvas {
+    background-color: #f8fafc;
+  }
+}

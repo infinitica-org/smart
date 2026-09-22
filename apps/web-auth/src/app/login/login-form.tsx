@@ -117,7 +117,13 @@ export function LoginForm() {
           )}
         </button>
 
-        <div className="flex justify-end pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <a
+            href="/company/register"
+            className="text-[13px] font-medium text-[#0f9f8f] underline-offset-4 transition hover:underline"
+          >
+            Register your company
+          </a>
           <a
             href="#forgot-password"
             onClick={(e) => {

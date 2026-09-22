@@ -8,5 +8,5 @@ const PORTAL_ORIGINS = {
 };
 
 export default function NotFound() {
-  return <NotFoundWall homeHref="/batches" portalOrigins={PORTAL_ORIGINS} />;
+  return <NotFoundWall homeHref="/" portalOrigins={PORTAL_ORIGINS} />;
 }
