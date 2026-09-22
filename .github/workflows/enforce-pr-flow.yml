@@ -34,6 +34,10 @@ jobs:
               echo "::error::PRs to 'qa' must come from 'dev'. Found '$HEAD_BRANCH'."
               exit 1
             fi
+            if [ "$AUTHOR" != "brittytino" ]; then
+              echo "::error::Only 'brittytino' is allowed to create PRs to 'qa'."
+              exit 1
+            fi
           fi
 
           echo "PR flow validation passed."
