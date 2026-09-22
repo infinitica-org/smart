@@ -203,8 +203,16 @@ export default function ManagerSurveyPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Details Grid */}
+        {/* Details Grid — read-only work experience claim from candidate profile */}
         <div className="mt-6 flex flex-col gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Work experience claim</h2>
+            <p className="mt-1 text-xs text-white/50">
+              The role, employment dates, and responsibilities below are shown as the candidate
+              reported them. Review these details before confirming or disputing.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4">
               <span className="text-xs font-medium text-white/40 uppercase tracking-wider">
@@ -312,6 +320,18 @@ export default function ManagerSurveyPage({ params }: PageProps) {
                 placeholder="Add comments regarding candidate performance, leadership, or endorsement context..."
                 className="w-full rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white placeholder-white/30 focus:border-[#14b8a6] focus:outline-none"
               />
+            </div>
+
+            <div
+              className="rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-4 text-xs text-white/80 leading-relaxed"
+              aria-live="polite"
+            >
+              <p className="font-medium text-white/90">What confirmation means</p>
+              <p className="mt-1">
+                Selecting <strong className="text-white">Confirm &amp; Endorse Claim</strong>{' '}
+                verifies that the role, employment dates, and responsibilities shown above
+                accurately represent this experience.
+              </p>
             </div>
 
             {error && (

@@ -368,6 +368,9 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     expect(await screen.findByText('Manager Endorsement')).toBeTruthy();
     expect(screen.getByText(/Jane Smith \(manager@acme.com\)/i)).toBeTruthy();
+    expect(screen.getByText(/Work experience claim confirmed/i)).toBeTruthy();
+    expect(screen.getByText(/confirmed your Software Engineer role/i)).toBeTruthy();
+    expect(screen.getByText(/including your stated responsibilities/i)).toBeTruthy();
   });
 
   it('requests manager endorsement with endorser email and name from the card form (VER-02)', async () => {

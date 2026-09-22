@@ -2753,6 +2753,14 @@ describe('WorkExperienceService', () => {
 
         expect(res.success).toBe(true);
         expect(res.status).toBe('CONFIRMED');
+        expect(res.message).toMatch(/role, employment dates, and responsibilities/i);
+        expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
+          where: { id: mockEndorsement.id },
+          data: expect.objectContaining({
+            status: 'CONFIRMED',
+            confirmed: true,
+          }),
+        });
         expect(prisma.workExperience.update).toHaveBeenCalledWith({
           where: { id: experienceId },
           data: {
