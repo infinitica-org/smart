@@ -1,29 +1,26 @@
-name: Deploy dev (kvm2)
+name: Deploy qa (kvm2)
 
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [dev]
+    branches: [qa]
 
 concurrency:
-  group: deploy-dev
+  group: deploy-qa
   cancel-in-progress: false
 
 jobs:
   deploy:
-    # workflow_run.branches is not enough — CI on `main` was still checking
-    # out 361bcdd and overwriting kvm2. Only deploy when the triggering CI
-    # ran on `dev`, and always sync the tip of `dev`.
     if: >
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'dev'
+      github.event.workflow_run.head_branch == 'qa'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: dev
+          ref: qa
           fetch-depth: 1
 
       - name: Configure SSH
@@ -51,7 +48,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
             "${{ secrets.DEV_SSH_USER }}@${{ secrets.DEV_SSH_HOST }}" \
-            'cd ~/smart && bash scripts/deploy-vps.sh dev'
+            'cd ~/smart && bash scripts/deploy-vps.sh qa'
 
       - name: Cleanup
         if: always()
