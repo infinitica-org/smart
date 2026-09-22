@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @smart/contracts â€” the SMART integration boundary.
  *
  * Every cross-module type, every HTTP DTO and every Kafka payload lives here.
@@ -74,6 +74,7 @@ export * from './dto/raw-signals.dto.js';
 export * from './dto/signal-connections.dto.js';
 export * from './dto/corroboration.dto.js';
 export * from './dto/evidence.dto.js';
+export * from './dto/skill-management.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

@@ -1,14 +1,22 @@
 import { Buffer } from 'node:buffer';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   LEVEL_DEFINITIONS,
+  SKILL_CATEGORIES,
+  SKILL_DEFINITIONS,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
   buildSeSkillLibraryResponse,
   buildSkillLibraryResponse,
+  CreateSkillDtoSchema,
+  UpdateSkillDtoSchema,
+  type CreateSkillDto,
   type SeSkillLibraryResponse,
   type SkillLibraryResponse,
+  type SkillManagementRecord,
+  type SkillQueryDto,
   type TrackDto,
+  type UpdateSkillDto,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { passThresholdsFor } from './skill-pass-thresholds.js';
@@ -49,6 +57,8 @@ export class CatalogService {
     return TRACK_DEFINITIONS.map(fromContract);
   }
 
+  private readonly customSkills: Map<string, SkillManagementRecord> = new Map();
+
   /** skill@1 library grouped by category (Global IT Skills Database). */
   listSkillLibrary(): SkillLibraryResponse {
     return SKILL_LIBRARY;
@@ -57,6 +67,146 @@ export class CatalogService {
   /** inf-se-v1 SE skill framework grouped by category A–I (S6-RM-13). */
   listSeSkillLibrary(): SeSkillLibraryResponse {
     return SE_SKILL_LIBRARY;
+  }
+
+  createSkill(dto: CreateSkillDto): SkillManagementRecord {
+    const parsed = CreateSkillDtoSchema.parse(dto);
+    const upperCode = parsed.code.toUpperCase();
+
+    if (this.customSkills.has(upperCode) || SKILL_DEFINITIONS.some((s) => s.code === upperCode)) {
+      throw new ConflictException({
+        error: 'duplicate_skill_code',
+        message: `Skill with code ${upperCode} already exists.`,
+      });
+    }
+
+    const nameExists =
+      Array.from(this.customSkills.values()).some(
+        (s) => s.name.toLowerCase() === parsed.name.toLowerCase(),
+      ) || SKILL_DEFINITIONS.some((s) => s.name.toLowerCase() === parsed.name.toLowerCase());
+
+    if (nameExists) {
+      throw new ConflictException({
+        error: 'duplicate_skill_name',
+        message: `Skill with name ${parsed.name} already exists.`,
+      });
+    }
+
+    const categoryName =
+      parsed.categoryName || SKILL_CATEGORIES[parsed.categoryId]?.name || parsed.categoryId;
+
+    const now = new Date().toISOString();
+    const record: SkillManagementRecord = {
+      code: upperCode,
+      name: parsed.name,
+      categoryId: parsed.categoryId,
+      categoryName,
+      description: parsed.description || '',
+      corroborationEligible: parsed.corroborationEligible ?? true,
+      assessmentRequiredForClaim: parsed.assessmentRequiredForClaim ?? true,
+      status: parsed.status || 'ACTIVE',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.customSkills.set(upperCode, record);
+    return record;
+  }
+
+  updateSkill(code: string, dto: UpdateSkillDto): SkillManagementRecord {
+    const upperCode = code.toUpperCase();
+    const existing = this.customSkills.get(upperCode);
+
+    let baseRecord: SkillManagementRecord;
+    if (!existing) {
+      const predefined = SKILL_DEFINITIONS.find((s) => s.code === upperCode);
+      if (!predefined) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: `Skill ${upperCode} not found.`,
+        });
+      }
+      const now = new Date().toISOString();
+      baseRecord = {
+        code: predefined.code,
+        name: predefined.name,
+        categoryId: predefined.categoryId,
+        categoryName: predefined.categoryName,
+        description: '',
+        corroborationEligible: predefined.corroborationEligible,
+        assessmentRequiredForClaim: predefined.assessmentRequiredForClaim,
+        status: 'ACTIVE',
+        createdAt: now,
+        updatedAt: now,
+      };
+    } else {
+      baseRecord = existing;
+    }
+
+    const parsed = UpdateSkillDtoSchema.parse(dto);
+    const updatedRecord: SkillManagementRecord = {
+      ...baseRecord,
+      ...(parsed.name ? { name: parsed.name } : {}),
+      ...(parsed.categoryId
+        ? {
+            categoryId: parsed.categoryId,
+            categoryName: SKILL_CATEGORIES[parsed.categoryId]?.name || parsed.categoryId,
+          }
+        : {}),
+      ...(parsed.description !== undefined ? { description: parsed.description } : {}),
+      ...(parsed.corroborationEligible !== undefined
+        ? { corroborationEligible: parsed.corroborationEligible }
+        : {}),
+      ...(parsed.assessmentRequiredForClaim !== undefined
+        ? { assessmentRequiredForClaim: parsed.assessmentRequiredForClaim }
+        : {}),
+      ...(parsed.status ? { status: parsed.status } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.customSkills.set(upperCode, updatedRecord);
+    return updatedRecord;
+  }
+
+  listManagedSkills(query?: SkillQueryDto): SkillManagementRecord[] {
+    const map = new Map<string, SkillManagementRecord>();
+    const now = new Date().toISOString();
+
+    for (const def of SKILL_DEFINITIONS) {
+      map.set(def.code, {
+        code: def.code,
+        name: def.name,
+        categoryId: def.categoryId,
+        categoryName: def.categoryName,
+        description: '',
+        corroborationEligible: def.corroborationEligible,
+        assessmentRequiredForClaim: def.assessmentRequiredForClaim,
+        status: 'ACTIVE',
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    for (const [c, record] of this.customSkills.entries()) {
+      map.set(c, record);
+    }
+
+    let list = Array.from(map.values());
+
+    if (query?.categoryId) {
+      list = list.filter((s) => s.categoryId === query.categoryId);
+    }
+    if (query?.status) {
+      list = list.filter((s) => s.status === query.status);
+    }
+    if (query?.search) {
+      const term = query.search.toLowerCase();
+      list = list.filter(
+        (s) => s.name.toLowerCase().includes(term) || s.code.toLowerCase().includes(term),
+      );
+    }
+
+    return list;
   }
 
   async getTrack(trackCode: string): Promise<TrackDto> {

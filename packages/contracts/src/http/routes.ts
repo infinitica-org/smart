@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -3493,6 +3493,42 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 300,
     summary: 'Resolve a corroboration review flag (audit only; does not change SkillClaim status).',
+  },
+  {
+    method: 'GET',
+    path: '/catalog/skills/manage',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'List and filter managed taxonomy skills.',
+  },
+  {
+    method: 'POST',
+    path: '/catalog/skills',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Create a new taxonomy skill.',
+  },
+  {
+    method: 'PUT',
+    path: '/catalog/skills/:skillCode',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Update an existing taxonomy skill.',
   },
 ] as const;
 

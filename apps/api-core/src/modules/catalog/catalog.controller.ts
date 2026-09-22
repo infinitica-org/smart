@@ -1,6 +1,13 @@
-import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
-import { API_PREFIX } from '@smart/contracts';
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  API_PREFIX,
+  type CreateSkillDto,
+  type SkillQueryDto,
+  type UpdateSkillDto,
+} from '@smart/contracts';
 import { Public } from '../../common/guards/public.decorator.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { EvidenceCatalogService } from '../evidence/evidence-catalog.service.js';
 import { CatalogService } from './catalog.service.js';
 
@@ -30,6 +37,33 @@ export class CatalogController {
   }
 
   @Public()
+  @Get('skills/se-v1')
+  listSeSkills() {
+    return this.catalog.listSeSkillLibrary();
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Get('skills/manage')
+  listManagedSkills(@Query() query?: SkillQueryDto) {
+    return this.catalog.listManagedSkills(query);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Post('skills')
+  createSkill(@Body() dto: CreateSkillDto) {
+    return this.catalog.createSkill(dto);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Put('skills/:skillCode')
+  updateSkill(@Param('skillCode') skillCode: string, @Body() dto: UpdateSkillDto) {
+    return this.catalog.updateSkill(skillCode, dto);
+  }
+
+  @Public()
   @Get('career-domains')
   listCareerDomains() {
     return this.evidenceCatalog.listCareerDomains();
@@ -51,11 +85,5 @@ export class CatalogController {
   @Get('skills/:skillCode/blueprint')
   skillBlueprint(@Param('skillCode') skillCode: string) {
     return this.evidenceCatalog.getSkillBlueprint(skillCode);
-  }
-
-  @Public()
-  @Get('skills/se-v1')
-  listSeSkills() {
-    return this.catalog.listSeSkillLibrary();
   }
 }

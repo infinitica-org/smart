@@ -472,6 +472,24 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     redisKey: 'rl:cert_agenda:{id}',
     rationale: 'Agenda-to-paper LLM generation; per-candidate cap so regen cannot blow cost.',
   },
+  {
+    key: 'catalog.read',
+    scope: 'USER',
+    limit: 100,
+    windowSeconds: 60,
+    burst: 20,
+    redisKey: 'rl:catalog:read:{id}',
+    rationale: 'Catalog taxonomy browsing and management queries.',
+  },
+  {
+    key: 'catalog.write',
+    scope: 'USER',
+    limit: 30,
+    windowSeconds: 60,
+    burst: 10,
+    redisKey: 'rl:catalog:write:{id}',
+    rationale: 'Catalog skill creation and modification operations.',
+  },
 ] as const;
 
 export const ALL_RATE_LIMIT_POLICIES: readonly RateLimitPolicy[] = [
