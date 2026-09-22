@@ -53,6 +53,22 @@ export const LinkEvidenceToClaimRequestSchema = z.object({
 });
 export type LinkEvidenceToClaimRequest = z.infer<typeof LinkEvidenceToClaimRequestSchema>;
 
+export const AssociateEvidenceWithClaimRequestSchema = z.object({
+  claimId: UuidSchema.optional(),
+  evidenceIds: z
+    .array(UuidSchema)
+    .min(1, 'At least one evidence ID must be provided.')
+    .max(50, 'Cannot associate more than 50 evidence items at once.')
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      'Duplicate evidence IDs are not allowed in the same request.',
+    ),
+  weight: z.number().min(0).max(1).optional().default(1),
+});
+export type AssociateEvidenceWithClaimRequest = z.infer<
+  typeof AssociateEvidenceWithClaimRequestSchema
+>;
+
 export const SkillClaimEvidenceLinkDtoSchema = z.object({
   linkId: UuidSchema,
   claimId: UuidSchema,
@@ -61,6 +77,21 @@ export const SkillClaimEvidenceLinkDtoSchema = z.object({
   createdAt: IsoDateTimeSchema,
 });
 export type SkillClaimEvidenceLinkDto = z.infer<typeof SkillClaimEvidenceLinkDtoSchema>;
+
+export const AssociateEvidenceWithClaimResponseSchema = z.object({
+  claimId: UuidSchema,
+  associatedCount: z.number().int().min(0),
+  links: z.array(SkillClaimEvidenceLinkDtoSchema),
+  reconciliation: z
+    .object({
+      contradictionsDetected: z.number().int(),
+      reviewRequired: z.boolean(),
+    })
+    .optional(),
+});
+export type AssociateEvidenceWithClaimResponse = z.infer<
+  typeof AssociateEvidenceWithClaimResponseSchema
+>;
 
 export const VerificationDecisionDtoSchema = VerificationDecisionSchema;
 export type VerificationDecisionDto = z.infer<typeof VerificationDecisionDtoSchema>;

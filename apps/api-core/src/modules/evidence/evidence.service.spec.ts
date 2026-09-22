@@ -1,7 +1,12 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceService } from './evidence.service.js';
+
+const CLAIM_ID_1 = '11111111-1111-4111-8111-111111111111';
+const EVIDENCE_ID_1 = '22222222-2222-4222-8222-222222222222';
+const EVIDENCE_ID_2 = '33333333-3333-4333-8333-333333333333';
+const STUDENT_ID = '44444444-4444-4444-8444-444444444444';
 
 function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const prisma = {
@@ -16,15 +21,36 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     },
     evidenceRecord: {
       create: vi.fn().mockResolvedValue({}),
+      findMany: vi.fn().mockResolvedValue([]),
     },
+    skillClaim: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    skillClaimEvidenceLink: {
+      upsert: vi.fn().mockImplementation(({ create }) =>
+        Promise.resolve({
+          id: 'link-1',
+          claimId: create.claimId,
+          evidenceId: create.evidenceId,
+          weight: create.weight,
+          createdAt: new Date(),
+        }),
+      ),
+    },
+    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
     ...overrides?.prisma,
   };
-  const reconciliation = { reconcileForStudent: vi.fn().mockResolvedValue(undefined) };
+  const reconciliation = {
+    reconcileForStudent: vi
+      .fn()
+      .mockResolvedValue({ contradictionsDetected: 0, reviewRequired: false }),
+  };
   const storageService = {
     upload: vi.fn().mockResolvedValue('credential-documents/student-1/file.pdf'),
   };
   const credentialVerificationQueue = { add: vi.fn().mockResolvedValue({ id: 'job-1' }) };
   const dedup = new CredentialDedupService(prisma as never);
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
 
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
@@ -36,6 +62,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue as any,
     dedup,
     skillClaimAutoDeclare as any,
+    auditPublisher as any,
   );
   return {
     service,
@@ -45,6 +72,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue,
     dedup,
     skillClaimAutoDeclare,
+    auditPublisher,
   };
 }
 
@@ -190,5 +218,266 @@ describe('EvidenceService credentials', () => {
       }),
     ).rejects.toThrow();
     expect(storageService.upload).not.toHaveBeenCalled();
+  });
+});
+
+describe('EvidenceService associateEvidenceWithClaim (VER-01)', () => {
+  it('successfully associates a single evidence item with a skill claim', async () => {
+    const { service, auditPublisher, reconciliation } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'VERIFIED' },
+            ]),
+        },
+      },
+    });
+
+    const result = await service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+      evidenceIds: [EVIDENCE_ID_1],
+      weight: 1,
+    });
+
+    expect(result.claimId).toBe(CLAIM_ID_1);
+    expect(result.associatedCount).toBe(1);
+    expect(result.links).toHaveLength(1);
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: STUDENT_ID,
+        action: 'evidence.associated_with_claim',
+        resourceType: 'skill_claim',
+        resourceId: CLAIM_ID_1,
+      }),
+    );
+    expect(reconciliation.reconcileForStudent).toHaveBeenCalledWith(STUDENT_ID);
+  });
+
+  it('successfully associates multiple evidence items with a skill claim', async () => {
+    const { service, auditPublisher } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'VERIFIED' },
+            { id: EVIDENCE_ID_2, studentId: STUDENT_ID, verificationStatus: 'PENDING' },
+          ]),
+        },
+      },
+    });
+
+    const result = await service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+      evidenceIds: [EVIDENCE_ID_1, EVIDENCE_ID_2],
+      weight: 0.8,
+    });
+
+    expect(result.associatedCount).toBe(2);
+    expect(result.links).toHaveLength(2);
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          evidenceIds: [EVIDENCE_ID_1, EVIDENCE_ID_2],
+          associatedCount: 2,
+        }),
+      }),
+    );
+  });
+
+  it('throws NotFoundException if the claim does not exist or belongs to another user', async () => {
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
+    });
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [EVIDENCE_ID_1],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws NotFoundException if any evidence item does not exist or belongs to another user', async () => {
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'VERIFIED' },
+            ]),
+        },
+      },
+    });
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [EVIDENCE_ID_1, EVIDENCE_ID_2],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws BadRequestException if evidenceIds array is empty', async () => {
+    const { service } = buildService();
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws BadRequestException if duplicate evidence IDs are provided in request', async () => {
+    const { service } = buildService();
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [EVIDENCE_ID_1, EVIDENCE_ID_1],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws BadRequestException if claim status is LOCKED', async () => {
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'LOCKED',
+          }),
+        },
+      },
+    });
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [EVIDENCE_ID_1],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws BadRequestException if any evidence item status is REJECTED', async () => {
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'REJECTED' },
+            ]),
+        },
+      },
+    });
+
+    await expect(
+      service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+        evidenceIds: [EVIDENCE_ID_1],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('performs idempotent upsert so repeated requests update weight without creating duplicates', async () => {
+    const upsertSpy = vi.fn().mockImplementation(({ create }) =>
+      Promise.resolve({
+        id: 'link-1',
+        claimId: create.claimId,
+        evidenceId: create.evidenceId,
+        weight: create.weight,
+        createdAt: new Date(),
+      }),
+    );
+
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'VERIFIED' },
+            ]),
+        },
+        skillClaimEvidenceLink: {
+          upsert: upsertSpy,
+        },
+      },
+    });
+
+    await service.associateEvidenceWithClaim(STUDENT_ID, CLAIM_ID_1, {
+      evidenceIds: [EVIDENCE_ID_1],
+      weight: 0.5,
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith({
+      where: { claimId_evidenceId: { claimId: CLAIM_ID_1, evidenceId: EVIDENCE_ID_1 } },
+      create: { claimId: CLAIM_ID_1, evidenceId: EVIDENCE_ID_1, weight: 0.5 },
+      update: { weight: 0.5 },
+    });
+  });
+
+  it('delegates single linkEvidenceToClaim to associateEvidenceWithClaim seamlessly', async () => {
+    const { service } = buildService({
+      prisma: {
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: CLAIM_ID_1,
+            studentId: STUDENT_ID,
+            status: 'DECLARED',
+          }),
+        },
+        evidenceRecord: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: EVIDENCE_ID_1, studentId: STUDENT_ID, verificationStatus: 'VERIFIED' },
+            ]),
+        },
+      },
+    });
+
+    const link = await service.linkEvidenceToClaim(STUDENT_ID, EVIDENCE_ID_1, {
+      claimId: CLAIM_ID_1,
+      weight: 1,
+    });
+
+    expect(link.claimId).toBe(CLAIM_ID_1);
+    expect(link.evidenceId).toBe(EVIDENCE_ID_1);
   });
 });

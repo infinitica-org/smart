@@ -3,6 +3,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type { Queue } from 'bullmq';
 import { z } from 'zod';
 import {
+  AssociateEvidenceWithClaimRequestSchema,
   CreateEvidenceRequestSchema,
   CreateVerificationDecisionRequestSchema,
   LinkEvidenceToClaimRequestSchema,
@@ -11,6 +12,8 @@ import {
   SaveOnboardingSelectionRequestSchema,
   UpdateEvidenceRequestSchema,
   evidenceRequiresRelatedSkills,
+  type AssociateEvidenceWithClaimRequest,
+  type AssociateEvidenceWithClaimResponse,
   type CandidateEvidenceProfileDto,
   type EvidenceRecordDto,
   type PassiveSignalEvidenceDto,
@@ -21,6 +24,7 @@ import {
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
@@ -55,6 +59,8 @@ export class EvidenceService {
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
+    @Inject(AuditPublisherService)
+    private readonly auditPublisher?: AuditPublisherService,
   ) {}
 
   async listEvidence(
@@ -174,15 +180,41 @@ export class EvidenceService {
     return toEvidenceRecordDto(row);
   }
 
-  async linkEvidenceToClaim(
+  async associateEvidenceWithClaim(
     studentId: string,
-    evidenceId: string,
+    claimIdParam: string | undefined,
     body: unknown,
-  ): Promise<SkillClaimEvidenceLinkDto> {
-    await this.getEvidence(studentId, evidenceId);
-    const input = LinkEvidenceToClaimRequestSchema.parse(body);
+  ): Promise<AssociateEvidenceWithClaimResponse> {
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    let input: AssociateEvidenceWithClaimRequest;
+    try {
+      input = AssociateEvidenceWithClaimRequestSchema.parse({
+        ...raw,
+        claimId: claimIdParam ?? raw.claimId,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new BadRequestException({
+          error: 'validation_failed',
+          message: err.issues.map((e: z.ZodIssue) => e.message).join(' '),
+          statusCode: 400,
+        });
+      }
+      throw err;
+    }
+
+    const targetClaimId = input.claimId;
+    if (!targetClaimId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'A valid claimId must be provided in URL or request body.',
+        statusCode: 400,
+      });
+    }
+
+    // 1. Verify claim exists and belongs to studentId
     const claim = await this.prisma.skillClaim.findFirst({
-      where: { id: input.claimId, studentId },
+      where: { id: targetClaimId, studentId },
     });
     if (!claim) {
       throw new NotFoundException({
@@ -191,16 +223,119 @@ export class EvidenceService {
         statusCode: 404,
       });
     }
-    const link = await this.prisma.skillClaimEvidenceLink.upsert({
-      where: { claimId_evidenceId: { claimId: input.claimId, evidenceId } },
-      create: {
-        claimId: input.claimId,
-        evidenceId,
-        weight: input.weight,
+
+    // 2. Validate claim state (LOCKED claims cannot be updated with evidence)
+    if (claim.status === 'LOCKED') {
+      throw new BadRequestException({
+        error: 'invalid_claim_state',
+        message: 'Cannot associate evidence with a locked skill claim.',
+        statusCode: 400,
+      });
+    }
+
+    // 3. Verify all evidence records exist, belong to studentId, and are in valid states
+    const evidenceRecords = await this.prisma.evidenceRecord.findMany({
+      where: {
+        id: { in: input.evidenceIds },
+        studentId,
       },
-      update: { weight: input.weight },
     });
-    return toSkillClaimEvidenceLinkDto(link);
+
+    if (evidenceRecords.length !== input.evidenceIds.length) {
+      const foundIds = new Set(evidenceRecords.map((e) => e.id));
+      const missing = input.evidenceIds.filter((id: string) => !foundIds.has(id));
+      throw new NotFoundException({
+        error: 'evidence_not_found',
+        message: `Evidence record(s) not found: ${missing.join(', ')}`,
+        statusCode: 404,
+      });
+    }
+
+    const rejectedEvidence = evidenceRecords.filter((e) => e.verificationStatus === 'REJECTED');
+    if (rejectedEvidence.length > 0) {
+      throw new BadRequestException({
+        error: 'invalid_evidence_state',
+        message: `Cannot associate rejected evidence item(s): ${rejectedEvidence.map((e) => e.id).join(', ')}`,
+        statusCode: 400,
+      });
+    }
+
+    // 4. Atomic upsert to ensure idempotency and prevent duplicates
+    const links = await this.prisma.$transaction(
+      input.evidenceIds.map((evidenceId: string) =>
+        this.prisma.skillClaimEvidenceLink.upsert({
+          where: { claimId_evidenceId: { claimId: targetClaimId, evidenceId } },
+          create: {
+            claimId: targetClaimId,
+            evidenceId,
+            weight: input.weight,
+          },
+          update: { weight: input.weight },
+        }),
+      ),
+    );
+
+    // 5. Trigger asynchronous reconciliation & recalculations
+    const reconciliation = await this.reconciliation.reconcileForStudent(studentId);
+
+    // 6. Record audit log
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: studentId,
+        action: 'evidence.associated_with_claim',
+        resourceType: 'skill_claim',
+        resourceId: targetClaimId,
+        reasonCode: null,
+        metadata: {
+          claimId: targetClaimId,
+          evidenceIds: input.evidenceIds,
+          associatedCount: links.length,
+          weight: input.weight,
+        },
+      });
+    }
+
+    return {
+      claimId: targetClaimId,
+      associatedCount: links.length,
+      links: links.map(toSkillClaimEvidenceLinkDto),
+      reconciliation,
+    };
+  }
+
+  async linkEvidenceToClaim(
+    studentId: string,
+    evidenceId: string,
+    body: unknown,
+  ): Promise<SkillClaimEvidenceLinkDto> {
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    let input: { claimId: string; weight?: number };
+    try {
+      input = LinkEvidenceToClaimRequestSchema.parse({ ...raw, evidenceId });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new BadRequestException({
+          error: 'validation_failed',
+          message: err.issues.map((e: z.ZodIssue) => e.message).join(' '),
+          statusCode: 400,
+        });
+      }
+      throw err;
+    }
+    const result = await this.associateEvidenceWithClaim(studentId, input.claimId, {
+      claimId: input.claimId,
+      evidenceIds: [evidenceId],
+      weight: input.weight,
+    });
+    const link = result.links[0];
+    if (!link) {
+      throw new BadRequestException({
+        error: 'association_failed',
+        message: 'Failed to create evidence link.',
+        statusCode: 400,
+      });
+    }
+    return link;
   }
 
   async getEvidenceProfile(studentId: string): Promise<CandidateEvidenceProfileDto> {

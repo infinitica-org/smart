@@ -81,6 +81,26 @@ export class EvidenceController {
     return this.evidence.linkEvidenceToClaim(user.sub, id, body);
   }
 
+  @Post('skill-claims/:claimId/associate-evidence')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Associate one or more evidence items with a profile claim.' })
+  associateEvidenceWithClaim(
+    @CurrentUser() user: RequestUser,
+    @Param('claimId') claimId: string,
+    @Body() body: unknown,
+  ) {
+    return this.evidence.associateEvidenceWithClaim(user.sub, claimId, body);
+  }
+
+  @Post('evidence/associate-claim')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Associate one or more evidence items with a profile claim.' })
+  associateClaim(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    return this.evidence.associateEvidenceWithClaim(user.sub, undefined, body);
+  }
+
   @Get('credentials')
   @Roles('STUDENT')
   @ApiBearerAuth()

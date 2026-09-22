@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -3323,6 +3323,31 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 150,
     summary: 'Link evidence to a skill claim for reuse across skills.',
+  },
+  {
+    method: 'POST',
+    path: '/users/me/skill-claims/:claimId/associate-evidence',
+    module: 'evidence',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Associate one or more evidence items with a profile claim (VER-01).',
+  },
+  {
+    method: 'POST',
+    path: '/users/me/evidence/associate-claim',
+    module: 'evidence',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary:
+      'Associate one or more evidence items with a profile claim without claimId in URL (VER-01).',
   },
   {
     method: 'GET',
