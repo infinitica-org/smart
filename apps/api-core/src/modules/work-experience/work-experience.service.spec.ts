@@ -731,6 +731,7 @@ describe('WorkExperienceService', () => {
       await expect(
         service.sendManagerEndorsement(mockStudentId, expId, {
           managerEmail: 'manager@acme.com',
+          managerName: 'Jane Smith',
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
@@ -2294,6 +2295,11 @@ describe('WorkExperienceService', () => {
     };
 
     describe('sendManagerEndorsement', () => {
+      const validEndorsementRequest = {
+        managerEmail: 'manager@acme.com',
+        managerName: 'Jane Smith',
+      };
+
       beforeEach(() => {
         prisma.workExperienceManagerEndorsement.findFirst.mockImplementation(
           ({ where }: { where: { status?: string } }) => {
@@ -2308,11 +2314,24 @@ describe('WorkExperienceService', () => {
         );
       });
 
+      it('throws NotFoundException when experience does not belong to student', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue({
+          ...mockExp,
+          studentId: randomUUID(),
+        });
+
+        await expect(
+          service.sendManagerEndorsement(mockStudentId, experienceId, validEndorsementRequest),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
+      });
+
       it('rejects personal/free email domains (gmail.com)', async () => {
         prisma.workExperience.findUnique.mockResolvedValue(mockExp);
         await expect(
           service.sendManagerEndorsement(mockStudentId, experienceId, {
             managerEmail: 'manager@gmail.com',
+            managerName: 'Jane Smith',
           }),
         ).rejects.toBeInstanceOf(BadRequestException);
       });
@@ -2322,6 +2341,37 @@ describe('WorkExperienceService', () => {
         await expect(
           service.sendManagerEndorsement(mockStudentId, experienceId, {
             managerEmail: 'manager@othercompany.com',
+            managerName: 'Jane Smith',
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it('rejects missing endorser name', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        await expect(
+          service.sendManagerEndorsement(mockStudentId, experienceId, {
+            managerEmail: 'manager@acme.com',
+            managerName: '',
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it('rejects endorser name shorter than 2 characters', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        await expect(
+          service.sendManagerEndorsement(mockStudentId, experienceId, {
+            managerEmail: 'manager@acme.com',
+            managerName: 'J',
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it('rejects endorser name longer than 120 characters', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        await expect(
+          service.sendManagerEndorsement(mockStudentId, experienceId, {
+            managerEmail: 'manager@acme.com',
+            managerName: 'A'.repeat(121),
           }),
         ).rejects.toBeInstanceOf(BadRequestException);
       });
@@ -2337,10 +2387,11 @@ describe('WorkExperienceService', () => {
           status: 'PENDING',
         });
 
-        const res = await service.sendManagerEndorsement(mockStudentId, experienceId, {
-          managerEmail: 'manager@acme.com',
-          managerName: 'Jane Smith',
-        });
+        const res = await service.sendManagerEndorsement(
+          mockStudentId,
+          experienceId,
+          validEndorsementRequest,
+        );
 
         expect(res.success).toBe(true);
         expect(res.endorsementId).toBe(endorsementId);
@@ -2365,6 +2416,7 @@ describe('WorkExperienceService', () => {
         const existingEndorsement = {
           id: randomUUID(),
           managerEmail: 'manager@acme.com',
+          managerName: 'Jane Smith',
           expiresAt: new Date(Date.now() + 120 * 3600 * 1000),
         };
         prisma.workExperienceManagerEndorsement.findFirst.mockImplementation(
@@ -2379,12 +2431,44 @@ describe('WorkExperienceService', () => {
           },
         );
 
-        const res = await service.sendManagerEndorsement(mockStudentId, experienceId, {
-          managerEmail: 'manager@acme.com',
-        });
+        const res = await service.sendManagerEndorsement(
+          mockStudentId,
+          experienceId,
+          validEndorsementRequest,
+        );
 
         expect(res.idempotent).toBe(true);
         expect(res.endorsementId).toBe(existingEndorsement.id);
+        expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
+        expect(auditPublisher.record).not.toHaveBeenCalled();
+        expect(emailQueue.add).not.toHaveBeenCalled();
+      });
+
+      it('rejects a pending request with different contact details', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        prisma.workExperienceManagerEndorsement.findFirst.mockImplementation(
+          ({ where }: { where: { status?: string } }) => {
+            if (where.status === 'CONFIRMED') {
+              return Promise.resolve(null);
+            }
+            if (where.status === 'PENDING') {
+              return Promise.resolve({
+                id: randomUUID(),
+                managerEmail: 'manager@acme.com',
+                managerName: 'Jane Smith',
+                expiresAt: new Date(Date.now() + 120 * 3600 * 1000),
+              });
+            }
+            return Promise.resolve(null);
+          },
+        );
+
+        await expect(
+          service.sendManagerEndorsement(mockStudentId, experienceId, {
+            managerEmail: 'other.manager@acme.com',
+            managerName: 'Other Manager',
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
         expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
         expect(auditPublisher.record).not.toHaveBeenCalled();
         expect(emailQueue.add).not.toHaveBeenCalled();
@@ -2402,9 +2486,7 @@ describe('WorkExperienceService', () => {
         );
 
         await expect(
-          service.sendManagerEndorsement(mockStudentId, experienceId, {
-            managerEmail: 'manager@acme.com',
-          }),
+          service.sendManagerEndorsement(mockStudentId, experienceId, validEndorsementRequest),
         ).rejects.toBeInstanceOf(ConflictException);
         expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
       });
@@ -2420,12 +2502,35 @@ describe('WorkExperienceService', () => {
           status: 'PENDING',
         });
 
-        const res = await service.sendManagerEndorsement(mockStudentId, experienceId, {
-          managerEmail: 'manager@acme.com',
-        });
+        const res = await service.sendManagerEndorsement(
+          mockStudentId,
+          experienceId,
+          validEndorsementRequest,
+        );
 
         expect(res.success).toBe(true);
         expect(res.idempotent).toBe(false);
+        expect(prisma.workExperienceManagerEndorsement.create).toHaveBeenCalled();
+      });
+
+      it('allows a new request after prior endorsement was disputed', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        const endorsementId = randomUUID();
+        prisma.workExperienceManagerEndorsement.create.mockResolvedValue({
+          id: endorsementId,
+          experienceId,
+          managerEmail: 'manager@acme.com',
+          expiresAt: new Date(Date.now() + 120 * 3600 * 1000),
+          status: 'PENDING',
+        });
+
+        const res = await service.sendManagerEndorsement(
+          mockStudentId,
+          experienceId,
+          validEndorsementRequest,
+        );
+
+        expect(res.success).toBe(true);
         expect(prisma.workExperienceManagerEndorsement.create).toHaveBeenCalled();
       });
     });

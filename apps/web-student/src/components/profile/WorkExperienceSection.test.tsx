@@ -367,10 +367,10 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Manager Endorsement')).toBeTruthy();
-    expect(screen.getByText(/Manager endorsement complete for manager@acme.com/i)).toBeTruthy();
+    expect(screen.getByText(/Jane Smith \(manager@acme.com\)/i)).toBeTruthy();
   });
 
-  it('requests manager endorsement with manager email from the card form (VER-02)', async () => {
+  it('requests manager endorsement with endorser email and name from the card form (VER-02)', async () => {
     listWorkExperiences.mockResolvedValue([mockOngoingExp]);
     sendWorkExperienceManagerEndorsement.mockResolvedValue({
       success: true,
@@ -382,18 +382,44 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
 
     renderWithQueryClient(<WorkExperienceSection />);
 
-    expect(await screen.findByText('Manager endorsement')).toBeTruthy();
+    expect(await screen.findByPlaceholderText('manager@yourcompany.com')).toBeTruthy();
+    expect(screen.getByText(/Who will endorse this experience/i)).toBeTruthy();
+    expect(screen.getByText(/Endorser's work email/i)).toBeTruthy();
+    expect(screen.getByText(/Endorser's name/i)).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText('manager@yourcompany.com'), {
       target: { value: 'manager@acme.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Jane Smith'), {
+      target: { value: 'Jane Smith' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Request Endorsement' }));
 
     await waitFor(() => {
       expect(sendWorkExperienceManagerEndorsement).toHaveBeenCalledWith('exp-1', {
         managerEmail: 'manager@acme.com',
-        managerName: null,
+        managerName: 'Jane Smith',
       });
     });
+  });
+
+  it('keeps request endorsement disabled until endorser name meets minimum length (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValue([mockOngoingExp]);
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText('Manager endorsement')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('manager@yourcompany.com'), {
+      target: { value: 'manager@acme.com' },
+    });
+    const requestBtn = screen.getByRole('button', { name: 'Request Endorsement' });
+    expect(requestBtn).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByPlaceholderText('Jane Smith'), {
+      target: { value: 'J' },
+    });
+    expect(requestBtn).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByPlaceholderText('Jane Smith'), {
+      target: { value: 'Jane Smith' },
+    });
+    expect(requestBtn).toHaveProperty('disabled', false);
   });
 
   it('shows pending manager endorsement state without resubmit form (VER-02)', async () => {
@@ -414,7 +440,33 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Endorsement request pending')).toBeTruthy();
+    expect(screen.getByText(/Jane Smith \(manager@acme.com\)/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Request Endorsement' })).toBeNull();
+  });
+
+  it('prefills endorser contact from expired manager endorsement summary (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValueOnce([
+      {
+        ...mockOngoingExp,
+        managerEndorsement: {
+          endorsementId: 'endorsement-expired',
+          status: 'EXPIRED',
+          managerEmail: 'manager@acme.com',
+          managerName: 'Jane Smith',
+          sentAt: '2026-09-01T00:00:00.000Z',
+          expiresAt: '2026-09-06T00:00:00.000Z',
+        },
+      },
+    ]);
+
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText(/previous manager endorsement link expired/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText('manager@yourcompany.com')).toHaveProperty(
+      'value',
+      'manager@acme.com',
+    );
+    expect(screen.getByPlaceholderText('Jane Smith')).toHaveProperty('value', 'Jane Smith');
   });
 });
 

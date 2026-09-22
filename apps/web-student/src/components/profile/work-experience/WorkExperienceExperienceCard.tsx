@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   Briefcase,
@@ -94,7 +94,7 @@ export type WorkExperienceExperienceCardProps = {
   onSendVerification: (experienceId: string, exp: WorkExperienceDto) => void;
   onRequestEndorsement: (
     experienceId: string,
-    body: { managerEmail: string; managerName?: string | null },
+    body: { managerEmail: string; managerName: string },
   ) => void;
   onValidateProof: (expId: string, docId: string) => void;
   onRemoveDocument: (expId: string, docId: string) => void;
@@ -133,6 +133,17 @@ export function WorkExperienceExperienceCard({
     ruleCheck.valid &&
     managerEndorsement?.status !== 'CONFIRMED' &&
     managerEndorsement?.status !== 'PENDING';
+  const endorserContactReady = managerEmail.trim().length > 0 && managerName.trim().length >= 2;
+
+  useEffect(() => {
+    if (
+      managerEndorsement &&
+      (managerEndorsement.status === 'EXPIRED' || managerEndorsement.status === 'DISPUTED')
+    ) {
+      setManagerEmail(managerEndorsement.managerEmail);
+      setManagerName(managerEndorsement.managerName ?? '');
+    }
+  }, [exp.id, managerEndorsement?.endorsementId, managerEndorsement?.status]);
 
   const employmentMeta = [
     EMPLOYMENT_TYPE_LABELS[exp.employmentType] || exp.employmentType,
@@ -451,20 +462,27 @@ export function WorkExperienceExperienceCard({
               <section className="mt-5 rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)]/50 p-4">
                 <h5 className="text-xs font-semibold text-[var(--ds-text)]">Manager endorsement</h5>
                 <p className="mt-1 text-[11px] leading-relaxed text-[var(--ds-text-muted)]">
-                  Ask your direct manager to confirm this role on a company email. This is separate
-                  from employer HR verification above.
+                  Who will endorse this experience? Enter their professional work contact below.
+                  This is separate from employer HR verification above.
                 </p>
 
                 {managerEndorsement?.status === 'CONFIRMED' ? (
                   <p className="mt-3 text-xs text-emerald-800">
-                    Manager endorsement complete for {managerEndorsement.managerEmail}.
+                    Manager endorsement complete for{' '}
+                    {managerEndorsement.managerName
+                      ? `${managerEndorsement.managerName} (${managerEndorsement.managerEmail})`
+                      : managerEndorsement.managerEmail}
+                    .
                   </p>
                 ) : managerEndorsement?.status === 'PENDING' ? (
                   <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
                     <p className="font-medium">Endorsement request pending</p>
                     <p className="mt-1">
-                      Waiting for {managerEndorsement.managerEmail} to respond. The secure link
-                      expires on{' '}
+                      Waiting for{' '}
+                      {managerEndorsement.managerName
+                        ? `${managerEndorsement.managerName} (${managerEndorsement.managerEmail})`
+                        : managerEndorsement.managerEmail}{' '}
+                      to respond. The secure link expires on{' '}
                       {new Date(managerEndorsement.expiresAt).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
@@ -489,7 +507,7 @@ export function WorkExperienceExperienceCard({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="flex flex-col gap-1 text-xs">
                         <span className="font-medium text-[var(--ds-text)]">
-                          Manager email <span className="text-red-600">*</span>
+                          Endorser&apos;s work email <span className="text-red-600">*</span>
                         </span>
                         <input
                           type="email"
@@ -500,7 +518,9 @@ export function WorkExperienceExperienceCard({
                         />
                       </label>
                       <label className="flex flex-col gap-1 text-xs">
-                        <span className="font-medium text-[var(--ds-text)]">Manager name</span>
+                        <span className="font-medium text-[var(--ds-text)]">
+                          Endorser&apos;s name <span className="text-red-600">*</span>
+                        </span>
                         <input
                           type="text"
                           value={managerName}
@@ -512,11 +532,11 @@ export function WorkExperienceExperienceCard({
                     </div>
                     <button
                       type="button"
-                      disabled={endorsementBusy || !managerEmail.trim()}
+                      disabled={endorsementBusy || !endorserContactReady}
                       onClick={() =>
                         onRequestEndorsement(exp.id, {
                           managerEmail: managerEmail.trim(),
-                          managerName: managerName.trim() || null,
+                          managerName: managerName.trim(),
                         })
                       }
                       className={`${profilePrimaryButtonSmClass} self-start disabled:cursor-not-allowed disabled:opacity-50`}

@@ -287,10 +287,14 @@ export function WorkExperienceSection() {
 
   const handleRequestEndorsement = async (
     experienceId: string,
-    body: { managerEmail: string; managerName?: string | null },
+    body: { managerEmail: string; managerName: string },
   ) => {
     if (!isValidEmailFormat(body.managerEmail)) {
-      setError('Enter a valid manager email before requesting endorsement.');
+      setError('Enter a valid endorser work email before requesting endorsement.');
+      return;
+    }
+    if (body.managerName.trim().length < 2) {
+      setError("Enter the endorser's name (at least 2 characters).");
       return;
     }
     try {

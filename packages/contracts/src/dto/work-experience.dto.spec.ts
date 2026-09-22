@@ -414,3 +414,41 @@ describe('S6-VB-01 company public identity (AC1)', () => {
     expect(response.idempotent).toBe(true);
   });
 });
+
+describe('SendManagerEndorsementSchema (VER-02)', () => {
+  it('accepts valid endorser email and name', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const parsed = SendManagerEndorsementSchema.parse({
+      managerEmail: ' Manager@Acme.com ',
+      managerName: ' Jane Smith ',
+    });
+    expect(parsed.managerEmail).toBe('manager@acme.com');
+    expect(parsed.managerName).toBe('Jane Smith');
+  });
+
+  it('rejects missing endorser name', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects endorser name shorter than 2 characters', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+      managerName: 'J',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects endorser name longer than 120 characters', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+      managerName: 'A'.repeat(121),
+    });
+    expect(result.success).toBe(false);
+  });
+});

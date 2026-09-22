@@ -45,6 +45,7 @@ import {
   WorkExperienceLetterAuthenticityExtractSchema,
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
+  SendManagerEndorsementSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
   validateWorkExperienceEffectiveUpdate,
@@ -367,10 +368,26 @@ export class WorkExperienceService {
     };
   }
 
-  private async resolveManagerEndorsementRequestState(
-    experienceId: string,
-  ): Promise<
-    | { kind: 'active_pending'; endorsement: { id: string; managerEmail: string; expiresAt: Date } }
+  private managerContactsMatch(
+    stored: { managerEmail: string; managerName: string | null },
+    incoming: { managerEmail: string; managerName: string },
+  ): boolean {
+    return (
+      stored.managerEmail.toLowerCase().trim() === incoming.managerEmail &&
+      (stored.managerName ?? '').trim() === incoming.managerName.trim()
+    );
+  }
+
+  private async resolveManagerEndorsementRequestState(experienceId: string): Promise<
+    | {
+        kind: 'active_pending';
+        endorsement: {
+          id: string;
+          managerEmail: string;
+          managerName: string | null;
+          expiresAt: Date;
+        };
+      }
     | { kind: 'confirmed' }
     | { kind: 'new' }
   > {
@@ -384,7 +401,7 @@ export class WorkExperienceService {
           expiresAt: { gt: now },
         },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, managerEmail: true, expiresAt: true },
+        select: { id: true, managerEmail: true, managerName: true, expiresAt: true },
       }),
       this.prisma.workExperienceManagerEndorsement.findFirst({
         where: {
@@ -2142,7 +2159,16 @@ export class WorkExperienceService {
 
     await this.assertWorkExperienceCompleteness(exp);
 
-    const managerEmail = payload.managerEmail.toLowerCase().trim();
+    const parsedPayload = SendManagerEndorsementSchema.safeParse(payload);
+    if (!parsedPayload.success) {
+      const firstIssue = parsedPayload.error.issues[0];
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: firstIssue?.message ?? 'Invalid manager endorsement request.',
+        statusCode: 400,
+      });
+    }
+    const { managerEmail, managerName } = parsedPayload.data;
 
     const requestState = await this.resolveManagerEndorsementRequestState(experienceId);
     if (requestState.kind === 'confirmed') {
@@ -2151,7 +2177,12 @@ export class WorkExperienceService {
       );
     }
     if (requestState.kind === 'active_pending') {
-      return this.buildSendManagerEndorsementResponse(requestState.endorsement, true);
+      if (this.managerContactsMatch(requestState.endorsement, { managerEmail, managerName })) {
+        return this.buildSendManagerEndorsementResponse(requestState.endorsement, true);
+      }
+      throw new ConflictException(
+        'A manager endorsement request is already pending for different contact details. Wait for the current endorser to respond or for the link to expire before requesting another endorser.',
+      );
     }
 
     // 1. Reject personal / free email providers
@@ -2183,7 +2214,7 @@ export class WorkExperienceService {
         experienceId,
         tokenHash,
         managerEmail,
-        managerName: payload.managerName ?? null,
+        managerName,
         resolvedDomain: resolvedDomain ?? null,
         expiresAt,
         status: 'PENDING',
@@ -2192,7 +2223,7 @@ export class WorkExperienceService {
 
     const surveyUrl = `${env.VERIFY_APP_URL}/work-experience/manager-survey/${rawToken}`;
     const emailData = {
-      managerName: payload.managerName ?? 'Hiring Manager',
+      managerName,
       candidateName: exp.student?.fullName ?? 'Candidate',
       companyName: exp.companyName,
       roleTitle: exp.role,

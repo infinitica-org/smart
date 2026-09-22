@@ -642,8 +642,17 @@ export type ManagerSkillRatingDto = z.infer<typeof ManagerSkillRatingSchema>;
  * against the offer-letter domain or Organization.domain is also performed.
  */
 export const SendManagerEndorsementSchema = z.object({
-  managerEmail: z.string().email('Invalid manager email').min(1, 'Manager email is required'),
-  managerName: z.string().min(1).max(120).optional().nullable(),
+  managerEmail: z
+    .string()
+    .trim()
+    .email('Invalid manager email')
+    .min(1, 'Manager email is required')
+    .transform((value) => value.toLowerCase()),
+  managerName: z
+    .string()
+    .trim()
+    .min(2, 'Endorser name must be at least 2 characters')
+    .max(120, 'Endorser name must be 120 characters or fewer'),
 });
 export type SendManagerEndorsementDto = z.infer<typeof SendManagerEndorsementSchema>;
 
