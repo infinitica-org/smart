@@ -345,4 +345,63 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
   it('throws NotFoundException when fetching version history for unknown skill code', () => {
     expect(() => service.getSkillVersions('UNKNOWN_SKILL_CODE_999')).toThrow(NotFoundException);
   });
+
+  it('binds and retains exact rubric version used for historical candidate evaluation scores (Th6-I303)', () => {
+    service.createSkill({
+      code: 'RUST_SYSTEMS_PROGRAMMING',
+      name: 'Rust Systems Programming',
+      categoryId: 'PROGRAMMING_LANGUAGES',
+    });
+
+    service.defineProficiencyCriteria('RUST_SYSTEMS_PROGRAMMING', {
+      skillCode: 'RUST_SYSTEMS_PROGRAMMING',
+      tiers: [
+        { tier: 'L1', label: 'Beginner', minScore: 0, rubricDescription: 'L1 desc v1' },
+        { tier: 'L2', label: 'Intermediate', minScore: 25, rubricDescription: 'L2 desc v1' },
+        { tier: 'L3', label: 'Proficient', minScore: 50, rubricDescription: 'L3 desc v1' },
+        { tier: 'L4', label: 'Advanced', minScore: 75, rubricDescription: 'L4 desc v1' },
+        { tier: 'L5', label: 'Professional', minScore: 90, rubricDescription: 'L5 desc v1' },
+      ],
+    });
+
+    const binding = service.bindScoreRubricVersion('RUST_SYSTEMS_PROGRAMMING', {
+      candidateId: 'CAND_101',
+      skillCode: 'RUST_SYSTEMS_PROGRAMMING',
+      score: 82.5,
+      tierEvaluated: 'L4',
+      versionSemver: 'v2.0.0',
+    });
+
+    expect(binding.candidateId).toBe('CAND_101');
+    expect(binding.boundRubricVersion).toBe('v2.0.0');
+    expect(binding.score).toBe(82.5);
+    expect(binding.tierEvaluated).toBe('L4');
+
+    // Mutate rubric to v3.0.0
+    service.defineProficiencyCriteria('RUST_SYSTEMS_PROGRAMMING', {
+      skillCode: 'RUST_SYSTEMS_PROGRAMMING',
+      tiers: [
+        { tier: 'L1', label: 'Beginner', minScore: 0, rubricDescription: 'L1 desc v2 updated' },
+        {
+          tier: 'L2',
+          label: 'Intermediate',
+          minScore: 20,
+          rubricDescription: 'L2 desc v2 updated',
+        },
+        { tier: 'L3', label: 'Proficient', minScore: 45, rubricDescription: 'L3 desc v2 updated' },
+        { tier: 'L4', label: 'Advanced', minScore: 70, rubricDescription: 'L4 desc v2 updated' },
+        {
+          tier: 'L5',
+          label: 'Professional',
+          minScore: 85,
+          rubricDescription: 'L5 desc v2 updated',
+        },
+      ],
+    });
+
+    // Verify historical binding retains v2.0.0 snapshot unchanged
+    const retrieved = service.getScoreRubricBindings('RUST_SYSTEMS_PROGRAMMING', 'CAND_101');
+    expect(retrieved.length).toBe(1);
+    expect(retrieved[0]?.boundRubricVersion).toBe('v2.0.0');
+  });
 });

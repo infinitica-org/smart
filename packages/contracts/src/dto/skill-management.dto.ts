@@ -174,3 +174,28 @@ export const SkillVersionHistoryDtoSchema = z.object({
 });
 
 export type SkillVersionHistoryDto = z.infer<typeof SkillVersionHistoryDtoSchema>;
+
+export const BindScoreRubricVersionDtoSchema = z.object({
+  candidateId: z.string().trim().min(1),
+  skillCode: z.string().trim().min(2),
+  score: z.number().min(0).max(100),
+  tierEvaluated: ProficiencyTierCodeSchema,
+  versionSemver: z.string().trim().optional(),
+});
+
+export type BindScoreRubricVersionDto = z.infer<typeof BindScoreRubricVersionDtoSchema>;
+
+export const HistoricalScoreRubricBindingRecordSchema = z.object({
+  bindingId: z.string(),
+  candidateId: z.string(),
+  skillCode: z.string(),
+  score: z.number(),
+  tierEvaluated: ProficiencyTierCodeSchema,
+  boundRubricVersion: z.string(),
+  rubricSnapshot: z.record(z.string(), z.unknown()),
+  evaluatedAt: z.string(),
+});
+
+export type HistoricalScoreRubricBindingRecord = z.infer<
+  typeof HistoricalScoreRubricBindingRecordSchema
+>;

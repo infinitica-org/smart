@@ -3590,6 +3590,31 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 150,
     summary: 'Retrieve full version audit history and snapshots for a skill definition.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/skills/:skillCode/rubric-bindings',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Bind and retain the exact rubric version for a historical candidate evaluation score.',
+  },
+  {
+    method: 'GET',
+    path: '/catalog/skills/:skillCode/rubric-bindings/:candidateId',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT'],
+    rateLimit: 'catalog.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Retrieve historical score rubric version bindings for a candidate.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

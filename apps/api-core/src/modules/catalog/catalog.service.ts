@@ -17,13 +17,16 @@ import {
   buildSkillLibraryResponse,
   CreateSkillDtoSchema,
   DefineCompetenciesDtoSchema,
+  BindScoreRubricVersionDtoSchema,
   DefineProficiencyCriteriaDtoSchema,
   MapSkillsToRoleDtoSchema,
   MergeSkillsDtoSchema,
   UpdateSkillDtoSchema,
+  type BindScoreRubricVersionDto,
   type CreateSkillDto,
   type DefineCompetenciesDto,
   type DefineProficiencyCriteriaDto,
+  type HistoricalScoreRubricBindingRecord,
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
   type ProficiencyCriteriaRecord,
@@ -454,6 +457,74 @@ export class CatalogService {
       totalVersions: versions.length,
       versions,
     };
+  }
+
+  private readonly scoreRubricBindings: Map<string, HistoricalScoreRubricBindingRecord[]> =
+    new Map();
+
+  bindScoreRubricVersion(
+    skillCode: string,
+    dto: BindScoreRubricVersionDto,
+  ): HistoricalScoreRubricBindingRecord {
+    const parsed = BindScoreRubricVersionDtoSchema.parse({ ...dto, skillCode });
+    const upperCode = parsed.skillCode.toUpperCase();
+
+    const skill = this.customSkills.get(upperCode) || this.getPredefinedAsRecord(upperCode);
+    if (!skill) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Skill ${upperCode} not found in taxonomy.`,
+      });
+    }
+
+    const versions = this.skillVersions.get(upperCode) || [];
+    let targetVersion: SkillVersionRecord | undefined;
+
+    if (parsed.versionSemver) {
+      targetVersion = versions.find(
+        (v) => v.semver.toLowerCase() === parsed.versionSemver!.toLowerCase(),
+      );
+      if (!targetVersion) {
+        throw new NotFoundException({
+          error: 'version_not_found',
+          message: `Rubric version ${parsed.versionSemver} not found for skill ${upperCode}.`,
+        });
+      }
+    } else {
+      targetVersion = versions.length > 0 ? versions[versions.length - 1] : undefined;
+    }
+
+    const boundRubricVersion = targetVersion ? targetVersion.semver : 'v1.0.0';
+    const rubricSnapshot = targetVersion
+      ? targetVersion.snapshot
+      : (this.proficiencyCriteria.get(upperCode) as any) || { tiers: [] };
+
+    const key = `${upperCode}:${parsed.candidateId}`;
+    const existing = this.scoreRubricBindings.get(key) || [];
+
+    const record: HistoricalScoreRubricBindingRecord = {
+      bindingId: `BIND_${upperCode}_${parsed.candidateId}_${existing.length + 1}`,
+      candidateId: parsed.candidateId,
+      skillCode: upperCode,
+      score: parsed.score,
+      tierEvaluated: parsed.tierEvaluated,
+      boundRubricVersion,
+      rubricSnapshot,
+      evaluatedAt: new Date().toISOString(),
+    };
+
+    existing.push(record);
+    this.scoreRubricBindings.set(key, existing);
+    return record;
+  }
+
+  getScoreRubricBindings(
+    skillCode: string,
+    candidateId: string,
+  ): HistoricalScoreRubricBindingRecord[] {
+    const upperCode = skillCode.toUpperCase();
+    const key = `${upperCode}:${candidateId}`;
+    return this.scoreRubricBindings.get(key) || [];
   }
 
   private getPredefinedAsRecord(code: string): SkillManagementRecord | undefined {

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import {
   API_PREFIX,
+  type BindScoreRubricVersionDto,
   type CreateSkillDto,
   type DefineCompetenciesDto,
   type DefineProficiencyCriteriaDto,
@@ -103,6 +104,26 @@ export class CatalogController {
   @Get('skills/:skillCode/versions')
   getSkillVersions(@Param('skillCode') skillCode: string) {
     return this.catalog.getSkillVersions(skillCode);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Post('skills/:skillCode/rubric-bindings')
+  bindScoreRubricVersion(
+    @Param('skillCode') skillCode: string,
+    @Body() dto: BindScoreRubricVersionDto,
+  ) {
+    return this.catalog.bindScoreRubricVersion(skillCode, { ...dto, skillCode });
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
+  @UseGuards(RolesGuard)
+  @Get('skills/:skillCode/rubric-bindings/:candidateId')
+  getScoreRubricBindings(
+    @Param('skillCode') skillCode: string,
+    @Param('candidateId') candidateId: string,
+  ) {
+    return this.catalog.getScoreRubricBindings(skillCode, candidateId);
   }
 
   @Public()
