@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   type CreateSkillDto,
   type DefineCompetenciesDto,
+  type DefineProficiencyCriteriaDto,
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
   type SkillQueryDto,
