@@ -34,6 +34,8 @@ import {
   type SkillManagementRecord,
   type SkillMergeResultDto,
   type SkillQueryDto,
+  type SkillVersionHistoryDto,
+  type SkillVersionRecord,
   type TrackDto,
   type UpdateSkillDto,
 } from '@smart/contracts';
@@ -130,6 +132,7 @@ export class CatalogService {
     };
 
     this.customSkills.set(upperCode, record);
+    this.recordSkillVersion(upperCode, 'SKILL_CREATED', record as any);
     return record;
   }
 
@@ -186,6 +189,7 @@ export class CatalogService {
     };
 
     this.customSkills.set(upperCode, updatedRecord);
+    this.recordSkillVersion(upperCode, 'SKILL_UPDATED', updatedRecord as any);
     return updatedRecord;
   }
 
@@ -347,6 +351,7 @@ export class CatalogService {
     };
 
     this.skillCompetencies.set(upperCode, record);
+    this.recordSkillVersion(upperCode, 'COMPETENCIES_UPDATED', record as any);
     return record;
   }
 
@@ -399,7 +404,56 @@ export class CatalogService {
     };
 
     this.proficiencyCriteria.set(upperCode, record);
+    this.recordSkillVersion(upperCode, 'PROFICIENCY_CRITERIA_UPDATED', record as any);
     return record;
+  }
+
+  private readonly skillVersions: Map<string, SkillVersionRecord[]> = new Map();
+
+  recordSkillVersion(
+    skillCode: string,
+    changeType: SkillVersionRecord['changeType'],
+    snapshot: Record<string, unknown>,
+  ): SkillVersionRecord {
+    const upperCode = skillCode.toUpperCase();
+    const existingVersions = this.skillVersions.get(upperCode) || [];
+    const versionNumber = existingVersions.length + 1;
+    const semver = `v${versionNumber}.0.0`;
+
+    const record: SkillVersionRecord = {
+      versionId: `${upperCode}_VER_${versionNumber}`,
+      skillCode: upperCode,
+      versionNumber,
+      semver,
+      changeType,
+      snapshot,
+      createdAt: new Date().toISOString(),
+    };
+
+    existingVersions.push(record);
+    this.skillVersions.set(upperCode, existingVersions);
+    return record;
+  }
+
+  getSkillVersions(skillCode: string): SkillVersionHistoryDto {
+    const upperCode = skillCode.toUpperCase();
+    const skill = this.customSkills.get(upperCode) || this.getPredefinedAsRecord(upperCode);
+    if (!skill) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Skill ${upperCode} not found in taxonomy.`,
+      });
+    }
+
+    const versions = this.skillVersions.get(upperCode) || [];
+    const currentVersion = versions.length > 0 ? versions[versions.length - 1]!.semver : 'v1.0.0';
+
+    return {
+      skillCode: upperCode,
+      currentVersion,
+      totalVersions: versions.length,
+      versions,
+    };
   }
 
   private getPredefinedAsRecord(code: string): SkillManagementRecord | undefined {

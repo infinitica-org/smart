@@ -147,3 +147,30 @@ export const ProficiencyCriteriaRecordSchema = z.object({
 });
 
 export type ProficiencyCriteriaRecord = z.infer<typeof ProficiencyCriteriaRecordSchema>;
+
+export const SkillVersionRecordSchema = z.object({
+  versionId: z.string(),
+  skillCode: z.string(),
+  versionNumber: z.number().int().min(1),
+  semver: z.string(),
+  changeType: z.enum([
+    'SKILL_CREATED',
+    'SKILL_UPDATED',
+    'COMPETENCIES_UPDATED',
+    'PROFICIENCY_CRITERIA_UPDATED',
+    'SKILL_RETIRED',
+  ]),
+  snapshot: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+});
+
+export type SkillVersionRecord = z.infer<typeof SkillVersionRecordSchema>;
+
+export const SkillVersionHistoryDtoSchema = z.object({
+  skillCode: z.string(),
+  currentVersion: z.string(),
+  totalVersions: z.number().int().min(0),
+  versions: z.array(SkillVersionRecordSchema),
+});
+
+export type SkillVersionHistoryDto = z.infer<typeof SkillVersionHistoryDtoSchema>;

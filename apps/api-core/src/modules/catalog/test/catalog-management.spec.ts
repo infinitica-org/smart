@@ -308,4 +308,41 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
       }),
     ).toThrow();
   });
+
+  it('records version history sequentially when skills, competencies, and criteria are mutated (Th6-I302)', () => {
+    const created = service.createSkill({
+      code: 'KUBERNETES_CONTAINER_ORCHESTRATION',
+      name: 'Kubernetes Container Orchestration',
+      categoryId: 'DEVOPS_INFRASTRUCTURE',
+    });
+    expect(created.code).toBe('KUBERNETES_CONTAINER_ORCHESTRATION');
+
+    service.defineCompetencies('KUBERNETES_CONTAINER_ORCHESTRATION', {
+      skillCode: 'KUBERNETES_CONTAINER_ORCHESTRATION',
+      competencies: [{ name: 'Pods & Services Setup', subDomain: 'Core Objects' }],
+    });
+
+    service.defineProficiencyCriteria('KUBERNETES_CONTAINER_ORCHESTRATION', {
+      skillCode: 'KUBERNETES_CONTAINER_ORCHESTRATION',
+      tiers: [
+        { tier: 'L1', label: 'Beginner', minScore: 0, rubricDescription: 'L1 desc' },
+        { tier: 'L2', label: 'Intermediate', minScore: 25, rubricDescription: 'L2 desc' },
+        { tier: 'L3', label: 'Proficient', minScore: 50, rubricDescription: 'L3 desc' },
+        { tier: 'L4', label: 'Advanced', minScore: 75, rubricDescription: 'L4 desc' },
+        { tier: 'L5', label: 'Professional', minScore: 90, rubricDescription: 'L5 desc' },
+      ],
+    });
+
+    const history = service.getSkillVersions('KUBERNETES_CONTAINER_ORCHESTRATION');
+    expect(history.skillCode).toBe('KUBERNETES_CONTAINER_ORCHESTRATION');
+    expect(history.totalVersions).toBe(3);
+    expect(history.currentVersion).toBe('v3.0.0');
+    expect(history.versions[0]?.changeType).toBe('SKILL_CREATED');
+    expect(history.versions[1]?.changeType).toBe('COMPETENCIES_UPDATED');
+    expect(history.versions[2]?.changeType).toBe('PROFICIENCY_CRITERIA_UPDATED');
+  });
+
+  it('throws NotFoundException when fetching version history for unknown skill code', () => {
+    expect(() => service.getSkillVersions('UNKNOWN_SKILL_CODE_999')).toThrow(NotFoundException);
+  });
 });

@@ -3578,6 +3578,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Define and customize 5-tier (L1-L5) proficiency criteria for a skill.',
   },
+  {
+    method: 'GET',
+    path: '/catalog/skills/:skillCode/versions',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT'],
+    rateLimit: 'catalog.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Retrieve full version audit history and snapshots for a skill definition.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

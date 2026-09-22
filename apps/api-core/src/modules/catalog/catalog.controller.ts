@@ -98,6 +98,13 @@ export class CatalogController {
     return this.catalog.updateSkill(skillCode, dto);
   }
 
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'STUDENT')
+  @UseGuards(RolesGuard)
+  @Get('skills/:skillCode/versions')
+  getSkillVersions(@Param('skillCode') skillCode: string) {
+    return this.catalog.getSkillVersions(skillCode);
+  }
+
   @Public()
   @Get('career-domains')
   listCareerDomains() {
