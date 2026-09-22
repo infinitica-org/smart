@@ -2,13 +2,13 @@ name: Content Validate
 
 on:
   pull_request:
-    branches: [main, qa, dev, develop]
+    branches: [main, dev]
     paths:
       - "tools/content-pipeline/**"
       - "packages/contracts/src/domain/tracks.ts"
       - "packages/contracts/src/domain/enums.ts"
   push:
-    branches: [main, qa, dev, develop]
+    branches: [main, dev]
     paths:
       - "tools/content-pipeline/**"
       - "packages/contracts/src/domain/tracks.ts"
