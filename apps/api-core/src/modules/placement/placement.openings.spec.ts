@@ -138,15 +138,18 @@ describe('CO-T01 opening authorization', () => {
     },
   );
 
-  it.each(['B2B_PARTNER', 'STUDENT', 'SUPER_ADMIN'])('rejects %s on the opening routes', (role) => {
-    const guard = new RolesGuard({
-      getAllAndOverride: vi
-        .fn()
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(['INSTITUTION_ADMIN', 'PLACEMENT_STAFF']),
-    } as never);
-    expect(() => guard.canActivate(contextWithUser({ role }))).toThrow(ForbiddenException);
-  });
+  it.each(['B2B_PARTNER', 'COMPANY', 'STUDENT', 'SUPER_ADMIN'])(
+    'rejects %s on the opening routes',
+    (role) => {
+      const guard = new RolesGuard({
+        getAllAndOverride: vi
+          .fn()
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(['INSTITUTION_ADMIN', 'PLACEMENT_STAFF']),
+      } as never);
+      expect(() => guard.canActivate(contextWithUser({ role }))).toThrow(ForbiddenException);
+    },
+  );
 
   it('rejects a request without an authenticated user', () => {
     const guard = new RolesGuard({

@@ -6,9 +6,14 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import {
+  CompanyPortalAccountSchema,
+  type AuthTokenResponse,
+  type AuthenticatedUser,
+  type CompanyPortalAccount,
+} from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -37,9 +42,12 @@ export type UserWithAuthIncludes = {
     heldAt: Date | null;
     deactivatedAt: Date | null;
   } | null;
+  companyId?: string | null;
   company?: {
+    name: string;
     heldAt: Date | null;
     deactivatedAt: Date | null;
+    verificationStatus?: string;
   } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
@@ -67,6 +75,15 @@ export class AuthService {
     }
     assertTenantLoginAllowed(user);
 
+    return this.issueSession(user, reply);
+  }
+
+  /** Issues tokens without re-checking password; caller must enforce tenant gates when appropriate. */
+  async issueSessionAfterInviteAccept(
+    user: UserWithAuthIncludes,
+    reply: FastifyReply,
+  ): Promise<AuthTokenResponse> {
+    assertTenantLoginAllowed(user);
     return this.issueSession(user, reply);
   }
 
@@ -123,6 +140,8 @@ export class AuthService {
       throw unauthorized('Refresh token has expired.');
     }
 
+    assertTenantLoginAllowed(existing.user);
+
     const nextRaw = createRefreshToken();
     const expiresAt = new Date(Date.now() + env.REFRESH_TTL_SECONDS * 1000);
 
@@ -172,17 +191,36 @@ export class AuthService {
     });
   }
 
+  async getCompanyPortalAccount(userId: string): Promise<CompanyPortalAccount> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+    if (!user) {
+      throw unauthorized('User not found.');
+    }
+    if (user.role !== 'COMPANY' || !user.companyId || !user.company) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'You do not have permission to perform this action.',
+        statusCode: 403,
+      });
+    }
+    const base = await toAuthenticatedUserWithPhoto(this.storage, user);
+    return CompanyPortalAccountSchema.parse({
+      ...base,
+      companyVerificationStatus: user.company.verificationStatus,
+      companyWebsite: user.company.website,
+      companyIndustry: user.company.taxonomyDomain,
+      companyLocation: user.company.location,
+    });
+  }
+
   private async toTokenResponse(
     user: UserWithAuthIncludes,
     familyId: string,
   ): Promise<AuthTokenResponse> {
-    const accessToken = await this.jwt.signAsync({
-      sub: user.id,
-      role: user.role,
-      inst: user.institutionId,
-      fam: familyId,
-      trk: [user.primaryTrack?.code, user.secondaryTrack?.code].filter(Boolean),
-    });
+    const accessToken = await this.jwt.signAsync(buildAccessTokenClaims(user, familyId));
 
     return {
       accessToken,
@@ -220,8 +258,19 @@ function assertTenantLoginAllowed(user: {
   role: AuthenticatedUser['role'];
   heldAt: Date | null;
   institution: { heldAt: Date | null; deactivatedAt: Date | null } | null;
-  company?: { heldAt: Date | null; deactivatedAt: Date | null } | null;
+  company?: {
+    heldAt: Date | null;
+    deactivatedAt: Date | null;
+    verificationStatus?: string;
+  } | null;
 }): void {
+  if (user.role === 'COMPANY') {
+    if (!user.company || user.company.verificationStatus !== 'APPROVED') {
+      throw unauthorized(
+        'Company verification is not approved. You cannot sign in to the company portal yet.',
+      );
+    }
+  }
   const hold = resolveSessionHold(user);
   if (!hold) return;
   throw new UnauthorizedException({
@@ -229,6 +278,26 @@ function assertTenantLoginAllowed(user: {
     message: hold.message,
     statusCode: 401,
   });
+}
+
+export function buildAccessTokenClaims(
+  user: Pick<
+    UserWithAuthIncludes,
+    'id' | 'role' | 'institutionId' | 'companyId' | 'primaryTrack' | 'secondaryTrack'
+  >,
+  familyId: string,
+): Record<string, unknown> {
+  const claims: Record<string, unknown> = {
+    sub: user.id,
+    role: user.role,
+    inst: user.institutionId,
+    fam: familyId,
+    trk: [user.primaryTrack?.code, user.secondaryTrack?.code].filter(Boolean),
+  };
+  if (user.role === 'COMPANY' && user.companyId) {
+    claims.cmp = user.companyId;
+  }
+  return claims;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -262,11 +331,17 @@ export function toAuthenticatedUser(user: {
   provider: AuthenticatedUser['provider'];
   emailVerified: boolean;
   institutionId: string | null;
+  companyId?: string | null;
   createdAt: Date;
   heldAt?: Date | null;
   onboardingCompleted?: boolean;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
-  company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
+  company?: {
+    name?: string;
+    heldAt?: Date | null;
+    deactivatedAt?: Date | null;
+    verificationStatus?: string;
+  } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
   profilePhotoObjectKey?: string | null;
@@ -297,6 +372,8 @@ export function toAuthenticatedUser(user: {
     role: user.role,
     institutionId: user.institutionId,
     institutionName: user.institution?.name ?? null,
+    companyId: user.companyId ?? null,
+    companyName: user.company?.name ?? null,
     primaryTrack: (user.primaryTrack?.code as AuthenticatedUser['primaryTrack']) ?? null,
     secondaryTrack: (user.secondaryTrack?.code as AuthenticatedUser['secondaryTrack']) ?? null,
     provider: user.provider,

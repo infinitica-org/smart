@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthService, hashPassword, hashRefreshToken } from './auth.service.js';
+import {
+  AuthService,
+  buildAccessTokenClaims,
+  hashPassword,
+  hashRefreshToken,
+  toAuthenticatedUser,
+} from './auth.service.js';
 
 function userRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -154,6 +160,113 @@ describe('AuthService refresh rotation', () => {
           message: 'This institution is on hold. You cannot use SMART until it is released.',
         },
       },
+    );
+  });
+});
+
+describe('company auth context', () => {
+  const companyId = '33333333-3333-4333-8333-333333333333';
+
+  it('includes cmp claim only for COMPANY users', () => {
+    const companyClaims = buildAccessTokenClaims(
+      {
+        id: randomUUID(),
+        role: 'COMPANY',
+        institutionId: null,
+        companyId,
+        primaryTrack: null,
+        secondaryTrack: null,
+      },
+      randomUUID(),
+    );
+    expect(companyClaims.cmp).toBe(companyId);
+
+    const studentClaims = buildAccessTokenClaims(
+      {
+        id: randomUUID(),
+        role: 'STUDENT',
+        institutionId: randomUUID(),
+        companyId: null,
+        primaryTrack: null,
+        secondaryTrack: null,
+      },
+      randomUUID(),
+    );
+    expect(studentClaims.cmp).toBeUndefined();
+  });
+
+  it('maps companyId and companyName on AuthenticatedUser', () => {
+    const user = toAuthenticatedUser({
+      id: randomUUID(),
+      email: 'hr@acme.example',
+      fullName: 'Jane',
+      role: 'COMPANY',
+      provider: 'PASSWORD',
+      emailVerified: true,
+      institutionId: null,
+      companyId,
+      createdAt: new Date(),
+      institution: null,
+      company: { name: 'Acme', heldAt: null, deactivatedAt: null },
+      primaryTrack: null,
+      secondaryTrack: null,
+    });
+    expect(user.companyId).toBe(companyId);
+    expect(user.companyName).toBe('Acme');
+  });
+
+  it('blocks login when company verification is not approved', async () => {
+    const passwordHash = await hashPassword('password1');
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () =>
+          userRow({
+            role: 'COMPANY',
+            companyId,
+            passwordHash,
+            company: {
+              name: 'Acme',
+              heldAt: null,
+              deactivatedAt: null,
+              verificationStatus: 'PENDING',
+            },
+          }),
+        ),
+      },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+    await expect(auth.login('hr@acme.example', 'password1', {} as never)).rejects.toMatchObject({
+      response: {
+        message: expect.stringContaining('not approved'),
+      },
+    });
+  });
+
+  it('signs cmp on issueSession for approved company user', async () => {
+    const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const prisma = {
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const user = userRow({
+      role: 'COMPANY',
+      companyId,
+      company: {
+        name: 'Acme',
+        heldAt: null,
+        deactivatedAt: null,
+        verificationStatus: 'APPROVED',
+      },
+    });
+    await auth.issueSession(user as never, { setCookie: vi.fn() } as never);
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'COMPANY', cmp: companyId }),
     );
   });
 });

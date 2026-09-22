@@ -43,6 +43,7 @@ import type {
   PlatformAdminDto,
   PlanCode,
   SetFeatureFlagOverrideRequest,
+  CompanyVerificationReviewDetailDto,
   ResolveVerificationRequest,
   UpdatePlanCapacityRequest,
   VerificationQueueItemDto,
@@ -58,6 +59,12 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
+import { StorageService } from '../../platform/storage/storage.service.js';
+import {
+  getCompanyVerificationReviewDetail,
+  mapCompanyVerificationQueueItems,
+  resolveCompanyVerification,
+} from './company-verification-review.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
@@ -84,6 +91,7 @@ export class InstitutionsService {
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   /* ----------------------------- platform admin ----------------------------- */
@@ -831,16 +839,14 @@ export class InstitutionsService {
         verificationReason: row.verificationReason,
         createdAt: row.createdAt.toISOString(),
       })),
-      ...companies.map((row) => ({
-        tenantType: 'company' as const,
-        tenantId: row.id,
-        name: row.name,
-        domain: row.taxonomyDomain,
-        verificationStatus: row.verificationStatus,
-        verificationReason: row.verificationReason,
-        createdAt: row.createdAt.toISOString(),
-      })),
+      ...(await mapCompanyVerificationQueueItems(this.prisma, companies)),
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async getCompanyVerificationReview(
+    companyId: string,
+  ): Promise<CompanyVerificationReviewDetailDto> {
+    return getCompanyVerificationReviewDetail(this.prisma, this.storage, companyId);
   }
 
   async resolveVerification(
@@ -882,31 +888,22 @@ export class InstitutionsService {
         createdAt: row.createdAt.toISOString(),
       };
     }
-    const pro =
-      body.decision === 'APPROVED'
-        ? await this.prisma.subscriptionPlan.findUnique({ where: { code: 'PRO' } })
-        : null;
-    const row = await this.prisma.company.update({
-      where: { id: tenantId },
-      data: {
-        verificationStatus: body.decision,
-        verificationReason: body.reason,
-        ...(pro ? { planId: pro.id } : {}),
+    const resolved = await resolveCompanyVerification(
+      this.prisma,
+      tenantId,
+      body,
+      actorId,
+      async ({ action, resourceType, resourceId, reason, metadata }) => {
+        await this.writeAudit(actorId, action, resourceType, resourceId, reason, metadata);
       },
-    });
-    if (pro) await this.redis.del(`entitlements:company:${tenantId}`);
-    await this.writeAudit(actorId, 'company.verification', 'company', tenantId, body.reason, {
-      decision: body.decision,
-    });
-    return {
-      tenantType: 'company',
-      tenantId: row.id,
-      name: row.name,
-      domain: row.taxonomyDomain,
-      verificationStatus: row.verificationStatus,
-      verificationReason: row.verificationReason,
-      createdAt: row.createdAt.toISOString(),
-    };
+    );
+    if (body.decision === 'APPROVED') {
+      await this.redis.del(`entitlements:company:${tenantId}`);
+      if (resolved.activationEmail) {
+        await this.invitations.enqueueCompanyActivationEmail(resolved.activationEmail);
+      }
+    }
+    return resolved.queueItem;
   }
 
   private toAuditDto(row: {

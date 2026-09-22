@@ -30,6 +30,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const dto = await service.createBatch(
       institutionId,
@@ -52,6 +53,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await expect(
       service.createBatch(institutionId, { name: 'Class of 2026' }, invitedById),
@@ -75,6 +77,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const list = await service.listBatches(institutionId);
     expect(list).toHaveLength(1);
@@ -99,6 +102,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const batch = await service.getBatch(batchId, institutionId);
     expect(batch.batchId).toBe(batchId);
@@ -116,6 +120,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await expect(service.getBatch(batchId, 'different-institution-id')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -144,6 +149,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const updated = await service.updateBatch(batchId, institutionId, {
       name: 'Updated Batch',
@@ -198,6 +204,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const result = await service.addBatchMember(
       batchId,
@@ -239,6 +246,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await expect(
       service.addBatchMember(
@@ -274,6 +282,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await expect(
       service.addBatchMember(
@@ -342,6 +351,7 @@ describe('InstitutionsService Batch Operations', () => {
       invitations as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const result = await service.addBatchMember(
       batchId,
@@ -394,6 +404,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await service.addBatchMember(
       batchId,
@@ -436,6 +447,7 @@ describe('InstitutionsService Batch Operations', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const members = await service.listBatchMembers(batchId, institutionId);
     expect(members).toHaveLength(1);
@@ -478,6 +490,7 @@ describe('InstitutionsService.getDashboard', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
 
     const dashboard = await service.getDashboard();
@@ -512,6 +525,7 @@ describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)'
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const hits = await service.searchStudents({ q: 'jane' });
     expect(hits).toHaveLength(1);
@@ -534,6 +548,7 @@ describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)'
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     const hits = await service.searchStudents({
       institutionId: instId,
@@ -564,6 +579,7 @@ describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)'
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     await service.searchStudents({ q: 'jane', proficiency: 'BEGINNER' });
     const where = (prisma.user.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].where;
