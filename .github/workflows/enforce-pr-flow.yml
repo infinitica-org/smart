@@ -1,0 +1,39 @@
+name: Enforce PR Flow
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  enforce-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR base and head branches
+        run: |
+          BASE_BRANCH="${{ github.base_ref }}"
+          HEAD_BRANCH="${{ github.head_ref }}"
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+
+          echo "Base branch: $BASE_BRANCH"
+          echo "Head branch: $HEAD_BRANCH"
+          echo "Author: $AUTHOR"
+
+          if [ "$BASE_BRANCH" == "main" ]; then
+            if [ "$HEAD_BRANCH" != "qa" ]; then
+              echo "::error::PRs to 'main' must come from 'qa'. Found '$HEAD_BRANCH'."
+              exit 1
+            fi
+            if [ "$AUTHOR" != "brittytino" ]; then
+              echo "::error::Only 'brittytino' is allowed to create PRs to 'main'."
+              exit 1
+            fi
+          fi
+
+          if [ "$BASE_BRANCH" == "qa" ]; then
+            if [ "$HEAD_BRANCH" != "dev" ]; then
+              echo "::error::PRs to 'qa' must come from 'dev'. Found '$HEAD_BRANCH'."
+              exit 1
+            fi
+          fi
+
+          echo "PR flow validation passed."
