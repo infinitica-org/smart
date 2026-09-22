@@ -3566,6 +3566,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Define and update nested sub-competencies under a skill.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/skills/:skillCode/proficiency-criteria',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Define and customize 5-tier (L1-L5) proficiency criteria for a skill.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

@@ -17,13 +17,16 @@ import {
   buildSkillLibraryResponse,
   CreateSkillDtoSchema,
   DefineCompetenciesDtoSchema,
+  DefineProficiencyCriteriaDtoSchema,
   MapSkillsToRoleDtoSchema,
   MergeSkillsDtoSchema,
   UpdateSkillDtoSchema,
   type CreateSkillDto,
   type DefineCompetenciesDto,
+  type DefineProficiencyCriteriaDto,
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
+  type ProficiencyCriteriaRecord,
   type RoleSkillMappingRecord,
   type SeSkillLibraryResponse,
   type SkillCompetenciesRecord,
@@ -344,6 +347,58 @@ export class CatalogService {
     };
 
     this.skillCompetencies.set(upperCode, record);
+    return record;
+  }
+
+  private readonly proficiencyCriteria: Map<string, ProficiencyCriteriaRecord> = new Map();
+
+  defineProficiencyCriteria(
+    skillCode: string,
+    dto: DefineProficiencyCriteriaDto,
+  ): ProficiencyCriteriaRecord {
+    const parsed = DefineProficiencyCriteriaDtoSchema.parse({ ...dto, skillCode });
+    const upperCode = parsed.skillCode.toUpperCase();
+
+    const skill = this.customSkills.get(upperCode) || this.getPredefinedAsRecord(upperCode);
+    if (!skill) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Parent skill ${upperCode} not found in taxonomy.`,
+      });
+    }
+
+    const expectedTiers = ['L1', 'L2', 'L3', 'L4', 'L5'] as const;
+    const providedTiers = parsed.tiers.map((t) => t.tier);
+
+    for (const exp of expectedTiers) {
+      if (!providedTiers.includes(exp)) {
+        throw new BadRequestException({
+          error: 'missing_proficiency_tier',
+          message: `Proficiency criteria must include tier ${exp}.`,
+        });
+      }
+    }
+
+    const sorted = [...parsed.tiers].sort(
+      (a, b) => expectedTiers.indexOf(a.tier) - expectedTiers.indexOf(b.tier),
+    );
+
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i]!.minScore <= sorted[i - 1]!.minScore) {
+        throw new BadRequestException({
+          error: 'invalid_score_thresholds',
+          message: `Min score for tier ${sorted[i]!.tier} must be strictly greater than tier ${sorted[i - 1]!.tier}.`,
+        });
+      }
+    }
+
+    const record: ProficiencyCriteriaRecord = {
+      skillCode: upperCode,
+      tiers: sorted,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.proficiencyCriteria.set(upperCode, record);
     return record;
   }
 

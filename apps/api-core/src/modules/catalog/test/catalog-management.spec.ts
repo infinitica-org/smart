@@ -237,4 +237,75 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
       }),
     ).toThrow(BadRequestException);
   });
+
+  it('defines 5-tier (L1 to L5) proficiency criteria for a skill successfully (Th6-I301)', () => {
+    const result = service.defineProficiencyCriteria('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', {
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      tiers: [
+        {
+          tier: 'L1',
+          name: 'Beginner',
+          minScore: 0,
+          description: 'Basic understanding of Python syntax and control flow.',
+        },
+        {
+          tier: 'L2',
+          name: 'Intermediate',
+          minScore: 25,
+          description: 'Proficient with standard libraries and simple web APIs.',
+        },
+        {
+          tier: 'L3',
+          name: 'Proficient',
+          minScore: 50,
+          description: 'Designs structured services with async and ORMs.',
+        },
+        {
+          tier: 'L4',
+          name: 'Advanced',
+          minScore: 75,
+          description: 'Optimizes high-concurrency systems and architecture.',
+        },
+        {
+          tier: 'L5',
+          name: 'Professional',
+          minScore: 90,
+          description: 'Mastery over core internals, ecosystem, and scaling.',
+        },
+      ],
+    });
+
+    expect(result.skillCode).toBe('PYTHON_APPLICATION_BACKEND_DEVELOPMENT');
+    expect(result.tiers.length).toBe(5);
+    expect(result.tiers.map((t) => t.tier)).toEqual(['L1', 'L2', 'L3', 'L4', 'L5']);
+    expect(result.tiers[0]?.name).toBe('Beginner');
+    expect(result.tiers[4]?.name).toBe('Professional');
+  });
+
+  it('throws NotFoundException if parent skill code does not exist when defining proficiency criteria', () => {
+    expect(() =>
+      service.defineProficiencyCriteria('NON_EXISTENT_SKILL_CODE', {
+        skillCode: 'NON_EXISTENT_SKILL_CODE',
+        tiers: [
+          { tier: 'L1', name: 'Beginner', minScore: 0, description: 'L1 desc' },
+          { tier: 'L2', name: 'Intermediate', minScore: 20, description: 'L2 desc' },
+          { tier: 'L3', name: 'Proficient', minScore: 40, description: 'L3 desc' },
+          { tier: 'L4', name: 'Advanced', minScore: 60, description: 'L4 desc' },
+          { tier: 'L5', name: 'Professional', minScore: 80, description: 'L5 desc' },
+        ],
+      }),
+    ).toThrow(NotFoundException);
+  });
+
+  it('throws BadRequestException if any of the 5 tiers (L1 to L5) are missing', () => {
+    expect(() =>
+      service.defineProficiencyCriteria('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', {
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        tiers: [
+          { tier: 'L1', name: 'Beginner', minScore: 0, description: 'L1 desc' },
+          { tier: 'L2', name: 'Intermediate', minScore: 20, description: 'L2 desc' },
+        ],
+      }),
+    ).toThrow(BadRequestException);
+  });
 });

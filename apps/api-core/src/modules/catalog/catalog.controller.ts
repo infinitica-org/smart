@@ -82,6 +82,16 @@ export class CatalogController {
 
   @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
   @UseGuards(RolesGuard)
+  @Post('skills/:skillCode/proficiency-criteria')
+  defineProficiencyCriteria(
+    @Param('skillCode') skillCode: string,
+    @Body() dto: DefineProficiencyCriteriaDto,
+  ) {
+    return this.catalog.defineProficiencyCriteria(skillCode, { ...dto, skillCode });
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
   @Put('skills/:skillCode')
   updateSkill(@Param('skillCode') skillCode: string, @Body() dto: UpdateSkillDto) {
     return this.catalog.updateSkill(skillCode, dto);

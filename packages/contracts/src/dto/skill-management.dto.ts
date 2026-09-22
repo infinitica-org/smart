@@ -118,3 +118,32 @@ export const SkillCompetenciesRecordSchema = z.object({
 });
 
 export type SkillCompetenciesRecord = z.infer<typeof SkillCompetenciesRecordSchema>;
+
+export const ProficiencyTierCodeSchema = z.enum(['L1', 'L2', 'L3', 'L4', 'L5']);
+export type ProficiencyTierCode = z.infer<typeof ProficiencyTierCodeSchema>;
+
+export const ProficiencyCriteriaItemDtoSchema = z.object({
+  tier: ProficiencyTierCodeSchema,
+  label: z.string().trim().min(1),
+  minScore: z.number().min(0).max(100),
+  rubricDescription: z.string().trim().min(2),
+  interviewRequired: z.boolean().default(false),
+  projectRequired: z.boolean().default(false),
+});
+
+export type ProficiencyCriteriaItemDto = z.infer<typeof ProficiencyCriteriaItemDtoSchema>;
+
+export const DefineProficiencyCriteriaDtoSchema = z.object({
+  skillCode: z.string().trim().min(2),
+  tiers: z.array(ProficiencyCriteriaItemDtoSchema).length(5),
+});
+
+export type DefineProficiencyCriteriaDto = z.infer<typeof DefineProficiencyCriteriaDtoSchema>;
+
+export const ProficiencyCriteriaRecordSchema = z.object({
+  skillCode: z.string(),
+  tiers: z.array(ProficiencyCriteriaItemDtoSchema),
+  updatedAt: z.string(),
+});
+
+export type ProficiencyCriteriaRecord = z.infer<typeof ProficiencyCriteriaRecordSchema>;
