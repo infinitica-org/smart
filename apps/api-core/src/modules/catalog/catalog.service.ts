@@ -16,14 +16,17 @@ import {
   buildSeSkillLibraryResponse,
   buildSkillLibraryResponse,
   CreateSkillDtoSchema,
+  DefineCompetenciesDtoSchema,
   MapSkillsToRoleDtoSchema,
   MergeSkillsDtoSchema,
   UpdateSkillDtoSchema,
   type CreateSkillDto,
+  type DefineCompetenciesDto,
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
   type RoleSkillMappingRecord,
   type SeSkillLibraryResponse,
+  type SkillCompetenciesRecord,
   type SkillLibraryResponse,
   type SkillManagementRecord,
   type SkillMergeResultDto,
@@ -298,6 +301,49 @@ export class CatalogService {
     };
 
     this.roleMappings.set(roleId, record);
+    return record;
+  }
+
+  private readonly skillCompetencies: Map<string, SkillCompetenciesRecord> = new Map();
+
+  defineCompetencies(skillCode: string, dto: DefineCompetenciesDto): SkillCompetenciesRecord {
+    const parsed = DefineCompetenciesDtoSchema.parse({ ...dto, skillCode });
+    const upperCode = parsed.skillCode.toUpperCase();
+
+    const skill = this.customSkills.get(upperCode) || this.getPredefinedAsRecord(upperCode);
+    if (!skill) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Parent skill ${upperCode} not found in taxonomy.`,
+      });
+    }
+
+    const seenNames = new Set<string>();
+    const entries = parsed.competencies.map((comp, index) => {
+      const nameLower = comp.name.toLowerCase();
+      if (seenNames.has(nameLower)) {
+        throw new BadRequestException({
+          error: 'duplicate_competency_name',
+          message: `Duplicate competency topic name "${comp.name}" under skill ${upperCode}.`,
+        });
+      }
+      seenNames.add(nameLower);
+
+      return {
+        competencyId: `${upperCode}_COMP_${index + 1}`,
+        name: comp.name,
+        subDomain: comp.subDomain || 'General',
+        realWorldWeight: comp.realWorldWeight ?? 0.1667,
+      };
+    });
+
+    const record: SkillCompetenciesRecord = {
+      skillCode: upperCode,
+      competencies: entries,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.skillCompetencies.set(upperCode, record);
     return record;
   }
 

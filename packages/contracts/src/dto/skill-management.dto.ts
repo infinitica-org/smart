@@ -86,3 +86,35 @@ export const RoleSkillMappingRecordSchema = z.object({
 });
 
 export type RoleSkillMappingRecord = z.infer<typeof RoleSkillMappingRecordSchema>;
+
+export const CompetencyItemDtoSchema = z.object({
+  name: z.string().trim().min(2).max(200),
+  subDomain: z.string().trim().max(100).optional().default('General'),
+  realWorldWeight: z.number().min(0).max(1).optional().default(0.1667),
+});
+
+export type CompetencyItemDto = z.infer<typeof CompetencyItemDtoSchema>;
+
+export const DefineCompetenciesDtoSchema = z.object({
+  skillCode: z.string().trim().min(2),
+  competencies: z.array(CompetencyItemDtoSchema).min(1).max(30),
+});
+
+export type DefineCompetenciesDto = z.infer<typeof DefineCompetenciesDtoSchema>;
+
+export const SkillCompetencyEntrySchema = z.object({
+  competencyId: z.string(),
+  name: z.string(),
+  subDomain: z.string(),
+  realWorldWeight: z.number(),
+});
+
+export type SkillCompetencyEntry = z.infer<typeof SkillCompetencyEntrySchema>;
+
+export const SkillCompetenciesRecordSchema = z.object({
+  skillCode: z.string(),
+  competencies: z.array(SkillCompetencyEntrySchema),
+  updatedAt: z.string(),
+});
+
+export type SkillCompetenciesRecord = z.infer<typeof SkillCompetenciesRecordSchema>;

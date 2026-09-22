@@ -2,6 +2,8 @@ import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } fro
 import {
   API_PREFIX,
   type CreateSkillDto,
+  type DefineCompetenciesDto,
+  type MapSkillsToRoleDto,
   type MergeSkillsDto,
   type SkillQueryDto,
   type UpdateSkillDto,
@@ -69,6 +71,13 @@ export class CatalogController {
   @Post('roles/map-skills')
   mapSkillsToRole(@Body() dto: MapSkillsToRoleDto) {
     return this.catalog.mapSkillsToRole(dto);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Post('skills/:skillCode/competencies')
+  defineCompetencies(@Param('skillCode') skillCode: string, @Body() dto: DefineCompetenciesDto) {
+    return this.catalog.defineCompetencies(skillCode, { ...dto, skillCode });
   }
 
   @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')

@@ -3554,6 +3554,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Map required and optional skills to a target job role.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/skills/:skillCode/competencies',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Define and update nested sub-competencies under a skill.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

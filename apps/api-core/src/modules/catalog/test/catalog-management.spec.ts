@@ -189,4 +189,52 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
       }),
     ).toThrow(NotFoundException);
   });
+
+  it('defines nested sub-competencies under a skill successfully (Th6-I300)', () => {
+    const result = service.defineCompetencies('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', {
+      skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      competencies: [
+        {
+          name: 'Async I/O and asyncio Event Loops',
+          subDomain: 'Concurrency',
+          realWorldWeight: 0.25,
+        },
+        {
+          name: 'FastAPI and Pydantic Request Validation',
+          subDomain: 'API Design',
+          realWorldWeight: 0.25,
+        },
+        {
+          name: 'SQLAlchemy ORM and Migration Safety',
+          subDomain: 'Persistence',
+          realWorldWeight: 0.25,
+        },
+      ],
+    });
+
+    expect(result.skillCode).toBe('PYTHON_APPLICATION_BACKEND_DEVELOPMENT');
+    expect(result.competencies.length).toBe(3);
+    expect(result.competencies[0]?.competencyId).toBe(
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT_COMP_1',
+    );
+    expect(result.competencies[0]?.name).toBe('Async I/O and asyncio Event Loops');
+  });
+
+  it('throws NotFoundException if parent skill code does not exist when defining competencies', () => {
+    expect(() =>
+      service.defineCompetencies('NON_EXISTENT_SKILL_CODE', {
+        skillCode: 'NON_EXISTENT_SKILL_CODE',
+        competencies: [{ name: 'Topic 1' }],
+      }),
+    ).toThrow(NotFoundException);
+  });
+
+  it('throws BadRequestException if duplicate competency topic names are provided for the same skill', () => {
+    expect(() =>
+      service.defineCompetencies('PYTHON_APPLICATION_BACKEND_DEVELOPMENT', {
+        skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        competencies: [{ name: 'Async I/O' }, { name: 'Async I/O' }],
+      }),
+    ).toThrow(BadRequestException);
+  });
 });
