@@ -8,6 +8,7 @@ const createWorkExperience = vi.fn();
 const updateWorkExperience = vi.fn();
 const deleteWorkExperience = vi.fn();
 const sendWorkExperienceVerification = vi.fn();
+const sendWorkExperienceManagerEndorsement = vi.fn();
 const restartWorkExperienceVerification = vi.fn();
 const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
@@ -26,6 +27,8 @@ vi.mock('@/lib/api', () => ({
       deleteWorkExperience: (...args: unknown[]) => deleteWorkExperience(...args),
       sendWorkExperienceVerification: (...args: unknown[]) =>
         sendWorkExperienceVerification(...args),
+      sendWorkExperienceManagerEndorsement: (...args: unknown[]) =>
+        sendWorkExperienceManagerEndorsement(...args),
       restartWorkExperienceVerification: (...args: unknown[]) =>
         restartWorkExperienceVerification(...args),
       uploadWorkExperienceProofDocument: (...args: unknown[]) =>
@@ -147,6 +150,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     updateWorkExperience.mockReset();
     deleteWorkExperience.mockReset();
     sendWorkExperienceVerification.mockReset();
+    sendWorkExperienceManagerEndorsement.mockReset();
     restartWorkExperienceVerification.mockReset();
     uploadWorkExperienceProofDocument.mockReset();
   });
@@ -350,7 +354,12 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     const mockEndorsedExp = {
       ...mockOngoingExp,
       managerEndorsement: {
+        endorsementId: 'endorsement-1',
         status: 'CONFIRMED',
+        managerEmail: 'manager@acme.com',
+        managerName: 'Jane Smith',
+        sentAt: '2026-09-01T00:00:00.000Z',
+        expiresAt: '2026-09-06T00:00:00.000Z',
       },
     };
     listWorkExperiences.mockResolvedValueOnce([mockEndorsedExp]);
@@ -358,7 +367,54 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Manager Endorsement')).toBeTruthy();
-    expect(screen.getByText('CONFIRMED')).toBeTruthy();
+    expect(screen.getByText(/Manager endorsement complete for manager@acme.com/i)).toBeTruthy();
+  });
+
+  it('requests manager endorsement with manager email from the card form (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValue([mockOngoingExp]);
+    sendWorkExperienceManagerEndorsement.mockResolvedValue({
+      success: true,
+      endorsementId: 'endorsement-1',
+      managerEmail: 'manager@acme.com',
+      expiresAt: '2026-09-06T00:00:00.000Z',
+      message: 'Manager endorsement request dispatched to manager@acme.com. Valid for 5 days.',
+    });
+
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText('Manager endorsement')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('manager@yourcompany.com'), {
+      target: { value: 'manager@acme.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Request Endorsement' }));
+
+    await waitFor(() => {
+      expect(sendWorkExperienceManagerEndorsement).toHaveBeenCalledWith('exp-1', {
+        managerEmail: 'manager@acme.com',
+        managerName: null,
+      });
+    });
+  });
+
+  it('shows pending manager endorsement state without resubmit form (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValueOnce([
+      {
+        ...mockOngoingExp,
+        managerEndorsement: {
+          endorsementId: 'endorsement-1',
+          status: 'PENDING',
+          managerEmail: 'manager@acme.com',
+          managerName: 'Jane Smith',
+          sentAt: '2026-09-01T00:00:00.000Z',
+          expiresAt: '2026-09-06T00:00:00.000Z',
+        },
+      },
+    ]);
+
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText('Endorsement request pending')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Request Endorsement' })).toBeNull();
   });
 });
 

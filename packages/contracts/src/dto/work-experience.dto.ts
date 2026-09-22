@@ -449,6 +449,19 @@ export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial
 );
 export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>;
 
+/** Latest manager endorsement request summary for student-facing work experience views. */
+export const WorkExperienceManagerEndorsementSummarySchema = z.object({
+  endorsementId: z.string().uuid(),
+  status: ManagerEndorsementStatusSchema,
+  managerEmail: z.string().email(),
+  managerName: z.string().nullable(),
+  sentAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+});
+export type WorkExperienceManagerEndorsementSummaryDto = z.infer<
+  typeof WorkExperienceManagerEndorsementSummarySchema
+>;
+
 export const WorkExperienceSchema = z.object({
   id: z.string().uuid(),
   studentId: z.string().uuid(),
@@ -481,6 +494,8 @@ export const WorkExperienceSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   documents: z.array(WorkExperienceDocumentSchema).default([]),
+  /** Latest manager endorsement request, when one exists. */
+  managerEndorsement: WorkExperienceManagerEndorsementSummarySchema.nullable().optional(),
   /** Evidence-framework projection of this work experience entry. */
   evidence: WorkExperienceEvidenceSchema.optional(),
 });
@@ -639,6 +654,8 @@ export const SendManagerEndorsementResponseSchema = z.object({
   managerEmail: z.string(),
   expiresAt: z.string().datetime(),
   message: z.string(),
+  /** True when an active pending request already existed and was returned without re-sending. */
+  idempotent: z.boolean().optional(),
 });
 export type SendManagerEndorsementResponseDto = z.infer<
   typeof SendManagerEndorsementResponseSchema

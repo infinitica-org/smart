@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   AlertCircle,
   Briefcase,
@@ -87,9 +88,14 @@ export type WorkExperienceExperienceCardProps = {
   validatingDocId: string | null;
   sendingVerificationId: string | null;
   verificationResendRemainingMs: number;
+  sendingEndorsementId: string | null;
   onEdit: (exp: WorkExperienceDto, options?: { focusVerification?: boolean }) => void;
   onDelete: (id: string) => void;
   onSendVerification: (experienceId: string, exp: WorkExperienceDto) => void;
+  onRequestEndorsement: (
+    experienceId: string,
+    body: { managerEmail: string; managerName?: string | null },
+  ) => void;
   onValidateProof: (expId: string, docId: string) => void;
   onRemoveDocument: (expId: string, docId: string) => void;
   onAttachProof: (expId: string) => void;
@@ -102,9 +108,11 @@ export function WorkExperienceExperienceCard({
   validatingDocId,
   sendingVerificationId,
   verificationResendRemainingMs,
+  sendingEndorsementId,
   onEdit,
   onDelete,
   onSendVerification,
+  onRequestEndorsement,
   onValidateProof,
   onRemoveDocument,
   onAttachProof,
@@ -116,7 +124,15 @@ export function WorkExperienceExperienceCard({
   const docCount = exp.documents?.length ?? 0;
   const dateRangeLabel = `${formatExperienceMonthYear(exp.startDate)} — ${exp.isCurrent ? 'Present' : exp.endDate ? formatExperienceMonthYear(exp.endDate) : 'N/A'}`;
   const managerEndorsementStatus = getManagerEndorsementStatus(exp);
+  const managerEndorsement = exp.managerEndorsement ?? null;
+  const [managerEmail, setManagerEmail] = useState('');
+  const [managerName, setManagerName] = useState('');
   const isVerified = exp.status === 'VERIFIED';
+  const endorsementBusy = sendingEndorsementId === exp.id;
+  const canRequestManagerEndorsement =
+    ruleCheck.valid &&
+    managerEndorsement?.status !== 'CONFIRMED' &&
+    managerEndorsement?.status !== 'PENDING';
 
   const employmentMeta = [
     EMPLOYMENT_TYPE_LABELS[exp.employmentType] || exp.employmentType,
@@ -430,6 +446,94 @@ export function WorkExperienceExperienceCard({
                 </button>
               </div>
             )}
+
+            {ruleCheck.valid ? (
+              <section className="mt-5 rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)]/50 p-4">
+                <h5 className="text-xs font-semibold text-[var(--ds-text)]">Manager endorsement</h5>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--ds-text-muted)]">
+                  Ask your direct manager to confirm this role on a company email. This is separate
+                  from employer HR verification above.
+                </p>
+
+                {managerEndorsement?.status === 'CONFIRMED' ? (
+                  <p className="mt-3 text-xs text-emerald-800">
+                    Manager endorsement complete for {managerEndorsement.managerEmail}.
+                  </p>
+                ) : managerEndorsement?.status === 'PENDING' ? (
+                  <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                    <p className="font-medium">Endorsement request pending</p>
+                    <p className="mt-1">
+                      Waiting for {managerEndorsement.managerEmail} to respond. The secure link
+                      expires on{' '}
+                      {new Date(managerEndorsement.expiresAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      .
+                    </p>
+                  </div>
+                ) : canRequestManagerEndorsement ? (
+                  <div className="mt-3 flex flex-col gap-3">
+                    {managerEndorsement?.status === 'EXPIRED' ? (
+                      <p className="text-xs text-amber-900">
+                        The previous manager endorsement link expired. You can send a new request.
+                      </p>
+                    ) : null}
+                    {managerEndorsement?.status === 'DISPUTED' ? (
+                      <p className="text-xs text-amber-900">
+                        The previous manager endorsement was disputed. Update the contact and try
+                        again if appropriate.
+                      </p>
+                    ) : null}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="flex flex-col gap-1 text-xs">
+                        <span className="font-medium text-[var(--ds-text)]">
+                          Manager email <span className="text-red-600">*</span>
+                        </span>
+                        <input
+                          type="email"
+                          value={managerEmail}
+                          onChange={(event) => setManagerEmail(event.target.value)}
+                          placeholder="manager@yourcompany.com"
+                          className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2 text-sm"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs">
+                        <span className="font-medium text-[var(--ds-text)]">Manager name</span>
+                        <input
+                          type="text"
+                          value={managerName}
+                          onChange={(event) => setManagerName(event.target.value)}
+                          placeholder="Jane Smith"
+                          className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2 text-sm"
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={endorsementBusy || !managerEmail.trim()}
+                      onClick={() =>
+                        onRequestEndorsement(exp.id, {
+                          managerEmail: managerEmail.trim(),
+                          managerName: managerName.trim() || null,
+                        })
+                      }
+                      className={`${profilePrimaryButtonSmClass} self-start disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {endorsementBusy ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Sending request...
+                        </>
+                      ) : (
+                        'Request Endorsement'
+                      )}
+                    </button>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </>
         ) : (
           <p className="mt-4 text-sm text-emerald-800">

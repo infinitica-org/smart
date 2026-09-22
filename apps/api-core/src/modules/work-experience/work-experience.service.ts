@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -25,6 +26,8 @@ import type {
   GetManagerEndorsementSurveyDto,
   SubmitManagerEndorsementDto,
   SubmitManagerEndorsementResponseDto,
+  WorkExperienceManagerEndorsementSummaryDto,
+  ManagerEndorsementStatus,
   AdminWorkExperienceReviewRequest,
   ApproveWorkExperienceAuthenticityResponse,
   UpdateWorkExperienceDto,
@@ -120,6 +123,16 @@ interface RawWorkExperience {
     artifactId?: string | null;
     activity?: unknown;
   }>;
+  managerEndorsements?: Array<{
+    id: string;
+    managerEmail: string;
+    managerName?: string | null;
+    status: string;
+    sentAt: Date;
+    expiresAt: Date;
+    respondedAt?: Date | null;
+    createdAt: Date;
+  }>;
 }
 
 interface RawWorkExperienceDocument {
@@ -189,6 +202,10 @@ export class WorkExperienceService {
   private readonly evidenceInclude = {
     documents: true,
     structuredResponsibilities: true,
+    managerEndorsements: {
+      orderBy: { createdAt: 'desc' as const },
+      take: 1,
+    },
   } as const;
 
   private async syncEvidenceRecord(
@@ -279,6 +296,23 @@ export class WorkExperienceService {
     });
   }
 
+  private mapManagerEndorsementSummary(
+    exp: RawWorkExperience,
+  ): WorkExperienceManagerEndorsementSummaryDto | null {
+    const latest = exp.managerEndorsements?.[0];
+    if (!latest) {
+      return null;
+    }
+    return {
+      endorsementId: latest.id,
+      status: latest.status as ManagerEndorsementStatus,
+      managerEmail: latest.managerEmail,
+      managerName: latest.managerName ?? null,
+      sentAt: latest.sentAt.toISOString(),
+      expiresAt: latest.expiresAt.toISOString(),
+    };
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
     const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
@@ -312,8 +346,62 @@ export class WorkExperienceService {
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
       documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
+      managerEndorsement: this.mapManagerEndorsementSummary(exp),
       evidence: buildEvidenceFromWorkExperienceRow(exp as WorkExperienceWithEvidenceRelations),
     });
+  }
+
+  private buildSendManagerEndorsementResponse(
+    endorsement: { id: string; managerEmail: string; expiresAt: Date },
+    idempotent: boolean,
+  ): SendManagerEndorsementResponseDto {
+    return {
+      success: true,
+      endorsementId: endorsement.id,
+      managerEmail: endorsement.managerEmail,
+      expiresAt: endorsement.expiresAt.toISOString(),
+      idempotent,
+      message: idempotent
+        ? `Manager endorsement request is already pending for ${endorsement.managerEmail}.`
+        : `Manager endorsement request dispatched to ${endorsement.managerEmail}. Valid for 5 days.`,
+    };
+  }
+
+  private async resolveManagerEndorsementRequestState(
+    experienceId: string,
+  ): Promise<
+    | { kind: 'active_pending'; endorsement: { id: string; managerEmail: string; expiresAt: Date } }
+    | { kind: 'confirmed' }
+    | { kind: 'new' }
+  > {
+    const now = new Date();
+    const [activePending, confirmed] = await Promise.all([
+      this.prisma.workExperienceManagerEndorsement.findFirst({
+        where: {
+          experienceId,
+          status: 'PENDING',
+          respondedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, managerEmail: true, expiresAt: true },
+      }),
+      this.prisma.workExperienceManagerEndorsement.findFirst({
+        where: {
+          experienceId,
+          status: 'CONFIRMED',
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (confirmed) {
+      return { kind: 'confirmed' };
+    }
+    if (activePending) {
+      return { kind: 'active_pending', endorsement: activePending };
+    }
+    return { kind: 'new' };
   }
 
   /** WE-T02 — company-lite / B2B surfaces must never receive raw letter file URLs. */
@@ -2056,6 +2144,16 @@ export class WorkExperienceService {
 
     const managerEmail = payload.managerEmail.toLowerCase().trim();
 
+    const requestState = await this.resolveManagerEndorsementRequestState(experienceId);
+    if (requestState.kind === 'confirmed') {
+      throw new ConflictException(
+        'Manager endorsement is already complete for this work experience.',
+      );
+    }
+    if (requestState.kind === 'active_pending') {
+      return this.buildSendManagerEndorsementResponse(requestState.endorsement, true);
+    }
+
     // 1. Reject personal / free email providers
     if (isDisallowedEndorserEmailDomain(managerEmail)) {
       throw new BadRequestException(
@@ -2149,13 +2247,14 @@ export class WorkExperienceService {
       },
     });
 
-    return {
-      success: true,
-      endorsementId: endorsement.id,
-      managerEmail,
-      expiresAt: expiresAt.toISOString(),
-      message: `Manager endorsement request dispatched to ${managerEmail}. Valid for 5 days.`,
-    };
+    return this.buildSendManagerEndorsementResponse(
+      {
+        id: endorsement.id,
+        managerEmail: endorsement.managerEmail,
+        expiresAt: endorsement.expiresAt,
+      },
+      false,
+    );
   }
 
   /**
