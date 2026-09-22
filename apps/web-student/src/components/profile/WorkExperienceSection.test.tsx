@@ -446,6 +446,36 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     expect(screen.queryByRole('button', { name: 'Request Endorsement' })).toBeNull();
   });
 
+  it('renders empty work experience state when the student has no entries (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValueOnce([]);
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText(/No work experience yet/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Add your first experience/i })).toBeTruthy();
+  });
+
+  it('shows disputed manager endorsement helper and allows resubmit (VER-02)', async () => {
+    listWorkExperiences.mockResolvedValueOnce([
+      {
+        ...mockOngoingExp,
+        managerEndorsement: {
+          endorsementId: 'endorsement-disputed',
+          status: 'DISPUTED',
+          managerEmail: 'manager@acme.com',
+          managerName: 'Jane Smith',
+          sentAt: '2026-09-01T00:00:00.000Z',
+          expiresAt: '2026-09-06T00:00:00.000Z',
+        },
+      },
+    ]);
+
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText(/previous manager endorsement was disputed/i)).toBeTruthy();
+    expect(screen.getByText('Disputed')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Request Endorsement' })).toBeTruthy();
+  });
+
   it('prefills endorser contact from expired manager endorsement summary (VER-02)', async () => {
     listWorkExperiences.mockResolvedValueOnce([
       {

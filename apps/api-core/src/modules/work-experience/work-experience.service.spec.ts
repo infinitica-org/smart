@@ -798,6 +798,143 @@ describe('WorkExperienceService', () => {
       expect(result[0].role).toBe('Backend Engineer');
     });
 
+    it('queries work experiences scoped to the authenticated student (VER-02)', async () => {
+      prisma.workExperience.findMany.mockResolvedValueOnce([]);
+
+      await service.listForStudent(mockStudentId);
+
+      expect(prisma.workExperience.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { studentId: mockStudentId },
+        }),
+      );
+    });
+
+    it('loads only the latest manager endorsement row for student tracking (VER-02)', async () => {
+      prisma.workExperience.findMany.mockResolvedValueOnce([]);
+
+      await service.listForStudent(mockStudentId);
+
+      expect(prisma.workExperience.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            managerEndorsements: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          }),
+        }),
+      );
+    });
+
+    it('returns null managerEndorsement when no endorsement exists (VER-02)', async () => {
+      const expId = randomUUID();
+      prisma.workExperience.findMany.mockResolvedValueOnce([
+        {
+          id: expId,
+          studentId: mockStudentId,
+          companyId: null,
+          companyName: 'Tech Corp',
+          companyWebsite: null,
+          companyLinkedinUrl: null,
+          role: 'Backend Engineer',
+          employmentType: 'FULL_TIME',
+          department: null,
+          domain: null,
+          workLocation: null,
+          startDate: new Date('2021-01-01'),
+          endDate: new Date('2022-01-01'),
+          isCurrent: false,
+          responsibilities: null,
+          skills: [],
+          projects: null,
+          candidateLinkedin: null,
+          verifierName: null,
+          verifierEmail: null,
+          verifierDesignation: null,
+          verifierPhone: null,
+          status: 'SUBMITTED',
+          rejectionReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          documents: [],
+          structuredResponsibilities: [],
+          managerEndorsements: [],
+        },
+      ]);
+
+      const result = await service.listForStudent(mockStudentId);
+
+      expect(result[0]?.managerEndorsement).toBeNull();
+    });
+
+    it('maps the first loaded endorsement row as the student tracking summary (VER-02)', async () => {
+      const latestEndorsementId = randomUUID();
+      const olderEndorsementId = randomUUID();
+      prisma.workExperience.findMany.mockResolvedValueOnce([
+        {
+          id: randomUUID(),
+          studentId: mockStudentId,
+          companyId: null,
+          companyName: 'Acme Corp',
+          companyWebsite: 'https://acme.com',
+          companyLinkedinUrl: null,
+          role: 'Software Engineer',
+          employmentType: 'FULL_TIME',
+          department: null,
+          domain: 'Software Engineering',
+          workLocation: null,
+          startDate: new Date('2022-01-01'),
+          endDate: null,
+          isCurrent: true,
+          responsibilities: 'Building awesome apps',
+          skills: ['SQL_QUERY_OPTIMIZATION'],
+          projects: null,
+          candidateLinkedin: null,
+          verifierName: null,
+          verifierEmail: null,
+          verifierDesignation: null,
+          verifierPhone: null,
+          status: 'SUBMITTED',
+          rejectionReason: null,
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-09-01T00:00:00.000Z'),
+          documents: [],
+          structuredResponsibilities: [],
+          managerEndorsements: [
+            {
+              id: latestEndorsementId,
+              managerEmail: 'manager@acme.com',
+              managerName: 'Jane Smith',
+              status: 'CONFIRMED',
+              sentAt: new Date('2026-09-10T00:00:00.000Z'),
+              expiresAt: new Date('2026-09-15T00:00:00.000Z'),
+              createdAt: new Date('2026-09-10T00:00:00.000Z'),
+            },
+            {
+              id: olderEndorsementId,
+              managerEmail: 'manager@acme.com',
+              managerName: 'Jane Smith',
+              status: 'PENDING',
+              sentAt: new Date('2026-09-01T00:00:00.000Z'),
+              expiresAt: new Date('2026-09-06T00:00:00.000Z'),
+              createdAt: new Date('2026-09-01T00:00:00.000Z'),
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.listForStudent(mockStudentId);
+
+      expect(result[0]?.managerEndorsement).toEqual(
+        expect.objectContaining({
+          endorsementId: latestEndorsementId,
+          status: 'CONFIRMED',
+        }),
+      );
+      expect(result[0]?.managerEndorsement?.endorsementId).not.toBe(olderEndorsementId);
+    });
+
     it('includes skillsClaimedSnapshot on verified entries', async () => {
       const expId = randomUUID();
       prisma.workExperience.findMany.mockResolvedValueOnce([
