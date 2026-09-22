@@ -26,6 +26,7 @@ const origins = {
   student: 'http://localhost:3001',
   tpo: 'http://localhost:3002',
   admin: 'http://localhost:3003',
+  company: 'http://localhost:3006',
 };
 
 describe('decodeAccessTokenRole', () => {
@@ -52,7 +53,7 @@ describe('decodeAccessTokenRole', () => {
 });
 
 describe('portal role gates', () => {
-  it('maps the four login roles onto the three authenticated portals', () => {
+  it('maps authenticated roles onto portal gates', () => {
     expect(roleAllowsPortal('STUDENT', PORTAL_ROLES.student)).toBe(true);
     expect(roleAllowsPortal('SUPER_ADMIN', PORTAL_ROLES.student)).toBe(false);
     expect(roleAllowsPortal('INSTITUTION_ADMIN', PORTAL_ROLES.tpo)).toBe(true);
@@ -60,6 +61,9 @@ describe('portal role gates', () => {
     expect(roleAllowsPortal('STUDENT', PORTAL_ROLES.tpo)).toBe(false);
     expect(roleAllowsPortal('SUPER_ADMIN', PORTAL_ROLES.admin)).toBe(true);
     expect(roleAllowsPortal('INSTITUTION_ADMIN', PORTAL_ROLES.admin)).toBe(false);
+    expect(roleAllowsPortal('COMPANY', PORTAL_ROLES.company)).toBe(true);
+    expect(roleAllowsPortal('STUDENT', PORTAL_ROLES.company)).toBe(false);
+    expect(roleAllowsPortal('B2B_PARTNER', PORTAL_ROLES.company)).toBe(false);
   });
 });
 
@@ -69,6 +73,7 @@ describe('login redirect per role', () => {
     expect(portalHomeForRole('INSTITUTION_ADMIN', origins)).toBe('http://localhost:3002/');
     expect(portalHomeForRole('PLACEMENT_STAFF', origins)).toBe('http://localhost:3002/');
     expect(portalHomeForRole('SUPER_ADMIN', origins)).toBe('http://localhost:3003/admin');
+    expect(portalHomeForRole('COMPANY', origins)).toBe('http://localhost:3006/');
   });
 
   it('ignores returnTo that points at a different portal', () => {

@@ -55,6 +55,10 @@ import type {
   CreateEvidenceRequest,
   SaveOnboardingSelectionRequest,
   CreateVerificationDecisionRequest,
+  StartCompanyOnboardingRequest,
+  UpdateCompanyOnboardingDraftRequest,
+  SubmitCompanyOnboardingRequest,
+  VerifyCorporateEmailRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -71,6 +75,7 @@ import {
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
+  CompanyPortalAccountSchema,
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
@@ -108,6 +113,12 @@ import {
   NotificationDtoSchema,
   SubmitCertificateEndorsementDecisionResponseSchema,
   PublicCandidateProfileDtoSchema,
+  CompanyOnboardingSessionDtoSchema,
+  CompanyOnboardingVerificationDocumentDtoSchema,
+  SendCorporateEmailVerificationResponseSchema,
+  StartCompanyOnboardingResponseSchema,
+  SubmitCompanyOnboardingResponseSchema,
+  VerifyCorporateEmailResponseSchema,
   PublicProfileLinkResponseSchema,
   PublicVerificationDtoSchema,
   RepoLanguagesResponseSchema,
@@ -134,6 +145,7 @@ import {
   SubscriptionPlanDtoSchema,
   TenantEntitlementsDtoSchema,
   TrackDtoSchema,
+  CompanyVerificationReviewDetailDtoSchema,
   VerificationQueueItemDtoSchema,
   HealthStatusSchema,
   ParseResumeResponseSchema,
@@ -222,6 +234,9 @@ export function authApi(client: SmartApiClient) {
     logout: () => client.post<void>(prefixed('/auth/logout'), undefined, { anonymous: true }),
 
     me: () => client.get(prefixed('/users/me'), { schema: AuthenticatedUserSchema }),
+
+    companyAccount: () =>
+      client.get(prefixed('/auth/company/account'), { schema: CompanyPortalAccountSchema }),
 
     enrollTrack: (body: { trackCode: string; slot?: 'PRIMARY' | 'SECONDARY' }) =>
       client.request({
@@ -719,6 +734,12 @@ export function onboardingApi(client: SmartApiClient) {
     resolveVerification: (tenantId: string, body: ResolveVerificationRequest) =>
       client.post(prefixed(`/admin/verification-queue/${tenantId}/resolve`), body, {
         schema: VerificationQueueItemDtoSchema,
+      }),
+
+    companyVerificationReview: (companyId: string) =>
+      client.get(prefixed(`/admin/verification-queue/${companyId}/review`), {
+        schema: CompanyVerificationReviewDetailDtoSchema,
+        query: { tenantType: 'company' },
       }),
 
     integrityQueue: (status?: IntegrityQueueStatus) =>
@@ -1363,11 +1384,69 @@ export function notificationsApi(client: SmartApiClient) {
   };
 }
 
+function companyOnboardingSessionPath(sessionToken: string, suffix = ''): string {
+  const token = encodeURIComponent(sessionToken);
+  return prefixed(`/public/company/onboarding/sessions/${token}${suffix}`);
+}
+
 export function publicApi(client: SmartApiClient) {
   return {
     getCandidateProfile: (slug: string) =>
       client.get(prefixed(`/public/candidates/${slug}`), {
         schema: PublicCandidateProfileDtoSchema,
+        anonymous: true,
+      }),
+
+    startCompanyOnboarding: (body: StartCompanyOnboardingRequest) =>
+      client.post(prefixed('/public/company/onboarding/sessions'), body, {
+        schema: StartCompanyOnboardingResponseSchema,
+        anonymous: true,
+      }),
+
+    getCompanyOnboardingSession: (sessionToken: string) =>
+      client.get(companyOnboardingSessionPath(sessionToken), {
+        schema: CompanyOnboardingSessionDtoSchema,
+        anonymous: true,
+      }),
+
+    updateCompanyOnboardingDraft: (
+      sessionToken: string,
+      body: UpdateCompanyOnboardingDraftRequest,
+    ) =>
+      client.patch(companyOnboardingSessionPath(sessionToken), body, {
+        schema: CompanyOnboardingSessionDtoSchema,
+        anonymous: true,
+      }),
+
+    sendCompanyOnboardingEmailVerification: (sessionToken: string) =>
+      client.post(
+        companyOnboardingSessionPath(sessionToken, '/email/send'),
+        {},
+        {
+          schema: SendCorporateEmailVerificationResponseSchema,
+          anonymous: true,
+        },
+      ),
+
+    verifyCompanyOnboardingEmail: (sessionToken: string, body: VerifyCorporateEmailRequest) =>
+      client.post(companyOnboardingSessionPath(sessionToken, '/email/verify'), body, {
+        schema: VerifyCorporateEmailResponseSchema,
+        anonymous: true,
+      }),
+
+    uploadCompanyOnboardingDocument: (sessionToken: string, file: File, documentType: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', documentType);
+      return client.postForm(companyOnboardingSessionPath(sessionToken, '/documents'), formData, {
+        schema: CompanyOnboardingVerificationDocumentDtoSchema,
+        anonymous: true,
+      });
+    },
+
+    submitCompanyOnboarding: (sessionToken: string, body: SubmitCompanyOnboardingRequest) =>
+      client.post(companyOnboardingSessionPath(sessionToken, '/submit'), body, {
+        schema: SubmitCompanyOnboardingResponseSchema,
         anonymous: true,
       }),
   };

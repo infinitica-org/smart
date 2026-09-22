@@ -16,6 +16,7 @@ import {
 import { env } from '../config/env.js';
 import type {
   CertificateEndorsementRequestEmailData,
+  CompanyOnboardingEmailVerifyData,
   EmailTemplateData,
   EmailTemplateName,
   InviteEmailData,
@@ -97,7 +98,36 @@ export function renderEmailTemplate(
       return buildWorkExperienceManagerInvite(data as WorkExperienceManagerEndorsementEmailData);
     case 'work-experience-manager-reminder':
       return buildWorkExperienceManagerReminder(data as WorkExperienceManagerEndorsementEmailData);
+    case 'company-portal-invite':
+      return buildCompanyPortalInvite(data as InviteEmailData);
+    case 'company-onboarding-email-verify':
+      return buildCompanyOnboardingEmailVerify(data as CompanyOnboardingEmailVerifyData);
   }
+}
+
+function buildCompanyOnboardingEmailVerify(
+  payload: CompanyOnboardingEmailVerifyData,
+): RenderedEmail {
+  const subject = 'Verify your email for SMART company registration';
+  const bodyHtml = [
+    paragraph(`Hello ${strong(payload.fullName)}, use this code to verify your work email:`),
+    paragraph(strong(payload.verificationCode)),
+    paragraph(`This code expires at ${payload.expiresAtFormatted} (UTC).`),
+  ].join('');
+  const text = [
+    `Hello ${payload.fullName}, your SMART company registration verification code is ${payload.verificationCode}.`,
+    `It expires at ${payload.expiresAtFormatted} (UTC).`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Verify your work email',
+      bodyHtml,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
 }
 
 /* ---------------- institution-admin-invite (TPO / placement staff) ---------------- */
@@ -132,6 +162,39 @@ function buildInstitutionAdminInvite(invite: InviteEmailData): RenderedEmail {
       bodyHtml,
       cta: { label: 'Set up my account', url: invite.inviteUrl },
       footerNote: `This link is valid for ${env.INVITATION_TTL_DAYS} days, so it's worth doing now rather than later.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- company-portal-invite (COMPANY) ---------------- */
+
+function buildCompanyPortalInvite(invite: InviteEmailData): RenderedEmail {
+  const companyName = invite.institutionName;
+  const subject = `Set up your ${companyName} account on SMART`;
+  const bodyHtml = [
+    paragraph(
+      `Hello ${strong(invite.fullName)}, ${strong(companyName)} has been approved on SMART. You can now set a password for your company portal account.`,
+    ),
+    paragraph(
+      `Use the button below to choose a password. Once signed in, your company tenant context is tied to your account — never share your credentials.`,
+    ),
+  ].join('');
+  const text = [
+    `Hello ${invite.fullName}, ${companyName} has been approved on SMART.`,
+    `Set up your password: ${invite.inviteUrl}`,
+    `This link is valid for ${env.INVITATION_TTL_DAYS} days.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Activate your company account',
+      illustration: ADMIN_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Set my password', url: invite.inviteUrl },
+      footerNote: `This link is valid for ${env.INVITATION_TTL_DAYS} days.`,
       signoff: SIGNOFF_TEAM,
     }),
   };

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AuthProviderSchema,
   SessionHoldCodeSchema,
+  TenantVerificationStatusSchema,
   TrackCodeSchema,
   UserRoleSchema,
 } from '../domain/enums.js';
@@ -55,6 +56,9 @@ export const AuthenticatedUserSchema = z.object({
   role: UserRoleSchema,
   institutionId: UuidSchema.nullable(),
   institutionName: z.string().nullable(),
+  /** B2B company tenant; null for students, TPO, and platform admins. */
+  companyId: UuidSchema.nullable().optional(),
+  companyName: z.string().nullable().optional(),
   primaryTrack: TrackCodeSchema.nullable(),
   secondaryTrack: TrackCodeSchema.nullable(),
   provider: AuthProviderSchema,
@@ -81,6 +85,15 @@ export const AuthenticatedUserSchema = z.object({
 });
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 
+/** Tenant-safe company portal account (GET /auth/company/account). */
+export const CompanyPortalAccountSchema = AuthenticatedUserSchema.extend({
+  companyVerificationStatus: TenantVerificationStatusSchema,
+  companyWebsite: z.string().nullable().optional(),
+  companyIndustry: z.string().nullable().optional(),
+  companyLocation: z.string().nullable().optional(),
+});
+export type CompanyPortalAccount = z.infer<typeof CompanyPortalAccountSchema>;
+
 /* -------------------------------- JWT claims ------------------------------ */
 
 /**
@@ -91,6 +104,8 @@ export const AccessTokenClaimsSchema = z.object({
   sub: UuidSchema,
   role: UserRoleSchema,
   inst: UuidSchema.nullable(),
+  /** Company tenant id when the user belongs to a B2B company (future auth phase). */
+  cmp: UuidSchema.nullable().optional(),
   /** Track codes the user is enrolled on. */
   trk: z.array(TrackCodeSchema),
   /** Refresh-token family id, used for reuse detection on rotation. */

@@ -16,7 +16,17 @@ export type EmailTemplateName =
   /** WE-T03: manager endorsement invite (domain-validated corporate email, 5-day TTL) */
   | 'work-experience-manager-invite'
   /** WE-T03: manager endorsement reminder at day 3 (72h) */
-  | 'work-experience-manager-reminder';
+  | 'work-experience-manager-reminder'
+  /** CO self-onboarding: corporate email OTP (session holder, not JWT). */
+  | 'company-onboarding-email-verify'
+  /** Phase 6: company representative password setup after SA approval. */
+  | 'company-portal-invite';
+
+export interface CompanyOnboardingEmailVerifyData {
+  readonly fullName: string;
+  readonly verificationCode: string;
+  readonly expiresAtFormatted: string;
+}
 
 export interface InviteEmailData {
   readonly fullName: string;
@@ -86,7 +96,8 @@ export type EmailTemplateData =
   | WorkExperienceVerifierInviteEmailData
   | WorkExperienceVerifierReminderEmailData
   | CertificateEndorsementRequestEmailData
-  | WorkExperienceManagerEndorsementEmailData;
+  | WorkExperienceManagerEndorsementEmailData
+  | CompanyOnboardingEmailVerifyData;
 
 export interface EmailJobPayload {
   readonly to: string;
