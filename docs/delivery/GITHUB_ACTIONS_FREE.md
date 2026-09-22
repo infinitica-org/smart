@@ -1,68 +1,62 @@
-# GitHub Actions on the free org plan
+# CI/CD & Deployment Architecture (GitHub Teams)
 
-> Owner: Tino (CI) · Audience: whoever sees “The job was not started because recent account payments have failed”
+> Owner: Tino (System Architect) · Applies to: SMART Monorepo
 
-SMART is on the **GitHub Free** org plan. That is enough if we stay inside the included minutes and never open a paid overage. It is **not** enough if a card fails or a spending limit trips — GitHub then refuses to **start** any hosted job, including 5-second lockfile checks.
+SMART leverages the **GitHub Teams** plan for CI/CD, providing **3,000 Linux minutes per month**. We rely exclusively on GitHub-hosted `ubuntu-latest` runners (2 vCPU / 7 GB RAM) to keep builds isolated, reproducible, and to free our VPS environments from heavy compilation workloads.
 
-## What the error actually means
+## 1. CI Pipeline Architecture
 
-```
-The job was not started because recent account payments have failed
-or your spending limit needs to be increased.
-```
+Our CI pipeline (`.github/workflows/ci.yml`) runs on `push` and `pull_request` against our three core branches: `main`, `qa`, and `dev`.
 
-This is **billing**, not a red test. Quality gates never ran.
+### Caching Strategy (Saving Minutes)
 
-Do this first (org owner, 2 minutes):
+To optimize our 3,000 monthly minutes, we heavily utilize caching:
 
-1. GitHub → org **infinitica-org** → **Settings → Billing & plans**.
-2. Clear the failed payment / expired card, **or** remove the payment method if you do not want paid Actions at all.
-3. Set **Actions spending limit to $0**. Included minutes stay free. Overage cannot start, so a runaway workflow cannot surprise-bill you — it just stops.
-4. Confirm **Actions minutes** remaining this month (Free private repos: **2,000 Linux minutes**).
+- **`actions/setup-node`:** Caches the `pnpm` global store to avoid downloading unchanged npm packages.
+- **Turborepo Cache (`.turbo`):** Caches the outputs of our Next.js and backend builds. If a package (e.g., `web-student`) hasn't changed, Turbo instantly replays the cached output instead of recompiling it, saving massive amounts of compute time.
 
-Until that page is clean, **no CI and no kvm2 autodeploy will start.** Deploy-dev only runs after a successful CI `workflow_run`.
+### Concurrency
 
-Do **not** make the repo public just to get unlimited minutes unless the whole team agrees. The tree has env examples and internal docs.
+Because we run on isolated `ubuntu-latest` runners, `turbo` executes tasks (linting, typechecking, building) concurrently using all available cores, rather than being throttled.
 
-## How we stay on free minutes
+## 2. PR Governance & Flow Enforcement
 
-| Before (this week)                        | After                                    | Why                                              |
-| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| 4 heavy jobs, each `pnpm install`         | **1** `ci` job, one install              | Minutes are billed **per job**, not per workflow |
-| lockfile / merge-main / compose as extras | Same checks, cheap steps inside that job | Three 1-minute jobs still cost 3 minutes         |
-| Content Validate on every content path    | Unchanged, path-filtered                 | Rare                                             |
-| Deploy after CI                           | Unchanged                                | One extra job only when `dev` is green           |
+We enforce a strict linear promotion path: **`dev` → `qa` → `main`**.
 
-Rough math: a typical PR used **~25–40 hosted minutes**. The collapsed workflow should land around **8–15**. That is ~130–200 PRs/month on 2,000 minutes if you do not spam `dev`.
+This is automatically validated by our `.github/workflows/enforce-pr-flow.yml` workflow, which ensures:
 
-**Do not land three squash-merges in one minute.** `cancel-in-progress: true` kills the earlier `dev` CI, so deploy never sees `success`. One push to `dev`, wait for green, then the next.
+1. Pull Requests targeting `qa` **must** originate from `dev`.
+2. Pull Requests targeting `main` **must** originate from `qa`.
+3. Only the user `@brittytino` is permitted to author a PR targeting `main`.
 
-## If hosted minutes run out anyway
+_Note: This workflow is a secondary defense. The primary defense should be GitHub's Branch Protection Rules configured in the repository settings._
 
-Register **kvm2** as a self-hosted runner (self-hosted jobs do **not** consume the 2,000 minutes). They still will not start if the org has a **failed payment** — fix billing first.
+## 3. Automated Deployments
 
-On kvm2, as a dedicated `actions` user (not `deploy`):
+Deployments trigger automatically when a PR is merged (or a push occurs) and the subsequent CI run passes successfully.
 
-```bash
-# https://github.com/organizations/infinitica-org/settings/actions/runners/new
-mkdir -p ~/actions-runner && cd ~/actions-runner
-curl -fsSL -o actions-runner.tar.gz \
-  https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz
-tar xzf actions-runner.tar.gz
-./config.sh --url https://github.com/infinitica-org/smart --labels linux,kvm2
-./svc.sh install && ./svc.sh start
-```
+- **Dev Environment:** Managed by `deploy-dev.yml`. Triggers on a successful CI run on the `dev` branch. Syncs to the VPS and executes `deploy-vps.sh dev`.
+- **QA Environment:** Managed by `deploy-qa.yml`. Triggers on a successful CI run on the `qa` branch. Syncs to the VPS and executes `deploy-vps.sh qa`.
+- **Production Environment:** Managed by `deploy-prod.yml`. Triggers on a successful CI run on the `main` branch. Syncs to the VPS and executes `deploy-vps.sh prod`.
 
-Then change `runs-on: ubuntu-latest` in `.github/workflows/ci.yml` to `runs-on: [self-hosted, linux, kvm2]`. Do that in a follow-up PR after the runner shows **Idle** in the org.
+## 4. Zero-Downtime / Blue-Green Deployment
 
-## Local substitute (always works)
+To eliminate downtime during VPS deployments, we use a Blue-Green deployment strategy.
 
-```bash
-bash scripts/ci-local.sh
-```
+Because SMART uses Docker Compose with statically bound host ports (e.g., `3000`), Docker cannot start a new container before stopping the old one if they share the same port. To solve this, our deployment script (`scripts/blue-green-deploy.sh`) orchestrates a color-coded environment swap:
 
-Same gates as hosted CI: lockfile, compose config, lint, format, typecheck, unit tests, build.
+1. **Isolation:** We run the app as either the `smart-<env>-blue` or `smart-<env>-green` docker-compose project.
+2. **Build & Start:** The script pulls code, determines the _inactive_ color, builds the images, and starts the inactive stack in the background.
+3. **Health Check & Migrations:** It waits for the `api` container of the new stack to report as healthy and applies Prisma migrations.
+4. **Traffic Swap:** Once verified, a standalone reverse proxy (e.g., Caddy running outside of docker-compose) is reloaded to route traffic from the old color to the new color.
+5. **Teardown:** The old docker-compose stack is gracefully shut down.
 
-## Branch protection
+_To fully utilize this script, the Caddy service must be extracted from the `docker-compose.yml` into a host-level system service._
 
-Required checks used to be `lockfile`, `merge-main`, `compose config`, `lint`, `typecheck`, `unit tests`, `build`. After this change the single required check is **`ci`**. Update org branch protection on `dev` / `qa` / `main` or GitHub will sit on “waiting for required checks.”
+## 5. Troubleshooting: "Minute Limits"
+
+If you see CI jobs stuck in a `Queued` state or refusing to start with billing errors:
+
+1. Verify you haven't exceeded the 3,000 minutes provided by the GitHub Teams plan.
+2. Ensure there are no failed payment methods on the GitHub organization billing page.
+3. If minutes run out, you can set up a dedicated self-hosted runner (e.g., a cheap Hetzner VM) and temporarily revert the `runs-on` targets in the workflows from `ubuntu-latest` to your self-hosted labels. **Do not** share a CI runner with your live application VPS.
