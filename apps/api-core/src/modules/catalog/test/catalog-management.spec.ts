@@ -153,4 +153,40 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
       }),
     ).toThrow(NotFoundException);
   });
+
+  it('maps recommended and optional skills to a target job role successfully (Th6-I299)', () => {
+    const result = service.mapSkillsToRole({
+      roleId: 'BACKEND_DEVELOPER',
+      recommendedSkillCodes: [
+        'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+        'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
+      ],
+      optionalSkillCodes: ['CONTAINERIZATION_ORCHESTRATION'],
+    });
+
+    expect(result.roleId).toBe('BACKEND_DEVELOPER');
+    expect(result.recommendedSkillCodes).toEqual([
+      'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+      'RELATIONAL_DATABASE_DESIGN_ADMINISTRATION',
+    ]);
+    expect(result.optionalSkillCodes).toEqual(['CONTAINERIZATION_ORCHESTRATION']);
+  });
+
+  it('throws NotFoundException when mapping skills to an invalid roleId', () => {
+    expect(() =>
+      service.mapSkillsToRole({
+        roleId: 'INVALID_ROLE_99',
+        recommendedSkillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      }),
+    ).toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when mapping an unrecognised skill code', () => {
+    expect(() =>
+      service.mapSkillsToRole({
+        roleId: 'BACKEND_DEVELOPER',
+        recommendedSkillCodes: ['UNKNOWN_SKILL_CODE_XYZ'],
+      }),
+    ).toThrow(NotFoundException);
+  });
 });

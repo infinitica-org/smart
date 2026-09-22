@@ -3542,6 +3542,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 300,
     summary: 'Merge duplicate skills into a canonical target skill and record aliases.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/roles/map-skills',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Map required and optional skills to a target job role.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

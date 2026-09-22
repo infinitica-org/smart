@@ -10,15 +10,19 @@ import {
   LEVEL_DEFINITIONS,
   SKILL_CATEGORIES,
   SKILL_DEFINITIONS,
+  TARGET_ROLES,
   TRACK_DEFINITIONS,
   TrackDtoSchema,
   buildSeSkillLibraryResponse,
   buildSkillLibraryResponse,
   CreateSkillDtoSchema,
+  MapSkillsToRoleDtoSchema,
   MergeSkillsDtoSchema,
   UpdateSkillDtoSchema,
   type CreateSkillDto,
+  type MapSkillsToRoleDto,
   type MergeSkillsDto,
+  type RoleSkillMappingRecord,
   type SeSkillLibraryResponse,
   type SkillLibraryResponse,
   type SkillManagementRecord,
@@ -247,6 +251,54 @@ export class CatalogService {
       recordsReboundCount,
       mergedAt: new Date().toISOString(),
     };
+  }
+
+  private readonly roleMappings: Map<string, RoleSkillMappingRecord> = new Map();
+
+  mapSkillsToRole(dto: MapSkillsToRoleDto): RoleSkillMappingRecord {
+    const parsed = MapSkillsToRoleDtoSchema.parse(dto);
+    const roleId = parsed.roleId.toUpperCase();
+
+    const targetRole = TARGET_ROLES.find((r) => r.roleId === roleId);
+    if (!targetRole) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Target job role ${roleId} not found in taxonomy.`,
+      });
+    }
+
+    const availableManaged = this.listManagedSkills();
+    const availableCodes = new Set(availableManaged.map((s) => s.code));
+
+    for (const code of parsed.recommendedSkillCodes) {
+      if (!availableCodes.has(code.toUpperCase())) {
+        throw new NotFoundException({
+          error: 'unknown_skill_code',
+          message: `Recommended skill code ${code} not found.`,
+        });
+      }
+    }
+
+    for (const code of parsed.optionalSkillCodes) {
+      if (!availableCodes.has(code.toUpperCase())) {
+        throw new NotFoundException({
+          error: 'unknown_skill_code',
+          message: `Optional skill code ${code} not found.`,
+        });
+      }
+    }
+
+    const record: RoleSkillMappingRecord = {
+      roleId: targetRole.roleId,
+      roleName: targetRole.name,
+      domainId: targetRole.domainId,
+      recommendedSkillCodes: parsed.recommendedSkillCodes.map((c) => c.toUpperCase()),
+      optionalSkillCodes: parsed.optionalSkillCodes.map((c) => c.toUpperCase()),
+      mappedAt: new Date().toISOString(),
+    };
+
+    this.roleMappings.set(roleId, record);
+    return record;
   }
 
   private getPredefinedAsRecord(code: string): SkillManagementRecord | undefined {

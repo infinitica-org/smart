@@ -67,3 +67,22 @@ export const SkillMergeResultDtoSchema = z.object({
 });
 
 export type SkillMergeResultDto = z.infer<typeof SkillMergeResultDtoSchema>;
+
+export const MapSkillsToRoleDtoSchema = z.object({
+  roleId: z.string().trim().min(2),
+  recommendedSkillCodes: z.array(z.string().trim().min(2)).default([]),
+  optionalSkillCodes: z.array(z.string().trim().min(2)).default([]),
+});
+
+export type MapSkillsToRoleDto = z.infer<typeof MapSkillsToRoleDtoSchema>;
+
+export const RoleSkillMappingRecordSchema = z.object({
+  roleId: z.string(),
+  roleName: z.string(),
+  domainId: z.string(),
+  recommendedSkillCodes: z.array(z.string()),
+  optionalSkillCodes: z.array(z.string()),
+  mappedAt: z.string(),
+});
+
+export type RoleSkillMappingRecord = z.infer<typeof RoleSkillMappingRecordSchema>;
