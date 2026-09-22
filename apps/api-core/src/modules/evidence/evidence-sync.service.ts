@@ -13,6 +13,7 @@ import {
   mapStructuredResponsibilities,
   type WorkExperienceWithEvidenceRelations,
 } from '../work-experience/work-experience-evidence.adapter.js';
+import { EvidenceExpirationService } from './evidence-expiration.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class EvidenceSyncService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
     private readonly reconciliation: EvidenceReconciliationService,
+    @Inject(EvidenceExpirationService)
+    private readonly expiration: EvidenceExpirationService,
   ) {}
 
   async syncWorkExperienceEvidenceRecord(
@@ -78,13 +81,15 @@ export class EvidenceSyncService {
       },
     });
 
+    const mappedStatus = mapWeStatusToEvidenceVerification(row.status);
+
     const payload = {
       studentId,
       evidenceType: 'WORK_EXPERIENCE' as const,
       source: 'CANDIDATE' as const,
       sourceEntityId: experienceId,
       relatedSkillCodes: relatedSkillCodesFromWorkExperience(source),
-      verificationStatus: mapWeStatusToEvidenceVerification(row.status),
+      verificationStatus: mappedStatus,
       claim: evidenceClaimFromWorkExperience(source),
       context: row.responsibilities,
       sourceOwner: row.verifierName,
@@ -94,6 +99,28 @@ export class EvidenceSyncService {
       sourcePayload: WorkExperienceEvidenceSchema.parse(evidence) as Prisma.InputJsonValue,
       accessibility: 'PRIVATE',
     };
+
+    if (mappedStatus === 'EXPIRED') {
+      const { verificationStatus: _status, ...payloadWithoutStatus } = payload;
+
+      if (existing) {
+        await this.prisma.evidenceRecord.update({
+          where: { id: existing.id },
+          data: payloadWithoutStatus,
+        });
+        await this.expiration.expireEvidenceIfDue(existing.id, {
+          reasonCode: 'evidence_expired',
+        });
+      } else {
+        const created = await this.prisma.evidenceRecord.create({
+          data: { ...payloadWithoutStatus, verificationStatus: 'PENDING' },
+        });
+        await this.expiration.expireEvidenceIfDue(created.id, {
+          reasonCode: 'evidence_expired',
+        });
+      }
+      return;
+    }
 
     if (existing) {
       await this.prisma.evidenceRecord.update({

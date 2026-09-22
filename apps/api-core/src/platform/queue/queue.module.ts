@@ -1,7 +1,8 @@
 import { BullModule } from '@nestjs/bullmq';
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, forwardRef } from '@nestjs/common';
 import { env } from '../config/env.js';
 import { EMAIL_QUEUE } from '../mailer/mailer.types.js';
+import { EvidenceModule } from '../../modules/evidence/evidence.module.js';
 import {
   AudioEvaluationProcessor,
   PdfGenerationProcessor,
@@ -15,6 +16,7 @@ import {
   AUDIT_LOG_PURGE_QUEUE,
   CREDENTIAL_VERIFICATION_DLQ,
   CREDENTIAL_VERIFICATION_QUEUE,
+  EVIDENCE_EXPIRATION_QUEUE,
   QLIX_POLL_DLQ,
   QLIX_POLL_QUEUE,
   QLIX_RECALIBRATION_DLQ,
@@ -38,6 +40,7 @@ const queues = [
   { name: AUDIO_EVALUATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: PDF_GENERATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: AUDIT_LOG_PURGE_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
+  { name: EVIDENCE_EXPIRATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: CREDENTIAL_VERIFICATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: QLIX_POLL_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
   { name: QLIX_RECALIBRATION_QUEUE, defaultJobOptions: DEFAULT_JOB_OPTIONS },
@@ -62,6 +65,7 @@ const queues = [
       connection: { url: env.REDIS_URL },
     }),
     BullModule.registerQueue(...queues),
+    forwardRef(() => EvidenceModule),
   ],
   providers: [
     EmailProcessor,

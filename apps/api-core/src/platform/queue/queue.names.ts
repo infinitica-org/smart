@@ -28,6 +28,10 @@ export const AUDIT_LOG_RETENTION_DAYS = 20;
 export const AUDIT_LOG_PURGE_JOB_ID = 'audit-log-purge-daily' as const;
 export const AUDIT_LOG_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+export const EVIDENCE_EXPIRATION_QUEUE = 'evidence_expiration' as const;
+export const EVIDENCE_EXPIRATION_JOB_ID = 'evidence-expiration-daily' as const;
+export const EVIDENCE_EXPIRATION_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 export const DEFAULT_JOB_OPTIONS = {
   attempts: 5,
   backoff: { type: 'exponential' as const, delay: 2_000 },
