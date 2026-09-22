@@ -3615,6 +3615,18 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 150,
     summary: 'Retrieve historical score rubric version bindings for a candidate.',
   },
+  {
+    method: 'POST',
+    path: '/catalog/skills/:skillCode/retire',
+    module: 'catalog',
+    owner: 'Vedika Gowda',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'catalog.write',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Retire an outdated skill without deleting historical claims or version audit trails.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

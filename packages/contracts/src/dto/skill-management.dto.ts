@@ -199,3 +199,22 @@ export const HistoricalScoreRubricBindingRecordSchema = z.object({
 export type HistoricalScoreRubricBindingRecord = z.infer<
   typeof HistoricalScoreRubricBindingRecordSchema
 >;
+
+export const RetireSkillDtoSchema = z.object({
+  skillCode: z.string().trim().min(2),
+  reason: z.string().trim().min(5).max(500),
+  replacementSkillCode: z.string().trim().optional(),
+});
+
+export type RetireSkillDto = z.infer<typeof RetireSkillDtoSchema>;
+
+export const RetireSkillResultDtoSchema = z.object({
+  skillCode: z.string(),
+  status: z.literal('RETIRED'),
+  reason: z.string(),
+  replacementSkillCode: z.string().optional(),
+  historyPreserved: z.boolean(),
+  retiredAt: z.string(),
+});
+
+export type RetireSkillResultDto = z.infer<typeof RetireSkillResultDtoSchema>;

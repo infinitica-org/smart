@@ -21,6 +21,7 @@ import {
   DefineProficiencyCriteriaDtoSchema,
   MapSkillsToRoleDtoSchema,
   MergeSkillsDtoSchema,
+  RetireSkillDtoSchema,
   UpdateSkillDtoSchema,
   type BindScoreRubricVersionDto,
   type CreateSkillDto,
@@ -30,6 +31,8 @@ import {
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
   type ProficiencyCriteriaRecord,
+  type RetireSkillDto,
+  type RetireSkillResultDto,
   type RoleSkillMappingRecord,
   type SeSkillLibraryResponse,
   type SkillCompetenciesRecord,
@@ -525,6 +528,53 @@ export class CatalogService {
     const upperCode = skillCode.toUpperCase();
     const key = `${upperCode}:${candidateId}`;
     return this.scoreRubricBindings.get(key) || [];
+  }
+
+  retireSkill(skillCode: string, dto: RetireSkillDto): RetireSkillResultDto {
+    const parsed = RetireSkillDtoSchema.parse({ ...dto, skillCode });
+    const upperCode = parsed.skillCode.toUpperCase();
+
+    const existing = this.customSkills.get(upperCode) || this.getPredefinedAsRecord(upperCode);
+    if (!existing) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: `Skill ${upperCode} not found in taxonomy.`,
+      });
+    }
+
+    if (existing.status === 'ARCHIVED' || (existing.status as string) === 'RETIRED') {
+      throw new BadRequestException({
+        error: 'already_retired',
+        message: `Skill ${upperCode} is already retired or archived.`,
+      });
+    }
+
+    const retiredAt = new Date().toISOString();
+    const updatedRecord: SkillManagementRecord = {
+      ...existing,
+      status: 'ARCHIVED',
+      description:
+        `[RETIRED] ${parsed.reason}` +
+        (parsed.replacementSkillCode ? ` (Replaced by: ${parsed.replacementSkillCode})` : ''),
+      updatedAt: retiredAt,
+    };
+
+    this.customSkills.set(upperCode, updatedRecord);
+    this.recordSkillVersion(upperCode, 'SKILL_RETIRED', {
+      reason: parsed.reason,
+      replacementSkillCode: parsed.replacementSkillCode,
+      retiredAt,
+      snapshot: updatedRecord,
+    } as any);
+
+    return {
+      skillCode: upperCode,
+      status: 'RETIRED',
+      reason: parsed.reason,
+      replacementSkillCode: parsed.replacementSkillCode,
+      historyPreserved: true,
+      retiredAt,
+    };
   }
 
   private getPredefinedAsRecord(code: string): SkillManagementRecord | undefined {

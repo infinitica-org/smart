@@ -7,6 +7,7 @@ import {
   type DefineProficiencyCriteriaDto,
   type MapSkillsToRoleDto,
   type MergeSkillsDto,
+  type RetireSkillDto,
   type SkillQueryDto,
   type UpdateSkillDto,
 } from '@smart/contracts';
@@ -124,6 +125,13 @@ export class CatalogController {
     @Param('candidateId') candidateId: string,
   ) {
     return this.catalog.getScoreRubricBindings(skillCode, candidateId);
+  }
+
+  @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
+  @UseGuards(RolesGuard)
+  @Post('skills/:skillCode/retire')
+  retireSkill(@Param('skillCode') skillCode: string, @Body() dto: RetireSkillDto) {
+    return this.catalog.retireSkill(skillCode, { ...dto, skillCode });
   }
 
   @Public()

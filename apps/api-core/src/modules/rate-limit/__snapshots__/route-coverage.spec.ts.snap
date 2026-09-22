@@ -202,6 +202,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /catalog/skills": "catalog.write",
   "POST /catalog/skills/:skillCode/competencies": "catalog.write",
   "POST /catalog/skills/:skillCode/proficiency-criteria": "catalog.write",
+  "POST /catalog/skills/:skillCode/retire": "catalog.write",
   "POST /catalog/skills/:skillCode/rubric-bindings": "catalog.write",
   "POST /catalog/skills/merge": "catalog.write",
   "POST /certificate-endorsements/:token": "verify.certificateEndorsement",

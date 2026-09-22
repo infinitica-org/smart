@@ -404,4 +404,59 @@ describe('CatalogService - Skill Management (Th6-I297 & Th6-I298)', () => {
     expect(retrieved.length).toBe(1);
     expect(retrieved[0]?.boundRubricVersion).toBe('v2.0.0');
   });
+
+  it('retires an outdated skill without deleting history and records retirement version event (Th6-I304)', () => {
+    service.createSkill({
+      code: 'PYTHON_2_LEGACY',
+      name: 'Python 2.x Legacy Backend',
+      categoryId: 'PROGRAMMING_LANGUAGES',
+    });
+
+    service.bindScoreRubricVersion('PYTHON_2_LEGACY', {
+      candidateId: 'CAND_202',
+      skillCode: 'PYTHON_2_LEGACY',
+      score: 75.0,
+      tierEvaluated: 'L3',
+    });
+
+    const retireResult = service.retireSkill('PYTHON_2_LEGACY', {
+      skillCode: 'PYTHON_2_LEGACY',
+      reason: 'Python 2 reaches EOL; migrate to Python 3',
+      replacementSkillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+    });
+
+    expect(retireResult.skillCode).toBe('PYTHON_2_LEGACY');
+    expect(retireResult.status).toBe('RETIRED');
+    expect(retireResult.historyPreserved).toBe(true);
+
+    // Verify version history records SKILL_RETIRED event
+    const versions = service.getSkillVersions('PYTHON_2_LEGACY');
+    const lastVersion = versions.versions[versions.versions.length - 1];
+    expect(lastVersion?.changeType).toBe('SKILL_RETIRED');
+
+    // Verify historical score bindings remain accessible
+    const bindings = service.getScoreRubricBindings('PYTHON_2_LEGACY', 'CAND_202');
+    expect(bindings.length).toBe(1);
+    expect(bindings[0]?.score).toBe(75.0);
+  });
+
+  it('throws BadRequestException if attempting to retire an already retired skill', () => {
+    service.createSkill({
+      code: 'COBOL_MAINFRAME',
+      name: 'COBOL Mainframe',
+      categoryId: 'PROGRAMMING_LANGUAGES',
+    });
+
+    service.retireSkill('COBOL_MAINFRAME', {
+      skillCode: 'COBOL_MAINFRAME',
+      reason: 'Legacy language sunset',
+    });
+
+    expect(() =>
+      service.retireSkill('COBOL_MAINFRAME', {
+        skillCode: 'COBOL_MAINFRAME',
+        reason: 'Legacy language sunset again',
+      }),
+    ).toThrow(BadRequestException);
+  });
 });
