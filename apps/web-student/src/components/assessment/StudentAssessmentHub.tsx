@@ -97,6 +97,8 @@ export function StudentAssessmentHub() {
   const linkedContextBySkill = useMemo(() => {
     const map = new Map<string, SkillEvidenceContextView>();
     if (!evidenceBundle) return map;
+    // Claim-linked reads are integrated on `/assessments` skill detail to avoid
+    // one GET /users/me/evidence?claimId= request per hub card (N+1).
     for (const claim of claims) {
       map.set(
         claim.skillCode,

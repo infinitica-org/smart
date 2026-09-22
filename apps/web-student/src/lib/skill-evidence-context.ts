@@ -31,7 +31,99 @@ export type SkillEvidenceContextItemView = SkillEvidenceContextItem & {
 
 export type SkillEvidenceContextView = Omit<SkillEvidenceContext, 'items'> & {
   items: SkillEvidenceContextItemView[];
+  /** Populated from GET /users/me/evidence?claimId= when links exist. */
+  claimLinkedSource?: boolean;
+  /** Claim exists but no evidence rows are linked via SkillClaimEvidenceLink. */
+  explicitAssociationEmpty?: boolean;
 };
+
+export type ResolveSkillEvidenceContextInput = {
+  skillCode: string;
+  claimId?: string;
+  claimLinkedRecords: readonly EvidenceRecordDto[];
+  heuristicRecords: readonly EvidenceRecordDto[];
+  projects: readonly ProjectDto[];
+  projectMappingsByProjectId: ReadonlyMap<string, readonly ProjectSkillMappingDto[]>;
+  workExperiences: readonly WorkExperienceDto[];
+  options?: SkillEvidenceContextBuildOptions;
+};
+
+/** Maps explicitly claim-linked evidence records (all evidence types). */
+export function skillEvidenceContextFromClaimLinkedRecords(
+  records: readonly EvidenceRecordDto[],
+  catalogSkillCode: string,
+  options?: SkillEvidenceContextBuildOptions,
+): SkillEvidenceContextView {
+  const live = {
+    projectIds: options?.liveProjectIds,
+    experienceIds: options?.liveExperienceIds,
+  };
+  const items: SkillEvidenceContextItemView[] = records.map((record) => {
+    const label = skillEvidenceTitle(record, options);
+    const href = skillEvidenceProfileHref(record, live);
+    return {
+      evidenceType: record.evidenceType,
+      label,
+      href,
+      evidenceId: record.evidenceId,
+      verificationStatus: record.verificationStatus,
+      qualifiesForDemonstration: qualifiesAsSkillDemonstrationEvidence({
+        evidenceType: record.evidenceType,
+        relatedSkillCodes: record.relatedSkillIds,
+        catalogSkillCode,
+        verificationStatus: record.verificationStatus,
+      }),
+    };
+  });
+
+  return {
+    availableCount: items.length,
+    items,
+    claimLinkedSource: true,
+  };
+}
+
+/**
+ * Claim-linked evidence is authoritative when present. Otherwise fall back to the
+ * existing skill-code heuristic (profile tags / related skills).
+ */
+export function resolveSkillEvidenceContext(
+  input: ResolveSkillEvidenceContextInput,
+): SkillEvidenceContextView {
+  const {
+    skillCode,
+    claimId,
+    claimLinkedRecords,
+    heuristicRecords,
+    projects,
+    projectMappingsByProjectId,
+    workExperiences,
+    options,
+  } = input;
+
+  if (claimId && claimLinkedRecords.length > 0) {
+    return skillEvidenceContextFromClaimLinkedRecords(claimLinkedRecords, skillCode, options);
+  }
+
+  const heuristic = buildLinkedSkillEvidenceContext(
+    skillCode,
+    heuristicRecords,
+    projects,
+    projectMappingsByProjectId,
+    workExperiences,
+    options,
+  );
+
+  if (claimId && claimLinkedRecords.length === 0 && heuristic.availableCount === 0) {
+    return {
+      availableCount: 0,
+      items: [],
+      explicitAssociationEmpty: true,
+    };
+  }
+
+  return heuristic;
+}
 
 /** Mirrors api-core evidence context assembly for repository skill detail. */
 export function skillEvidenceContextFromRecords(

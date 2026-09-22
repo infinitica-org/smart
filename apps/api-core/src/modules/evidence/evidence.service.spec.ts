@@ -225,6 +225,204 @@ describe('EvidenceService credentials', () => {
   });
 });
 
+const FOREIGN_CLAIM_ID = '66666666-6666-4666-8666-666666666666';
+
+function mockEvidenceRow(
+  overrides: Partial<{
+    id: string;
+    studentId: string;
+    evidenceType: string;
+    verificationStatus: string;
+    relatedSkillCodes: string[];
+    claim: string | null;
+    updatedAt: Date;
+  }> = {},
+) {
+  return {
+    id: EVIDENCE_ID_1,
+    studentId: STUDENT_ID,
+    evidenceType: 'PROJECT',
+    source: 'CANDIDATE',
+    sourceOwner: null,
+    sourceReference: null,
+    evidenceDate: null,
+    submissionDate: null,
+    claim: 'Batch pipeline project',
+    context: null,
+    provenance: null,
+    accessibility: 'PRIVATE',
+    relatedSkillCodes: ['SE_REACT'],
+    verificationStatus: 'VERIFIED',
+    evidenceStrength: null,
+    evidenceReliability: null,
+    freshness: null,
+    sourceEntityId: null,
+    sourcePayload: null,
+    verificationMetadata: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    artifacts: [],
+    ...overrides,
+  };
+}
+
+describe('EvidenceService listEvidence (VER-01 read)', () => {
+  it('returns only evidence linked to the requested claimId', async () => {
+    const linkedRow = mockEvidenceRow({ id: EVIDENCE_ID_1 });
+    const { service, prisma } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([linkedRow]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(prisma.evidenceRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          studentId: STUDENT_ID,
+          claimLinks: { some: { claimId: CLAIM_ID_1 } },
+        },
+      }),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.evidenceId).toBe(EVIDENCE_ID_1);
+  });
+
+  it('never returns evidence belonging to another student', async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    await service.listEvidence(STUDENT_ID, { claimId: FOREIGN_CLAIM_ID });
+
+    expect(prisma.evidenceRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ studentId: STUDENT_ID }),
+      }),
+    );
+  });
+
+  it('returns an empty array when the claim has no linked evidence', async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(prisma.evidenceRecord.findMany).toHaveBeenCalled();
+    expect(rows).toEqual([]);
+  });
+
+  it('reflects the latest committed verificationStatus from the evidence row', async () => {
+    const updatedAt = new Date('2026-03-15T12:00:00.000Z');
+    const { service } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([
+            mockEvidenceRow({
+              id: EVIDENCE_ID_1,
+              verificationStatus: 'EXPIRED',
+              updatedAt,
+            }),
+          ]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(rows[0]?.verificationStatus).toBe('EXPIRED');
+    expect(rows[0]?.updatedAt).toBe(updatedAt.toISOString());
+  });
+
+  it('includes claim-linked evidence types beyond PROJECT and WORK_EXPERIENCE', async () => {
+    const { service } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([
+            mockEvidenceRow({
+              id: EVIDENCE_ID_1,
+              evidenceType: 'CREDENTIAL',
+              claim: 'AWS Solutions Architect',
+              relatedSkillCodes: [],
+              verificationStatus: 'PENDING',
+            }),
+          ]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(rows[0]?.evidenceType).toBe('CREDENTIAL');
+    expect(rows[0]?.verificationStatus).toBe('PENDING');
+  });
+
+  it('preserves REJECTED and DISPUTED statuses on linked evidence reads', async () => {
+    const { service } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([
+            mockEvidenceRow({
+              id: EVIDENCE_ID_1,
+              verificationStatus: 'REJECTED',
+            }),
+            mockEvidenceRow({
+              id: EVIDENCE_ID_2,
+              verificationStatus: 'DISPUTED',
+            }),
+          ]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(rows.map((row) => row.verificationStatus)).toEqual(['REJECTED', 'DISPUTED']);
+  });
+
+  it('returns empty results for a nonexistent claimId without throwing', async () => {
+    const { service } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    const rows = await service.listEvidence(STUDENT_ID, { claimId: FOREIGN_CLAIM_ID });
+
+    expect(rows).toEqual([]);
+  });
+
+  it('repeated listEvidence calls are read-only and return the same mapped rows', async () => {
+    const linkedRow = mockEvidenceRow({ id: EVIDENCE_ID_1 });
+    const findMany = vi.fn().mockResolvedValue([linkedRow]);
+    const { service } = buildService({
+      prisma: {
+        evidenceRecord: { findMany },
+      },
+    });
+
+    const first = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+    const second = await service.listEvidence(STUDENT_ID, { claimId: CLAIM_ID_1 });
+
+    expect(findMany).toHaveBeenCalledTimes(2);
+    expect(second).toEqual(first);
+  });
+});
+
 describe('EvidenceService associateEvidenceWithClaim (VER-01)', () => {
   it('successfully associates a single evidence item with a skill claim', async () => {
     const { service, auditPublisher, reconciliation } = buildService({
