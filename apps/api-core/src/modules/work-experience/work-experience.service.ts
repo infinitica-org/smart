@@ -2208,8 +2208,12 @@ export class WorkExperienceService {
 
     // 2. Domain matching: extract authoritative employer domain
     const resolvedDomain = this.extractOfferLetterDomain(exp);
+    const managerDomain = extractDomain(managerEmail);
+    let domainMatch: boolean | null = null;
+
     if (resolvedDomain) {
       const domainValidation = validateEmployerDomain(managerEmail, `https://${resolvedDomain}`);
+      domainMatch = domainValidation.domainMatch;
       if (!domainValidation.domainMatch) {
         throw new BadRequestException(
           `Manager email domain (${domainValidation.verifierDomain}) does not match employer domain (${resolvedDomain}). Please use your official company email.`,
@@ -2298,7 +2302,9 @@ export class WorkExperienceService {
       metadata: {
         endorsementId: endorsement.id,
         managerEmail,
+        managerDomain,
         resolvedDomain,
+        domainMatch,
       },
     });
 

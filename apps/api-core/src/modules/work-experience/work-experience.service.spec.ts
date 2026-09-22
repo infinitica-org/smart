@@ -2339,6 +2339,8 @@ describe('WorkExperienceService', () => {
             managerName: 'Jane Smith',
           }),
         ).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
+        expect(auditPublisher.record).not.toHaveBeenCalled();
       });
 
       it('rejects email domain that does not match employer domain', async () => {
@@ -2349,6 +2351,86 @@ describe('WorkExperienceService', () => {
             managerName: 'Jane Smith',
           }),
         ).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.workExperienceManagerEndorsement.create).not.toHaveBeenCalled();
+        expect(auditPublisher.record).not.toHaveBeenCalled();
+      });
+
+      it('accepts manager email on supported employer subdomain', async () => {
+        prisma.workExperience.findUnique.mockResolvedValue(mockExp);
+        const endorsementId = randomUUID();
+        prisma.workExperienceManagerEndorsement.create.mockResolvedValue({
+          id: endorsementId,
+          experienceId,
+          managerEmail: 'manager@sub.acme.com',
+          expiresAt: new Date(Date.now() + 120 * 3600 * 1000),
+          status: 'PENDING',
+        });
+
+        const res = await service.sendManagerEndorsement(mockStudentId, experienceId, {
+          managerEmail: 'manager@sub.acme.com',
+          managerName: 'Jane Smith',
+        });
+
+        expect(res.success).toBe(true);
+        expect(prisma.workExperienceManagerEndorsement.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              managerEmail: 'manager@sub.acme.com',
+              resolvedDomain: 'acme.com',
+            }),
+          }),
+        );
+        expect(auditPublisher.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metadata: expect.objectContaining({
+              managerDomain: 'sub.acme.com',
+              resolvedDomain: 'acme.com',
+              domainMatch: true,
+            }),
+          }),
+        );
+      });
+
+      it('allows corporate manager email when no authoritative employer domain is resolved', async () => {
+        const expWithoutResolvedDomain = {
+          ...mockExp,
+          organization: null,
+          companyWebsite: null,
+          documents: [{ documentType: 'OFFER_LETTER', validationResult: {} }],
+        };
+        prisma.workExperience.findUnique.mockResolvedValue(expWithoutResolvedDomain);
+        const endorsementId = randomUUID();
+        prisma.workExperienceManagerEndorsement.create.mockResolvedValue({
+          id: endorsementId,
+          experienceId,
+          managerEmail: 'manager@othercorp.com',
+          expiresAt: new Date(Date.now() + 120 * 3600 * 1000),
+          status: 'PENDING',
+        });
+
+        const res = await service.sendManagerEndorsement(mockStudentId, experienceId, {
+          managerEmail: 'manager@othercorp.com',
+          managerName: 'Jane Smith',
+        });
+
+        expect(res.success).toBe(true);
+        expect(prisma.workExperienceManagerEndorsement.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              managerEmail: 'manager@othercorp.com',
+              resolvedDomain: null,
+            }),
+          }),
+        );
+        expect(auditPublisher.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metadata: expect.objectContaining({
+              managerDomain: 'othercorp.com',
+              resolvedDomain: null,
+              domainMatch: null,
+            }),
+          }),
+        );
       });
 
       it('rejects missing endorser name', async () => {
@@ -2412,6 +2494,12 @@ describe('WorkExperienceService', () => {
         expect(auditPublisher.record).toHaveBeenCalledWith(
           expect.objectContaining({
             action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_SENT',
+            metadata: expect.objectContaining({
+              managerEmail: 'manager@acme.com',
+              managerDomain: 'acme.com',
+              resolvedDomain: 'acme.com',
+              domainMatch: true,
+            }),
           }),
         );
         expect(evidenceSync.syncWorkExperienceEvidenceRecord).not.toHaveBeenCalled();
