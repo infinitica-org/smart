@@ -19,6 +19,7 @@ import type {
   BatchMemberDto,
   CreateBatchRequest,
   CreateInstitutionRequest,
+  ConfigureInstitutionSettings,
   CreatePartnershipRequest,
   ListPartnershipRequestsQuery,
   PartnershipDecisionResponse,
@@ -244,6 +245,40 @@ export class InstitutionsService {
       nextSteps,
       provisionedInstitutionId: req.provisionedInstitutionId,
     };
+  }
+
+  async updateInstitutionConfiguration(
+    institutionId: string,
+    body: ConfigureInstitutionSettings,
+    adminUserId: string,
+  ): Promise<InstitutionDto> {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+    });
+    if (!institution) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const primaryDomain = body.domains?.[0] ?? institution.domain;
+    const updated = await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: {
+        name: body.name ?? institution.name,
+        domain: primaryDomain,
+      },
+      include: { plan: true },
+    });
+
+    this.logger.log(
+      `Institution settings updated for ${updated.name} (${institutionId}) by ${adminUserId}`,
+    );
+
+    const [dto] = await this.toInstitutionDtos([updated]);
+    return dto;
   }
 
   /* ----------------------------- platform admin ----------------------------- */
