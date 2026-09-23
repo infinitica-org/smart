@@ -3,9 +3,22 @@ import { QlixPollService } from './qlix-poll.service.js';
 
 describe('QlixPollService', () => {
   it('skips when a verification report already exists', async () => {
+    const completedExplanation =
+      'QLIX complete\n---smart-verify---\n' +
+      JSON.stringify({
+        qualityScore: 80,
+        duplicateScore: 0,
+        confidence: 0.85,
+        flags: [],
+        promptRef: 'project-verify@1',
+        auditId: null,
+        qlixStatus: 'COMPLETED',
+      });
     const prisma = {
       projectVerificationReport: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'report-1' }),
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: 'report-1', explanation: completedExplanation }),
       },
     };
     const service = new QlixPollService(
@@ -15,6 +28,7 @@ describe('QlixPollService', () => {
       { enqueueEnvelope: vi.fn() } as never,
       { get: vi.fn() } as never,
       { add: vi.fn() } as never,
+      { syncProjectEvidenceRecord: vi.fn() } as never,
     );
 
     await service.handlePoll({
@@ -66,6 +80,7 @@ describe('QlixPollService', () => {
     };
 
     const markVerifyComplete = vi.fn().mockResolvedValue(undefined);
+    const syncProjectEvidenceRecord = vi.fn().mockResolvedValue(undefined);
     const service = new QlixPollService(
       prisma as never,
       qlix as never,
@@ -73,6 +88,7 @@ describe('QlixPollService', () => {
       { enqueueEnvelope: vi.fn() } as never,
       { get: vi.fn().mockResolvedValue(null) } as never,
       { add: vi.fn() } as never,
+      { syncProjectEvidenceRecord } as never,
     );
 
     await service.handlePoll({

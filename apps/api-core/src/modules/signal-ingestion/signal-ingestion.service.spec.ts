@@ -126,4 +126,95 @@ describe('SignalIngestionService', () => {
       service.ingest('00000000-0000-4000-8000-000000000001', 'HACKERRANK'),
     ).rejects.toThrow(ConflictException);
   });
+
+  it('connect returns verificationStatus UNVERIFIED', async () => {
+    vi.mocked(mockAdapter.validateConnectInput).mockResolvedValue({
+      externalAccountId: 'ada_hr',
+      consentScope: 'hackerrank.profile.public',
+    });
+    vi.mocked(connections.upsert).mockResolvedValue({
+      id: 'conn-1',
+      userId: '00000000-0000-4000-8000-000000000001',
+      sourceId: 'HACKERRANK',
+      externalAccountId: 'ada_hr',
+      consentScopes: ['hackerrank.profile.public'],
+      status: 'ACTIVE',
+      connectedAt: '2026-09-11T00:00:00.000Z',
+      lastFetchedAt: null,
+      lastError: null,
+      metadata: {},
+    });
+    vi.mocked(connections.toSummary).mockReturnValue({
+      sourceId: 'HACKERRANK',
+      externalAccountId: 'ada_hr',
+      consentScopes: ['hackerrank.profile.public'],
+      status: 'ACTIVE',
+      connectedAt: '2026-09-11T00:00:00.000Z',
+      lastFetchedAt: null,
+    });
+
+    const res = await service.connect('00000000-0000-4000-8000-000000000001', 'HACKERRANK', {
+      hackerrankUsername: 'ada_hr',
+    });
+
+    expect(res.verificationStatus).toBe('UNVERIFIED');
+  });
+
+  it('disconnect sets connection status to REVOKED non-destructively', async () => {
+    vi.mocked(connections.get).mockResolvedValue({
+      id: 'conn-1',
+      userId: '00000000-0000-4000-8000-000000000001',
+      sourceId: 'HACKERRANK',
+      externalAccountId: 'ada_hr',
+      consentScopes: ['hackerrank.profile.public'],
+      status: 'ACTIVE',
+      connectedAt: '2026-09-11T00:00:00.000Z',
+      lastFetchedAt: null,
+      lastError: null,
+      metadata: {},
+    });
+
+    await service.disconnect('00000000-0000-4000-8000-000000000001', 'HACKERRANK');
+
+    expect(connections.upsert).toHaveBeenCalledWith(expect.objectContaining({ status: 'REVOKED' }));
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'signal.connection.revoked' }),
+    );
+  });
+
+  it('selectGithubRepositories updates metadata and triggers ingest', async () => {
+    vi.mocked(connections.get).mockResolvedValue({
+      id: 'conn-gh',
+      userId: '00000000-0000-4000-8000-000000000001',
+      sourceId: 'GITHUB',
+      externalAccountId: 'ada_gh',
+      consentScopes: ['github.profile.public_refresh'],
+      status: 'ACTIVE',
+      connectedAt: '2026-09-11T00:00:00.000Z',
+      lastFetchedAt: null,
+      lastError: null,
+      metadata: {},
+    });
+    vi.mocked(connections.upsert).mockResolvedValue({
+      id: 'conn-gh',
+      userId: '00000000-0000-4000-8000-000000000001',
+      sourceId: 'GITHUB',
+      externalAccountId: 'ada_gh',
+      consentScopes: ['github.profile.public_refresh'],
+      status: 'ACTIVE',
+      connectedAt: '2026-09-11T00:00:00.000Z',
+      lastFetchedAt: null,
+      lastError: null,
+      metadata: { selectedRepoFullNames: ['org/repo1'] },
+    });
+
+    const res = await service.selectGithubRepositories('00000000-0000-4000-8000-000000000001', [
+      'org/repo1',
+    ]);
+
+    expect(connections.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { selectedRepoFullNames: ['org/repo1'] } }),
+    );
+    expect(res.verificationStatus).toBe('UNVERIFIED');
+  });
 });

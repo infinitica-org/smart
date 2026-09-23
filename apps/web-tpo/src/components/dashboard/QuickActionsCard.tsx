@@ -24,7 +24,7 @@ const QUICK_ACTIONS: {
   accent: DashboardAccentKey;
 }[] = [
   {
-    href: '/provisioning',
+    href: '/whitelist',
     title: 'Onboard Candidates',
     description: 'Add new candidates to the platform',
     icon: UserPlus,

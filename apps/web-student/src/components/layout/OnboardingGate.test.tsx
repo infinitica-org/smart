@@ -8,6 +8,7 @@ const { replace, me } = vi.hoisted(() => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
+  usePathname: () => '/',
 }));
 
 vi.mock('../../lib/api', () => ({

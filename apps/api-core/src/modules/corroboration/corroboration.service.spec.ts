@@ -93,6 +93,23 @@ function createService(
     skillClaim: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    passiveSignalEvidence: {
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    corroborationSnapshot: {
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    corroborationReviewFlag: {
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    evidenceRecord: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    evidenceContradiction: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+    },
     ...prismaOverrides,
   };
   const weightModels = {

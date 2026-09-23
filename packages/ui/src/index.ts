@@ -23,12 +23,61 @@ export {
   type BadgeProps,
   type BadgeVariant,
 } from './components/badge';
-export { Card, CardDescription, CardHeader, CardTitle } from './components/card';
+export {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+  type CardVariant,
+  type CardProps,
+} from './components/card';
+export { StatusBadge, type WorkflowStatus, type StatusBadgeProps } from './components/status-badge';
+export { Modal, type ModalSize, type ModalProps } from './components/modal';
+export {
+  ConfirmDialog,
+  type ConfirmDialogVariant,
+  type ConfirmDialogProps,
+} from './components/confirm-dialog';
+export {
+  FormItem,
+  FormLabel,
+  FormDescription,
+  FormMessage,
+  FormSection,
+  FormErrorSummary,
+  formatFieldValidationError,
+  type FormItemProps,
+  type FormLabelProps,
+  type FormDescriptionProps,
+  type FormMessageProps,
+  type FormSectionProps,
+  type FormErrorSummaryProps,
+  type ValidationRule,
+} from './components/form-controls';
 export { Input, type InputProps } from './components/input';
 export { Alert, type AlertProps, type AlertTone } from './components/alert';
 export { LevelStepper, type LevelState, type LevelStepperProps } from './components/level-stepper';
 export { ProficiencyLevelHint } from './components/proficiency-level-hint';
 export { AppShell, type AppShellProps } from './components/app-shell';
+export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from './components/breadcrumbs';
+export { UserMenu, type UserMenuProps } from './components/user-menu';
+export {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  SuccessState,
+  UnauthorizedState,
+  AsyncStateContainer,
+  type LoadingStateProps,
+  type EmptyStateProps,
+  type ErrorStateProps,
+  type SuccessStateProps,
+  type UnauthorizedStateProps,
+  type AsyncStateContainerProps,
+} from './components/common-states';
+export * from './navigation/role-nav-config';
 export {
   SmartLogo,
   type SmartLogoKind,
@@ -124,5 +173,16 @@ export {
   AvatarGroupCount,
   AvatarBadge,
 } from './components/ui/avatar';
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from './components/ui/table';
 
 export const UI_VERSION = '0.1.0';

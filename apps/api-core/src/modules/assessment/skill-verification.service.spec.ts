@@ -60,6 +60,7 @@ function makeService(deps: {
   intelligence?: Record<string, unknown>;
   verification?: Record<string, unknown>;
   profile?: Record<string, unknown>;
+  evidenceSkillInference?: Record<string, unknown>;
   gradeQueue?: { add: ReturnType<typeof vi.fn> };
 }) {
   return new SkillVerificationService(
@@ -78,6 +79,9 @@ function makeService(deps: {
     (deps.outbox ?? { enqueueEnvelope: vi.fn() }) as never,
     intelligenceService(deps.intelligence) as never,
     verificationService(deps.verification) as never,
+    (deps.evidenceSkillInference ?? {
+      fuseForVerification: vi.fn().mockResolvedValue(null),
+    }) as never,
     profileCompletion(deps.profile) as never,
     deps.gradeQueue as never,
   );
@@ -138,7 +142,7 @@ describe('SkillVerificationService', () => {
     expect(gradeQueue.add).toHaveBeenCalledWith(
       'grade',
       { sessionId: SESSION_ID, userId: STUDENT_ID },
-      { jobId: `skill-verify-grade:${SESSION_ID}` },
+      { jobId: `skill-verify-grade-${SESSION_ID}` },
     );
   });
 

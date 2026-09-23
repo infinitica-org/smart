@@ -40,6 +40,7 @@ describe('qlix-recalibration', () => {
   });
 
   it('normalizes proficiency ceiling and unit scores', () => {
+    expect(proficiencyCeilingToScore('PROFICIENT')).toBe(0.625);
     expect(proficiencyCeilingToScore('ADVANCED')).toBe(0.75);
     expect(normalizeUnitScore(82)).toBeCloseTo(0.82);
     expect(normalizeUnitScore(0.66)).toBe(0.66);
