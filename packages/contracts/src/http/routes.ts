@@ -1108,6 +1108,18 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Resolved entitlements for the caller institution.',
   },
   {
+    method: 'PATCH',
+    path: '/tpo/institution/settings',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['INSTITUTION_ADMIN'],
+    rateLimit: 'role.institutionAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Configure institution profile, domains, and campuses.',
+  },
+  {
     method: 'GET',
     path: '/student/entitlements',
     module: 'institutions',

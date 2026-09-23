@@ -134,6 +134,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PATCH /placement/applications/:applicationId/stage": "placement.application",
   "PATCH /placement/employers/:employerId": "placement.opening",
   "PATCH /tpo/batches/:batchId": "role.institutionAdmin",
+  "PATCH /tpo/institution/settings": "role.institutionAdmin",
   "PATCH /users/me/evidence-profile/onboarding-selection": "role.student",
   "PATCH /users/me/evidence/:id": "role.student",
   "PATCH /users/me/projects/:id/skill-mappings": "role.student",
