@@ -1,7 +1,19 @@
-import { ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceService } from './evidence.service.js';
+
+const CLAIM_ID_1 = '11111111-1111-4111-8111-111111111111';
+const EVIDENCE_ID_1 = '22222222-2222-4222-8222-222222222222';
+const EVIDENCE_ID_2 = '33333333-3333-4333-8333-333333333333';
+const STUDENT_ID = '44444444-4444-4444-8444-444444444444';
 
 function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const evidenceRecordCreate = vi.fn().mockResolvedValue({
@@ -39,12 +51,21 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     ),
     ...overrides?.prisma,
   };
-  const reconciliation = { reconcileForStudent: vi.fn().mockResolvedValue(undefined) };
+  const reconciliation = {
+    reconcileForStudent: vi
+      .fn()
+      .mockResolvedValue({ contradictionsDetected: 0, reviewRequired: false }),
+  };
   const storageService = {
     upload: vi.fn().mockResolvedValue('credential-documents/student-1/file.pdf'),
   };
   const credentialVerificationQueue = { add: vi.fn().mockResolvedValue({ id: 'job-1' }) };
+  const evidenceReconciliationQueue = {
+    add: vi.fn().mockResolvedValue({ id: 'reconcile-1' }),
+    getJob: vi.fn().mockResolvedValue(null),
+  };
   const dedup = new CredentialDedupService(prisma as never);
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
 
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
@@ -58,6 +79,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     reconciliation as any,
     storageService as any,
     credentialVerificationQueue as any,
+    evidenceReconciliationQueue as any,
     dedup,
     skillClaimAutoDeclare as any,
     evidenceSync as any,
@@ -68,6 +90,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     reconciliation,
     storageService,
     credentialVerificationQueue,
+    evidenceReconciliationQueue,
     dedup,
     skillClaimAutoDeclare,
     evidenceSync,

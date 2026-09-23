@@ -93,13 +93,15 @@ export class EvidenceSyncService {
       include: { artifacts: true },
     });
 
+    const mappedStatus = mapWeStatusToEvidenceVerification(row.status);
+
     const payload = {
       studentId,
       evidenceType: 'WORK_EXPERIENCE' as const,
       source: 'CANDIDATE' as const,
       sourceEntityId: experienceId,
       relatedSkillCodes: relatedSkillCodesFromWorkExperience(source),
-      verificationStatus: mapWeStatusToEvidenceVerification(row.status),
+      verificationStatus: mappedStatus,
       claim: evidenceClaimFromWorkExperience(source),
       context: row.responsibilities,
       sourceOwner: row.verifierName,

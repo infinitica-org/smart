@@ -24,6 +24,7 @@ import {
   ListPlacementOutcomesQuerySchema,
   PatchApplicationStageRequestSchema,
   RecordOutcomeRequestSchema,
+  ReviewEvidenceRequestSchema,
   UpdatePlacementEmployerRequestSchema,
   type ApplicationConfidenceDto,
   type ApplicationDto,
@@ -44,6 +45,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { EvidenceService } from '../evidence/evidence.service.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
 import { EvidenceService } from '../evidence/evidence.service.js';

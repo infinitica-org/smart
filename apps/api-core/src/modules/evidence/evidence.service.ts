@@ -1,33 +1,67 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import { z } from 'zod';
 import {
+  AssociateEvidenceWithClaimRequestSchema,
   CreateEvidenceRequestSchema,
   CreateVerificationDecisionRequestSchema,
   LinkEvidenceToClaimRequestSchema,
   ProfessionalCredentialSchema,
   ProjectSkillMappingSchema,
+  ReviewEvidenceRequestSchema,
   SaveOnboardingSelectionRequestSchema,
   UpdateEvidenceRequestSchema,
   evidenceRequiresRelatedSkills,
+  type AssociateEvidenceWithClaimRequest,
+  type AssociateEvidenceWithClaimResponse,
   type CandidateEvidenceProfileDto,
+  type CandidateEvidenceProvenanceResponse,
+  type EvidenceProvenanceItemDto,
+  type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
   type EvidenceRecordVersionDto,
   type ListEvidenceRecordVersionsResponse,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
+  type ReviewEvidenceResponse,
   type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
-import { CREDENTIAL_VERIFICATION_QUEUE } from '../../platform/queue/queue.names.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import {
+  CREDENTIAL_VERIFICATION_QUEUE,
+  DEFAULT_JOB_OPTIONS,
+  EVIDENCE_RECONCILIATION_QUEUE,
+} from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
+import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
+import {
+  isIdempotentReviewRequest,
+  mapReviewDecisionToVerificationStatus,
+  mergeReviewVerificationMetadata,
+  reviewBlocksTerminalStatus,
+  reviewDecisionConflict,
+} from './evidence-review.logic.js';
+import { assertReviewerCanMutateCandidateEvidence } from './evidence-reviewer-auth.helper.js';
+import {
+  evidenceReconciliationJobId,
+  type EvidenceReconciliationJobPayload,
+} from './evidence-reconciliation.processor.js';
 import {
   toEvidenceRecordDto,
   toPassiveSignalEvidenceDto,
@@ -57,6 +91,8 @@ export class EvidenceService {
     @Inject(StorageService) private readonly storageService: StorageService,
     @InjectQueue(CREDENTIAL_VERIFICATION_QUEUE)
     private readonly credentialVerificationQueue: Queue<CredentialVerificationJobPayload>,
+    @InjectQueue(EVIDENCE_RECONCILIATION_QUEUE)
+    private readonly evidenceReconciliationQueue: Queue<EvidenceReconciliationJobPayload>,
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
@@ -295,13 +331,39 @@ export class EvidenceService {
     return toEvidenceRecordDto(row);
   }
 
-  async linkEvidenceToClaim(
+  async associateEvidenceWithClaim(
     studentId: string,
-    evidenceId: string,
+    claimIdParam: string | undefined,
     body: unknown,
-  ): Promise<SkillClaimEvidenceLinkDto> {
-    await this.getEvidence(studentId, evidenceId);
-    const input = LinkEvidenceToClaimRequestSchema.parse(body);
+  ): Promise<AssociateEvidenceWithClaimResponse> {
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    let input: AssociateEvidenceWithClaimRequest;
+    try {
+      input = AssociateEvidenceWithClaimRequestSchema.parse({
+        ...raw,
+        claimId: claimIdParam ?? raw.claimId,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new BadRequestException({
+          error: 'validation_failed',
+          message: err.issues.map((e: z.ZodIssue) => e.message).join(' '),
+          statusCode: 400,
+        });
+      }
+      throw err;
+    }
+
+    const targetClaimId = input.claimId;
+    if (!targetClaimId) {
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: 'A valid claimId must be provided in URL or request body.',
+        statusCode: 400,
+      });
+    }
+
+    // 1. Verify claim exists and belongs to studentId
     const claim = await this.prisma.skillClaim.findFirst({
       where: { id: input.claimId, studentId },
       include: { skill: { select: { code: true } } },
@@ -313,14 +375,22 @@ export class EvidenceService {
         statusCode: 404,
       });
     }
-    const link = await this.prisma.skillClaimEvidenceLink.upsert({
-      where: { claimId_evidenceId: { claimId: input.claimId, evidenceId } },
-      create: {
-        claimId: input.claimId,
-        evidenceId,
-        weight: input.weight,
+
+    // 2. Validate claim state (LOCKED claims cannot be updated with evidence)
+    if (claim.status === 'LOCKED') {
+      throw new BadRequestException({
+        error: 'invalid_claim_state',
+        message: 'Cannot associate evidence with a locked skill claim.',
+        statusCode: 400,
+      });
+    }
+
+    // 3. Verify all evidence records exist, belong to studentId, and are in valid states
+    const evidenceRecords = await this.prisma.evidenceRecord.findMany({
+      where: {
+        id: { in: input.evidenceIds },
+        studentId,
       },
-      update: { weight: input.weight },
     });
     await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
     return toSkillClaimEvidenceLinkDto(link);
@@ -603,6 +673,367 @@ export class EvidenceService {
         message: 'This project is inactive and cannot be updated.',
         statusCode: 400,
       });
+    }
+  }
+
+  /**
+   * VER-01 — Authorized employer/placement read endpoint for candidate evidence provenance readout.
+   * Categorizes existing evidence records into provenance categories (SELF_DECLARED, SOURCE_VERIFIED, ASSESSED, HUMAN_REVIEWED).
+   * Enforces strict server-side authorization:
+   * - INSTITUTION_ADMIN / PLACEMENT_STAFF: candidate must belong to the caller's institution (user.inst).
+   * - COMPANY / B2B_PARTNER: candidate must have an active Application for a JobOpening owned by user.companyId.
+   * - SUPER_ADMIN: unrestricted read access.
+   */
+  async getCandidateEvidenceProvenance(
+    caller: RequestUser,
+    studentId: string,
+  ): Promise<CandidateEvidenceProvenanceResponse> {
+    const candidate = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, role: true, institutionId: true },
+    });
+
+    if (!candidate || candidate.role !== 'STUDENT') {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Candidate not found.',
+        statusCode: 404,
+      });
+    }
+
+    // Authorization checks
+    if (caller.role === 'SUPER_ADMIN') {
+      // Allowed
+    } else if (caller.role === 'INSTITUTION_ADMIN' || caller.role === 'PLACEMENT_STAFF') {
+      if (!caller.inst || caller.inst !== candidate.institutionId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'You do not have access to candidate evidence outside your institution.',
+          statusCode: 403,
+        });
+      }
+    } else if (caller.role === 'COMPANY' || caller.role === 'B2B_PARTNER') {
+      if (!caller.companyId) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'Company account is not associated with a registered company.',
+          statusCode: 403,
+        });
+      }
+
+      const applicationCount = await this.prisma.application.count({
+        where: {
+          studentId,
+          opening: {
+            companyId: caller.companyId,
+          },
+        },
+      });
+
+      if (applicationCount === 0) {
+        throw new ForbiddenException({
+          error: 'forbidden',
+          message: 'You do not have authorization to view evidence for this candidate.',
+          statusCode: 403,
+        });
+      }
+    } else {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Unauthorized role to view candidate evidence provenance.',
+        statusCode: 403,
+      });
+    }
+
+    const [evidenceRows, decisions] = await Promise.all([
+      this.prisma.evidenceRecord.findMany({
+        where: { studentId },
+        select: {
+          id: true,
+          evidenceType: true,
+          source: true,
+          verificationStatus: true,
+          verificationMetadata: true,
+          claim: true,
+          context: true,
+          relatedSkillCodes: true,
+          evidenceStrength: true,
+          evidenceReliability: true,
+          sourceOwner: true,
+          sourceReference: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.verificationDecision.findMany({
+        where: { claim: { studentId }, reviewerId: { not: null } },
+        select: { claimId: true, reviewerId: true },
+      }),
+    ]);
+
+    const hasReviewerDecisionMap = decisions.length > 0;
+
+    const summary: EvidenceProvenanceSummary = {
+      SELF_DECLARED: 0,
+      SOURCE_VERIFIED: 0,
+      ASSESSED: 0,
+      HUMAN_REVIEWED: 0,
+    };
+
+    const items: EvidenceProvenanceItemDto[] = evidenceRows.map((row) => {
+      const categories = deriveEvidenceCategories({
+        evidenceType: row.evidenceType,
+        source: row.source,
+        verificationStatus: row.verificationStatus,
+        verificationMetadata: row.verificationMetadata as Record<string, unknown> | null,
+        hasReviewerDecision: hasReviewerDecisionMap,
+      });
+
+      for (const cat of categories) {
+        summary[cat]++;
+      }
+
+      return {
+        evidenceId: row.id,
+        evidenceType: row.evidenceType as EvidenceProvenanceItemDto['evidenceType'],
+        source: row.source as EvidenceProvenanceItemDto['source'],
+        verificationStatus:
+          row.verificationStatus as EvidenceProvenanceItemDto['verificationStatus'],
+        categories,
+        claim: row.claim ?? undefined,
+        context: row.context ?? undefined,
+        relatedSkillIds: row.relatedSkillCodes,
+        evidenceStrength:
+          (row.evidenceStrength as EvidenceProvenanceItemDto['evidenceStrength']) ?? undefined,
+        evidenceReliability:
+          (row.evidenceReliability as EvidenceProvenanceItemDto['evidenceReliability']) ??
+          undefined,
+        sourceOwner: row.sourceOwner ?? undefined,
+        sourceReference: row.sourceReference ?? undefined,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+      };
+    });
+
+    return {
+      studentId,
+      total: items.length,
+      summary,
+      items,
+    };
+  }
+
+  /**
+   * VER-01 — Institution reviewer marks evidence accepted, rejected, or needing information.
+   * Uses compare-and-set on verificationStatus; idempotent on identical reviewer decisions.
+   */
+  async reviewEvidence(
+    caller: RequestUser,
+    studentId: string,
+    evidenceId: string,
+    body: unknown,
+  ): Promise<ReviewEvidenceResponse> {
+    const input = ReviewEvidenceRequestSchema.parse(body);
+    await assertReviewerCanMutateCandidateEvidence(this.prisma, caller, studentId);
+
+    const record = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found for this candidate.',
+        statusCode: 404,
+      });
+    }
+
+    const currentStatus = record.verificationStatus as EvidenceVerificationStatus;
+    const existingMetadata =
+      (record.verificationMetadata as Record<string, unknown> | null) ?? null;
+
+    if (reviewBlocksTerminalStatus(currentStatus)) {
+      throw new BadRequestException({
+        error: 'validation_error',
+        message: 'Expired evidence cannot be reviewed.',
+        statusCode: 400,
+      });
+    }
+
+    if (reviewDecisionConflict(currentStatus, input.decision)) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'Rejected evidence cannot be accepted without a new review workflow.',
+        statusCode: 409,
+      });
+    }
+
+    if (isIdempotentReviewRequest(currentStatus, existingMetadata, input.decision, caller.sub)) {
+      const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+      return {
+        evidence: toEvidenceRecordDto(record),
+        decision: input.decision,
+        idempotent: true,
+        reconciliation,
+      };
+    }
+
+    const targetStatus = mapReviewDecisionToVerificationStatus(input.decision);
+
+    const nowIso = new Date().toISOString();
+    const mergedMetadata = mergeReviewVerificationMetadata(existingMetadata, {
+      decision: input.decision,
+      reviewerId: caller.sub,
+      reviewerDisplay: caller.sub,
+      reason: input.reason,
+      requestedInformation: input.requestedInformation,
+      nowIso,
+    });
+
+    const priorState = {
+      verificationStatus: currentStatus,
+      source: record.source,
+      evidenceType: record.evidenceType,
+      reviewRequired: existingMetadata?.reviewRequired ?? false,
+    };
+
+    const updateResult = await this.prisma.evidenceRecord.updateMany({
+      where: {
+        id: evidenceId,
+        studentId,
+        verificationStatus: currentStatus,
+      },
+      data: {
+        verificationStatus: targetStatus,
+        verificationMetadata: mergedMetadata as Prisma.InputJsonValue,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      const refreshed = await this.prisma.evidenceRecord.findFirst({
+        where: { id: evidenceId, studentId },
+        include: { artifacts: true },
+      });
+      if (!refreshed) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: 'Evidence not found for this candidate.',
+          statusCode: 404,
+        });
+      }
+
+      const refreshedMetadata =
+        (refreshed.verificationMetadata as Record<string, unknown> | null) ?? null;
+      if (
+        isIdempotentReviewRequest(
+          refreshed.verificationStatus as EvidenceVerificationStatus,
+          refreshedMetadata,
+          input.decision,
+          caller.sub,
+        )
+      ) {
+        const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+        return {
+          evidence: toEvidenceRecordDto(refreshed),
+          decision: input.decision,
+          idempotent: true,
+          reconciliation,
+        };
+      }
+
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'Evidence review conflict — another reviewer updated this record.',
+        statusCode: 409,
+      });
+    }
+
+    const updated = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found after review.',
+        statusCode: 404,
+      });
+    }
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.updated',
+        resourceType: 'evidence_record',
+        resourceId: evidenceId,
+        reasonCode: input.reason?.trim() ?? null,
+        metadata: {
+          priorState,
+          newState: {
+            verificationStatus: targetStatus,
+            source: record.source,
+            evidenceType: record.evidenceType,
+            reviewRequired: mergedMetadata.reviewRequired ?? false,
+          },
+          source: record.source,
+          evidenceType: record.evidenceType,
+          decision: input.decision,
+          institutionId: caller.inst ?? null,
+          trigger: 'evidence_review',
+          requestedInformation: input.requestedInformation ?? null,
+        },
+      });
+    }
+
+    const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
+
+    return {
+      evidence: toEvidenceRecordDto(updated),
+      decision: input.decision,
+      idempotent: false,
+      reconciliation,
+    };
+  }
+
+  private async ensureEvidenceReconciliationQueued(
+    studentId: string,
+    evidenceId: string,
+  ): Promise<ReviewEvidenceResponse['reconciliation']> {
+    const jobId = evidenceReconciliationJobId(studentId, evidenceId);
+    const existing = await this.evidenceReconciliationQueue.getJob(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === 'failed') {
+        await existing.retry();
+        return { status: 'QUEUED', jobId };
+      }
+      if (state === 'completed') {
+        return { status: 'COMPLETED', jobId };
+      }
+      if (state === 'active') {
+        return { status: 'PROCESSING', jobId };
+      }
+      return { status: 'QUEUED', jobId };
+    }
+
+    try {
+      await this.evidenceReconciliationQueue.add(
+        'reconcile-student',
+        { studentId, evidenceId, trigger: 'evidence_review' },
+        { jobId, ...DEFAULT_JOB_OPTIONS },
+      );
+      return { status: 'QUEUED', jobId };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/job.*exist/i.test(message)) {
+        return { status: 'QUEUED', jobId };
+      }
+      const raced = await this.evidenceReconciliationQueue.getJob(jobId);
+      if (raced) {
+        return { status: 'QUEUED', jobId };
+      }
+      return { status: 'FAILED', jobId };
     }
   }
 }

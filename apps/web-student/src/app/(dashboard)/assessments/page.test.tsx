@@ -266,4 +266,138 @@ describe('SkillRepositoryPage', () => {
       await screen.findByRole('button', { name: /Go GO_GOLANG_FOR_HIGH_PERFORMANCE_SERVICES/i }),
     ).toBeDefined();
   });
+
+  it('loads claim-linked evidence when the selected skill has a claim', async () => {
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    await waitFor(() => {
+      expect(listEvidenceMock).toHaveBeenCalledWith({
+        claimId: 'claim-2',
+      });
+      expect(listEvidenceMock).toHaveBeenCalledWith({
+        skillCode: 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT',
+      });
+    });
+  });
+
+  it('renders claim-linked evidence in the skill detail panel', async () => {
+    listEvidenceMock.mockImplementation((query?: { claimId?: string; skillCode?: string }) => {
+      if (query?.claimId) {
+        return Promise.resolve([
+          {
+            evidenceId: 'evidence-linked-1',
+            candidateId: 'student-1',
+            evidenceType: 'CREDENTIAL',
+            source: 'CANDIDATE',
+            relatedSkillIds: [],
+            verificationStatus: 'VERIFIED',
+            claim: 'AWS Certified Developer',
+            artifactIds: [],
+            contradictions: [],
+            accessibility: 'PRIVATE',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const panel = await screen.findByRole('region', { name: 'Linked profile evidence' });
+    expect(within(panel).getByText('Evidence associated with this skill')).toBeDefined();
+    expect(within(panel).getByText('AWS Certified Developer')).toBeDefined();
+  });
+
+  it('shows an explicit empty state when a claim has no associated evidence', async () => {
+    listEvidenceMock.mockResolvedValue([]);
+
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const panel = await screen.findByRole('region', { name: 'Linked profile evidence' });
+    expect(
+      within(panel).getByText(/No evidence has been associated with this skill yet\./),
+    ).toBeDefined();
+  });
+
+  it('shows a recoverable error and retries the evidence read', async () => {
+    listEvidenceMock.mockRejectedValueOnce(new Error('Network error')).mockResolvedValue([]);
+
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.getByText('Network error')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => {
+      expect(listEvidenceMock.mock.calls.length).toBeGreaterThan(2);
+    });
+  });
+
+  it('falls back to heuristic profile evidence when no claim-linked rows exist', async () => {
+    const projectId = '44444444-4444-4444-8444-444444444444';
+    listEvidenceMock.mockImplementation((query?: { claimId?: string; skillCode?: string }) => {
+      if (query?.claimId) {
+        return Promise.resolve([]);
+      }
+      if (query?.skillCode === 'JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT') {
+        return Promise.resolve([
+          {
+            evidenceId: 'evidence-heuristic-1',
+            candidateId: 'student-1',
+            evidenceType: 'PROJECT',
+            source: 'CANDIDATE',
+            sourceEntityId: projectId,
+            relatedSkillIds: ['JAVASCRIPT_TYPESCRIPT_FULL_STACK_DEVELOPMENT'],
+            verificationStatus: 'VERIFIED',
+            claim: 'Full-stack portfolio app',
+            artifactIds: [],
+            contradictions: [],
+            accessibility: 'PRIVATE',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    listProjectsMock.mockResolvedValue({
+      projects: [
+        {
+          projectId,
+          studentId: 'student-1',
+          title: 'Full-stack portfolio app',
+          problem: 'p',
+          approach: 'a',
+          stack: 'TS',
+          outcome: 'o',
+          loomUrl: null,
+          githubUrl: null,
+          liveUrl: null,
+          status: 'SUBMITTED',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          report: null,
+          interviewRequired: false,
+          interviewStatus: 'NOT_REQUIRED',
+          interviewCompletedAt: null,
+        },
+      ],
+    });
+
+    render(<SkillRepositoryPage />);
+    await selectSkill('JavaScript / TypeScript');
+
+    const panel = await screen.findByRole('region', { name: 'Linked profile evidence' });
+    expect(within(panel).getByText('Linked profile evidence')).toBeDefined();
+    expect(within(panel).getByText('Full-stack portfolio app')).toBeDefined();
+    expect(
+      within(panel).queryByText('No evidence has been associated with this skill yet.'),
+    ).toBeNull();
+  });
 });

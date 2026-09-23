@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { EvidenceRecordDto } from '@smart/contracts';
 import {
   buildLinkedSkillEvidenceContext,
+  resolveSkillEvidenceContext,
+  skillEvidenceContextFromClaimLinkedRecords,
   skillEvidenceContextFromRecords,
 } from './skill-evidence-context';
 
@@ -137,5 +139,120 @@ describe('skillEvidenceContextFromRecords', () => {
     expect(context.items[0]?.label).toBe('FastAPI Auth Service');
     expect(context.items[0]?.href).toContain(`project=${projectId}`);
     expect(context.items[0]?.verificationStatus).toBe('PENDING');
+  });
+});
+
+describe('skillEvidenceContextFromClaimLinkedRecords', () => {
+  it('includes credential evidence linked to a claim', () => {
+    const records: EvidenceRecordDto[] = [
+      {
+        ...baseRecord,
+        evidenceType: 'CREDENTIAL',
+        claim: 'AWS Certified Developer',
+        relatedSkillIds: [],
+        verificationStatus: 'PROVISIONAL',
+      },
+    ];
+    const context = skillEvidenceContextFromClaimLinkedRecords(
+      records,
+      'ETL_ELT_PIPELINE_DEVELOPMENT',
+    );
+    expect(context.availableCount).toBe(1);
+    expect(context.claimLinkedSource).toBe(true);
+    expect(context.items[0]?.label).toBe('AWS Certified Developer');
+    expect(context.items[0]?.verificationStatus).toBe('PROVISIONAL');
+  });
+});
+
+describe('resolveSkillEvidenceContext', () => {
+  it('prefers claim-linked evidence when links exist', () => {
+    const claimLinked: EvidenceRecordDto[] = [
+      {
+        ...baseRecord,
+        evidenceType: 'CREDENTIAL',
+        claim: 'Linked credential',
+        relatedSkillIds: [],
+      },
+    ];
+    const heuristic: EvidenceRecordDto[] = [
+      {
+        ...baseRecord,
+        evidenceType: 'PROJECT',
+        sourceEntityId: '44444444-4444-4444-8444-444444444444',
+        relatedSkillIds: ['ETL_ELT_PIPELINE_DEVELOPMENT'],
+      },
+    ];
+    const context = resolveSkillEvidenceContext({
+      skillCode: 'ETL_ELT_PIPELINE_DEVELOPMENT',
+      claimId: '77777777-7777-4777-8777-777777777777',
+      claimLinkedRecords: claimLinked,
+      heuristicRecords: heuristic,
+      projects: [],
+      projectMappingsByProjectId: new Map(),
+      workExperiences: [],
+    });
+    expect(context.claimLinkedSource).toBe(true);
+    expect(context.items).toHaveLength(1);
+    expect(context.items[0]?.label).toBe('Linked credential');
+  });
+
+  it('falls back to heuristic evidence when the claim has no links', () => {
+    const projectId = '44444444-4444-4444-8444-444444444444';
+    const heuristic: EvidenceRecordDto[] = [
+      {
+        ...baseRecord,
+        evidenceType: 'PROJECT',
+        sourceEntityId: projectId,
+        relatedSkillIds: ['ETL_ELT_PIPELINE_DEVELOPMENT'],
+      },
+    ];
+    const context = resolveSkillEvidenceContext({
+      skillCode: 'ETL_ELT_PIPELINE_DEVELOPMENT',
+      claimId: '77777777-7777-4777-8777-777777777777',
+      claimLinkedRecords: [],
+      heuristicRecords: heuristic,
+      projects: [],
+      projectMappingsByProjectId: new Map(),
+      workExperiences: [],
+      options: { liveProjectIds: new Set([projectId]) },
+    });
+    expect(context.claimLinkedSource).toBeUndefined();
+    expect(context.availableCount).toBe(1);
+  });
+
+  it('marks explicit association empty when claim exists with no linked or heuristic evidence', () => {
+    const context = resolveSkillEvidenceContext({
+      skillCode: 'ETL_ELT_PIPELINE_DEVELOPMENT',
+      claimId: '77777777-7777-4777-8777-777777777777',
+      claimLinkedRecords: [],
+      heuristicRecords: [],
+      projects: [],
+      projectMappingsByProjectId: new Map(),
+      workExperiences: [],
+    });
+    expect(context.explicitAssociationEmpty).toBe(true);
+    expect(context.availableCount).toBe(0);
+  });
+
+  it('uses heuristic evidence when no claimId exists', () => {
+    const projectId = '44444444-4444-4444-8444-444444444444';
+    const heuristic: EvidenceRecordDto[] = [
+      {
+        ...baseRecord,
+        evidenceType: 'PROJECT',
+        sourceEntityId: projectId,
+        relatedSkillIds: ['ETL_ELT_PIPELINE_DEVELOPMENT'],
+      },
+    ];
+    const context = resolveSkillEvidenceContext({
+      skillCode: 'ETL_ELT_PIPELINE_DEVELOPMENT',
+      claimLinkedRecords: [],
+      heuristicRecords: heuristic,
+      projects: [],
+      projectMappingsByProjectId: new Map(),
+      workExperiences: [],
+      options: { liveProjectIds: new Set([projectId]) },
+    });
+    expect(context.availableCount).toBe(1);
   });
 });

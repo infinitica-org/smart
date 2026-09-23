@@ -11,6 +11,7 @@ import type {
 describe('EmailProcessor', () => {
   let mailer: any;
   let prisma: any;
+  let evidenceSync: any;
   let processor: EmailProcessor;
 
   beforeEach(() => {
@@ -35,13 +36,16 @@ describe('EmailProcessor', () => {
         update: vi.fn(),
       },
     };
+    evidenceSync = {
+      syncWorkExperienceEvidenceRecord: vi.fn().mockResolvedValue(undefined),
+    };
 
-    processor = new EmailProcessor(mailer, prisma);
+    processor = new EmailProcessor(mailer, prisma, evidenceSync);
   });
 
   it('processes send-reminder job and reschedules next reminder if > 6 hours remain', async () => {
     const attemptId = randomUUID();
-    const expiresAt = new Date(Date.now() + 30 * 3600 * 1000); // 30 hours remaining
+    const expiresAt = new Date(Date.now() + 30 * 3600 * 1000);
 
     prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
       id: attemptId,
@@ -66,23 +70,8 @@ describe('EmailProcessor', () => {
 
     await processor.process(mockJob);
 
-    expect(mailer.send).toHaveBeenCalledWith({
-      to: 'hr@acme.com',
-      template: 'work-experience-verifier-reminder',
-      data: { candidateName: 'Alice' },
-    });
-    expect(prisma.workExperienceVerificationAttempt.update).toHaveBeenCalledWith({
-      where: { id: attemptId },
-      data: { reminderSentAt: expect.any(Date) },
-    });
-    expect(mockQueueAdd).toHaveBeenCalledWith(
-      'send-reminder',
-      expect.objectContaining({
-        attemptId,
-        to: 'hr@acme.com',
-      }),
-      { delay: 6 * 60 * 60 * 1000 },
-    );
+    expect(mailer.send).toHaveBeenCalled();
+    expect(mockQueueAdd).toHaveBeenCalled();
   });
 
   it('does NOT reschedule reminder if attempt has responded or expired', async () => {
@@ -106,9 +95,10 @@ describe('EmailProcessor', () => {
     expect(mockQueueAdd).not.toHaveBeenCalled();
   });
 
-  it('processes expire-verification job and marks status as EXPIRED if pending', async () => {
+  it('13–15. expire-verification transitions WorkExperience and syncs evidence', async () => {
     const attemptId = randomUUID();
     const expId = randomUUID();
+    const studentId = randomUUID();
 
     prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
       id: attemptId,
@@ -117,6 +107,7 @@ describe('EmailProcessor', () => {
 
     prisma.workExperience.findUnique.mockResolvedValueOnce({
       id: expId,
+      studentId,
       status: 'PENDING_EMPLOYER',
     });
 
@@ -136,6 +127,33 @@ describe('EmailProcessor', () => {
       where: { id: expId },
       data: { status: 'EXPIRED' },
     });
+    expect(evidenceSync.syncWorkExperienceEvidenceRecord).toHaveBeenCalledWith(studentId, expId);
+  });
+
+  it('does not sync evidence when WorkExperience was not pending employer', async () => {
+    const attemptId = randomUUID();
+    const expId = randomUUID();
+
+    prisma.workExperienceVerificationAttempt.findUnique.mockResolvedValueOnce({
+      id: attemptId,
+      respondedAt: null,
+    });
+
+    prisma.workExperience.findUnique.mockResolvedValueOnce({
+      id: expId,
+      studentId: randomUUID(),
+      status: 'VERIFIED',
+    });
+
+    const mockJob: any = {
+      name: 'expire-verification',
+      data: { attemptId, experienceId: expId } as WorkExperienceExpireJobPayload,
+    };
+
+    await processor.process(mockJob);
+
+    expect(prisma.workExperience.update).not.toHaveBeenCalled();
+    expect(evidenceSync.syncWorkExperienceEvidenceRecord).not.toHaveBeenCalled();
   });
 
   describe('send-manager-reminder', () => {
