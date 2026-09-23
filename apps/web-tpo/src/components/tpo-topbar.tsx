@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronRight, GraduationCap, LogOut, Menu, UserRound } from 'lucide-react';
+import { ChevronRight, GraduationCap, LogOut, Menu } from 'lucide-react';
+import type { AuthenticatedUser } from '@smart/contracts';
+import { api } from '../lib/api';
+import { signOut } from '../lib/auth';
 
 type Breadcrumb = { label: string; href?: string };
 
@@ -69,17 +72,6 @@ function getBreadcrumbs(pathname: string): Breadcrumb[] {
   }));
 }
 
-const TOP_NAV_ITEMS = [
-  { name: 'Dashboard', href: '/' },
-  { name: 'Students', href: '/students' },
-  { name: 'Whitelist', href: '/whitelist' },
-  { name: 'Employers', href: '/companies' },
-  { name: 'Reports', href: '/reports' },
-];
-
-import type { AuthenticatedUser } from '@smart/contracts';
-import { api } from '../lib/api';
-import { signOut } from '../lib/auth';
 type TpoTopbarProps = {
   onOpenMobileNav: () => void;
 };
@@ -114,12 +106,6 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
   }, []);
 
   const pathname = usePathname() || '/';
-
-  function isItemActive(href: string): boolean {
-    if (href === '/') return pathname === '/' || pathname === '/dashboard';
-    return pathname.startsWith(href);
-  }
-
   const breadcrumbs = getBreadcrumbs(pathname);
 
   return (

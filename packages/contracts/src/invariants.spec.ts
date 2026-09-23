@@ -204,20 +204,21 @@ describe('skill taxonomy (skill@1)', () => {
     expect(new Set(codes).size).toBe(codes.length);
   });
 
-  it('gives every skill all four proficiency levels', () => {
+  it('gives every skill all five proficiency levels', () => {
     for (const skill of SKILL_DEFINITIONS) {
       expect(Object.keys(skill.levels).sort()).toEqual([
         'ADVANCED',
         'BEGINNER',
         'INTERMEDIATE',
         'PROFESSIONAL',
+        'PROFICIENT',
       ]);
     }
   });
 
   // A question-count sum other than the level total does not throw at
   // runtime — it silently under- or over-fills an assessment. CI guard.
-  it('sums question-type counts to the level total (20/20/30/30) for every skill', () => {
+  it('sums question-type counts to the level total (20/20/25/30/30) for every skill', () => {
     for (const skill of SKILL_DEFINITIONS) {
       expect(() => assertSkillQuestionCounts(skill)).not.toThrow();
     }
@@ -232,12 +233,13 @@ describe('skill taxonomy (skill@1)', () => {
   it('gates the autonomous interview to Advanced and Professional only', () => {
     expect(LEVEL_VERIFICATION_METHOD.BEGINNER.interviewRequired).toBe(false);
     expect(LEVEL_VERIFICATION_METHOD.INTERMEDIATE.interviewRequired).toBe(false);
+    expect(LEVEL_VERIFICATION_METHOD.PROFICIENT.interviewRequired).toBe(false);
     expect(LEVEL_VERIFICATION_METHOD.ADVANCED.interviewRequired).toBe(true);
     expect(LEVEL_VERIFICATION_METHOD.PROFESSIONAL.interviewRequired).toBe(true);
   });
 
   it('requires a defended project only at Professional', () => {
-    for (const level of ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const) {
+    for (const level of ['BEGINNER', 'INTERMEDIATE', 'PROFICIENT', 'ADVANCED'] as const) {
       expect(LEVEL_VERIFICATION_METHOD[level].projectRequired, level).toBe(false);
     }
     expect(LEVEL_VERIFICATION_METHOD.PROFESSIONAL.projectRequired).toBe(true);
@@ -245,17 +247,19 @@ describe('skill taxonomy (skill@1)', () => {
 
   it('sets ascending pass marks across levels for every skill', () => {
     for (const skill of SKILL_DEFINITIONS) {
-      const { BEGINNER, INTERMEDIATE, ADVANCED, PROFESSIONAL } = skill.levels;
+      const { BEGINNER, INTERMEDIATE, PROFICIENT, ADVANCED, PROFESSIONAL } = skill.levels;
       expect(BEGINNER.passMark, skill.code).toBeLessThan(INTERMEDIATE.passMark);
-      expect(INTERMEDIATE.passMark, skill.code).toBeLessThan(ADVANCED.passMark);
+      expect(INTERMEDIATE.passMark, skill.code).toBeLessThan(PROFICIENT.passMark);
+      expect(PROFICIENT.passMark, skill.code).toBeLessThan(ADVANCED.passMark);
       expect(ADVANCED.passMark, skill.code).toBeLessThan(PROFESSIONAL.passMark);
     }
   });
 
-  it('matches LEVEL_QUESTION_TOTALS to the declared 20/20/30/30 pattern', () => {
+  it('matches LEVEL_QUESTION_TOTALS to the declared 20/20/25/30/30 pattern', () => {
     expect(LEVEL_QUESTION_TOTALS).toEqual({
       BEGINNER: 20,
       INTERMEDIATE: 20,
+      PROFICIENT: 25,
       ADVANCED: 30,
       PROFESSIONAL: 30,
     });
@@ -614,8 +618,8 @@ describe('SE-T03 project verification contracts', () => {
       rateLimit: 'projects.submit',
     });
     expect(ROUTES.find((entry) => entry.path === '/admin/project-review-queue')).toMatchObject({
-      owner: 'Vishal Bharath R',
-      module: 'assessment',
+      owner: 'Ramansh',
+      module: 'evaluation',
     });
     expect(getRateLimitPolicy('evaluation.projectVerify').limit).toBe(8);
   });

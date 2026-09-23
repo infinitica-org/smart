@@ -484,8 +484,12 @@ export function CandidateSuggestionsWorkspace({
       ) : sortedCandidates.length === 0 ? (
         <PlacementEmptyState
           icon={UserSearch}
-          title="No candidates match this opening"
-          description="No suggested candidates match the requirements for this job opening."
+          title="No ranked candidates"
+          description={
+            shortlist?.candidatesScoredCount === 0
+              ? 'No one in the eligible pool holds any required skill as verified yet. Rankings use verified skills only.'
+              : 'No suggested candidates matched this opening with the current filters.'
+          }
         />
       ) : (
         <section aria-label="Ranked Candidates List" className="flex flex-col gap-4">
@@ -502,15 +506,13 @@ export function CandidateSuggestionsWorkspace({
                 {sortedCandidates.length}
               </strong>{' '}
               ranked candidates
-              {run.eligiblePoolCount !== null && run.eligiblePoolCount > sortedCandidates.length ? (
+              {run.eligiblePoolCount !== null &&
+              shortlist?.candidatesScoredCount !== undefined &&
+              shortlist.candidatesScoredCount < run.eligiblePoolCount ? (
                 <>
                   {' '}
-                  ({run.eligiblePoolCount - sortedCandidates.length} more in the pool did not meet
-                  the role&apos;s minimum skill coverage
-                  {shortlist?.minSkillCoverageApplied !== undefined
-                    ? ` (${Math.round(shortlist.minSkillCoverageApplied * 100)}%)`
-                    : ''}
-                  )
+                  ({run.eligiblePoolCount - shortlist.candidatesScoredCount} in the pool had no
+                  verified required skills)
                 </>
               ) : null}
               {selectedIds.size > 0 ? (
@@ -579,7 +581,6 @@ export function CandidateSuggestionsWorkspace({
                   whyText={whyText}
                   skillCoveragePct={skillCoveragePct}
                   capabilityCoveragePct={capabilityCoveragePct}
-                  minSkillCoverageApplied={shortlist?.minSkillCoverageApplied}
                   selected={selectedIds.has(candidate.studentId)}
                   opportunitySent={sentIds.has(candidate.studentId)}
                   sending={sending}

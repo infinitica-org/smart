@@ -32,7 +32,7 @@ export const JdSkillExtractVariables = z.object({
 export type JdSkillExtractVariables = z.infer<typeof JdSkillExtractVariables>;
 
 const OUTPUT_SHAPE = `{
-  "requiredSkills": [{ "skillCode": string, "minProficiency": "BEGINNER"|"INTERMEDIATE"|"ADVANCED" }],
+  "requiredSkills": [{ "skillCode": string, "minProficiency": "BEGINNER"|"INTERMEDIATE"|"PROFICIENT"|"ADVANCED"|"PROFESSIONAL" }],
   "emphasisedCapabilities": [{
     "competencyId": string,
     "capability": string,
@@ -55,7 +55,7 @@ export const jdSkillExtractTemplate: PromptTemplate<JdSkillExtractVariables> = {
     system: [
       'Extract hiring requirements from a job description into the SMART skill@1 taxonomy.',
       'Use ONLY skill codes and competencyIds from the catalogs below — never invent codes.',
-      'Set minProficiency from JD language: exposure/familiarity=BEGINNER, solid/strong=INTERMEDIATE, expert/lead=ADVANCED.',
+      'Set minProficiency from JD language: exposure/familiarity=BEGINNER, solid/strong=INTERMEDIATE, proficient/production-ready=PROFICIENT, expert/lead=ADVANCED, principal/architect=PROFESSIONAL.',
       'Pick emphasisedCapabilities that the JD actually requires day-to-day, not nice-to-have fluff.',
       'Set parseConfidence below 0.6 when the JD is vague or spans multiple unrelated roles.',
       INJECTION_GUARD,

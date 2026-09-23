@@ -1,68 +1,108 @@
-# GitHub Actions on the free org plan
+# CI/CD & GitHub Plan Architecture
 
-> Owner: Tino (CI) · Audience: whoever sees “The job was not started because recent account payments have failed”
+> Owner: Tino (System Architect) · Applies to: SMART Monorepo
 
-SMART is on the **GitHub Free** org plan. That is enough if we stay inside the included minutes and never open a paid overage. It is **not** enough if a card fails or a spending limit trips — GitHub then refuses to **start** any hosted job, including 5-second lockfile checks.
+---
 
-## What the error actually means
+## 1. Current Plan Status — GitHub Free
 
-```
-The job was not started because recent account payments have failed
-or your spending limit needs to be increased.
-```
+SMART is currently on the **GitHub Free** organisational plan.
 
-This is **billing**, not a red test. Quality gates never ran.
+| Limit                            | Value                              |
+| -------------------------------- | ---------------------------------- |
+| CI minutes (Linux runners)       | **2,000 minutes / month**          |
+| Concurrent jobs                  | 20                                 |
+| CODEOWNERS enforcement           | ❌ Not available (Teams+ required) |
+| Required reviewers (branch rule) | ✅ Available (any user, not owner-scoped) |
+| Self-hosted runners              | ✅ Unlimited                       |
 
-Do this first (org owner, 2 minutes):
+> [!WARNING]
+> The 2,000 monthly minutes are **already exhausted** as of September 2026. Until the plan is upgraded or a self-hosted runner is added, new CI runs will queue without starting.
 
-1. GitHub → org **infinitica-org** → **Settings → Billing & plans**.
-2. Clear the failed payment / expired card, **or** remove the payment method if you do not want paid Actions at all.
-3. Set **Actions spending limit to $0**. Included minutes stay free. Overage cannot start, so a runaway workflow cannot surprise-bill you — it just stops.
-4. Confirm **Actions minutes** remaining this month (Free private repos: **2,000 Linux minutes**).
+### Immediate options (pick one)
 
-Until that page is clean, **no CI and no kvm2 autodeploy will start.** Deploy-dev only runs after a successful CI `workflow_run`.
+| Option | Effort | Cost | Notes |
+|--------|--------|------|-------|
+| **A. Upgrade to GitHub Teams** | Low (billing change) | $4/user/month (~$24/mo for 6 users) | 3,000 minutes/month + CODEOWNERS enforcement unlocked — **recommended** |
+| **B. Add a self-hosted runner** | Medium (VPS setup) | ~$0 (use an idle VM) | Unlimited minutes; do NOT run on the same VPS as a live environment |
+| **C. Reduce CI trigger frequency** | Low (config change) | Free | Skip CI on `[skip ci]` commits; use `paths` filters to avoid running on docs-only changes |
 
-Do **not** make the repo public just to get unlimited minutes unless the whole team agrees. The tree has env examples and internal docs.
+---
 
-## How we stay on free minutes
+## 2. CI Pipeline Architecture
 
-| Before (this week)                        | After                                    | Why                                              |
-| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| 4 heavy jobs, each `pnpm install`         | **1** `ci` job, one install              | Minutes are billed **per job**, not per workflow |
-| lockfile / merge-main / compose as extras | Same checks, cheap steps inside that job | Three 1-minute jobs still cost 3 minutes         |
-| Content Validate on every content path    | Unchanged, path-filtered                 | Rare                                             |
-| Deploy after CI                           | Unchanged                                | One extra job only when `dev` is green           |
+Our CI pipeline (`.github/workflows/ci.yml`) runs on `pull_request` and `push` against `main`, `qa`, and `dev`.
 
-Rough math: a typical PR used **~25–40 hosted minutes**. The collapsed workflow should land around **8–15**. That is ~130–200 PRs/month on 2,000 minutes if you do not spam `dev`.
+### Caching Strategy (conserving minutes)
 
-**Do not land three squash-merges in one minute.** `cancel-in-progress: true` kills the earlier `dev` CI, so deploy never sees `success`. One push to `dev`, wait for green, then the next.
+To maximise the monthly budget, the pipeline uses aggressive caching:
 
-## If hosted minutes run out anyway
+- **`actions/setup-node`:** Caches the `pnpm` global store — avoids re-downloading unchanged packages.
+- **Turborepo cache (`.turbo`):** Caches build outputs per `github.sha`. If a package hasn't changed, Turbo replays the cached output instantly — this is the biggest minute-saver on a monorepo.
 
-Register **kvm2** as a self-hosted runner (self-hosted jobs do **not** consume the 2,000 minutes). They still will not start if the org has a **failed payment** — fix billing first.
+> [!TIP]
+> Because of Turbo caching, a typical PR that touches only one package (e.g. `apps/api-core`) should complete CI in **5–8 minutes**, not 25. If you see consistently long runs, check that the `.turbo` cache is being restored (look for "Cache restored" in the CI log).
 
-On kvm2, as a dedicated `actions` user (not `deploy`):
+### Concurrency cancellation
 
-```bash
-# https://github.com/organizations/infinitica-org/settings/actions/runners/new
-mkdir -p ~/actions-runner && cd ~/actions-runner
-curl -fsSL -o actions-runner.tar.gz \
-  https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz
-tar xzf actions-runner.tar.gz
-./config.sh --url https://github.com/infinitica-org/smart --labels linux,kvm2
-./svc.sh install && ./svc.sh start
-```
+The `concurrency` block in `ci.yml` cancels in-progress runs when a new push arrives on the same ref. This prevents minute waste from stacked pushes during active development.
 
-Then change `runs-on: ubuntu-latest` in `.github/workflows/ci.yml` to `runs-on: [self-hosted, linux, kvm2]`. Do that in a follow-up PR after the runner shows **Idle** in the org.
+---
 
-## Local substitute (always works)
+## 3. PR Governance & Flow Enforcement
 
-```bash
-bash scripts/ci-local.sh
-```
+The promotion path `dev → qa → main` is enforced by `.github/workflows/enforce-pr-flow.yml`:
 
-Same gates as hosted CI: lockfile, compose config, lint, format, typecheck, unit tests, build.
+1. PRs to `qa` must come from `dev`.
+2. PRs to `main` must come from `qa` and must be authored by `@brittytino`.
+3. PRs to `dev` must come from a feature branch (not `qa`, `main`, or `develop`).
+4. Branch name and PR title convention violations are posted as PR comments (warning, non-blocking).
 
-## Branch protection
+Label completeness is checked by `.github/workflows/pr-label-check.yml` (warning comment only, never blocks CI).
 
-Required checks used to be `lockfile`, `merge-main`, `compose config`, `lint`, `typecheck`, `unit tests`, `build`. After this change the single required check is **`ci`**. Update org branch protection on `dev` / `qa` / `main` or GitHub will sit on “waiting for required checks.”
+---
+
+## 4. CODEOWNERS — Free Plan Limitation
+
+> [!IMPORTANT]
+> On GitHub Free, the `CODEOWNERS` file auto-requests reviews from the listed owners, but **cannot mechanically block a merge** if those owners haven't approved. The "Require review from Code Owners" branch protection option is only available on **GitHub Teams or above**.
+>
+> **Current enforcement:** process-based. The module owner is accountable for the quality of PRs into `dev`. Tino is accountable for architect-owned paths. When you upgrade, flip the switch in Settings → Branches and CODEOWNERS is immediately enforced with no file changes required.
+
+---
+
+## 5. Automated Deployments
+
+| Branch | Workflow | Trigger | Target |
+|--------|----------|---------|--------|
+| `dev`  | `deploy-dev.yml`  | Successful CI on `dev`  | kvm2 `smart-dev`  |
+| `qa`   | `deploy-qa.yml`   | Successful CI on `qa`   | kvm2 `smart-qa`   |
+| `main` | `deploy-prod.yml` | Successful CI on `main` | kvm4 `smart-prod` |
+
+Deployments use a **blue-green strategy** (`scripts/blue-green-deploy.sh`) to eliminate downtime. See script header for operation details.
+
+---
+
+## 6. Troubleshooting: Minutes Exhausted
+
+If CI jobs are stuck in a `Queued` state or return billing errors:
+
+1. Check the organisation's billing page: Settings → Billing & Plans.
+2. If minutes are exhausted:
+   - Option A: Upgrade to GitHub Teams (see §1).
+   - Option B: Register a self-hosted runner temporarily. In `.github/workflows/ci.yml` change `runs-on: ubuntu-latest` → `runs-on: self-hosted`. **Never run a CI runner on the same host as a live environment.**
+3. Docs-only or chore commits can skip CI by including `[skip ci]` in the commit message.
+
+---
+
+## 7. GitHub Teams — Migration Checklist
+
+When the organisation upgrades to GitHub Teams:
+
+- [ ] Verify billing is active and plan shows 3,000 Linux minutes/month.
+- [ ] Settings → Branches → `dev` protection rule: enable **"Require review from Code Owners"**.
+- [ ] Settings → Branches → `qa` protection rule: enable **"Require review from Code Owners"** + "Restrict who can dismiss pull request reviews" → `@brittytino`.
+- [ ] Settings → Branches → `main` protection rule: enable **"Require review from Code Owners"**.
+- [ ] No changes to `.github/CODEOWNERS` required — already correct.
+- [ ] Update this document: remove the Free plan limitation notes, update minute budget to 3,000.
+- [ ] Announce to team: CODEOWNERS is now mechanically enforced.

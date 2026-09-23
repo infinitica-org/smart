@@ -2,13 +2,7 @@ name: Content Validate
 
 on:
   pull_request:
-    branches: [main, qa, dev, develop]
-    paths:
-      - "tools/content-pipeline/**"
-      - "packages/contracts/src/domain/tracks.ts"
-      - "packages/contracts/src/domain/enums.ts"
-  push:
-    branches: [main, qa, dev, develop]
+    branches: [dev]
     paths:
       - "tools/content-pipeline/**"
       - "packages/contracts/src/domain/tracks.ts"
@@ -21,7 +15,7 @@ concurrency:
 jobs:
   content-validate:
     name: content validate
-    runs-on: [self-hosted, dev-runner]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5

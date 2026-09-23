@@ -16,6 +16,7 @@ import {
   API_PREFIX,
   AddBatchMemberRequestSchema,
   BatchImportMappingSchema,
+  ConfigureInstitutionSettingsSchema,
   CreateBatchRequestSchema,
   InviteStaffRequestSchema,
   UpdateStaffRoleRequestSchema,
@@ -51,6 +52,15 @@ export class InstitutionsTpoController {
   @Get('entitlements')
   entitlements(@CurrentUser() user: RequestUser) {
     return this.institutions.resolveInstitutionEntitlements(requireInstitutionId(user));
+  }
+
+  @Patch('institution/settings')
+  updateInstitutionSettings(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.updateInstitutionConfiguration(
+      requireInstitutionId(user),
+      ConfigureInstitutionSettingsSchema.parse(body),
+      user.sub,
+    );
   }
 
   @Get('students')

@@ -41,6 +41,15 @@ const candidate: CandidateMatchDto = {
         proficiency: 'INTERMEDIATE',
       },
     ],
+    competencyEvidenceSummaries: [
+      {
+        skillCode: 'DEEP_LEARNING_NEURAL_NETWORK_ENGINEERING',
+        capabilityLabel: 'Train and evaluate neural networks',
+        proficiency: 'INTERMEDIATE',
+        confidenceScore: 0.88,
+        evidenceSnippets: ['Explained validation split during project defense.'],
+      },
+    ],
   },
 };
 
@@ -67,5 +76,7 @@ describe('CandidateSuggestionCard', () => {
     expect(screen.getByText('Meets opening')).toBeDefined();
     expect(screen.getByText(/Verified on profile/i)).toBeDefined();
     expect(screen.getByRole('button', { name: /View skill gap/i })).toBeDefined();
+    expect(screen.getByText('Demonstrated capabilities')).toBeDefined();
+    expect(screen.getByText('Train and evaluate neural networks')).toBeDefined();
   });
 });

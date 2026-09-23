@@ -1,13 +1,8 @@
 import { z } from 'zod';
 import { UuidSchema } from '../../dto/common.js';
-import { LEVEL_VERIFICATION_METHOD } from '../skill-levels.js';
+import { LEVEL_VERIFICATION_METHOD, PROFICIENCY_LEVEL_ORDER } from '../skill-levels.js';
 
-export const ProficiencyRequirementLevelSchema = z.enum([
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-]);
+export const ProficiencyRequirementLevelSchema = z.enum(PROFICIENCY_LEVEL_ORDER);
 export type ProficiencyRequirementLevel = z.infer<typeof ProficiencyRequirementLevelSchema>;
 
 export const ProficiencyRequirementSchema = z.object({
@@ -23,7 +18,7 @@ export const ProficiencyRequirementSchema = z.object({
 });
 export type ProficiencyRequirement = z.infer<typeof ProficiencyRequirementSchema>;
 
-export const ProficiencyRequirementsSchema = z.array(ProficiencyRequirementSchema).max(4);
+export const ProficiencyRequirementsSchema = z.array(ProficiencyRequirementSchema).max(5);
 export type ProficiencyRequirements = z.infer<typeof ProficiencyRequirementsSchema>;
 
 export type ProficiencyVerificationFlags = {

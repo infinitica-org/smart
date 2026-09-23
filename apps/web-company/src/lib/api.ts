@@ -2,14 +2,11 @@ import {
   API_PREFIX,
   JobOpeningDtoSchema,
   ListJobOpeningsResponseSchema,
-  CompanyDtoSchema,
   CandidateMatchDtoSchema,
   z,
   type CreateJobOpeningRequest,
   type ListJobOpeningsQuery,
   type CandidateMatchDto,
-  type JobOpeningDto,
-  type CompanyDto,
 } from '@smart/contracts';
 import {
   SmartApiClient,

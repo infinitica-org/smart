@@ -42,7 +42,7 @@ const COMPETENCY_SLOTS: ReadonlyArray<{
       'interprets errors',
       'produces and explains a correct fix',
     ],
-    difficulty: 'ADVANCED',
+    difficulty: 'PROFICIENT',
   },
   {
     slot: 5,
@@ -107,6 +107,14 @@ export function buildDefaultProficiencyRequirements(
       level: 'INTERMEDIATE',
       requiredCompetencyIds: [c(1), c(2), c(3)],
       criticalCompetencyIds: [c(3)],
+      realWorldApplicationRequired: false,
+      substantialApplicationRequired: false,
+      interviewRequired: false,
+    },
+    {
+      level: 'PROFICIENT',
+      requiredCompetencyIds: [c(1), c(2), c(3), c(4)],
+      criticalCompetencyIds: [c(4)],
       realWorldApplicationRequired: false,
       substantialApplicationRequired: false,
       interviewRequired: false,

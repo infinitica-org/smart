@@ -793,6 +793,9 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
       event,
       now: new Date(),
       lastGenuineFailureAt: lastFailure?.createdAt ?? null,
+      retakePolicy: {
+        refreshDays: claim.skill.cooldownDays ?? SKILL_REFRESH_DAYS,
+      },
     });
 
     if (!transition.accepted) {

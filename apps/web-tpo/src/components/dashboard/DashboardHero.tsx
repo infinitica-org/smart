@@ -16,7 +16,7 @@ export function DashboardHero({
 }: DashboardHeroProps) {
   return (
     <section className="relative -mx-4 -mt-6 overflow-hidden border-b border-zinc-100/80 px-4 py-10 text-center md:-mx-6 md:-mt-4 md:px-6 md:py-12">
-      {/* Exact Multi-Stop Ambient Mesh Gradient (Mint on Left, Soft Lime on Right) */}
+      {/* Ambient Mesh Gradient */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -25,7 +25,7 @@ export function DashboardHero({
             radial-gradient(ellipse 60% 80% at 10% 20%, rgba(167, 243, 208, 0.55) 0%, rgba(204, 251, 241, 0.35) 40%, transparent 75%),
             radial-gradient(ellipse 55% 75% at 90% 20%, rgba(217, 249, 157, 0.55) 0%, rgba(254, 240, 138, 0.3) 40%, transparent 75%),
             radial-gradient(ellipse 50% 50% at 50% 10%, rgba(255, 255, 255, 0.8) 0%, transparent 70%),
-            linear-gradient(180deg, rgba(240, 253, 244, 0.3) 0%, rgba(255, 255, 255, 0) 100%)
+            linear-gradient(180deg, rgba(240, 253, 244, 0.3) 0%, rgba(255, 255, 255) 100%)
           `,
         }}
       />

@@ -34,6 +34,7 @@ import {
   type SkillClaimDto,
   type SkillVerifyPrepareDto,
   type SkillVerifySessionDto,
+  SKILL_PROFICIENCIES,
 } from '@smart/contracts';
 import type { FastifyRequest } from 'fastify';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -90,7 +91,7 @@ export class AssessmentController {
         skillCode: { type: 'string' },
         proficiency: {
           type: 'string',
-          enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'],
+          enum: [...SKILL_PROFICIENCIES],
         },
       },
     },

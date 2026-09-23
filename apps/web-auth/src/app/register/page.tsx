@@ -6,8 +6,8 @@ import { RegisterForm } from './register-form';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Student Registration · SMART',
-  description: 'Register using your official university email on SMART.',
+  title: 'Create your account · SMART',
+  description: 'Register for SMART — role-specific readiness certification for your institution.',
 };
 
 export default function RegisterPage() {

@@ -2,9 +2,10 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, qa, dev]
-  push:
-    branches: [main, qa, dev]
+    branches: [dev]
+    # Only run CI on feature PRs into dev — not on promotion merges to qa/main.
+    # This conserves GitHub Actions minutes on the Free plan.
+    # Deploy workflows (deploy-qa.yml, deploy-prod.yml) handle qa/main separately.
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -16,7 +17,7 @@ concurrency:
 jobs:
   ci:
     name: ci
-    runs-on: [self-hosted, dev-runner]
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
@@ -42,6 +43,14 @@ jobs:
 
       - uses: ./.github/actions/setup-node-pnpm
 
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: lint
         run: pnpm lint
 
@@ -55,9 +64,5 @@ jobs:
         run: pnpm test:unit
 
       - name: build
-        # kvm2 self-hosted runner is 2 vCPU/8GB and also runs the live dev stack —
-        # turbo's default concurrency builds multiple Next.js apps in parallel and
-        # OOM-kills under that memory pressure. Force one package at a time.
-        # (Invoke turbo directly — `pnpm build -- --concurrency=1` forwards the
-        # flag into each package's own build script instead of turbo's CLI.)
-        run: pnpm exec turbo run build --concurrency=1
+        # Uses default concurrency for GitHub-hosted runner
+        run: pnpm exec turbo run build

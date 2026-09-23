@@ -3,18 +3,27 @@ import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
   PasswordLoginRequestSchema,
-  RegisterStudentRequestSchema,
+  PasswordResetConfirmRequestSchema,
+  PasswordResetRequestSchema,
+  RegisterRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
 import { InvitationsService } from '../invitations/invitations.service.js';
 import { AuthService } from './auth.service.js';
+import { EmailVerificationService } from './email-verification.service.js';
+import { PasswordResetService } from './password-reset.service.js';
 
 @Controller(`${API_PREFIX}/auth`)
 export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
+    @Inject(EmailVerificationService) private readonly emailVerification: EmailVerificationService,
+    @Inject(PasswordResetService) private readonly passwordReset: PasswordResetService,
   ) {}
 
   @Public()
@@ -22,13 +31,6 @@ export class AuthController {
   login(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
     const parsed = PasswordLoginRequestSchema.parse(body);
     return this.auth.login(parsed.email, parsed.password, reply);
-  }
-
-  @Public()
-  @Post('register')
-  registerStudent(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
-    const parsed = RegisterStudentRequestSchema.parse(body);
-    return this.auth.registerStudent(parsed, reply);
   }
 
   @Public()
@@ -45,9 +47,58 @@ export class AuthController {
   }
 
   @Public()
+  @Get('institutions')
+  listSelectableInstitutions() {
+    return this.auth.listSelectableInstitutions();
+  }
+
+  @Public()
+  @Post('register')
+  async register(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+    const parsed = RegisterRequestSchema.parse(body);
+    const result = await this.auth.register(parsed, reply);
+    await this.emailVerification.sendForUser(
+      result.user.userId,
+      result.user.email,
+      result.user.fullName,
+    );
+    return result;
+  }
+
+  @Public()
+  @Post('verify-email/:token')
+  @HttpCode(204)
+  async verifyEmail(@Param('token') token: string) {
+    await this.emailVerification.confirm(token);
+  }
+
+  @Public()
+  @Post('password-reset/request')
+  @HttpCode(204)
+  async requestPasswordReset(@Body() body: unknown) {
+    const parsed = PasswordResetRequestSchema.parse(body);
+    await this.passwordReset.request(parsed.email);
+  }
+
+  @Public()
+  @Post('password-reset/:token/confirm')
+  @HttpCode(204)
+  async confirmPasswordReset(@Param('token') token: string, @Body() body: unknown) {
+    const parsed = PasswordResetConfirmRequestSchema.parse(body);
+    await this.passwordReset.confirm(token, parsed.newPassword);
+  }
+
+  @Public()
   @Get('invitations/:token')
   previewInvitation(@Param('token') token: string) {
     return this.invitations.preview(token);
+  }
+
+  /** Minimal COMPANY-only boundary for portal auth (Phase 6). */
+  @Get('company/account')
+  @Roles('COMPANY')
+  companyAccount(@CurrentUser() user: RequestUser) {
+    return this.auth.getCompanyPortalAccount(user.sub);
   }
 
   @Public()
@@ -59,6 +110,6 @@ export class AuthController {
   ) {
     const parsed = AcceptInvitationRequestSchema.parse(body);
     const user = await this.invitations.accept(token, parsed.password);
-    return this.auth.issueSession(user, reply);
+    return this.auth.issueSessionAfterInviteAccept(user, reply);
   }
 }

@@ -96,6 +96,7 @@ describe('InstitutionsService.getInstitution activeStudents30d', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
 
     const dto = await service.getInstitution(institutionId);
@@ -117,6 +118,7 @@ describe('InstitutionsService.getInstitution activeStudents30d', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
 
     const dto = await service.getInstitution(institutionId);
@@ -139,6 +141,7 @@ describe('InstitutionsService.getInstitution activeStudents30d', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
 
     const dto = await service.getInstitution(institutionId);

@@ -6,7 +6,8 @@ import {
   ProjectVerifyFlagSchema,
 } from '../domain/enums.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
-import { ProjectInterviewStatusSchema } from './project-defense.dto.js';
+import { DefenseTurnSchema } from './evaluation.dto.js';
+import { ProjectDefenseGradeSchema, ProjectInterviewStatusSchema } from './project-defense.dto.js';
 
 /**
  * SE-T03 / CN-T08 contracts.
@@ -195,6 +196,11 @@ export const ProjectDtoSchema = z.object({
   githubUrl: z.string().nullable(),
   liveUrl: z.string().nullable(),
   status: ProjectStatusSchema,
+  /**
+   * Portfolio lifecycle. False after the student replaces this project.
+   * Omitted values are treated as active by older clients.
+   */
+  isActive: z.boolean().optional(),
   createdAt: IsoDateTimeSchema,
   report: ProjectVerificationReportDtoSchema.nullable(),
   interviewRequired: z.boolean(),
@@ -209,6 +215,18 @@ export const ListMyProjectsResponseSchema = z.object({
   projects: z.array(ProjectDtoSchema),
 });
 export type ListMyProjectsResponse = z.infer<typeof ListMyProjectsResponseSchema>;
+
+/** Mark an owned project inactive and keep another owned project as the current one. */
+export const ReplaceProjectRequestSchema = z.object({
+  replacementProjectId: UuidSchema,
+});
+export type ReplaceProjectRequest = z.infer<typeof ReplaceProjectRequestSchema>;
+
+export const ReplaceProjectResponseSchema = z.object({
+  replacedProject: ProjectDtoSchema,
+  replacementProject: ProjectDtoSchema,
+});
+export type ReplaceProjectResponse = z.infer<typeof ReplaceProjectResponseSchema>;
 
 export const ProjectReviewQueueItemDtoSchema = z.object({
   projectId: UuidSchema,
@@ -230,3 +248,32 @@ export const ResolveProjectReviewRequestSchema = z.object({
   reason: z.string().min(8).max(2_000),
 });
 export type ResolveProjectReviewRequest = z.infer<typeof ResolveProjectReviewRequestSchema>;
+
+export const ListProjectReviewQueueResponseSchema = z.object({
+  items: z.array(ProjectReviewQueueItemDtoSchema),
+});
+export type ListProjectReviewQueueResponse = z.infer<typeof ListProjectReviewQueueResponseSchema>;
+
+export const ProjectReviewDetailDtoSchema = z.object({
+  queue: ProjectReviewQueueItemDtoSchema,
+  transcript: z.array(DefenseTurnSchema),
+  grade: ProjectDefenseGradeSchema,
+  verificationExplanation: z.string().nullable(),
+  qlixReportDigest: z.string().max(8_000).nullable(),
+  capabilities: z.array(
+    z.object({
+      capabilityLabel: z.string(),
+      category: z.string(),
+      proficiency: z.string(),
+      confidenceScore: z.number().min(0).max(1),
+      evidenceRefs: z.array(z.string()).max(10),
+    }),
+  ),
+});
+export type ProjectReviewDetailDto = z.infer<typeof ProjectReviewDetailDtoSchema>;
+
+export const ResolveProjectReviewResponseSchema = z.object({
+  projectId: UuidSchema,
+  status: ProjectStatusSchema,
+});
+export type ResolveProjectReviewResponse = z.infer<typeof ResolveProjectReviewResponseSchema>;

@@ -270,6 +270,7 @@ export const INVITATION_EMAIL_TEMPLATES = [
   'institution-admin-invite',
   'student-invite',
   'invite-reminder',
+  'company-portal-invite',
 ] as const;
 
 export const InvitationSentDataSchema = z.object({
@@ -442,6 +443,26 @@ export const CandidateSkillsDiscoveredEventSchema = envelopeSchema(
   CandidateSkillsDiscoveredDataSchema,
 );
 export type CandidateSkillsDiscoveredEvent = z.infer<typeof CandidateSkillsDiscoveredEventSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                 evidence-to-skill inference  (owner: Ramansh)              */
+/* -------------------------------------------------------------------------- */
+
+export const SkillInferenceUpdatedDataSchema = z.object({
+  userId: UuidSchema,
+  skillCode: z.string().min(1).max(80),
+  outcome: z.enum(['INFERRED', 'INSUFFICIENT_EVIDENCE', 'VETO_BLOCKED']),
+  inferredProficiency: z.string().max(40).nullable(),
+  previousInferredProficiency: z.string().max(40).nullable().optional(),
+  confidence: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+  evidenceCount: z.number().int().min(0),
+  computedAt: IsoDateTimeSchema,
+});
+export const SkillInferenceUpdatedEventSchema = envelopeSchema(
+  SMART_TOPICS.skillInferenceUpdated,
+  SkillInferenceUpdatedDataSchema,
+);
+export type SkillInferenceUpdatedEvent = z.infer<typeof SkillInferenceUpdatedEventSchema>;
 
 /* -------------------------------------------------------------------------- */
 /*                    corroboration pipeline  (owner: Ramansh / VB)           */

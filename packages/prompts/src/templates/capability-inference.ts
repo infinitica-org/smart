@@ -43,7 +43,7 @@ const CapabilityInferenceOutputCoreSchema = z.object({
         capabilityLabel: z.string().min(10).max(500),
         category: z.string().min(2).max(200),
         confidence: z.number().min(0).max(1),
-        proficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL']),
+        proficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'PROFICIENT', 'ADVANCED', 'PROFESSIONAL']),
         evidenceRefs: z.array(z.string().max(CAPABILITY_EVIDENCE_REF_MAX)).max(10),
       }),
     )
@@ -60,7 +60,7 @@ const OUTPUT_SHAPE = `{
     "capabilityLabel": string,
     "category": string,
     "confidence": number,
-    "proficiency": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "PROFESSIONAL",
+    "proficiency": "BEGINNER" | "INTERMEDIATE" | "PROFICIENT" | "ADVANCED" | "PROFESSIONAL",
     "evidenceRefs": string[]
   }]
 }`;

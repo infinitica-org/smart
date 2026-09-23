@@ -1,10 +1,7 @@
 @import '@smart/ui/styles.css';
 
-/*
- * Employer portal surfaces. Tokens mirror the TPO console (apps/web-tpo) so both
- * consoles read as one product. State colors follow the shared five-state language:
- * Verified (green) / In progress (blue) / Pending review (amber) / Locked (red).
- */
+@source '../**/*.{ts,tsx}';
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
 
 html,
 body {
@@ -48,4 +45,10 @@ body {
 
 body {
   color: var(--ds-text);
+}
+
+@layer components {
+  .company-canvas {
+    background-color: #f8fafc;
+  }
 }

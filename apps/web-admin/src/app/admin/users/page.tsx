@@ -42,6 +42,7 @@ import { api } from '@/lib/api';
 const PROFICIENCY_MEMBERS: Record<SkillProficiency, true> = {
   BEGINNER: true,
   INTERMEDIATE: true,
+  PROFICIENT: true,
   ADVANCED: true,
   PROFESSIONAL: true,
 };

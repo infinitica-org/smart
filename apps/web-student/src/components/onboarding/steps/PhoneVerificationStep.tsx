@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'motion/react';
-import { CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 import { LightSelect } from '../../ui/LightSelect';
 import type { OnboardingProfileForm } from '@/lib/onboarding-form';
 import { ErrorBanner, FieldLabel, PrimaryButton, StepHeading, TextInput } from '../wizard-ui';

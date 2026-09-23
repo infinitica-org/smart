@@ -164,12 +164,12 @@ export default function ConnectUniversityStep({
   return (
     <div data-testid="connect-university-step">
       <StepHeading
-        title="Connect to your Partner University"
+        title="Connect to your school"
         subtitle="Link your account to your university to unlock campus placements, batch verification, and institutional credentials."
       />
 
       <div className="mb-6 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200">
-        <p className="font-semibold">📊 Note on Institutional Access</p>
+        <p className="font-semibold">Note</p>
         <p className="mt-0.5 opacity-90">
           Your university must be an active SMART partner and must have whitelisted your student
           email to enable automatic credential verification.
@@ -218,7 +218,7 @@ export default function ConnectUniversityStep({
               setQuery(e.target.value);
               setSubmitError(null);
             }}
-            placeholder="Search university by name or domain (e.g. PSG, psgtech.ac.in)..."
+            placeholder="Find school"
             className="pl-10"
           />
         </div>
@@ -362,7 +362,7 @@ export default function ConnectUniversityStep({
           disabled={submitting}
           className="font-axiforma text-sm text-zinc-400 transition-colors hover:text-foreground disabled:opacity-40"
         >
-          {isCurrentPartnered ? 'Continue' : "I'll connect later"}
+          {isCurrentPartnered ? 'Continue' : 'Skip for now'}
         </button>
         {isCurrentPartnered && selectedId === partnershipStatus?.institutionId ? (
           <PrimaryButton onClick={onContinue}>Continue</PrimaryButton>

@@ -2,6 +2,9 @@ import { z } from 'zod';
 import {
   CandidateViewReasonCodeSchema,
   CompanyModeSchema,
+  CompanyOnboardingStatusSchema,
+  CompanyVerificationDocumentReviewStatusSchema,
+  CompanyVerificationDocumentTypeSchema,
   InstitutionListStatusSchema,
   PlanCodeSchema,
   SkillClaimStatusSchema,
@@ -11,6 +14,10 @@ import {
   UserRoleSchema,
 } from '../domain/enums.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
+import {
+  CompanyAddressSchema,
+  CompanyVerificationReviewDocumentSchema,
+} from './company-onboarding.dto.js';
 import { IntegrityScoreBandSchema } from './proctoring.dto.js';
 
 /**
@@ -91,6 +98,13 @@ export const UniversityContactRequestDtoSchema = z.object({
   createdAt: IsoDateTimeSchema,
 });
 export type UniversityContactRequestDto = z.infer<typeof UniversityContactRequestDtoSchema>;
+
+export const ConfigureInstitutionSettingsSchema = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  domains: z.array(InstitutionDomainSchema).min(1).optional(),
+  campuses: z.array(z.string().trim().min(2).max(100)).optional(),
+});
+export type ConfigureInstitutionSettings = z.infer<typeof ConfigureInstitutionSettingsSchema>;
 
 export const InstitutionDtoSchema = z.object({
   institutionId: UuidSchema,
@@ -623,13 +637,72 @@ export const VerificationQueueItemDtoSchema = z.object({
   verificationStatus: TenantVerificationStatusSchema,
   verificationReason: z.string().nullable(),
   createdAt: IsoDateTimeSchema,
+  /** Present for company tenants in self-onboarding review. */
+  onboardingStatus: CompanyOnboardingStatusSchema.optional(),
+  submissionId: UuidSchema.optional(),
+  representativeEmail: EmailSchema.optional(),
+  registrationCountry: z
+    .string()
+    .trim()
+    .length(2)
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+  documentCount: z.number().int().nonnegative().optional(),
+  submittedAt: IsoDateTimeSchema.optional(),
 });
 export type VerificationQueueItemDto = z.infer<typeof VerificationQueueItemDtoSchema>;
+
+/** SA review panel for a pending company verification submission. */
+export const CompanyVerificationReviewDocumentDtoSchema = z.object({
+  documentId: UuidSchema,
+  documentType: CompanyVerificationDocumentTypeSchema,
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSizeBytes: z.number().int().nonnegative(),
+  uploadedAt: IsoDateTimeSchema,
+  reviewStatus: CompanyVerificationDocumentReviewStatusSchema,
+  reviewReason: z.string().nullable(),
+  downloadUrl: z.string().url(),
+});
+export type CompanyVerificationReviewDocumentDto = z.infer<
+  typeof CompanyVerificationReviewDocumentDtoSchema
+>;
+
+export const CompanyVerificationReviewDetailDtoSchema = z.object({
+  tenantType: z.literal('company'),
+  tenantId: UuidSchema,
+  submissionId: UuidSchema,
+  name: z.string(),
+  website: z.string().nullable(),
+  verificationStatus: TenantVerificationStatusSchema,
+  onboardingStatus: CompanyOnboardingStatusSchema.nullable(),
+  representativeEmail: EmailSchema.optional(),
+  registrationCountry: z.string().trim().length(2).optional(),
+  legalName: z.string(),
+  submittedAt: IsoDateTimeSchema,
+  registeredAddress: CompanyAddressSchema.optional(),
+  businessRegistrationNumber: z.string().nullable().optional(),
+  taxId: z.string().nullable().optional(),
+  documents: z.array(CompanyVerificationReviewDocumentDtoSchema),
+});
+export type CompanyVerificationReviewDetailDto = z.infer<
+  typeof CompanyVerificationReviewDetailDtoSchema
+>;
+
+export const GetVerificationReviewQuerySchema = z.object({
+  tenantType: z.enum(['company']),
+});
+export type GetVerificationReviewQuery = z.infer<typeof GetVerificationReviewQuerySchema>;
 
 export const ResolveVerificationRequestSchema = z.object({
   tenantType: z.enum(['institution', 'company']),
   decision: z.enum(['APPROVED', 'REJECTED']),
   reason: z.string().trim().min(8).max(500),
+  /** Targets the open submission; rejects stale resolves when queue carried a newer submissionId. */
+  submissionId: UuidSchema.optional(),
+  /** Optional per-document SA review when tenantType is company. */
+  documentReviews: z.array(CompanyVerificationReviewDocumentSchema).optional(),
+  internalNotes: z.string().trim().max(2000).optional(),
 });
 export type ResolveVerificationRequest = z.infer<typeof ResolveVerificationRequestSchema>;
 

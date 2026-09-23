@@ -164,7 +164,7 @@ describe('SE-T05 match authorization', () => {
     ]);
   });
 
-  it.each(['B2B_PARTNER', 'STUDENT', 'SUPER_ADMIN'])(
+  it.each(['B2B_PARTNER', 'COMPANY', 'STUDENT', 'SUPER_ADMIN'])(
     'rejects %s on POST /placement/match',
     (role) => {
       const guard = new RolesGuard({
@@ -218,6 +218,7 @@ describe('SE-T05 POST /placement/match', () => {
     expect(sqlArg.values).toContain(institutionId);
     expect(sqlArg.sql).toContain("u.role = 'STUDENT'");
     expect(sqlArg.sql).toContain("status = 'VERIFIED'");
+    expect(sqlArg.sql).toContain('verified_until');
   });
 
   it('hides an opening owned by another institution behind not-found', async () => {
@@ -241,7 +242,7 @@ describe('SE-T05 POST /placement/match', () => {
     expect(prisma.$queryRaw.mock.calls[0][0].sql).toContain("status = 'VERIFIED'");
   });
 
-  it('keeps a verified-but-partial student on the list when coverage meets the gate', async () => {
+  it('keeps a verified partial match without a coverage cutoff', async () => {
     const { controller } = setup({
       students: [
         verifiedStudent({
@@ -263,10 +264,11 @@ describe('SE-T05 POST /placement/match', () => {
 
     const dto = await controller.match(tpoAdmin as never, {
       jdId: openingId,
-      minSkillCoverage: 0.5,
+      minSkillCoverage: 0.6,
     });
 
     expect(dto.candidates).toHaveLength(1);
+    expect(dto.candidatesScoredCount).toBe(1);
     expect(dto.candidates[0]?.matchScore).toBeLessThan(1);
     expect(dto.candidates[0]?.explanation.skillFit?.some((row) => row.status === 'PARTIAL')).toBe(
       true,
@@ -305,6 +307,8 @@ describe('SE-T05 POST /placement/match', () => {
         skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
         assessmentVerified: true,
         confidenceScore: 0.82,
+        proficiency: 'INTERMEDIATE',
+        evidenceRefs: ['Defense transcript excerpt'],
       },
     ]);
     prisma.project.findMany.mockResolvedValue([

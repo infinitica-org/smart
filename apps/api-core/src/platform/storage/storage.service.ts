@@ -3,6 +3,7 @@ import type { OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
@@ -98,6 +99,22 @@ export class StorageService implements OnModuleInit {
       expiresIn: SIGNED_URL_TTL_SECONDS,
     });
     return rewriteSignedUrlForBrowser(signed);
+  }
+
+  /** Overwrites an object at a fixed key (idempotent defense artifacts, etc.). */
+  async putObjectBuffer(params: {
+    objectKey: string;
+    buffer: Buffer;
+    contentType: string;
+  }): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: params.objectKey,
+        Body: params.buffer,
+        ContentType: params.contentType,
+      }),
+    );
   }
 
   /** Downloads an object buffer by key. */

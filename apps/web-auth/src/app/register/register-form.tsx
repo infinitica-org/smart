@@ -1,70 +1,66 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { isSmartApiError } from '@smart/api-client';
-import { isDisallowedEndorserEmailDomain } from '@smart/contracts';
 import { SmartLogo } from '@smart/ui';
+import type { SelectableInstitutionDto } from '@smart/contracts';
+import { ArrowUpRightIcon, EyeIcon, EyeOffIcon } from '../../components/auth-icons';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
 const inputClass =
-  'w-full rounded-lg border border-[#e2e8f0] bg-white px-4 py-3.5 text-[15px] text-[#172033] placeholder:text-[#94a3b8] transition-[border-color,box-shadow] focus:border-[#0f9f8f] focus:outline-none focus:ring-2 focus:ring-[#ecfdf5]';
+  'w-full rounded-lg border border-[#e2e8f0] bg-white px-4 py-3.5 text-[15px] text-[#172033] placeholder:text-[#94a3b8] transition-[border-color,box-shadow] focus:border-[#0f9f8f] focus:outline-none focus:ring-2 focus:ring-[#ecfdf5] disabled:opacity-60';
 
 const labelClass = 'mb-2 block text-[13px] font-medium tracking-[-0.01em] text-[#64748b]';
 
 export function RegisterForm() {
-  const searchParams = useSearchParams();
+  const [institutions, setInstitutions] = useState<SelectableInstitutionDto[]>([]);
+  const [institutionsError, setInstitutionsError] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [institutionId, setInstitutionId] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    api.auth
+      .listInstitutions()
+      .then((list) => {
+        setInstitutions(list);
+        setInstitutionId((current) => current || (list[0]?.id ?? ''));
+      })
+      .catch(() => setInstitutionsError(true));
+  }, []);
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
-
-    const cleanEmail = email.trim().toLowerCase();
-    if (isDisallowedEndorserEmailDomain(cleanEmail)) {
-      setError(
-        'Personal email addresses (e.g. Gmail, Yahoo) are not permitted. Please use your official university email.',
-      );
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (!institutionId && institutions.length > 0) {
+      setError('Select your institution.');
       return;
     }
-
     setLoading(true);
+    setError(null);
     try {
-      const result = await api.auth.registerStudent({
-        fullName: fullName.trim(),
-        email: cleanEmail,
+      const result = await api.auth.register({
+        email: email.trim().toLowerCase(),
         password,
+        fullName: fullName.trim(),
+        institutionId: institutionId || (institutions[0]?.id ?? ''),
       });
       storeSession(result.accessToken);
-      redirectForRole(result.user.role, result.accessToken, searchParams.get('returnTo'));
+      redirectForRole(result.user.role, result.accessToken);
     } catch (err) {
-      if (isSmartApiError(err)) {
-        if (err.code === 'personal_email_not_allowed') {
-          setError(
-            'Personal email addresses (e.g. Gmail, Yahoo) are not permitted. Please use your official university email.',
-          );
-        } else if (err.code === 'unregistered_university_domain') {
-          setError(
-            'Your university domain is not registered on SMART. Please contact your placement administrator.',
-          );
-        } else if (err.code === 'email_exists') {
-          setError('An account with this email address already exists. Please sign in instead.');
-        } else {
-          setError(err.message || 'Registration failed. Please verify your details and try again.');
-        }
-      } else {
-        setError('Registration failed. Please check your network connection and try again.');
-      }
+      setError(
+        isSmartApiError(err) && err.code === 'conflict'
+          ? 'An account with this email already exists.'
+          : 'Could not create your account. Check your details and try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -74,63 +70,34 @@ export function RegisterForm() {
     <section className="flex w-full max-w-[420px] flex-col items-center text-center">
       <SmartLogo kind="mark" tone="on-light" className="mx-auto size-11" title="SMART" />
 
-      <h1 className="mt-8 text-[2.25rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.5rem]">
-        Student Registration
+      <h1 className="mt-10 text-[2.5rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.875rem]">
+        Create your account
       </h1>
-      <p className="mt-2 text-[15px] leading-relaxed tracking-[-0.01em] text-[#64748b]">
-        Enter your official university email to get started.
+      <p className="mt-3 text-[17px] leading-relaxed tracking-[-0.01em] text-[#64748b] sm:text-lg">
+        Join SMART as a student.
       </p>
 
       {error ? (
-        <div
+        <p
           role="alert"
           className="mt-6 w-full rounded-lg border border-[#f3c8cc] bg-[#fff1f2] px-4 py-3 text-left text-sm text-[#c24141]"
         >
           {error}
-        </div>
+        </p>
+      ) : null}
+      {institutionsError ? (
+        <p
+          role="alert"
+          className="mt-6 w-full rounded-lg border border-[#f3c8cc] bg-[#fff1f2] px-4 py-3 text-left text-sm text-[#c24141]"
+        >
+          Could not load institutions. Refresh the page to try again.
+        </p>
       ) : null}
 
-      <div className="mt-8 w-full space-y-4">
-        <button
-          type="button"
-          onClick={() => {
-            alert('Google authentication will redirect to your school single sign-on provider.');
-          }}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 text-[14px] font-semibold text-[#172033] shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
-          </svg>
-          Continue with Google
-        </button>
-
-        <div className="relative flex items-center justify-center py-2">
-          <div className="w-full border-t border-[#e2e8f0]" />
-          <span className="absolute bg-[#f8fafc] px-3 text-xs font-medium text-[#94a3b8]">
-            or register with school email
-          </span>
-        </div>
-      </div>
-
-      <form onSubmit={onSubmit} className="mt-2 w-full space-y-4 text-left">
+      <form onSubmit={onSubmit} className="mt-8 w-full space-y-5 text-left">
         <div>
           <label htmlFor="fullName" className={labelClass}>
-            Full Name
+            Full name
           </label>
           <input
             id="fullName"
@@ -146,7 +113,7 @@ export function RegisterForm() {
 
         <div>
           <label htmlFor="email" className={labelClass}>
-            School Email
+            Your Email
           </label>
           <input
             id="email"
@@ -159,6 +126,28 @@ export function RegisterForm() {
             className={inputClass}
           />
         </div>
+
+        {institutions.length > 0 ? (
+          <div>
+            <label htmlFor="institution" className={labelClass}>
+              Institution
+            </label>
+            <select
+              id="institution"
+              required
+              value={institutionId}
+              onChange={(e) => setInstitutionId(e.target.value)}
+              disabled={institutions.length === 0}
+              className={inputClass}
+            >
+              {institutions.map((institution) => (
+                <option key={institution.id} value={institution.id}>
+                  {institution.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div>
           <label htmlFor="password" className={labelClass}>
@@ -187,12 +176,28 @@ export function RegisterForm() {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="confirmPassword" className={labelClass}>
+            Confirm password
+          </label>
+          <input
+            id="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={loading}
           className="mt-2 flex w-full items-center justify-between rounded-lg bg-[#172033] px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0f172a] disabled:opacity-70"
         >
-          <span>{loading ? 'Creating account…' : 'Continue'}</span>
+          <span>{loading ? 'Creating account…' : 'Create account'}</span>
           {loading ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
@@ -200,84 +205,15 @@ export function RegisterForm() {
           )}
         </button>
 
-        <div className="flex justify-center pt-2 text-[13px] text-[#64748b]">
-          Already have an account?{' '}
+        <div className="flex justify-center pt-1">
           <a
             href="/login"
-            className="ml-1 font-medium text-[#172033] underline-offset-4 transition hover:underline"
+            className="text-[13px] font-medium text-[#172033] underline-offset-4 transition hover:underline"
           >
-            Sign in
-          </a>
-        </div>
-
-        <div className="border-t border-[#e2e8f0] pt-4 text-center text-[13px] text-[#64748b]">
-          Hiring students?{' '}
-          <a
-            href="/register?role=employer"
-            className="font-semibold text-[#172033] underline-offset-4 hover:underline"
-          >
-            Sign up as an employer
+            Already have an account? Sign in
           </a>
         </div>
       </form>
     </section>
-  );
-}
-
-function ArrowUpRightIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M7 17 17 7" />
-      <path d="M7 7h10v10" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a17.36 17.36 0 0 1-3.44 4.06M6.6 6.6A17.3 17.3 0 0 0 1 12s4 8 11 8a10.9 10.9 0 0 0 5.1-1.26" />
-      <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
   );
 }

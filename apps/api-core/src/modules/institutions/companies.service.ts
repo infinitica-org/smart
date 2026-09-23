@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type {
   CompanyDto,
+  CompanySignupProfile,
   CreateCompanyRequest,
   ListCompaniesQuery,
   SetFeatureFlagOverrideRequest,
@@ -14,7 +15,12 @@ import { cacheOperations } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
+import { formatCompanyLocation } from './company-onboarding.util.js';
 import { extractDomain } from '../work-experience/company-name.util.js';
+
+function formatOnboardingLocation(profile: CompanySignupProfile): string {
+  return formatCompanyLocation(profile);
+}
 
 const ENTITLEMENTS_CACHE_KEY = (companyId: string): string => `entitlements:company:${companyId}`;
 
@@ -25,6 +31,40 @@ export class CompaniesService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
   ) {}
+
+  /**
+   * Self-serve onboarding: canonical tenant with verification pending (not SA auto-approve).
+   */
+  async createPendingCompanyForOnboarding(params: {
+    profile: CompanySignupProfile;
+    organizationId: string;
+    planId: string;
+    taxId?: string | null;
+  }): Promise<{ companyId: string }> {
+    const slug = await this.uniqueSlug(params.profile.displayName);
+    const gstin =
+      params.profile.address.country === 'IN' && params.taxId?.trim() ? params.taxId.trim() : null;
+
+    const company = await this.prisma.company.create({
+      data: {
+        name: params.profile.displayName,
+        domain: slug,
+        taxonomyDomain: params.profile.taxonomyDomain ?? null,
+        website: params.profile.website,
+        linkedinUrl: params.profile.linkedinUrl ?? null,
+        sector: params.profile.sector,
+        mode: params.profile.mode,
+        sizeBand: params.profile.sizeBand,
+        location: formatOnboardingLocation(params.profile),
+        gstin,
+        planId: params.planId,
+        verificationStatus: 'PENDING',
+        organizationId: params.organizationId,
+      },
+    });
+
+    return { companyId: company.id };
+  }
 
   async createCompany(body: CreateCompanyRequest, actorId: string): Promise<CompanyDto> {
     const freePlan = await this.prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } });

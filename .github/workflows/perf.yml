@@ -26,7 +26,7 @@ concurrency:
 jobs:
   perf:
     name: perf (${{ github.event.inputs.profile || 'smoke' }})
-    runs-on: [self-hosted, dev-runner]
+    runs-on: ubuntu-latest
     # soak's default is 4h; keep this above the longest profile you intend to
     # run via workflow_dispatch, well below the runner's other obligations.
     timeout-minutes: 60

@@ -38,7 +38,7 @@ import { canVerifySkills } from '@/lib/profile-progress';
 import { useProfileProgress } from '@/lib/use-profile-progress';
 import { SkillVerificationInstructions } from '@/components/assessment/skill-verification-instructions';
 import { SkillEvidenceContextPanel } from '@/components/assessment/skill-evidence-context-panel';
-import { buildLinkedSkillEvidenceContext } from '@/lib/skill-evidence-context';
+import { resolveSkillEvidenceContext } from '@/lib/skill-evidence-context';
 import { ProficiencyLevelCircles } from '@/lib/proficiency-level-circles';
 
 const STREAM_VISUALS: Record<
@@ -349,6 +349,8 @@ function SkillDetailPanel({
   onTakeAssessment,
   evidenceContext,
   evidenceLoading,
+  evidenceError,
+  onRetryEvidence,
 }: {
   skill: CatalogSkill;
   profilePercent: number;
@@ -362,6 +364,8 @@ function SkillDetailPanel({
   onTakeAssessment: () => void;
   evidenceContext: SkillEvidenceContextView | undefined;
   evidenceLoading: boolean;
+  evidenceError: string | null;
+  onRetryEvidence: () => void;
 }) {
   const visual = streamVisual(skill.streamLabel);
   const Icon = visual.Icon;
@@ -426,8 +430,25 @@ function SkillDetailPanel({
           <div className="h-3 w-40 rounded bg-muted-foreground/20" />
           <div className="mt-2 h-2 w-full rounded bg-muted-foreground/15" />
         </div>
+      ) : evidenceError ? (
+        <div
+          className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
+          role="alert"
+        >
+          <p>{evidenceError}</p>
+          <button
+            type="button"
+            onClick={onRetryEvidence}
+            className="font-semibold text-foreground underline-offset-2 hover:underline"
+          >
+            Try again
+          </button>
+        </div>
       ) : (
-        <SkillEvidenceContextPanel context={evidenceContext} />
+        <SkillEvidenceContextPanel
+          context={evidenceContext}
+          explicitAssociationEmpty={evidenceContext?.explicitAssociationEmpty}
+        />
       )}
 
       {!profileComplete ? (
@@ -499,6 +520,8 @@ export default function SkillRepositoryPage() {
     Awaited<ReturnType<typeof api.users.listWorkExperiences>>
   >([]);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [evidenceReloadKey, setEvidenceReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -629,32 +652,46 @@ export default function SkillRepositoryPage() {
     if (!selectedSkillCode) {
       setSelectedEvidenceContext(undefined);
       setEvidenceLoading(false);
+      setEvidenceError(null);
       return;
     }
+    const claim = claimByCode.get(selectedSkillCode);
+    const buildOptions = {
+      projectTitles: projectTitleById,
+      experienceLabels: experienceLabelById,
+      liveProjectIds,
+      liveExperienceIds,
+    };
     let cancelled = false;
     setEvidenceLoading(true);
+    setEvidenceError(null);
     void (async () => {
       try {
-        const records = await api.evidence.list({ skillCode: selectedSkillCode });
+        const [claimLinkedRecords, heuristicRecords] = await Promise.all([
+          claim?.claimId ? api.evidence.list({ claimId: claim.claimId }) : Promise.resolve([]),
+          api.evidence.list({ skillCode: selectedSkillCode }),
+        ]);
         if (cancelled) return;
         setSelectedEvidenceContext(
-          buildLinkedSkillEvidenceContext(
-            selectedSkillCode,
-            records,
-            myProjects,
-            projectMappingsById,
-            myWorkExperiences,
-            {
-              projectTitles: projectTitleById,
-              experienceLabels: experienceLabelById,
-              liveProjectIds,
-              liveExperienceIds,
-            },
-          ),
+          resolveSkillEvidenceContext({
+            skillCode: selectedSkillCode,
+            claimId: claim?.claimId,
+            claimLinkedRecords,
+            heuristicRecords,
+            projects: myProjects,
+            projectMappingsByProjectId: projectMappingsById,
+            workExperiences: myWorkExperiences,
+            options: buildOptions,
+          }),
         );
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setSelectedEvidenceContext({ availableCount: 0, items: [] });
+          setSelectedEvidenceContext(undefined);
+          setEvidenceError(
+            err instanceof Error
+              ? err.message
+              : 'Could not load supporting evidence. Please try again.',
+          );
         }
       } finally {
         if (!cancelled) setEvidenceLoading(false);
@@ -665,6 +702,7 @@ export default function SkillRepositoryPage() {
     };
   }, [
     selectedSkillCode,
+    claimByCode,
     projectTitleById,
     experienceLabelById,
     liveProjectIds,
@@ -672,6 +710,7 @@ export default function SkillRepositoryPage() {
     myProjects,
     projectMappingsById,
     myWorkExperiences,
+    evidenceReloadKey,
   ]);
 
   const filterOptions = ['All', 'Verified', 'Not Verified'];
@@ -1007,6 +1046,8 @@ export default function SkillRepositoryPage() {
                 }}
                 evidenceContext={selectedEvidenceContext}
                 evidenceLoading={evidenceLoading}
+                evidenceError={evidenceError}
+                onRetryEvidence={() => setEvidenceReloadKey((key) => key + 1)}
               />
             ) : (
               <section className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">

@@ -34,10 +34,9 @@ describe('TpoTopbar', () => {
     expect(onOpen).toHaveBeenCalled();
   });
 
-  it('opens profile menu with My profile and My school', () => {
+  it('opens profile menu with My school and Sign out', () => {
     render(<TpoTopbar onOpenMobileNav={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Pilot TPO account menu/i }));
-    expect(screen.getByRole('button', { name: 'My profile' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'My school' })).toBeDefined();
     expect(screen.getByRole('button', { name: /Sign out/i })).toBeDefined();
   });

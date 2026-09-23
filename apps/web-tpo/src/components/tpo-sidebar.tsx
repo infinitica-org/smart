@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { cn, UI_VERSION } from '@smart/ui';
+import { cn } from '@smart/ui';
 import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
 import { isNavLinkActive, isPlacementTopNavActive } from '../lib/tpo-nav';
 import {
@@ -14,7 +14,6 @@ import {
   UserPlus,
   Briefcase,
   BarChart3,
-  GraduationCap,
   Settings,
   type LucideIcon,
 } from 'lucide-react';

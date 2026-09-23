@@ -74,12 +74,19 @@ export type SkillClaimBlockReason =
   | 'MAX_ATTEMPTS_REACHED'
   | 'INVALID_TRANSITION';
 
+export type SkillRetakePolicy = {
+  /** Refresh/lock period in days. Falls back to SKILL_REFRESH_DAYS when omitted. */
+  refreshDays?: number;
+};
+
 export type SkillClaimTransitionInput = {
   claim: SkillClaimSnapshot;
   event: SkillClaimEvent;
   now: Date;
   /** Genuine fail timestamp of attempt 1. Required to enforce the 48h gate. */
   lastGenuineFailureAt: Date | null;
+  /** Optional per-skill retake policy (T19). Constants remain the default. */
+  retakePolicy?: SkillRetakePolicy;
 };
 
 export type SkillClaimTransitionResult = {
@@ -220,7 +227,18 @@ function applyGenuinePass(
   return reject(claim, 'ALREADY_VERIFIED');
 }
 
-function applyGenuineFail(claim: SkillClaimSnapshot, now: Date): SkillClaimTransitionResult {
+function resolveRefreshDays(
+  eventRefreshDays: number | undefined,
+  policy: SkillRetakePolicy | undefined,
+): number {
+  return eventRefreshDays ?? policy?.refreshDays ?? SKILL_REFRESH_DAYS;
+}
+
+function applyGenuineFail(
+  claim: SkillClaimSnapshot,
+  now: Date,
+  refreshDays?: number,
+): SkillClaimTransitionResult {
   if (claim.status === 'DECLARED') {
     return allow(
       {
@@ -238,7 +256,7 @@ function applyGenuineFail(claim: SkillClaimSnapshot, now: Date): SkillClaimTrans
       status: 'LOCKED',
       proficiency: claim.proficiency,
       strikes: bumpStrike(claim.strikes),
-      lockedUntil: addSkillRefreshPeriod(now),
+      lockedUntil: addSkillRefreshPeriod(now, refreshDays),
       verifiedUntil: null,
     });
   }
@@ -251,7 +269,11 @@ function applyGenuineFail(claim: SkillClaimSnapshot, now: Date): SkillClaimTrans
 export function applySkillClaimTransition(
   input: SkillClaimTransitionInput,
 ): SkillClaimTransitionResult {
-  const { claim, event, now, lastGenuineFailureAt } = input;
+  const { claim, event, now, lastGenuineFailureAt, retakePolicy } = input;
+  const refreshDays = resolveRefreshDays(
+    event.type === 'GENUINE_PASS' ? event.refreshDays : undefined,
+    retakePolicy,
+  );
   switch (event.type) {
     case 'START':
       return applyStart(claim, now, lastGenuineFailureAt);
@@ -259,9 +281,9 @@ export function applySkillClaimTransition(
     case 'PROVISIONAL_SETTLEMENT':
       return applyTechnicalFailure(claim);
     case 'GENUINE_PASS':
-      return applyGenuinePass(claim, now, event.verifiedProficiency, event.refreshDays);
+      return applyGenuinePass(claim, now, event.verifiedProficiency, refreshDays);
     case 'GENUINE_FAIL':
-      return applyGenuineFail(claim, now);
+      return applyGenuineFail(claim, now, refreshDays);
     default: {
       const _exhaustive: never = event;
       return _exhaustive;
