@@ -74,6 +74,15 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
+  const evidenceVersions = {
+    createInitialVersion: vi.fn().mockResolvedValue('created'),
+    appendVersion: vi.fn().mockResolvedValue('appended'),
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
+    contentEquals: vi.fn().mockReturnValue(false),
+  };
+  const skillInference = {
+    recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new EvidenceService(
     prisma as any,
     reconciliation as any,
@@ -83,6 +92,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare as any,
     evidenceSync as any,
+    skillInference as any,
+    evidenceVersions as any,
+    auditPublisher as any,
   );
   return {
     service,
@@ -94,6 +106,8 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare,
     evidenceSync,
+    evidenceVersions,
+    auditPublisher,
   };
 }
 

@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import { z } from 'zod';
@@ -46,7 +47,6 @@ import {
   EVIDENCE_RECONCILIATION_QUEUE,
 } from '../../platform/queue/queue.names.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
-import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
@@ -58,6 +58,8 @@ import {
   reviewDecisionConflict,
 } from './evidence-review.logic.js';
 import { assertReviewerCanMutateCandidateEvidence } from './evidence-reviewer-auth.helper.js';
+import { assertCanReadCandidateEvidenceVersions } from './evidence-version-auth.helper.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
 import {
   evidenceReconciliationJobId,
   type EvidenceReconciliationJobPayload,
@@ -99,6 +101,10 @@ export class EvidenceService {
     @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
+    @Inject(EvidenceVersionService) private readonly evidenceVersions: EvidenceVersionService,
+    @Optional()
+    @Inject(AuditPublisherService)
+    private readonly auditPublisher?: AuditPublisherService,
   ) {}
 
   private async recomputeInferenceForSkills(
@@ -688,62 +694,7 @@ export class EvidenceService {
     caller: RequestUser,
     studentId: string,
   ): Promise<CandidateEvidenceProvenanceResponse> {
-    const candidate = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { id: true, role: true, institutionId: true },
-    });
-
-    if (!candidate || candidate.role !== 'STUDENT') {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Candidate not found.',
-        statusCode: 404,
-      });
-    }
-
-    // Authorization checks
-    if (caller.role === 'SUPER_ADMIN') {
-      // Allowed
-    } else if (caller.role === 'INSTITUTION_ADMIN' || caller.role === 'PLACEMENT_STAFF') {
-      if (!caller.inst || caller.inst !== candidate.institutionId) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'You do not have access to candidate evidence outside your institution.',
-          statusCode: 403,
-        });
-      }
-    } else if (caller.role === 'COMPANY' || caller.role === 'B2B_PARTNER') {
-      if (!caller.companyId) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'Company account is not associated with a registered company.',
-          statusCode: 403,
-        });
-      }
-
-      const applicationCount = await this.prisma.application.count({
-        where: {
-          studentId,
-          opening: {
-            companyId: caller.companyId,
-          },
-        },
-      });
-
-      if (applicationCount === 0) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'You do not have authorization to view evidence for this candidate.',
-          statusCode: 403,
-        });
-      }
-    } else {
-      throw new ForbiddenException({
-        error: 'forbidden',
-        message: 'Unauthorized role to view candidate evidence provenance.',
-        statusCode: 403,
-      });
-    }
+    const access = await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
 
     const [evidenceRows, decisions] = await Promise.all([
       this.prisma.evidenceRecord.findMany({
@@ -809,12 +760,29 @@ export class EvidenceService {
         evidenceReliability:
           (row.evidenceReliability as EvidenceProvenanceItemDto['evidenceReliability']) ??
           undefined,
-        sourceOwner: row.sourceOwner ?? undefined,
-        sourceReference: row.sourceReference ?? undefined,
+        sourceOwner: access.redacted ? undefined : (row.sourceOwner ?? undefined),
+        sourceReference: access.redacted ? undefined : (row.sourceReference ?? undefined),
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       };
     });
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.accessed',
+        resourceType: 'candidate_evidence',
+        resourceId: studentId,
+        reasonCode: null,
+        metadata: {
+          studentId,
+          callerRole: caller.role,
+          companyId: caller.companyId ?? null,
+          redacted: access.redacted,
+          totalRecords: items.length,
+        },
+      });
+    }
 
     return {
       studentId,

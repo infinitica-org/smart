@@ -180,6 +180,23 @@ export class EvidenceVersionService {
       orderBy: { versionNumber: 'asc' },
     });
 
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.accessed',
+        resourceType: 'evidence_record',
+        resourceId: evidenceId,
+        reasonCode: null,
+        metadata: {
+          studentId,
+          evidenceId,
+          callerRole: caller.role,
+          companyId: caller.companyId ?? null,
+          redacted: access.redacted,
+        },
+      });
+    }
+
     if (access.redacted) {
       return {
         evidenceId,
@@ -212,6 +229,24 @@ export class EvidenceVersionService {
         error: 'not_found',
         message: 'Evidence version not found.',
         statusCode: 404,
+      });
+    }
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.accessed',
+        resourceType: 'evidence_record',
+        resourceId: evidenceId,
+        reasonCode: null,
+        metadata: {
+          studentId,
+          evidenceId,
+          versionNumber,
+          callerRole: caller.role,
+          companyId: caller.companyId ?? null,
+          redacted: access.redacted,
+        },
       });
     }
 

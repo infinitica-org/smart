@@ -118,6 +118,89 @@ describe('EvidenceVersionService', () => {
 
     expect(result).toBe('duplicate');
   });
+
+  it('lists candidate evidence versions for authorized employer and redacts output', async () => {
+    const { service, auditPublisher } = buildService({
+      prisma: {
+        user: {
+          findUnique: vi
+            .fn()
+            .mockResolvedValue({ id: 'student-1', role: 'STUDENT', institutionId: 'inst-1' }),
+        },
+        application: {
+          count: vi.fn().mockResolvedValue(1),
+        },
+        evidenceRecord: {
+          findFirst: vi.fn().mockResolvedValue({ id: 'evidence-1' }),
+        },
+        evidenceRecordVersion: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'version-1',
+              evidenceId: 'evidence-1',
+              versionNumber: 1,
+              snapshot: {
+                evidenceId: 'evidence-1',
+                sourceOwner: 'secret-owner@example.com',
+                sourcePayload: { secret: 'data' },
+                claim: 'Built backend',
+              },
+              actorId: 'student-1',
+              organizationId: 'inst-1',
+              source: 'CANDIDATE',
+              priorVerificationStatus: null,
+              newVerificationStatus: 'PENDING',
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            },
+          ]),
+        },
+      },
+    });
+
+    const res = await service.listCandidateEvidenceVersions(
+      { sub: 'emp-1', role: 'COMPANY', companyId: 'comp-1' } as never,
+      'student-1',
+      'evidence-1',
+    );
+
+    expect(res.total).toBe(1);
+    expect((res.items[0] as unknown as Record<string, unknown>).snapshot).toEqual({
+      evidenceId: 'evidence-1',
+      claim: 'Built backend',
+    });
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'evidence.accessed',
+        resourceId: 'evidence-1',
+      }),
+    );
+  });
+
+  it('rejects version access when evidence does not belong to student', async () => {
+    const { service } = buildService({
+      prisma: {
+        user: {
+          findUnique: vi
+            .fn()
+            .mockResolvedValue({ id: 'student-1', role: 'STUDENT', institutionId: 'inst-1' }),
+        },
+        application: {
+          count: vi.fn().mockResolvedValue(1),
+        },
+        evidenceRecord: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
+    });
+
+    await expect(
+      service.listCandidateEvidenceVersions(
+        { sub: 'emp-1', role: 'COMPANY', companyId: 'comp-1' } as never,
+        'student-1',
+        'unowned-evidence',
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
 });
 
 describe('assertCanReadCandidateEvidenceVersions', () => {
