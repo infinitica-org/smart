@@ -2588,6 +2588,16 @@ export class WorkExperienceService {
       });
     }
 
+    if (existing.status === 'VOIDED') {
+      await this.syncEvidenceRecord(existing.studentId, id);
+      await this.publicProfileService?.recheckActivationAfterVoid(existing.studentId);
+      return {
+        id: existing.id,
+        status: existing.status as WorkExperienceVerificationStatus,
+        voidedAt: existing.updatedAt.toISOString(),
+      };
+    }
+
     const voidedAt = new Date().toISOString();
     for (const document of existing.documents) {
       const prior = parseStoredDocumentAuthenticity(document.validationResult);
@@ -2605,7 +2615,12 @@ export class WorkExperienceService {
 
     const updated = await this.prisma.workExperience.update({
       where: { id },
-      data: { status: 'VOIDED', rejectionReason: body.reason },
+      data: {
+        status: 'VOIDED',
+        rejectionReason: body.reason,
+        completedConfirmed: false,
+        overallVerified: false,
+      },
     });
 
     await this.auditPublisher.record({
@@ -2617,6 +2632,7 @@ export class WorkExperienceService {
     });
 
     await this.publicProfileService?.recheckActivationAfterVoid(existing.studentId);
+    await this.syncEvidenceRecord(existing.studentId, id);
 
     return {
       id: updated.id,
