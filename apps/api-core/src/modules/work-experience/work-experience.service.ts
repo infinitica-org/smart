@@ -73,6 +73,7 @@ import {
 } from '../../platform/mailer/mailer.types.js';
 import { env } from '../../platform/config/env.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { Prisma } from '../../generated/prisma/index.js';
 
 interface RawWorkExperience {
@@ -180,6 +181,7 @@ export class WorkExperienceService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(AiGatewayService) private readonly aiGateway: AiGatewayService,
+    @Inject(NotificationsService) private readonly notifications: NotificationsService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailQueueJobData>,
     @Inject(OrganizationsService) private readonly organizationsService?: OrganizationsService,
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
@@ -2413,6 +2415,15 @@ export class WorkExperienceService {
 
     await this.syncEvidenceRecord(exp.studentId, exp.id);
 
+    await this.notifyStudentManagerEndorsementOutcome({
+      studentId: exp.studentId,
+      experienceId: exp.id,
+      endorsementId: endorsement.id,
+      companyName: exp.companyName,
+      role: exp.role,
+      confirmed: payload.confirmed,
+    });
+
     return {
       success: true,
       status: newStatus as SubmitManagerEndorsementResponseDto['status'],
@@ -2420,6 +2431,73 @@ export class WorkExperienceService {
         ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
         : 'Your response has been recorded. The candidate has been notified.',
     };
+  }
+
+  private async notifyStudentManagerEndorsementOutcome(params: {
+    studentId: string;
+    experienceId: string;
+    endorsementId: string;
+    companyName: string;
+    role: string;
+    confirmed: boolean;
+  }): Promise<void> {
+    const student = await this.prisma.user.findUnique({
+      where: { id: params.studentId },
+      select: { id: true, email: true, fullName: true },
+    });
+    if (!student?.email) {
+      throw new NotFoundException('Student account not found for endorsement notification.');
+    }
+
+    const profileUrl = `${env.STUDENT_APP_URL}/profile`;
+    const experienceLabel = `${params.role} at ${params.companyName}`;
+
+    if (params.confirmed) {
+      await this.notifications.notify({
+        userId: student.id,
+        email: student.email,
+        kind: 'VERIFICATION_RESULT',
+        title: `Manager endorsement confirmed: ${experienceLabel}`,
+        body: `Your manager confirmed your work experience for ${experienceLabel}.`,
+        linkUrl: profileUrl,
+        emailTemplate: 'verification-passed',
+        emailData: {
+          fullName: student.fullName,
+          skillName: experienceLabel,
+          statusLabel: 'Manager endorsement confirmed',
+          detail: `Your manager confirmed your work experience for ${experienceLabel}.`,
+          profileUrl,
+        },
+        metadata: {
+          experienceId: params.experienceId,
+          endorsementId: params.endorsementId,
+          outcome: 'CONFIRMED',
+        },
+      });
+      return;
+    }
+
+    await this.notifications.notify({
+      userId: student.id,
+      email: student.email,
+      kind: 'VERIFICATION_RESULT',
+      title: `Manager endorsement disputed: ${experienceLabel}`,
+      body: `Your manager disputed the endorsement for ${experienceLabel}. Review your work experience entry to update details or request a new endorsement.`,
+      linkUrl: profileUrl,
+      emailTemplate: 'verification-failed',
+      emailData: {
+        fullName: student.fullName,
+        skillName: experienceLabel,
+        statusLabel: 'Manager endorsement disputed',
+        detail: `Your manager disputed the endorsement for ${experienceLabel}. You can review the entry and submit a new request if needed.`,
+        profileUrl,
+      },
+      metadata: {
+        experienceId: params.experienceId,
+        endorsementId: params.endorsementId,
+        outcome: 'DISPUTED',
+      },
+    });
   }
 
   /**
