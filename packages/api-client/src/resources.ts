@@ -409,6 +409,11 @@ export function usersApi(client: SmartApiClient) {
         schema: PublicProfileLinkResponseSchema,
       }),
 
+    rotatePublicProfileLink: () =>
+      client.post(prefixed('/users/me/public-profile-link/rotate'), undefined, {
+        schema: PublicProfileLinkResponseSchema,
+      }),
+
     getMyPublicProfile: () =>
       client.get(prefixed('/users/me/public-profile'), {
         schema: PublicCandidateProfileDtoSchema,

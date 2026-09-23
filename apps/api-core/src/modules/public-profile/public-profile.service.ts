@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
   SKILL_DEFINITIONS,
   TRACK_DEFINITIONS,
@@ -10,6 +10,7 @@ import {
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
 
@@ -31,6 +32,9 @@ export class PublicProfileService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Optional()
+    @Inject(AuditPublisherService)
+    private readonly auditPublisher?: AuditPublisherService,
   ) {}
 
   /**
@@ -64,6 +68,54 @@ export class PublicProfileService {
         })
       ).publicProfileSlug;
     return { slug: slug ?? '', url: `${env.VERIFY_APP_URL}/candidate/${slug ?? ''}` };
+  }
+
+  /**
+   * T8 / T9 — Rotates (regenerates) the public profile share slug for a student.
+   * Overwrites the previous `publicProfileSlug`, invalidating any previous link (T9).
+   */
+  async rotateShareLink(userId: string): Promise<PublicProfileLinkResponse> {
+    const priorUser = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { publicProfileSlug: true, username: true },
+    });
+
+    let newSlug = randomUUID().replace(/-/g, '').slice(0, 16);
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { publicProfileSlug: newSlug },
+        });
+        break;
+      } catch (err) {
+        attempts++;
+        if (attempts >= 3) throw err;
+        newSlug = randomUUID().replace(/-/g, '').slice(0, 16);
+      }
+    }
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'profile.link.rotated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          priorSlug: priorUser.publicProfileSlug ?? null,
+          newSlug,
+        },
+      });
+    }
+
+    const slug = priorUser.username ?? newSlug;
+    const url = priorUser.username
+      ? `${env.VERIFY_APP_URL}/@${priorUser.username}`
+      : `${env.VERIFY_APP_URL}/candidate/${newSlug}`;
+
+    return { slug, url };
   }
 
   /**
@@ -180,6 +232,7 @@ export class PublicProfileService {
     const owner = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
+        createdAt: true,
         fullName: true,
         profilePhotoObjectKey: true,
         primaryTrack: { select: { code: true } },
@@ -199,6 +252,7 @@ export class PublicProfileService {
       externalCertificates,
       educationRecords,
       capabilityRows,
+      maxEvidenceAgg,
     ] = await Promise.all([
       this.prisma.skillClaim.findMany({
         where: { studentId: userId, status: 'VERIFIED' },
@@ -231,11 +285,19 @@ export class PublicProfileService {
         where: { studentId: userId },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.studentCapability.findMany({
-        where: { studentId: userId },
-        take: 20,
-        orderBy: { confidenceScore: 'desc' },
-      }),
+      this.prisma.studentCapability?.findMany
+        ? this.prisma.studentCapability.findMany({
+            where: { studentId: userId },
+            take: 20,
+            orderBy: { confidenceScore: 'desc' },
+          })
+        : Promise.resolve([]),
+      this.prisma.evidenceRecord?.aggregate
+        ? this.prisma.evidenceRecord.aggregate({
+            where: { studentId: userId },
+            _max: { updatedAt: true },
+          })
+        : Promise.resolve({ _max: { updatedAt: null } }),
     ]);
 
     const track = owner.primaryTrack
@@ -247,6 +309,55 @@ export class PublicProfileService {
     const isWorkExperienceHidden = hiddenSections.includes('workExperience');
     const isCertificationsHidden = hiddenSections.includes('certifications');
     const isEducationHidden = hiddenSections.includes('education');
+
+    // T10 — Calculate latest committed change timestamp relevant to profile sections
+    const timestamps: (Date | undefined | null)[] = [owner.createdAt];
+    for (const item of skillClaims) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of projects) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of workExperience) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    if (certificate) {
+      const cert = certificate as unknown as {
+        updatedAt?: Date;
+        issuedAt?: Date;
+        createdAt?: Date;
+      };
+      const ts = cert.updatedAt ?? cert.issuedAt ?? cert.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of externalCertificates) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of educationRecords) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    if (maxEvidenceAgg._max.updatedAt) {
+      timestamps.push(maxEvidenceAgg._max.updatedAt);
+    }
+
+    const validTimestamps = timestamps.filter(
+      (d): d is Date => d instanceof Date && !isNaN(d.getTime()),
+    );
+    const latestDate =
+      validTimestamps.length > 0
+        ? new Date(Math.max(...validTimestamps.map((d) => d.getTime())))
+        : new Date();
+    const lastUpdatedAt = latestDate.toISOString();
 
     return {
       fullName: owner.fullName,
@@ -313,6 +424,7 @@ export class PublicProfileService {
           })),
       showInProgressItems: showInProgress,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
+      lastUpdatedAt,
     };
   }
 }

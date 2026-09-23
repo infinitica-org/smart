@@ -15,6 +15,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       profilePhotoObjectKey: null,
       primaryTrack: null,
       showInProgressItems: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
       ...overrides,
     };
   }
@@ -49,6 +50,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       },
       candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
       studentCapability: { findMany: vi.fn().mockResolvedValue([]) },
+      evidenceRecord: { aggregate: vi.fn().mockResolvedValue({ _max: { updatedAt: null } }) },
     };
     storage.getSignedDownloadUrl.mockClear();
     service = new PublicProfileService(prisma, storage as never);
@@ -444,6 +446,123 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       expect(result.externalCertificates).toEqual([]);
       expect(result.projects.length).toBe(1);
       expect(result.workExperience.length).toBe(1);
+    });
+  });
+
+  describe('rotateShareLink (T8 / T9)', () => {
+    it('generates a new unique 16-char slug and updates User record', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'old-slug-1234567',
+        username: null,
+      });
+      prisma.user.update.mockResolvedValue({ publicProfileSlug: 'new-slug-8901234' });
+
+      const result = await service.rotateShareLink(userId);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { publicProfileSlug: expect.any(String) },
+      });
+      expect(result.slug).not.toBe('old-slug-1234567');
+      expect(result.url).toContain('/candidate/');
+    });
+
+    it('emits an audit event when auditPublisher is injected', async () => {
+      const mockAuditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+      const auditService = new PublicProfileService(
+        prisma,
+        storage as never,
+        mockAuditPublisher as never,
+      );
+
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'prior-slug',
+        username: null,
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      await auditService.rotateShareLink(userId);
+
+      expect(mockAuditPublisher.record).toHaveBeenCalledWith({
+        actorId: userId,
+        action: 'profile.link.rotated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          priorSlug: 'prior-slug',
+          newSlug: expect.any(String),
+        },
+      });
+    });
+
+    it('ensures old rotated slug returns 404 while new slug resolves (T9 revocation)', async () => {
+      // 1. Initial state: old slug
+      prisma.user.findUnique.mockImplementation(({ where }: any) => {
+        if (where.publicProfileSlug === 'old-slug') {
+          return Promise.resolve(null); // rotated away
+        }
+        if (where.publicProfileSlug === 'new-slug') {
+          return Promise.resolve({ id: userId, profileVisible: true });
+        }
+        return Promise.resolve(null);
+      });
+
+      // Old slug 404s
+      await expect(service.getBySlug('old-slug')).rejects.toBeInstanceOf(NotFoundException);
+
+      // New slug resolves
+      const profile = await service.getBySlug('new-slug');
+      expect(profile.fullName).toBe('Ada Lovelace');
+    });
+
+    it('ensures profileVisible=false revokes public access regardless of slug (T9)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: userId, profileVisible: false });
+
+      await expect(service.getBySlug('active-slug')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('lastUpdatedAt calculation (T10)', () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+
+    beforeEach(() => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ createdAt }));
+    });
+
+    it('falls back to User.createdAt when no child records exist', async () => {
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(createdAt.toISOString());
+    });
+
+    it('reflects the latest updated timestamp among child records', async () => {
+      const eduDate = new Date('2026-02-15T12:00:00.000Z');
+      const workDate = new Date('2026-03-20T08:30:00.000Z');
+
+      prisma.candidateEducation.findMany.mockResolvedValue([
+        { institutionName: 'MIT', createdAt: eduDate, updatedAt: eduDate },
+      ]);
+      prisma.workExperience.findMany.mockResolvedValue([
+        {
+          companyName: 'Acme',
+          role: 'Dev',
+          status: 'VERIFIED',
+          createdAt: workDate,
+          updatedAt: workDate,
+          startDate: workDate,
+        },
+      ]);
+
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(workDate.toISOString());
+    });
+
+    it('includes evidence update timestamp when latest', async () => {
+      const evidenceDate = new Date('2026-04-10T15:45:00.000Z');
+      prisma.evidenceRecord.aggregate.mockResolvedValue({ _max: { updatedAt: evidenceDate } });
+
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(evidenceDate.toISOString());
     });
   });
 });

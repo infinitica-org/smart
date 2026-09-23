@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -20,6 +20,17 @@ export class PublicProfileController {
   })
   getShareLink(@CurrentUser() user: RequestUser) {
     return this.service.getOrCreateShareLink(user.sub);
+  }
+
+  @Post('users/me/public-profile-link/rotate')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Rotate (regenerate) this student's public-profile share link, revoking the prior link (T8/T9).",
+  })
+  rotateShareLink(@CurrentUser() user: RequestUser) {
+    return this.service.rotateShareLink(user.sub);
   }
 
   @Get('users/me/public-profile')
