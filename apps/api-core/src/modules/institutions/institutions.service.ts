@@ -58,6 +58,7 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
@@ -84,6 +85,7 @@ export class InstitutionsService {
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(NotificationsService) private readonly notifications: NotificationsService,
   ) {}
 
   /* ----------------------------- platform admin ----------------------------- */
@@ -898,6 +900,20 @@ export class InstitutionsService {
     await this.writeAudit(actorId, 'company.verification', 'company', tenantId, body.reason, {
       decision: body.decision,
     });
+    const companyAdmin = await this.prisma.user.findFirst({
+      where: { companyId: tenantId, role: 'COMPANY_ADMIN' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (companyAdmin) {
+      await this.notifications.notifyCompanyVerification({
+        userId: companyAdmin.id,
+        email: companyAdmin.email,
+        fullName: companyAdmin.fullName,
+        companyName: row.name,
+        decision: body.decision,
+        reason: body.reason,
+      });
+    }
     return {
       tenantType: 'company',
       tenantId: row.id,

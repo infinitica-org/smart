@@ -16,6 +16,7 @@ import {
 import { env } from '../config/env.js';
 import type {
   CertificateEndorsementRequestEmailData,
+  CompanyVerificationEmailData,
   EmailTemplateData,
   EmailTemplateName,
   EmailVerificationEmailData,
@@ -93,6 +94,10 @@ export function renderEmailTemplate(
       return buildVerificationFailed(data as VerificationEmailData);
     case 'verification-locked':
       return buildVerificationLocked(data as VerificationEmailData);
+    case 'company-verification-approved':
+      return buildCompanyVerificationApproved(data as CompanyVerificationEmailData);
+    case 'company-verification-rejected':
+      return buildCompanyVerificationRejected(data as CompanyVerificationEmailData);
     case 'work-experience-verifier-invite':
       return buildWorkExperienceVerifierInvite(data as WorkExperienceVerifierInviteEmailData);
     case 'work-experience-verifier-reminder':
@@ -311,6 +316,62 @@ function buildPasswordReset(data: PasswordResetEmailData): RenderedEmail {
       bodyHtml,
       cta: { label: 'Reset my password', url: data.resetUrl },
       footerNote: `This link is valid until ${data.expiresAtFormatted}. If you didn't request this, ignore this email.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- company-verification ---------------- */
+
+function buildCompanyVerificationApproved(data: CompanyVerificationEmailData): RenderedEmail {
+  const name = firstName(data.fullName);
+  const subject = `${data.companyName} is verified on SMART`;
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(
+      `${strong(data.companyName)} has been verified on SMART. Your company dashboard is now unlocked.`,
+    ),
+  ].join('');
+  const text = [
+    `Hi ${name}, ${data.companyName} has been verified on SMART.`,
+    `View your dashboard: ${data.statusUrl}`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: `${data.companyName} is verified`,
+      illustration: VERIFICATION_PASSED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'View dashboard', url: data.statusUrl },
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+function buildCompanyVerificationRejected(data: CompanyVerificationEmailData): RenderedEmail {
+  const name = firstName(data.fullName);
+  const subject = `Update on your ${data.companyName} verification`;
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(`We weren't able to verify ${strong(data.companyName)} on SMART this time.`),
+    paragraph(data.reason),
+  ].join('');
+  const text = [
+    `Hi ${name}, we weren't able to verify ${data.companyName} on SMART this time.`,
+    data.reason,
+    `Check your status: ${data.statusUrl}`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: `${data.companyName} wasn't verified`,
+      illustration: VERIFICATION_FAILED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'View status', url: data.statusUrl },
       signoff: SIGNOFF_TEAM,
     }),
   };

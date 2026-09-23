@@ -252,6 +252,22 @@ export function authApi(client: SmartApiClient) {
         anonymous: true,
       }),
 
+    registerEmployer: (body: {
+      email: string;
+      password: string;
+      fullName: string;
+      companyName: string;
+      website?: string;
+      sector?: string;
+      mode?: 'SERVICE' | 'PRODUCT';
+      sizeBand?: string;
+      location?: string;
+    }) =>
+      client.post(prefixed('/auth/register/employer'), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+
     verifyEmail: (token: string) =>
       client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
         anonymous: true,

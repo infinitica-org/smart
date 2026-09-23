@@ -132,6 +132,14 @@ export function LoginForm() {
             Forgot Password
           </a>
         </div>
+        <div className="flex justify-center pt-1">
+          <a
+            href="/register/employer"
+            className="text-[13px] font-medium text-[#64748b] underline-offset-4 transition hover:underline"
+          >
+            Hiring? Register your company
+          </a>
+        </div>
       </form>
     </section>
   );

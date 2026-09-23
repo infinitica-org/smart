@@ -254,6 +254,123 @@ describe('AuthService.register', () => {
   });
 });
 
+describe('AuthService.registerEmployer', () => {
+  it('creates a PENDING company, a COMPANY_ADMIN user, and issues a session', async () => {
+    const companyId = randomUUID();
+    const userCreate = vi.fn(async ({ data }: { data: Record<string, unknown> }) =>
+      userRow({ ...data, id: randomUUID() }),
+    );
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => null),
+        create: userCreate,
+      },
+      refreshToken: {
+        create: vi.fn(async ({ data }: { data: unknown }) => data),
+      },
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ user: { create: userCreate } }),
+      ),
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const companies = {
+      registerSelfServe: vi.fn(async () => ({ id: companyId, organizationId: randomUUID() })),
+    };
+    const auditPublisher = { record: vi.fn(async () => undefined) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      storage as never,
+      companies as never,
+      auditPublisher as never,
+    );
+    const reply = { setCookie: vi.fn() };
+
+    const result = await auth.registerEmployer(
+      {
+        email: 'New@Acme.com',
+        password: 'password1',
+        fullName: 'New Admin',
+        companyName: 'Acme',
+      },
+      reply as never,
+    );
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(companies.registerSelfServe).toHaveBeenCalledWith(
+      expect.objectContaining({ companyName: 'Acme' }),
+      expect.anything(),
+    );
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'new@acme.com',
+          role: 'COMPANY_ADMIN',
+          emailVerified: false,
+          companyId,
+        }),
+      }),
+    );
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.register_employer', resourceId: companyId }),
+    );
+  });
+
+  it('rejects a duplicate email with 409', async () => {
+    const prisma = { user: { findUnique: vi.fn(async () => userRow()) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const companies = { registerSelfServe: vi.fn() };
+    const auditPublisher = { record: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+      companies as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.registerEmployer(
+        {
+          email: 'student@example.com',
+          password: 'password1',
+          fullName: 'X',
+          companyName: 'Acme',
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 409 } });
+    expect(companies.registerSelfServe).not.toHaveBeenCalled();
+  });
+
+  it('rejects a free-email domain with 422', async () => {
+    const prisma = { user: { findUnique: vi.fn(async () => null) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const companies = { registerSelfServe: vi.fn() };
+    const auditPublisher = { record: vi.fn() };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+      companies as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.registerEmployer(
+        {
+          email: 'founder@gmail.com',
+          password: 'password1',
+          fullName: 'X',
+          companyName: 'Acme',
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 422 } });
+    expect(companies.registerSelfServe).not.toHaveBeenCalled();
+  });
+});
+
 describe('AuthService.listSelectableInstitutions', () => {
   it('excludes deactivated and held institutions', async () => {
     const prisma = {

@@ -574,3 +574,83 @@ describe('InstitutionsService.searchStudents (S6-VV-66 capability-aware search)'
     expect(where.skillClaims).toEqual({ some: { proficiency: 'BEGINNER' } });
   });
 });
+
+describe('InstitutionsService.resolveVerification (company)', () => {
+  const companyId = randomUUID();
+  const actorId = randomUUID();
+  const companyAdminId = randomUUID();
+
+  function buildPrisma(companyAdmin: unknown) {
+    return {
+      subscriptionPlan: { findUnique: vi.fn().mockResolvedValue({ id: 'plan-pro' }) },
+      company: {
+        update: vi.fn().mockResolvedValue({
+          id: companyId,
+          name: 'Acme',
+          taxonomyDomain: null,
+          verificationStatus: 'APPROVED',
+          verificationReason: 'looks good',
+          createdAt: new Date('2026-09-23T00:00:00.000Z'),
+        }),
+      },
+      user: { findFirst: vi.fn().mockResolvedValue(companyAdmin) },
+    };
+  }
+
+  it('notifies the company-admin when a decision is made', async () => {
+    const prisma = buildPrisma({
+      id: companyAdminId,
+      email: 'admin@acme.com',
+      fullName: 'Admin Acme',
+    });
+    const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+    const notifications = { notifyCompanyVerification: vi.fn().mockResolvedValue(undefined) };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      auditPublisher as never,
+      noopRedis as never,
+      notifications as never,
+    );
+
+    await service.resolveVerification(
+      companyId,
+      { tenantType: 'company', decision: 'APPROVED', reason: 'looks good' },
+      actorId,
+    );
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { companyId, role: 'COMPANY_ADMIN' } }),
+    );
+    expect(notifications.notifyCompanyVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: companyAdminId,
+        email: 'admin@acme.com',
+        companyName: 'Acme',
+        decision: 'APPROVED',
+        reason: 'looks good',
+      }),
+    );
+  });
+
+  it('does not notify when the company has no self-registered admin yet', async () => {
+    const prisma = buildPrisma(null);
+    const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+    const notifications = { notifyCompanyVerification: vi.fn().mockResolvedValue(undefined) };
+    const service = new InstitutionsService(
+      prisma as never,
+      {} as never,
+      auditPublisher as never,
+      noopRedis as never,
+      notifications as never,
+    );
+
+    await service.resolveVerification(
+      companyId,
+      { tenantType: 'company', decision: 'REJECTED', reason: 'missing GSTIN' },
+      actorId,
+    );
+
+    expect(notifications.notifyCompanyVerification).not.toHaveBeenCalled();
+  });
+});

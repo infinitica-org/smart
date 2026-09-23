@@ -4,5 +4,5 @@ import { NotFoundWall } from '@smart/ui';
 const PORTAL_ORIGINS = resolvePortalOriginsFromEnv();
 
 export default function NotFound() {
-  return <NotFoundWall homeHref="/dashboard" portalOrigins={PORTAL_ORIGINS} />;
+  return <NotFoundWall homeHref="/status" portalOrigins={PORTAL_ORIGINS} />;
 }

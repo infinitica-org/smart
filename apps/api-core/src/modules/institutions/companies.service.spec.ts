@@ -177,4 +177,34 @@ describe('CompaniesService', () => {
       });
     });
   });
+
+  describe('registerSelfServe', () => {
+    it('creates the Company at PENDING (not APPROVED) and writes no audit row', async () => {
+      prismaMock.organization.findFirst.mockResolvedValue(null);
+      prismaMock.organization.create.mockResolvedValue({
+        id: 'org-4',
+        name: 'Employer Co',
+        domain: null,
+        verificationStatus: 'APPROVED',
+      });
+      prismaMock.company.create.mockResolvedValue({ id: 'company-4', organizationId: 'org-4' });
+
+      const result = await service.registerSelfServe({
+        companyName: 'Employer Co',
+        website: undefined,
+        sector: undefined,
+        mode: undefined,
+        sizeBand: undefined,
+        location: undefined,
+      } as any);
+
+      expect(result).toEqual({ id: 'company-4', organizationId: 'org-4' });
+      expect(prismaMock.company.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'Employer Co', verificationStatus: 'PENDING' }),
+        }),
+      );
+      expect(auditPublisherMock.record).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1,0 +1,21 @@
+@import '@smart/ui/styles.css';
+
+/* App-local scan so shared UI classes always emit. */
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+html,
+body {
+  background-color: var(--ds-canvas);
+}
+
+:root {
+  color-scheme: light;
+
+  --ds-canvas: #f8fafc;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f5f7fa;
+  --ds-border: #e4e7ec;
+  --ds-text: #101828;
+  --ds-text-secondary: #475467;
+  --ds-text-muted: #667085;
+}

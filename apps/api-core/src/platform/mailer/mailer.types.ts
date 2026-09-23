@@ -10,6 +10,8 @@ export type EmailTemplateName =
   | 'verification-passed'
   | 'verification-failed'
   | 'verification-locked'
+  | 'company-verification-approved'
+  | 'company-verification-rejected'
   | 'email-verification'
   | 'password-reset'
   | 'work-experience-verifier-invite'
@@ -63,6 +65,13 @@ export interface VerificationEmailData {
   readonly profileUrl: string;
 }
 
+export interface CompanyVerificationEmailData {
+  readonly fullName: string;
+  readonly companyName: string;
+  readonly reason: string;
+  readonly statusUrl: string;
+}
+
 export interface WorkExperienceVerifierInviteEmailData {
   readonly verifierName: string;
   readonly candidateName: string;
@@ -99,6 +108,7 @@ export type EmailTemplateData =
   | OpportunityEmailData
   | StageChangeEmailData
   | VerificationEmailData
+  | CompanyVerificationEmailData
   | WorkExperienceVerifierInviteEmailData
   | WorkExperienceVerifierReminderEmailData
   | CertificateEndorsementRequestEmailData

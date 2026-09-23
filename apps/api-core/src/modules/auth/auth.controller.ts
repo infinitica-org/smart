@@ -5,6 +5,7 @@ import {
   PasswordLoginRequestSchema,
   PasswordResetConfirmRequestSchema,
   PasswordResetRequestSchema,
+  RegisterEmployerRequestSchema,
   RegisterRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -54,6 +55,19 @@ export class AuthController {
   async register(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
     const parsed = RegisterRequestSchema.parse(body);
     const result = await this.auth.register(parsed, reply);
+    await this.emailVerification.sendForUser(
+      result.user.userId,
+      result.user.email,
+      result.user.fullName,
+    );
+    return result;
+  }
+
+  @Public()
+  @Post('register/employer')
+  async registerEmployer(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+    const parsed = RegisterEmployerRequestSchema.parse(body);
+    const result = await this.auth.registerEmployer(parsed, reply);
     await this.emailVerification.sendForUser(
       result.user.userId,
       result.user.email,

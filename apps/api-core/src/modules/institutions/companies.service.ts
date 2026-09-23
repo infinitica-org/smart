@@ -4,6 +4,7 @@ import type {
   CompanyDto,
   CreateCompanyRequest,
   ListCompaniesQuery,
+  RegisterEmployerRequest,
   SetFeatureFlagOverrideRequest,
   TenantActionReason,
   TenantEntitlementsDto,
@@ -27,7 +28,55 @@ export class CompaniesService {
   ) {}
 
   async createCompany(body: CreateCompanyRequest, actorId: string): Promise<CompanyDto> {
-    const freePlan = await this.prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } });
+    const company = await this.createCompanyRow(body, 'APPROVED');
+    await this.writeAudit(actorId, 'company.created', company.id, 'created by super admin', {});
+    return this.getCompany(company.id);
+  }
+
+  /**
+   * Employer self-serve registration. Unlike `createCompany` (super-admin,
+   * auto-APPROVED), this leaves the new Company at PENDING so it surfaces in
+   * the existing verification queue (`InstitutionsService.listVerificationQueue`)
+   * unchanged. No audit call here — the caller (AuthService.registerEmployer)
+   * writes a single audit row for the whole registration once the User exists.
+   *
+   * Takes an optional transaction client so the caller can wrap this together
+   * with the User row it creates next in one atomic transaction — otherwise a
+   * failure creating the User (e.g. a duplicate-email race) would leave an
+   * orphaned, ownerless PENDING company behind.
+   */
+  async registerSelfServe(
+    body: Pick<
+      RegisterEmployerRequest,
+      'companyName' | 'website' | 'sector' | 'mode' | 'sizeBand' | 'location'
+    >,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ id: string; organizationId: string | null }> {
+    const company = await this.createCompanyRow(
+      {
+        name: body.companyName,
+        website: body.website,
+        sector: body.sector,
+        mode: body.mode,
+        sizeBand: body.sizeBand,
+        location: body.location,
+      },
+      'PENDING',
+      tx,
+    );
+    return { id: company.id, organizationId: company.organizationId };
+  }
+
+  private async createCompanyRow(
+    body: Pick<
+      CreateCompanyRequest,
+      'name' | 'domain' | 'website' | 'sector' | 'mode' | 'sizeBand' | 'location'
+    >,
+    verificationStatus: CompanyDto['verificationStatus'],
+    tx?: Prisma.TransactionClient,
+  ) {
+    const db = tx ?? this.prisma;
+    const freePlan = await db.subscriptionPlan.findUnique({ where: { code: 'FREE' } });
     if (!freePlan) {
       throw new NotFoundException({
         error: 'not_found',
@@ -35,7 +84,7 @@ export class CompaniesService {
         statusCode: 404,
       });
     }
-    const slug = await this.uniqueSlug(body.name);
+    const slug = await this.uniqueSlug(body.name, db);
 
     // INF-07: `Organization.domain` is always a bare hostname (see extractDomain /
     // OrganizationsService.resolveOrCreateOrganization) — never the raw `website`
@@ -43,7 +92,7 @@ export class CompaniesService {
     // manager-endorsement domain matching) double-prefixes the scheme and breaks.
     const websiteDomain = extractDomain(body.website);
 
-    let org = await this.prisma.organization.findFirst({
+    let org = await db.organization.findFirst({
       where: {
         OR: [
           { name: { equals: body.name, mode: 'insensitive' } },
@@ -52,7 +101,7 @@ export class CompaniesService {
       },
     });
     if (!org) {
-      org = await this.prisma.organization.create({
+      org = await db.organization.create({
         data: {
           name: body.name,
           domain: websiteDomain,
@@ -61,7 +110,7 @@ export class CompaniesService {
       });
     }
 
-    const company = await this.prisma.company.create({
+    return db.company.create({
       data: {
         name: body.name,
         domain: slug,
@@ -72,12 +121,10 @@ export class CompaniesService {
         sizeBand: body.sizeBand,
         location: body.location,
         planId: freePlan.id,
-        verificationStatus: 'APPROVED',
+        verificationStatus,
         organizationId: org.id,
       },
     });
-    await this.writeAudit(actorId, 'company.created', company.id, 'created by super admin', {});
-    return this.getCompany(company.id);
   }
 
   async listCompanies(query: ListCompaniesQuery = {}): Promise<CompanyDto[]> {
@@ -288,7 +335,8 @@ export class CompaniesService {
     return company;
   }
 
-  private async uniqueSlug(name: string): Promise<string> {
+  private async uniqueSlug(name: string, tx?: Prisma.TransactionClient): Promise<string> {
+    const db = tx ?? this.prisma;
     const base =
       name
         .toLowerCase()
@@ -297,7 +345,7 @@ export class CompaniesService {
         .slice(0, 60) || 'company';
     let slug = base;
     let n = 2;
-    while (await this.prisma.company.findUnique({ where: { domain: slug } })) {
+    while (await db.company.findUnique({ where: { domain: slug } })) {
       slug = `${base}-${n}`;
       n += 1;
     }

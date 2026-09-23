@@ -192,6 +192,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /auth/password-reset/request": "auth.passwordResetRequest",
   "POST /auth/refresh": "auth.refresh",
   "POST /auth/register": "auth.register",
+  "POST /auth/register/employer": "auth.registerEmployer",
   "POST /auth/sso/callback": "auth.login",
   "POST /auth/sso/start": "auth.login",
   "POST /auth/verify-email/:token": "auth.invite",

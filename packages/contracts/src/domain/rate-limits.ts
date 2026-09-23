@@ -140,6 +140,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'ALERT',
   },
   {
+    key: 'auth.registerEmployer',
+    scope: 'IP',
+    limit: 5,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:auth_register_employer:ip:{id}',
+    rationale: 'Caps automated employer self-serve account/company-creation spam.',
+    onViolation: 'ALERT',
+  },
+  {
     key: 'auth.passwordResetRequest',
     scope: 'IP',
     limit: 5,

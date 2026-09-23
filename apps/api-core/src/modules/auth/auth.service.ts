@@ -12,19 +12,24 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { isDisallowedEndorserEmailDomain } from '@smart/contracts';
 import type {
   AuthTokenResponse,
   AuthenticatedUser,
+  RegisterEmployerRequest,
   RegisterRequest,
   SelectableInstitutionDto,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { resolveSessionHold } from '../../common/session-hold.js';
+import { CompaniesService } from '../institutions/companies.service.js';
 import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
@@ -38,6 +43,7 @@ export type UserWithAuthIncludes = {
   provider: AuthenticatedUser['provider'];
   emailVerified: boolean;
   institutionId: string | null;
+  companyId: string | null;
   createdAt: Date;
   passwordHash: string | null;
   heldAt: Date | null;
@@ -49,6 +55,8 @@ export type UserWithAuthIncludes = {
     deactivatedAt: Date | null;
   } | null;
   company?: {
+    name: string;
+    verificationStatus: AuthenticatedUser['companyVerificationStatus'];
     heldAt: Date | null;
     deactivatedAt: Date | null;
   } | null;
@@ -62,6 +70,8 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(CompaniesService) private readonly companies: CompaniesService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
@@ -122,6 +132,63 @@ export class AuthService {
         institutionId: institution.id,
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+
+    return this.issueSession(user, reply);
+  }
+
+  /**
+   * Employer self-serve registration. Unlike `register`, this creates a NEW
+   * Company + Organization (always PENDING, see CompaniesService.registerSelfServe)
+   * rather than joining an existing tenant — there is no institution picker.
+   */
+  async registerEmployer(
+    body: RegisterEmployerRequest,
+    reply: FastifyReply,
+  ): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+    if (isDisallowedEndorserEmailDomain(email)) {
+      throw new UnprocessableEntityException({
+        error: 'disallowed_email_domain',
+        message:
+          'Use your work email address to register a company, not a personal email provider.',
+        statusCode: 422,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    // Company + User creation must succeed or fail together — otherwise a
+    // failure creating the User leaves an orphaned, ownerless PENDING company.
+    const { company, user } = await this.prisma.$transaction(async (tx) => {
+      const company = await this.companies.registerSelfServe(body, tx);
+      const user = await tx.user.create({
+        data: {
+          email,
+          fullName: body.fullName,
+          passwordHash,
+          role: 'COMPANY_ADMIN',
+          emailVerified: false,
+          companyId: company.id,
+        },
+        include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+      });
+      return { company, user };
+    });
+
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.register_employer',
+      resourceType: 'company',
+      resourceId: company.id,
+      reasonCode: null,
     });
 
     return this.issueSession(user, reply);
@@ -319,11 +386,17 @@ export function toAuthenticatedUser(user: {
   provider: AuthenticatedUser['provider'];
   emailVerified: boolean;
   institutionId: string | null;
+  companyId?: string | null;
   createdAt: Date;
   heldAt?: Date | null;
   onboardingCompleted?: boolean;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
-  company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
+  company?: {
+    name?: string;
+    verificationStatus?: AuthenticatedUser['companyVerificationStatus'];
+    heldAt?: Date | null;
+    deactivatedAt?: Date | null;
+  } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
   profilePhotoObjectKey?: string | null;
@@ -354,6 +427,9 @@ export function toAuthenticatedUser(user: {
     role: user.role,
     institutionId: user.institutionId,
     institutionName: user.institution?.name ?? null,
+    companyId: user.companyId ?? null,
+    companyName: user.company?.name ?? null,
+    companyVerificationStatus: user.company?.verificationStatus ?? null,
     primaryTrack: (user.primaryTrack?.code as AuthenticatedUser['primaryTrack']) ?? null,
     secondaryTrack: (user.secondaryTrack?.code as AuthenticatedUser['secondaryTrack']) ?? null,
     provider: user.provider,

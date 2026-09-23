@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import {
   AuthProviderSchema,
+  CompanyModeSchema,
   SessionHoldCodeSchema,
+  TenantVerificationStatusSchema,
   TrackCodeSchema,
   UserRoleSchema,
 } from '../domain/enums.js';
@@ -37,6 +39,26 @@ export const SelectableInstitutionDtoSchema = z.object({
   name: z.string(),
 });
 export type SelectableInstitutionDto = z.infer<typeof SelectableInstitutionDtoSchema>;
+
+/* -------------------------- employer self-serve register ------------------------- */
+
+/**
+ * Employer self-serve registration always creates a NEW Company + Organization
+ * (verificationStatus starts PENDING — see CompaniesService.registerSelfServe),
+ * unlike student registration which joins an EXISTING institution.
+ */
+export const RegisterEmployerRequestSchema = z.object({
+  email: EmailSchema,
+  password: z.string().min(8).max(200),
+  fullName: z.string().trim().min(1).max(200),
+  companyName: z.string().trim().min(2).max(200),
+  website: z.string().trim().max(255).optional(),
+  sector: z.string().trim().max(80).optional(),
+  mode: CompanyModeSchema.optional(),
+  sizeBand: z.string().trim().max(40).optional(),
+  location: z.string().trim().max(120).optional(),
+});
+export type RegisterEmployerRequest = z.infer<typeof RegisterEmployerRequestSchema>;
 
 /* ---------------------------- password reset -------------------------- */
 
@@ -91,6 +113,9 @@ export const AuthenticatedUserSchema = z.object({
   role: UserRoleSchema,
   institutionId: UuidSchema.nullable(),
   institutionName: z.string().nullable(),
+  companyId: UuidSchema.nullable(),
+  companyName: z.string().nullable(),
+  companyVerificationStatus: TenantVerificationStatusSchema.nullable(),
   primaryTrack: TrackCodeSchema.nullable(),
   secondaryTrack: TrackCodeSchema.nullable(),
   provider: AuthProviderSchema,

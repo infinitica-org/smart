@@ -797,6 +797,19 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/auth/register/employer',
+    module: 'auth',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'auth.registerEmployer',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Employer self-serve registration; creates a new PENDING Company + Organization and a COMPANY_ADMIN account, issues an access token.',
+  },
+  {
+    method: 'POST',
     path: '/auth/verify-email/:token',
     module: 'auth',
     owner: 'Vishal V',

@@ -84,4 +84,47 @@ describe('NotificationsService', () => {
     expect(titles.size).toBe(stages.length);
     expect(bodies.size).toBe(stages.length);
   });
+
+  it('notifyCompanyVerification sends distinct copy for approved vs rejected', async () => {
+    const outcomes = ['APPROVED', 'REJECTED'] as const;
+    const seen: { decision: string; template: unknown; title: string }[] = [];
+
+    for (const decision of outcomes) {
+      const prisma = {
+        notification: {
+          create: vi.fn(({ data }: { data: { title: string; body: string; kind: string } }) =>
+            Promise.resolve({
+              id: randomUUID(),
+              kind: data.kind,
+              title: data.title,
+              body: data.body,
+              linkUrl: null,
+              readAt: null,
+              createdAt: new Date('2026-09-23T00:00:00.000Z'),
+            }),
+          ),
+        },
+      };
+      const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+      const service = new NotificationsService(prisma as never, emailQueue as never);
+
+      const dto = await service.notifyCompanyVerification({
+        userId: randomUUID(),
+        email: 'admin@acme.com',
+        fullName: 'Admin Acme',
+        companyName: 'Acme',
+        decision,
+        reason: 'GSTIN missing',
+      });
+
+      expect(dto.kind).toBe('VERIFICATION_RESULT');
+      expect(dto.title).toContain('Acme');
+      const [, emailArgs] = emailQueue.add.mock.calls[0] as [string, { template: unknown }];
+      seen.push({ decision, template: emailArgs.template, title: dto.title });
+    }
+
+    expect(seen[0]?.template).toBe('company-verification-approved');
+    expect(seen[1]?.template).toBe('company-verification-rejected');
+    expect(seen[0]?.title).not.toBe(seen[1]?.title);
+  });
 });

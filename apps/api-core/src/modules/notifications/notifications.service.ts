@@ -225,6 +225,44 @@ export class NotificationsService {
       },
     });
   }
+
+  async notifyCompanyVerification(params: {
+    userId: string;
+    email: string;
+    fullName: string;
+    companyName: string;
+    decision: 'APPROVED' | 'REJECTED';
+    reason: string;
+  }): Promise<NotificationDto> {
+    const statusUrl = `${env.COMPANY_APP_URL}/status`;
+    const approved = params.decision === 'APPROVED';
+    const template: EmailTemplateName = approved
+      ? 'company-verification-approved'
+      : 'company-verification-rejected';
+    const title = approved
+      ? `${params.companyName} is verified`
+      : `${params.companyName} wasn't verified`;
+    return this.notify({
+      userId: params.userId,
+      email: params.email,
+      kind: 'VERIFICATION_RESULT',
+      title,
+      body: approved
+        ? `${params.companyName} has been verified. Your dashboard is unlocked.`
+        : `${params.companyName} wasn't verified: ${params.reason}`,
+      linkUrl: statusUrl,
+      emailTemplate: template,
+      emailData: {
+        fullName: params.fullName,
+        companyName: params.companyName,
+        reason: params.reason,
+        statusUrl,
+      },
+      metadata: {
+        decision: params.decision,
+      },
+    });
+  }
 }
 
 /**

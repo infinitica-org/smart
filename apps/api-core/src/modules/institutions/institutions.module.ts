@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InvitationsModule } from '../invitations/invitations.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { CompaniesAdminController } from './companies-admin.controller.js';
 import { CompaniesService } from './companies.service.js';
 import { InstitutionsAdminController } from './institutions-admin.controller.js';
@@ -10,7 +11,7 @@ import { InstitutionsService } from './institutions.service.js';
 import { OrganizationsService } from './organizations.service.js';
 
 @Module({
-  imports: [InvitationsModule],
+  imports: [InvitationsModule, NotificationsModule],
   controllers: [
     InstitutionsAdminController,
     InstitutionsTpoController,

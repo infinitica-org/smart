@@ -27,6 +27,7 @@ const origins = {
   student: 'http://localhost:3001',
   tpo: 'http://localhost:3002',
   admin: 'http://localhost:3003',
+  company: 'http://localhost:3006',
 };
 
 describe('resolvePortalOriginsFromEnv', () => {
@@ -42,11 +43,13 @@ describe('resolvePortalOriginsFromEnv', () => {
     vi.stubEnv('NEXT_PUBLIC_STUDENT_URL', 'https://student.example.com');
     vi.stubEnv('NEXT_PUBLIC_TPO_URL', 'https://tpo.example.com');
     vi.stubEnv('NEXT_PUBLIC_ADMIN_URL', 'https://admin.example.com');
+    vi.stubEnv('NEXT_PUBLIC_COMPANY_URL', 'https://company.example.com');
 
     expect(resolvePortalOriginsFromEnv()).toEqual({
       student: 'https://student.example.com',
       tpo: 'https://tpo.example.com',
       admin: 'https://admin.example.com',
+      company: 'https://company.example.com',
     });
   });
 });
@@ -83,6 +86,8 @@ describe('portal role gates', () => {
     expect(roleAllowsPortal('STUDENT', PORTAL_ROLES.tpo)).toBe(false);
     expect(roleAllowsPortal('SUPER_ADMIN', PORTAL_ROLES.admin)).toBe(true);
     expect(roleAllowsPortal('INSTITUTION_ADMIN', PORTAL_ROLES.admin)).toBe(false);
+    expect(roleAllowsPortal('COMPANY_ADMIN', PORTAL_ROLES.company)).toBe(true);
+    expect(roleAllowsPortal('STUDENT', PORTAL_ROLES.company)).toBe(false);
   });
 });
 
@@ -92,6 +97,7 @@ describe('login redirect per role', () => {
     expect(portalHomeForRole('INSTITUTION_ADMIN', origins)).toBe('http://localhost:3002/');
     expect(portalHomeForRole('PLACEMENT_STAFF', origins)).toBe('http://localhost:3002/');
     expect(portalHomeForRole('SUPER_ADMIN', origins)).toBe('http://localhost:3003/admin');
+    expect(portalHomeForRole('COMPANY_ADMIN', origins)).toBe('http://localhost:3006/status');
   });
 
   it('ignores returnTo that points at a different portal', () => {

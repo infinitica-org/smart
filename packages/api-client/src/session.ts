@@ -13,6 +13,7 @@ export const PORTAL_ROLES = {
   student: ['STUDENT'],
   tpo: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
   admin: ['SUPER_ADMIN'],
+  company: ['COMPANY_ADMIN'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 function hasBrowserStorage(): boolean {
@@ -107,6 +108,7 @@ export type PortalOrigins = {
   student: string;
   tpo: string;
   admin: string;
+  company: string;
 };
 
 /**
@@ -121,6 +123,7 @@ export function resolvePortalOriginsFromEnv(): PortalOrigins {
     student: process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001',
     tpo: process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002',
     admin: process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003',
+    company: process.env.NEXT_PUBLIC_COMPANY_URL ?? 'http://localhost:3006',
   };
 }
 
@@ -133,6 +136,8 @@ export function portalHomeForRole(role: UserRole, origins: PortalOrigins): strin
       return `${origins.tpo.replace(/\/$/u, '')}/`;
     case 'SUPER_ADMIN':
       return `${origins.admin.replace(/\/$/u, '')}/admin`;
+    case 'COMPANY_ADMIN':
+      return `${origins.company.replace(/\/$/u, '')}/status`;
     default:
       return null;
   }
@@ -271,6 +276,7 @@ export async function signOutAndRedirect(options: {
     originOf(options.portalOrigins.student),
     originOf(options.portalOrigins.tpo),
     originOf(options.portalOrigins.admin),
+    originOf(options.portalOrigins.company),
     originOf(options.authAppUrl),
   ].filter((origin, index, all) => origin !== here && all.indexOf(origin) === index);
   await Promise.all(foreign.map((origin) => clearForeignOriginSession(origin)));
