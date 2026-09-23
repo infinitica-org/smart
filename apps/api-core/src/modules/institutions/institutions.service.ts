@@ -210,7 +210,7 @@ export class InstitutionsService {
     };
     this.partnershipRequests.set(id, updatedReq);
     this.logger.log(
-      `University account provisioned for ${req.name} (${institution.institutionId})`,
+      `University account provisioned for ${req.name} (${institution.institutionId}) by ${adminUserId}`,
     );
     return { partnershipRequest: updatedReq, institution };
   }
