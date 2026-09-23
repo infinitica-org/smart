@@ -50,6 +50,10 @@ jobs:
             if [ "$HEAD_BRANCH" != "dev" ]; then
               ERRORS="${ERRORS}\n❌ PRs to \`qa\` must come from \`dev\`. Found \`$HEAD_BRANCH\`."
             fi
+            if [ "$AUTHOR" != "brittytino" ]; then
+              echo "::error::Only 'brittytino' is allowed to create PRs to 'qa'."
+              exit 1
+            fi
           fi
 
           # ── 3. dev must NOT come from qa, main, or develop ──
