@@ -155,6 +155,11 @@ import {
   ProjectDefenseAudioUploadResponseSchema,
   ProjectDefenseReplyResponseSchema,
   CompleteProjectDefenseResponseSchema,
+  ProjectDefenseAppealResponseSchema,
+  ProjectDefenseOutcomeDtoSchema,
+  ListProjectReviewQueueResponseSchema,
+  ProjectReviewDetailDtoSchema,
+  ResolveProjectReviewResponseSchema,
   SaveDraftResponseSchema,
   RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
@@ -732,6 +737,21 @@ export function onboardingApi(client: SmartApiClient) {
         schema: IntegrityQueueItemDtoSchema,
       }),
 
+    projectReviewQueue: () =>
+      client.get(prefixed('/admin/project-review-queue'), {
+        schema: ListProjectReviewQueueResponseSchema,
+      }),
+
+    projectReviewDetail: (projectId: string) =>
+      client.get(prefixed(`/admin/project-review-queue/${projectId}`), {
+        schema: ProjectReviewDetailDtoSchema,
+      }),
+
+    resolveProjectReview: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/admin/project-review-queue/${projectId}/resolve`), body, {
+        schema: ResolveProjectReviewResponseSchema,
+      }),
+
     /** CN-T09 — super-admin-curated blocked-word list. */
     listBlockedWords: () =>
       client.get(prefixed('/admin/blocked-words'), {
@@ -1281,6 +1301,16 @@ export function projectsApi(client: SmartApiClient) {
     completeDefense: (projectId: string, body: unknown) =>
       client.post(prefixed(`/projects/${projectId}/defense/complete`), body, {
         schema: CompleteProjectDefenseResponseSchema,
+      }),
+
+    defenseOutcome: (projectId: string) =>
+      client.get(prefixed(`/projects/${projectId}/defense/outcome`), {
+        schema: ProjectDefenseOutcomeDtoSchema,
+      }),
+
+    appealDefense: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/appeal`), body, {
+        schema: ProjectDefenseAppealResponseSchema,
       }),
   };
 }

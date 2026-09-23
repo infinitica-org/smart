@@ -7,15 +7,11 @@ import type {
   RecommendedNextStep,
   SkillCompetency,
 } from '@smart/contracts';
+import { PROFICIENCY_LEVEL_ORDER, type ProficiencyLevel } from '@smart/contracts';
 
-export type ProficiencyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
+export type { ProficiencyLevel };
 
-const PROFICIENCY_ORDER: readonly ProficiencyLevel[] = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-];
+const PROFICIENCY_ORDER: readonly ProficiencyLevel[] = PROFICIENCY_LEVEL_ORDER;
 
 export type ScoredCompetencyItem = {
   readonly competencyIds: readonly string[];

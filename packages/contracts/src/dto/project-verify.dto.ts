@@ -6,7 +6,8 @@ import {
   ProjectVerifyFlagSchema,
 } from '../domain/enums.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
-import { ProjectInterviewStatusSchema } from './project-defense.dto.js';
+import { DefenseTurnSchema } from './evaluation.dto.js';
+import { ProjectDefenseGradeSchema, ProjectInterviewStatusSchema } from './project-defense.dto.js';
 
 /**
  * SE-T03 / CN-T08 contracts.
@@ -230,3 +231,32 @@ export const ResolveProjectReviewRequestSchema = z.object({
   reason: z.string().min(8).max(2_000),
 });
 export type ResolveProjectReviewRequest = z.infer<typeof ResolveProjectReviewRequestSchema>;
+
+export const ListProjectReviewQueueResponseSchema = z.object({
+  items: z.array(ProjectReviewQueueItemDtoSchema),
+});
+export type ListProjectReviewQueueResponse = z.infer<typeof ListProjectReviewQueueResponseSchema>;
+
+export const ProjectReviewDetailDtoSchema = z.object({
+  queue: ProjectReviewQueueItemDtoSchema,
+  transcript: z.array(DefenseTurnSchema),
+  grade: ProjectDefenseGradeSchema,
+  verificationExplanation: z.string().nullable(),
+  qlixReportDigest: z.string().max(8_000).nullable(),
+  capabilities: z.array(
+    z.object({
+      capabilityLabel: z.string(),
+      category: z.string(),
+      proficiency: z.string(),
+      confidenceScore: z.number().min(0).max(1),
+      evidenceRefs: z.array(z.string()).max(10),
+    }),
+  ),
+});
+export type ProjectReviewDetailDto = z.infer<typeof ProjectReviewDetailDtoSchema>;
+
+export const ResolveProjectReviewResponseSchema = z.object({
+  projectId: UuidSchema,
+  status: ProjectStatusSchema,
+});
+export type ResolveProjectReviewResponse = z.infer<typeof ResolveProjectReviewResponseSchema>;
