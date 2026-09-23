@@ -1,17 +1,21 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { X } from 'lucide-react';
 import { cn, UI_VERSION } from '@smart/ui';
-import BlackLogo from '@smart/ui/assets/images/Logos/WebP/BLACK LOGO@4x.webp';
+import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
+import { isNavLinkActive, isPlacementTopNavActive } from '../lib/tpo-nav';
 import {
   LayoutDashboard,
   Users,
-  BarChart3,
-  Settings,
-  GraduationCap,
+  UserPlus,
   Briefcase,
+  BarChart3,
+  GraduationCap,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,147 +23,187 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
-  isNew?: boolean;
-  subItems?: { name: string; href: string }[];
-}
-
-function isSidebarItemActive(pathname: string, item: NavItem): boolean {
-  if (item.subItems?.length) {
-    return item.subItems.some(
-      (sub) => pathname === sub.href || pathname.startsWith(`${sub.href}/`),
-    );
-  }
-  return pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
 }
 
 const mainNav: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  {
-    name: 'Candidates',
-    href: '/students',
-    icon: Users,
-    subItems: [
-      { name: 'Candidates Repository', href: '/students' },
-      { name: 'Candidate Onboarding', href: '/provisioning' },
-      { name: 'Batches', href: '/batches' },
-    ],
-  },
-  {
-    name: 'Work Experience',
-    href: '/work-experience-verification',
-    icon: Briefcase,
-    isNew: true,
-  },
+  { name: 'Students', href: '/students', icon: Users },
+  { name: 'Whitelist', href: '/whitelist', icon: UserPlus },
+  { name: 'Employers', href: '/companies', icon: Briefcase },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export function TpoSidebar() {
+function isSidebarItemActive(pathname: string, item: NavItem): boolean {
+  if (item.href === '/') return pathname === '/' || pathname === '/dashboard';
+  if (item.name === 'Employers') return isPlacementTopNavActive(pathname);
+  if (item.name === 'Students') {
+    return (
+      isNavLinkActive(pathname, '/students') ||
+      isNavLinkActive(pathname, '/batches') ||
+      pathname.startsWith('/work-experience-verification') ||
+      pathname.startsWith('/skill-verification')
+    );
+  }
+  if (item.name === 'Whitelist') {
+    return (
+      isNavLinkActive(pathname, '/whitelist') ||
+      isNavLinkActive(pathname, '/onboarding') ||
+      isNavLinkActive(pathname, '/provisioning')
+    );
+  }
+  return isNavLinkActive(pathname, item.href);
+}
+
+type TpoSidebarProps = {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+};
+
+export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) {
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onMobileOpenChange(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onMobileOpenChange]);
+
   return (
-    <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200/80 flex-col h-screen sticky top-0 left-0 z-40 shrink-0 font-sans select-none">
-      {/* Brand Header: Black Logo + Version on Right */}
-      <div className="h-16 px-5 flex items-center justify-between shrink-0 border-b border-slate-200/80 bg-white">
-        <Link href="/" className="flex items-center">
-          <Image
-            src={BlackLogo}
-            alt="SMART Logo"
-            width={140}
-            height={36}
-            className="h-8 w-auto object-contain"
-            priority
-          />
-        </Link>
-        <span className="text-xs font-semibold text-slate-400">v{UI_VERSION}</span>
-      </div>
+    <>
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+          onClick={() => onMobileOpenChange(false)}
+        />
+      ) : null}
 
-      {/* Main Navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-        <ul className="space-y-1">
-          {mainNav.map((item) => {
-            const isActive = isSidebarItemActive(pathname, item);
-            const Icon = item.icon;
-
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group',
-                    isActive
-                      ? 'bg-[#F0FDFA] text-[#004C63] font-bold border border-[#CCFBF1]/80 shadow-[0_1px_2px_rgba(0,76,99,0.05)]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80',
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      'size-4.5 shrink-0 transition-colors',
-                      isActive
-                        ? 'text-[#004C63] stroke-[2.2]'
-                        : 'text-slate-400 group-hover:text-slate-600',
-                    )}
-                  />
-                  <span className="truncate">{item.name}</span>
-                  {item.isNew ? (
-                    <span className="ml-auto bg-emerald-100 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                      New
-                    </span>
-                  ) : null}
-                </Link>
-
-                {/* Sub-items (Tree View) if Active */}
-                {item.subItems && isActive && (
-                  <div className="ml-5 pl-4 border-l border-[#004C63]/20 space-y-1.5 pt-2 pb-1">
-                    {item.subItems.map((sub) => {
-                      const subActive =
-                        pathname === sub.href || pathname.startsWith(`${sub.href}/`);
-                      return (
-                        <Link
-                          key={sub.name}
-                          href={sub.href}
-                          aria-current={subActive ? 'page' : undefined}
-                          className={cn(
-                            'block py-1 text-xs font-semibold transition-colors',
-                            subActive ? 'text-[#004C63]' : 'text-slate-500 hover:text-[#004C63]',
-                          )}
-                        >
-                          {sub.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Sidebar Bottom Card */}
-      <div className="px-4 py-3 shrink-0">
-        <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-[#F0FDFA]/50 to-emerald-50/30 p-4 border border-slate-200/80 shadow-xs">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-white border border-[#CCFBF1] text-[#004C63] shadow-2xs mb-2.5">
-            <GraduationCap className="size-5" />
-          </div>
-          <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
-            Empowering Better Futures
-          </h4>
-          <p className="text-[11px] font-medium text-slate-500 mt-1 leading-snug">
-            Connect Talent. Create Opportunities.
-          </p>
-        </div>
-      </div>
-
-      {/* Bottom Footer Section */}
-      <div className="px-5 py-3 border-t border-slate-100 shrink-0">
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <span className="hover:text-slate-600 transition-colors cursor-pointer">
-            Privacy Policy | Terms
+      <aside
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? 'true' : undefined}
+        aria-label="University console sidebar"
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200/80 bg-white font-sans shadow-xl transition-transform duration-200 select-none lg:z-30 lg:translate-x-0 lg:shadow-none',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        )}
+      >
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 px-4">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]"
+            aria-label="SMART home"
+          >
+            <Image
+              src={textLogo}
+              alt="SMART"
+              width={100}
+              height={24}
+              priority
+              className="h-6 w-auto object-contain"
+            />
+          </Link>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            v{UI_VERSION}
           </span>
-          <span className="font-semibold text-slate-400">v{UI_VERSION}</span>
         </div>
-      </div>
-    </aside>
+
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="absolute right-3 top-3.5 rounded-lg p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63] lg:hidden"
+          onClick={() => onMobileOpenChange(false)}
+        >
+          <X className="size-5" />
+        </button>
+
+        <nav
+          className="flex-1 overflow-y-auto overscroll-contain bg-white px-3 py-4"
+          aria-label="University console"
+        >
+          <ul className="space-y-1">
+            {mainNav.map((item) => {
+              const isActive = isSidebarItemActive(pathname, item);
+              const Icon = item.icon;
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    onClick={() => onMobileOpenChange(false)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
+                      isActive
+                        ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'size-4 shrink-0 transition-colors',
+                        isActive
+                          ? 'stroke-[2.2] text-slate-900'
+                          : 'text-slate-400 group-hover:text-slate-600',
+                      )}
+                    />
+                    <span className="truncate">{item.name}</span>
+                    {item.name === 'Whitelist' ? (
+                      <span
+                        className="ml-auto size-2 rounded-full bg-blue-600 shrink-0"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+            <li>
+              <Link
+                href="/settings"
+                onClick={() => onMobileOpenChange(false)}
+                aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
+                  pathname.startsWith('/settings')
+                    ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                )}
+              >
+                <Settings
+                  className={cn(
+                    'size-4 shrink-0',
+                    pathname.startsWith('/settings') ? 'text-slate-900' : 'text-slate-400',
+                  )}
+                />
+                <span className="truncate">Settings</span>
+              </Link>
+            </li>
+          </ul>
+        </nav>
+
+        <div className="shrink-0 px-4 py-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-[#F0FDFA]/50 to-emerald-50/30 p-4">
+            <div className="mb-2.5 flex size-9 items-center justify-center rounded-xl border border-[#CCFBF1] bg-white text-[#004C63]">
+              <GraduationCap className="size-5" />
+            </div>
+            <h4 className="text-xs font-extrabold leading-tight text-slate-900">
+              Empowering Better Futures
+            </h4>
+            <p className="mt-1 text-[11px] font-medium leading-snug text-slate-500">
+              Connect Talent. Create Opportunities.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t border-slate-100 px-5 py-3">
+          <p className="text-[11px] font-medium text-slate-400">Privacy Policy · Terms</p>
+        </div>
+      </aside>
+    </>
   );
 }

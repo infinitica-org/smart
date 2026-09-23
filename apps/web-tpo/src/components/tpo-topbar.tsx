@@ -1,30 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, LogOut, Menu, Search, X } from 'lucide-react';
-import { Avatar, AvatarFallback, SmartLogo } from '@smart/ui';
+import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown, GraduationCap, LogOut, Menu, Search, UserRound } from 'lucide-react';
+
+const TOP_NAV_ITEMS = [
+  { name: 'Dashboard', href: '/' },
+  { name: 'Students', href: '/students' },
+  { name: 'Whitelist', href: '/whitelist' },
+  { name: 'Employers', href: '/companies' },
+  { name: 'Reports', href: '/reports' },
+];
+import { Avatar, AvatarFallback } from '@smart/ui';
 import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
 import { api, openingsApi } from '../lib/api';
 import { signOut } from '../lib/auth';
 import {
-  TPO_NAV,
-  isCandidatesTopNavActive,
-  isNavItemActive,
-  isPlacementTopNavActive,
-} from '../lib/tpo-nav';
-import {
   topbarFontClass,
-  topbarMobileNavRowClass,
-  topbarNavLinkActiveClass,
-  topbarNavLinkBaseClass,
-  topbarNavUnderlineClass,
-  topbarPrimaryNavClass,
-  topbarProBadgeClass,
   topbarSearchInputClass,
   topbarSeparatorClass,
-  topbarShellClass,
 } from '../lib/tpo-topbar-ui';
 import { sectionLabelClass } from '../lib/tpo-ui';
 
@@ -36,38 +31,14 @@ const ROLE_LABELS: Record<string, string> = {
 const SEARCH_DEBOUNCE_MS = 300;
 const MIN_SEARCH_CHARS = 2;
 
-function TopbarNavLink({
-  href,
-  isActive,
-  children,
-}: {
-  href: string;
-  isActive: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={isActive ? 'page' : undefined}
-      className={`${topbarNavLinkBaseClass} ${isActive ? topbarNavLinkActiveClass : ''}`}
-    >
-      <span>{children}</span>
-      <span
-        aria-hidden
-        className={`${topbarNavUnderlineClass} ${isActive ? 'opacity-100' : 'opacity-0'}`}
-        data-testid={isActive ? 'topbar-nav-active-indicator' : undefined}
-      />
-    </Link>
-  );
-}
+type TpoTopbarProps = {
+  onOpenMobileNav: () => void;
+};
 
-export function TpoTopbar() {
-  const pathname = usePathname();
+export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
   const router = useRouter();
-
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState('');
@@ -85,9 +56,7 @@ export function TpoTopbar() {
       .then((res) => {
         if (!cancelled) setUser(res);
       })
-      .catch(() => {
-        /* degrades gracefully */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -164,223 +133,198 @@ export function TpoTopbar() {
     router.push(path);
     setSearchOpen(false);
     setQuery('');
-    setMobileMenuOpen(false);
   }
 
   const hasResults = candidateResults.length > 0 || openingResults.length > 0;
+  const pathname = usePathname() || '/';
+
+  function isItemActive(href: string): boolean {
+    if (href === '/') return pathname === '/' || pathname === '/dashboard';
+    return pathname.startsWith(href);
+  }
 
   return (
-    <header className={`${topbarShellClass} ${topbarFontClass} relative px-4 lg:px-6`}>
-      <div className="flex w-full min-w-0 items-stretch">
-        {/* Brand */}
-        <div className="flex shrink-0 items-center gap-3 self-center">
-          <Link href="/" aria-label="SMART home" className="group flex items-center gap-2">
-            <SmartLogo
-              kind="mark"
-              tone="on-light"
-              className="size-7 transition-opacity group-hover:opacity-80"
-              title="SMART"
+    <header
+      className={`${topbarFontClass} fixed top-0 right-0 z-40 flex h-14 shrink-0 items-center border-b border-slate-200/80 bg-white px-4 text-[var(--ds-text)] antialiased lg:left-64 lg:px-6 left-0`}
+    >
+      <button
+        type="button"
+        onClick={onOpenMobileNav}
+        aria-label="Open navigation menu"
+        className="mr-2 rounded-lg p-2 text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] lg:hidden"
+      >
+        <Menu strokeWidth={1.5} className="size-[18px]" />
+      </button>
+
+      {/* Horizontal Navigation Tabs (matching reference UI top bar) */}
+      <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 ml-2">
+        {TOP_NAV_ITEMS.map((item) => {
+          const active = isItemActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative py-4 transition-colors hover:text-slate-900 ${
+                active ? 'font-extrabold text-slate-900' : ''
+              }`}
+            >
+              {item.name}
+              {active ? (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#004C63]" />
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
+        <div ref={searchBoxRef} className="relative min-w-0 flex-1 md:flex-none">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center md:justify-end">
+            <Search
+              strokeWidth={1.5}
+              className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-3.5 -translate-y-1/2 text-[var(--ds-text-subtle)]"
             />
-            <span className={topbarProBadgeClass}>PRO</span>
-          </Link>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => hasResults && setSearchOpen(true)}
+              placeholder="Search..."
+              className={`${topbarSearchInputClass} w-full max-w-none pl-8 md:w-48 lg:w-56`}
+            />
+            <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center lg:flex">
+              <kbd className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface)] px-1 py-px font-mono text-[9px] font-medium text-[var(--ds-text-subtle)]">
+                ⌘K
+              </kbd>
+            </div>
+          </form>
+
+          {searchOpen && query.trim().length >= MIN_SEARCH_CHARS && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 shadow-[var(--ds-card-shadow)]">
+              {searching ? (
+                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">Searching…</p>
+              ) : !hasResults ? (
+                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">
+                  No matches. Press Enter to view full roster.
+                </p>
+              ) : (
+                <>
+                  {candidateResults.length > 0 && (
+                    <div className="py-1">
+                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Candidates</p>
+                      {candidateResults.map((candidate) => (
+                        <button
+                          key={candidate.userId}
+                          type="button"
+                          onClick={() =>
+                            goTo(`/students?q=${encodeURIComponent(candidate.fullName)}`)
+                          }
+                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
+                        >
+                          <span>{candidate.fullName}</span>
+                          <span className="font-normal text-[var(--ds-text-muted)]">
+                            {candidate.email}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {openingResults.length > 0 && (
+                    <div className="border-t border-[var(--ds-border-subtle)] py-1">
+                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Job openings</p>
+                      {openingResults.map((opening) => (
+                        <button
+                          key={opening.openingId}
+                          type="button"
+                          onClick={() => goTo('/companies')}
+                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
+                        >
+                          <span>{opening.roleTitle}</span>
+                          <span className="font-normal text-[var(--ds-text-muted)]">
+                            {opening.companyName}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className={topbarSeparatorClass} aria-hidden />
+        <div className={`${topbarSeparatorClass} hidden md:block`} aria-hidden />
 
-        <nav aria-label="Primary" className={topbarPrimaryNavClass}>
-          {TPO_NAV.map((item) => {
-            if (item.kind === 'group') {
-              return null;
-            }
-
-            const isActive =
-              item.name === 'Placement'
-                ? isPlacementTopNavActive(pathname)
-                : item.name === 'Candidates'
-                  ? isCandidatesTopNavActive(pathname)
-                  : isNavItemActive(pathname, item);
-
-            return (
-              <TopbarNavLink key={item.href} href={item.href} isActive={isActive}>
-                {item.name}
-                {item.isNew ? <span className="sr-only"> (new)</span> : null}
-              </TopbarNavLink>
-            );
-          })}
-        </nav>
-
-        {/* Right utilities */}
-        <div className="ml-auto flex shrink-0 items-center gap-1 self-center md:gap-0">
-          <div ref={searchBoxRef} className="relative hidden md:block">
-            <form onSubmit={handleSearchSubmit} className="group relative flex items-center">
-              <Search
-                strokeWidth={1.5}
-                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--ds-text-subtle)]"
-              />
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => hasResults && setSearchOpen(true)}
-                placeholder="Search..."
-                className={topbarSearchInputClass}
-              />
-              <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center lg:flex">
-                <kbd className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface)] px-1 py-px font-mono text-[9px] font-medium text-[var(--ds-text-subtle)]">
-                  ⌘K
-                </kbd>
-              </div>
-            </form>
-
-            {searchOpen && query.trim().length >= MIN_SEARCH_CHARS && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[360px] overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 text-[var(--ds-text)] shadow-[var(--ds-card-shadow)]">
-                {searching ? (
-                  <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">Searching…</p>
-                ) : !hasResults ? (
-                  <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">
-                    No matches for &quot;{query}&quot;. Press Enter to view search roster.
-                  </p>
-                ) : (
-                  <>
-                    {candidateResults.length > 0 && (
-                      <div className="py-1">
-                        <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Candidates</p>
-                        {candidateResults.map((candidate) => (
-                          <button
-                            key={candidate.userId}
-                            type="button"
-                            onClick={() =>
-                              goTo(`/students?q=${encodeURIComponent(candidate.fullName)}`)
-                            }
-                            className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--ds-text)] transition-colors hover:bg-[var(--ds-surface-hover)]"
-                          >
-                            <span>{candidate.fullName}</span>
-                            <span className="font-normal text-[var(--ds-text-muted)]">
-                              {candidate.email}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {openingResults.length > 0 && (
-                      <div className="border-t border-[var(--ds-border-subtle)] py-1">
-                        <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Job openings</p>
-                        {openingResults.map((opening) => (
-                          <button
-                            key={opening.openingId}
-                            type="button"
-                            onClick={() => goTo('/placements')}
-                            className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--ds-text)] transition-colors hover:bg-[var(--ds-surface-hover)]"
-                          >
-                            <span>{opening.roleTitle}</span>
-                            <span className="font-normal text-[var(--ds-text-muted)]">
-                              {opening.companyName}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className={`${topbarSeparatorClass} hidden md:block`} aria-hidden />
-
-          <div ref={profileRef} className="relative hidden md:block">
-            <button
-              type="button"
-              onClick={() => setProfileOpen((v) => !v)}
-              aria-expanded={profileOpen}
-              aria-label={`${user?.fullName ?? 'Pilot TPO'} account menu`}
-              className="flex max-w-[220px] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-[var(--ds-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)]"
-            >
-              <Avatar className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]">
-                <AvatarFallback className="rounded-full bg-transparent text-xs font-semibold text-[var(--ds-text-secondary)]">
-                  {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden min-w-0 flex-col items-start text-left lg:flex">
-                <span className="truncate text-[12px] font-semibold leading-tight text-[var(--ds-text)]">
-                  {user?.fullName ?? 'Pilot TPO'}
-                </span>
-                <span className="truncate text-[10px] font-medium leading-tight text-[var(--ds-text-muted)]">
-                  {user ? (ROLE_LABELS[user.role] ?? user.role) : 'Institution Admin'}
-                </span>
-              </div>
-              <ChevronDown
-                strokeWidth={1.5}
-                className="hidden size-4 shrink-0 text-[var(--ds-text-subtle)] lg:block"
-                aria-hidden
-              />
-            </button>
-
-            {profileOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 text-[var(--ds-text)] shadow-[var(--ds-card-shadow)]">
-                <div className="border-b border-[var(--ds-border-subtle)] px-3 py-2.5">
-                  <p className="truncate text-xs font-semibold text-[var(--ds-text)]">
-                    {user?.fullName ?? 'Pilot TPO'}
-                  </p>
-                  <p className="truncate text-[11px] text-[var(--ds-text-muted)]">
-                    {user?.email ?? 'tpo@institution.edu'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-[var(--ds-coral)] transition-colors hover:bg-[#fef4f4]"
-                >
-                  <LogOut strokeWidth={1.5} className="size-3.5" /> Sign out
-                </button>
-              </div>
-            )}
-          </div>
-
+        <div ref={profileRef} className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label="Toggle navigation"
-            aria-expanded={mobileMenuOpen}
-            className="rounded-lg p-2 text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] xl:hidden"
+            onClick={() => setProfileOpen((v) => !v)}
+            aria-expanded={profileOpen}
+            aria-label={`${user?.fullName ?? 'Pilot TPO'} account menu`}
+            className="flex max-w-[220px] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-[var(--ds-surface-hover)]"
           >
-            {mobileMenuOpen ? (
-              <X strokeWidth={1.5} className="size-[18px]" />
-            ) : (
-              <Menu strokeWidth={1.5} className="size-[18px]" />
-            )}
+            <Avatar className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]">
+              <AvatarFallback className="rounded-full bg-transparent text-xs font-semibold text-[var(--ds-text-secondary)]">
+                {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden min-w-0 flex-col items-start text-left lg:flex">
+              <span className="truncate text-[12px] font-semibold leading-tight">
+                {user?.fullName ?? 'Pilot TPO'}
+              </span>
+              <span className="truncate text-[10px] font-medium leading-tight text-[var(--ds-text-muted)]">
+                {user ? (ROLE_LABELS[user.role] ?? user.role) : 'Institution Admin'}
+              </span>
+            </div>
+            <ChevronDown
+              strokeWidth={1.5}
+              className="hidden size-4 shrink-0 text-[var(--ds-text-subtle)] lg:block"
+              aria-hidden
+            />
           </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 shadow-[var(--ds-card-shadow)]">
+              <div className="border-b border-[var(--ds-border-subtle)] px-3 py-2.5">
+                <p className="truncate text-xs font-semibold">{user?.fullName ?? 'Pilot TPO'}</p>
+                <p className="truncate text-[11px] text-[var(--ds-text-muted)]">
+                  {user?.email ?? 'tpo@institution.edu'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  router.push('/settings');
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
+              >
+                <UserRound strokeWidth={1.5} className="size-3.5" />
+                My profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  router.push('/school-profile');
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
+              >
+                <GraduationCap strokeWidth={1.5} className="size-3.5" />
+                My school
+              </button>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-[var(--ds-coral)] hover:bg-[#fef4f4]"
+              >
+                <LogOut strokeWidth={1.5} className="size-3.5" /> Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      {mobileMenuOpen && (
-        <div className="absolute left-0 top-full z-50 flex w-full flex-col gap-1 border-b border-[var(--ds-border)] bg-[var(--ds-surface)] p-3 shadow-[var(--ds-card-shadow)] xl:hidden">
-          {TPO_NAV.map((item) => {
-            if (item.kind === 'group') {
-              return null;
-            }
-
-            const linkActive =
-              item.name === 'Placement'
-                ? isPlacementTopNavActive(pathname)
-                : item.name === 'Candidates'
-                  ? isCandidatesTopNavActive(pathname)
-                  : isNavItemActive(pathname, item);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={linkActive ? 'page' : undefined}
-                onClick={() => setMobileMenuOpen(false)}
-                className={topbarMobileNavRowClass(linkActive)}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-      )}
     </header>
   );
 }

@@ -51,7 +51,7 @@ export function DashboardHero({
               {formattedDate}
             </div>
           </div>
-          <Link href="/provisioning" className={`${dashboardPrimaryButtonClass} mt-2`}>
+          <Link href="/whitelist" className={`${dashboardPrimaryButtonClass} mt-2`}>
             + Onboard Candidates
           </Link>
         </div>
