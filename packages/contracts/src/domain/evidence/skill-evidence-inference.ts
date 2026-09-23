@@ -19,6 +19,8 @@ export const SkillInferenceProvenanceSchema = z.object({
   ruleSetVersion: z.string().max(40),
   taxonomyVersion: z.string().max(40),
   capabilityModelVersion: z.string().max(80).optional(),
+  assessmentBlueprintRef: z.string().max(120).optional(),
+  interviewBlueprintRef: z.string().max(120).optional(),
   promptRefs: z.array(z.string().max(80)).max(20).default([]),
   evidenceRecordIds: z.array(UuidSchema).max(50).default([]),
   computedAt: IsoDateTimeSchema,

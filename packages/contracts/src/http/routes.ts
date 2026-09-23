@@ -3412,6 +3412,18 @@ export const ROUTES: readonly RouteSpec[] = [
       'Student why-this-level explanation: verified vs assessment vs evidence fusion (SKL-03).',
   },
   {
+    method: 'GET',
+    path: '/admin/student-capabilities/review-queue',
+    module: 'evaluation',
+    owner: 'Ramansh',
+    roles: ['SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary: 'List low-confidence inferred capabilities awaiting reviewer action (SKL-02).',
+  },
+  {
     method: 'POST',
     path: '/admin/student-capabilities/:capabilityId/correct',
     module: 'evaluation',
