@@ -6,6 +6,7 @@ import { Badge, Button, VerificationBadge } from '@smart/ui';
 import { PROFICIENCY_LABELS, skillNameForCode } from '@/lib/skill-declarations';
 import { type AssessmentResultView, targetedAssessmentSkipMessage } from '@/lib/competency-display';
 import { CompetencyResultsGrid } from './competency-results-grid';
+import { SkillEvidenceInferencePanel } from './skill-evidence-inference-panel';
 import { SkillLevelExplanationPanel } from './skill-level-explanation-panel';
 
 export function SkillVerifyReport({
@@ -100,7 +101,12 @@ export function SkillVerifyReport({
         <CompetencyResultsGrid skillCode={catalogSkillCode} assessmentResult={assessmentResult} />
       ) : null}
 
-      {catalogSkillCode ? <SkillLevelExplanationPanel skillCode={catalogSkillCode} /> : null}
+      {catalogSkillCode ? (
+        <>
+          <SkillEvidenceInferencePanel skillCode={catalogSkillCode} />
+          <SkillLevelExplanationPanel skillCode={catalogSkillCode} />
+        </>
+      ) : null}
 
       {assessmentResult && !intelligenceResult && assessmentResult.uncertainties.length > 0 ? (
         <section className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface)] p-4 text-sm">
