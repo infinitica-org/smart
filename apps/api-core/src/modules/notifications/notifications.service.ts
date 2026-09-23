@@ -225,6 +225,49 @@ export class NotificationsService {
       },
     });
   }
+
+  async notifySkillInferenceLevelChange(params: {
+    userId: string;
+    email: string;
+    fullName: string;
+    skillCode: string;
+    previousLevel: string | null;
+    newLevel: string | null;
+    confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+    outcome: 'INFERRED' | 'INSUFFICIENT_EVIDENCE' | 'VETO_BLOCKED';
+  }): Promise<NotificationDto> {
+    const skillsUrl = `${env.STUDENT_APP_URL}/assessments/skills`;
+    const previousLabel = params.previousLevel?.replaceAll('_', ' ').toLowerCase() ?? 'none';
+    const newLabel = params.newLevel?.replaceAll('_', ' ').toLowerCase() ?? 'not inferred';
+    const title = `Skill evidence update: ${params.skillCode}`;
+    const body =
+      params.outcome === 'INSUFFICIENT_EVIDENCE'
+        ? `Evidence fusion could not infer a level for ${params.skillCode} yet. Add or verify more project evidence.`
+        : `Evidence fusion for ${params.skillCode} changed from ${previousLabel} to ${newLabel} (${params.confidence.toLowerCase()} confidence). This is separate from your verified claim level.`;
+
+    return this.notify({
+      userId: params.userId,
+      email: params.email,
+      kind: 'VERIFICATION_RESULT',
+      title,
+      body,
+      linkUrl: skillsUrl,
+      emailTemplate: 'verification-passed',
+      emailData: {
+        fullName: params.fullName,
+        skillName: params.skillCode,
+        statusLabel: 'Evidence fusion updated',
+        detail: body,
+        profileUrl: skillsUrl,
+      },
+      metadata: {
+        skillCode: params.skillCode,
+        previousLevel: params.previousLevel,
+        newLevel: params.newLevel,
+        outcome: params.outcome,
+      },
+    });
+  }
 }
 
 /**
