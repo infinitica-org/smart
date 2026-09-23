@@ -90,6 +90,45 @@ export class SignalIngestionService {
     return {
       connection: this.connections.toSummary(stored),
       fetchQueued,
+      verificationStatus: 'UNVERIFIED',
+    };
+  }
+
+  async selectGithubRepositories(
+    userId: string,
+    selectedRepoFullNames: string[],
+  ): Promise<ConnectSignalSourceResponse> {
+    const existing = await this.connections.get(userId, 'GITHUB');
+    if (!existing || existing.status === 'REVOKED') {
+      throw new NotFoundException({
+        error: 'signal_connection_not_found',
+        message: 'No active GITHUB connection found to select repositories for.',
+        statusCode: 404,
+      });
+    }
+
+    const updated = await this.connections.upsert({
+      ...existing,
+      metadata: {
+        ...existing.metadata,
+        selectedRepoFullNames,
+      },
+    });
+
+    let fetchQueued = false;
+    try {
+      await this.ingest(userId, 'GITHUB');
+      fetchQueued = true;
+    } catch (error) {
+      this.logger.warn(
+        `Ingest after repository selection failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    return {
+      connection: this.connections.toSummary(updated),
+      fetchQueued,
+      verificationStatus: 'UNVERIFIED',
     };
   }
 
@@ -102,7 +141,10 @@ export class SignalIngestionService {
         statusCode: 404,
       });
     }
-    await this.connections.delete(userId, sourceId);
+    await this.connections.upsert({
+      ...existing,
+      status: 'REVOKED',
+    });
     await this.audit.record({
       actorId: userId,
       action: 'signal.connection.revoked',

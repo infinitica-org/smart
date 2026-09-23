@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -3493,6 +3493,68 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 300,
     summary: 'Resolve a corroboration review flag (audit only; does not change SkillClaim status).',
+  },
+  /* ------------------------------ signal ingestion --------------------------- */
+  {
+    method: 'GET',
+    path: '/signals/connections',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connections.read',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 100,
+    summary: 'List connected external passive signal sources.',
+  },
+  {
+    method: 'POST',
+    path: '/signals/connect/GITHUB/repositories',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Select GitHub repositories for passive signal analysis.',
+  },
+  {
+    method: 'POST',
+    path: '/signals/connect/:sourceId',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary:
+      'Connect an external passive signal source (GitHub, HackerRank, LeetCode, LinkedIn, Credly).',
+  },
+  {
+    method: 'DELETE',
+    path: '/signals/disconnect/:sourceId',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Revoke an external passive signal connection.',
+  },
+  {
+    method: 'POST',
+    path: '/signals/refresh',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'corroboration.refresh',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 500,
+    summary: 'Trigger background refresh for connected passive signal sources.',
   },
 ] as const;
 
