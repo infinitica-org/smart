@@ -202,7 +202,7 @@ export class PublicProfileService {
       }),
       this.prisma.skillClaim.count({ where: { studentId: userId } }),
       this.prisma.project.findMany({
-        where: { studentId: userId, status: { not: 'REJECTED' } },
+        where: { studentId: userId, isActive: true, status: { not: 'REJECTED' } },
         orderBy: { createdAt: 'desc' },
         include: { report: { select: { score: true } } },
       }),
