@@ -90,6 +90,7 @@ export class EvidenceSyncService {
         evidenceType: 'WORK_EXPERIENCE',
         sourceEntityId: experienceId,
       },
+      include: { artifacts: true },
     });
 
     const payload = {
@@ -109,13 +110,51 @@ export class EvidenceSyncService {
       accessibility: 'PRIVATE',
     };
 
+    const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+
     if (existing) {
-      await this.prisma.evidenceRecord.update({
-        where: { id: existing.id },
-        data: payload,
+      const mergedCandidate = {
+        ...existing,
+        ...payload,
+      } as EvidenceRecordRow;
+
+      if (this.evidenceVersions.contentEquals(existing, mergedCandidate)) {
+        return;
+      }
+
+      const contentHash = this.evidenceVersions.hashContent(mergedCandidate);
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.evidenceRecord.update({
+          where: { id: existing.id },
+          data: payload,
+          include: { artifacts: true },
+        });
+
+        await this.evidenceVersions.appendVersion(tx, updated, {
+          mutationKey: `we-sync:${experienceId}:${contentHash}`,
+          actorId: null,
+          organizationId,
+          source: 'SYSTEM',
+          priorVerificationStatus: existing.verificationStatus,
+          newVerificationStatus: updated.verificationStatus,
+        });
       });
     } else {
-      await this.prisma.evidenceRecord.create({ data: payload });
+      await this.prisma.$transaction(async (tx) => {
+        const created = await tx.evidenceRecord.create({
+          data: payload,
+          include: { artifacts: true },
+        });
+
+        await this.evidenceVersions.createInitialVersion(tx, created, {
+          mutationKey: `create:${created.id}`,
+          actorId: studentId,
+          organizationId,
+          source: created.source,
+          priorVerificationStatus: null,
+          newVerificationStatus: created.verificationStatus,
+        });
+      });
     }
 
     await this.reconciliation.reconcileForStudent(studentId);

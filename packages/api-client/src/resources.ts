@@ -1001,6 +1001,16 @@ export function evidenceApi(client: SmartApiClient) {
         schema: EvidenceRecordDtoSchema,
       }),
 
+    listVersions: (evidenceId: string) =>
+      client.get(prefixed(`/users/me/evidence/${evidenceId}/versions`), {
+        schema: ListEvidenceRecordVersionsResponseSchema,
+      }),
+
+    getVersion: (evidenceId: string, versionNumber: number) =>
+      client.get(prefixed(`/users/me/evidence/${evidenceId}/versions/${versionNumber}`), {
+        schema: EvidenceRecordVersionDtoSchema,
+      }),
+
     create: (body: CreateEvidenceRequest) =>
       client.post(prefixed('/users/me/evidence'), body, {
         schema: EvidenceRecordDtoSchema,
@@ -1318,6 +1328,24 @@ export function placementApi(client: SmartApiClient) {
     /** Candidate My Applications. Identity is the access token; no studentId query. */
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
+
+    listCandidateEvidenceVersions: (studentId: string, evidenceId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/versions`), {
+        schema: z.union([
+          ListEvidenceRecordVersionsResponseSchema,
+          ListEvidenceRecordVersionsRedactedResponseSchema,
+        ]),
+      }),
+
+    getCandidateEvidenceVersion: (studentId: string, evidenceId: string, versionNumber: number) =>
+      client.get(
+        prefixed(
+          `/placement/candidates/${studentId}/evidence/${evidenceId}/versions/${versionNumber}`,
+        ),
+        {
+          schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
+        },
+      ),
   };
 }
 

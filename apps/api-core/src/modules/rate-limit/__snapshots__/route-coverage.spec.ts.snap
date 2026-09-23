@@ -109,6 +109,8 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /users/me/education/:id": "role.student",
   "GET /users/me/evidence": "role.student",
   "GET /users/me/evidence-profile": "role.student",
+  "GET /users/me/evidence/:evidenceId/versions": "role.student",
+  "GET /users/me/evidence/:evidenceId/versions/:versionNumber": "role.student",
   "GET /users/me/evidence/:id": "role.student",
   "GET /users/me/languages": "role.student",
   "GET /users/me/languages/:id": "role.student",

@@ -101,6 +101,8 @@ export function WorkExperienceSection() {
   // Verification state
   const [sendingVerificationId, setSendingVerificationId] = useState<string | null>(null);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
+  const [sendingEndorsementId, setSendingEndorsementId] = useState<string | null>(null);
+  const [endorsementSuccess, setEndorsementSuccess] = useState<string | null>(null);
   const {
     startCooldown: startVerificationResendCooldown,
     remainingMs: verificationResendRemainingMs,
@@ -280,6 +282,32 @@ export function WorkExperienceSection() {
       setError(workExperienceSaveErrorMessage(err, 'Failed to send verification request.'));
     } finally {
       setSendingVerificationId(null);
+    }
+  };
+
+  const handleRequestEndorsement = async (
+    experienceId: string,
+    body: { managerEmail: string; managerName: string },
+  ) => {
+    if (!isValidEmailFormat(body.managerEmail)) {
+      setError('Enter a valid endorser work email before requesting endorsement.');
+      return;
+    }
+    if (body.managerName.trim().length < 2) {
+      setError("Enter the endorser's name (at least 2 characters).");
+      return;
+    }
+    try {
+      setSendingEndorsementId(experienceId);
+      setError(null);
+      setEndorsementSuccess(null);
+      const res = await api.users.sendWorkExperienceManagerEndorsement(experienceId, body);
+      setEndorsementSuccess(res.message);
+      await fetchExperiences();
+    } catch (err: unknown) {
+      setError(workExperienceSaveErrorMessage(err, 'Failed to request manager endorsement.'));
+    } finally {
+      setSendingEndorsementId(null);
     }
   };
 
@@ -599,6 +627,23 @@ export function WorkExperienceSection() {
         </div>
       )}
 
+      {endorsementSuccess && (
+        <div className="flex items-center justify-between rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-hover)] p-3 text-sm text-[var(--ds-text)]">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ds-green)]" />
+            <span>{endorsementSuccess}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEndorsementSuccess(null)}
+            className="text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]"
+            aria-label="Dismiss endorsement success message"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {error ? (
         <ProfileSectionError>
           <span className="inline-flex items-center gap-2">
@@ -644,11 +689,13 @@ export function WorkExperienceSection() {
               validatingDocId={validatingDocId}
               sendingVerificationId={sendingVerificationId}
               verificationResendRemainingMs={verificationResendRemainingMs(exp.id)}
+              sendingEndorsementId={sendingEndorsementId}
               onEdit={openEditModal}
               onDelete={handleDelete}
               onSendVerification={(id, experience) =>
                 void tryDispatchEmployerVerification(id, experience)
               }
+              onRequestEndorsement={(id, body) => void handleRequestEndorsement(id, body)}
               onValidateProof={handleValidateProof}
               onRemoveDocument={handleRemoveDocument}
               onAttachProof={(expId) => {

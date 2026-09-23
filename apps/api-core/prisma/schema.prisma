@@ -1775,10 +1775,31 @@ model EvidenceRecord {
   artifacts     EvidenceArtifact[]
   claimLinks    SkillClaimEvidenceLink[]
   contradictions EvidenceContradiction[]
+  versions      EvidenceRecordVersion[]
 
   @@index([studentId, evidenceType])
   @@index([studentId, verificationStatus])
   @@map("evidence_records")
+}
+
+model EvidenceRecordVersion {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  evidenceId               String                     @map("evidence_id") @db.Uuid
+  evidence                 EvidenceRecord             @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  versionNumber            Int                        @map("version_number")
+  snapshot                 Json
+  mutationKey              String                     @map("mutation_key")
+  actorId                  String?                    @map("actor_id") @db.Uuid
+  organizationId           String?                    @map("organization_id") @db.Uuid
+  source                   String
+  priorVerificationStatus  EvidenceVerificationStatus? @map("prior_verification_status")
+  newVerificationStatus    EvidenceVerificationStatus @map("new_verification_status")
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([evidenceId, versionNumber])
+  @@unique([evidenceId, mutationKey])
+  @@index([evidenceId, createdAt])
+  @@map("evidence_record_versions")
 }
 
 model EvidenceArtifact {

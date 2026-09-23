@@ -360,4 +360,95 @@ describe('S6-VB-01 company public identity (AC1)', () => {
     expect(result.valid).toBe(false);
     expect(result.issues.some((issue) => issue.path === 'companyWebsite')).toBe(true);
   });
+
+  it('WorkExperienceSchema accepts optional managerEndorsement summary (VER-02)', async () => {
+    const { WorkExperienceSchema, SendManagerEndorsementResponseSchema } =
+      await import('./work-experience.dto.js');
+    const parsed = WorkExperienceSchema.parse({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      studentId: '223e4567-e89b-12d3-a456-426614174001',
+      companyId: null,
+      companyName: 'Acme Corp',
+      companyWebsite: 'https://acme.com',
+      companyLinkedinUrl: 'https://linkedin.com/company/acme',
+      role: 'Engineer',
+      employmentType: 'FULL_TIME',
+      department: null,
+      domain: 'Software Engineering',
+      workLocation: null,
+      startDate: '2022-01-01T00:00:00.000Z',
+      endDate: null,
+      isCurrent: true,
+      responsibilities: 'Built APIs',
+      skillsClaimed: ['SQL_QUERY_OPTIMIZATION'],
+      projects: null,
+      candidateLinkedin: null,
+      verifierName: null,
+      verifierEmail: null,
+      verifierDesignation: null,
+      verifierPhone: null,
+      status: 'SUBMITTED',
+      rejectionReason: null,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      documents: [],
+      managerEndorsement: {
+        endorsementId: '323e4567-e89b-12d3-a456-426614174002',
+        status: 'PENDING',
+        managerEmail: 'manager@acme.com',
+        managerName: 'Jane Smith',
+        sentAt: '2026-09-01T00:00:00.000Z',
+        expiresAt: '2026-09-06T00:00:00.000Z',
+      },
+    });
+    expect(parsed.managerEndorsement?.status).toBe('PENDING');
+
+    const response = SendManagerEndorsementResponseSchema.parse({
+      success: true,
+      endorsementId: '323e4567-e89b-12d3-a456-426614174002',
+      managerEmail: 'manager@acme.com',
+      expiresAt: '2026-09-06T00:00:00.000Z',
+      message: 'Already pending.',
+      idempotent: true,
+    });
+    expect(response.idempotent).toBe(true);
+  });
+});
+
+describe('SendManagerEndorsementSchema (VER-02)', () => {
+  it('accepts valid endorser email and name', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const parsed = SendManagerEndorsementSchema.parse({
+      managerEmail: ' Manager@Acme.com ',
+      managerName: ' Jane Smith ',
+    });
+    expect(parsed.managerEmail).toBe('manager@acme.com');
+    expect(parsed.managerName).toBe('Jane Smith');
+  });
+
+  it('rejects missing endorser name', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects endorser name shorter than 2 characters', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+      managerName: 'J',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects endorser name longer than 120 characters', async () => {
+    const { SendManagerEndorsementSchema } = await import('./work-experience.dto.js');
+    const result = SendManagerEndorsementSchema.safeParse({
+      managerEmail: 'manager@acme.com',
+      managerName: 'A'.repeat(121),
+    });
+    expect(result.success).toBe(false);
+  });
 });

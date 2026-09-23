@@ -109,6 +109,27 @@ export class EvidenceController {
     return this.evidence.updateEvidence(user.sub, id, body);
   }
 
+  @Get('evidence/:evidenceId/versions')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List historical versions for an evidence record (VER-01).' })
+  listEvidenceVersions(@CurrentUser() user: RequestUser, @Param('evidenceId') evidenceId: string) {
+    return this.evidence.listEvidenceVersions(user.sub, evidenceId);
+  }
+
+  @Get('evidence/:evidenceId/versions/:versionNumber')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a specific historical evidence version (VER-01).' })
+  getEvidenceVersion(
+    @CurrentUser() user: RequestUser,
+    @Param('evidenceId') evidenceId: string,
+    @Param('versionNumber') versionNumber: string,
+  ) {
+    const parsed = Number.parseInt(versionNumber, 10);
+    return this.evidence.getEvidenceVersion(user.sub, evidenceId, parsed);
+  }
+
   @Post('evidence/:id/link-claim')
   @Roles('STUDENT')
   @ApiBearerAuth()
