@@ -166,6 +166,7 @@ import {
   GetManagerEndorsementSurveySchema,
   SubmitManagerEndorsementResponseSchema,
   SendManagerEndorsementResponseSchema,
+  ResendManagerEndorsementResponseSchema,
   WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
@@ -530,6 +531,15 @@ export function usersApi(client: SmartApiClient) {
       client.post(prefixed(`/users/me/work-experiences/${id}/send-manager-endorsement`), body, {
         schema: SendManagerEndorsementResponseSchema,
       }),
+
+    resendWorkExperienceManagerEndorsement: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/resend-manager-endorsement`),
+        {},
+        {
+          schema: ResendManagerEndorsementResponseSchema,
+        },
+      ),
 
     getWorkExperienceManagerEndorsementByToken: (token: string) =>
       client.get(prefixed(`/users/work-experiences/manager-survey/${token}`), {

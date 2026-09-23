@@ -644,6 +644,17 @@ export type SendManagerEndorsementResponseDto = z.infer<
   typeof SendManagerEndorsementResponseSchema
 >;
 
+/** Response returned after successfully queuing a manager endorsement reminder email. */
+export const ResendManagerEndorsementResponseSchema = z.object({
+  success: z.boolean(),
+  endorsementId: z.string().uuid(),
+  queuedAt: z.string().datetime(),
+  message: z.string(),
+});
+export type ResendManagerEndorsementResponseDto = z.infer<
+  typeof ResendManagerEndorsementResponseSchema
+>;
+
 /**
  * The payload returned when the manager opens their magic link.
  * Only exposes fields the manager needs to make an informed decision;

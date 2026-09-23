@@ -279,6 +279,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'Each parse spends LLM tokens; onboarding retries must not flood the P3 bucket.',
   },
   {
+    key: 'workExperience.resendReminder',
+    scope: 'USER',
+    limit: 3,
+    windowSeconds: 3600,
+    burst: 1,
+    redisKey: 'rl:we_resend_reminder:user:{id}',
+    rationale:
+      'Limits student-initiated manager endorsement reminder email resends to protect manager inboxes.',
+  },
+  {
     key: 'evaluation.skillInterview',
     scope: 'USER',
     limit: 8,

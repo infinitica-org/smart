@@ -87,9 +87,12 @@ export type WorkExperienceExperienceCardProps = {
   validatingDocId: string | null;
   sendingVerificationId: string | null;
   verificationResendRemainingMs: number;
+  resendingManagerId?: string | null;
+  managerResendRemainingMs?: number;
   onEdit: (exp: WorkExperienceDto, options?: { focusVerification?: boolean }) => void;
   onDelete: (id: string) => void;
   onSendVerification: (experienceId: string, exp: WorkExperienceDto) => void;
+  onResendManagerEndorsement?: (experienceId: string) => void;
   onValidateProof: (expId: string, docId: string) => void;
   onRemoveDocument: (expId: string, docId: string) => void;
   onAttachProof: (expId: string) => void;
@@ -102,9 +105,12 @@ export function WorkExperienceExperienceCard({
   validatingDocId,
   sendingVerificationId,
   verificationResendRemainingMs,
+  resendingManagerId,
+  managerResendRemainingMs = 0,
   onEdit,
   onDelete,
   onSendVerification,
+  onResendManagerEndorsement,
   onValidateProof,
   onRemoveDocument,
   onAttachProof,
@@ -436,6 +442,62 @@ export function WorkExperienceExperienceCard({
             Employer confirmation complete. Supporting evidence remains accessible below.
           </p>
         )}
+
+        {managerEndorsementStatus ? (
+          <section className="mt-4 rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-hover)]/50 p-4">
+            <h5 className="text-xs font-semibold text-[var(--ds-text)]">Manager endorsement</h5>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--ds-text)]">
+                  {((
+                    (exp as unknown as Record<string, unknown>).managerEndorsement as
+                      Record<string, unknown> | undefined
+                  )?.managerName as string) ||
+                    ((exp as unknown as Record<string, unknown>).managerName as string) ||
+                    'Hiring Manager'}
+                </p>
+                <p className="text-xs text-[var(--ds-text-secondary)]">
+                  {((
+                    (exp as unknown as Record<string, unknown>).managerEndorsement as
+                      Record<string, unknown> | undefined
+                  )?.managerEmail as string) ||
+                    ((exp as unknown as Record<string, unknown>).managerEmail as string) ||
+                    ''}
+                </p>
+                <p className="mt-1 text-xs text-[var(--ds-text-muted)]">
+                  Status:{' '}
+                  <span className="font-semibold text-[var(--ds-text)]">
+                    {managerEndorsementStatus}
+                  </span>
+                </p>
+              </div>
+              {managerEndorsementStatus === 'PENDING' && onResendManagerEndorsement ? (
+                <button
+                  type="button"
+                  onClick={() => onResendManagerEndorsement(exp.id)}
+                  disabled={resendingManagerId === exp.id || managerResendRemainingMs > 0}
+                  title={
+                    managerResendRemainingMs > 0
+                      ? `You can resend reminder again in ${formatCooldownLabel(managerResendRemainingMs)}`
+                      : undefined
+                  }
+                  className={`${profilePrimaryButtonSmClass} shrink-0 disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {resendingManagerId === exp.id ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Resending...
+                    </>
+                  ) : managerResendRemainingMs > 0 ? (
+                    `Resend in ${formatCooldownLabel(managerResendRemainingMs)}`
+                  ) : (
+                    'Resend Reminder'
+                  )}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <section className="rounded-[14px] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)]/40 p-3">
           <h5 className="text-xs font-semibold text-[var(--ds-text)]">Supporting documents</h5>

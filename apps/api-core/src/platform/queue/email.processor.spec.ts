@@ -20,6 +20,10 @@ describe('EmailProcessor', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      workExperienceManagerEndorsement: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
       workExperience: {
         findUnique: vi.fn(),
         update: vi.fn(),
@@ -126,5 +130,65 @@ describe('EmailProcessor', () => {
       where: { id: expId },
       data: { status: 'EXPIRED' },
     });
+  });
+
+  it('processes send-manager-reminder job and updates reminderSentAt ONLY after mailer dispatch succeeds', async () => {
+    const endorsementId = randomUUID();
+    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000); // 48h remaining
+
+    prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+      id: endorsementId,
+      respondedAt: null,
+      expiresAt,
+    });
+    prisma.workExperienceManagerEndorsement.update.mockResolvedValueOnce({});
+
+    const mockJob: any = {
+      name: 'send-manager-reminder',
+      data: {
+        endorsementId,
+        to: 'manager@acme.com',
+        template: 'work-experience-manager-reminder',
+        data: { candidateName: 'John Doe', surveyUrl: 'https://verify.smart.app/survey/123' },
+      },
+    };
+
+    await processor.process(mockJob);
+
+    expect(mailer.send).toHaveBeenCalledWith({
+      to: 'manager@acme.com',
+      template: 'work-experience-manager-reminder',
+      data: { candidateName: 'John Doe', surveyUrl: 'https://verify.smart.app/survey/123' },
+    });
+
+    expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
+      where: { id: endorsementId },
+      data: { reminderSentAt: expect.any(Date) },
+    });
+  });
+
+  it('does NOT dispatch email or update reminderSentAt if manager endorsement has already responded or expired', async () => {
+    const endorsementId = randomUUID();
+
+    prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+      id: endorsementId,
+      respondedAt: new Date(),
+      expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+    });
+
+    const mockJob: any = {
+      name: 'send-manager-reminder',
+      data: {
+        endorsementId,
+        to: 'manager@acme.com',
+        template: 'work-experience-manager-reminder',
+        data: { candidateName: 'John Doe' },
+      },
+    };
+
+    await processor.process(mockJob);
+
+    expect(mailer.send).not.toHaveBeenCalled();
+    expect(prisma.workExperienceManagerEndorsement.update).not.toHaveBeenCalled();
   });
 });

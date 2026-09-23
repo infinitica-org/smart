@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -696,6 +696,19 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary:
       'WE-T03: Send a 5-day tokenised magic-link to the named manager for work-experience endorsement. Domain must match offer-letter or Organization domain.',
+  },
+  {
+    method: 'POST',
+    path: '/users/me/work-experiences/:id/resend-manager-endorsement',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'workExperience.resendReminder',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'WE-T03: Resend a reminder email to manager for pending work-experience endorsement within rate limits.',
   },
   {
     method: 'GET',

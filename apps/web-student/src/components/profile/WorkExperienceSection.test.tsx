@@ -12,6 +12,7 @@ const restartWorkExperienceVerification = vi.fn();
 const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
 const removeWorkExperienceDocument = vi.fn();
+const resendWorkExperienceManagerEndorsement = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -28,6 +29,8 @@ vi.mock('@/lib/api', () => ({
         sendWorkExperienceVerification(...args),
       restartWorkExperienceVerification: (...args: unknown[]) =>
         restartWorkExperienceVerification(...args),
+      resendWorkExperienceManagerEndorsement: (...args: unknown[]) =>
+        resendWorkExperienceManagerEndorsement(...args),
       uploadWorkExperienceProofDocument: (...args: unknown[]) =>
         uploadWorkExperienceProofDocument(...args),
       attachWorkExperienceDocument: (...args: unknown[]) => attachWorkExperienceDocument(...args),
@@ -148,6 +151,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     deleteWorkExperience.mockReset();
     sendWorkExperienceVerification.mockReset();
     restartWorkExperienceVerification.mockReset();
+    resendWorkExperienceManagerEndorsement.mockReset();
     uploadWorkExperienceProofDocument.mockReset();
   });
 
@@ -358,7 +362,35 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     renderWithQueryClient(<WorkExperienceSection />);
 
     expect(await screen.findByText('Manager Endorsement')).toBeTruthy();
-    expect(screen.getByText('CONFIRMED')).toBeTruthy();
+    expect(screen.getAllByText('CONFIRMED').length).toBeGreaterThan(0);
+  });
+
+  it('renders Resend Reminder button for pending manager endorsement and triggers API call (VER-02)', async () => {
+    const mockPendingEndorsementExp = {
+      ...mockOngoingExp,
+      managerEndorsement: {
+        status: 'PENDING',
+        managerName: 'Sarah Boss',
+        managerEmail: 'sarah@acme.com',
+      },
+    };
+    listWorkExperiences.mockResolvedValueOnce([mockPendingEndorsementExp]);
+    resendWorkExperienceManagerEndorsement.mockResolvedValueOnce({
+      success: true,
+      message: 'Manager endorsement reminder email queued for delivery.',
+    });
+
+    renderWithQueryClient(<WorkExperienceSection />);
+
+    expect(await screen.findByText('Manager endorsement')).toBeTruthy();
+    const resendBtn = screen.getByRole('button', { name: /Resend Reminder/i });
+    expect(resendBtn).toBeTruthy();
+
+    fireEvent.click(resendBtn);
+
+    await waitFor(() => {
+      expect(resendWorkExperienceManagerEndorsement).toHaveBeenCalledWith('exp-1');
+    });
   });
 });
 

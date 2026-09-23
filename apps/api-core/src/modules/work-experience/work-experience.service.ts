@@ -22,6 +22,7 @@ import type {
   VoidWorkExperienceResponse,
   SendManagerEndorsementDto,
   SendManagerEndorsementResponseDto,
+  ResendManagerEndorsementResponseDto,
   GetManagerEndorsementSurveyDto,
   SubmitManagerEndorsementDto,
   SubmitManagerEndorsementResponseDto,
@@ -2125,7 +2126,7 @@ export class WorkExperienceService {
           template: 'work-experience-manager-reminder',
           data: { ...emailData, expiresAtFormatted: '2 days' },
         } as WorkExperienceManagerReminderJobPayload,
-        { delay: 72 * 60 * 60 * 1000 },
+        { delay: 72 * 60 * 60 * 1000, jobId: `manager-reminder-${endorsement.id}` },
       );
 
       // Day-5 (120h) expiry marker
@@ -2155,6 +2156,121 @@ export class WorkExperienceService {
       managerEmail,
       expiresAt: expiresAt.toISOString(),
       message: `Manager endorsement request dispatched to ${managerEmail}. Valid for 5 days.`,
+    };
+  }
+
+  /**
+   * WE-T03: Resend manager endorsement reminder email within rate limits.
+   * Revalidates ownership, state (PENDING), non-expiry.
+   * Reuses existing endorsement tokenHash and expiresAt without token regeneration or DB mutation.
+   * Enqueues BullMQ send-manager-reminder job with deterministic jobId for idempotency, and records audit event.
+   */
+  async resendManagerEndorsement(
+    studentId: string,
+    experienceId: string,
+  ): Promise<ResendManagerEndorsementResponseDto> {
+    const exp = await this.prisma.workExperience.findUnique({
+      where: { id: experienceId },
+      include: { student: { select: { fullName: true } } },
+    });
+
+    if (!exp || exp.studentId !== studentId) {
+      throw new NotFoundException('Work experience record not found.');
+    }
+
+    const endorsement = await this.prisma.workExperienceManagerEndorsement.findFirst({
+      where: { experienceId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!endorsement) {
+      throw new BadRequestException(
+        'No pending manager endorsement request found for this work experience.',
+      );
+    }
+
+    if (endorsement.status !== 'PENDING' || endorsement.respondedAt !== null) {
+      throw new BadRequestException(
+        'Manager endorsement is already completed and cannot be resent.',
+      );
+    }
+
+    const now = new Date();
+    if (endorsement.expiresAt <= now) {
+      throw new BadRequestException(
+        'Manager endorsement request has expired. Please send a new endorsement request.',
+      );
+    }
+
+    // Preserve existing token & expiresAt without mutating DB or regenerating token
+    let surveyUrl = `${env.VERIFY_APP_URL}/work-experience/manager-survey/${endorsement.tokenHash}`;
+    if (this.emailQueue && typeof this.emailQueue.getJob === 'function') {
+      try {
+        const existingJob = await this.emailQueue.getJob(`manager-reminder-${endorsement.id}`);
+        if (
+          existingJob?.data &&
+          typeof existingJob.data === 'object' &&
+          'data' in existingJob.data
+        ) {
+          const jobData = (existingJob.data as WorkExperienceManagerReminderJobPayload).data;
+          if (jobData?.surveyUrl) {
+            surveyUrl = jobData.surveyUrl;
+          }
+        }
+      } catch {
+        // Fall back to default surveyUrl
+      }
+    }
+
+    const remainingMs = endorsement.expiresAt.getTime() - now.getTime();
+    const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+    const expiresAtFormatted = `${remainingDays} day${remainingDays === 1 ? '' : 's'}`;
+
+    const emailData = {
+      managerName: endorsement.managerName ?? 'Hiring Manager',
+      candidateName: exp.student?.fullName ?? 'Candidate',
+      companyName: exp.companyName,
+      roleTitle: exp.role,
+      startDate: exp.startDate.toISOString().substring(0, 10),
+      endDate: exp.isCurrent
+        ? 'Present'
+        : exp.endDate
+          ? exp.endDate.toISOString().substring(0, 10)
+          : 'N/A',
+      surveyUrl,
+      expiresAtFormatted,
+    };
+
+    if (this.emailQueue) {
+      await this.emailQueue.add(
+        'send-manager-reminder',
+        {
+          endorsementId: endorsement.id,
+          to: endorsement.managerEmail,
+          template: 'work-experience-manager-reminder',
+          data: emailData,
+        } as WorkExperienceManagerReminderJobPayload,
+        { jobId: `manager-reminder-resend-${endorsement.id}`, removeOnComplete: true },
+      );
+    }
+
+    await this.auditPublisher.record({
+      actorId: studentId,
+      action: 'WORK_EXPERIENCE_MANAGER_REMINDER_RESENT',
+      resourceType: 'WorkExperience',
+      resourceId: experienceId,
+      reasonCode: 'manager_endorsement_reminder_resent',
+      metadata: {
+        endorsementId: endorsement.id,
+        managerEmail: endorsement.managerEmail,
+      },
+    });
+
+    return {
+      success: true,
+      endorsementId: endorsement.id,
+      queuedAt: now.toISOString(),
+      message: `Manager endorsement reminder email queued successfully for ${endorsement.managerEmail}.`,
     };
   }
 
