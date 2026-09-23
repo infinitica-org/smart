@@ -15,6 +15,8 @@ export type SkillInferenceProvenance = {
   ruleSetVersion: string;
   taxonomyVersion: string;
   capabilityModelVersion?: string;
+  assessmentBlueprintRef?: string;
+  interviewBlueprintRef?: string;
   promptRefs: readonly string[];
   evidenceRecordIds: readonly string[];
 };
