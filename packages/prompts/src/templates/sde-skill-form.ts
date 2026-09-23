@@ -21,6 +21,19 @@ export const SDE_SKILL_CODE_RUNNER_PROMPT_REF = 'sde-skill-code-runner@1' as con
 
 const FormatSchema = z.enum(SDE_V4_FORMATS);
 
+/** LLMs often echo full hidden-test payloads; clip before gateway schema validation. */
+const clippedString = (max: number) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' ? value.slice(0, max) : value),
+    z.string().max(max),
+  );
+
+const SdeOpenBatchMissedTestSchema = z.object({
+  input: clippedString(400),
+  expected: clippedString(400),
+  reason: clippedString(400),
+});
+
 export const SdeSkillFormClosedVariables = z.object({
   skillCode: z.string().min(2).max(64),
   skillName: z.string().min(2).max(80),
@@ -479,16 +492,7 @@ export const SdeOpenBatchGradeSchema = z.object({
         justification: z.string().min(10).max(2_000),
         testsPassed: z.number().int().min(0).max(20).optional(),
         testsTotal: z.number().int().min(0).max(20).optional(),
-        missedTests: z
-          .array(
-            z.object({
-              input: z.string().max(400),
-              expected: z.string().max(400),
-              reason: z.string().max(400),
-            }),
-          )
-          .max(8)
-          .optional(),
+        missedTests: z.array(SdeOpenBatchMissedTestSchema).max(8).optional(),
       }),
     )
     .min(1)

@@ -6,6 +6,7 @@ import { env } from '../../platform/config/env.js';
 import { KafkaService } from '../../platform/kafka/kafka.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CapabilityInferenceService } from './capability-inference.service.js';
+import { EvidenceSkillInferenceService } from '../evidence/evidence-skill-inference.service.js';
 
 @Injectable()
 export class ProjectVerifyCompletedConsumer implements OnModuleInit {
@@ -16,6 +17,8 @@ export class ProjectVerifyCompletedConsumer implements OnModuleInit {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(CapabilityInferenceService)
     private readonly capabilityInference: CapabilityInferenceService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -34,10 +37,17 @@ export class ProjectVerifyCompletedConsumer implements OnModuleInit {
             const { projectId } = parsed.data.data;
             const project = await this.prisma.project.findUnique({
               where: { id: projectId },
-              select: { studentId: true },
+              select: {
+                studentId: true,
+                skillMappings: { select: { skillCode: true } },
+              },
             });
             if (!project) return;
             await this.capabilityInference.inferForProject(projectId, project.studentId);
+            const skillCodes = project.skillMappings.map((row) => row.skillCode);
+            if (skillCodes.length > 0) {
+              await this.skillInference.recomputeForStudentSkills(project.studentId, skillCodes);
+            }
           });
         },
       });

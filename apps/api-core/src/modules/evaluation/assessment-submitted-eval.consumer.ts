@@ -4,16 +4,21 @@ import { AssessmentSubmittedEventSchema, SMART_TOPICS } from '@smart/contracts';
 import { runKafkaHandler } from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { KafkaService } from '../../platform/kafka/kafka.service.js';
+import { CorroborationService } from '../corroboration/corroboration.service.js';
 
 /**
- * Evaluation handoff consumer — receives assessment.submitted and queues grading.
+ * Evaluation handoff consumer — receives assessment.submitted and triggers
+ * post-assessment workflows: corroboration refusion for verified claims.
  * Full eval.requested fan-out lands when the evaluation module ships.
  */
 @Injectable()
 export class AssessmentSubmittedEvalConsumer implements OnModuleInit {
   private readonly logger = new Logger(AssessmentSubmittedEvalConsumer.name);
 
-  constructor(@Inject(KafkaService) private readonly kafka: KafkaService) {}
+  constructor(
+    @Inject(KafkaService) private readonly kafka: KafkaService,
+    @Inject(CorroborationService) private readonly corroboration: CorroborationService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     if (env.NODE_ENV === 'test') return;
@@ -28,9 +33,12 @@ export class AssessmentSubmittedEvalConsumer implements OnModuleInit {
               this.logger.warn('Ignored malformed assessment.submitted payload (eval handoff)');
               return;
             }
+            const { studentId } = parsed.data.data;
             this.logger.log(
-              `Eval handoff queued for attempt ${parsed.data.data.attemptId} (${parsed.data.data.responses.length} responses)`,
+              `Eval handoff: triggering corroboration refusion for user ${studentId}`,
             );
+
+            await this.corroboration.refusionVerifiedSkillClaims(studentId);
           });
         },
       });

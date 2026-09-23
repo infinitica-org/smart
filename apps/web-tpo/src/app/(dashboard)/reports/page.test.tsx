@@ -12,6 +12,9 @@ vi.mock('../../../lib/api', () => ({
     onboarding: { listTpoStudents: apiMock.listTpoStudents },
     assessment: { listSkillClaims: apiMock.listSkillClaims },
   },
+  openingsApi: { list: vi.fn().mockResolvedValue({ openings: [] }) },
+  employersApi: { list: vi.fn().mockResolvedValue({ employers: [] }) },
+  countInstitutionPlacementApplications: vi.fn().mockResolvedValue({ count: 0 }),
 }));
 
 beforeEach(() => {
@@ -21,7 +24,7 @@ beforeEach(() => {
       email: 'ada@school.edu',
       fullName: 'Ada Lovelace',
       batchId: null,
-      batchName: null,
+      batchName: 'Comp. Sci',
       inviteStatus: 'ACCEPTED',
       lastSentAt: null,
       acceptedAt: null,
@@ -63,26 +66,20 @@ afterEach(() => {
 });
 
 describe('ReportsPage', () => {
-  it('renders the KPI grid computed from cohort data', async () => {
+  it('renders report sections and data', async () => {
     render(<ReportsPage />);
 
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.getByText('Total Candidates')).toBeDefined();
-    expect(screen.getByText('2')).toBeDefined();
-    expect(screen.getByText('Verified Skills')).toBeDefined();
-    expect(screen.getByText('Onboarding Completion')).toBeDefined();
-    expect(screen.getByText('50%')).toBeDefined();
-    expect(screen.getByText('Categories Covered')).toBeDefined();
+    expect(await screen.findByText('Verification completion by major')).toBeDefined();
+    expect(screen.getByText('Placement & opportunities matched')).toBeDefined();
+    expect(screen.getByText('Employer engagement by school')).toBeDefined();
+    expect(screen.getByText('Comp. Sci')).toBeDefined();
   });
 
-  it('shows a zero-state KPI grid when the cohort is empty', async () => {
+  it('renders zero state when no data exists', async () => {
     apiMock.listTpoStudents.mockResolvedValueOnce([]);
     apiMock.listSkillClaims.mockResolvedValueOnce([]);
     render(<ReportsPage />);
 
-    expect(await screen.findByText('No candidates match the report filters.')).toBeDefined();
-    expect(screen.getByText('No categories verified yet')).toBeDefined();
-    expect(screen.getByText('No verified skills yet')).toBeDefined();
+    expect(await screen.findByText('No students on the whitelist yet.')).toBeDefined();
   });
 });

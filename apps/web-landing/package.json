@@ -1,0 +1,39 @@
+{
+  "name": "@smart/web-landing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public marketing landing site. Owner: Satheswaran V.",
+  "scripts": {
+    "dev": "next dev --port 3006",
+    "build": "next build",
+    "start": "next start --port 3006",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rimraf .next .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@smart/ui": "workspace:*",
+    "motion": "12.23.12",
+    "gsap": "3.13.0",
+    "lenis": "1.3.8",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "ogl": "1.0.11",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@smart/eslint-config": "workspace:*",
+    "@smart/next-config": "workspace:*",
+    "@smart/tailwind-config": "workspace:*",
+    "@smart/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "6.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

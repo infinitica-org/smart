@@ -15,6 +15,7 @@ export type SdeV4ScoreFormat = (typeof SDE_V4_FORMATS)[number];
 export const SDE_V4_PROFICIENCIES = [
   'BEGINNER',
   'INTERMEDIATE',
+  'PROFICIENT',
   'ADVANCED',
   'PROFESSIONAL',
 ] as const;
@@ -33,6 +34,7 @@ export const SDE_V4_MARKS: Readonly<Record<SdeV4ScoreFormat, number>> = {
 export const SDE_V4_PASS_PERCENT: Readonly<Record<SdeV4ScoreProficiency, number>> = {
   BEGINNER: 80,
   INTERMEDIATE: 75,
+  PROFICIENT: 75,
   ADVANCED: 75,
   PROFESSIONAL: 80,
 };

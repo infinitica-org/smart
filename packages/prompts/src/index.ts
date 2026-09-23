@@ -31,6 +31,7 @@ export * from './templates/skill-interview.js';
 export * from './templates/proficiency-grading.js';
 export * from './templates/project-verify.js';
 export * from './templates/project-defense.js';
+export * from './templates/project-defense-grader.v2.js';
 export * from './templates/capability-inference.js';
 export * from './templates/work-experience-proof-parsing.js';
 export * from './sde-skill-matrix-v4.js';

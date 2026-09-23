@@ -21,6 +21,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { MatchingService } from './matching.service.js';
+import { SkillLevelExplanationService } from '../evidence/skill-level-explanation.service.js';
 
 function requireInstitutionId(user: RequestUser): string {
   if (!user.inst) {
@@ -36,7 +37,11 @@ function requireInstitutionId(user: RequestUser): string {
 @ApiTags('placement')
 @Controller(`${API_PREFIX}/placement`)
 export class PlacementMatchController {
-  constructor(@Inject(MatchingService) private readonly matching: MatchingService) {}
+  constructor(
+    @Inject(MatchingService) private readonly matching: MatchingService,
+    @Inject(SkillLevelExplanationService)
+    private readonly skillExplanation: SkillLevelExplanationService,
+  ) {}
 
   /**
    * V1 is TPO-mediated (ADR 0012). The contract also lists B2B_PARTNER for a
@@ -105,5 +110,25 @@ export class PlacementMatchController {
     @Param('id') id: string,
   ): Promise<MatchRunDto> {
     return this.matching.getMatchRun(requireInstitutionId(user), UuidSchema.parse(id));
+  }
+
+  @Get('candidates/:studentId/skills/:skillCode/inspection')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
+  @ApiOperation({
+    summary:
+      'Employer/TPO skill inspection — verified vs AI conclusion, freshness, and confidence indicators (SKL-03).',
+  })
+  @ApiBearerAuth()
+  inspectCandidateSkill(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillExplanation.getForEmployerInspection(
+      requireInstitutionId(user),
+      UuidSchema.parse(studentId),
+      skillCode,
+    );
   }
 }

@@ -30,6 +30,7 @@ function proficiencyFromObservation(
     if (
       normalized === 'BEGINNER' ||
       normalized === 'INTERMEDIATE' ||
+      normalized === 'PROFICIENT' ||
       normalized === 'ADVANCED' ||
       normalized === 'PROFESSIONAL'
     ) {

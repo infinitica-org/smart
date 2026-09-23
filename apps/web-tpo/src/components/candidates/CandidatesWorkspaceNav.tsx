@@ -7,7 +7,7 @@ export function CandidatesWorkspaceNav() {
   return (
     <TpoWorkspaceSectionNav
       sectionTitle="Candidates"
-      sectionDescription="Manage candidates, onboarding, and placement cohorts."
+      sectionDescription="Review students and manage cohort batches."
       items={CANDIDATES_NAV}
       navAriaLabel="Candidates sections"
     />

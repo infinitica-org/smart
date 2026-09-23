@@ -38,7 +38,13 @@ export class SignalConnectionStore {
   constructor(@Inject(RedisService) private readonly redis: RedisService) {}
 
   async list(userId: string): Promise<readonly StoredSignalConnection[]> {
-    const sourceIds: ConnectableSignalSourceId[] = ['GITHUB', 'HACKERRANK', 'LEETCODE'];
+    const sourceIds: ConnectableSignalSourceId[] = [
+      'GITHUB',
+      'HACKERRANK',
+      'LEETCODE',
+      'LINKEDIN',
+      'CREDLY',
+    ];
     const rows = await Promise.all(sourceIds.map((sourceId) => this.get(userId, sourceId)));
     return rows.filter((row): row is StoredSignalConnection => row !== null);
   }

@@ -65,8 +65,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       // Screen readers otherwise announce nothing when the label is replaced by
       // a spinner, leaving the user unsure whether their click registered.
       aria-busy={isLoading}
+      aria-disabled={disabled === true || isLoading ? true : undefined}
       className={cn(
         'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]',
         'disabled:cursor-not-allowed disabled:opacity-55',
         VARIANTS[variant],
         SIZES[size],

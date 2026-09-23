@@ -5,6 +5,7 @@ import { TaxonomySkillCodeSchema } from '../../dto/catalog.dto.js';
 export const CompetencyDifficultySchema = z.enum([
   'BEGINNER',
   'INTERMEDIATE',
+  'PROFICIENT',
   'ADVANCED',
   'PROFESSIONAL',
 ]);

@@ -1,7 +1,6 @@
 import { GoneException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
-import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { env } from '../../platform/config/env.js';
 import { EMAIL_QUEUE, type EmailJobPayload } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -19,7 +18,6 @@ export class PasswordResetService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuthService) private readonly auth: AuthService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailJobPayload>,
-    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   /**
@@ -85,12 +83,5 @@ export class PasswordResetService {
     ]);
 
     await this.auth.revokeAllForUser(token.userId);
-    await this.auditPublisher.record({
-      actorId: token.userId,
-      action: 'auth.password_reset',
-      resourceType: 'user',
-      resourceId: token.userId,
-      reasonCode: null,
-    });
   }
 }

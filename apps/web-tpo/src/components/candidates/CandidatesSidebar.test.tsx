@@ -15,25 +15,27 @@ describe('CandidatesWorkspaceNav', () => {
     navState.pathname = '/students';
   });
 
-  it('lists repository and onboarding sections with correct hrefs', () => {
+  it('lists students and batches only (no whitelist upload here)', () => {
     render(<CandidatesWorkspaceNav />);
 
+    expect(CANDIDATES_NAV.map((l) => l.name)).toEqual(['Students', 'Batches']);
     for (const link of CANDIDATES_NAV) {
       expect(screen.getByRole('link', { name: new RegExp(link.name) }).getAttribute('href')).toBe(
         link.href,
       );
     }
+    expect(screen.queryByRole('link', { name: /Whitelist/i })).toBeNull();
   });
 
   it('marks the active subsection', () => {
-    navState.pathname = '/provisioning';
+    navState.pathname = '/batches';
     render(<CandidatesWorkspaceNav />);
 
+    expect(screen.getByRole('link', { name: /^Batches$/ }).getAttribute('aria-current')).toBe(
+      'page',
+    );
     expect(
-      screen.getByRole('link', { name: /Candidate Onboarding/ }).getAttribute('aria-current'),
-    ).toBe('page');
-    expect(
-      screen.getByRole('link', { name: /Candidates Repository/ }).getAttribute('aria-current'),
+      screen.getByRole('link', { name: /^Students$/ }).getAttribute('aria-current'),
     ).toBeNull();
   });
 });

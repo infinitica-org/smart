@@ -1,15 +1,19 @@
-import { Body, Controller, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { ProjectDefenseService } from './project-defense.service.js';
+import { ProjectReviewService } from './project-review.service.js';
 
 @ApiTags('project-defense')
 @Controller(`${API_PREFIX}/projects/:projectId/defense`)
 export class ProjectDefenseController {
-  constructor(@Inject(ProjectDefenseService) private readonly service: ProjectDefenseService) {}
+  constructor(
+    @Inject(ProjectDefenseService) private readonly service: ProjectDefenseService,
+    @Inject(ProjectReviewService) private readonly reviews: ProjectReviewService,
+  ) {}
 
   @Post('prepare')
   @Roles('STUDENT')
@@ -73,5 +77,25 @@ export class ProjectDefenseController {
     @Body() body: unknown,
   ) {
     return this.service.complete(projectId, user.sub, body);
+  }
+
+  @Get('outcome')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Defense interview status and permitted results.' })
+  outcome(@CurrentUser() user: RequestUser, @Param('projectId') projectId: string) {
+    return this.service.getOutcome(projectId, user.sub);
+  }
+
+  @Post('appeal')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Appeal a materially incorrect defense outcome.' })
+  appeal(
+    @CurrentUser() user: RequestUser,
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+  ) {
+    return this.reviews.submitAppeal(projectId, user.sub, body);
   }
 }

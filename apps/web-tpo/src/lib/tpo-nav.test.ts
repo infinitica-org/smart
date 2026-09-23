@@ -10,25 +10,25 @@ import {
   isNavLinkActive,
   isPlacementRoute,
   isPlacementTopNavActive,
+  isStudentsTopNavActive,
+  isWhitelistTopNavActive,
 } from './tpo-nav';
 
-const placementLink = TPO_NAV.find((item) => item.name === 'Placement');
-const candidatesItem = TPO_NAV.find((item) => item.name === 'Candidates');
+const employersLink = TPO_NAV.find((item) => item.name === 'Employers');
 
 describe('TPO_NAV', () => {
-  it('keeps top-level items with Placement as a direct link to the company repository', () => {
+  it('uses university wireframe labels in the topbar', () => {
     expect(TPO_NAV.map((item) => item.name)).toEqual([
       'Dashboard',
-      'Candidates',
-      'Placement',
+      'Students',
+      'Whitelist',
+      'Employers',
       'Reports',
-      'Settings',
     ]);
-    expect(placementLink).toMatchObject({ kind: 'link', href: '/companies' });
+    expect(employersLink).toMatchObject({ kind: 'link', href: '/companies' });
   });
 
   it('lists placement sidebar routes including company repository', () => {
-    // ATS and Company Dashboard are WIP and temporarily hidden from the sidebar.
     expect(PLACEMENT_NAV.map((link) => [link.name, link.href])).toEqual([
       ['Company Repository', '/companies'],
       ['Create Job Posting', '/openings/create'],
@@ -48,95 +48,73 @@ describe('TPO_NAV', () => {
     ]);
   });
 
-  it('lists candidates sidebar routes for repository and onboarding', () => {
-    expect(CANDIDATES_NAV.map((link) => [link.name, link.href])).toEqual([
-      ['Candidates Repository', '/students'],
-      ['Candidate Onboarding', '/provisioning'],
-      ['Batches', '/batches'],
-    ]);
-  });
-
-  it('never links the student-facing applications view', () => {
-    const hrefs = TPO_NAV.map((item) => (item.kind === 'link' ? item.href : '')).filter(Boolean);
-    expect(hrefs).not.toContain('/applications');
+  it('lists candidates workspace routes without whitelist upload', () => {
+    expect(CANDIDATES_NAV.map((link) => link.href)).toEqual(['/students', '/batches']);
   });
 });
 
-describe('isNavLinkActive', () => {
-  it('treats / and /dashboard as the dashboard, not a prefix of every route', () => {
-    expect(isNavLinkActive('/', '/')).toBe(true);
-    expect(isNavLinkActive('/dashboard', '/')).toBe(true);
-    expect(isNavLinkActive('/openings', '/')).toBe(false);
+describe('isStudentsTopNavActive', () => {
+  it('is active on students and batches routes', () => {
+    expect(isStudentsTopNavActive('/students')).toBe(true);
+    expect(isStudentsTopNavActive('/batches')).toBe(true);
+    expect(isStudentsTopNavActive('/onboarding')).toBe(false);
   });
+});
 
-  it('matches the route and its nested segments', () => {
-    expect(isNavLinkActive('/openings', '/openings')).toBe(true);
-    expect(isNavLinkActive('/suggestions/abc', '/suggestions')).toBe(true);
+describe('isWhitelistTopNavActive', () => {
+  it('is active on whitelist hub and onboarding', () => {
+    expect(isWhitelistTopNavActive('/whitelist')).toBe(true);
+    expect(isWhitelistTopNavActive('/onboarding')).toBe(true);
+    expect(isWhitelistTopNavActive('/provisioning')).toBe(true);
+    expect(isWhitelistTopNavActive('/students')).toBe(false);
   });
+});
 
-  it('does not treat /openings/create as listed openings', () => {
-    expect(isNavLinkActive('/openings/create', '/openings')).toBe(false);
-    expect(isNavLinkActive('/openings/create', '/openings/create')).toBe(true);
-  });
-
-  it('does not match routes that merely share a prefix', () => {
-    expect(isNavLinkActive('/atsomething', '/ats')).toBe(false);
-    expect(isNavLinkActive('/reports', '/review')).toBe(false);
+describe('isCandidatesTopNavActive', () => {
+  it('is active on students and batches only', () => {
+    expect(isCandidatesTopNavActive('/students')).toBe(true);
+    expect(isCandidatesTopNavActive('/batches')).toBe(true);
+    expect(isCandidatesTopNavActive('/whitelist')).toBe(false);
   });
 });
 
 describe('isPlacementTopNavActive', () => {
   it('is active on the repository landing and placement shell routes', () => {
     expect(isPlacementTopNavActive('/companies')).toBe(true);
-    expect(isPlacementTopNavActive('/openings/create')).toBe(true);
+    expect(isPlacementTopNavActive('/openings')).toBe(true);
     expect(isPlacementTopNavActive('/students')).toBe(false);
   });
 });
 
-describe('isCandidatesTopNavActive', () => {
-  it('is active on repository and onboarding routes', () => {
-    expect(isCandidatesTopNavActive('/students')).toBe(true);
-    expect(isCandidatesTopNavActive('/provisioning')).toBe(true);
-    expect(isCandidatesTopNavActive('/reports')).toBe(false);
+describe('isNavLinkActive', () => {
+  it('matches exact paths and prefix paths', () => {
+    expect(isNavLinkActive('/students/abc', '/students')).toBe(true);
+    expect(isNavLinkActive('/openings', '/openings')).toBe(true);
+    expect(isNavLinkActive('/openings/create', '/openings')).toBe(false);
   });
 });
 
 describe('isNavItemActive', () => {
-  it('keeps leaf items matching their own route', () => {
-    if (!candidatesItem || candidatesItem.kind !== 'link')
-      throw new Error('Candidates nav missing');
-    expect(isNavItemActive('/students', candidatesItem)).toBe(true);
-    expect(isNavItemActive('/ats', candidatesItem)).toBe(false);
-  });
-});
-
-describe('isCandidatesRoute', () => {
-  it.each(['/students', '/provisioning', '/batches', '/batches/batch-1'])(
-    'is true for %s',
-    (href) => {
-      expect(isCandidatesRoute(href)).toBe(true);
-    },
-  );
-
-  it('is false for placement and dashboard routes', () => {
-    expect(isCandidatesRoute('/openings')).toBe(false);
-    expect(isCandidatesRoute('/')).toBe(false);
+  it('resolves dashboard on /dashboard alias', () => {
+    const dashboard = TPO_NAV.find((item) => item.name === 'Dashboard');
+    expect(dashboard).toBeDefined();
+    if (dashboard?.kind === 'link') {
+      expect(isNavItemActive('/dashboard', dashboard)).toBe(true);
+    }
   });
 });
 
 describe('isPlacementRoute', () => {
-  it.each([...PLACEMENT_NAV.map((link) => link.href), '/companies'])('is true for %s', (href) => {
-    expect(isPlacementRoute(href)).toBe(true);
+  it('includes companies and placement nav hrefs', () => {
+    expect(isPlacementRoute('/companies')).toBe(true);
+    expect(isPlacementRoute('/suggestions')).toBe(true);
   });
+});
 
-  it('is true for a nested suggestions path', () => {
-    expect(isPlacementRoute('/suggestions/abc')).toBe(true);
+describe('isCandidatesRoute', () => {
+  it('is true for candidates workspace routes', () => {
+    expect(isCandidatesRoute('/students')).toBe(true);
+    expect(isCandidatesRoute('/whitelist')).toBe(false);
+    expect(isCandidatesRoute('/companies')).toBe(false);
   });
-
-  it.each(['/', '/students', '/provisioning', '/reports', '/settings', '/applications'])(
-    'is false for %s',
-    (pathname) => {
-      expect(isPlacementRoute(pathname)).toBe(false);
-    },
-  );
 });

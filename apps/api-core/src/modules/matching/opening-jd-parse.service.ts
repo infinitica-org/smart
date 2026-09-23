@@ -3,6 +3,7 @@ import {
   JdSkillExtractVectorSchema,
   SKILL_CODE_SET,
   SKILL_DEFINITIONS,
+  SkillProficiencySchema,
   getSkillBlueprint,
   type JdSkillExtractVector,
   type SkillRequirement,
@@ -17,7 +18,7 @@ const RawJdSkillExtractSchema = z.object({
     .array(
       z.object({
         skillCode: z.string(),
-        minProficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+        minProficiency: SkillProficiencySchema,
       }),
     )
     .max(20),
