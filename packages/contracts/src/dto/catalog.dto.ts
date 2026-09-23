@@ -214,6 +214,7 @@ export type ProficiencyPassBarsDto = z.infer<typeof ProficiencyPassBarsDtoSchema
 export const SkillPassThresholdsDtoSchema = z.object({
   BEGINNER: ProficiencyPassBarsDtoSchema,
   INTERMEDIATE: ProficiencyPassBarsDtoSchema,
+  PROFICIENT: ProficiencyPassBarsDtoSchema,
   ADVANCED: ProficiencyPassBarsDtoSchema,
   PROFESSIONAL: ProficiencyPassBarsDtoSchema,
 });

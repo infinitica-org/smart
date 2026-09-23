@@ -61,8 +61,8 @@ body {
    * this resolves to SF Pro Text/Display; elsewhere falls back to system UI sans.
    */
   --tpo-font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
-    system-ui, sans-serif;
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui,
+    sans-serif;
 }
 
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
