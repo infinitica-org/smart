@@ -41,6 +41,16 @@ function ToggleSwitch({
 
 type UsernameFieldState = 'idle' | 'saving' | 'saved' | 'error';
 
+const SECTION_LABELS: Record<string, string> = {
+  education: 'Education',
+  projects: 'Projects',
+  workExperience: 'Work Experience',
+  certifications: 'Certifications',
+  skills: 'Skills',
+};
+
+const SECTION_KEYS = ['education', 'projects', 'workExperience', 'certifications', 'skills'];
+
 export function VisibilitySettingsCard() {
   const queryClient = useQueryClient();
   const {
@@ -66,7 +76,9 @@ export function VisibilitySettingsCard() {
       queryClient.invalidateQueries({ queryKey: ['me', 'public-profile'] }),
     ]);
 
-  const [visibilityBusy, setVisibilityBusy] = useState<'profile' | 'inProgress' | null>(null);
+  const [visibilityBusy, setVisibilityBusy] = useState<'profile' | 'inProgress' | 'section' | null>(
+    null,
+  );
   const [visibilityError, setVisibilityError] = useState<string | null>(null);
 
   const [usernameInput, setUsernameInput] = useState('');
@@ -100,6 +112,33 @@ export function VisibilitySettingsCard() {
       ]);
     } catch (err) {
       setVisibilityError(isSmartApiError(err) ? err.message : 'Could not update this setting.');
+    } finally {
+      setVisibilityBusy(null);
+    }
+  }
+
+  async function toggleSectionVisibility(sectionKey: string, show: boolean) {
+    setVisibilityBusy('section');
+    setVisibilityError(null);
+    try {
+      const currentHidden: string[] =
+        (visibility as { hiddenSections?: string[] } | undefined)?.hiddenSections ?? [];
+      const nextHidden = show
+        ? currentHidden.filter((s: string) => s !== sectionKey)
+        : Array.from(new Set([...currentHidden, sectionKey]));
+      await api.users.updateProfileVisibility({
+        profileVisible: visibility?.profileVisible ?? false,
+        showInProgressItems: visibility?.showInProgressItems,
+        hiddenSections: nextHidden as any,
+      });
+      await Promise.all([
+        refetchVisibility(),
+        queryClient.invalidateQueries({ queryKey: ['me', 'public-profile'] }),
+      ]);
+    } catch (err) {
+      setVisibilityError(
+        isSmartApiError(err) ? err.message : 'Could not update section visibility.',
+      );
     } finally {
       setVisibilityBusy(null);
     }
@@ -202,6 +241,42 @@ export function VisibilitySettingsCard() {
             disabled={visibilityBusy !== null || !visibility?.profileVisible}
             label="Show in-progress items"
           />
+        </div>
+
+        <div
+          className={`border-t border-gray-100 pt-6 transition-opacity dark:border-white/5 ${
+            visibility?.profileVisible ? '' : 'opacity-40'
+          }`}
+        >
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              Visible profile sections
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Control which sections appear on your public profile page. Unchecking a section hides
+              it from view.
+            </p>
+          </div>
+          <div className="mt-4 space-y-3">
+            {SECTION_KEYS.map((key) => {
+              const isVisible = !(
+                (visibility as { hiddenSections?: string[] } | undefined)?.hiddenSections ?? []
+              ).includes(key);
+              return (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {SECTION_LABELS[key]}
+                  </span>
+                  <ToggleSwitch
+                    checked={isVisible}
+                    onChange={(nextShow) => void toggleSectionVisibility(key, nextShow)}
+                    disabled={visibilityBusy !== null || !visibility?.profileVisible}
+                    label={`Show ${SECTION_LABELS[key]} section`}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="border-t border-gray-100 pt-6 dark:border-white/5">

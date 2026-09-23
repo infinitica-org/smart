@@ -402,6 +402,8 @@ model User {
   profileVisible         Boolean         @default(false) @map("profile_visible")
   /// CN-T09 — opt-in only; default keeps the public page verified-items-only.
   showInProgressItems    Boolean         @default(false) @map("show_in_progress_items")
+  /// T6 — section-level privacy controls; stores names of profile sections hidden by student.
+  hiddenSections         String[]        @default([]) @map("hidden_sections")
   createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens         RefreshToken[]
@@ -435,6 +437,9 @@ model User {
   corroborationReviewFlags CorroborationReviewFlag[]
   evidenceProfile       CandidateEvidenceProfile?
   studentCapabilities   StudentCapability[]
+  companyOnboardingSessions CompanyOnboardingSession[] @relation("CompanyOnboardingUser")
+  companyVerificationsReviewed CompanyVerification[] @relation("CompanyVerificationReviewedBy")
+  companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
 
   careerDomainId String? @map("career_domain_id")
   targetRoleId   String? @map("target_role_id")

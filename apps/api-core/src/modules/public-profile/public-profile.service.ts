@@ -184,9 +184,11 @@ export class PublicProfileService {
         profilePhotoObjectKey: true,
         primaryTrack: { select: { code: true } },
         showInProgressItems: true,
+        hiddenSections: true,
       },
     });
     const showInProgress = owner.showInProgressItems;
+    const hiddenSections = owner.hiddenSections ?? [];
 
     const [
       skillClaims,
@@ -240,58 +242,75 @@ export class PublicProfileService {
       ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)
       : undefined;
 
+    const isSkillsHidden = hiddenSections.includes('skills');
+    const isProjectsHidden = hiddenSections.includes('projects');
+    const isWorkExperienceHidden = hiddenSections.includes('workExperience');
+    const isCertificationsHidden = hiddenSections.includes('certifications');
+    const isEducationHidden = hiddenSections.includes('education');
+
     return {
       fullName: owner.fullName,
       profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, owner.profilePhotoObjectKey),
       trackName: track?.name ?? null,
       trackCategory: track?.category ?? null,
-      skills: skillClaims.map((claim) => ({
-        skillCode: claim.skill.code,
-        skillName: SKILL_NAME_BY_CODE.get(claim.skill.code) ?? claim.skill.code,
-        proficiency: claim.proficiency,
-      })),
-      declaredSkillsCount: declaredCount,
-      projects: projects.map((project) => ({
-        projectId: project.id,
-        title: project.title,
-        outcome: project.outcome,
-        stack: project.stack,
-        githubUrl: project.githubUrl,
-        liveUrl: project.liveUrl,
-        status: project.status,
-        score: project.report ? Number(project.report.score) : null,
-      })),
-      workExperience: workExperience.map((entry) => ({
-        companyName: entry.companyName,
-        role: entry.role,
-        employmentType: entry.employmentType,
-        startDate: entry.startDate.toISOString(),
-        endDate: entry.endDate?.toISOString() ?? null,
-        isCurrent: entry.isCurrent,
-        inProgress: entry.status !== 'VERIFIED',
-      })),
-      certificate: certificate
-        ? { trackName: certificate.track.name, tier: certificate.headlineTier }
-        : null,
-      externalCertificates: externalCertificates.map((cert) => ({
-        title: cert.title,
-        issuer: cert.issuer,
-        verificationMethod: cert.verificationMethod,
-        skills: cert.skills.map((skill) => ({
-          skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
-          proficiency: skill.selfAssessedProficiency,
-        })),
-        inProgress: cert.status !== 'VERIFIED',
-      })),
-      education: educationRecords.map((edu) => ({
-        institutionName: edu.institutionName,
-        degree: edu.degree ?? null,
-        fieldOfStudy: edu.fieldOfStudy ?? null,
-        startDate: edu.startDate ?? null,
-        endDate: edu.endDate ?? null,
-        current: edu.current,
-        grade: edu.grade ?? null,
-      })),
+      skills: isSkillsHidden
+        ? []
+        : skillClaims.map((claim) => ({
+            skillCode: claim.skill.code,
+            skillName: SKILL_NAME_BY_CODE.get(claim.skill.code) ?? claim.skill.code,
+            proficiency: claim.proficiency,
+          })),
+      declaredSkillsCount: isSkillsHidden ? 0 : declaredCount,
+      projects: isProjectsHidden
+        ? []
+        : projects.map((project) => ({
+            projectId: project.id,
+            title: project.title,
+            outcome: project.outcome,
+            stack: project.stack,
+            githubUrl: project.githubUrl,
+            liveUrl: project.liveUrl,
+            status: project.status,
+            score: project.report ? Number(project.report.score) : null,
+          })),
+      workExperience: isWorkExperienceHidden
+        ? []
+        : workExperience.map((entry) => ({
+            companyName: entry.companyName,
+            role: entry.role,
+            employmentType: entry.employmentType,
+            startDate: entry.startDate.toISOString(),
+            endDate: entry.endDate?.toISOString() ?? null,
+            isCurrent: entry.isCurrent,
+            inProgress: entry.status !== 'VERIFIED',
+          })),
+      certificate:
+        isCertificationsHidden || !certificate
+          ? null
+          : { trackName: certificate.track.name, tier: certificate.headlineTier },
+      externalCertificates: isCertificationsHidden
+        ? []
+        : externalCertificates.map((cert) => ({
+            title: cert.title,
+            issuer: cert.issuer,
+            verificationMethod: cert.verificationMethod,
+            skills: cert.skills.map((skill) => ({
+              skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
+              proficiency: skill.selfAssessedProficiency,
+            })),
+            inProgress: cert.status !== 'VERIFIED',
+          })),
+      education: isEducationHidden
+        ? []
+        : educationRecords.map((edu) => ({
+            institutionName: edu.institutionName,
+            degree: edu.degree ?? null,
+            fieldOfStudy: edu.fieldOfStudy ?? null,
+            startDate: edu.startDate ?? null,
+            endDate: edu.endDate ?? null,
+            current: edu.current,
+            grade: edu.grade ?? null,
+          })),
       showInProgressItems: showInProgress,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
     };

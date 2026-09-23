@@ -314,4 +314,136 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       ]);
     });
   });
+
+  describe('build — section privacy (T6)', () => {
+    beforeEach(() => {
+      prisma.candidateEducation.findMany.mockResolvedValue([
+        {
+          institutionName: 'MIT',
+          degree: 'B.S.',
+          fieldOfStudy: 'CS',
+          startDate: '2020',
+          endDate: '2024',
+          current: false,
+          grade: 'A',
+        },
+      ]);
+      prisma.project.findMany.mockResolvedValue([
+        {
+          id: 'proj1',
+          title: 'Project 1',
+          outcome: 'Done',
+          stack: 'Node',
+          githubUrl: null,
+          liveUrl: null,
+          status: 'VERIFIED',
+          report: null,
+        },
+      ]);
+      prisma.workExperience.findMany.mockResolvedValue([
+        {
+          companyName: 'Acme',
+          role: 'Engineer',
+          employmentType: 'FULL_TIME',
+          startDate: new Date('2024-01-01'),
+          endDate: null,
+          isCurrent: true,
+          status: 'VERIFIED',
+        },
+      ]);
+      prisma.certificate.findFirst.mockResolvedValue({
+        track: { name: 'Full Stack' },
+        headlineTier: 'GOLD',
+      });
+      prisma.candidateCertificate.findMany.mockResolvedValue([
+        {
+          title: 'AWS Certified',
+          issuer: 'Amazon',
+          verificationMethod: 'AUTOMATED',
+          skills: [],
+          status: 'VERIFIED',
+        },
+      ]);
+      prisma.skillClaim.findMany.mockResolvedValue([
+        {
+          skill: { code: 'TS_01' },
+          proficiency: 'ADVANCED',
+        },
+      ]);
+      prisma.skillClaim.count.mockResolvedValue(1);
+    });
+
+    it('returns all permitted sections when hiddenSections is empty', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: [] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.education.length).toBe(1);
+      expect(result.projects.length).toBe(1);
+      expect(result.workExperience.length).toBe(1);
+      expect(result.certificate).not.toBeNull();
+      expect(result.externalCertificates.length).toBe(1);
+      expect(result.skills.length).toBe(1);
+      expect(result).not.toHaveProperty('hiddenSections');
+    });
+
+    it('omits education section when hiddenSections contains "education"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['education'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.education).toEqual([]);
+      expect(result.projects.length).toBe(1);
+    });
+
+    it('omits projects section when hiddenSections contains "projects"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['projects'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.projects).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits work experience when hiddenSections contains "workExperience"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['workExperience'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.workExperience).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits SMART and external certificates when hiddenSections contains "certifications"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['certifications'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.certificate).toBeNull();
+      expect(result.externalCertificates).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits skills and sets declaredSkillsCount to 0 when hiddenSections contains "skills"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['skills'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.skills).toEqual([]);
+      expect(result.declaredSkillsCount).toBe(0);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('supports multiple hidden sections simultaneously', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['education', 'skills', 'certifications'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.education).toEqual([]);
+      expect(result.skills).toEqual([]);
+      expect(result.certificate).toBeNull();
+      expect(result.externalCertificates).toEqual([]);
+      expect(result.projects.length).toBe(1);
+      expect(result.workExperience.length).toBe(1);
+    });
+  });
 });

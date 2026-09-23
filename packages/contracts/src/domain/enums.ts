@@ -691,3 +691,17 @@ export const SHARED_VERIFICATION_STATUSES = [
 ] as const;
 export const SharedVerificationStatusSchema = z.enum(SHARED_VERIFICATION_STATUSES);
 export type SharedVerificationStatus = z.infer<typeof SharedVerificationStatusSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                         Profile Section Visibility                          */
+/* -------------------------------------------------------------------------- */
+
+export const PROFILE_SECTIONS = [
+  'education',
+  'projects',
+  'workExperience',
+  'certifications',
+  'skills',
+] as const;
+export const ProfileSectionSchema = z.enum(PROFILE_SECTIONS);
+export type ProfileSection = z.infer<typeof ProfileSectionSchema>;
