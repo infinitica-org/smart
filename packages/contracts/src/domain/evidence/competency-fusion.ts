@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UuidSchema } from '../../dto/common.js';
 import { SkillCompetencySchema } from './skill-competency.js';
 import { CompetencyStatusSchema } from './competency-status.js';
+import { PROFICIENCY_LEVEL_ORDER } from '../skill-levels.js';
 import { ProficiencyRequirementSchema } from './proficiency-requirements.js';
 
 export const FUSION_RULE_SET_VERSION = 'v1';
@@ -72,9 +73,7 @@ export type CapabilityProfileEntry = z.infer<typeof CapabilityProfileEntrySchema
 export const CompetencyFusionResultSchema = z.object({
   skillCode: z.string().min(1).max(80),
   capabilityProfile: z.array(CapabilityProfileEntrySchema).max(50).default([]),
-  inferredDomainProficiency: z
-    .enum(['BEGINNER', 'INTERMEDIATE', 'PROFICIENT', 'ADVANCED', 'PROFESSIONAL'])
-    .nullable(),
+  inferredDomainProficiency: z.enum(PROFICIENCY_LEVEL_ORDER).nullable(),
   proficiencyInferenceReason: z
     .enum(['INSUFFICIENT_EVIDENCE', 'VETO_BLOCKED'])
     .nullable()
@@ -109,7 +108,7 @@ export const FUSION_INPUT_SCHEMA = z.object({
   competencyModel: z.array(SkillCompetencySchema).max(50).default([]),
   proficiencyRequirements: z.array(ProficiencyRequirementSchema).max(4).default([]),
   sources: z.array(ObservationBundleSchema).max(2).default([]),
-  targetProficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL']),
+  targetProficiency: z.enum(PROFICIENCY_LEVEL_ORDER),
   proctoringRiskHigh: z.boolean().default(false),
   ruleSetVersion: z.string().max(40).default(FUSION_RULE_SET_VERSION),
 });
