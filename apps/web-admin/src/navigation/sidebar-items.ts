@@ -1,9 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  BarChart3,
   Building2,
-  CreditCard,
+  CheckCircle2,
   GraduationCap,
   HeartPulse,
+  HelpCircle,
   LayoutDashboard,
   ScrollText,
   ShieldAlert,
@@ -29,29 +31,43 @@ export const sidebarItems: NavGroup[] = [
   {
     id: 'overview',
     label: 'Overview',
-    items: [{ id: 'dashboard', title: 'Dashboard', url: '/admin', icon: LayoutDashboard }],
+    items: [
+      { id: 'dashboard', title: 'Overview', url: '/admin', icon: LayoutDashboard },
+      { id: 'analytics', title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
+    ],
   },
   {
-    id: 'tenants',
-    label: 'Tenants',
+    id: 'queues',
+    label: 'Tenants & Queues',
     items: [
       {
         id: 'institutions',
-        title: 'Institutions',
+        title: 'Universities',
         url: '/admin/institutions',
         icon: GraduationCap,
       },
-      { id: 'companies', title: 'Companies', url: '/admin/companies', icon: Building2 },
+      { id: 'companies', title: 'Employers', url: '/admin/companies', icon: Building2 },
+      {
+        id: 'verification',
+        title: 'Verification queue',
+        url: '/admin/verification',
+        icon: CheckCircle2,
+      },
+      {
+        id: 'integrity',
+        title: 'Trust & safety',
+        url: '/admin/integrity',
+        icon: ShieldAlert,
+      },
     ],
   },
   {
     id: 'operations',
-    label: 'Operations',
+    label: 'Operations & Support',
     items: [
-      { id: 'plans', title: 'Pricing & flags', url: '/admin/plans', icon: CreditCard },
+      { id: 'support', title: 'Support tool', url: '/admin/support', icon: HelpCircle },
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
-      { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
       {
         id: 'blocked-words',
         title: 'Blocked words',
@@ -66,14 +82,11 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         id: 'platform-admins',
-        title: 'Platform admins',
+        title: 'Admin users',
         url: '/admin/platform-admins',
         icon: UserCog,
       },
       { id: 'health', title: 'Monitoring', url: '/admin/health', icon: HeartPulse },
-      // Rate limits / Webhooks are unfinished scaffolds (no data, no backing writes) —
-      // intentionally hidden from nav until they're built out. See admin/rate-limits
-      // and admin/webhooks pages, and the webhooks controller's `_meta` scaffold route.
     ],
   },
 ];

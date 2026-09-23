@@ -6,9 +6,20 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import {
+  isDisallowedEndorserEmailDomain,
+  type AuthTokenResponse,
+  type AuthenticatedUser,
+  type RegisterStudentRequest,
+} from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -68,6 +79,89 @@ export class AuthService {
     assertTenantLoginAllowed(user);
 
     return this.issueSession(user, reply);
+  }
+
+  async registerStudent(
+    dto: RegisterStudentRequest,
+    reply: FastifyReply,
+  ): Promise<AuthTokenResponse> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    if (isDisallowedEndorserEmailDomain(normalizedEmail)) {
+      throw new UnprocessableEntityException({
+        error: 'personal_email_not_allowed',
+        message:
+          'Personal email addresses (e.g. Gmail, Yahoo) are not permitted. Please use your official university email.',
+        statusCode: 422,
+      });
+    }
+
+    const emailDomain = normalizedEmail.split('@')[1];
+    if (!emailDomain) {
+      throw new UnprocessableEntityException({
+        error: 'invalid_email_domain',
+        message: 'Invalid email address domain.',
+        statusCode: 422,
+      });
+    }
+
+    const institutions = await this.prisma.institution.findMany({
+      select: { id: true, domain: true },
+    });
+    const matchedInstitution = institutions.find((inst) => {
+      const cleanInstDomain = inst.domain.trim().toLowerCase();
+      return emailDomain === cleanInstDomain || emailDomain.endsWith(`.${cleanInstDomain}`);
+    });
+
+    if (!matchedInstitution) {
+      throw new UnprocessableEntityException({
+        error: 'unregistered_university_domain',
+        message:
+          'Your university domain is not registered on SMART. Please contact your placement administrator.',
+        statusCode: 422,
+      });
+    }
+
+    const passwordHash = await hashPassword(dto.password);
+
+    try {
+      const user = await this.prisma.$transaction(async (tx) => {
+        return tx.user.create({
+          data: {
+            email: normalizedEmail,
+            fullName: dto.fullName,
+            passwordHash,
+            role: 'STUDENT',
+            provider: 'PASSWORD',
+            emailVerified: false,
+            institutionId: matchedInstitution.id,
+            onboardingCompleted: false,
+          },
+          include: {
+            institution: true,
+            company: true,
+            primaryTrack: true,
+            secondaryTrack: true,
+          },
+        });
+      });
+
+      return this.issueSession(user, reply);
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        throw new ConflictException({
+          error: 'email_exists',
+          message: 'An account with this email address already exists.',
+          statusCode: 409,
+        });
+      }
+      throw err;
+    }
   }
 
   async issueSession(user: UserWithAuthIncludes, reply: FastifyReply): Promise<AuthTokenResponse> {

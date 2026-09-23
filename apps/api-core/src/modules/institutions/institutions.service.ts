@@ -7,10 +7,12 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { AddBatchMemberRequestSchema } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
+  AuthenticatedUser,
   BatchDto,
   BatchImportMapping,
   BatchImportPreviewRowDto,
@@ -24,6 +26,13 @@ import type {
   InstitutionDto,
   InstitutionStudentDto,
   InviteUserRequest,
+  InviteStaffRequest,
+  PartnerUniversityOptionDto,
+  StudentInstitutionPartnershipStatusDto,
+  UniversityContactRequestDto,
+  UniversityContactRequestStatus,
+  StaffMemberDto,
+  StaffRole,
   ListAuditLogsQuery,
   ListInstitutionStudentsQuery,
   ListInstitutionsQuery,
@@ -58,6 +67,7 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
+import { toAuthenticatedUser } from '../auth/auth.service.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
@@ -146,6 +156,204 @@ export class InstitutionsService {
       orderBy: { createdAt: 'desc' },
     });
     return this.toInstitutionDtos(rows);
+  }
+
+  /* ----------------------------- partner universities ----------------------------- */
+
+  async listPartnerUniversities(query?: { q?: string }): Promise<PartnerUniversityOptionDto[]> {
+    const where: Prisma.InstitutionWhereInput = {
+      verificationStatus: 'APPROVED',
+      deactivatedAt: null,
+      heldAt: null,
+    };
+    if (query?.q?.trim()) {
+      const q = query.q.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { domain: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const institutions = await this.prisma.institution.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        domain: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return institutions.map((inst) => ({
+      institutionId: inst.id,
+      name: inst.name,
+      domain: inst.domain,
+    }));
+  }
+
+  async connectStudentUniversity(
+    studentUserId: string,
+    institutionId: string,
+  ): Promise<AuthenticatedUser> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: studentUserId },
+      include: {
+        institution: true,
+        primaryTrack: true,
+        secondaryTrack: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student user not found.',
+        statusCode: 404,
+      });
+    }
+
+    // Idempotency: if student is already connected to this university
+    if (user.institutionId === institutionId) {
+      return toAuthenticatedUser(user);
+    }
+
+    // Verify selected university is an active partner university
+    const partnerUniversity = await this.prisma.institution.findFirst({
+      where: {
+        id: institutionId,
+        verificationStatus: 'APPROVED',
+        deactivatedAt: null,
+        heldAt: null,
+      },
+    });
+
+    if (!partnerUniversity) {
+      throw new UnprocessableEntityException({
+        error: 'invalid_partner_university',
+        message: 'Selected university is not an active partner university.',
+        statusCode: 422,
+      });
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: studentUserId },
+      data: { institutionId },
+      include: {
+        institution: true,
+        primaryTrack: true,
+        secondaryTrack: true,
+      },
+    });
+
+    await this.auditPublisher.record({
+      actorId: studentUserId,
+      action: 'student.university_connected',
+      resourceType: 'user',
+      resourceId: studentUserId,
+      reasonCode: null,
+    });
+
+    return toAuthenticatedUser(updatedUser);
+  }
+
+  async getStudentInstitutionPartnershipStatus(
+    studentUserId: string,
+  ): Promise<StudentInstitutionPartnershipStatusDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: studentUserId },
+      include: { institution: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Student user not found.',
+        statusCode: 404,
+      });
+    }
+
+    if (!user.institutionId || !user.institution) {
+      return {
+        institutionId: null,
+        institutionName: null,
+        isPartnered: false,
+      };
+    }
+
+    const isPartnered =
+      user.institution.verificationStatus === 'APPROVED' &&
+      user.institution.deactivatedAt === null &&
+      user.institution.heldAt === null;
+
+    return {
+      institutionId: user.institution.id,
+      institutionName: user.institution.name,
+      isPartnered,
+    };
+  }
+
+  async requestUniversityContact(
+    studentUserId: string,
+    universityName: string,
+  ): Promise<UniversityContactRequestDto> {
+    const trimmedName = universityName.trim();
+    const normalizedUniversityName = trimmedName.toLowerCase();
+
+    // Idempotency: the same student asking SMART to contact the same university
+    // name again returns the existing request rather than creating a duplicate.
+    const existing = await this.prisma.universityContactRequest.findUnique({
+      where: {
+        studentUserId_normalizedUniversityName: {
+          studentUserId,
+          normalizedUniversityName,
+        },
+      },
+    });
+    if (existing) {
+      return toUniversityContactRequestDto(existing);
+    }
+
+    let created;
+    try {
+      created = await this.prisma.universityContactRequest.create({
+        data: {
+          studentUserId,
+          universityName: trimmedName,
+          normalizedUniversityName,
+        },
+      });
+    } catch (err: unknown) {
+      // Race: two concurrent submissions for the same (student, university) pair.
+      // The unique constraint rejects the loser; treat it as the same idempotent hit.
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        const raced = await this.prisma.universityContactRequest.findUniqueOrThrow({
+          where: {
+            studentUserId_normalizedUniversityName: {
+              studentUserId,
+              normalizedUniversityName,
+            },
+          },
+        });
+        return toUniversityContactRequestDto(raced);
+      }
+      throw err;
+    }
+
+    await this.auditPublisher.record({
+      actorId: studentUserId,
+      action: 'student.university_contact_requested',
+      resourceType: 'university_contact_request',
+      resourceId: created.id,
+      reasonCode: null,
+      metadata: { universityName: trimmedName },
+    });
+
+    return toUniversityContactRequestDto(created);
   }
 
   async getInstitution(institutionId: string): Promise<InstitutionDto> {
@@ -359,6 +567,72 @@ export class InstitutionsService {
     if (!query.inviteStatus) return rows;
     if (query.inviteStatus === 'NONE') return rows.filter((row) => row.inviteStatus === null);
     return rows.filter((row) => row.inviteStatus === query.inviteStatus);
+  }
+
+  async listAssignedStudents(
+    institutionId: string,
+    advisorUserId: string,
+  ): Promise<InstitutionStudentDto[]> {
+    await this.requireInstitution(institutionId);
+    const advisor = await this.prisma.user.findFirst({
+      where: {
+        id: advisorUserId,
+        institutionId,
+        role: { in: ['PLACEMENT_STAFF', 'INSTITUTION_ADMIN'] },
+      },
+    });
+
+    if (!advisor) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Advisor user not found for this institution.',
+        statusCode: 404,
+      });
+    }
+
+    const where: Prisma.UserWhereInput = {
+      institutionId,
+      role: 'STUDENT',
+    };
+
+    if (advisor.groupLabel) {
+      where.groupLabel = advisor.groupLabel;
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: { batch: true },
+      orderBy: { fullName: 'asc' },
+    });
+
+    if (users.length === 0) return [];
+
+    const invitations = await this.prisma.invitation.findMany({
+      where: { userId: { in: users.map((user) => user.id) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const latestByUser = new Map<string, (typeof invitations)[number]>();
+    for (const invitation of invitations) {
+      if (!latestByUser.has(invitation.userId)) latestByUser.set(invitation.userId, invitation);
+    }
+
+    return users.map((user) => {
+      const invitation = latestByUser.get(user.id);
+      const socialUrls = socialUrlsFromOnboarding(user.onboardingDetails);
+      return {
+        userId: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        batchId: user.batchId,
+        batchName: user.batch?.name ?? null,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: user.heldAt?.toISOString() ?? null,
+        linkedinUrl: socialUrls.linkedinUrl,
+        githubUrl: socialUrls.githubUrl,
+      };
+    });
   }
 
   async searchStudents(query: GlobalStudentSearchQuery): Promise<GlobalStudentHitDto[]> {
@@ -1095,6 +1369,330 @@ export class InstitutionsService {
     return result;
   }
 
+  async inviteStaff(
+    institutionId: string,
+    body: InviteStaffRequest,
+    invitedById: string,
+  ): Promise<StaffMemberDto> {
+    await this.requireInstitution(institutionId);
+    const fullName = `${body.firstName.trim()} ${body.lastName.trim()}`;
+    const { invitation } = await this.invitations.createAndEnqueue({
+      email: body.email,
+      fullName,
+      role: body.role,
+      institutionId,
+      groupLabel: body.department ?? null,
+      invitedById,
+    });
+    const dbUser = await this.prisma.user.findFirstOrThrow({
+      where: { email: body.email.toLowerCase() },
+    });
+
+    await this.writeAudit(
+      invitedById,
+      'staff.invited',
+      'user',
+      dbUser.id,
+      `Invited university staff member (${body.role})`,
+      {
+        institutionId,
+        email: body.email,
+        fullName,
+        role: body.role,
+        department: body.department ?? null,
+      },
+    );
+
+    return {
+      userId: dbUser.id,
+      email: dbUser.email,
+      fullName: dbUser.fullName,
+      role: body.role as StaffRole,
+      groupLabel: dbUser.groupLabel,
+      inviteStatus: invitation.status,
+      lastSentAt: invitation.lastSentAt,
+      acceptedAt: invitation.acceptedAt,
+      createdAt: dbUser.createdAt.toISOString(),
+    };
+  }
+
+  async listInstitutionStaff(institutionId: string): Promise<StaffMemberDto[]> {
+    await this.requireInstitution(institutionId);
+    const users = await this.prisma.user.findMany({
+      where: {
+        institutionId,
+        role: { in: ['PLACEMENT_STAFF', 'INSTITUTION_ADMIN'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const result: StaffMemberDto[] = [];
+    for (const user of users) {
+      const invitation = await this.prisma.invitation.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      result.push({
+        userId: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role as StaffRole,
+        groupLabel: user.groupLabel,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: user.heldAt?.toISOString() ?? null,
+        createdAt: user.createdAt.toISOString(),
+      });
+    }
+    return result;
+  }
+
+  async updateStaffRole(
+    institutionId: string,
+    targetUserId: string,
+    newRole: StaffRole,
+    actorId: string,
+  ): Promise<StaffMemberDto> {
+    await this.requireInstitution(institutionId);
+    const targetUser = await this.prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        institutionId,
+        role: { in: ['PLACEMENT_STAFF', 'INSTITUTION_ADMIN'] },
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Staff member not found for this institution.',
+        statusCode: 404,
+      });
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { userId: targetUser.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const previousRole = targetUser.role as StaffRole;
+
+    if (previousRole === newRole) {
+      return {
+        userId: targetUser.id,
+        email: targetUser.email,
+        fullName: targetUser.fullName,
+        role: previousRole,
+        groupLabel: targetUser.groupLabel,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: targetUser.heldAt?.toISOString() ?? null,
+        createdAt: targetUser.createdAt.toISOString(),
+      };
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role: newRole },
+    });
+
+    await this.writeAudit(
+      actorId,
+      'staff.role_updated',
+      'user',
+      targetUserId,
+      `Updated staff role from ${previousRole} to ${newRole}`,
+      {
+        institutionId,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        previousRole,
+        newRole,
+      },
+    );
+
+    return {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      fullName: updatedUser.fullName,
+      role: updatedUser.role as StaffRole,
+      groupLabel: updatedUser.groupLabel,
+      inviteStatus: invitation?.status ?? null,
+      lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+      acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+      heldAt: updatedUser.heldAt?.toISOString() ?? null,
+      createdAt: updatedUser.createdAt.toISOString(),
+    };
+  }
+
+  async deactivateStaffAccess(
+    institutionId: string,
+    targetUserId: string,
+    actorId: string,
+  ): Promise<StaffMemberDto> {
+    await this.requireInstitution(institutionId);
+    const targetUser = await this.prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        institutionId,
+        role: { in: ['PLACEMENT_STAFF', 'INSTITUTION_ADMIN'] },
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Staff member not found for this institution.',
+        statusCode: 404,
+      });
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { userId: targetUser.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (targetUser.heldAt !== null) {
+      return {
+        userId: targetUser.id,
+        email: targetUser.email,
+        fullName: targetUser.fullName,
+        role: targetUser.role as StaffRole,
+        groupLabel: targetUser.groupLabel,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: targetUser.heldAt.toISOString(),
+        createdAt: targetUser.createdAt.toISOString(),
+      };
+    }
+
+    const heldAt = new Date();
+    const updatedUser = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        heldAt,
+        heldReason: 'Deactivated by administrator',
+      },
+    });
+
+    await this.writeAudit(
+      actorId,
+      'staff.access_deactivated',
+      'user',
+      targetUserId,
+      'Deactivated staff access',
+      {
+        institutionId,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        previousState: 'ACTIVE',
+        newState: 'DEACTIVATED',
+        role: updatedUser.role,
+      },
+    );
+
+    return {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      fullName: updatedUser.fullName,
+      role: updatedUser.role as StaffRole,
+      groupLabel: updatedUser.groupLabel,
+      inviteStatus: invitation?.status ?? null,
+      lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+      acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+      heldAt: heldAt.toISOString(),
+      createdAt: updatedUser.createdAt.toISOString(),
+    };
+  }
+
+  async updateStaffCampusAccess(
+    institutionId: string,
+    targetUserId: string,
+    campusLabel: string | null | undefined,
+    actorId: string,
+  ): Promise<StaffMemberDto> {
+    await this.requireInstitution(institutionId);
+    const targetUser = await this.prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        institutionId,
+        role: { in: ['PLACEMENT_STAFF', 'INSTITUTION_ADMIN'] },
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Staff member not found for this institution.',
+        statusCode: 404,
+      });
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { userId: targetUser.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const newGroupLabel = campusLabel && campusLabel.trim().length > 0 ? campusLabel.trim() : null;
+    const previousCampusId = targetUser.groupLabel;
+
+    if (previousCampusId === newGroupLabel) {
+      return {
+        userId: targetUser.id,
+        email: targetUser.email,
+        fullName: targetUser.fullName,
+        role: targetUser.role as StaffRole,
+        groupLabel: targetUser.groupLabel,
+        inviteStatus: invitation?.status ?? null,
+        lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+        acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+        heldAt: targetUser.heldAt?.toISOString() ?? null,
+        createdAt: targetUser.createdAt.toISOString(),
+      };
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { groupLabel: newGroupLabel },
+    });
+
+    if (invitation) {
+      await this.prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { groupLabel: newGroupLabel },
+      });
+    }
+
+    await this.writeAudit(
+      actorId,
+      'staff.campus_access_updated',
+      'user',
+      targetUserId,
+      `Updated campus access to ${newGroupLabel ?? 'All Campuses'}`,
+      {
+        institutionId,
+        previousCampusId,
+        newCampusId: newGroupLabel,
+        role: targetUser.role,
+      },
+    );
+
+    return {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      fullName: updatedUser.fullName,
+      role: updatedUser.role as StaffRole,
+      groupLabel: updatedUser.groupLabel,
+      inviteStatus: invitation?.status ?? null,
+      lastSentAt: invitation?.lastSentAt?.toISOString() ?? null,
+      acceptedAt: invitation?.acceptedAt?.toISOString() ?? null,
+      heldAt: updatedUser.heldAt?.toISOString() ?? null,
+      createdAt: updatedUser.createdAt.toISOString(),
+    };
+  }
+
   async resendAdminInvitation(
     invitationId: string,
   ): Promise<ReturnType<InvitationsService['resend']>> {
@@ -1791,6 +2389,20 @@ export class InstitutionsService {
     }
     return batch;
   }
+}
+
+function toUniversityContactRequestDto(row: {
+  id: string;
+  universityName: string;
+  status: string;
+  createdAt: Date;
+}): UniversityContactRequestDto {
+  return {
+    id: row.id,
+    universityName: row.universityName,
+    status: row.status as UniversityContactRequestStatus,
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 function toBatchDto(

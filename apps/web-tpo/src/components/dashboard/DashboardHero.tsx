@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { Calendar } from 'lucide-react';
-import { bentoCardClass, dashboardPrimaryButtonClass } from '../../lib/tpo-dashboard-ui';
+import { Calendar, UserPlus, Sparkles } from 'lucide-react';
 
 type DashboardHeroProps = {
   greeting: string;
@@ -16,52 +15,54 @@ export function DashboardHero({
   loading,
 }: DashboardHeroProps) {
   return (
-    <section className={`dashboard-hero-card ${bentoCardClass} lg:col-span-8`}>
+    <section className="relative -mx-4 -mt-6 overflow-hidden border-b border-zinc-100/80 px-4 py-10 text-center md:-mx-6 md:-mt-4 md:px-6 md:py-12">
+      {/* Exact Multi-Stop Ambient Mesh Gradient (Mint on Left, Soft Lime on Right) */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-12 -top-8 h-48 w-48 rounded-full bg-[var(--tpo-dash-hero-glow-blue,rgb(59_130_246/0.08))] blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-16 top-6 h-32 w-32 rounded-3xl bg-gradient-to-br from-[var(--tpo-dash-hero-glow-lavender,rgb(139_124_246/0.1))] to-[var(--tpo-dash-hero-glow-blue,rgb(59_130_246/0.08))] opacity-90 rotate-12"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-24 rounded-full border border-[var(--ds-border-subtle)]/80 opacity-40"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background: `
+            radial-gradient(ellipse 60% 80% at 10% 20%, rgba(167, 243, 208, 0.55) 0%, rgba(204, 251, 241, 0.35) 40%, transparent 75%),
+            radial-gradient(ellipse 55% 75% at 90% 20%, rgba(217, 249, 157, 0.55) 0%, rgba(254, 240, 138, 0.3) 40%, transparent 75%),
+            radial-gradient(ellipse 50% 50% at 50% 10%, rgba(255, 255, 255, 0.8) 0%, transparent 70%),
+            linear-gradient(180deg, rgba(240, 253, 244, 0.3) 0%, rgba(255, 255, 255, 0) 100%)
+          `,
+        }}
       />
 
-      <div className="relative flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-2xl space-y-2">
-          <p className="text-xl font-semibold tracking-tight text-[var(--tpo-dash-primary)] md:text-2xl">
-            {greeting}
-          </p>
-          {loading ? (
-            <div className="h-11 w-56 animate-pulse rounded-lg bg-[var(--ds-surface-muted)]" />
-          ) : (
-            <h1 className="text-[32px] font-bold leading-tight tracking-tight text-[var(--ds-text)] md:text-[40px]">
-              {displayName}
-            </h1>
-          )}
-          <p className="text-base font-medium leading-relaxed text-[var(--ds-text-secondary)] md:text-lg">
-            Here&apos;s what&apos;s happening with your placement drive today.
-          </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-3 py-1.5 text-[12px] font-medium text-[var(--ds-text-secondary)]">
-              <Calendar className="size-3.5 text-[var(--ds-text-muted)]" strokeWidth={1.5} />
-              {formattedDate}
-            </div>
-          </div>
-          <Link href="/whitelist" className={`${dashboardPrimaryButtonClass} mt-2`}>
-            + Onboard Candidates
-          </Link>
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/60 bg-emerald-50/80 px-3 py-1 text-xs font-semibold text-emerald-900 mb-3 shadow-2xs">
+        <Sparkles className="size-3 text-emerald-600" />
+        <span>{greeting}</span>
+      </div>
+
+      {loading ? (
+        <div className="mx-auto mt-2 h-11 w-72 animate-pulse rounded-lg bg-zinc-100" />
+      ) : (
+        <h1 className="font-heading mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-zinc-950 md:text-4xl">
+          {displayName}
+        </h1>
+      )}
+
+      <p className="mx-auto mt-2.5 max-w-lg text-xs leading-relaxed text-zinc-600 md:text-sm">
+        Connect verified campus talent directly with hiring employers and track placement drive
+        progress.
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+        <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-zinc-600 shadow-2xs">
+          <Calendar className="size-3.5 text-zinc-500" strokeWidth={1.5} />
+          {formattedDate}
         </div>
+      </div>
 
-        <p className="hidden max-w-[220px] text-right text-[12px] italic leading-relaxed text-[var(--ds-text-subtle)] xl:block">
-          Empowering students for a brighter tomorrow
-          <span className="mt-1 block not-italic text-[11px] font-medium text-[var(--ds-text-muted)]">
-            — Placement Team
-          </span>
-        </p>
+      <div className="mt-5 flex items-center justify-center gap-3">
+        <Link
+          href="/whitelist"
+          className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition-all hover:bg-zinc-800 hover:scale-[1.01] active:scale-[0.99]"
+        >
+          <UserPlus className="size-3.5" />
+          Onboard Candidates
+        </Link>
       </div>
     </section>
   );

@@ -93,30 +93,27 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between px-4">
           <Link
             href="/"
-            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]"
+            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
             aria-label="SMART home"
           >
             <Image
               src={textLogo}
               alt="SMART"
-              width={100}
-              height={24}
+              width={110}
+              height={30}
               priority
-              className="h-6 w-auto object-contain"
+              className="h-7 w-auto object-contain"
             />
           </Link>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            v{UI_VERSION}
-          </span>
         </div>
 
         <button
           type="button"
           aria-label="Close menu"
-          className="absolute right-3 top-3.5 rounded-lg p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63] lg:hidden"
+          className="absolute right-3 top-3.5 rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 lg:hidden"
           onClick={() => onMobileOpenChange(false)}
         >
           <X className="size-5" />
@@ -126,7 +123,7 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
           className="flex-1 overflow-y-auto overscroll-contain bg-white px-3 py-4"
           aria-label="University console"
         >
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {mainNav.map((item) => {
               const isActive = isSidebarItemActive(pathname, item);
               const Icon = item.icon;
@@ -137,24 +134,24 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
                     onClick={() => onMobileOpenChange(false)}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
+                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900',
                       isActive
-                        ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                        ? 'bg-zinc-100 font-bold text-zinc-900'
+                        : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900',
                     )}
                   >
                     <Icon
                       className={cn(
-                        'size-4 shrink-0 transition-colors',
+                        'size-5 shrink-0 transition-colors',
                         isActive
-                          ? 'stroke-[2.2] text-slate-900'
-                          : 'text-slate-400 group-hover:text-slate-600',
+                          ? 'stroke-[2.2] text-zinc-900'
+                          : 'text-zinc-400 group-hover:text-zinc-600',
                       )}
                     />
                     <span className="truncate">{item.name}</span>
                     {item.name === 'Whitelist' ? (
                       <span
-                        className="ml-auto size-2 rounded-full bg-blue-600 shrink-0"
+                        className="ml-auto size-1.5 rounded-full bg-blue-600 shrink-0"
                         aria-hidden
                       />
                     ) : null}
@@ -168,16 +165,16 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
                 onClick={() => onMobileOpenChange(false)}
                 aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004C63]',
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition-all group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900',
                   pathname.startsWith('/settings')
-                    ? 'bg-slate-200/70 font-extrabold text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                    ? 'bg-zinc-100 font-bold text-zinc-900'
+                    : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900',
                 )}
               >
                 <Settings
                   className={cn(
-                    'size-4 shrink-0',
-                    pathname.startsWith('/settings') ? 'text-slate-900' : 'text-slate-400',
+                    'size-5 shrink-0',
+                    pathname.startsWith('/settings') ? 'text-zinc-900' : 'text-zinc-400',
                   )}
                 />
                 <span className="truncate">Settings</span>
@@ -185,20 +182,6 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
             </li>
           </ul>
         </nav>
-
-        <div className="shrink-0 px-4 py-3">
-          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-[#F0FDFA]/50 to-emerald-50/30 p-4">
-            <div className="mb-2.5 flex size-9 items-center justify-center rounded-xl border border-[#CCFBF1] bg-white text-[#004C63]">
-              <GraduationCap className="size-5" />
-            </div>
-            <h4 className="text-xs font-extrabold leading-tight text-slate-900">
-              Empowering Better Futures
-            </h4>
-            <p className="mt-1 text-[11px] font-medium leading-snug text-slate-500">
-              Connect Talent. Create Opportunities.
-            </p>
-          </div>
-        </div>
 
         <div className="shrink-0 border-t border-slate-100 px-5 py-3">
           <p className="text-[11px] font-medium text-slate-400">Privacy Policy · Terms</p>

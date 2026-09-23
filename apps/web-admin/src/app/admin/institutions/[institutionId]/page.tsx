@@ -158,7 +158,7 @@ export default function InstitutionDetailPage() {
         title={institution?.name ?? 'Institution'}
         description={`${institution?.domain ?? ''} · Plan ${institution?.planCode ?? ''}`}
       >
-        <Button variant="outline" asChild>
+        <Button variant="outline" className="rounded-md" asChild>
           <Link href="/admin/institutions">
             <ArrowLeft data-icon="inline-start" />
             Back to institutions

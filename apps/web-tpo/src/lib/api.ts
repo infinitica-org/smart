@@ -1,11 +1,4 @@
 import {
-  SmartApiClient,
-  clearAccessToken,
-  createRefreshAccessToken,
-  createSmartApi,
-  getAccessToken,
-} from '@smart/api-client';
-import {
   API_PREFIX,
   ApplicationConfidenceDtoSchema,
   ApplicationDtoSchema,
@@ -18,19 +11,33 @@ import {
   PlacementEmployerDetailSchema,
   PlacementEmployerSummarySchema,
   MatchRunDtoSchema,
+  StaffMemberDtoSchema,
+  InstitutionStudentDtoSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   ShortlistDtoSchema,
+  z,
   type AtsStage,
   type CreateApplicationRequest,
   type CreateJobOpeningRequest,
   type CreatePlacementEmployerRequest,
+  type InviteStaffRequest,
   type ListJobOpeningsQuery,
   type ListPlacementEmployersQuery,
   type RecordOutcomeRequest,
   type UpdatePlacementEmployerRequest,
   type MatchRequest,
+  type StaffMemberDto,
+  type InstitutionStudentDto,
+  type StaffRole,
 } from '@smart/contracts';
+import {
+  SmartApiClient,
+  clearAccessToken,
+  createRefreshAccessToken,
+  createSmartApi,
+  getAccessToken,
+} from '@smart/api-client';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 // web-auth is the one login screen for every portal now.
@@ -150,5 +157,44 @@ export const placementOutcomesApi = {
     apiClient.get(`${API_PREFIX}/placement/outcomes`, {
       schema: ListPlacementOutcomesResponseSchema,
       query: { companyName },
+    }),
+};
+
+export const staffApi = {
+  list: (): Promise<StaffMemberDto[]> =>
+    apiClient.get(`${API_PREFIX}/tpo/staff`, {
+      schema: z.array(StaffMemberDtoSchema),
+    }),
+  invite: (body: InviteStaffRequest): Promise<StaffMemberDto> =>
+    apiClient.post(`${API_PREFIX}/tpo/staff/invitations`, body, {
+      schema: StaffMemberDtoSchema,
+    }),
+  updateRole: (userId: string, role: StaffRole): Promise<StaffMemberDto> =>
+    apiClient.patch(
+      `${API_PREFIX}/tpo/staff/${userId}/role`,
+      { role },
+      {
+        schema: StaffMemberDtoSchema,
+      },
+    ),
+  deactivateAccess: (userId: string): Promise<StaffMemberDto> =>
+    apiClient.post(
+      `${API_PREFIX}/tpo/staff/${userId}/deactivate`,
+      {},
+      {
+        schema: StaffMemberDtoSchema,
+      },
+    ),
+  updateCampus: (userId: string, campus: string | null): Promise<StaffMemberDto> =>
+    apiClient.patch(
+      `${API_PREFIX}/tpo/staff/${userId}/campus`,
+      { campus },
+      {
+        schema: StaffMemberDtoSchema,
+      },
+    ),
+  listAssignedStudents: (): Promise<InstitutionStudentDto[]> =>
+    apiClient.get(`${API_PREFIX}/tpo/students/assigned-to-me`, {
+      schema: z.array(InstitutionStudentDtoSchema),
     }),
 };

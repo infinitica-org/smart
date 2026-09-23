@@ -1,84 +1,45 @@
 'use client';
 
-import { AnimatedGridPattern, SmartLogo } from '@smart/ui';
+import { SmartLogo } from '@smart/ui';
 
-/**
- * Generic across every role — this panel used to be TPO-only copy
- * ("Upload Candidates", "Track Readiness"). Now that this screen is the one
- * login for the whole product, the steps describe what happens to ANY
- * account (student, placement staff, admin), not a specific portal's task.
- */
-const STEPS = [
-  { n: 1, label: 'Sign in with your email', active: true },
-  { n: 2, label: 'We recognize your role', active: false },
-  { n: 3, label: 'Land on your dashboard', active: false },
-] as const;
+const HIGHLIGHTS = [
+  '5 levels, 3 tiers',
+  'Publicly verifiable credentials',
+  'Role-specific readiness',
+];
 
 export function LoginBrandPanel() {
   return (
     <section
-      className="relative hidden min-h-dvh flex-col justify-between overflow-hidden px-12 py-12 lg:flex xl:px-16"
-      style={{
-        background:
-          'radial-gradient(120% 120% at 12% 8%, var(--brand-teal-deep) 0%, transparent 55%), var(--background)',
-      }}
+      className="relative hidden h-full min-h-[560px] flex-col justify-between overflow-hidden rounded-[28px] px-10 py-10 lg:flex xl:px-12"
+      style={{ background: 'var(--background)' }}
       aria-label="About SMART"
     >
-      <AnimatedGridPattern
-        className="fill-[var(--brand-teal)]/10 stroke-[var(--brand-teal)]/10"
-        numSquares={36}
-        maxOpacity={0.18}
+      {/* Replace with a local file in public/ if you prefer to self-host the photo. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
       />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/80" />
 
-      <div className="relative z-10">
+      <h1 className="font-heading relative z-10 text-[4.25rem] font-extrabold uppercase leading-[0.92] tracking-tight text-[var(--brand-teal)] xl:text-[5.25rem]">
+        Get
+        <br />
+        Ready
+        <br />
+        Get Hired
+      </h1>
+
+      <div className="relative z-10 space-y-6">
+        <ul className="space-y-1 text-xl font-semibold text-white">
+          {HIGHLIGHTS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
         <SmartLogo kind="wordmark" tone="on-dark" className="h-8" title="SMART" />
       </div>
-
-      <div className="relative z-10 max-w-md space-y-8">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-teal)]">
-            One account, every portal
-          </p>
-          <h1 className="font-heading text-[2.35rem] font-extrabold leading-[1.08] tracking-tight text-white">
-            Sign in once.
-            <span className="block text-[var(--brand-teal)]">
-              We&apos;ll take you the rest of the way.
-            </span>
-          </h1>
-          <p className="text-[15px] leading-relaxed text-white/60">
-            Students, placement teams, and admins all sign in right here — SMART opens the workspace
-            built for your role.
-          </p>
-        </div>
-
-        <ol className="flex flex-col gap-3">
-          {STEPS.map((step) => (
-            <li
-              key={step.n}
-              className={
-                step.active
-                  ? 'flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-black'
-                  : 'flex items-center gap-4 rounded-2xl bg-white/5 px-5 py-4 text-white/50 backdrop-blur-sm'
-              }
-            >
-              <span
-                className={
-                  step.active
-                    ? 'flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black text-xs font-bold text-white'
-                    : 'flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold'
-                }
-              >
-                {step.n}
-              </span>
-              <span className="text-[15px] font-medium">{step.label}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <p className="relative z-10 text-xs text-white/40">
-        © {new Date().getFullYear()} SMART · Infinitica
-      </p>
     </section>
   );
 }

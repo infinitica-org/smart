@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export { z };
 
 /** Primitives shared by every DTO. Owner: Tino. */
 

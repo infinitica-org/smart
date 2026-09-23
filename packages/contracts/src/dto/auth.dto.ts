@@ -21,6 +21,13 @@ export const PasswordLoginRequestSchema = z.object({
 });
 export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequestSchema>;
 
+export const RegisterStudentRequestSchema = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  email: EmailSchema,
+  password: z.string().min(8).max(200),
+});
+export type RegisterStudentRequest = z.infer<typeof RegisterStudentRequestSchema>;
+
 export const SsoStartRequestSchema = z.object({
   provider: AuthProviderSchema,
   /** Institutional email domain, e.g. `psgtech.ac.in`. Resolves the SAML/OIDC tenant. */

@@ -4,12 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { api } from '@/lib/api';
+import PhoneVerificationStep from './steps/PhoneVerificationStep';
+import ConnectUniversityStep from './steps/ConnectUniversityStep';
 import BasicProfileStep from './steps/BasicProfileStep';
-import AcademicsStep from './steps/AcademicsStep';
-import LanguagesStep from './steps/LanguagesStep';
-import SocialStep from './steps/SocialStep';
-import JobPreferencesStep from './steps/JobPreferencesStep';
-import UsernameStep from './steps/UsernameStep';
 import CompletionSequence from './steps/CompletionSequence';
 import {
   applyServerDraft,
@@ -23,6 +20,7 @@ import {
 import { DEFAULT_CANDIDATE_STREAM } from '@/lib/candidate-streams';
 import { markTourAutostart } from '@/lib/tour';
 import {
+  ErrorBanner,
   ProgressDots,
   WIZARD_STEP_META,
   WizardPage,
@@ -44,45 +42,22 @@ function previousStepBefore(step: WizardStepId): WizardStepId | null {
   return STEP_ORDER[idx - 1] ?? null;
 }
 
-/**
- * Infers the furthest step the candidate already reached, from whatever data
- * is already on the form — there is no server-side step-index column, so
- * this mirrors (and extends) the single `firstName` heuristic the old wizard used.
- */
+const VALID_STEP_IDS = new Set<string>(STEP_ORDER);
+
 function furthestStep(form: OnboardingProfileForm): WizardStepId {
-  if (
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('linkedinVerified') !== null
-  ) {
-    return 'social';
+  if (form.onboardingStep && VALID_STEP_IDS.has(form.onboardingStep)) {
+    return form.onboardingStep as WizardStepId;
   }
-  const hasPreferences = Boolean(form.jobPreferences.expectedCtcLakhs.trim());
-  if (hasPreferences) return 'preferences';
-  const hasSocial = Boolean(form.socialVerification.linkedin?.verified || form.githubUrl.trim());
-  if (hasSocial) return 'social';
-  if (form.languages.some((l) => l.language.trim())) return 'languages';
-  const hasLegacySkillsData =
-    Object.keys(form.catalogSkills).length > 0 ||
-    form.codingProficiencies.length > 0 ||
-    form.frameworkProficiencies.length > 0;
-  if (hasLegacySkillsData) return 'languages';
-  const hasAcademicScores =
-    form.academicScores.cgpa.trim() ||
-    form.academicScores.sscPercentage.trim() ||
-    form.academicScores.hscPercentage.trim();
-  if (hasAcademicScores) return 'academics';
-  if (form.firstName.trim() || form.lastName.trim()) return 'profile';
-  return 'profile';
+  if (form.firstName.trim() || form.academicProgram.studyProgram.trim()) return 'profile';
+  if (form.phoneNumber.trim() && form.dpdpConsent) return 'school';
+  return 'phone';
 }
 
 export default function OnboardingWizard() {
-  const [currentStep, setCurrentStep] = useState<Step>('profile');
+  const [currentStep, setCurrentStep] = useState<Step>('phone');
   const [formData, setFormData] = useState<OnboardingProfileForm>(loadOnboardingDraft);
   const [saving, setSaving] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  // Blocks step navigation until the one-time server-draft hydration below
-  // finishes — otherwise a slow response could land after the candidate has
-  // already clicked forward and silently snap them back a step.
   const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
 
@@ -135,8 +110,14 @@ export default function OnboardingWizard() {
   };
 
   const advanceFrom = (step: WizardStepId) => {
-    persistDraft(formData);
-    setCurrentStep(nextStepAfter(step));
+    const next = nextStepAfter(step);
+    const updated = next !== 'done' ? { ...formData, onboardingStep: next } : formData;
+    if (next !== 'done') {
+      setFormData(updated);
+      saveOnboardingDraft(updated);
+    }
+    persistDraft(updated);
+    setCurrentStep(next);
   };
 
   const goBackTo = (step: WizardStepId) => {
@@ -156,7 +137,7 @@ export default function OnboardingWizard() {
       await api.auth.enrollTrack({ trackCode: DEFAULT_CANDIDATE_STREAM.trackCode });
       await api.users.completeOnboarding(payload);
       clearOnboardingDraft();
-      setCurrentStep('username');
+      setCurrentStep('done');
     } catch {
       setCompleteError(
         'Could not save your profile to the server. Check your connection and try again.',
@@ -184,55 +165,33 @@ export default function OnboardingWizard() {
         </div>
       ) : null}
 
+      {completeError ? (
+        <div className="mb-4">
+          <ErrorBanner>{completeError}</ErrorBanner>
+        </div>
+      ) : null}
+
       <motion.div key={currentStep} {...stepMotionProps}>
+        {currentStep === 'phone' && (
+          <PhoneVerificationStep
+            formData={formData}
+            updateField={updateField}
+            onContinue={() => advanceFrom('phone')}
+          />
+        )}
+
+        {currentStep === 'school' && (
+          <ConnectUniversityStep onContinue={() => advanceFrom('school')} />
+        )}
+
         {currentStep === 'profile' && (
           <BasicProfileStep
             formData={formData}
             updateField={updateField}
-            isFirstWizardStep
-            onContinue={() => advanceFrom('profile')}
+            onBack={() => goBackTo('profile')}
+            onContinue={() => void handleComplete()}
           />
         )}
-
-        {currentStep === 'academics' && (
-          <AcademicsStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('academics')}
-            onContinue={() => advanceFrom('academics')}
-          />
-        )}
-
-        {currentStep === 'languages' && (
-          <LanguagesStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('languages')}
-            onContinue={() => advanceFrom('languages')}
-          />
-        )}
-
-        {currentStep === 'social' && (
-          <SocialStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('social')}
-            onContinue={() => advanceFrom('social')}
-          />
-        )}
-
-        {currentStep === 'preferences' && (
-          <JobPreferencesStep
-            formData={formData}
-            updateField={updateField}
-            onBack={() => goBackTo('preferences')}
-            onComplete={() => void handleComplete()}
-            saving={saving}
-            error={completeError}
-          />
-        )}
-
-        {currentStep === 'username' && <UsernameStep onContinue={() => setCurrentStep('done')} />}
 
         {currentStep === 'done' && (
           <CompletionSequence

@@ -151,7 +151,8 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
 ]);
 
 /** Title-cases a raw `SCREAMING_SNAKE_CASE` or `dot.snake_case` string as a graceful fallback. */
-function titleCaseFallback(raw: string): string {
+function titleCaseFallback(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
   const words = raw
     .split(/[._]+/)
     .filter(Boolean)
@@ -161,7 +162,8 @@ function titleCaseFallback(raw: string): string {
 }
 
 /** Renders a raw audit `action` string as a human-readable label, falling back gracefully. */
-export function formatAuditAction(action: string): string {
+export function formatAuditAction(action?: string | null): string {
+  if (!action) return '—';
   return AUDIT_ACTION_LABELS[action] ?? titleCaseFallback(action);
 }
 
@@ -180,12 +182,14 @@ const LABEL_TO_ACTION = new Map<string, string>(
  * anything else — including a raw action substring like `institution.` — passes through
  * unchanged, since the API already filters with a case-insensitive `contains`.
  */
-export function resolveActionFilterValue(input: string): string {
+export function resolveActionFilterValue(input?: string | null): string {
+  if (!input) return '';
   const trimmed = input.trim();
   return LABEL_TO_ACTION.get(trimmed.toLowerCase()) ?? trimmed;
 }
 
 /** Renders a raw audit `resourceType` string (e.g. `candidate_certificate`, `WorkExperience`). */
-export function formatResourceType(resourceType: string): string {
+export function formatResourceType(resourceType?: string | null): string {
+  if (!resourceType) return '—';
   return titleCaseFallback(resourceType);
 }

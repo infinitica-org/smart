@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
   PasswordLoginRequestSchema,
+  RegisterStudentRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
@@ -21,6 +22,13 @@ export class AuthController {
   login(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
     const parsed = PasswordLoginRequestSchema.parse(body);
     return this.auth.login(parsed.email, parsed.password, reply);
+  }
+
+  @Public()
+  @Post('register')
+  registerStudent(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+    const parsed = RegisterStudentRequestSchema.parse(body);
+    return this.auth.registerStudent(parsed, reply);
   }
 
   @Public()

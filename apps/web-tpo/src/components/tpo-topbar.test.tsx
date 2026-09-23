@@ -20,12 +20,11 @@ afterEach(() => {
 });
 
 describe('TpoTopbar', () => {
-  it('has search, top navigation links, and profile menu', () => {
+  it('has breadcrumb navigation and profile menu', () => {
     render(<TpoTopbar onOpenMobileNav={vi.fn()} />);
-    expect(screen.getByPlaceholderText('Search...')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Students' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Employers' })).toBeDefined();
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeDefined();
+    expect(screen.getByText('Dashboard')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Support' })).toBeDefined();
   });
 
   it('opens mobile nav via menu button', () => {

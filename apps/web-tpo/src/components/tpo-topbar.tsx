@@ -3,7 +3,71 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, GraduationCap, LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { ChevronRight, GraduationCap, LogOut, Menu, UserRound } from 'lucide-react';
+
+type Breadcrumb = { label: string; href?: string };
+
+function getBreadcrumbs(pathname: string): Breadcrumb[] {
+  if (pathname === '/' || pathname === '/dashboard') {
+    return [{ label: 'Dashboard' }];
+  }
+
+  const segments = pathname.split('/').filter(Boolean);
+  const crumbs: Breadcrumb[] = [];
+
+  const first = segments[0] ?? '';
+  if (['students', 'batches', 'whitelist', 'provisioning', 'onboarding'].includes(first)) {
+    crumbs.push({ label: 'Candidates', href: '/students' });
+    if (first === 'students') crumbs.push({ label: 'Students' });
+    else if (first === 'batches') {
+      if (segments.length > 1) {
+        crumbs.push({ label: 'Batches', href: '/batches' });
+        crumbs.push({ label: 'Batch Details' });
+      } else {
+        crumbs.push({ label: 'Batches' });
+      }
+    } else if (first === 'whitelist') crumbs.push({ label: 'Whitelist' });
+    return crumbs;
+  }
+
+  if (
+    ['openings', 'companies', 'opportunities', 'suggestions', 'review', 'company', 'ats'].includes(
+      first,
+    )
+  ) {
+    crumbs.push({ label: 'Placement', href: '/openings' });
+    if (first === 'openings') {
+      if (segments[1] === 'create') {
+        crumbs.push({ label: 'Openings', href: '/openings' });
+        crumbs.push({ label: 'Create Opening' });
+      } else {
+        crumbs.push({ label: 'Openings' });
+      }
+    } else if (first === 'companies') {
+      if (segments.length > 1) {
+        crumbs.push({ label: 'Companies', href: '/companies' });
+        crumbs.push({ label: 'Company Profile' });
+      } else {
+        crumbs.push({ label: 'Companies' });
+      }
+    } else if (first === 'opportunities') crumbs.push({ label: 'Opportunities' });
+    else if (first === 'suggestions') crumbs.push({ label: 'Suggestions' });
+    else if (first === 'review') crumbs.push({ label: 'Review' });
+    return crumbs;
+  }
+
+  if (first === 'reports') return [{ label: 'Reports & Analytics' }];
+  if (first === 'calendar') return [{ label: 'Placement Calendar' }];
+  if (first === 'settings') return [{ label: 'Settings' }];
+  if (first === 'school-profile') return [{ label: 'School Profile' }];
+  if (first === 'skill-verification') return [{ label: 'Skill Verification' }];
+  if (first === 'work-experience-verification') return [{ label: 'Work Experience Verification' }];
+
+  return segments.map((seg, i) => ({
+    label: seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' '),
+    href: i < segments.length - 1 ? `/${segments.slice(0, i + 1).join('/')}` : undefined,
+  }));
+}
 
 const TOP_NAV_ITEMS = [
   { name: 'Dashboard', href: '/' },
@@ -12,25 +76,10 @@ const TOP_NAV_ITEMS = [
   { name: 'Employers', href: '/companies' },
   { name: 'Reports', href: '/reports' },
 ];
-import { Avatar, AvatarFallback } from '@smart/ui';
-import type { AuthenticatedUser, InstitutionStudentDto, JobOpeningDto } from '@smart/contracts';
-import { api, openingsApi } from '../lib/api';
+
+import type { AuthenticatedUser } from '@smart/contracts';
+import { api } from '../lib/api';
 import { signOut } from '../lib/auth';
-import {
-  topbarFontClass,
-  topbarSearchInputClass,
-  topbarSeparatorClass,
-} from '../lib/tpo-topbar-ui';
-import { sectionLabelClass } from '../lib/tpo-ui';
-
-const ROLE_LABELS: Record<string, string> = {
-  INSTITUTION_ADMIN: 'Institution Admin',
-  PLACEMENT_STAFF: 'Placement Officer',
-};
-
-const SEARCH_DEBOUNCE_MS = 300;
-const MIN_SEARCH_CHARS = 2;
-
 type TpoTopbarProps = {
   onOpenMobileNav: () => void;
 };
@@ -40,14 +89,6 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  const [query, setQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [candidateResults, setCandidateResults] = useState<InstitutionStudentDto[]>([]);
-  const [openingResults, setOpeningResults] = useState<JobOpeningDto[]>([]);
-  const searchBoxRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,75 +108,11 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
       }
-      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
-        setSearchOpen(false);
-      }
     }
     document.addEventListener('mousedown', onOutsideClick);
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchInputRef.current?.focus();
-      }
-      if (event.key === 'Escape') {
-        setSearchOpen(false);
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const term = query.trim();
-    if (term.length < MIN_SEARCH_CHARS) {
-      setCandidateResults([]);
-      setOpeningResults([]);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(() => {
-      Promise.all([
-        api.onboarding.listTpoStudents({ q: term }).catch(() => []),
-        openingsApi.list().catch(() => ({ openings: [] })),
-      ])
-        .then(([students, openingsRes]) => {
-          const lower = term.toLowerCase();
-          setCandidateResults(students.slice(0, 5));
-          setOpeningResults(
-            openingsRes.openings
-              .filter(
-                (opening) =>
-                  opening.roleTitle.toLowerCase().includes(lower) ||
-                  opening.companyName.toLowerCase().includes(lower),
-              )
-              .slice(0, 5),
-          );
-          setSearchOpen(true);
-        })
-        .finally(() => setSearching(false));
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (query.trim()) {
-      router.push(`/students?q=${encodeURIComponent(query.trim())}`);
-      setSearchOpen(false);
-    }
-  }
-
-  function goTo(path: string) {
-    router.push(path);
-    setSearchOpen(false);
-    setQuery('');
-  }
-
-  const hasResults = candidateResults.length > 0 || openingResults.length > 0;
   const pathname = usePathname() || '/';
 
   function isItemActive(href: string): boolean {
@@ -143,173 +120,88 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
     return pathname.startsWith(href);
   }
 
+  const breadcrumbs = getBreadcrumbs(pathname);
+
   return (
-    <header
-      className={`${topbarFontClass} fixed top-0 right-0 z-40 flex h-14 shrink-0 items-center border-b border-slate-200/80 bg-white px-4 text-[var(--ds-text)] antialiased lg:left-64 lg:px-6 left-0`}
-    >
-      <button
-        type="button"
-        onClick={onOpenMobileNav}
-        aria-label="Open navigation menu"
-        className="mr-2 rounded-lg p-2 text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] lg:hidden"
-      >
-        <Menu strokeWidth={1.5} className="size-[18px]" />
-      </button>
+    <header className="sticky top-0 z-40 flex h-14 w-full shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white px-6 font-sans antialiased select-none">
+      <div className="flex h-full items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpenMobileNav}
+          aria-label="Open navigation menu"
+          className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 lg:hidden"
+        >
+          <Menu strokeWidth={1.5} className="size-5" />
+        </button>
 
-      {/* Horizontal Navigation Tabs (matching reference UI top bar) */}
-      <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 ml-2">
-        {TOP_NAV_ITEMS.map((item) => {
-          const active = isItemActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`relative py-4 transition-colors hover:text-slate-900 ${
-                active ? 'font-extrabold text-slate-900' : ''
-              }`}
-            >
-              {item.name}
-              {active ? (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#004C63]" />
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
-        <div ref={searchBoxRef} className="relative min-w-0 flex-1 md:flex-none">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center md:justify-end">
-            <Search
-              strokeWidth={1.5}
-              className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-3.5 -translate-y-1/2 text-[var(--ds-text-subtle)]"
-            />
-            <input
-              ref={searchInputRef}
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => hasResults && setSearchOpen(true)}
-              placeholder="Search..."
-              className={`${topbarSearchInputClass} w-full max-w-none pl-8 md:w-48 lg:w-56`}
-            />
-            <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center lg:flex">
-              <kbd className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface)] px-1 py-px font-mono text-[9px] font-medium text-[var(--ds-text-subtle)]">
-                ⌘K
-              </kbd>
-            </div>
-          </form>
-
-          {searchOpen && query.trim().length >= MIN_SEARCH_CHARS && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1.5 shadow-[var(--ds-card-shadow)]">
-              {searching ? (
-                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">Searching…</p>
-              ) : !hasResults ? (
-                <p className="p-4 text-xs font-medium text-[var(--ds-text-muted)]">
-                  No matches. Press Enter to view full roster.
-                </p>
-              ) : (
-                <>
-                  {candidateResults.length > 0 && (
-                    <div className="py-1">
-                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Candidates</p>
-                      {candidateResults.map((candidate) => (
-                        <button
-                          key={candidate.userId}
-                          type="button"
-                          onClick={() =>
-                            goTo(`/students?q=${encodeURIComponent(candidate.fullName)}`)
-                          }
-                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
-                        >
-                          <span>{candidate.fullName}</span>
-                          <span className="font-normal text-[var(--ds-text-muted)]">
-                            {candidate.email}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+        {/* Dynamic Breadcrumb Navigation */}
+        <nav aria-label="Breadcrumb" className="flex items-center">
+          <ol className="flex items-center gap-1.5 text-xs sm:text-[13px]">
+            {breadcrumbs.map((crumb, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return (
+                <li key={crumb.label + idx} className="flex items-center gap-1.5">
+                  {idx > 0 && (
+                    <ChevronRight className="size-3.5 text-zinc-400 shrink-0" aria-hidden />
                   )}
-                  {openingResults.length > 0 && (
-                    <div className="border-t border-[var(--ds-border-subtle)] py-1">
-                      <p className={`px-3 py-1.5 ${sectionLabelClass}`}>Job openings</p>
-                      {openingResults.map((opening) => (
-                        <button
-                          key={opening.openingId}
-                          type="button"
-                          onClick={() => goTo('/companies')}
-                          className="flex w-full items-center justify-between truncate rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
-                        >
-                          <span>{opening.roleTitle}</span>
-                          <span className="font-normal text-[var(--ds-text-muted)]">
-                            {opening.companyName}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                  {crumb.href && !isLast ? (
+                    <Link
+                      href={crumb.href}
+                      className="font-medium text-zinc-500 hover:text-zinc-900 transition-colors truncate max-w-[120px] sm:max-w-none"
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-zinc-900 truncate max-w-[160px] sm:max-w-none">
+                      {crumb.label}
+                    </span>
                   )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      </div>
 
-        <div className={`${topbarSeparatorClass} hidden md:block`} aria-hidden />
+      <div className="flex items-center gap-4">
+        {/* Support Link */}
+        <Link
+          href="/reports"
+          className="text-[13px] font-medium text-zinc-800 hover:text-black transition-colors"
+        >
+          Support
+        </Link>
 
+        {/* User Avatar Circle */}
         <div ref={profileRef} className="relative shrink-0">
           <button
             type="button"
             onClick={() => setProfileOpen((v) => !v)}
             aria-expanded={profileOpen}
             aria-label={`${user?.fullName ?? 'Pilot TPO'} account menu`}
-            className="flex max-w-[220px] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-[var(--ds-surface-hover)]"
+            className="flex items-center rounded-full transition-transform hover:scale-105"
           >
-            <Avatar className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]">
-              <AvatarFallback className="rounded-full bg-transparent text-xs font-semibold text-[var(--ds-text-secondary)]">
-                {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden min-w-0 flex-col items-start text-left lg:flex">
-              <span className="truncate text-[12px] font-semibold leading-tight">
-                {user?.fullName ?? 'Pilot TPO'}
-              </span>
-              <span className="truncate text-[10px] font-medium leading-tight text-[var(--ds-text-muted)]">
-                {user ? (ROLE_LABELS[user.role] ?? user.role) : 'Institution Admin'}
-              </span>
+            <div className="flex size-7 items-center justify-center rounded-full bg-zinc-800 text-[11px] font-semibold text-white shadow-2xs">
+              {(user?.fullName?.charAt(0) ?? 'P').toUpperCase()}
             </div>
-            <ChevronDown
-              strokeWidth={1.5}
-              className="hidden size-4 shrink-0 text-[var(--ds-text-subtle)] lg:block"
-              aria-hidden
-            />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 shadow-[var(--ds-card-shadow)]">
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] p-1 shadow-[var(--ds-card-shadow)]">
               <div className="border-b border-[var(--ds-border-subtle)] px-3 py-2.5">
                 <p className="truncate text-xs font-semibold">{user?.fullName ?? 'Pilot TPO'}</p>
                 <p className="truncate text-[11px] text-[var(--ds-text-muted)]">
                   {user?.email ?? 'tpo@institution.edu'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  router.push('/settings');
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
-              >
-                <UserRound strokeWidth={1.5} className="size-3.5" />
-                My profile
-              </button>
+
               <button
                 type="button"
                 onClick={() => {
                   setProfileOpen(false);
                   router.push('/school-profile');
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
+                className="flex w-full items-center gap-2 border-b rounded-sm px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--ds-surface-hover)]"
               >
                 <GraduationCap strokeWidth={1.5} className="size-3.5" />
                 My school
@@ -317,7 +209,7 @@ export function TpoTopbar({ onOpenMobileNav }: TpoTopbarProps) {
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-[var(--ds-coral)] hover:bg-[#fef4f4]"
+                className="mt-1 flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs font-medium text-[var(--ds-coral)] hover:bg-[#fef4f4]"
               >
                 <LogOut strokeWidth={1.5} className="size-3.5" /> Sign out
               </button>

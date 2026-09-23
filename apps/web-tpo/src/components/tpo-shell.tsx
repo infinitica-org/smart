@@ -21,7 +21,7 @@ export function TpoShell({ children }: { children: ReactNode }) {
         <TpoSidebar mobileOpen={mobileNavOpen} onMobileOpenChange={setMobileNavOpen} />
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:pl-64">
           <TpoTopbar onOpenMobileNav={() => setMobileNavOpen(true)} />
-          <main className="mx-auto w-full max-w-[1440px] flex-1 overflow-y-auto overscroll-contain p-4 pt-[calc(3.5rem+1rem)] md:p-8 md:pt-[calc(3.5rem+2rem)]">
+          <main className="mx-auto w-full max-w-[1440px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-6 md:py-4">
             {children}
           </main>
         </div>
