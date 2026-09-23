@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Canonical API route registry.
  *
  * One place where every path, its owner, its RBAC roles, its rate-limit policy
@@ -3338,6 +3338,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/signals/connect/GITHUB/repositories',
+    module: 'signal-ingestion',
+    owner: 'Vishal Bharath R',
+    roles: ['STUDENT'],
+    rateLimit: 'signals.connect',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Select GitHub repositories for passive signal analysis.',
+  },
+  {
+    method: 'POST',
     path: '/signals/connect/:sourceId',
     module: 'signal-ingestion',
     owner: 'Vishal Bharath R',
@@ -3346,7 +3358,8 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 500,
-    summary: 'Connect GitHub, HackerRank, or LeetCode as a passive signal source.',
+    summary:
+      'Connect GitHub, HackerRank, LeetCode, LinkedIn, or Credly as a passive signal source.',
   },
   {
     method: 'DELETE',

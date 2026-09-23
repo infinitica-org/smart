@@ -248,6 +248,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /projects/:projectId/defense/reply": "evaluation.projectDefense",
   "POST /projects/:projectId/defense/start": "evaluation.projectDefense",
   "POST /signals/connect/:sourceId": "signals.connect",
+  "POST /signals/connect/GITHUB/repositories": "signals.connect",
   "POST /signals/refresh": "corroboration.refresh",
   "POST /tpo/batches": "role.institutionAdmin",
   "POST /tpo/batches/:batchId/invites/send": "role.institutionAdmin",
