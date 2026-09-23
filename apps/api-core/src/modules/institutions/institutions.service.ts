@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -18,6 +19,11 @@ import type {
   BatchMemberDto,
   CreateBatchRequest,
   CreateInstitutionRequest,
+  CreatePartnershipRequest,
+  ListPartnershipRequestsQuery,
+  PartnershipDecisionResponse,
+  PartnershipRequest,
+  ReviewPartnershipRequest,
   GlobalStudentHitDto,
   GlobalStudentSearchQuery,
   InstitutionAdminDto,
@@ -78,6 +84,7 @@ interface ParsedBatchImport {
 @Injectable()
 export class InstitutionsService {
   private readonly logger = new Logger(InstitutionsService.name);
+  private readonly partnershipRequests = new Map<string, PartnershipRequest>();
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -85,6 +92,159 @@ export class InstitutionsService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
   ) {}
+
+  /* -------------------------- partnership requests -------------------------- */
+
+  async createPartnershipRequest(body: CreatePartnershipRequest): Promise<PartnershipRequest> {
+    const domain = body.domain.toLowerCase();
+    const existingReq = Array.from(this.partnershipRequests.values()).find(
+      (r) => r.domain.toLowerCase() === domain && r.status === 'PENDING',
+    );
+    if (existingReq) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A pending partnership request for this domain already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const now = new Date().toISOString();
+    const request: PartnershipRequest = {
+      id: randomUUID(),
+      name: body.name,
+      domain,
+      contactName: body.contactName,
+      contactEmail: body.contactEmail,
+      contactPhone: body.contactPhone,
+      estimatedStudents: body.estimatedStudents,
+      notes: body.notes,
+      status: 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.partnershipRequests.set(request.id, request);
+    this.logger.log(`Partnership request created for ${request.name} (${request.domain})`);
+    return request;
+  }
+
+  async listPartnershipRequests(
+    query: ListPartnershipRequestsQuery,
+  ): Promise<{ items: PartnershipRequest[]; total: number }> {
+    let requests = Array.from(this.partnershipRequests.values());
+    if (query.status) {
+      requests = requests.filter((r) => r.status === query.status);
+    }
+    if (query.query) {
+      const q = query.query.toLowerCase();
+      requests = requests.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          r.domain.toLowerCase().includes(q) ||
+          r.contactName.toLowerCase().includes(q) ||
+          r.contactEmail.toLowerCase().includes(q),
+      );
+    }
+    requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const total = requests.length;
+    const limit = query.limit ?? 50;
+    const offset = query.offset ?? 0;
+    const items = requests.slice(offset, offset + limit);
+    return { items, total };
+  }
+
+  async getPartnershipRequestById(id: string): Promise<PartnershipRequest> {
+    const req = this.partnershipRequests.get(id);
+    if (!req) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Partnership request not found.',
+        statusCode: 404,
+      });
+    }
+    return req;
+  }
+
+  async reviewPartnershipRequest(
+    id: string,
+    body: ReviewPartnershipRequest,
+    adminUserId: string,
+  ): Promise<PartnershipRequest> {
+    const req = await this.getPartnershipRequestById(id);
+    const now = new Date().toISOString();
+    const updated: PartnershipRequest = {
+      ...req,
+      status: body.decision,
+      reviewNotes: body.reviewNotes ?? req.reviewNotes,
+      updatedAt: now,
+    };
+    this.partnershipRequests.set(id, updated);
+    this.logger.log(`Partnership request ${id} updated to ${body.decision} by ${adminUserId}`);
+    return updated;
+  }
+
+  async provisionUniversityAccount(
+    id: string,
+    adminUserId: string,
+  ): Promise<{ partnershipRequest: PartnershipRequest; institution: InstitutionDto }> {
+    const req = await this.getPartnershipRequestById(id);
+    if (req.status !== 'APPROVED' && req.status !== 'PENDING') {
+      throw new BadRequestException({
+        error: 'bad_request',
+        message: `Cannot provision an account for a request in status ${req.status}. Must be PENDING or APPROVED.`,
+        statusCode: 400,
+      });
+    }
+
+    const institution = await this.createInstitution({
+      name: req.name,
+      domain: req.domain,
+    });
+
+    const now = new Date().toISOString();
+    const updatedReq: PartnershipRequest = {
+      ...req,
+      status: 'PROVISIONED',
+      provisionedInstitutionId: institution.institutionId,
+      updatedAt: now,
+    };
+    this.partnershipRequests.set(id, updatedReq);
+    this.logger.log(
+      `University account provisioned for ${req.name} (${institution.institutionId})`,
+    );
+    return { partnershipRequest: updatedReq, institution };
+  }
+
+  async getPartnershipDecision(id: string): Promise<PartnershipDecisionResponse> {
+    const req = await this.getPartnershipRequestById(id);
+
+    let nextSteps = 'Your partnership application is currently under review by the SMART team.';
+    if (req.status === 'APPROVED') {
+      nextSteps =
+        'Your partnership request has been approved! SMART is provisioning your university tenant workspace.';
+    } else if (req.status === 'PROVISIONED') {
+      nextSteps =
+        'Your university workspace has been successfully provisioned. Check your email for activation instructions.';
+    } else if (req.status === 'MORE_INFO_NEEDED') {
+      nextSteps =
+        req.reviewNotes ??
+        'Additional details are required for your partnership application. Please contact support.';
+    } else if (req.status === 'REJECTED') {
+      nextSteps =
+        req.reviewNotes ?? 'Unfortunately, your partnership request was not approved at this time.';
+    }
+
+    return {
+      id: req.id,
+      name: req.name,
+      domain: req.domain,
+      status: req.status,
+      reviewNotes: req.reviewNotes,
+      decisionDate: req.status !== 'PENDING' ? req.updatedAt : undefined,
+      nextSteps,
+      provisionedInstitutionId: req.provisionedInstitutionId,
+    };
+  }
 
   /* ----------------------------- platform admin ----------------------------- */
 
