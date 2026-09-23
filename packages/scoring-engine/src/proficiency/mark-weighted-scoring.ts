@@ -16,11 +16,8 @@ import { roundTo, sum } from '../statistics.js';
  * `SCENARIO_RESPONSE` stands in for the Scoring Schema's "Long Answer" (6
  * marks) — the current `ItemType` enum has no separate LONG_ANSWER member.
  *
- * The debug-scenario gate is dormant by design: `SkillProficiency` currently
- * ships BEGINNER/INTERMEDIATE/ADVANCED only (enums.ts, "PRD v1 §7.3" — no
- * PROFESSIONAL value), so nothing in the SkillClaim persistence path can
- * reach it yet. It is exported and fully tested so the eventual product
- * decision to add PROFESSIONAL is a small wiring change, not a rewrite.
+ * The debug-scenario three-band gate applies only when the assessed tier is
+ * PROFESSIONAL on the SkillClaim path; lower tiers use the standard mark ratio.
  *
  * Owner: Ramansh.
  */

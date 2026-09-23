@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { SMART_TOPICS } from '@smart/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
@@ -10,6 +15,7 @@ import { ProjectsService } from './projects.service.js';
 const studentId = randomUUID();
 const otherStudentId = randomUUID();
 const projectId = randomUUID();
+const replacementProjectId = randomUUID();
 
 const template = {
   title: 'Campus bus tracker',
@@ -34,6 +40,7 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     githubUrl: template.githubUrl,
     liveUrl: null,
     status: 'SUBMITTED',
+    isActive: true,
     createdAt: new Date('2026-09-02T10:00:00.000Z'),
     report: null,
     ...overrides,
@@ -46,7 +53,13 @@ function setup() {
       create: vi.fn().mockResolvedValue(projectRow()),
       findUnique: vi.fn().mockResolvedValue(projectRow()),
       findMany: vi.fn().mockResolvedValue([]),
+      update: vi
+        .fn()
+        .mockImplementation(({ where, data }) =>
+          Promise.resolve(projectRow({ id: where.id, ...data })),
+        ),
     },
+    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
   };
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const verifyRunner = { runForProject: vi.fn().mockResolvedValue(undefined) };
@@ -57,14 +70,16 @@ function setup() {
       interviewCompletedAt: null,
     }),
   };
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
   const service = new ProjectsService(
     prisma as never,
     outbox as never,
     verifyRunner as never,
     interviewGate as never,
+    auditPublisher as never,
   );
   const controller = new ProjectsController(service);
-  return { prisma, outbox, verifyRunner, interviewGate, service, controller };
+  return { prisma, outbox, verifyRunner, interviewGate, auditPublisher, service, controller };
 }
 
 describe('CN-T08 project submission', () => {
@@ -72,11 +87,14 @@ describe('CN-T08 project submission', () => {
     vi.clearAllMocks();
   });
 
-  it('restricts create and poll to STUDENT', () => {
+  it('restricts create, poll, and replace to STUDENT', () => {
     expect(Reflect.getMetadata(ROLES_KEY, ProjectsController.prototype.create)).toEqual([
       'STUDENT',
     ]);
     expect(Reflect.getMetadata(ROLES_KEY, ProjectsController.prototype.get)).toEqual(['STUDENT']);
+    expect(Reflect.getMetadata(ROLES_KEY, ProjectsController.prototype.replace)).toEqual([
+      'STUDENT',
+    ]);
   });
 
   it('rejects a one-line problem so the template is not a title dump', async () => {
@@ -142,5 +160,123 @@ describe('CN-T08 project submission', () => {
     await expect(service.getForStudent(studentId, projectId)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+});
+
+describe('project replacement', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('marks the old project inactive and keeps the replacement active', async () => {
+    const { service, prisma, auditPublisher } = setup();
+    prisma.project.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === projectId) return Promise.resolve(projectRow({ id: projectId }));
+      if (where.id === replacementProjectId) {
+        return Promise.resolve(
+          projectRow({ id: replacementProjectId, title: 'Replacement app', isActive: true }),
+        );
+      }
+      return Promise.resolve(null);
+    });
+    prisma.project.update.mockImplementation(({ where, data }) =>
+      Promise.resolve(projectRow({ id: where.id, ...data })),
+    );
+
+    const result = await service.replace(studentId, projectId, {
+      replacementProjectId,
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: projectId },
+        data: { isActive: false },
+      }),
+    );
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: replacementProjectId },
+        data: { isActive: true },
+      }),
+    );
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: studentId,
+        action: 'project.replaced',
+        resourceType: 'Project',
+        resourceId: projectId,
+        metadata: expect.objectContaining({ replacementProjectId }),
+      }),
+    );
+    expect(result.replacedProject.isActive).toBe(false);
+    expect(result.replacementProject.isActive).toBe(true);
+  });
+
+  it('rejects self-replacement', async () => {
+    const { service, prisma } = setup();
+    await expect(
+      service.replace(studentId, projectId, { replacementProjectId: projectId }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('forbids replacing another student project', async () => {
+    const { service, prisma } = setup();
+    prisma.project.findUnique.mockResolvedValue(projectRow({ studentId: otherStudentId }));
+    await expect(
+      service.replace(studentId, projectId, { replacementProjectId }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('forbids using another student replacement project', async () => {
+    const { service, prisma } = setup();
+    prisma.project.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === projectId) return Promise.resolve(projectRow());
+      if (where.id === replacementProjectId) {
+        return Promise.resolve(projectRow({ id: replacementProjectId, studentId: otherStudentId }));
+      }
+      return Promise.resolve(null);
+    });
+    await expect(
+      service.replace(studentId, projectId, { replacementProjectId }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('is idempotent when the old project is already inactive', async () => {
+    const { service, prisma, auditPublisher } = setup();
+    prisma.project.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === projectId) {
+        return Promise.resolve(projectRow({ id: projectId, isActive: false }));
+      }
+      if (where.id === replacementProjectId) {
+        return Promise.resolve(projectRow({ id: replacementProjectId, isActive: true }));
+      }
+      return Promise.resolve(null);
+    });
+
+    const result = await service.replace(studentId, projectId, { replacementProjectId });
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(auditPublisher.record).not.toHaveBeenCalled();
+    expect(result.replacedProject.isActive).toBe(false);
+    expect(result.replacementProject.isActive).toBe(true);
+  });
+
+  it('rejects replacing an already inactive project when replacement is also inactive', async () => {
+    const { service, prisma } = setup();
+    prisma.project.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === projectId) {
+        return Promise.resolve(projectRow({ id: projectId, isActive: false }));
+      }
+      if (where.id === replacementProjectId) {
+        return Promise.resolve(projectRow({ id: replacementProjectId, isActive: false }));
+      }
+      return Promise.resolve(null);
+    });
+
+    await expect(
+      service.replace(studentId, projectId, { replacementProjectId }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

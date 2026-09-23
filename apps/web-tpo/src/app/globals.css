@@ -61,8 +61,8 @@ body {
    * this resolves to SF Pro Text/Display; elsewhere falls back to system UI sans.
    */
   --tpo-font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
-    system-ui, sans-serif;
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui,
+    sans-serif;
 }
 
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */
@@ -242,6 +242,11 @@ body {
   --tpo-dash-empty-border: #e2e8f0;
   --tpo-dash-empty-icon-bg: #f1f5f9;
   --tpo-dash-empty-icon: #64748b;
+}
+
+.tpo-dashboard {
+  background-image: radial-gradient(ellipse 90% 45% at 50% -5%, rgba(204, 251, 241, 0.45) 0%, rgba(240, 253, 250, 0.2) 50%, transparent 80%);
+  background-repeat: no-repeat;
 }
 
 .tpo-dashboard .dashboard-hero-card {

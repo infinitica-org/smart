@@ -19,7 +19,13 @@ type GraderOutput = {
   ownershipConcern: boolean;
   ownershipConcernReason: string | null;
   justification: string;
-  evidence: string[];
+  demonstratedClaims: string[];
+  inferredClaims: string[];
+  competencyScores: Array<{
+    competencyId: string;
+    score: number;
+    status: 'DEMONSTRATED' | 'PARTIALLY_DEMONSTRATED' | 'NOT_DEMONSTRATED' | 'UNCERTAIN';
+  }>;
 };
 
 function stackSkills(stack: string): string[] {
@@ -164,6 +170,10 @@ export function stubGraderOutput(session: {
     justification: denied
       ? 'Local dev stub: ownership denial detected in transcript.'
       : 'Local dev stub: transcript shows plausible project ownership for demo purposes.',
-    evidence: denied ? ['Candidate denied building the project in their own words.'] : [],
+    demonstratedClaims: denied
+      ? ['Candidate denied building the project in their own words.']
+      : ['Candidate described concrete implementation choices in the project.'],
+    inferredClaims: denied ? [] : ['May have used team support beyond what was stated.'],
+    competencyScores: [],
   };
 }

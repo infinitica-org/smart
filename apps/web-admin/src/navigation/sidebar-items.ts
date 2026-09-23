@@ -1,10 +1,13 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
+  ClipboardList,
   CreditCard,
   GraduationCap,
   HeartPulse,
   LayoutDashboard,
+  PenLine,
+  RefreshCw,
   ScrollText,
   ShieldAlert,
   ShieldBan,
@@ -53,10 +56,34 @@ export const sidebarItems: NavGroup[] = [
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
       {
+        id: 'project-review',
+        title: 'Project review',
+        url: '/admin/project-review',
+        icon: ClipboardList,
+      },
+      {
         id: 'blocked-words',
         title: 'Blocked words',
         url: '/admin/blocked-words',
         icon: ShieldBan,
+      },
+      {
+        id: 'assessments',
+        title: 'Assessments',
+        url: '/admin/assessments',
+        icon: ClipboardList,
+      },
+      {
+        id: 'grading-queue',
+        title: 'Grading queue',
+        url: '/admin/grading-queue',
+        icon: PenLine,
+      },
+      {
+        id: 'skill-retake',
+        title: 'Skill retake policies',
+        url: '/admin/skills',
+        icon: RefreshCw,
       },
     ],
   },

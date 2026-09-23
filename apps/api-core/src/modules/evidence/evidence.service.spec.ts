@@ -4,6 +4,18 @@ import { CredentialDedupService } from '../candidate-certificates/verification/c
 import { EvidenceService } from './evidence.service.js';
 
 function buildService(overrides?: { prisma?: Record<string, unknown> }) {
+  const evidenceRecordCreate = vi.fn().mockResolvedValue({
+    id: 'evidence-1',
+    studentId: 'student-1',
+    source: 'CANDIDATE',
+    verificationStatus: 'PENDING',
+    evidenceType: 'CREDENTIAL',
+    relatedSkillCodes: [],
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    artifacts: [],
+  });
+
   const prisma = {
     professionalCredential: {
       create: vi.fn().mockResolvedValue({ id: 'cred-1', studentId: 'student-1' }),
@@ -14,9 +26,17 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     candidateCertificate: {
       findMany: vi.fn().mockResolvedValue([]),
     },
-    evidenceRecord: {
-      create: vi.fn().mockResolvedValue({}),
+    user: {
+      findUnique: vi.fn().mockResolvedValue({ institutionId: 'inst-1' }),
     },
+    evidenceRecord: {
+      create: evidenceRecordCreate,
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<unknown>) =>
+      callback(prisma),
+    ),
     ...overrides?.prisma,
   };
   const reconciliation = { reconcileForStudent: vi.fn().mockResolvedValue(undefined) };
@@ -29,6 +49,10 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
   };
+  const evidenceSync = {
+    syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
+    linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new EvidenceService(
     prisma as any,
     reconciliation as any,
@@ -36,6 +60,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue as any,
     dedup,
     skillClaimAutoDeclare as any,
+    evidenceSync as any,
   );
   return {
     service,
@@ -45,6 +70,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue,
     dedup,
     skillClaimAutoDeclare,
+    evidenceSync,
   };
 }
 
@@ -74,7 +100,7 @@ describe('EvidenceService credentials', () => {
   });
 
   it('reconciles the student evidence profile after creating a credential', async () => {
-    const { service, reconciliation } = buildService();
+    const { service, reconciliation, evidenceVersions } = buildService();
 
     await service.createCredential('student-1', {
       issuer: 'Amazon Web Services',
@@ -83,6 +109,7 @@ describe('EvidenceService credentials', () => {
     });
 
     expect(reconciliation.reconcileForStudent).toHaveBeenCalledWith('student-1');
+    expect(evidenceVersions.createInitialVersion).toHaveBeenCalled();
   });
 
   it('refuses to create a credential that duplicates an existing candidate certificate', async () => {
@@ -156,7 +183,7 @@ describe('EvidenceService credentials', () => {
         verificationStatus: 'PENDING',
       },
     ]);
-    const { service, skillClaimAutoDeclare } = buildService({
+    const { service, skillClaimAutoDeclare, evidenceSync } = buildService({
       prisma: {
         project: { findFirst },
         projectSkillMapping: { deleteMany, create: createMapping, findMany },
@@ -177,6 +204,12 @@ describe('EvidenceService credentials', () => {
       'proj-1',
       ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
     );
+    expect(evidenceSync.syncProjectEvidenceRecord).toHaveBeenCalledWith('student-1', 'proj-1');
+    expect(evidenceSync.linkProjectEvidenceToTaggedClaims).toHaveBeenCalledWith(
+      'student-1',
+      'proj-1',
+      ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+    );
   });
 
   it('rejects a disallowed mime type before uploading', async () => {
@@ -190,5 +223,77 @@ describe('EvidenceService credentials', () => {
       }),
     ).rejects.toThrow();
     expect(storageService.upload).not.toHaveBeenCalled();
+  });
+});
+
+describe('EvidenceService versioning', () => {
+  it('creates version 1 when creating evidence', async () => {
+    const created = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      studentId: '323e4567-e89b-12d3-a456-426614174002',
+      evidenceType: 'PROJECT',
+      source: 'CANDIDATE',
+      verificationStatus: 'PENDING',
+      relatedSkillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      artifacts: [],
+    };
+    const { service, evidenceVersions, prisma } = buildService({
+      prisma: {
+        evidenceRecord: {
+          create: vi.fn().mockResolvedValue(created),
+        },
+      },
+    });
+
+    await service.createEvidence('323e4567-e89b-12d3-a456-426614174002', {
+      evidenceType: 'PROJECT',
+      source: 'CANDIDATE',
+      relatedSkillIds: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(evidenceVersions.createInitialVersion).toHaveBeenCalledWith(
+      expect.anything(),
+      created,
+      expect.objectContaining({ mutationKey: 'create:123e4567-e89b-12d3-a456-426614174000' }),
+    );
+  });
+
+  it('skips update when normalized content is unchanged', async () => {
+    const existing = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      studentId: '323e4567-e89b-12d3-a456-426614174002',
+      evidenceType: 'PROJECT',
+      source: 'CANDIDATE',
+      verificationStatus: 'PENDING',
+      relatedSkillCodes: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      claim: 'Same',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      artifacts: [],
+    };
+    const { service, evidenceVersions, prisma } = buildService({
+      prisma: {
+        evidenceRecord: {
+          findFirst: vi.fn().mockResolvedValue(existing),
+          update: vi.fn(),
+        },
+      },
+    });
+    evidenceVersions.contentEquals.mockReturnValue(true);
+
+    await service.updateEvidence(
+      '323e4567-e89b-12d3-a456-426614174002',
+      '123e4567-e89b-12d3-a456-426614174000',
+      {
+        claim: 'Same',
+        relatedSkillIds: ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+      },
+    );
+
+    expect(prisma.evidenceRecord.update).not.toHaveBeenCalled();
+    expect(evidenceVersions.appendVersion).not.toHaveBeenCalled();
   });
 });

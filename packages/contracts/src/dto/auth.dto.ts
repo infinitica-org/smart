@@ -21,6 +21,35 @@ export const PasswordLoginRequestSchema = z.object({
 });
 export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequestSchema>;
 
+/* ---------------------------- self-serve register -------------------------- */
+
+export const RegisterRequestSchema = z.object({
+  email: EmailSchema,
+  password: z.string().min(8).max(200),
+  fullName: z.string().trim().min(1).max(200),
+  /** Selected from GET /auth/institutions — self-serve registration always joins an existing institution. */
+  institutionId: UuidSchema,
+});
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
+
+export const SelectableInstitutionDtoSchema = z.object({
+  id: UuidSchema,
+  name: z.string(),
+});
+export type SelectableInstitutionDto = z.infer<typeof SelectableInstitutionDtoSchema>;
+
+/* ---------------------------- password reset -------------------------- */
+
+export const PasswordResetRequestSchema = z.object({
+  email: EmailSchema,
+});
+export type PasswordResetRequest = z.infer<typeof PasswordResetRequestSchema>;
+
+export const PasswordResetConfirmRequestSchema = z.object({
+  newPassword: z.string().min(8).max(200),
+});
+export type PasswordResetConfirmRequest = z.infer<typeof PasswordResetConfirmRequestSchema>;
+
 export const SsoStartRequestSchema = z.object({
   provider: AuthProviderSchema,
   /** Institutional email domain, e.g. `psgtech.ac.in`. Resolves the SAML/OIDC tenant. */

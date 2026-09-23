@@ -1,22 +1,34 @@
 /**
- * Deterministic skill + capability ranker (S6-RM-22).
- * Scores verified skills and assessment/inferred/QLIX capability evidence.
- * LLM does not set scores — only JD extraction and post-rank narrative.
+ * Deterministic skill + capability ranker (S6-RM-23).
+ *
+ * Headline `rawMatchScore`: average verified required-skill demand (millipoints).
+ * Linear rank spacing (Beginner→Professional as 1–5) is an approximation; the 1.5 cap
+ * is one nominal step above the ask, not a measured proficiency gap.
+ * Equal weight per required skill — JobOpeningSkill has no critical/core flag yet.
+ *
+ * Sort: raw demand → capability tie-break → transfer tie-break. LLM does not score.
  */
 
-import type { CompetencyStatus, MatchEvidenceSource, PotentialFit } from '@smart/contracts';
+import {
+  getSkillBlueprint,
+  getSkillDefinition,
+  type CompetencyStatus,
+  type MatchEvidenceSource,
+  type PotentialFit,
+  type TransferSkillReason,
+} from '@smart/contracts';
 
-export const SKILL_CAPABILITY_WEIGHTS = {
-  skillCoverage: 0.6,
-  skillProficiency: 0.4,
-  finalSkill: 0.45,
-  finalCapability: 0.55,
-} as const;
+/** Millipoints at exactly the asked proficiency. Credit above the ask stops here. */
+export const HELD_AT_ASK_MP = 1000;
+export const HELD_ABOVE_ASK_CAP_MP = 1500;
+export const WHY_MAX_LENGTH = 280;
 
 export const PROFICIENCY_RANK = {
   BEGINNER: 1,
   INTERMEDIATE: 2,
-  ADVANCED: 3,
+  PROFICIENT: 3,
+  ADVANCED: 4,
+  PROFESSIONAL: 5,
 } as const;
 
 export type ProficiencyName = keyof typeof PROFICIENCY_RANK;
@@ -93,14 +105,27 @@ export interface CapabilityFitRowInternal {
   readonly evidenceSource: MatchEvidenceSource;
 }
 
+export interface TransferSkillInternal {
+  readonly skillCode: string;
+  readonly skillName: string;
+  readonly reason: TransferSkillReason;
+  readonly rank: number;
+}
+
 export interface SkillCapabilityScore {
   readonly studentId: string;
+  /** Uncapped average demand; used for sort. */
+  readonly rawMatchScore: number;
+  /** API display: min(rawMatchScore, 1). */
   readonly matchScore: number;
   readonly skillScore: number;
   readonly capabilityScore: number;
   readonly skillCoveragePct: number;
   readonly capabilityCoveragePct: number;
   readonly potentialFit: PotentialFit;
+  readonly requiredSkillsHeld: number;
+  readonly requiredSkillsMissing: number;
+  readonly transferSkills: readonly TransferSkillInternal[];
   readonly skillFit: readonly SkillFitRowInternal[];
   readonly capabilityFit: readonly CapabilityFitRowInternal[];
   readonly strongCompetencies: readonly string[];
@@ -111,13 +136,6 @@ export interface SkillCapabilityScore {
 function div(n: number, d: number): number {
   if (d === 0) return 0;
   return Math.floor((n + Math.floor(d / 2)) / d);
-}
-
-function mean(values: readonly number[]): number {
-  if (values.length === 0) return 0;
-  let sum = 0;
-  for (const value of values) sum += value;
-  return div(sum, values.length);
 }
 
 function tokenOverlap(left: string, right: string): number {
@@ -188,25 +206,97 @@ function capabilityHit(
   return { score: 0, source: 'NONE' };
 }
 
-function computePotentialFit(matchScore: number, skillCoveragePct: number): PotentialFit {
-  if (matchScore >= 0.75 && skillCoveragePct >= 0.8) return 'STRONG';
-  if (matchScore >= 0.6) return 'MODERATE';
+function heldMillipoints(rank: number, minRank: number): number {
+  if (minRank <= 0) return 0;
+  return Math.min(div(1000 * rank, minRank), HELD_ABOVE_ASK_CAP_MP);
+}
+
+function computePotentialFit(rawMatchScore: number): PotentialFit {
+  if (rawMatchScore >= 1) return 'STRONG';
+  if (rawMatchScore >= 0.5) return 'MODERATE';
   return 'STRETCH';
 }
 
-function buildWhy(
-  skillFit: readonly SkillFitRowInternal[],
-  capabilityFit: readonly CapabilityFitRowInternal[],
-): string {
-  const met = skillFit.find((row) => row.status === 'MET');
-  const gap = skillFit.find((row) => row.status !== 'MET');
-  const capHit = capabilityFit.find((row) => row.hitScore >= 0.65);
+function shortenLabel(value: string, max: number): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= max) return trimmed;
+  return trimmed.slice(0, max - 1).trimEnd() + '…';
+}
+
+/** Exported for unit tests (280-char budget, clause-safe truncation). */
+export function buildWhy(input: {
+  requiredTotal: number;
+  requiredSkillsHeld: number;
+  requiredSkillsMissing: number;
+  skillFit: readonly SkillFitRowInternal[];
+  transferSkills: readonly TransferSkillInternal[];
+}): string {
+  const met = input.skillFit.find((row) => row.status === 'MET' || row.status === 'PARTIAL');
+  const gap = input.skillFit.find((row) => row.status === 'MISSING');
+  const transfer = input.transferSkills[0];
   const parts: string[] = [];
-  if (met) parts.push(`Met ${met.skillName}`);
-  if (capHit) parts.push(`capability ${capHit.capability.slice(0, 40)}`);
-  if (gap) parts.push(`gap ${gap.skillName}`);
-  const text = parts.length > 0 ? parts.join('; ') + '.' : 'Skill and capability profile computed.';
-  return text.length <= 280 ? text : text.slice(0, 280);
+  parts.push(
+    `Held ${input.requiredSkillsHeld} of ${input.requiredTotal} required (${input.requiredSkillsMissing} missing).`,
+  );
+  if (met) parts.push(`Met ${shortenLabel(met.skillName, 48)}`);
+  if (gap) parts.push(`gap ${shortenLabel(gap.skillName, 48)}`);
+  if (transfer) parts.push(`transfer ${shortenLabel(transfer.skillName, 40)}`);
+  let text = parts.join('; ') + '.';
+  if (text.length <= WHY_MAX_LENGTH) return text;
+  text = parts.slice(0, -1).join('; ') + '.';
+  if (text.length <= WHY_MAX_LENGTH) return text;
+  return shortenLabel(text, WHY_MAX_LENGTH);
+}
+
+function computeTransferSkills(
+  job: SkillCapabilityJob,
+  candidate: SkillCapabilityCandidate,
+): TransferSkillInternal[] {
+  const requiredCodes = new Set(job.requiredSkills.map((skill) => skill.code));
+  const requiredCategories = new Set<string>();
+  for (const skill of job.requiredSkills) {
+    const def = getSkillDefinition(skill.code);
+    if (def) requiredCategories.add(def.categoryId);
+  }
+
+  const transfer: TransferSkillInternal[] = [];
+  for (const claim of candidate.verified) {
+    if (requiredCodes.has(claim.code)) continue;
+    const def = getSkillDefinition(claim.code);
+    if (!def) continue;
+
+    let reason: TransferSkillReason | null = null;
+    if (requiredCategories.has(def.categoryId)) {
+      reason = 'SAME_CATEGORY';
+    } else {
+      const blueprint = getSkillBlueprint(claim.code);
+      for (const required of job.requiredCapabilities) {
+        for (const row of blueprint?.competencyModel ?? []) {
+          if (row.role !== 'critical' && row.role !== 'core') continue;
+          if (tokenOverlap(row.capability, required.capability) >= 0.35) {
+            reason = 'CAPABILITY_OVERLAP';
+            break;
+          }
+        }
+        if (reason) break;
+      }
+    }
+    if (!reason) continue;
+    transfer.push({
+      skillCode: claim.code,
+      skillName: def.name,
+      reason,
+      rank: claim.rank,
+    });
+  }
+
+  transfer.sort((left, right) => {
+    if (right.rank !== left.rank) return right.rank - left.rank;
+    if (left.skillCode < right.skillCode) return -1;
+    if (left.skillCode > right.skillCode) return 1;
+    return 0;
+  });
+  return transfer;
 }
 
 export function scoreSkillCapabilityCandidate(
@@ -215,12 +305,14 @@ export function scoreSkillCapabilityCandidate(
 ): SkillCapabilityScore {
   const held = new Map(candidate.verified.map((claim) => [claim.code, claim]));
   const skillFit: SkillFitRowInternal[] = [];
-  const proficiencyParts: number[] = [];
   let heldRequired = 0;
+  let missingRequired = 0;
+  let demandSumMp = 0;
 
   for (const skill of job.requiredSkills) {
     const claim = held.get(skill.code);
     if (!claim) {
+      missingRequired += 1;
       skillFit.push({
         skillCode: skill.code,
         skillName: skill.name,
@@ -231,8 +323,9 @@ export function scoreSkillCapabilityCandidate(
       continue;
     }
     heldRequired += 1;
+    const contribution = heldMillipoints(claim.rank, skill.minRank);
+    demandSumMp += contribution;
     if (claim.rank >= skill.minRank) {
-      proficiencyParts.push(1);
       skillFit.push({
         skillCode: skill.code,
         skillName: skill.name,
@@ -241,7 +334,6 @@ export function scoreSkillCapabilityCandidate(
         actualProficiency: claim.proficiency,
       });
     } else {
-      proficiencyParts.push(claim.rank / skill.minRank);
       skillFit.push({
         skillCode: skill.code,
         skillName: skill.name,
@@ -252,12 +344,11 @@ export function scoreSkillCapabilityCandidate(
     }
   }
 
-  const skillCoveragePct =
-    job.requiredSkills.length === 0 ? 1 : heldRequired / job.requiredSkills.length;
-  const skillProficiency = job.requiredSkills.length === 0 ? 1 : mean(proficiencyParts);
-  const skillScore =
-    SKILL_CAPABILITY_WEIGHTS.skillCoverage * skillCoveragePct +
-    SKILL_CAPABILITY_WEIGHTS.skillProficiency * skillProficiency;
+  const skillCount = job.requiredSkills.length;
+  const rawMatchScore = skillCount === 0 ? 0 : demandSumMp / (HELD_AT_ASK_MP * skillCount);
+  const matchScore = Math.min(rawMatchScore, 1);
+  const skillCoveragePct = skillCount === 0 ? 0 : heldRequired / skillCount;
+  const skillScore = rawMatchScore;
 
   const capabilityFit: CapabilityFitRowInternal[] = [];
   let weightedSum = 0;
@@ -281,11 +372,9 @@ export function scoreSkillCapabilityCandidate(
     capabilityFit.length === 0
       ? 1
       : capabilityFit.filter((row) => row.hitScore >= 0.5).length / capabilityFit.length;
-  const capabilityScore = weightTotal === 0 ? 1 : weightedSum / weightTotal;
+  const capabilityScore = weightTotal === 0 ? 0 : weightedSum / weightTotal;
 
-  const matchScore =
-    SKILL_CAPABILITY_WEIGHTS.finalSkill * skillScore +
-    SKILL_CAPABILITY_WEIGHTS.finalCapability * capabilityScore;
+  const transferSkills = computeTransferSkills(job, candidate);
 
   const strongCompetencies = capabilityFit
     .filter((row) => row.hitScore >= 0.65)
@@ -294,21 +383,31 @@ export function scoreSkillCapabilityCandidate(
     .filter((row) => row.hitScore < 0.5)
     .map((row) => row.capability.slice(0, 200));
 
-  const potentialFit = computePotentialFit(matchScore, skillCoveragePct);
+  const potentialFit = computePotentialFit(rawMatchScore);
 
   return {
     studentId: candidate.studentId,
+    rawMatchScore,
     matchScore,
     skillScore,
     capabilityScore,
     skillCoveragePct,
     capabilityCoveragePct,
     potentialFit,
+    requiredSkillsHeld: heldRequired,
+    requiredSkillsMissing: missingRequired,
+    transferSkills,
     skillFit,
     capabilityFit,
     strongCompetencies,
     gapCompetencies,
-    why: buildWhy(skillFit, capabilityFit),
+    why: buildWhy({
+      requiredTotal: skillCount,
+      requiredSkillsHeld: heldRequired,
+      requiredSkillsMissing: missingRequired,
+      skillFit,
+      transferSkills,
+    }),
   };
 }
 
@@ -316,22 +415,33 @@ export function rankSkillCapabilityCandidates(
   job: SkillCapabilityJob,
   pool: readonly SkillCapabilityCandidate[],
   limit: number,
-  minSkillCoverage: number,
-): SkillCapabilityScore[] {
+): { ranked: SkillCapabilityScore[]; candidatesScoredCount: number } {
   const scored = pool
     .map((candidate) => scoreSkillCapabilityCandidate(job, candidate))
-    .filter((score) => score.skillCoveragePct >= minSkillCoverage);
+    .filter((score) => score.rawMatchScore > 0);
+
+  const candidatesScoredCount = scored.length;
 
   scored.sort((left, right) => {
-    if (right.matchScore !== left.matchScore) return right.matchScore > left.matchScore ? 1 : -1;
+    if (right.rawMatchScore !== left.rawMatchScore) {
+      return right.rawMatchScore > left.rawMatchScore ? 1 : -1;
+    }
     if (right.capabilityScore !== left.capabilityScore) {
       return right.capabilityScore > left.capabilityScore ? 1 : -1;
     }
-    if (right.skillScore !== left.skillScore) return right.skillScore > left.skillScore ? 1 : -1;
+    if (right.transferSkills.length !== left.transferSkills.length) {
+      return right.transferSkills.length - left.transferSkills.length;
+    }
+    const leftBestTransfer = left.transferSkills[0]?.rank ?? 0;
+    const rightBestTransfer = right.transferSkills[0]?.rank ?? 0;
+    if (rightBestTransfer !== leftBestTransfer) return rightBestTransfer - leftBestTransfer;
     if (left.studentId < right.studentId) return -1;
     if (left.studentId > right.studentId) return 1;
     return 0;
   });
 
-  return scored.slice(0, Math.max(0, limit));
+  return {
+    ranked: scored.slice(0, Math.max(0, limit)),
+    candidatesScoredCount,
+  };
 }

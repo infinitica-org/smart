@@ -84,4 +84,40 @@ describe('NotificationsService', () => {
     expect(titles.size).toBe(stages.length);
     expect(bodies.size).toBe(stages.length);
   });
+
+  it('SKL-02 I312: notifies student when evidence-fused skill level changes', async () => {
+    const userId = randomUUID();
+    const prisma = {
+      notification: {
+        create: vi.fn(({ data }: { data: { title: string; body: string; kind: string } }) =>
+          Promise.resolve({
+            id: randomUUID(),
+            kind: data.kind,
+            title: data.title,
+            body: data.body,
+            linkUrl: 'http://localhost:3001/assessments/skills',
+            readAt: null,
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+          }),
+        ),
+      },
+    };
+    const emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+    const service = new NotificationsService(prisma as never, emailQueue as never);
+
+    const dto = await service.notifySkillInferenceLevelChange({
+      userId,
+      email: 'student@smart.local',
+      fullName: 'Alex Student',
+      skillCode: 'SQL_QUERY_OPTIMIZATION',
+      previousLevel: 'BEGINNER',
+      newLevel: 'INTERMEDIATE',
+      confidence: 'MEDIUM',
+      outcome: 'INFERRED',
+    });
+
+    expect(dto.title).toContain('SQL_QUERY_OPTIMIZATION');
+    expect(dto.body).toContain('separate from your verified claim');
+    expect(emailQueue.add).toHaveBeenCalledOnce();
+  });
 });

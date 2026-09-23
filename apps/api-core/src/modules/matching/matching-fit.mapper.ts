@@ -6,6 +6,7 @@ import {
   type MatchFitDto,
   type MatchMethod,
   type SkillRequirement,
+  type PublicCompetencyEvidenceSummary,
   type VerifiedSkillSummary,
 } from '@smart/contracts';
 import type { SkillCapabilityScore } from './skill-capability-ranker.js';
@@ -33,6 +34,7 @@ export function toCandidateMatchDto(input: {
   method: MatchMethod;
   recruiterSummary?: string;
   studentSummary?: string;
+  competencyEvidenceSummaries?: PublicCompetencyEvidenceSummary[];
 }): CandidateMatchDto {
   return CandidateMatchDtoSchema.parse({
     studentId: input.score.studentId,
@@ -63,6 +65,14 @@ export function toCandidateMatchDto(input: {
         capability: input.score.capabilityScore,
       },
       verifiedSkills: mapVerifiedSkillsSummary(input.verifiedSkills),
+      requiredSkillsHeld: input.score.requiredSkillsHeld,
+      requiredSkillsMissing: input.score.requiredSkillsMissing,
+      transferSkills: input.score.transferSkills.map((row) => ({
+        skillCode: row.skillCode as VerifiedSkillSummary['skillCode'],
+        skillName: row.skillName,
+        reason: row.reason,
+      })),
+      competencyEvidenceSummaries: input.competencyEvidenceSummaries,
     },
   });
 }

@@ -83,6 +83,7 @@ function makeService(redisStore: Record<string, unknown>) {
     { enqueueEnvelope: vi.fn() } as never,
     { resolveBlueprint: vi.fn(), buildAssessmentResult: vi.fn() } as never,
     { evaluateClaimVerification: vi.fn() } as never,
+    { fuseForVerification: vi.fn().mockResolvedValue(null) } as never,
     {
       assertCompleteForSkillVerification: vi.fn().mockResolvedValue(undefined),
       isCompleteForSkillVerification: vi.fn().mockResolvedValue(true),

@@ -62,9 +62,14 @@ function safeMessage(caught: unknown, fallback: string) {
 export function BatchImportWizard({
   batchId,
   onComplete,
+  heading = 'Bulk candidate provisioning',
+  autoSendInvites = false,
 }: {
   batchId: string;
   onComplete?: () => void;
+  heading?: string;
+  /** When true, queue batch invitations immediately after a successful import. */
+  autoSendInvites?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -150,10 +155,23 @@ export function BatchImportWizard({
       const body = new FormData();
       body.append('file', file);
       body.append('mapping', JSON.stringify(payload));
-      setResult(await apiClient.postForm(importPath, body, { schema: BatchImportResultDtoSchema }));
+      const imported = await apiClient.postForm(importPath, body, {
+        schema: BatchImportResultDtoSchema,
+      });
+      setResult(imported);
       setInviteOk(false);
       setEnqueued(null);
       onComplete?.();
+      const pendingAfterImport = imported.pendingInvitations ?? 0;
+      if (autoSendInvites && pendingAfterImport > 0) {
+        try {
+          setEnqueued((await api.onboarding.sendBatchInvites(batchId)).enqueued);
+          setInviteOk(true);
+          onComplete?.();
+        } catch {
+          setError('Import succeeded but invitation emails could not be queued.');
+        }
+      }
     } catch (caught) {
       setError(safeMessage(caught, 'Import could not be completed. Please try again.'));
     } finally {
@@ -188,7 +206,7 @@ export function BatchImportWizard({
   return (
     <section className="space-y-5" aria-labelledby="bulk-provisioning-title">
       <h2 id="bulk-provisioning-title" className="text-xl font-semibold text-ink">
-        Bulk candidate provisioning
+        {heading}
       </h2>
       <ol className="grid grid-cols-3 gap-1" aria-label="Provisioning progress">
         {['Upload', 'Map columns', 'Preview'].map((label, index) => (

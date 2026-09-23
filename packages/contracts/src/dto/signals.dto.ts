@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ACTIVE_TAXONOMY_VERSION } from '../domain/skill-dimensions.js';
+import { SkillProficiencySchema } from '../domain/enums.js';
 import { IsoDateTimeSchema, ScoreSchema, UuidSchema, WeightSchema } from './common.js';
 
 /**
@@ -11,6 +12,8 @@ export const SIGNAL_SOURCE_IDS = [
   'GITHUB',
   'HACKERRANK',
   'LEETCODE',
+  'LINKEDIN',
+  'CREDLY',
   'RESUME',
   'MANUAL',
   'EXTERNALCERT',
@@ -25,7 +28,7 @@ export const SkillDimensionRefSchema = z.object({
   taxonomyVersion: z.string().min(1).max(40).default(ACTIVE_TAXONOMY_VERSION),
   dimensionKey: z.string().min(1).max(80),
   skillCode: z.string().min(1).max(80).optional(),
-  proficiencyLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL']).optional(),
+  proficiencyLevel: SkillProficiencySchema.optional(),
 });
 
 export type SkillDimensionRefDto = z.infer<typeof SkillDimensionRefSchema>;
@@ -55,7 +58,7 @@ export const AssessmentPerformanceEntrySchema = z.object({
   dimension: SkillDimensionRefSchema,
   scorePercent: ScoreSchema,
   passed: z.boolean(),
-  proficiencyLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL']).optional(),
+  proficiencyLevel: SkillProficiencySchema.optional(),
 });
 export type AssessmentPerformanceEntry = z.infer<typeof AssessmentPerformanceEntrySchema>;
 

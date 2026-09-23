@@ -55,6 +55,20 @@ describe('skill-claim state machine (SE-T01)', () => {
     expect(SKILL_REFRESH_DAYS).not.toBe(180);
   });
 
+  it('uses configured refreshDays when supplied via retakePolicy (T19)', () => {
+    const result = applySkillClaimTransition({
+      claim: declared(),
+      event: { type: 'GENUINE_PASS' },
+      now: NOW,
+      lastGenuineFailureAt: null,
+      retakePolicy: { refreshDays: 45 },
+    });
+    expect(result.accepted).toBe(true);
+    expect(result.next.verifiedUntil?.toISOString()).toBe(
+      addSkillRefreshPeriod(NOW, 45).toISOString(),
+    );
+  });
+
   it('computes retryAvailableAt for 48h beginner cooldown and lock expiry', () => {
     const failAt = new Date('2026-09-02T10:00:00.000Z');
     expect(skillRetryAvailableAt('DECLARED', null, null)).toBeNull();

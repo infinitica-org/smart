@@ -18,7 +18,9 @@ import type {
   CertificateEndorsementRequestEmailData,
   EmailTemplateData,
   EmailTemplateName,
+  EmailVerificationEmailData,
   InviteEmailData,
+  PasswordResetEmailData,
   OpportunityEmailData,
   StageChangeEmailData,
   VerificationEmailData,
@@ -77,6 +79,10 @@ export function renderEmailTemplate(
       return buildStudentInvite(data as InviteEmailData);
     case 'invite-reminder':
       return buildInviteReminder(data as InviteEmailData);
+    case 'email-verification':
+      return buildEmailVerification(data as EmailVerificationEmailData);
+    case 'password-reset':
+      return buildPasswordReset(data as PasswordResetEmailData);
     case 'opportunity-shortlisted':
       return buildOpportunityShortlisted(data as OpportunityEmailData);
     case 'application-stage-changed':
@@ -243,6 +249,69 @@ function buildInviteReminder(invite: InviteEmailData): RenderedEmail {
       cta: { label: 'Finish setting up', url: invite.inviteUrl },
       footerNote: "This invite link is still active, but it won't be forever — best to use it now.",
       signoff: SIGNOFF_STUDY_BUDDY,
+    }),
+  };
+}
+
+/* ---------------- email-verification (self-serve register) ---------------- */
+
+function buildEmailVerification(data: EmailVerificationEmailData): RenderedEmail {
+  const name = firstName(data.fullName);
+  const subject = 'Verify your email to finish setting up SMART';
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(
+      `Thanks for creating a SMART account. Confirm this is your email address and you're all set.`,
+    ),
+  ].join('');
+  const text = [
+    `Hi ${name}, confirm your email to finish setting up your SMART account.`,
+    `Verify my email: ${data.verifyUrl}`,
+    `This link is valid until ${data.expiresAtFormatted}.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Verify your email',
+      illustration: VERIFICATION_PASSED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Verify my email', url: data.verifyUrl },
+      footerNote: `This link is valid until ${data.expiresAtFormatted}.`,
+      signoff: SIGNOFF_TEAM,
+    }),
+  };
+}
+
+/* ---------------- password-reset ---------------- */
+
+function buildPasswordReset(data: PasswordResetEmailData): RenderedEmail {
+  const name = firstName(data.fullName);
+  const subject = 'Reset your SMART password';
+  const bodyHtml = [
+    paragraph(`Hi ${strong(name)},`),
+    paragraph(
+      `We got a request to reset the password on your SMART account. If this was you, choose a new password below.`,
+    ),
+    paragraph(`If you didn't request this, you can safely ignore this email.`),
+  ].join('');
+  const text = [
+    `Hi ${name}, we got a request to reset the password on your SMART account.`,
+    `Reset my password: ${data.resetUrl}`,
+    `This link is valid until ${data.expiresAtFormatted}. If you didn't request this, ignore this email.`,
+  ].join('\n\n');
+  return {
+    subject,
+    text,
+    html: renderEmailLayout({
+      previewText: subject,
+      heading: 'Reset your password',
+      illustration: VERIFICATION_LOCKED_ILLUSTRATION,
+      bodyHtml,
+      cta: { label: 'Reset my password', url: data.resetUrl },
+      footerNote: `This link is valid until ${data.expiresAtFormatted}. If you didn't request this, ignore this email.`,
+      signoff: SIGNOFF_TEAM,
     }),
   };
 }
