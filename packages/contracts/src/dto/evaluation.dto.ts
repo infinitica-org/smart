@@ -464,3 +464,56 @@ export const ResponseScoreDtoSchema = z.object({
   evaluatedAt: IsoDateTimeSchema,
 });
 export type ResponseScoreDto = z.infer<typeof ResponseScoreDtoSchema>;
+
+/* -------------------- human subjective grading admin (T17) ---------------- */
+
+export const GradingQueueItemDtoSchema = z.object({
+  responseId: UuidSchema,
+  attemptId: UuidSchema,
+  itemId: UuidSchema,
+  studentId: UuidSchema,
+  studentName: z.string(),
+  trackCode: z.string(),
+  levelNumber: LevelNumberSchema,
+  itemType: z.string(),
+  stem: z.string(),
+  answerText: z.string(),
+  maxScore: ScoreSchema,
+  currentScore: ScoreSchema.nullable(),
+  evaluatedBy: EvaluatorSchema.nullable(),
+  attemptStatus: z.string(),
+  submittedAt: IsoDateTimeSchema.nullable(),
+});
+export type GradingQueueItemDto = z.infer<typeof GradingQueueItemDtoSchema>;
+
+export const ListGradingQueueQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type ListGradingQueueQuery = z.infer<typeof ListGradingQueueQuerySchema>;
+
+export const ListGradingQueueResponseSchema = z.object({
+  items: z.array(GradingQueueItemDtoSchema),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  total: z.number().int().nonnegative(),
+});
+export type ListGradingQueueResponse = z.infer<typeof ListGradingQueueResponseSchema>;
+
+export const ManualGradeResponseRequestSchema = z.object({
+  score: ScoreSchema,
+  reason: z.string().min(4).max(2_000).optional(),
+});
+export type ManualGradeResponseRequest = z.infer<typeof ManualGradeResponseRequestSchema>;
+
+export const ManualGradeResponseResultSchema = z.object({
+  responseId: UuidSchema,
+  attemptId: UuidSchema,
+  score: ScoreSchema,
+  maxScore: ScoreSchema,
+  evaluatedBy: EvaluatorSchema,
+  evaluatedAt: IsoDateTimeSchema,
+  attemptScorePercent: ScoreSchema,
+  tierAwarded: TierSchema.nullable(),
+});
+export type ManualGradeResponseResult = z.infer<typeof ManualGradeResponseResultSchema>;

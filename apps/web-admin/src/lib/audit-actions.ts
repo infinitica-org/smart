@@ -43,6 +43,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'profile_visibility.updated': 'Updated profile visibility',
   'blocked_word.created': 'Added blocked word',
   'blocked_word.removed': 'Removed blocked word',
+  'admin.level.created': 'Created assessment level',
+  'admin.level.updated': 'Updated assessment level',
+  'admin.item.created': 'Created assessment item',
+  'admin.item.updated': 'Updated assessment item',
+  'admin.cut_score.upserted': 'Upserted cut score',
+  'admin.response.graded': 'Manually graded response',
+  'admin.skill_retake_policy.updated': 'Updated skill retake policy',
 
   // candidate-certificates.service.ts
   'candidate_certificate.voided': 'Voided candidate certificate',

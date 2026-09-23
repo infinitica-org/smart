@@ -179,6 +179,16 @@ import {
   ProfileVisibilityResponseSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
+  ListAdminLevelsResponseSchema,
+  AdminLevelDtoSchema,
+  ListAdminItemsResponseSchema,
+  AdminItemDtoSchema,
+  ListAdminCutScoresResponseSchema,
+  AdminCutScoreDtoSchema,
+  ListGradingQueueResponseSchema,
+  ManualGradeResponseResultSchema,
+  ListSkillRetakePoliciesResponseSchema,
+  SkillRetakePolicyDtoSchema,
   VoidWorkExperienceResponseSchema,
   ApproveWorkExperienceAuthenticityResponseSchema,
   VoidCandidateCertificateResponseSchema,
@@ -755,6 +765,59 @@ export function onboardingApi(client: SmartApiClient) {
       }),
 
     removeBlockedWord: (id: string) => client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
+
+    listAdminLevels: () =>
+      client.get(prefixed('/admin/levels'), { schema: ListAdminLevelsResponseSchema }),
+
+    createAdminLevel: (body: unknown) =>
+      client.post(prefixed('/admin/levels'), body, { schema: AdminLevelDtoSchema }),
+
+    updateAdminLevel: (levelId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/levels/${levelId}`), body, { schema: AdminLevelDtoSchema }),
+
+    listAdminItems: (levelId: string) =>
+      client.get(prefixed(`/admin/levels/${levelId}/items`), {
+        schema: ListAdminItemsResponseSchema,
+      }),
+
+    createAdminItem: (levelId: string, body: unknown) =>
+      client.post(prefixed(`/admin/levels/${levelId}/items`), body, {
+        schema: AdminItemDtoSchema,
+      }),
+
+    updateAdminItem: (itemId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/items/${itemId}`), body, { schema: AdminItemDtoSchema }),
+
+    listAdminCutScores: (levelId: string) =>
+      client.get(prefixed(`/admin/levels/${levelId}/cut-scores`), {
+        schema: ListAdminCutScoresResponseSchema,
+      }),
+
+    upsertAdminCutScore: (levelId: string, body: unknown) =>
+      client.post(prefixed(`/admin/levels/${levelId}/cut-scores`), body, {
+        schema: AdminCutScoreDtoSchema,
+      }),
+
+    listGradingQueue: (query?: { page?: number; pageSize?: number }) =>
+      client.get(prefixed('/admin/grading-queue'), {
+        schema: ListGradingQueueResponseSchema,
+        query,
+      }),
+
+    gradeResponse: (responseId: string, body: unknown) =>
+      client.post(prefixed(`/admin/responses/${responseId}/grade`), body, {
+        schema: ManualGradeResponseResultSchema,
+      }),
+
+    listSkillRetakePolicies: () =>
+      client.get(prefixed('/admin/skills/retake-policies'), {
+        schema: ListSkillRetakePoliciesResponseSchema,
+      }),
+
+    updateSkillRetakePolicy: (skillId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/skills/${skillId}/retake-policy`), body, {
+        schema: SkillRetakePolicyDtoSchema,
+      }),
 
     /** SA-T08 — one-directional; there is no "un-void". */
     voidCandidateCertificate: (id: string, body: VoidRequest) =>

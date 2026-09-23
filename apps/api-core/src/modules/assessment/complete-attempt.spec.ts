@@ -61,6 +61,7 @@ describe('completeAttempt', () => {
   const findUniqueAttempt = vi.fn();
   const updateAttempt = vi.fn();
   const findUniqueClaim = vi.fn();
+  const updateClaim = vi.fn();
   const findFirstVerificationAttempt = vi.fn();
   const transaction = vi.fn();
   const aiComplete = vi.fn();
@@ -71,6 +72,15 @@ describe('completeAttempt', () => {
     findUniqueAttempt.mockReset();
     updateAttempt.mockReset().mockResolvedValue({});
     findUniqueClaim.mockReset();
+    updateClaim.mockReset().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({
+        id: CLAIM_ID,
+        studentId: STUDENT_ID,
+        lastAttemptId: ATTEMPT_ID,
+        skill: { code: 'SQL_QUERY_OPTIMIZATION' },
+        ...data,
+      }),
+    );
     findFirstVerificationAttempt.mockReset().mockResolvedValue(null);
     transaction.mockReset().mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops));
     aiComplete.mockReset();
@@ -80,17 +90,7 @@ describe('completeAttempt', () => {
       attempt: { findUnique: findUniqueAttempt, update: updateAttempt },
       skillClaim: {
         findUnique: findUniqueClaim,
-        // Echoes back the transition's `data` so tests can assert on the
-        // actual post-transition state rather than a fixed fixture.
-        update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-          Promise.resolve({
-            id: CLAIM_ID,
-            studentId: STUDENT_ID,
-            lastAttemptId: ATTEMPT_ID,
-            skill: { code: 'SQL_QUERY_OPTIMIZATION' },
-            ...data,
-          }),
-        ),
+        update: updateClaim,
       },
       skillVerificationAttempt: {
         findFirst: findFirstVerificationAttempt,
@@ -269,6 +269,43 @@ describe('completeAttempt', () => {
 
     expect(transaction).toHaveBeenCalled();
     expect(result.claim?.status).toBe('VERIFIED');
+  });
+
+  it('uses configured Skill.cooldownDays to calculate verifiedUntil on GENUINE_PASS', async () => {
+    const fakeNow = new Date('2026-09-23T12:00:00Z');
+    vi.setSystemTime(fakeNow);
+    try {
+      findUniqueAttempt.mockResolvedValue(baseAttempt());
+      findUniqueClaim.mockResolvedValue({
+        id: CLAIM_ID,
+        studentId: STUDENT_ID,
+        status: 'DECLARED',
+        proficiency: 'BEGINNER',
+        strikes: 0,
+        lockedUntil: null,
+        verifiedUntil: null,
+        skill: { name: 'React', cooldownDays: 90 },
+      });
+
+      const result = await service.completeAttempt(studentUser(), {
+        attemptId: ATTEMPT_ID,
+        claimId: CLAIM_ID,
+        autoSubmitted: false,
+        technicalFailure: false,
+      });
+
+      expect(result.claim?.status).toBe('VERIFIED');
+      const expectedVerifiedUntil = new Date(fakeNow.getTime() + 90 * 24 * 60 * 60 * 1000);
+      expect(updateClaim).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            verifiedUntil: expectedVerifiedUntil,
+          }),
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('fails an INTERMEDIATE claim on a passing assessment score without a passed interview', async () => {
