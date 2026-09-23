@@ -6,9 +6,20 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import type {
+  AuthTokenResponse,
+  AuthenticatedUser,
+  RegisterRequest,
+  SelectableInstitutionDto,
+} from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -66,6 +77,52 @@ export class AuthService {
       });
     }
     assertTenantLoginAllowed(user);
+
+    return this.issueSession(user, reply);
+  }
+
+  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
+    return this.prisma.institution.findMany({
+      where: { deactivatedAt: null, heldAt: null },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.institutionId },
+    });
+    if (!institution || institution.deactivatedAt || institution.heldAt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        passwordHash,
+        role: 'STUDENT',
+        emailVerified: false,
+        institutionId: institution.id,
+      },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
 
     return this.issueSession(user, reply);
   }

@@ -158,6 +158,122 @@ describe('AuthService refresh rotation', () => {
   });
 });
 
+describe('AuthService.register', () => {
+  it('creates a STUDENT user, hashes the password, and issues a session', async () => {
+    const institutionId = randomUUID();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) =>
+          userRow({ ...data, id: randomUUID() }),
+        ),
+      },
+      institution: {
+        findUnique: vi.fn(async () => ({ id: institutionId, deactivatedAt: null, heldAt: null })),
+      },
+      refreshToken: {
+        create: vi.fn(async ({ data }: { data: unknown }) => data),
+      },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      storage as never,
+    );
+    const reply = { setCookie: vi.fn() };
+
+    const result = await auth.register(
+      {
+        email: 'New@Example.com',
+        password: 'password1',
+        fullName: 'New Student',
+        institutionId,
+      },
+      reply as never,
+    );
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'new@example.com',
+          role: 'STUDENT',
+          emailVerified: false,
+          institutionId,
+        }),
+      }),
+    );
+  });
+
+  it('rejects a duplicate email with 409', async () => {
+    const prisma = { user: { findUnique: vi.fn(async () => userRow()) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await expect(
+      auth.register(
+        {
+          email: 'student@example.com',
+          password: 'password1',
+          fullName: 'X',
+          institutionId: randomUUID(),
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 409 } });
+  });
+
+  it('rejects an unknown or ineligible institution with 404', async () => {
+    const prisma = {
+      user: { findUnique: vi.fn(async () => null) },
+      institution: { findUnique: vi.fn(async () => null) },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await expect(
+      auth.register(
+        {
+          email: 'x@example.com',
+          password: 'password1',
+          fullName: 'X',
+          institutionId: randomUUID(),
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 404 } });
+  });
+});
+
+describe('AuthService.listSelectableInstitutions', () => {
+  it('excludes deactivated and held institutions', async () => {
+    const prisma = {
+      institution: { findMany: vi.fn(async () => [{ id: randomUUID(), name: 'Active U' }]) },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await auth.listSelectableInstitutions();
+
+    expect(prisma.institution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { deactivatedAt: null, heldAt: null } }),
+    );
+  });
+});
+
 describe('password hashing', () => {
   it('verifies a round-trip hash', async () => {
     const stored = await hashPassword('ChangeMe!Dev');
