@@ -16,7 +16,6 @@ export function LoginBrandPanel() {
       aria-label="About SMART"
     >
       {/* Replace with a local file in public/ if you prefer to self-host the photo. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80"
         alt=""

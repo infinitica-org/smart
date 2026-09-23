@@ -26,6 +26,8 @@ import {
 import { toReportDto, type ReportRow } from '../evaluation/project-verify.mapper.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
+import type { EvidenceRecordRow } from './evidence-version.snapshot.js';
 
 @Injectable()
 export class EvidenceSyncService {
@@ -35,6 +37,8 @@ export class EvidenceSyncService {
     private readonly reconciliation: EvidenceReconciliationService,
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
+    @Inject(EvidenceVersionService)
+    private readonly evidenceVersions: EvidenceVersionService,
   ) {}
 
   async syncWorkExperienceEvidenceRecord(

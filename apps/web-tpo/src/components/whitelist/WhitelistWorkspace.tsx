@@ -24,38 +24,6 @@ import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api } from '../../lib/api';
 import { validateInstitutionEmail } from '../../lib/domain-validation';
 import { loadAutoApproveInvites, loadExtraEmailDomains } from '../../lib/tpo-institution-settings';
-import {
-  bentoCardMutedClass,
-  bentoChipClass,
-  bentoCompactCardClass,
-  bentoCompactToolbarClass,
-  bentoSegmentTabActiveClass,
-  bentoSegmentTabIdleClass,
-  bentoSegmentedTabsClass,
-  candidatesControlClass,
-  candidatesPageStackClass,
-  bentoTableBodyRowClass,
-  bentoTableCellClass,
-  bentoTableClass,
-  bentoTableHeadCellClass,
-  bentoTableHeadRowClass,
-  bentoTableShellClass,
-  dashboardErrorNoticeClass,
-  dashboardMetricHintClass,
-  dashboardMintBadgeClass,
-  dashboardPendingBadgeClass,
-  dashboardPillClass,
-  dashboardPrimaryButtonClass,
-  dashboardRoseBadgeClass,
-  dashboardSuccessNoticeClass,
-  dashboardSectionTitleClass,
-} from '../../lib/tpo-dashboard-ui';
-import {
-  inputClass,
-  labelClass,
-  secondaryButtonClass,
-  secondaryButtonSmClass,
-} from '../../lib/tpo-ui';
 
 // ─────────────────── helpers ────────────────────
 

@@ -1,16 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Search,
-  CheckCircle2,
-  Clock,
-  ChevronRight,
-  Users,
-  ShieldCheck,
-  UserCheck,
-  Filter,
-} from 'lucide-react';
+import { Search, Clock, ChevronRight, Users, ShieldCheck } from 'lucide-react';
 
 import {
   SKILL_CATEGORY_IDS,

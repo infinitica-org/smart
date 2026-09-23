@@ -1,18 +1,6 @@
 'use client';
 
-import {
-  Mail,
-  ExternalLink,
-  GraduationCap,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  ShieldCheck,
-  Sparkles,
-  Award,
-  Layers,
-  Calendar,
-} from 'lucide-react';
+import { Mail, ExternalLink, GraduationCap, ShieldCheck, Sparkles, Award } from 'lucide-react';
 import {
   SKILL_DEFINITIONS,
   proficiencyLevelUiLabel,

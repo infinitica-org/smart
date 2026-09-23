@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation';
 import { X, type LucideIcon } from 'lucide-react';
 import { cn } from '@smart/ui';
 import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
-import { sidebarItems } from '@/navigation/sidebar-items';
 
 interface NavItem {
   name: string;

@@ -3,10 +3,10 @@ import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AuthService,
-  buildAccessTokenClaims,
+  buildAccessTokenClaims as _buildAccessTokenClaims,
   hashPassword,
   hashRefreshToken,
-  toAuthenticatedUser,
+  toAuthenticatedUser as _toAuthenticatedUser,
 } from './auth.service.js';
 
 function mockAuditPublisher() {
@@ -240,6 +240,7 @@ describe('AuthService.register', () => {
       prisma as never,
       { signAsync: vi.fn(async () => 'access.jwt') } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
     const reply = { setCookie: vi.fn() };
 

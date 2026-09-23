@@ -4,9 +4,9 @@
   "private": true,
   "description": "Public marketing landing site. Owner: Satheswaran V.",
   "scripts": {
-    "dev": "next dev --port 3006",
+    "dev": "next dev --port 3007",
     "build": "next build",
-    "start": "next start --port 3006",
+    "start": "next start --port 3007",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run --passWithNoTests",

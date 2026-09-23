@@ -463,6 +463,9 @@ model User {
   evidenceProfile       CandidateEvidenceProfile?
   studentCapabilities   StudentCapability[]
   universityContactRequests UniversityContactRequest[]
+  companyOnboardingSessions CompanyOnboardingSession[] @relation("CompanyOnboardingUser")
+  companyVerificationsReviewed CompanyVerification[] @relation("CompanyVerificationReviewedBy")
+  companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
 
   careerDomainId String? @map("career_domain_id")
   targetRoleId   String? @map("target_role_id")

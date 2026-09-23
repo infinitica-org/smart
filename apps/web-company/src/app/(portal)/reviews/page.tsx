@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, MessageSquare } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { Badge, PageHeader } from '../../../components/ui';
 import type { Review } from '../../../lib/types';
 import { card, pageStack, secondaryButton } from '../../../lib/ui';

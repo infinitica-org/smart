@@ -110,14 +110,14 @@ export function WorkExperienceSection() {
   } = usePerActionCooldown(WORK_EXPERIENCE_RESEND_COOLDOWN_MS);
 
   // Manager Endorsement state
-  const [resendingManagerId, setResendingManagerId] = useState<string | null>(null);
+  const [_resendingManagerId, setResendingManagerId] = useState<string | null>(null);
   const {
     startCooldown: startManagerResendCooldown,
-    remainingMs: managerResendRemainingMs,
+    remainingMs: _managerResendRemainingMs,
     isCoolingDown: isManagerResendCoolingDown,
   } = usePerActionCooldown(WORK_EXPERIENCE_RESEND_COOLDOWN_MS);
 
-  const handleResendManagerEndorsement = async (experienceId: string) => {
+  const _handleResendManagerEndorsement = async (experienceId: string) => {
     if (isManagerResendCoolingDown(experienceId)) return;
     setResendingManagerId(experienceId);
     setError(null);

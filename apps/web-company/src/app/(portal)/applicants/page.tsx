@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { UserCheck, Briefcase, Search, Plus } from 'lucide-react';
+import { UserCheck, Search, Plus } from 'lucide-react';
 import { Badge, PageHeader } from '../../../components/ui';
 import { LevelBadge } from '../../../components/level-badge';
 import { companyJobsApi } from '../../../lib/api';
@@ -32,7 +32,7 @@ export default function ApplicantsPage() {
   const [view, setView] = useState<View>('list');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [applicants, _setApplicants] = useState<Applicant[]>([]);
   const [stages, setStages] = useState<Record<string, PipelineStage>>({});
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);

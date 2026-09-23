@@ -2,12 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import type {
-  InstitutionDto,
-  InstitutionListStatus,
-  PlanCode,
-  UniversityContactRequestDto,
-} from '@smart/contracts';
+import type { InstitutionDto, InstitutionListStatus, PlanCode } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import {
   Check,
@@ -15,7 +10,6 @@ import {
   Filter,
   GraduationCap,
   Plus,
-  RotateCcw,
   UserCheck,
   X,
   XCircle,
@@ -26,7 +20,6 @@ import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
   DataTable,
-  EmptyState,
   Field,
   FilterBar,
   FormActions,
@@ -54,7 +47,7 @@ export default function InstitutionsPage() {
   const [institutions, setInstitutions] = useState<InstitutionDto[]>([]);
   const [selectedQueueIds, setSelectedQueueIds] = useState<Set<string>>(new Set());
   const [queueNotice, setQueueNotice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
@@ -86,7 +79,7 @@ export default function InstitutionsPage() {
   // Pending provisioning queue: institutions with verificationStatus === 'PENDING'
   const pendingQueue = institutions.filter((inst) => inst.verificationStatus === 'PENDING');
 
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     if (selectedQueueIds.size === pendingQueue.length) {
       setSelectedQueueIds(new Set());
     } else {

@@ -3,16 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BatchDto } from '@smart/contracts';
-import {
-  LayoutGrid,
-  Loader2,
-  Plus,
-  Search,
-  Users,
-  Clock,
-  ArrowRight,
-  Sparkles,
-} from 'lucide-react';
+import { LayoutGrid, Loader2, Plus, Search, Users, Clock } from 'lucide-react';
 import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api } from '../../lib/api';
 

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import InvitePage from './page';
-import { api, storeSession, redirectForRole } from '../../../lib/api';
+import { api, storeSession } from '../../../lib/api';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ token: 'mock_token_123' }),

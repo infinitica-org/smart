@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, Link2, Mail, Plus, UserCheck, Users } from 'lucide-react';
+import { Check, Link2, Plus, Users } from 'lucide-react';
 import { Badge, PageHeader, Modal } from '../../../components/ui';
 import { getCurrentUser } from '../../../lib/auth';
 import type { Teammate } from '../../../lib/types';
 import {
-  card,
   input,
   label,
   pageStack,

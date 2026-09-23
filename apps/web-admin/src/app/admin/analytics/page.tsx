@@ -1,26 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BarChart3,
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  GraduationCap,
-  TrendingUp,
-  Users,
-  Zap,
-  Activity,
-  ShieldAlert,
-  Server,
-} from 'lucide-react';
+import { BarChart3, Briefcase, CheckCircle2, GraduationCap, Users, Zap } from 'lucide-react';
 import type {
   AdminDashboardDto,
   AiUsageSummaryDto,
   InstitutionDto,
   CompanyDto,
 } from '@smart/contracts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+
 import { PageHeader } from '@/components/page-header';
 import { InlineAlert, PageStack } from '@/components/admin-ui';
 import { api } from '@/lib/api';
@@ -46,7 +34,7 @@ export default function AnalyticsPage() {
         setAiUsage(aiData);
         setInstitutions(instData);
         setCompanies(compData);
-      } catch (err) {
+      } catch {
         setError('Failed to load platform analytics from database.');
       } finally {
         setLoading(false);

@@ -77,7 +77,7 @@ describe('StaffManagementWorkspace', () => {
     });
 
     const inviteButtons = screen.getAllByRole('button', { name: /Invite/i });
-    fireEvent.click(inviteButtons[0]!);
+    if (inviteButtons[0]) fireEvent.click(inviteButtons[0]);
 
     expect(screen.getByText('Invite Staff Member')).toBeDefined();
 

@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { MessageSquare, Search, Send, Users } from 'lucide-react';
 import { PageHeader } from '../../../components/ui';
-import type { Conversation, Message } from '../../../lib/types';
+import type { Conversation } from '../../../lib/types';
 import { input, pageStack, primaryButton, secondaryButton } from '../../../lib/ui';
 
 function highlight(text: string, query: string): ReactNode {

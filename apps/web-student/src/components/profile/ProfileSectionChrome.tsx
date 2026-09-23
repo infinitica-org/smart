@@ -2,11 +2,6 @@
 
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  studentBentoTipIconWrapClass,
-  studentEmptyIconWrapClass,
-  studentWarningBannerClass,
-} from '@/lib/student-ui-classes';
 
 export function ProfileSectionHeader({
   title,
@@ -18,27 +13,29 @@ export function ProfileSectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex w-full flex-col gap-3 pb-1 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-      <div className="min-w-0 flex-1 max-w-2xl">
-        <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--ds-text)]">
+    <div className="flex w-full flex-col gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800 lg:flex-row lg:items-center lg:justify-between font-sans select-none">
+      <div className="min-w-0 flex-1">
+        <h2 className="font-heading text-lg font-bold tracking-tight text-zinc-950 dark:text-white">
           {title}
         </h2>
-        <p className="mt-1.5 text-[14px] leading-relaxed tracking-[-0.01em] text-[var(--ds-text-muted)]">
-          {description}
-        </p>
+        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{description}</p>
       </div>
-      {action ? <div className="shrink-0 lg:pt-0.5">{action}</div> : null}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
 
 export function ProfileSectionError({ children }: { children: ReactNode }) {
-  return <div className={studentWarningBannerClass}>{children}</div>;
+  return (
+    <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200">
+      {children}
+    </div>
+  );
 }
 
 export function ProfileBentoEmptyPanel({
   tipIcon: TipIcon,
-  tipIconClassName,
+  tipIconClassName: _tipIconClassName,
   tipTitle,
   tipBody,
   emptyIcon: EmptyIcon,
@@ -56,33 +53,26 @@ export function ProfileBentoEmptyPanel({
   actions: ReactNode;
 }) {
   return (
-    <div className="w-full overflow-hidden rounded-[18px] border border-[var(--ds-border)] bg-[var(--ds-surface)] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-      <div className="border-b border-[var(--ds-border-subtle)]/80 bg-[var(--student-blue-soft)] px-5 py-4">
+    <div className="w-full overflow-hidden rounded-md border border-zinc-200/80 bg-white shadow-2xs dark:border-zinc-800 dark:bg-[#161616] font-sans select-none">
+      <div className="border-b border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
         <div className="flex items-start gap-3">
-          <span className={`${studentBentoTipIconWrapClass} ${tipIconClassName}`}>
-            <TipIcon className="size-5" strokeWidth={1.5} aria-hidden />
-          </span>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-zinc-700 shadow-2xs dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            <TipIcon className="size-4 stroke-[1.75]" />
+          </div>
           <div>
-            <p className="text-[15px] font-semibold tracking-[-0.02em] text-[var(--ds-text)]">
-              {tipTitle}
-            </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-[var(--ds-text-muted)]">
-              {tipBody}
-            </p>
+            <p className="font-bold text-xs text-zinc-900 dark:text-white">{tipTitle}</p>
+            <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">{tipBody}</p>
           </div>
         </div>
       </div>
+
       <div className="flex flex-col items-center px-6 py-10 text-center">
-        <span className={studentEmptyIconWrapClass}>
-          <EmptyIcon className="size-7" strokeWidth={1.25} aria-hidden />
-        </span>
-        <p className="mt-4 text-[15px] font-semibold tracking-[-0.02em] text-[var(--ds-text)]">
-          {emptyTitle}
-        </p>
-        <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-[var(--ds-text-muted)]">
-          {emptyBody}
-        </p>
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">{actions}</div>
+        <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 mb-3 dark:bg-zinc-800 dark:text-zinc-500">
+          <EmptyIcon className="size-5 stroke-[1.5]" />
+        </div>
+        <p className="text-sm font-bold text-zinc-900 dark:text-white">{emptyTitle}</p>
+        <p className="mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">{emptyBody}</p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">{actions}</div>
       </div>
     </div>
   );

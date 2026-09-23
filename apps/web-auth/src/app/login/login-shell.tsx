@@ -11,24 +11,6 @@ export function LoginShell({ children }: { children: ReactNode }) {
     >
       <LoginBrandPanel />
       <div className="relative flex min-h-dvh flex-col items-center justify-center px-2 py-10 lg:min-h-0 lg:overflow-y-auto">
-        <div className="absolute right-2 top-2 flex items-center gap-2 text-sm font-medium lg:right-0 lg:top-0">
-          <label className="sr-only" htmlFor="language">
-            Language
-          </label>
-          <select
-            id="language"
-            defaultValue="en-US"
-            className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-[#172033]"
-          >
-            <option value="en-US">English (US)</option>
-          </select>
-          <a
-            href="/register"
-            className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-[#172033] hover:bg-slate-50"
-          >
-            Register
-          </a>
-        </div>
         {children}
       </div>
     </div>

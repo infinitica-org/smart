@@ -2,18 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import type { AiHealthDto, AiUsageSummaryDto, AiUsageWindow } from '@smart/contracts';
-import {
-  CircleCheck,
-  GitBranch,
-  HeartPulse,
-  ServerCrash,
-  Timer,
-  Zap,
-  Activity,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
+import { GitBranch, HeartPulse, ServerCrash, Timer } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@smart/ui/card';
 import { Progress } from '@smart/ui/progress';
-import { Badge } from '@smart/ui/badge';
+
 import { PageHeader } from '@/components/page-header';
 import { InlineAlert, PageStack, EmptyState } from '@/components/admin-ui';
 import { api } from '@/lib/api';

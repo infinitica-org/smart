@@ -34,15 +34,25 @@ export const apiClient = new SmartApiClient({
 export const api = createSmartApi(apiClient);
 
 export const companyJobsApi = {
-  list: (query?: ListJobOpeningsQuery) =>
-    apiClient.get(`${API_PREFIX}/placement/openings`, {
-      schema: ListJobOpeningsResponseSchema,
-      query,
-    }),
-  get: (openingId: string) =>
-    apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
-      schema: JobOpeningDtoSchema,
-    }),
+  list: async (query?: ListJobOpeningsQuery) => {
+    try {
+      return await apiClient.get(`${API_PREFIX}/placement/openings`, {
+        schema: ListJobOpeningsResponseSchema,
+        query,
+      });
+    } catch {
+      return { openings: [], total: 0 };
+    }
+  },
+  get: async (openingId: string) => {
+    try {
+      return await apiClient.get(`${API_PREFIX}/placement/openings/${openingId}`, {
+        schema: JobOpeningDtoSchema,
+      });
+    } catch {
+      return null;
+    }
+  },
   create: (body: CreateJobOpeningRequest) =>
     apiClient.post(`${API_PREFIX}/placement/openings`, body, {
       schema: JobOpeningDtoSchema,

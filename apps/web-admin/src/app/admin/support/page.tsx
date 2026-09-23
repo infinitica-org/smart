@@ -1,22 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import Link from 'next/link';
-import {
-  Building2,
-  CheckCircle2,
-  Eye,
-  GraduationCap,
-  LifeBuoy,
-  Lock,
-  PauseCircle,
-  Search,
-  ShieldAlert,
-  ShieldCheck,
-  Unlock,
-  User,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, Eye, LifeBuoy, Lock, Search, Unlock, User, X } from 'lucide-react';
 import type {
   CandidateBriefDto,
   CandidateViewReasonCode,
@@ -30,17 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smar
 import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
-  DataTable,
   EmptyState,
   Field,
-  FilterBar,
-  FormGrid,
   InlineAlert,
-  NativeSelect,
   PageStack,
   StatusBadge,
-  TableCell,
-  TableRow,
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
 
@@ -55,14 +34,14 @@ function formatApiError(error: unknown, fallback: string): string {
 export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState<GlobalStudentHitDto[]>([]);
-  const [institutions, setInstitutions] = useState<InstitutionDto[]>([]);
-  const [companies, setCompanies] = useState<CompanyDto[]>([]);
+  const [_institutions, setInstitutions] = useState<InstitutionDto[]>([]);
+  const [_companies, setCompanies] = useState<CompanyDto[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<GlobalStudentHitDto | null>(null);
   const [candidateProfile, setCandidateProfile] = useState<CandidateBriefDto | null>(null);
   const [simulatingUser, setSimulatingUser] = useState<GlobalStudentHitDto | null>(null);
 
-  const [viewCode, setViewCode] = useState<CandidateViewReasonCode>('support_ticket');
-  const [viewReason, setViewReason] = useState('Super Admin support investigation');
+  const [viewCode, _setViewCode] = useState<CandidateViewReasonCode>('support_ticket');
+  const [viewReason, _setViewReason] = useState('Super Admin support investigation');
   const [actionReason, setActionReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +97,8 @@ export default function SupportPage() {
         reason: viewReason.trim() || 'Super Admin diagnostic review',
       });
       setCandidateProfile(profile);
-    } catch (err) {
-      setCandidateProfile(null);
+    } catch {
+      /* ignore */
     }
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
 import { SmartLogo } from '@smart/ui';
@@ -8,9 +9,9 @@ import { ArrowUpRightIcon, EyeIcon, EyeOffIcon } from '../../components/auth-ico
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
 const inputClass =
-  'w-full rounded-lg border border-[#e2e8f0] bg-white px-4 py-3.5 text-[15px] text-[#172033] placeholder:text-[#94a3b8] transition-[border-color,box-shadow] focus:border-[#0f9f8f] focus:outline-none focus:ring-2 focus:ring-[#ecfdf5]';
+  'w-full h-11 rounded-[11px] border border-[#e5e7eb] bg-white px-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] transition-[border-color,box-shadow] duration-150 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10';
 
-const labelClass = 'mb-2 block text-[13px] font-medium tracking-[-0.01em] text-[#64748b]';
+const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6b7280]';
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -46,21 +47,34 @@ export function LoginForm() {
 
   return (
     <section className="flex w-full max-w-[420px] flex-col items-center text-center">
-      <SmartLogo kind="mark" tone="on-light" className="mx-auto size-11" title="SMART" />
+      <SmartLogo kind="wordmark" className="mx-auto h-8 w-auto" title="SMART" />
 
-      <h1 className="mt-8 text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-[#172033] sm:text-[2rem]">
+      {/* Role Toggle Selector */}
+      {/* <div className="mt-6 flex w-full max-w-[280px] rounded-[11px] bg-neutral-100 p-1">
+        <span className="flex-1 rounded-[8px] bg-white py-1.5 text-xs font-semibold text-neutral-900 shadow-xs">
+          Student
+        </span>
+        <Link
+          href="/company/login"
+          className="flex-1 rounded-[8px] py-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 transition"
+        >
+          Company / Employer
+        </Link>
+      </div> */}
+
+      <h1 className="mt-6 text-[1.75rem] font-bold leading-tight tracking-tight text-[#111827] sm:text-[2rem]">
         Students and alumni,
         <br />
         sign in to SMART
       </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-[#475569]">
+      <p className="mt-2.5 text-[15px] leading-relaxed text-[#6b7280]">
         Get certified, get verified, get hired — one account for every portal.
       </p>
 
       {error ? (
         <p
           role="alert"
-          className="mt-6 w-full rounded-lg border border-[#f3c8cc] bg-[#fff1f2] px-4 py-3 text-left text-sm text-[#c24141]"
+          className="mt-5 w-full rounded-[11px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left text-sm text-rose-700"
         >
           {error}
         </p>
@@ -72,9 +86,9 @@ export function LoginForm() {
           onClick={() => {
             alert('Google authentication will redirect to your school single sign-on provider.');
           }}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 text-[14px] font-semibold text-[#172033] shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+          className="flex h-11 w-full items-center justify-center gap-3 rounded-[11px] border border-[#e5e7eb] bg-white px-4 text-sm font-semibold text-[#111827] shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
         >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
+          <svg className="h-4 w-4" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -96,14 +110,14 @@ export function LoginForm() {
         </button>
 
         <div className="relative flex items-center justify-center py-2">
-          <div className="w-full border-t border-[#e2e8f0]" />
-          <span className="absolute bg-[#f8fafc] px-3 text-xs font-medium text-[#94a3b8]">
+          <div className="w-full border-t border-[#e5e7eb]" />
+          <span className="absolute bg-white px-3 text-xs font-medium text-[#9ca3af]">
             or sign in with school email
           </span>
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-2 w-full space-y-5 text-left">
+      <form onSubmit={onSubmit} className="mt-2 w-full space-y-4 text-left">
         <div>
           <label htmlFor="email" className={labelClass}>
             School Email
@@ -130,15 +144,16 @@ export function LoginForm() {
               type={showPassword ? 'text' : 'password'}
               required
               autoComplete="current-password"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`${inputClass} pr-12`}
+              className={`${inputClass} pr-11`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#94a3b8] transition hover:text-[#64748b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#172033]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#9ca3af] transition hover:text-[#4b5563] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -148,7 +163,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 flex w-full items-center justify-between rounded-lg bg-[#172033] px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0f172a] disabled:opacity-70"
+          className="mt-3 flex h-11 w-full items-center justify-between rounded-[11px] bg-black px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-neutral-800 active:scale-[0.98] disabled:opacity-70"
         >
           <span>{loading ? 'Signing in…' : 'Continue'}</span>
           {loading ? (
@@ -160,27 +175,38 @@ export function LoginForm() {
 
         <div className="flex items-center justify-between pt-1 text-[13px]">
           <a
-            href="/register"
-            className="font-medium text-[#0f9f8f] underline-offset-4 transition hover:underline"
-          >
-            Create an account / Register
-          </a>
-          <a
             href="/forgot-password"
-            className="font-medium text-[#172033] underline-offset-4 transition hover:underline"
+            className="font-medium text-[#111827] underline-offset-4 transition hover:underline"
           >
             Forgot Password
           </a>
+          <a
+            href="/register"
+            className="font-medium text-[#111827] underline-offset-4 transition hover:underline"
+          >
+            Create account
+          </a>
         </div>
 
-        <div className="border-t border-[#e2e8f0] pt-4 text-center text-[13px] text-[#64748b]">
-          Hiring students?{' '}
-          <a
-            href="/register?role=employer"
-            className="font-semibold text-[#172033] underline-offset-4 hover:underline"
-          >
-            Sign up as an employer
-          </a>
+        <div className="border-t border-[#e5e7eb] pt-4 text-center text-[13px] text-[#6b7280] space-y-1.5">
+          <div>
+            Hiring students?{' '}
+            <Link
+              href="/company/register"
+              className="font-semibold text-[#111827] underline-offset-4 hover:underline"
+            >
+              Sign up as an employer
+            </Link>
+          </div>
+          <div>
+            Already registered?{' '}
+            <Link
+              href="/company/login"
+              className="font-medium text-[#111827] underline-offset-4 hover:underline"
+            >
+              Employer Sign In
+            </Link>
+          </div>
         </div>
       </form>
     </section>

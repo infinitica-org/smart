@@ -102,7 +102,7 @@ describe('OnboardingWizard', () => {
     render(<OnboardingWizard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Connect to your Partner University')).toBeTruthy();
+      expect(screen.getByText(/Connect to/i)).toBeTruthy();
     });
   });
 

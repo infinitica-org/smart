@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { CircleAlert, CircleCheck, CircleMinus, Info } from 'lucide-react';
+import { CircleAlert, Info } from 'lucide-react';
 import { cn } from '@smart/ui';
 import { Input } from '@smart/ui/input';
 import { Label } from '@smart/ui/label';

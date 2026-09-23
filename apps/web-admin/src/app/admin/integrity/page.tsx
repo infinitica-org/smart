@@ -4,15 +4,12 @@ import { useEffect, useState } from 'react';
 import type { IntegrityQueueItemDto, IntegrityQueueStatus } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
 import {
-  AlertTriangle,
   Ban,
   CheckCircle2,
   CircleCheck,
-  Eye,
   ShieldAlert,
   ShieldCheck,
   TriangleAlert,
-  X,
 } from 'lucide-react';
 import { Button } from '@smart/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
@@ -21,7 +18,6 @@ import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
   DataTable,
-  EmptyState,
   Field,
   InlineAlert,
   PageStack,
@@ -42,11 +38,11 @@ function formatApiError(error: unknown, fallback: string): string {
 export default function IntegrityPage() {
   const [status, setStatus] = useState<IntegrityQueueStatus>('PENDING');
   const [items, setItems] = useState<IntegrityQueueItemDto[]>([]);
-  const [selectedFlag, setSelectedFlag] = useState<IntegrityQueueItemDto | null>(null);
+  const [_selectedFlag, _setSelectedFlag] = useState<IntegrityQueueItemDto | null>(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   async function loadData(forStatus: IntegrityQueueStatus) {
     setLoading(true);
@@ -83,7 +79,7 @@ export default function IntegrityPage() {
             ? 'Flag confirmed. Endorsements suspended and attempt voided.'
             : 'Attempt escalated for senior review committee.',
       );
-      setSelectedFlag(null);
+
       setReason('');
       await loadData(status);
     } catch (err) {

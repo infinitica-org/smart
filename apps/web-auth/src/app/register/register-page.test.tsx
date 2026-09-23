@@ -11,7 +11,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('../../lib/api', () => ({
   api: {
     auth: {
-      registerStudent: vi.fn(),
+      register: vi.fn(),
+      listInstitutions: vi.fn().mockResolvedValue([{ id: 'inst_1', name: 'PSG Tech' }]),
     },
   },
   storeSession: vi.fn(),
@@ -21,88 +22,77 @@ vi.mock('../../lib/api', () => ({
 describe('RegisterPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(api.auth.listInstitutions).mockResolvedValue([{ id: 'inst_1', name: 'PSG Tech' }]);
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it('renders registration form fields', () => {
+  it('renders registration form fields', async () => {
     render(<RegisterPage />);
 
-    expect(screen.getByRole('heading', { name: /Student Registration/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /Continue with Google/i })).toBeDefined();
-    expect(screen.getByLabelText(/Full Name/i)).toBeDefined();
+    expect(await screen.findByRole('heading', { name: /Create an account/i })).toBeDefined();
+    expect(screen.getByLabelText(/First name/i)).toBeDefined();
+    expect(screen.getByLabelText(/Last name/i)).toBeDefined();
+    expect(screen.getByLabelText(/Mobile Number/i)).toBeDefined();
     expect(screen.getByLabelText(/School Email/i)).toBeDefined();
-    expect(screen.getByLabelText(/^Password$/i)).toBeDefined();
-    expect(screen.getByRole('button', { name: /^Continue$/i })).toBeDefined();
-    expect(screen.getByRole('link', { name: /Sign up as an employer/i })).toBeDefined();
+    expect(screen.getByLabelText(/^Password \*/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Get started/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /Login/i })).toBeDefined();
   });
 
-  it('rejects personal email domain client-side', async () => {
+  it('validates password match client-side', async () => {
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Student' } });
-    fireEvent.change(screen.getByLabelText(/School Email/i), {
-      target: { value: 'jane@gmail.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'Password123!' } });
-
-    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Personal email addresses \(e\.g\. Gmail, Yahoo\) are not permitted/i),
-      ).toBeDefined();
-    });
-    expect(api.auth.registerStudent).not.toHaveBeenCalled();
-  });
-
-  it('rejects weak password (< 8 characters) client-side', async () => {
-    render(<RegisterPage />);
-
-    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Student' } });
+    fireEvent.change(await screen.findByLabelText(/First name/i), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByLabelText(/Mobile Number/i), { target: { value: '9876543210' } });
     fireEvent.change(screen.getByLabelText(/School Email/i), {
       target: { value: 'jane@psgtech.ac.in' },
     });
-    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText(/^Password \*/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), {
+      target: { value: 'DifferentPass!' },
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get started/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Password must be at least 8 characters long/i)).toBeDefined();
+      expect(screen.getByText(/Passwords do not match/i)).toBeDefined();
     });
-    expect(api.auth.registerStudent).not.toHaveBeenCalled();
+    expect(api.auth.register).not.toHaveBeenCalled();
   });
 
-  it('handles API error for unregistered university domain', async () => {
-    vi.mocked(api.auth.registerStudent).mockRejectedValue(
+  it('handles API error for conflicting account', async () => {
+    vi.mocked(api.auth.register).mockRejectedValue(
       new SmartApiError({
-        error: 'unregistered_university_domain',
-        message: 'Your university domain is not registered on SMART.',
-        statusCode: 422,
+        error: 'conflict',
+        message: 'An account with this email already exists.',
+        statusCode: 409,
       }),
     );
 
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/Full Name/i), {
-      target: { value: 'Student Unregistered' },
-    });
+    fireEvent.change(await screen.findByLabelText(/First name/i), { target: { value: 'Jane' } });
     fireEvent.change(screen.getByLabelText(/School Email/i), {
-      target: { value: 'student@unknown-univ.edu' },
+      target: { value: 'jane@psgtech.ac.in' },
     });
-    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/^Password \*/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), {
+      target: { value: 'Password123!' },
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get started/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Your university domain is not registered on SMART/i)).toBeDefined();
+      expect(screen.getByText(/An account with this email already exists/i)).toBeDefined();
     });
   });
 
   it('submits valid registration, stores session and redirects to onboarding', async () => {
-    vi.mocked(api.auth.registerStudent).mockResolvedValue({
+    vi.mocked(api.auth.register).mockResolvedValue({
       accessToken: 'access_token_mock_123',
       tokenType: 'Bearer',
       expiresInSeconds: 900,
@@ -129,23 +119,28 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(await screen.findByLabelText(/First name/i), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: 'Doe' } });
     fireEvent.change(screen.getByLabelText(/School Email/i), {
       target: { value: 'jane@psgtech.ac.in' },
     });
-    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/^Password \*/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), {
+      target: { value: 'Password123!' },
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get started/i }));
 
     await waitFor(() => {
-      expect(api.auth.registerStudent).toHaveBeenCalledWith({
+      expect(api.auth.register).toHaveBeenCalledWith({
         fullName: 'Jane Doe',
         email: 'jane@psgtech.ac.in',
         password: 'Password123!',
+        institutionId: 'inst_1',
       });
     });
 
     expect(storeSession).toHaveBeenCalledWith('access_token_mock_123');
-    expect(redirectForRole).toHaveBeenCalledWith('STUDENT', 'access_token_mock_123', null);
+    expect(redirectForRole).toHaveBeenCalledWith('STUDENT', 'access_token_mock_123');
   });
 });

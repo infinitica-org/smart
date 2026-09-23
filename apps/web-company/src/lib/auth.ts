@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  clearAccessToken,
-  getAccessToken,
-  signOutAndRedirect,
-  storeAccessToken,
-} from '@smart/api-client';
+import { getAccessToken, signOutAndRedirect, storeAccessToken } from '@smart/api-client';
 import { api } from './api';
 
 const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';

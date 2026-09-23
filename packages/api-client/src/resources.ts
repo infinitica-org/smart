@@ -143,6 +143,10 @@ import {
   CandidateEvidenceProfileDtoSchema,
   CandidateEvidenceProvenanceResponseSchema,
   EvidenceRecordDtoSchema,
+  EvidenceRecordVersionDtoSchema,
+  EvidenceRecordVersionRedactedDtoSchema,
+  ListEvidenceRecordVersionsResponseSchema,
+  ListEvidenceRecordVersionsRedactedResponseSchema,
   GetSkillEvidenceInferenceResponseSchema,
   GetSkillLevelExplanationResponseSchema,
   ListCapabilityInferenceReviewQueueResponseSchema,
@@ -1475,6 +1479,20 @@ export function placementApi(client: SmartApiClient) {
         ),
         {
           schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
+        },
+      ),
+
+    getCandidateEvidenceProvenance: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence/provenance`), {
+        schema: CandidateEvidenceProvenanceResponseSchema,
+      }),
+
+    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
+      client.post(
+        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
+        body,
+        {
+          schema: ReviewEvidenceResponseSchema,
         },
       ),
   };

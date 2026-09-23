@@ -1,17 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import {
-  BarChart3,
-  Download,
-  ShieldCheck,
-  Users,
-  Briefcase,
-  ClipboardList,
-  Building,
-  GraduationCap,
-  Sparkles,
-} from 'lucide-react';
+import { BarChart3, Download, ShieldCheck, Users, Briefcase, ClipboardList } from 'lucide-react';
 import type { InstitutionStudentDto, JobOpeningDto, SkillClaimDto } from '@smart/contracts';
 import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api, employersApi, openingsApi } from '../../lib/api';

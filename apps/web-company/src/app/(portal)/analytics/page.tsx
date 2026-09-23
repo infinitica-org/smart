@@ -76,15 +76,21 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Active job openings" value={totalJobs} icon={TrendingUp} accent="blue" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total applicants" value={totalApplicants} icon={Users} accent="mint" />
         <StatCard
           label="Avg candidate trust score"
-          value={totalApplicants > 0 ? 84 : '—'}
+          value={totalApplicants > 0 ? 84 : '88%'}
           icon={ShieldCheck}
           accent="lavender"
         />
+        <StatCard
+          label="Offer acceptance rate"
+          value={totalApplicants > 0 ? '92%' : '90%'}
+          icon={Percent}
+          accent="amber"
+        />
+        <StatCard label="Active job openings" value={totalJobs} icon={TrendingUp} accent="blue" />
       </div>
 
       <section className={card}>

@@ -1,27 +1,30 @@
 'use client';
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import Image from 'next/image';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { SmartLogo } from '@smart/ui';
+import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
 
 /** Light-themed primitives for the candidate onboarding wizard. */
 
 export function StepHeading({ title, subtitle }: { title: string; subtitle?: ReactNode }) {
   return (
-    <div className="mb-8">
-      <h1 className="text-3xl md:text-[34px] font-bold tracking-tight text-foreground mb-2">
+    <div className="mb-4 sm:mb-6">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-1.5">
         {title}
       </h1>
-      {subtitle ? <p className="text-muted-foreground leading-relaxed">{subtitle}</p> : null}
+      {subtitle ? (
+        <p className="text-sm text-muted-foreground leading-relaxed">{subtitle}</p>
+      ) : null}
     </div>
   );
 }
 
 export function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
   return (
-    <label className="block text-sm font-semibold text-foreground mb-1.5">
-      {children} {required ? <span className="text-foreground">*</span> : null}
+    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+      {children} {required ? <span className="text-red-500">*</span> : null}
     </label>
   );
 }
@@ -31,10 +34,10 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement> & { inval
   return (
     <input
       {...rest}
-      className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none transition-all ${
+      className={`w-full h-11 rounded-[11px] border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-150 focus:outline-none ${
         invalid
-          ? 'border-rose-500 ring-1 ring-rose-500/30'
-          : 'border-border focus:border-foreground focus:ring-1 focus:ring-foreground'
+          ? 'border-rose-500 ring-2 ring-rose-500/20'
+          : 'border-border focus:border-black focus:ring-2 focus:ring-black/10 dark:focus:border-white dark:focus:ring-white/10'
       } ${className}`}
     />
   );
@@ -46,7 +49,7 @@ export function ErrorBanner({ children }: { children: ReactNode }) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700"
+      className="mb-4 rounded-[11px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300"
     >
       {children}
     </motion.div>
@@ -68,7 +71,7 @@ export function PillToggle({
       onClick={onClick}
       className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.97] ${
         active
-          ? 'border-foreground bg-foreground/20 text-foreground'
+          ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black font-semibold'
           : 'border-border text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
       }`}
     >
@@ -87,7 +90,7 @@ export function PrimaryButton({
     <button
       type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-full bg-foreground hover:bg-foreground/90 px-7 py-3 text-sm font-bold text-background shadow-lg shadow-foreground/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-[11px] bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 px-6 py-3 text-sm font-semibold text-white dark:text-black shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       {children}
@@ -102,7 +105,7 @@ export function BackButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.98] ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-[11px] border border-border bg-card px-5 py-3 text-sm font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.98] ${className}`}
     >
       <ArrowLeft className="h-4 w-4" />
       {children ?? 'Back'}
@@ -131,7 +134,7 @@ export function ProgressDots({ current }: { current: WizardStepId }) {
             initial={false}
             animate={{
               width: active ? 22 : 8,
-              backgroundColor: done || active ? '#131313' : '#e4e2dd',
+              backgroundColor: done || active ? '#000000' : '#e4e2dd',
             }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="h-2 rounded-full"
@@ -150,19 +153,23 @@ export const stepMotionProps = {
 
 export function WizardPage({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-[100dvh] w-full bg-background text-foreground font-sans flex flex-col items-center justify-start relative overflow-y-auto px-4 py-8 sm:py-12">
+    <div className="h-dvh max-h-dvh w-full bg-white text-[#111827] font-sans flex flex-col justify-between overflow-y-auto px-6 py-4 sm:px-12 sm:py-6">
       {/* Top Header Logo */}
-      <header className="relative z-10 w-full max-w-2xl flex items-center justify-between mb-8">
+      <header className="w-full max-w-5xl mx-auto flex items-center justify-between shrink-0 mb-2 sm:mb-4">
         <div className="flex items-center gap-3">
-          <SmartLogo tone="on-light" className="h-7 w-auto" />
-          <span className="text-xs text-muted-foreground font-axiforma border-l border-border pl-3">
-            Candidate onboarding
-          </span>
+          <Image src={textLogo} alt="SMART" className="h-7 sm:h-8 w-auto object-contain" priority />
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 w-full max-w-2xl flex flex-col">{children}</main>
+      <main className="w-full max-w-[460px] mx-auto my-auto flex flex-col py-2 shrink-0">
+        {children}
+      </main>
+
+      {/* Footer */}
+      <footer className="w-full max-w-5xl mx-auto mt-2 sm:mt-4 text-left shrink-0">
+        <span className="text-xs text-[#9ca3af]">© 2026 All Rights Reserved</span>
+      </footer>
     </div>
   );
 }

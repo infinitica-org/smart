@@ -83,7 +83,9 @@ export function LightSelect({
 
   return (
     <div
-      className={`relative w-full border border-border rounded-xl px-4 py-3 bg-muted ${className}`}
+      className={`relative w-full h-11 border border-border rounded-[11px] px-3.5 bg-background flex items-center transition-[border-color,box-shadow] duration-150 ${
+        isOpen ? 'border-[#0f766e] ring-2 ring-[#0f766e]/15' : 'hover:border-foreground/30'
+      } ${className}`}
       ref={containerRef}
     >
       <button

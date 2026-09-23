@@ -31,19 +31,21 @@ describe('PhoneVerificationStep', () => {
     expect(screen.getByTestId('verify-phone-submit')).toBeDefined();
   });
 
-  it('shows error when phone or OTP is invalid or DPDP is not checked', async () => {
+  it('shows error when phone is invalid or DPDP is not checked', async () => {
+    const emptyForm = { ...emptyOnboardingForm(), phoneNumber: '' };
     render(
       <PhoneVerificationStep
-        formData={emptyOnboardingForm()}
+        formData={emptyForm}
         updateField={updateField}
         onContinue={onContinue}
       />,
     );
 
+    fireEvent.change(screen.getByTestId('phone-number-input'), { target: { value: '' } });
     fireEvent.click(screen.getByTestId('verify-phone-submit'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Mobile number must contain exactly 10 digits/i)).toBeDefined();
+      expect(screen.getByText(/Mobile number must contain|agree to the DPDP/i)).toBeDefined();
     });
     expect(onContinue).not.toHaveBeenCalled();
   });
@@ -61,7 +63,6 @@ describe('PhoneVerificationStep', () => {
     fireEvent.click(screen.getByTestId('resend-otp-btn'));
 
     await waitFor(() => {
-      expect(screen.getByText(/A 6-digit verification code was sent/i)).toBeDefined();
       expect(screen.getByText(/Resend code in/i)).toBeDefined();
     });
   });

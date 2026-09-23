@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, FileText, CheckCircle2 } from 'lucide-react';
+import { CreditCard, FileText } from 'lucide-react';
 import { Badge, PageHeader } from '../../../components/ui';
 import type { Invoice } from '../../../lib/types';
 import {
   card,
   pageStack,
-  primaryButton,
   secondaryButton,
   sectionSubtitle,
   sectionTitle,

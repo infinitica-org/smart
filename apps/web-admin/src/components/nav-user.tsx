@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { EllipsisVertical, LogOut } from 'lucide-react';
 import type { AuthenticatedUser } from '@smart/contracts';
-import { Avatar, AvatarFallback } from '@smart/ui/avatar';
+
 import {
   DropdownMenu,
   DropdownMenuContent,

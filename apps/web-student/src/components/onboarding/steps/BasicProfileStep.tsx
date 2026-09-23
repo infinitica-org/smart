@@ -114,7 +114,7 @@ export default function BasicProfileStep({
           />
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-2" data-testid="graduation-year-select">
           <FieldLabel required>Graduation Year</FieldLabel>
           <LightSelect
             data-testid="graduation-year-select"

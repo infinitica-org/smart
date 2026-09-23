@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ShieldCheck, Info, User } from 'lucide-react';
+import { X, Info, User } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import type { InstitutionStudentDto, SkillClaimDto } from '@smart/contracts';
 import { api } from '../lib/api';

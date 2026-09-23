@@ -17,7 +17,6 @@ import {
   Layers,
   Sparkles,
   ArrowUpRight,
-  UserCheck,
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import type { BatchDto, PlacementEmployerSummary, TenantEntitlementsDto } from '@smart/contracts';
@@ -39,9 +38,6 @@ import {
   bentoCardMutedClass,
   bentoChipClass,
   bentoPageStackClass,
-  bentoSegmentTabActiveClass,
-  bentoSegmentTabIdleClass,
-  bentoSegmentedTabsClass,
   bentoTableBodyRowClass,
   bentoTableCellClass,
   bentoTableClass,

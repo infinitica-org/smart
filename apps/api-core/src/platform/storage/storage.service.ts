@@ -126,6 +126,11 @@ export class StorageService implements OnModuleInit {
     if (!byteArray) throw new Error(`Empty or missing object for key ${objectKey}`);
     return Buffer.from(byteArray);
   }
+
+  /** Deletes an object by key. */
+  async deleteObject(objectKey: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+  }
 }
 
 function sanitizeFileName(fileName: string): string {

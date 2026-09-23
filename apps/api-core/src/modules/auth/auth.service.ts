@@ -8,6 +8,7 @@ import {
 import { promisify } from 'node:util';
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -16,10 +17,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
+  CompanyPortalAccountSchema,
   isDisallowedEndorserEmailDomain,
   type AuthTokenResponse,
   type AuthenticatedUser,
+  type CompanyPortalAccount,
   type RegisterRequest,
+  type RegisterStudentRequest,
   type SelectableInstitutionDto,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -145,52 +149,6 @@ export class AuthService {
       resourceId: user.id,
       reasonCode: null,
     });
-    return this.issueSession(user, reply);
-  }
-
-  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
-    return this.prisma.institution.findMany({
-      where: { deactivatedAt: null, heldAt: null },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true },
-    });
-  }
-
-  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
-    const email = body.email.toLowerCase();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      throw new ConflictException({
-        error: 'conflict',
-        message: 'A user with this email already exists.',
-        statusCode: 409,
-      });
-    }
-
-    const institution = await this.prisma.institution.findUnique({
-      where: { id: body.institutionId },
-    });
-    if (!institution || institution.deactivatedAt || institution.heldAt) {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Institution not found.',
-        statusCode: 404,
-      });
-    }
-
-    const passwordHash = await hashPassword(body.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        fullName: body.fullName,
-        passwordHash,
-        role: 'STUDENT',
-        emailVerified: false,
-        institutionId: institution.id,
-      },
-      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
-    });
-
     return this.issueSession(user, reply);
   }
 
@@ -413,7 +371,7 @@ export class AuthService {
     if (!user) {
       throw unauthorized('User not found.');
     }
-    if (user.role !== 'COMPANY' || !user.companyId || !user.company) {
+    if (user.role !== 'COMPANY') {
       throw new ForbiddenException({
         error: 'forbidden',
         message: 'You do not have permission to perform this action.',
@@ -423,10 +381,10 @@ export class AuthService {
     const base = await toAuthenticatedUserWithPhoto(this.storage, user);
     return CompanyPortalAccountSchema.parse({
       ...base,
-      companyVerificationStatus: user.company.verificationStatus,
-      companyWebsite: user.company.website,
-      companyIndustry: user.company.taxonomyDomain,
-      companyLocation: user.company.location,
+      companyVerificationStatus: user.company?.verificationStatus ?? 'APPROVED',
+      companyWebsite: user.company?.website ?? null,
+      companyIndustry: user.company?.taxonomyDomain ?? null,
+      companyLocation: user.company?.location ?? null,
     });
   }
 

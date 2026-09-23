@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ChipGroup, PageHeader, SkillsEditor, type SkillReq } from '../../../../components/ui';
 import { companyJobsApi, formatApiError } from '../../../../lib/api';
 import { getCurrentUser } from '../../../../lib/auth';
@@ -37,7 +37,7 @@ export default function PostJobPage() {
 
   const titleInvalid = attempted && title.trim().length === 0;
 
-  async function submit(kind: 'publish' | 'draft') {
+  async function submit(_kind: 'publish' | 'draft') {
     setAttempted(true);
     if (!title.trim()) {
       return;
@@ -66,7 +66,7 @@ export default function PostJobPage() {
         employmentType: empType,
         minYearsExperience: 0,
         maxYearsExperience: 3,
-        location: location.trim() || undefined,
+        location: location.trim() || 'Remote',
         salaryDetails: pay.trim() || undefined,
         roleDetails: description.trim() || undefined,
         requiredSkills: skills.map((s) => ({

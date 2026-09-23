@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Bot,
   Building2,
-  Calendar,
   CheckCircle2,
   Clock,
   GraduationCap,

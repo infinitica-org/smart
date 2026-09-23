@@ -3,23 +3,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { PlatformAdminDto } from '@smart/contracts';
 import { isSmartApiError } from '@smart/api-client';
-import {
-  CheckCircle2,
-  Mail,
-  Plus,
-  RotateCcw,
-  ShieldCheck,
-  ShieldPlus,
-  UserCog,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, Plus, RotateCcw, ShieldPlus, UserCog, X } from 'lucide-react';
 import { Button } from '@smart/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
   DataTable,
-  EmptyState,
   Field,
   InlineAlert,
   PageStack,
@@ -44,7 +33,7 @@ export default function PlatformAdminsPage() {
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   async function loadAdmins() {
     setLoading(true);
@@ -208,7 +197,7 @@ export default function PlatformAdminsPage() {
                       size="sm"
                       variant="outline"
                       className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs gap-1"
-                      onClick={() => void onResend(admin.invitation!.invitationId)}
+                      onClick={() => void onResend(admin.invitation?.invitationId ?? '')}
                     >
                       <RotateCcw className="h-3 w-3" />
                       Resend

@@ -122,7 +122,9 @@ export default function EditJobPage() {
               );
             }
           }
-        } catch {}
+        } catch {
+          /* ignore – fall through to finally */
+        }
       } finally {
         setLoading(false);
       }
@@ -145,9 +147,8 @@ export default function EditJobPage() {
 
       await companyJobsApi.update(params.id, {
         roleTitle: title.trim(),
-        status: status[0] === 'Active' ? 'OPEN' : 'CLOSED',
         employmentType: empType,
-        location: location.trim() || undefined,
+        location: location.trim() || 'Remote',
         salaryDetails: pay.trim() || undefined,
         roleDetails: description.trim() || undefined,
         requiredSkills: skills.map((s) => ({
@@ -174,8 +175,51 @@ export default function EditJobPage() {
     setDeleting(true);
     try {
       await companyJobsApi.delete(params.id);
-    } catch {}
+    } catch {
+      /* ignore – navigate regardless */
+    }
     router.push('/jobs');
+  }
+
+  async function handleDuplicate() {
+    setSaving(true);
+    try {
+      const empType =
+        type[0] === 'Internship'
+          ? 'INTERNSHIP'
+          : type[0] === 'Part-time'
+            ? 'PART_TIME'
+            : 'FULL_TIME';
+
+      await companyJobsApi.create({
+        companyName: 'Company',
+        roleTitle: `${title.trim()} (Copy)`,
+        domain: 'SOFTWARE_IT',
+        employmentType: empType,
+        minYearsExperience: 0,
+        maxYearsExperience: 3,
+        location: location.trim() || 'Remote',
+        salaryDetails: pay.trim() || undefined,
+        roleDetails: description.trim() || undefined,
+        requiredSkills: skills.map((s) => ({
+          skillCode: s.name.toUpperCase().replace(/\s+/g, '_'),
+          minProficiency:
+            s.level === 'Advanced'
+              ? 'ADVANCED'
+              : s.level === 'Professional'
+                ? 'PROFESSIONAL'
+                : s.level === 'Beginner'
+                  ? 'BEGINNER'
+                  : 'INTERMEDIATE',
+        })),
+      });
+      setDeleteOpen(false);
+      router.push('/jobs');
+    } catch (err) {
+      setError(formatApiError(err, 'Failed to duplicate job.'));
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -378,6 +422,14 @@ export default function EditJobPage() {
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setDeleteOpen(false)} className={secondaryButton}>
             Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleDuplicate}
+            className={secondaryButton}
+          >
+            Duplicate instead
           </button>
           <button type="button" disabled={deleting} onClick={handleDelete} className={dangerButton}>
             {deleting ? 'Deleting...' : 'Delete job'}

@@ -11,11 +11,7 @@ import {
 import { greetingForHour } from '../../lib/tpo-dashboard-metrics';
 import {
   bentoCardClass,
-  bentoTableBodyRowClass,
-  bentoTableCellClass,
   bentoTableClass,
-  bentoTableHeadCellClass,
-  bentoTableHeadRowClass,
   bentoTableShellClass,
   dashboardPrimaryButtonClass,
   dashboardSectionSubtitleClass,

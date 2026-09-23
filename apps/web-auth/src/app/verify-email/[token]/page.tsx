@@ -40,25 +40,23 @@ export default function VerifyEmailPage() {
   return (
     <LoginShell>
       <section className="flex w-full max-w-[420px] flex-col items-center text-center">
-        <SmartLogo kind="mark" tone="on-light" className="mx-auto size-11" title="SMART" />
+        <SmartLogo kind="wordmark" tone="on-light" className="mx-auto h-8 w-auto" title="SMART" />
 
-        <h1 className="mt-10 text-[2.5rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.875rem]">
+        <h1 className="mt-8 text-[1.75rem] font-bold leading-tight tracking-tight text-[#111827] sm:text-[2rem]">
           {heading}
         </h1>
-        <p className="mt-3 text-[17px] leading-relaxed tracking-[-0.01em] text-[#64748b] sm:text-lg">
-          {message}
-        </p>
+        <p className="mt-2.5 text-[15px] leading-relaxed text-[#6b7280]">{message}</p>
 
         {status === 'pending' ? (
           <span
             role="status"
             aria-live="polite"
-            className="mt-8 h-8 w-8 animate-spin rounded-full border-2 border-[#172033]/15 border-t-[#172033]"
+            className="mt-8 h-8 w-8 animate-spin rounded-full border-2 border-black/15 border-t-black"
           />
         ) : (
           <a
             href="/login"
-            className="mt-8 flex w-full items-center justify-center rounded-lg bg-[#172033] px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0f172a]"
+            className="mt-8 flex h-11 w-full items-center justify-center rounded-[11px] bg-black px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]"
           >
             Back to sign in
           </a>

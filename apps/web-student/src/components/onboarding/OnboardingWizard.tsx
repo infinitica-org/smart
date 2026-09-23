@@ -56,7 +56,7 @@ function furthestStep(form: OnboardingProfileForm): WizardStepId {
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<Step>('phone');
   const [formData, setFormData] = useState<OnboardingProfileForm>(loadOnboardingDraft);
-  const [saving, setSaving] = useState(false);
+  const [_saving, setSaving] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
@@ -150,8 +150,10 @@ export default function OnboardingWizard() {
   if (!hydrated) {
     return (
       <WizardPage>
-        <div className="flex justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
+        <div className="flex justify-center py-20">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-100/90 dark:bg-zinc-800/80">
+            <div className="h-10 w-10 rounded-full border-[2.5px] border-zinc-200/80 dark:border-zinc-700 border-t-black dark:border-t-white animate-spin" />
+          </div>
         </div>
       </WizardPage>
     );
@@ -160,7 +162,7 @@ export default function OnboardingWizard() {
   return (
     <WizardPage>
       {currentStep !== 'done' ? (
-        <div className="mb-8">
+        <div className="mb-3 sm:mb-4">
           <ProgressDots current={currentStep} />
         </div>
       ) : null}
