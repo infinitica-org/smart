@@ -3,6 +3,10 @@ import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthService, hashPassword, hashRefreshToken } from './auth.service.js';
 
+function mockAuditPublisher() {
+  return { record: vi.fn() };
+}
+
 function userRow(overrides: Record<string, unknown> = {}) {
   return {
     id: randomUUID(),
@@ -35,7 +39,12 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
     const cookies: string[] = [];
     const reply = {
       setCookie: (_name: string, value: string) => {
@@ -82,7 +91,12 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'rotated.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
     const request = { cookies: { smart_refresh: raw } };
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -114,6 +128,7 @@ describe('AuthService refresh rotation', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -125,6 +140,44 @@ describe('AuthService refresh rotation', () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(reply.clearCookie).toHaveBeenCalled();
+  });
+
+  it('audits refresh-token reuse', async () => {
+    const familyId = randomUUID();
+    const userId = randomUUID();
+    const raw = 'stolen';
+    const prisma = {
+      refreshToken: {
+        findUnique: vi.fn(async () => ({
+          id: randomUUID(),
+          familyId,
+          userId,
+          tokenHash: hashRefreshToken(raw),
+          expiresAt: new Date(Date.now() + 60_000),
+          revokedAt: new Date(),
+          user: userRow({ id: userId }),
+        })),
+        updateMany: vi.fn(async () => ({ count: 2 })),
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.refresh(
+        { cookies: { smart_refresh: raw } } as never,
+        { setCookie: vi.fn(), clearCookie: vi.fn() } as never,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: userId, action: 'auth.refresh_reuse_detected' }),
+    );
   });
 
   it('blocks tenant login when the institution is on hold', async () => {
@@ -146,6 +199,7 @@ describe('AuthService refresh rotation', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
     await expect(auth.login('student@example.com', 'password1', {} as never)).rejects.toMatchObject(
       {
@@ -154,6 +208,62 @@ describe('AuthService refresh rotation', () => {
           message: 'This institution is on hold. You cannot use SMART until it is released.',
         },
       },
+    );
+  });
+});
+
+describe('AuthService — audit trail (I490)', () => {
+  it('audits a successful login', async () => {
+    const passwordHash = await hashPassword('password1');
+    const user = userRow({ passwordHash });
+    const prisma = {
+      user: { findUnique: vi.fn(async () => user) },
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      auditPublisher as never,
+    );
+
+    await auth.login('student@example.com', 'password1', { setCookie: vi.fn() } as never);
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: user.id, action: 'auth.login', resourceId: user.id }),
+    );
+  });
+
+  it('audits logout when a valid session is cleared', async () => {
+    const userId = randomUUID();
+    const raw = 'refresh-token';
+    const prisma = {
+      refreshToken: {
+        findUnique: vi.fn(async () => ({
+          id: randomUUID(),
+          familyId: randomUUID(),
+          userId,
+          tokenHash: hashRefreshToken(raw),
+        })),
+        updateMany: vi.fn(),
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+
+    await auth.logout(
+      { cookies: { smart_refresh: raw } } as never,
+      { clearCookie: vi.fn() } as never,
+    );
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: userId, action: 'auth.logout' }),
     );
   });
 });
@@ -176,10 +286,12 @@ describe('AuthService.register', () => {
       },
     };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auditPublisher = mockAuditPublisher();
     const auth = new AuthService(
       prisma as never,
       { signAsync: vi.fn(async () => 'access.jwt') } as never,
       storage as never,
+      auditPublisher as never,
     );
     const reply = { setCookie: vi.fn() };
 
@@ -204,6 +316,9 @@ describe('AuthService.register', () => {
         }),
       }),
     );
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.register' }),
+    );
   });
 
   it('rejects a duplicate email with 409', async () => {
@@ -213,6 +328,7 @@ describe('AuthService.register', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
 
     await expect(
@@ -238,6 +354,7 @@ describe('AuthService.register', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
 
     await expect(
@@ -264,6 +381,7 @@ describe('AuthService.listSelectableInstitutions', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
 
     await auth.listSelectableInstitutions();
