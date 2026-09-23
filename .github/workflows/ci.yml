@@ -2,9 +2,10 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, qa, dev]
-  push:
-    branches: [main, qa, dev]
+    branches: [dev]
+    # Only run CI on feature PRs into dev — not on promotion merges to qa/main.
+    # This conserves GitHub Actions minutes on the Free plan.
+    # Deploy workflows (deploy-qa.yml, deploy-prod.yml) handle qa/main separately.
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
