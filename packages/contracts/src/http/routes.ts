@@ -2060,6 +2060,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'POST',
+    path: '/projects/:projectId/replace',
+    module: 'platform',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'projects.submit',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Replace an owned project with another; the old project becomes inactive.',
+  },
+  {
+    method: 'POST',
     path: '/projects/:projectId/defense/prepare',
     module: 'evaluation',
     owner: 'Ramansh',

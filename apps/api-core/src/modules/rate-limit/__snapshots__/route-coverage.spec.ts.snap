@@ -234,6 +234,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /projects/:projectId/defense/prepare": "evaluation.projectDefense",
   "POST /projects/:projectId/defense/reply": "evaluation.projectDefense",
   "POST /projects/:projectId/defense/start": "evaluation.projectDefense",
+  "POST /projects/:projectId/replace": "projects.submit",
   "POST /signals/connect/:sourceId": "signals.connect",
   "POST /signals/refresh": "corroboration.refresh",
   "POST /tpo/batches": "role.institutionAdmin",

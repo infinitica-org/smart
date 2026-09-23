@@ -455,5 +455,12 @@ export class EvidenceService {
         statusCode: 404,
       });
     }
+    if (row.isActive === false) {
+      throw new BadRequestException({
+        error: 'project_inactive',
+        message: 'This project is inactive and cannot be updated.',
+        statusCode: 400,
+      });
+    }
   }
 }

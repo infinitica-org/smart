@@ -195,6 +195,11 @@ export const ProjectDtoSchema = z.object({
   githubUrl: z.string().nullable(),
   liveUrl: z.string().nullable(),
   status: ProjectStatusSchema,
+  /**
+   * Portfolio lifecycle. False after the student replaces this project.
+   * Omitted values are treated as active by older clients.
+   */
+  isActive: z.boolean().optional(),
   createdAt: IsoDateTimeSchema,
   report: ProjectVerificationReportDtoSchema.nullable(),
   interviewRequired: z.boolean(),
@@ -209,6 +214,18 @@ export const ListMyProjectsResponseSchema = z.object({
   projects: z.array(ProjectDtoSchema),
 });
 export type ListMyProjectsResponse = z.infer<typeof ListMyProjectsResponseSchema>;
+
+/** Mark an owned project inactive and keep another owned project as the current one. */
+export const ReplaceProjectRequestSchema = z.object({
+  replacementProjectId: UuidSchema,
+});
+export type ReplaceProjectRequest = z.infer<typeof ReplaceProjectRequestSchema>;
+
+export const ReplaceProjectResponseSchema = z.object({
+  replacedProject: ProjectDtoSchema,
+  replacementProject: ProjectDtoSchema,
+});
+export type ReplaceProjectResponse = z.infer<typeof ReplaceProjectResponseSchema>;
 
 export const ProjectReviewQueueItemDtoSchema = z.object({
   projectId: UuidSchema,

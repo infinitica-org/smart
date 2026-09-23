@@ -149,6 +149,7 @@ import {
   ProctoringVoiceResponseSchema,
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
+  ReplaceProjectResponseSchema,
   AbandonProjectDefenseResponseSchema,
   PrepareProjectDefenseResponseSchema,
   StartProjectDefenseResponseSchema,
@@ -1262,6 +1263,11 @@ export function projectsApi(client: SmartApiClient) {
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+
+    replace: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/replace`), body, {
+        schema: ReplaceProjectResponseSchema,
+      }),
 
     prepareDefense: (projectId: string) =>
       client.post(prefixed(`/projects/${projectId}/defense/prepare`), undefined, {
