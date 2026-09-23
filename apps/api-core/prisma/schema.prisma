@@ -169,6 +169,11 @@ enum TenantVerificationStatus {
   REJECTED
 }
 
+enum OrganizationType {
+  UNIVERSITY
+  EMPLOYER
+}
+
 enum CompanyMode {
   SERVICE
   PRODUCT
@@ -246,6 +251,8 @@ model Institution {
   heldAt             DateTime?                @map("held_at") @db.Timestamptz(6)
   planId             String                   @map("plan_id") @db.Uuid
   plan               SubscriptionPlan         @relation(fields: [planId], references: [id])
+  organizationId     String?                  @map("organization_id") @db.Uuid
+  organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users                User[]
@@ -258,6 +265,7 @@ model Institution {
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
 
+  @@index([organizationId])
   @@map("institutions")
 }
 
@@ -818,12 +826,14 @@ model Organization {
   id                 String                   @id @default(uuid()) @db.Uuid
   name               String
   domain             String?                  @unique
+  orgType            OrganizationType         @default(EMPLOYER) @map("org_type")
   verificationStatus TenantVerificationStatus @default(PENDING) @map("verification_status")
   verificationReason String?                  @map("verification_reason")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   companies       Company[]
+  institutions    Institution[]
   workExperiences WorkExperience[]
 
   @@map("organizations")
