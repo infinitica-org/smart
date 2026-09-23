@@ -50,6 +50,13 @@ export const PasswordResetConfirmRequestSchema = z.object({
 });
 export type PasswordResetConfirmRequest = z.infer<typeof PasswordResetConfirmRequestSchema>;
 
+/* ------------------------------ role assignment ---------------------------- */
+
+export const AssignRoleRequestSchema = z.object({
+  role: UserRoleSchema.exclude(['PUBLIC']),
+});
+export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;
+
 export const SsoStartRequestSchema = z.object({
   provider: AuthProviderSchema,
   /** Institutional email domain, e.g. `psgtech.ac.in`. Resolves the SAML/OIDC tenant. */

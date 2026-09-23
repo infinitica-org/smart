@@ -144,6 +144,10 @@ export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] 
 export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
 export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
 
+export const ORG_TYPES = ['UNIVERSITY', 'EMPLOYER'] as const;
+export const OrgTypeSchema = z.enum(ORG_TYPES);
+export type OrgType = z.infer<typeof OrgTypeSchema>;
+
 /** CN-T09 — reservation claims the username; activation happens separately (first visibility opt-in). */
 export const USERNAME_STATUSES = ['RESERVED', 'ACTIVE'] as const;
 export const UsernameStatusSchema = z.enum(USERNAME_STATUSES);
