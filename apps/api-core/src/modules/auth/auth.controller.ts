@@ -3,17 +3,24 @@ import {
   API_PREFIX,
   AcceptInvitationRequestSchema,
   PasswordLoginRequestSchema,
+  PasswordResetConfirmRequestSchema,
+  PasswordResetRequestSchema,
+  RegisterRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
 import { InvitationsService } from '../invitations/invitations.service.js';
 import { AuthService } from './auth.service.js';
+import { EmailVerificationService } from './email-verification.service.js';
+import { PasswordResetService } from './password-reset.service.js';
 
 @Controller(`${API_PREFIX}/auth`)
 export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
+    @Inject(EmailVerificationService) private readonly emailVerification: EmailVerificationService,
+    @Inject(PasswordResetService) private readonly passwordReset: PasswordResetService,
   ) {}
 
   @Public()
@@ -34,6 +41,48 @@ export class AuthController {
   @HttpCode(204)
   logout(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     return this.auth.logout(request, reply);
+  }
+
+  @Public()
+  @Get('institutions')
+  listSelectableInstitutions() {
+    return this.auth.listSelectableInstitutions();
+  }
+
+  @Public()
+  @Post('register')
+  async register(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+    const parsed = RegisterRequestSchema.parse(body);
+    const result = await this.auth.register(parsed, reply);
+    await this.emailVerification.sendForUser(
+      result.user.userId,
+      result.user.email,
+      result.user.fullName,
+    );
+    return result;
+  }
+
+  @Public()
+  @Post('verify-email/:token')
+  @HttpCode(204)
+  async verifyEmail(@Param('token') token: string) {
+    await this.emailVerification.confirm(token);
+  }
+
+  @Public()
+  @Post('password-reset/request')
+  @HttpCode(204)
+  async requestPasswordReset(@Body() body: unknown) {
+    const parsed = PasswordResetRequestSchema.parse(body);
+    await this.passwordReset.request(parsed.email);
+  }
+
+  @Public()
+  @Post('password-reset/:token/confirm')
+  @HttpCode(204)
+  async confirmPasswordReset(@Param('token') token: string, @Body() body: unknown) {
+    const parsed = PasswordResetConfirmRequestSchema.parse(body);
+    await this.passwordReset.confirm(token, parsed.newPassword);
   }
 
   @Public()

@@ -98,6 +98,7 @@ import {
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   LinkedinOauthUrlResponseSchema,
+  SelectableInstitutionDtoSchema,
   ListCertificateVerificationEventsResponseSchema,
   ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
@@ -233,6 +234,38 @@ export function authApi(client: SmartApiClient) {
 
     changePassword: (body: { currentPassword: string; newPassword: string }) =>
       client.post<void>(prefixed('/users/me/password'), body),
+
+    listInstitutions: () =>
+      client.get(prefixed('/auth/institutions'), {
+        schema: SelectableInstitutionDtoSchema.array(),
+        anonymous: true,
+      }),
+
+    register: (body: {
+      email: string;
+      password: string;
+      fullName: string;
+      institutionId: string;
+    }) =>
+      client.post(prefixed('/auth/register'), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+
+    verifyEmail: (token: string) =>
+      client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
+        anonymous: true,
+      }),
+
+    requestPasswordReset: (body: { email: string }) =>
+      client.post<void>(prefixed('/auth/password-reset/request'), body, {
+        anonymous: true,
+      }),
+
+    confirmPasswordReset: (token: string, body: { newPassword: string }) =>
+      client.post<void>(prefixed(`/auth/password-reset/${token}/confirm`), body, {
+        anonymous: true,
+      }),
 
     previewInvitation: (token: string) =>
       client.get(prefixed(`/auth/invitations/${token}`), {
