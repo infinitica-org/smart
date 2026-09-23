@@ -707,3 +707,30 @@ describe('onboardingApi education verification contracts', () => {
     expect(result.rejectionReason).toBe('Invalid degree');
   });
 });
+
+describe('public company onboarding', () => {
+  it('starts a session without Authorization header', async () => {
+    const body = {
+      sessionToken: 'a'.repeat(43),
+      expiresAt: '2026-12-31T00:00:00.000Z',
+      onboardingStatus: 'EMAIL_VERIFICATION_PENDING',
+    };
+    const { fetchImpl, calls } = stubFetch([{ status: 201, body }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test',
+        getAccessToken: () => 'token-123',
+        fetchImpl,
+      }),
+    );
+
+    const result = await api.public.startCompanyOnboarding({
+      representative: { fullName: 'Jane Doe', workEmail: 'jane@acme.example.com' },
+      website: 'https://acme.example.com',
+    });
+
+    expect(result.sessionToken).toBe(body.sessionToken);
+    expect(calls[0]?.url).toBe('https://api.smart.test/api/v1/public/company/onboarding/sessions');
+    expect((calls[0]?.init.headers as Record<string, string>).authorization).toBeUndefined();
+  });
+});

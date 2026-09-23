@@ -18,6 +18,7 @@ export const DEFAULT_CORROBORATION_POLICY: CorroborationPolicy = {
   contradictionFloor: {
     BEGINNER: 0.2,
     INTERMEDIATE: 0.25,
+    PROFICIENT: 0.275,
     ADVANCED: 0.3,
     PROFESSIONAL: 0.35,
   },

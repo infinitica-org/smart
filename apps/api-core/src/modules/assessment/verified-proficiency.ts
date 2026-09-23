@@ -19,6 +19,10 @@ export function claimProficiencyFromDemonstrated(
     return 'ADVANCED';
   }
 
+  if (demonstrated === 'PROFICIENT') {
+    return 'PROFICIENT';
+  }
+
   if (demonstrated === 'INTERMEDIATE') {
     return 'INTERMEDIATE';
   }

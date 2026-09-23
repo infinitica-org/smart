@@ -13,6 +13,7 @@ describe('verified-proficiency', () => {
 
   it('maps demonstrated levels onto claim proficiency', () => {
     expect(claimProficiencyFromDemonstrated('INTERMEDIATE')).toBe('INTERMEDIATE');
+    expect(claimProficiencyFromDemonstrated('PROFICIENT')).toBe('PROFICIENT');
     expect(claimProficiencyFromDemonstrated('ADVANCED')).toBe('ADVANCED');
   });
 });

@@ -135,8 +135,8 @@ export default function CandidatesPage() {
     <div className={candidatesPageStackClass}>
       <TpoBentoPageHeader
         minimal
-        title="Candidates Repository"
-        description="Search and review onboarded candidates, their onboarding progress, and skill verification status."
+        title="Students"
+        description="Search and review whitelisted students, verification progress, and skills. To add candidates, use Whitelist in the main menu."
         badge={<span className={bentoChipClass}>{candidateCountLabel(students.length)}</span>}
       />
 

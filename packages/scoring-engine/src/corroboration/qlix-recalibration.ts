@@ -13,6 +13,7 @@ export const POSITIVE_PLACEMENT_OUTCOMES = new Set(['ACCEPTED', 'OFFERED']);
 const PROFICIENCY_SCORE: Record<string, number> = {
   BEGINNER: 0.25,
   INTERMEDIATE: 0.5,
+  PROFICIENT: 0.625,
   ADVANCED: 0.75,
   PROFESSIONAL: 1,
 };

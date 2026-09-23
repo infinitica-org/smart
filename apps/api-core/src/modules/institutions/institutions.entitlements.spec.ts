@@ -46,7 +46,13 @@ function service(opts: {
       count: vi.fn().mockResolvedValue(opts.candidateCount ?? 0),
     },
   };
-  return new InstitutionsService(prisma as never, {} as never, {} as never, noopRedis as never);
+  return new InstitutionsService(
+    prisma as never,
+    {} as never,
+    {} as never,
+    noopRedis as never,
+    {} as never,
+  );
 }
 
 describe('InstitutionsService entitlement resolution', () => {

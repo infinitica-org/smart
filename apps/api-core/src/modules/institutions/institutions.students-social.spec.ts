@@ -20,6 +20,7 @@ function setup(users: Array<Record<string, unknown>>) {
     {} as never,
     { record: vi.fn() } as never,
     noopRedis as never,
+    {} as never,
   );
   return { service };
 }

@@ -1,16 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import type { SkillEvidenceContext } from '@smart/contracts';
 import { summarizeEvidenceContext } from '@/lib/competency-display';
 import type { SkillEvidenceContextView } from '@/lib/skill-evidence-context';
 
 export function SkillEvidenceContextPanel({
   context,
   compact = false,
+  explicitAssociationEmpty = false,
 }: {
-  context: SkillEvidenceContext | SkillEvidenceContextView | undefined;
+  context: SkillEvidenceContextView | undefined;
   compact?: boolean;
+  explicitAssociationEmpty?: boolean;
 }) {
   const hasEvidence = (context?.availableCount ?? 0) > 0;
 
@@ -24,10 +25,18 @@ export function SkillEvidenceContextPanel({
       aria-label="Linked profile evidence"
     >
       <p className="font-medium text-foreground">
-        {hasEvidence ? 'Linked profile evidence' : 'No linked evidence for this skill'}
+        {hasEvidence
+          ? context?.claimLinkedSource
+            ? 'Evidence associated with this skill'
+            : 'Linked profile evidence'
+          : explicitAssociationEmpty
+            ? 'No associated evidence for this skill'
+            : 'No linked evidence for this skill'}
       </p>
       <p className="mt-1 leading-relaxed text-muted-foreground">
-        {summarizeEvidenceContext(context)}
+        {explicitAssociationEmpty
+          ? 'No evidence has been associated with this skill yet. You can add profile evidence and link it when you are ready.'
+          : summarizeEvidenceContext(context)}
       </p>
       {hasEvidence && context ? (
         <ul className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
@@ -51,6 +60,13 @@ export function SkillEvidenceContextPanel({
             );
           })}
         </ul>
+      ) : explicitAssociationEmpty ? (
+        <Link
+          href="/profile"
+          className="mt-2 inline-block text-xs font-semibold text-foreground hover:underline"
+        >
+          Go to your profile
+        </Link>
       ) : (
         <Link
           href="/profile"

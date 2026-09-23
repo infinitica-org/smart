@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { TenantVerificationStatusSchema } from '../domain/enums.js';
+import { OrgTypeSchema, TenantVerificationStatusSchema } from '../domain/enums.js';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
 
 export const OrganizationDtoSchema = z.object({
   organizationId: UuidSchema,
   name: z.string().min(1).max(200),
   domain: z.string().nullable(),
+  orgType: OrgTypeSchema,
   verificationStatus: TenantVerificationStatusSchema,
   verificationReason: z.string().nullable(),
   createdAt: IsoDateTimeSchema,

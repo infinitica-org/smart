@@ -150,7 +150,7 @@ describe('AC-T05 shortlist authorization', () => {
     );
   });
 
-  it.each(['B2B_PARTNER', 'STUDENT', 'SUPER_ADMIN'])(
+  it.each(['B2B_PARTNER', 'COMPANY', 'STUDENT', 'SUPER_ADMIN'])(
     'rejects %s on the shortlist route',
     (role) => {
       const guard = new RolesGuard({

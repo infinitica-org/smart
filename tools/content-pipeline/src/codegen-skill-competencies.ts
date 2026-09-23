@@ -27,7 +27,7 @@ const SLOT_DIFFICULTIES = [
   'BEGINNER',
   'BEGINNER',
   'INTERMEDIATE',
-  'ADVANCED',
+  'PROFICIENT',
   'ADVANCED',
   'PROFESSIONAL',
 ] as const;
@@ -90,7 +90,7 @@ function emitCompetencyModel(skill: RawSkill, profile: SkillRegistryProfile): st
   return entries.join(',\n');
 }
 
-type ProficiencyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
+type ProficiencyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'PROFICIENT' | 'ADVANCED' | 'PROFESSIONAL';
 
 const DEFAULT_VERIFICATION_FLAGS: Record<
   ProficiencyLevel,
@@ -106,6 +106,11 @@ const DEFAULT_VERIFICATION_FLAGS: Record<
     interviewRequired: false,
   },
   INTERMEDIATE: {
+    realWorldApplicationRequired: false,
+    substantialApplicationRequired: false,
+    interviewRequired: false,
+  },
+  PROFICIENT: {
     realWorldApplicationRequired: false,
     substantialApplicationRequired: false,
     interviewRequired: false,
@@ -139,6 +144,7 @@ function emitProficiencyRequirements(skill: RawSkill, profile: SkillRegistryProf
   return `[
       { level: 'BEGINNER', requiredCompetencyIds: [ '${ids[0]}' ], criticalCompetencyIds: [ '${ids[0]}' ], ${emitVerificationFlags('BEGINNER', profile)} },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '${ids[0]}', '${ids[1]}', '${ids[2]}' ], criticalCompetencyIds: [ '${ids[2]}' ], ${emitVerificationFlags('INTERMEDIATE', profile)} },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '${ids[0]}', '${ids[1]}', '${ids[2]}', '${ids[3]}' ], criticalCompetencyIds: [ '${ids[3]}' ], ${emitVerificationFlags('PROFICIENT', profile)} },
       { level: 'ADVANCED', requiredCompetencyIds: [ '${ids[0]}', '${ids[1]}', '${ids[2]}', '${ids[3]}', '${ids[4]}' ], criticalCompetencyIds: [ '${ids[3]}', '${ids[4]}' ], ${emitVerificationFlags('ADVANCED', profile)} },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '${ids[0]}', '${ids[1]}', '${ids[2]}', '${ids[3]}', '${ids[4]}', '${ids[5]}' ], criticalCompetencyIds: [ '${ids[4]}', '${ids[5]}' ], ${emitVerificationFlags('PROFESSIONAL', profile)} },
     ]`;
@@ -164,6 +170,7 @@ ${emitCompetencyModel(skill, profile)}
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of ${escapeString(skill.name)}',
       INTERMEDIATE: 'Independent execution of bounded ${escapeString(skill.name)} tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for ${escapeString(skill.name)}',
       ADVANCED: 'Owns ${escapeString(skill.name)} components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for ${escapeString(skill.name)} at org scale',
     },

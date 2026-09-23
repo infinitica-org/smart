@@ -17,7 +17,9 @@ export const RULE_WEIGHTS = {
 export const PROFICIENCY_RANK = {
   BEGINNER: 1,
   INTERMEDIATE: 2,
-  ADVANCED: 3,
+  PROFICIENT: 3,
+  ADVANCED: 4,
+  PROFESSIONAL: 5,
 } as const;
 
 export type ProficiencyName = keyof typeof PROFICIENCY_RANK;

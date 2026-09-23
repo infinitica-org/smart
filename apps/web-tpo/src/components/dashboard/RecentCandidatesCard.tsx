@@ -60,7 +60,7 @@ export function RecentCandidatesCard({ students, claims, loading }: RecentCandid
             Onboard candidates to start building your cohort.
           </p>
           <Link
-            href="/provisioning"
+            href="/whitelist"
             className="mt-4 inline-flex text-[13px] font-semibold text-[var(--ds-link)]"
           >
             Go to onboarding

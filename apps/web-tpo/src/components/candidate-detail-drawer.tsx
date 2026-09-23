@@ -6,6 +6,7 @@ import { isSmartApiError } from '@smart/api-client';
 import type { InstitutionStudentDto, SkillClaimDto } from '@smart/contracts';
 import { api } from '../lib/api';
 import { CandidateRepositoryProfileView } from './candidates/CandidateRepositoryProfileView';
+import { CandidateEvidenceReviewPanel } from './candidates/CandidateEvidenceReviewPanel';
 import { bentoThemeClass } from '../lib/tpo-dashboard-ui';
 
 export function CandidateDetailDrawer({
@@ -91,13 +92,14 @@ export function CandidateDetailDrawer({
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
           <CandidateRepositoryProfileView
             candidate={candidate}
             claims={claims}
             claimsLoading={loading}
             claimsError={error}
           />
+          <CandidateEvidenceReviewPanel studentId={candidate.userId} />
         </div>
       </div>
     </>

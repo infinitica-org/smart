@@ -18,6 +18,7 @@ enum UserRole {
   PLACEMENT_STAFF
   STUDENT
   B2B_PARTNER
+  COMPANY
 }
 
 enum AuthProvider {
@@ -169,14 +170,54 @@ enum TenantVerificationStatus {
   REJECTED
 }
 
+enum OrganizationType {
+  UNIVERSITY
+  EMPLOYER
+}
+
 enum CompanyMode {
   SERVICE
   PRODUCT
 }
 
+/// CO self-onboarding applicant progress — mirrors @smart/contracts CompanyOnboardingStatus.
+enum CompanyOnboardingStatus {
+  DRAFT
+  EMAIL_VERIFICATION_PENDING
+  EMAIL_VERIFIED
+  SUBMITTED
+  PENDING_REVIEW
+  RESUBMISSION_ALLOWED
+  ACCOUNT_ACTIVE
+  WITHDRAWN
+  EXPIRED
+}
+
+enum CompanyVerificationDocumentType {
+  BUSINESS_REGISTRATION
+  CERTIFICATE_OF_INCORPORATION
+  TAX_DOCUMENT
+  GOVERNMENT_ID
+  AUTHORITY_PROOF
+  COMPANY_LOGO
+  OTHER
+}
+
+enum CompanyVerificationDocumentReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum CompanyVerificationDocumentUploadedBy {
+  REPRESENTATIVE
+  SUPER_ADMIN
+}
+
 enum SkillProficiency {
   BEGINNER
   INTERMEDIATE
+  PROFICIENT
   ADVANCED
   PROFESSIONAL
 }
@@ -245,6 +286,8 @@ model Institution {
   heldAt             DateTime?                @map("held_at") @db.Timestamptz(6)
   planId             String                   @map("plan_id") @db.Uuid
   plan               SubscriptionPlan         @relation(fields: [planId], references: [id])
+  organizationId     String?                  @map("organization_id") @db.Uuid
+  organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users                User[]
@@ -257,6 +300,7 @@ model Institution {
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
 
+  @@index([organizationId])
   @@map("institutions")
 }
 
@@ -307,60 +351,62 @@ model Invitation {
 }
 
 model User {
-  id                  String       @id @default(uuid()) @db.Uuid
-  email               String       @unique
-  fullName            String       @map("full_name")
-  passwordHash        String?      @map("password_hash")
-  role                UserRole
-  provider            AuthProvider @default(PASSWORD)
-  emailVerified       Boolean      @default(false) @map("email_verified")
-  institutionId       String?      @map("institution_id") @db.Uuid
-  institution         Institution? @relation(fields: [institutionId], references: [id])
-  batchId             String?      @map("batch_id") @db.Uuid
-  batch               Batch?       @relation("BatchMembers", fields: [batchId], references: [id], onDelete: SetNull)
-  groupLabel          String?      @map("group_label")
-  primaryTrackId      String?      @map("primary_track_id") @db.Uuid
-  primaryTrack        Track?       @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
-  secondaryTrackId    String?      @map("secondary_track_id") @db.Uuid
-  secondaryTrack      Track?       @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
-  heldAt              DateTime?    @map("held_at") @db.Timestamptz(6)
-  heldReason          String?      @map("held_reason")
+  id                     String          @id @default(uuid()) @db.Uuid
+  email                  String          @unique
+  fullName               String          @map("full_name")
+  passwordHash           String?         @map("password_hash")
+  role                   UserRole
+  provider               AuthProvider    @default(PASSWORD)
+  emailVerified          Boolean         @default(false) @map("email_verified")
+  institutionId          String?         @map("institution_id") @db.Uuid
+  institution            Institution?    @relation(fields: [institutionId], references: [id])
+  batchId                String?         @map("batch_id") @db.Uuid
+  batch                  Batch?          @relation("BatchMembers", fields: [batchId], references: [id], onDelete: SetNull)
+  groupLabel             String?         @map("group_label")
+  primaryTrackId         String?         @map("primary_track_id") @db.Uuid
+  primaryTrack           Track?          @relation("UserPrimaryTrack", fields: [primaryTrackId], references: [id])
+  secondaryTrackId       String?         @map("secondary_track_id") @db.Uuid
+  secondaryTrack         Track?          @relation("UserSecondaryTrack", fields: [secondaryTrackId], references: [id])
+  heldAt                 DateTime?       @map("held_at") @db.Timestamptz(6)
+  heldReason             String?         @map("held_reason")
   /// CN-T01 — mandatory candidate onboarding gate (server-side; not localStorage).
-  onboardingCompleted Boolean      @default(false) @map("onboarding_completed")
+  onboardingCompleted    Boolean         @default(false) @map("onboarding_completed")
   /// Structured onboarding profile + consent snapshot (JSON).
-  onboardingDetails   Json?        @map("onboarding_details")
+  onboardingDetails      Json?           @map("onboarding_details")
   /// Object storage key for the candidate profile photo (signed URL served at read time).
-  profilePhotoObjectKey String?    @map("profile_photo_object_key")
-  dpdpConsentAt       DateTime?    @map("dpdp_consent_at") @db.Timestamptz(6)
+  profilePhotoObjectKey  String?         @map("profile_photo_object_key")
+  dpdpConsentAt          DateTime?       @map("dpdp_consent_at") @db.Timestamptz(6)
   /// Persistent, non-expiring public-profile share link (lazily minted on first request).
-  publicProfileSlug   String?      @unique @map("public_profile_slug")
+  publicProfileSlug      String?         @unique @map("public_profile_slug")
   /// S6-VV-75 — CGPA on a 0-10 scale, collected during onboarding; denormalized onto User (not
   /// CandidateEducation) because matching needs a single indexable value per student.
-  cgpa                Decimal?     @map("cgpa") @db.Decimal(4, 2)
+  cgpa                   Decimal?        @map("cgpa") @db.Decimal(4, 2)
   /// S6-VV-75 — 10th/SSC exam percentage (0-100).
-  sscPercentage       Decimal?     @map("ssc_percentage") @db.Decimal(5, 2)
+  sscPercentage          Decimal?        @map("ssc_percentage") @db.Decimal(5, 2)
   /// S6-VV-75 — 12th/HSC exam percentage (0-100).
-  hscPercentage       Decimal?     @map("hsc_percentage") @db.Decimal(5, 2)
+  hscPercentage          Decimal?        @map("hsc_percentage") @db.Decimal(5, 2)
   /// Active academic backlog (placement eligibility).
-  hasActiveBacklog    Boolean?     @map("has_active_backlog")
+  hasActiveBacklog       Boolean?        @map("has_active_backlog")
   /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
-  username             String?        @map("username")
+  username               String?         @map("username")
   /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
-  usernameNormalized   String?        @unique @map("username_normalized")
+  usernameNormalized     String?         @unique @map("username_normalized")
   /// CN-T09 — reservation claims the name; activation (flipped on first visibility opt-in) is a separate step.
-  usernameStatus       UsernameStatus? @map("username_status")
-  usernameReservedAt   DateTime?      @map("username_reserved_at") @db.Timestamptz(6)
-  usernameActivatedAt  DateTime?      @map("username_activated_at") @db.Timestamptz(6)
+  usernameStatus         UsernameStatus? @map("username_status")
+  usernameReservedAt     DateTime?       @map("username_reserved_at") @db.Timestamptz(6)
+  usernameActivatedAt    DateTime?       @map("username_activated_at") @db.Timestamptz(6)
   /// CN-T09 — internal-only rate-limit state for reservation attempts; never serialized in any API response.
-  usernameFailedAttempts Int          @default(0) @map("username_failed_attempts")
-  usernameCooldownUntil  DateTime?    @map("username_cooldown_until") @db.Timestamptz(6)
+  usernameFailedAttempts Int             @default(0) @map("username_failed_attempts")
+  usernameCooldownUntil  DateTime?       @map("username_cooldown_until") @db.Timestamptz(6)
   /// CN-T09 — global on/off switch for the public profile page (`publicProfileSlug` already existed; this gates whether it resolves).
-  profileVisible       Boolean        @default(false) @map("profile_visible")
+  profileVisible         Boolean         @default(false) @map("profile_visible")
   /// CN-T09 — opt-in only; default keeps the public page verified-items-only.
-  showInProgressItems  Boolean        @default(false) @map("show_in_progress_items")
-  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  showInProgressItems    Boolean         @default(false) @map("show_in_progress_items")
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens         RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
   attempts              Attempt[]
   certificates          Certificate[]
   placements            PlacementRecord[]
@@ -385,11 +431,13 @@ model User {
   evidenceRecords       EvidenceRecord[]
   professionalCredentials ProfessionalCredential[]
   passiveSignalEvidence PassiveSignalEvidence[]
+  corroborationSnapshots CorroborationSnapshot[]
+  corroborationReviewFlags CorroborationReviewFlag[]
   evidenceProfile       CandidateEvidenceProfile?
   studentCapabilities   StudentCapability[]
 
-  careerDomainId        String?                  @map("career_domain_id")
-  targetRoleId          String?                  @map("target_role_id")
+  careerDomainId String? @map("career_domain_id")
+  targetRoleId   String? @map("target_role_id")
 
   @@index([institutionId])
   @@index([batchId])
@@ -409,6 +457,32 @@ model RefreshToken {
 
   @@index([userId, familyId])
   @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model ApiKey {
@@ -787,12 +861,14 @@ model Organization {
   id                 String                   @id @default(uuid()) @db.Uuid
   name               String
   domain             String?                  @unique
+  orgType            OrganizationType         @default(EMPLOYER) @map("org_type")
   verificationStatus TenantVerificationStatus @default(PENDING) @map("verification_status")
   verificationReason String?                  @map("verification_reason")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   companies       Company[]
+  institutions    Institution[]
   workExperiences WorkExperience[]
 
   @@map("organizations")
@@ -820,13 +896,108 @@ model Company {
   plan               SubscriptionPlan         @relation(fields: [planId], references: [id])
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  users                User[]
-  jobOpenings          JobOpening[]
-  featureFlagOverrides FeatureFlagOverride[]
-  workExperiences      WorkExperience[]
+  users                 User[]
+  jobOpenings           JobOpening[]
+  featureFlagOverrides  FeatureFlagOverride[]
+  workExperiences       WorkExperience[]
+  onboardingSessions    CompanyOnboardingSession[]
+  verifications         CompanyVerification[]
+  verificationDocuments CompanyVerificationDocument[]
 
   @@index([organizationId])
   @@map("companies")
+}
+
+/// Public company self-onboarding session. Raw session tokens are never stored — only sessionTokenHash.
+/// Company row is linked once the tenant exists (typically before submit with verificationStatus=PENDING).
+model CompanyOnboardingSession {
+  id                         String                  @id @default(uuid()) @db.Uuid
+  companyId                  String?                 @map("company_id") @db.Uuid
+  company                    Company?                @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  onboardingStatus           CompanyOnboardingStatus @default(DRAFT) @map("onboarding_status")
+  sessionTokenHash           String                  @unique @map("session_token_hash")
+  expiresAt                  DateTime                @map("expires_at") @db.Timestamptz(6)
+  /// Normalized representative work email for lookup/dedup (application layer lowercases).
+  representativeEmail        String                  @map("representative_email")
+  /// Contract-shaped representative fields (CompanyRepresentativeSchema snapshot).
+  representativeSnapshot     Json?                   @map("representative_snapshot")
+  /// In-progress CompanySignupProfileSchema snapshot until submit.
+  profileDraft               Json?                   @map("profile_draft")
+  /// Set after corporate email verification when a User row is provisioned (Phase 6).
+  userId                     String?                 @map("user_id") @db.Uuid
+  user                       User?                   @relation("CompanyOnboardingUser", fields: [userId], references: [id], onDelete: SetNull)
+  emailVerifiedAt            DateTime?               @map("email_verified_at") @db.Timestamptz(6)
+  emailVerificationCodeHash  String?                 @map("email_verification_code_hash")
+  emailVerificationExpiresAt DateTime?               @map("email_verification_expires_at") @db.Timestamptz(6)
+  lastEmailSentAt            DateTime?               @map("last_email_sent_at") @db.Timestamptz(6)
+  submittedAt                DateTime?               @map("submitted_at") @db.Timestamptz(6)
+  createdAt                  DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  verifications CompanyVerification[]
+
+  @@index([companyId])
+  @@index([onboardingStatus])
+  @@index([expiresAt])
+  @@index([representativeEmail])
+  @@map("company_onboarding_sessions")
+}
+
+/// One KYC submission/version for a company tenant. Historical rows are retained for resubmission audit.
+model CompanyVerification {
+  id                         String                    @id @default(uuid()) @db.Uuid
+  companyId                  String                    @map("company_id") @db.Uuid
+  company                    Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  onboardingSessionId        String?                   @map("onboarding_session_id") @db.Uuid
+  onboardingSession          CompanyOnboardingSession? @relation(fields: [onboardingSessionId], references: [id], onDelete: SetNull)
+  registrationCountry        String                    @map("registration_country") @db.Char(2)
+  jurisdictionCode           String?                   @map("jurisdiction_code")
+  legalName                  String                    @map("legal_name")
+  registeredAddress          Json                      @map("registered_address")
+  businessRegistrationNumber String?                   @map("business_registration_number")
+  taxId                      String?                   @map("tax_id")
+  registrationAuthority      String?                   @map("registration_authority")
+  submittedAt                DateTime?                 @map("submitted_at") @db.Timestamptz(6)
+  reviewedAt                 DateTime?                 @map("reviewed_at") @db.Timestamptz(6)
+  reviewedById               String?                   @map("reviewed_by_id") @db.Uuid
+  reviewedBy                 User?                     @relation("CompanyVerificationReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewReason               String?                   @map("review_reason")
+  createdAt                  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  documents CompanyVerificationDocument[]
+
+  @@index([companyId, submittedAt])
+  @@index([onboardingSessionId])
+  @@index([taxId])
+  @@map("company_verifications")
+}
+
+/// Verification document metadata — binary content lives in object storage (storageKey).
+model CompanyVerificationDocument {
+  id                    String                                  @id @default(uuid()) @db.Uuid
+  companyVerificationId String                                  @map("company_verification_id") @db.Uuid
+  companyVerification   CompanyVerification                     @relation(fields: [companyVerificationId], references: [id], onDelete: Cascade)
+  companyId             String                                  @map("company_id") @db.Uuid
+  company               Company                                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType          CompanyVerificationDocumentType         @map("document_type")
+  fileName              String                                  @map("file_name")
+  mimeType              String                                  @map("mime_type")
+  fileSizeBytes         Int                                     @map("file_size_bytes")
+  storageKey            String                                  @map("storage_key")
+  uploadedBy            CompanyVerificationDocumentUploadedBy   @map("uploaded_by")
+  uploadedAt            DateTime                                @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  reviewStatus          CompanyVerificationDocumentReviewStatus @default(PENDING) @map("review_status")
+  reviewReason          String?                                 @map("review_reason")
+  reviewedAt            DateTime?                               @map("reviewed_at") @db.Timestamptz(6)
+  reviewedById          String?                                 @map("reviewed_by_id") @db.Uuid
+  reviewedBy            User?                                   @relation("CompanyVerificationDocumentReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt             DateTime                                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([companyVerificationId])
+  @@index([companyId, reviewStatus])
+  @@map("company_verification_documents")
 }
 
 model Skill {
@@ -865,14 +1036,14 @@ model SkillClaim {
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  verificationAttempts SkillVerificationAttempt[]
-  evidenceLinks        SkillClaimEvidenceLink[]
+  verificationAttempts  SkillVerificationAttempt[]
+  evidenceLinks         SkillClaimEvidenceLink[]
   verificationDecisions VerificationDecision[]
-  targetProficiency    SkillProficiency?        @map("target_proficiency")
-  finalProficiency     SkillProficiency?        @map("final_proficiency")
-  claimConfidence      Decimal?                 @map("claim_confidence") @db.Decimal(5, 4)
-  interviewId          String?                  @map("interview_id") @db.Uuid
-  evidenceSummary      Json?                    @map("evidence_summary")
+  targetProficiency     SkillProficiency?          @map("target_proficiency")
+  finalProficiency      SkillProficiency?          @map("final_proficiency")
+  claimConfidence       Decimal?                   @map("claim_confidence") @db.Decimal(5, 4)
+  interviewId           String?                    @map("interview_id") @db.Uuid
+  evidenceSummary       Json?                      @map("evidence_summary")
 
   @@unique([studentId, skillId])
   @@index([status])
@@ -880,62 +1051,65 @@ model SkillClaim {
 }
 
 model SkillVerificationAttempt {
-  id                  String           @id @default(uuid()) @db.Uuid
-  claimId             String           @map("claim_id") @db.Uuid
-  claim               SkillClaim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  assessmentAttemptId String?          @map("assessment_attempt_id") @db.Uuid
-  assessmentAttempt   Attempt?         @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
-  claimedProficiency  SkillProficiency @map("claimed_proficiency")
-  technicalFailure    Boolean          @default(false) @map("technical_failure")
-  passed              Boolean?
-  explanation         String?
+  id                   String           @id @default(uuid()) @db.Uuid
+  claimId              String           @map("claim_id") @db.Uuid
+  claim                SkillClaim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  assessmentAttemptId  String?          @map("assessment_attempt_id") @db.Uuid
+  assessmentAttempt    Attempt?         @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
+  claimedProficiency   SkillProficiency @map("claimed_proficiency")
+  technicalFailure     Boolean          @default(false) @map("technical_failure")
+  passed               Boolean?
+  explanation          String?
   /// Mark-weighted written-assessment score (INF-05 Scoring Schema Core
   /// Formula). Null for a technical-failure row — no score was produced.
-  marksEarned         Decimal?         @map("marks_earned") @db.Decimal(6, 2)
-  marksTotal          Decimal?         @map("marks_total") @db.Decimal(6, 2)
-  scorePercent        Decimal?         @map("score_percent") @db.Decimal(5, 2)
-  assessmentResultJson Json?             @map("assessment_result_json")
-  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  marksEarned          Decimal?         @map("marks_earned") @db.Decimal(6, 2)
+  marksTotal           Decimal?         @map("marks_total") @db.Decimal(6, 2)
+  scorePercent         Decimal?         @map("score_percent") @db.Decimal(5, 2)
+  assessmentResultJson Json?            @map("assessment_result_json")
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([claimId, createdAt])
   @@map("skill_verification_attempts")
 }
 
 model Project {
-  id        String        @id @default(uuid()) @db.Uuid
-  studentId String        @map("student_id") @db.Uuid
-  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  title     String
-  problem   String
-  approach  String
-  stack     String
-  outcome   String
-  loomUrl   String?       @map("loom_url")
-  githubUrl String?       @map("github_url")
+  id          String        @id @default(uuid()) @db.Uuid
+  studentId   String        @map("student_id") @db.Uuid
+  student     User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title       String
+  problem     String
+  approach    String
+  stack       String
+  outcome     String
+  loomUrl     String?       @map("loom_url")
+  githubUrl   String?       @map("github_url")
   liveUrl     String?       @map("live_url")
   snapshotSha String?       @map("snapshot_sha")
   qlixCheckId String?       @map("qlix_check_id")
   status      ProjectStatus @default(SUBMITTED)
+  /// Current portfolio participation. False after replacement; verification status is unchanged.
+  isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  projectType       String?  @map("project_type")
-  teamSize          Int?     @map("team_size")
-  candidateRole     String?  @map("candidate_role")
-  targetUsers       String?  @map("target_users")
-  requirements      String?  @db.Text
-  components        Json?
-  decisions         Json?
-  constraints       Json?
-  outcomes          Json?    @map("structured_outcomes")
-  teamContribution  String?  @map("team_contribution") @db.Text
-  ndaStatus         String?  @map("nda_status")
-  skillMappings     ProjectSkillMapping[]
+  projectType      String?               @map("project_type")
+  teamSize         Int?                  @map("team_size")
+  candidateRole    String?               @map("candidate_role")
+  targetUsers      String?               @map("target_users")
+  requirements     String?               @db.Text
+  components       Json?
+  decisions        Json?
+  constraints      Json?
+  outcomes         Json?                 @map("structured_outcomes")
+  teamContribution String?               @map("team_contribution") @db.Text
+  ndaStatus        String?               @map("nda_status")
+  skillMappings    ProjectSkillMapping[]
 
-  report            ProjectVerificationReport?
-  qlixCheckResult   QlixCheckResult?
+  report              ProjectVerificationReport?
+  qlixCheckResult     QlixCheckResult?
   studentCapabilities StudentCapability[]
 
   @@index([studentId, status])
+  @@index([studentId, isActive])
   @@map("projects")
 }
 
@@ -966,21 +1140,21 @@ model QlixCheckResult {
 }
 
 model StudentCapability {
-  id                  String   @id @default(uuid()) @db.Uuid
-  studentId           String   @map("student_id") @db.Uuid
-  student             User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  capabilityLabel     String   @map("capability_label")
-  category            String
-  confidenceScore     Float    @map("confidence_score")
-  proficiency         String
-  evidenceRefs        String[] @default([]) @map("evidence_refs")
-  qlixCheckId         String?  @map("qlix_check_id")
-  projectId           String?  @map("project_id") @db.Uuid
-  project             Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  skillCode           String?  @map("skill_code")
-  modelVersion        String   @map("model_version")
-  assessmentVerified  Boolean  @default(false) @map("assessment_verified")
-  inferredAt          DateTime @default(now()) @map("inferred_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.Uuid
+  studentId          String   @map("student_id") @db.Uuid
+  student            User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  capabilityLabel    String   @map("capability_label")
+  category           String
+  confidenceScore    Float    @map("confidence_score")
+  proficiency        String
+  evidenceRefs       String[] @default([]) @map("evidence_refs")
+  qlixCheckId        String?  @map("qlix_check_id")
+  projectId          String?  @map("project_id") @db.Uuid
+  project            Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  skillCode          String?  @map("skill_code")
+  modelVersion       String   @map("model_version")
+  assessmentVerified Boolean  @default(false) @map("assessment_verified")
+  inferredAt         DateTime @default(now()) @map("inferred_at") @db.Timestamptz(6)
 
   @@index([studentId])
   @@index([projectId])
@@ -1028,47 +1202,47 @@ model PlacementEmployer {
 }
 
 model JobOpening {
-  id                 String           @id @default(uuid()) @db.Uuid
-  institutionId      String           @map("institution_id") @db.Uuid
-  institution        Institution      @relation(fields: [institutionId], references: [id])
-  companyId          String?          @map("company_id") @db.Uuid
-  company            Company?         @relation(fields: [companyId], references: [id])
-  placementEmployerId String?         @map("placement_employer_id") @db.Uuid
-  placementEmployer  PlacementEmployer? @relation(fields: [placementEmployerId], references: [id], onDelete: SetNull)
-  companyName        String           @map("company_name")
-  roleTitle          String           @map("role_title")
-  domainCode         String?          @map("domain_code")
-  categoryCode       String?          @map("category_code")
-  minYearsExperience Int?             @map("min_years_experience")
-  maxYearsExperience Int?             @map("max_years_experience")
-  location           String?
-  employmentType     String?          @map("employment_type")
-  headcount          Int?
-  companyLogoUrl     String?          @map("company_logo_url")
-  attachedDocuments  Json?            @map("attached_documents")
-  aboutCompany           String?      @map("about_company") @db.Text
-  companyOffers          String?      @map("company_offers") @db.Text
-  additionalCompanyDetails String?    @map("additional_company_details") @db.Text
-  roleDetails            String?      @map("role_details") @db.Text
-  salaryDetails          String?      @map("salary_details")
-  roundDetails           String?      @map("round_details") @db.Text
-  hiringDetails          String?      @map("hiring_details") @db.Text
-  driveSpoc              String?      @map("drive_spoc")
-  driveDate              DateTime?    @map("drive_date") @db.Date
-  lastDateToApply        DateTime?    @map("last_date_to_apply") @db.Date
-  minSscPercentage       Decimal?     @map("min_ssc_percentage") @db.Decimal(5, 2)
-  minHscPercentage       Decimal?     @map("min_hsc_percentage") @db.Decimal(5, 2)
-  minCollegePercentage   Decimal?     @map("min_college_percentage") @db.Decimal(5, 2)
-  backlogsAllowed        Boolean      @default(true) @map("backlogs_allowed")
-  rawText                String?      @map("raw_text")
-  jdParseStatus          JdParseStatus @default(PENDING) @map("jd_parse_status")
-  parseConfidence        Decimal?     @map("parse_confidence") @db.Decimal(4, 3)
-  parsedAt               DateTime?    @map("parsed_at") @db.Timestamptz(6)
-  parsedRequirements     Json?        @map("parsed_requirements")
-  status             JobOpeningStatus @default(DRAFT)
-  createdById        String           @map("created_by_id") @db.Uuid
-  createdBy          User             @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
-  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                       String             @id @default(uuid()) @db.Uuid
+  institutionId            String             @map("institution_id") @db.Uuid
+  institution              Institution        @relation(fields: [institutionId], references: [id])
+  companyId                String?            @map("company_id") @db.Uuid
+  company                  Company?           @relation(fields: [companyId], references: [id])
+  placementEmployerId      String?            @map("placement_employer_id") @db.Uuid
+  placementEmployer        PlacementEmployer? @relation(fields: [placementEmployerId], references: [id], onDelete: SetNull)
+  companyName              String             @map("company_name")
+  roleTitle                String             @map("role_title")
+  domainCode               String?            @map("domain_code")
+  categoryCode             String?            @map("category_code")
+  minYearsExperience       Int?               @map("min_years_experience")
+  maxYearsExperience       Int?               @map("max_years_experience")
+  location                 String?
+  employmentType           String?            @map("employment_type")
+  headcount                Int?
+  companyLogoUrl           String?            @map("company_logo_url")
+  attachedDocuments        Json?              @map("attached_documents")
+  aboutCompany             String?            @map("about_company") @db.Text
+  companyOffers            String?            @map("company_offers") @db.Text
+  additionalCompanyDetails String?            @map("additional_company_details") @db.Text
+  roleDetails              String?            @map("role_details") @db.Text
+  salaryDetails            String?            @map("salary_details")
+  roundDetails             String?            @map("round_details") @db.Text
+  hiringDetails            String?            @map("hiring_details") @db.Text
+  driveSpoc                String?            @map("drive_spoc")
+  driveDate                DateTime?          @map("drive_date") @db.Date
+  lastDateToApply          DateTime?          @map("last_date_to_apply") @db.Date
+  minSscPercentage         Decimal?           @map("min_ssc_percentage") @db.Decimal(5, 2)
+  minHscPercentage         Decimal?           @map("min_hsc_percentage") @db.Decimal(5, 2)
+  minCollegePercentage     Decimal?           @map("min_college_percentage") @db.Decimal(5, 2)
+  backlogsAllowed          Boolean            @default(true) @map("backlogs_allowed")
+  rawText                  String?            @map("raw_text")
+  jdParseStatus            JdParseStatus      @default(PENDING) @map("jd_parse_status")
+  parseConfidence          Decimal?           @map("parse_confidence") @db.Decimal(4, 3)
+  parsedAt                 DateTime?          @map("parsed_at") @db.Timestamptz(6)
+  parsedRequirements       Json?              @map("parsed_requirements")
+  status                   JobOpeningStatus   @default(DRAFT)
+  createdById              String             @map("created_by_id") @db.Uuid
+  createdBy                User               @relation("JobOpeningCreatedBy", fields: [createdById], references: [id])
+  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   requiredSkills JobOpeningSkill[]
   applications   Application[]
@@ -1335,18 +1509,18 @@ model WorkExperience {
 
   // WE-T03: verification state machine fields
   /// true when at least one attached document has validationStatus = 'VALIDATED'
-  docOk               Boolean                          @default(false) @map("doc_ok")
+  docOk              Boolean @default(false) @map("doc_ok")
   /// true when a manager has CONFIRMED the endorsement via magic link
-  completedConfirmed  Boolean                          @default(false) @map("completed_confirmed")
+  completedConfirmed Boolean @default(false) @map("completed_confirmed")
   /// doc_ok && completed_confirmed — computed on each state transition, never auto-set on expiry
-  overallVerified     Boolean                          @default(false) @map("overall_verified")
+  overallVerified    Boolean @default(false) @map("overall_verified")
 
-  documents               WorkExperienceDocument[]
-  verificationAttempts    WorkExperienceVerificationAttempt[]
-  managerEndorsements     WorkExperienceManagerEndorsement[]
-  deliverablesStructured  Json?                              @map("deliverables_structured")
-  personalContributions   Json?                              @map("personal_contributions")
-  employmentVerification  Json?                              @map("employment_verification")
+  documents                  WorkExperienceDocument[]
+  verificationAttempts       WorkExperienceVerificationAttempt[]
+  managerEndorsements        WorkExperienceManagerEndorsement[]
+  deliverablesStructured     Json?                               @map("deliverables_structured")
+  personalContributions      Json?                               @map("personal_contributions")
+  employmentVerification     Json?                               @map("employment_verification")
   structuredResponsibilities WorkExperienceResponsibility[]
 
   @@index([studentId, status])
@@ -1394,44 +1568,43 @@ model WorkExperienceVerificationAttempt {
 
 /**
  * WE-T03 — Manager endorsement magic-link record.
- *
  * Separate from WorkExperienceVerificationAttempt to preserve the existing
  * employer verification lifecycle.  5-day TTL; single-use (respondedAt IS NOT NULL
  * means used).  3-day (72h) reminder is scheduled at creation via BullMQ delayed job.
  */
 model WorkExperienceManagerEndorsement {
-  id              String    @id @default(uuid()) @db.Uuid
-  experienceId    String    @map("experience_id") @db.Uuid
-  experience      WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  id           String         @id @default(uuid()) @db.Uuid
+  experienceId String         @map("experience_id") @db.Uuid
+  experience   WorkExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
 
   /// SHA-256 hash of the raw token.  Raw token lives only in the email; never stored.
-  tokenHash       String    @unique @map("token_hash")
-  managerEmail    String    @map("manager_email")
-  managerName     String?   @map("manager_name")
+  tokenHash    String  @unique @map("token_hash")
+  managerEmail String  @map("manager_email")
+  managerName  String? @map("manager_name")
 
   /// Domain used for matching (extracted from offer-letter or Organization.domain).
-  resolvedDomain  String?   @map("resolved_domain")
+  resolvedDomain String? @map("resolved_domain")
 
-  sentAt          DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
+  sentAt         DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
   /// 120 hours (5 days) after sentAt.
-  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
   /// Set when the manager opens and submits the survey. NULL = not yet responded.
-  respondedAt     DateTime? @map("responded_at") @db.Timestamptz(6)
+  respondedAt    DateTime? @map("responded_at") @db.Timestamptz(6)
   /// Set when the 3-day reminder is dispatched.
-  reminderSentAt  DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
 
   /// PENDING | CONFIRMED | DISPUTED | EXPIRED
-  status          String    @default("PENDING")
+  status String @default("PENDING")
 
   /// true = manager confirmed the candidate worked there; false = disputed.
-  confirmed       Boolean?
+  confirmed    Boolean?
   /// Optional JSON array of { skillCode, rating } objects (1-5).
-  skillRatings    Json?     @map("skill_ratings")
-  comments        String?   @db.Text
-  ipAddress       String?   @map("ip_address")
-  userAgent       String?   @map("user_agent")
+  skillRatings Json?    @map("skill_ratings")
+  comments     String?  @db.Text
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
 
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([experienceId])
   @@index([managerEmail])
@@ -1480,38 +1653,38 @@ enum CertificateEndorsementStatus {
 }
 
 model CandidateCertificate {
-  id                   String                         @id @default(uuid()) @db.Uuid
-  candidateId          String                         @map("candidate_id") @db.Uuid
-  candidate            User                           @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  title                String
-  issuer               String
-  status               CandidateCertificateStatus     @default(DECLARED)
-  sourceStatus         CertificateSourceStatus        @default(pending) @map("source_status")
-  certificateNumber    String?                        @map("certificate_number")
-  issueDate            String?                        @map("issue_date")
-  expiryDate           String?                        @map("expiry_date")
-  verificationUrl      String?                        @map("verification_url")
-  verificationMethod   CertificateVerificationMethod? @map("verification_method")
-  certificateFileUrl   String?                        @map("certificate_file_url")
-  certificateFileName  String?                        @map("certificate_file_name")
-  fileMimeType         String?                        @map("file_mime_type")
-  fileSizeBytes        Int?                           @map("file_size_bytes")
-  learningDescription  String?                        @map("learning_description") @db.Text
-  tools                String[]                       @default([])
-  practicalApplied     Boolean?                       @map("practical_applied")
-  practicalDescription String?                        @map("practical_description") @db.Text
-  trackCode            String?                        @map("track_code")
-  agendaLines          String[]                       @default([]) @map("agenda_lines")
-  assessmentStrikes    Int                            @default(0) @map("assessment_strikes")
-  assessmentLockedUntil DateTime?                     @map("assessment_locked_until") @db.Timestamptz(6)
-  lastGenuineFailureAt DateTime?                      @map("last_genuine_failure_at") @db.Timestamptz(6)
-  taxonomyVersionSnapshot String?                     @map("taxonomy_version_snapshot")
-  createdAt            DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      String                         @id @default(uuid()) @db.Uuid
+  candidateId             String                         @map("candidate_id") @db.Uuid
+  candidate               User                           @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  title                   String
+  issuer                  String
+  status                  CandidateCertificateStatus     @default(DECLARED)
+  sourceStatus            CertificateSourceStatus        @default(pending) @map("source_status")
+  certificateNumber       String?                        @map("certificate_number")
+  issueDate               String?                        @map("issue_date")
+  expiryDate              String?                        @map("expiry_date")
+  verificationUrl         String?                        @map("verification_url")
+  verificationMethod      CertificateVerificationMethod? @map("verification_method")
+  certificateFileUrl      String?                        @map("certificate_file_url")
+  certificateFileName     String?                        @map("certificate_file_name")
+  fileMimeType            String?                        @map("file_mime_type")
+  fileSizeBytes           Int?                           @map("file_size_bytes")
+  learningDescription     String?                        @map("learning_description") @db.Text
+  tools                   String[]                       @default([])
+  practicalApplied        Boolean?                       @map("practical_applied")
+  practicalDescription    String?                        @map("practical_description") @db.Text
+  trackCode               String?                        @map("track_code")
+  agendaLines             String[]                       @default([]) @map("agenda_lines")
+  assessmentStrikes       Int                            @default(0) @map("assessment_strikes")
+  assessmentLockedUntil   DateTime?                      @map("assessment_locked_until") @db.Timestamptz(6)
+  lastGenuineFailureAt    DateTime?                      @map("last_genuine_failure_at") @db.Timestamptz(6)
+  taxonomyVersionSnapshot String?                        @map("taxonomy_version_snapshot")
+  createdAt               DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  skills       CandidateCertificateSkill[]
-  events       CertificateVerificationEvent[]
-  endorsements CertificateEndorsement[]
+  skills               CandidateCertificateSkill[]
+  events               CertificateVerificationEvent[]
+  endorsements         CertificateEndorsement[]
   verificationAttempts CandidateCertificateVerificationAttempt[]
 
   @@index([candidateId, status])
@@ -1605,7 +1778,7 @@ model CandidateEducation {
 model CandidateEducationDocument {
   id            String             @id @default(uuid()) @db.Uuid
   educationId   String             @map("education_id") @db.Uuid
-  education     CandidateEducation   @relation(fields: [educationId], references: [id], onDelete: Cascade)
+  education     CandidateEducation @relation(fields: [educationId], references: [id], onDelete: Cascade)
   documentType  String             @map("document_type")
   fileUrl       String             @map("file_url")
   fileName      String             @map("file_name")
@@ -1707,37 +1880,58 @@ model CandidateEvidenceProfile {
 }
 
 model EvidenceRecord {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  studentId          String                     @map("student_id") @db.Uuid
-  student            User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  evidenceType       EvidenceType               @map("evidence_type")
-  source             EvidenceSource
-  sourceOwner        String?                    @map("source_owner")
-  sourceReference    String?                    @map("source_reference")
-  evidenceDate       String?                    @map("evidence_date")
-  submissionDate     DateTime?                  @map("submission_date") @db.Timestamptz(6)
-  claim              String?                    @db.Text
-  context            String?                    @db.Text
-  provenance         Json?
-  accessibility      String                     @default("PRIVATE")
-  relatedSkillCodes  String[]                   @default([]) @map("related_skill_codes")
-  verificationStatus EvidenceVerificationStatus @default(PENDING) @map("verification_status")
-  evidenceStrength   String?                    @map("evidence_strength")
-  evidenceReliability String?                   @map("evidence_reliability")
-  freshness          Json?
-  sourceEntityId     String?                    @map("source_entity_id") @db.Uuid
-  sourcePayload      Json?                      @map("source_payload")
-  verificationMetadata Json?                    @map("verification_metadata")
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String                     @id @default(uuid()) @db.Uuid
+  studentId            String                     @map("student_id") @db.Uuid
+  student              User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  evidenceType         EvidenceType               @map("evidence_type")
+  source               EvidenceSource
+  sourceOwner          String?                    @map("source_owner")
+  sourceReference      String?                    @map("source_reference")
+  evidenceDate         String?                    @map("evidence_date")
+  submissionDate       DateTime?                  @map("submission_date") @db.Timestamptz(6)
+  claim                String?                    @db.Text
+  context              String?                    @db.Text
+  provenance           Json?
+  accessibility        String                     @default("PRIVATE")
+  relatedSkillCodes    String[]                   @default([]) @map("related_skill_codes")
+  verificationStatus   EvidenceVerificationStatus @default(PENDING) @map("verification_status")
+  evidenceStrength     String?                    @map("evidence_strength")
+  evidenceReliability  String?                    @map("evidence_reliability")
+  freshness            Json?
+  sourceEntityId       String?                    @map("source_entity_id") @db.Uuid
+  sourcePayload        Json?                      @map("source_payload")
+  verificationMetadata Json?                      @map("verification_metadata")
+  createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  artifacts     EvidenceArtifact[]
-  claimLinks    SkillClaimEvidenceLink[]
+  artifacts      EvidenceArtifact[]
+  claimLinks     SkillClaimEvidenceLink[]
   contradictions EvidenceContradiction[]
+  versions      EvidenceRecordVersion[]
 
   @@index([studentId, evidenceType])
   @@index([studentId, verificationStatus])
   @@map("evidence_records")
+}
+
+model EvidenceRecordVersion {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  evidenceId               String                     @map("evidence_id") @db.Uuid
+  evidence                 EvidenceRecord             @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  versionNumber            Int                        @map("version_number")
+  snapshot                 Json
+  mutationKey              String                     @map("mutation_key")
+  actorId                  String?                    @map("actor_id") @db.Uuid
+  organizationId           String?                    @map("organization_id") @db.Uuid
+  source                   String
+  priorVerificationStatus  EvidenceVerificationStatus? @map("prior_verification_status")
+  newVerificationStatus    EvidenceVerificationStatus @map("new_verification_status")
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([evidenceId, versionNumber])
+  @@unique([evidenceId, mutationKey])
+  @@index([evidenceId, createdAt])
+  @@map("evidence_record_versions")
 }
 
 model EvidenceArtifact {
@@ -1788,17 +1982,17 @@ model SkillClaimEvidenceLink {
 }
 
 model VerificationDecision {
-  id                 String                      @id @default(uuid()) @db.Uuid
-  claimId            String                      @map("claim_id") @db.Uuid
-  claim              SkillClaim                  @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  evidenceSummary    String?                     @map("evidence_summary") @db.Text
-  assessmentSummary  String?                     @map("assessment_summary") @db.Text
-  interviewSummary   String?                     @map("interview_summary") @db.Text
-  decision           VerificationDecisionOutcome
-  confidence         Decimal                     @db.Decimal(5, 4)
-  reasons            String[]                    @default([])
-  reviewerId         String?                     @map("reviewer_id") @db.Uuid
-  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String                      @id @default(uuid()) @db.Uuid
+  claimId           String                      @map("claim_id") @db.Uuid
+  claim             SkillClaim                  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  evidenceSummary   String?                     @map("evidence_summary") @db.Text
+  assessmentSummary String?                     @map("assessment_summary") @db.Text
+  interviewSummary  String?                     @map("interview_summary") @db.Text
+  decision          VerificationDecisionOutcome
+  confidence        Decimal                     @db.Decimal(5, 4)
+  reasons           String[]                    @default([])
+  reviewerId        String?                     @map("reviewer_id") @db.Uuid
+  createdAt         DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([claimId, createdAt])
   @@map("verification_decisions")
@@ -1873,23 +2067,59 @@ model ProfessionalCredential {
 }
 
 model PassiveSignalEvidence {
-  id                    String   @id @default(uuid()) @db.Uuid
-  studentId             String   @map("student_id") @db.Uuid
-  student               User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  source                String
-  accountReference      String   @map("account_reference")
-  activity              Json?
-  activityPeriodStart   DateTime? @map("activity_period_start") @db.Timestamptz(6)
-  activityPeriodEnd     DateTime? @map("activity_period_end") @db.Timestamptz(6)
-  relevantArtifactIds   String[] @default([]) @map("relevant_artifact_ids")
-  skillMappings           Json?    @map("skill_mappings")
-  signalStrength          Decimal? @map("signal_strength") @db.Decimal(5, 4)
-  reliability             String?
-  anomalies               String[] @default([])
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String    @id @default(uuid()) @db.Uuid
+  studentId           String    @map("student_id") @db.Uuid
+  student             User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  source              String
+  accountReference    String    @map("account_reference")
+  activity            Json?
+  activityPeriodStart DateTime? @map("activity_period_start") @db.Timestamptz(6)
+  activityPeriodEnd   DateTime? @map("activity_period_end") @db.Timestamptz(6)
+  relevantArtifactIds String[]  @default([]) @map("relevant_artifact_ids")
+  skillMappings       Json?     @map("skill_mappings")
+  signalStrength      Decimal?  @map("signal_strength") @db.Decimal(5, 4)
+  reliability         String?
+  anomalies           String[]  @default([])
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([studentId, source])
+  @@unique([studentId, source])
   @@map("passive_signal_evidence")
+}
+
+model CorroborationSnapshot {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taxonomyVersion   String   @map("taxonomy_version")
+  updatedAt         DateTime @map("updated_at") @db.Timestamptz(6)
+  readouts          Json
+  pendingFlagIds    String[] @map("pending_flag_ids")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId])
+  @@map("corroboration_snapshots")
+}
+
+model CorroborationReviewFlag {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId     String?  @map("institution_id") @db.Uuid
+  claimId           String?  @map("claim_id") @db.Uuid
+  skillCode         String   @map("skill_code")
+  severity          String
+  reason            String
+  passiveScore      Decimal  @map("passive_score") @db.Decimal(5, 4)
+  assessmentScore   Decimal  @map("assessment_score") @db.Decimal(5, 4)
+  createdAt         DateTime @map("created_at") @db.Timestamptz(6)
+  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote    String?  @map("resolution_note")
+
+  @@index([userId])
+  @@index([claimId, skillCode])
+  @@index([resolvedAt])
+  @@map("corroboration_review_flags")
 }
 

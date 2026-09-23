@@ -6,10 +6,22 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthTokenResponse, AuthenticatedUser } from '@smart/contracts';
+import type {
+  AuthTokenResponse,
+  AuthenticatedUser,
+  RegisterRequest,
+  SelectableInstitutionDto,
+} from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
@@ -37,9 +49,12 @@ export type UserWithAuthIncludes = {
     heldAt: Date | null;
     deactivatedAt: Date | null;
   } | null;
+  companyId?: string | null;
   company?: {
+    name: string;
     heldAt: Date | null;
     deactivatedAt: Date | null;
+    verificationStatus?: string;
   } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
@@ -51,6 +66,7 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
@@ -67,6 +83,121 @@ export class AuthService {
     }
     assertTenantLoginAllowed(user);
 
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.login',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
+    return this.issueSession(user, reply);
+  }
+
+  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
+    return this.prisma.institution.findMany({
+      where: { deactivatedAt: null, heldAt: null },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.institutionId },
+    });
+    if (!institution || institution.deactivatedAt || institution.heldAt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        passwordHash,
+        role: 'STUDENT',
+        emailVerified: false,
+        institutionId: institution.id,
+      },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.register',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
+    return this.issueSession(user, reply);
+  }
+
+  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
+    return this.prisma.institution.findMany({
+      where: { deactivatedAt: null, heldAt: null },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.institutionId },
+    });
+    if (!institution || institution.deactivatedAt || institution.heldAt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        passwordHash,
+        role: 'STUDENT',
+        emailVerified: false,
+        institutionId: institution.id,
+      },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+
+    return this.issueSession(user, reply);
+  }
+
+  /** Issues tokens without re-checking password; caller must enforce tenant gates when appropriate. */
+  async issueSessionAfterInviteAccept(
+    user: UserWithAuthIncludes,
+    reply: FastifyReply,
+  ): Promise<AuthTokenResponse> {
+    assertTenantLoginAllowed(user);
     return this.issueSession(user, reply);
   }
 
@@ -110,6 +241,14 @@ export class AuthService {
 
     if (existing.revokedAt) {
       await this.revokeFamily(existing.familyId);
+      await this.auditPublisher.record({
+        actorId: existing.userId,
+        action: 'auth.refresh_reuse_detected',
+        resourceType: 'user',
+        resourceId: existing.userId,
+        reasonCode: null,
+        metadata: { familyId: existing.familyId },
+      });
       clearRefreshCookie(reply);
       throw unauthorized('Refresh token reuse detected. Sign in again.');
     }
@@ -122,6 +261,8 @@ export class AuthService {
       clearRefreshCookie(reply);
       throw unauthorized('Refresh token has expired.');
     }
+
+    assertTenantLoginAllowed(existing.user);
 
     const nextRaw = createRefreshToken();
     const expiresAt = new Date(Date.now() + env.REFRESH_TTL_SECONDS * 1000);
@@ -153,6 +294,13 @@ export class AuthService {
       });
       if (existing) {
         await this.revokeFamily(existing.familyId);
+        await this.auditPublisher.record({
+          actorId: existing.userId,
+          action: 'auth.logout',
+          resourceType: 'user',
+          resourceId: existing.userId,
+          reasonCode: null,
+        });
       }
     }
     clearRefreshCookie(reply);
@@ -172,17 +320,36 @@ export class AuthService {
     });
   }
 
+  async getCompanyPortalAccount(userId: string): Promise<CompanyPortalAccount> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+    if (!user) {
+      throw unauthorized('User not found.');
+    }
+    if (user.role !== 'COMPANY' || !user.companyId || !user.company) {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'You do not have permission to perform this action.',
+        statusCode: 403,
+      });
+    }
+    const base = await toAuthenticatedUserWithPhoto(this.storage, user);
+    return CompanyPortalAccountSchema.parse({
+      ...base,
+      companyVerificationStatus: user.company.verificationStatus,
+      companyWebsite: user.company.website,
+      companyIndustry: user.company.taxonomyDomain,
+      companyLocation: user.company.location,
+    });
+  }
+
   private async toTokenResponse(
     user: UserWithAuthIncludes,
     familyId: string,
   ): Promise<AuthTokenResponse> {
-    const accessToken = await this.jwt.signAsync({
-      sub: user.id,
-      role: user.role,
-      inst: user.institutionId,
-      fam: familyId,
-      trk: [user.primaryTrack?.code, user.secondaryTrack?.code].filter(Boolean),
-    });
+    const accessToken = await this.jwt.signAsync(buildAccessTokenClaims(user, familyId));
 
     return {
       accessToken,
@@ -220,8 +387,19 @@ function assertTenantLoginAllowed(user: {
   role: AuthenticatedUser['role'];
   heldAt: Date | null;
   institution: { heldAt: Date | null; deactivatedAt: Date | null } | null;
-  company?: { heldAt: Date | null; deactivatedAt: Date | null } | null;
+  company?: {
+    heldAt: Date | null;
+    deactivatedAt: Date | null;
+    verificationStatus?: string;
+  } | null;
 }): void {
+  if (user.role === 'COMPANY') {
+    if (!user.company || user.company.verificationStatus !== 'APPROVED') {
+      throw unauthorized(
+        'Company verification is not approved. You cannot sign in to the company portal yet.',
+      );
+    }
+  }
   const hold = resolveSessionHold(user);
   if (!hold) return;
   throw new UnauthorizedException({
@@ -229,6 +407,26 @@ function assertTenantLoginAllowed(user: {
     message: hold.message,
     statusCode: 401,
   });
+}
+
+export function buildAccessTokenClaims(
+  user: Pick<
+    UserWithAuthIncludes,
+    'id' | 'role' | 'institutionId' | 'companyId' | 'primaryTrack' | 'secondaryTrack'
+  >,
+  familyId: string,
+): Record<string, unknown> {
+  const claims: Record<string, unknown> = {
+    sub: user.id,
+    role: user.role,
+    inst: user.institutionId,
+    fam: familyId,
+    trk: [user.primaryTrack?.code, user.secondaryTrack?.code].filter(Boolean),
+  };
+  if (user.role === 'COMPANY' && user.companyId) {
+    claims.cmp = user.companyId;
+  }
+  return claims;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -262,11 +460,17 @@ export function toAuthenticatedUser(user: {
   provider: AuthenticatedUser['provider'];
   emailVerified: boolean;
   institutionId: string | null;
+  companyId?: string | null;
   createdAt: Date;
   heldAt?: Date | null;
   onboardingCompleted?: boolean;
   institution: { name: string; heldAt?: Date | null; deactivatedAt?: Date | null } | null;
-  company?: { heldAt?: Date | null; deactivatedAt?: Date | null } | null;
+  company?: {
+    name?: string;
+    heldAt?: Date | null;
+    deactivatedAt?: Date | null;
+    verificationStatus?: string;
+  } | null;
   primaryTrack: { code: string } | null;
   secondaryTrack: { code: string } | null;
   profilePhotoObjectKey?: string | null;
@@ -297,6 +501,8 @@ export function toAuthenticatedUser(user: {
     role: user.role,
     institutionId: user.institutionId,
     institutionName: user.institution?.name ?? null,
+    companyId: user.companyId ?? null,
+    companyName: user.company?.name ?? null,
     primaryTrack: (user.primaryTrack?.code as AuthenticatedUser['primaryTrack']) ?? null,
     secondaryTrack: (user.secondaryTrack?.code as AuthenticatedUser['secondaryTrack']) ?? null,
     provider: user.provider,

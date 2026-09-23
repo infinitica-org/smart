@@ -9,6 +9,7 @@ import { buildProjectGithubSnapshot } from './project-github-snapshot.js';
 import { buildQlixSmartContext } from './qlix-smart-context.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { encodeReportExplanation, type StoredReportMeta } from './project-verify.mapper.js';
+import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
 
 /**
  * Runs automated project verification when a project is submitted.
@@ -25,6 +26,7 @@ export class ProjectVerifyRunnerService {
     @Inject(GithubApiClient) private readonly github: GithubApiClient,
     @Inject(ProjectInterviewGateService)
     private readonly interviewGate: ProjectInterviewGateService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
   ) {}
 
   async runForProject(projectId: string, studentId: string): Promise<void> {
@@ -48,7 +50,7 @@ export class ProjectVerifyRunnerService {
     }
 
     if (!project.githubUrl) {
-      await this.failWithoutGithub(projectId);
+      await this.failWithoutGithub(projectId, studentId);
       return;
     }
 
@@ -61,7 +63,7 @@ export class ProjectVerifyRunnerService {
     });
 
     if (!snapshotSha) {
-      await this.failSnapshotUnavailable(projectId);
+      await this.failSnapshotUnavailable(projectId, studentId);
       return;
     }
 
@@ -91,7 +93,7 @@ export class ProjectVerifyRunnerService {
       checkId = submitted.checkId;
     } catch (error) {
       this.qlix.logUnavailable(error instanceof Error ? error.message : 'submit failed');
-      await this.failQlixUnavailable(projectId);
+      await this.failQlixUnavailable(projectId, studentId);
       return;
     }
 
@@ -112,11 +114,13 @@ export class ProjectVerifyRunnerService {
 
   private async writeReviewReport(
     projectId: string,
+    studentId: string,
     meta: StoredReportMeta,
     explanation: string,
   ): Promise<void> {
-    await this.prisma.projectVerificationReport.create({
-      data: {
+    await this.prisma.projectVerificationReport.upsert({
+      where: { projectId },
+      create: {
         projectId,
         score: 0,
         relevanceScore: 0,
@@ -125,16 +129,22 @@ export class ProjectVerifyRunnerService {
         explanation: encodeReportExplanation(explanation, meta),
         routedToReview: true,
       },
+      update: {
+        explanation: encodeReportExplanation(explanation, meta),
+        routedToReview: true,
+      },
     });
     await this.prisma.project.update({
       where: { id: projectId },
       data: { status: 'UNDER_REVIEW' },
     });
+    await this.evidenceSync.syncProjectEvidenceRecord(studentId, projectId);
   }
 
-  private async failWithoutGithub(projectId: string): Promise<void> {
+  private async failWithoutGithub(projectId: string, studentId: string): Promise<void> {
     await this.writeReviewReport(
       projectId,
+      studentId,
       {
         qualityScore: 0,
         duplicateScore: 0,
@@ -149,9 +159,10 @@ export class ProjectVerifyRunnerService {
     );
   }
 
-  private async failSnapshotUnavailable(projectId: string): Promise<void> {
+  private async failSnapshotUnavailable(projectId: string, studentId: string): Promise<void> {
     await this.writeReviewReport(
       projectId,
+      studentId,
       {
         qualityScore: 0,
         duplicateScore: 0,
@@ -166,9 +177,10 @@ export class ProjectVerifyRunnerService {
     );
   }
 
-  private async failQlixUnavailable(projectId: string): Promise<void> {
+  private async failQlixUnavailable(projectId: string, studentId: string): Promise<void> {
     await this.writeReviewReport(
       projectId,
+      studentId,
       {
         qualityScore: 0,
         duplicateScore: 0,

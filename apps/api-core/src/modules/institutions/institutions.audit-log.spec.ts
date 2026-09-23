@@ -24,6 +24,7 @@ describe('InstitutionsService.listAuditLogs', () => {
       {} as never,
       {} as never,
       noopRedis as never,
+      {} as never,
     );
     return { service, findMany };
   }

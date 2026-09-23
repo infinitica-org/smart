@@ -11,6 +11,8 @@ const PRACTITIONER_WEIGHTS = {
   GITHUB: { default: 1 },
   HACKERRANK: { default: 0.8 },
   LEETCODE: { default: 0.8 },
+  LINKEDIN: { default: 0.6 },
+  CREDLY: { default: 0.7 },
   RESUME: { default: 0.5 },
   MANUAL: { default: 0.4 },
   // Credential evidence is supporting-only (playbook §5.5): kept below every

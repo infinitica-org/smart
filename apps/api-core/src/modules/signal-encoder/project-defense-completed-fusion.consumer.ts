@@ -6,6 +6,7 @@ import { env } from '../../platform/config/env.js';
 import { KafkaService } from '../../platform/kafka/kafka.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { CorroborationService } from '../corroboration/corroboration.service.js';
+import { EvidenceSkillInferenceService } from '../evidence/evidence-skill-inference.service.js';
 import { mapVerifiedProjectToQlixFusionInput } from './qlix-project.mapper.js';
 import { RuleBasedEncoder } from './rule-based.encoder.js';
 
@@ -24,6 +25,8 @@ export class ProjectDefenseCompletedFusionConsumer implements OnModuleInit {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RuleBasedEncoder) private readonly encoder: RuleBasedEncoder,
     @Inject(CorroborationService) private readonly corroboration: CorroborationService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -90,6 +93,9 @@ export class ProjectDefenseCompletedFusionConsumer implements OnModuleInit {
             await this.corroboration.refusionVerifiedSkillClaims(project.studentId, {
               skillCodes,
             });
+            if (skillCodes.length > 0) {
+              await this.skillInference.recomputeForStudentSkills(project.studentId, skillCodes);
+            }
           });
         },
       });

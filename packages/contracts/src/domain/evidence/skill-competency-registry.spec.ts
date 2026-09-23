@@ -12,7 +12,7 @@ describe('skill-competency-registry', () => {
       const blueprint = getSkillBlueprint(code);
       expect(blueprint, code).toBeDefined();
       expect(blueprint?.competencyModel).toHaveLength(6);
-      expect(blueprint?.proficiencyRequirements?.length).toBeGreaterThan(0);
+      expect(blueprint?.proficiencyRequirements?.length).toBe(5);
     }
   });
 

@@ -66,7 +66,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains async i/o, concurrency & service integration accurately under assessment conditions',
           'Applies async i/o, concurrency & service integration to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates async i/o, concurrency & service integration in timed assessment items',
         ],
@@ -107,12 +107,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d' ], criticalCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d', 'e74fb14e-7e33-41fd-a709-4c23f24656be', '296c4b35-7619-482c-aa9c-5d9b980598d3' ], criticalCompetencyIds: [ '296c4b35-7619-482c-aa9c-5d9b980598d3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d', 'e74fb14e-7e33-41fd-a709-4c23f24656be', '296c4b35-7619-482c-aa9c-5d9b980598d3', 'a12803b7-ad4b-48a4-a042-5a948daaf7ef' ], criticalCompetencyIds: [ 'a12803b7-ad4b-48a4-a042-5a948daaf7ef' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d', 'e74fb14e-7e33-41fd-a709-4c23f24656be', '296c4b35-7619-482c-aa9c-5d9b980598d3', 'a12803b7-ad4b-48a4-a042-5a948daaf7ef', '445faf5d-334e-473a-adda-495be6fb6350' ], criticalCompetencyIds: [ 'a12803b7-ad4b-48a4-a042-5a948daaf7ef', '445faf5d-334e-473a-adda-495be6fb6350' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '828ed14b-2aca-408b-adc1-78e24f22b09d', 'e74fb14e-7e33-41fd-a709-4c23f24656be', '296c4b35-7619-482c-aa9c-5d9b980598d3', 'a12803b7-ad4b-48a4-a042-5a948daaf7ef', '445faf5d-334e-473a-adda-495be6fb6350', 'ce43fb80-9697-44ea-af6a-bbdc7f60c0e4' ], criticalCompetencyIds: [ '445faf5d-334e-473a-adda-495be6fb6350', 'ce43fb80-9697-44ea-af6a-bbdc7f60c0e4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Python',
       INTERMEDIATE: 'Independent execution of bounded Python tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Python',
       ADVANCED: 'Owns Python components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Python at org scale',
     },
@@ -184,7 +186,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains concurrency, jvm tuning & microservice patterns accurately under assessment conditions',
           'Applies concurrency, jvm tuning & microservice patterns to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates concurrency, jvm tuning & microservice patterns in timed assessment items',
         ],
@@ -225,12 +227,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a' ], criticalCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a', '55b9fc11-2d27-4b66-acb5-7e831a446065', 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab' ], criticalCompetencyIds: [ 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a', '55b9fc11-2d27-4b66-acb5-7e831a446065', 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab', '841483d9-ef92-4e64-ab32-569f940bb9fe' ], criticalCompetencyIds: [ '841483d9-ef92-4e64-ab32-569f940bb9fe' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a', '55b9fc11-2d27-4b66-acb5-7e831a446065', 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab', '841483d9-ef92-4e64-ab32-569f940bb9fe', '8c670f60-16cb-4b16-aa36-374f69b4ff1c' ], criticalCompetencyIds: [ '841483d9-ef92-4e64-ab32-569f940bb9fe', '8c670f60-16cb-4b16-aa36-374f69b4ff1c' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '28c50e02-3e03-471b-af3c-7e1550c1306a', '55b9fc11-2d27-4b66-acb5-7e831a446065', 'f0b2b3a0-4a69-49a9-abfe-84d7adff25ab', '841483d9-ef92-4e64-ab32-569f940bb9fe', '8c670f60-16cb-4b16-aa36-374f69b4ff1c', '61a02bdd-fdd8-45d6-aa3a-ae11f6e1f4bc' ], criticalCompetencyIds: [ '8c670f60-16cb-4b16-aa36-374f69b4ff1c', '61a02bdd-fdd8-45d6-aa3a-ae11f6e1f4bc' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Java',
       INTERMEDIATE: 'Independent execution of bounded Java tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Java',
       ADVANCED: 'Owns Java components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Java at org scale',
     },
@@ -302,7 +306,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains state management, apis & auth flows accurately under assessment conditions',
           'Applies state management, apis & auth flows to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates state management, apis & auth flows in timed assessment items',
         ],
@@ -343,12 +347,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2' ], criticalCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2', '5ac9bf05-7872-4116-a62a-d2f7a1e1d6d2', '00b56ff3-f3c2-4693-a868-c7d571a16e98' ], criticalCompetencyIds: [ '00b56ff3-f3c2-4693-a868-c7d571a16e98' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2', '5ac9bf05-7872-4116-a62a-d2f7a1e1d6d2', '00b56ff3-f3c2-4693-a868-c7d571a16e98', '87983fe0-51c8-4676-afdc-390fc141a694' ], criticalCompetencyIds: [ '87983fe0-51c8-4676-afdc-390fc141a694' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2', '5ac9bf05-7872-4116-a62a-d2f7a1e1d6d2', '00b56ff3-f3c2-4693-a868-c7d571a16e98', '87983fe0-51c8-4676-afdc-390fc141a694', '231ce1dd-97aa-4ceb-a76a-36bedceee509' ], criticalCompetencyIds: [ '87983fe0-51c8-4676-afdc-390fc141a694', '231ce1dd-97aa-4ceb-a76a-36bedceee509' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5ab5195a-f35b-40ae-ab33-a64c9622afb2', '5ac9bf05-7872-4116-a62a-d2f7a1e1d6d2', '00b56ff3-f3c2-4693-a868-c7d571a16e98', '87983fe0-51c8-4676-afdc-390fc141a694', '231ce1dd-97aa-4ceb-a76a-36bedceee509', '166f8955-9fb1-4904-a46d-f866b3a2adbe' ], criticalCompetencyIds: [ '231ce1dd-97aa-4ceb-a76a-36bedceee509', '166f8955-9fb1-4904-a46d-f866b3a2adbe' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of JavaScript / TypeScript',
       INTERMEDIATE: 'Independent execution of bounded JavaScript / TypeScript tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for JavaScript / TypeScript',
       ADVANCED: 'Owns JavaScript / TypeScript components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for JavaScript / TypeScript at org scale',
     },
@@ -420,7 +426,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains performance profiling & memory management accurately under assessment conditions',
           'Applies performance profiling & memory management to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates performance profiling & memory management in timed assessment items',
         ],
@@ -461,12 +467,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5' ], criticalCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5', 'f5e4e54f-72ae-4fd0-ab16-ffbeaff5b0f9', '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d' ], criticalCompetencyIds: [ '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5', 'f5e4e54f-72ae-4fd0-ab16-ffbeaff5b0f9', '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d', '80d946f1-6cf6-4c10-af29-a5f91235cd00' ], criticalCompetencyIds: [ '80d946f1-6cf6-4c10-af29-a5f91235cd00' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5', 'f5e4e54f-72ae-4fd0-ab16-ffbeaff5b0f9', '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d', '80d946f1-6cf6-4c10-af29-a5f91235cd00', '44915f9f-185e-433f-a98d-5034c23acf5b' ], criticalCompetencyIds: [ '80d946f1-6cf6-4c10-af29-a5f91235cd00', '44915f9f-185e-433f-a98d-5034c23acf5b' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3e4021f8-2e53-4a9f-a557-bc4e5dfc7db5', 'f5e4e54f-72ae-4fd0-ab16-ffbeaff5b0f9', '97ebbb4b-5b35-4dc9-ad13-5a471c975d4d', '80d946f1-6cf6-4c10-af29-a5f91235cd00', '44915f9f-185e-433f-a98d-5034c23acf5b', '12cf4c61-47b1-4165-a91d-c91e3c11812a' ], criticalCompetencyIds: [ '44915f9f-185e-433f-a98d-5034c23acf5b', '12cf4c61-47b1-4165-a91d-c91e3c11812a' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Go',
       INTERMEDIATE: 'Independent execution of bounded Go tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Go',
       ADVANCED: 'Owns Go components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Go at org scale',
     },
@@ -538,7 +546,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains async/await, caching & enterprise patterns accurately under assessment conditions',
           'Applies async/await, caching & enterprise patterns to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates async/await, caching & enterprise patterns in timed assessment items',
         ],
@@ -579,12 +587,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9' ], criticalCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9', '43da0926-e990-4cbb-a2c7-239080001e3b', '09de4f38-32d7-488a-a0cb-20404ea45748' ], criticalCompetencyIds: [ '09de4f38-32d7-488a-a0cb-20404ea45748' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9', '43da0926-e990-4cbb-a2c7-239080001e3b', '09de4f38-32d7-488a-a0cb-20404ea45748', '524faa52-acc8-47d5-a456-ec5b469c6d71' ], criticalCompetencyIds: [ '524faa52-acc8-47d5-a456-ec5b469c6d71' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9', '43da0926-e990-4cbb-a2c7-239080001e3b', '09de4f38-32d7-488a-a0cb-20404ea45748', '524faa52-acc8-47d5-a456-ec5b469c6d71', '90e1b076-77d3-4a3b-a082-d36e11a21e2c' ], criticalCompetencyIds: [ '524faa52-acc8-47d5-a456-ec5b469c6d71', '90e1b076-77d3-4a3b-a082-d36e11a21e2c' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '149f8167-2fea-4c83-af90-2790815828f9', '43da0926-e990-4cbb-a2c7-239080001e3b', '09de4f38-32d7-488a-a0cb-20404ea45748', '524faa52-acc8-47d5-a456-ec5b469c6d71', '90e1b076-77d3-4a3b-a082-d36e11a21e2c', '81178f98-8408-444e-abf8-4fc6a34f023e' ], criticalCompetencyIds: [ '90e1b076-77d3-4a3b-a082-d36e11a21e2c', '81178f98-8408-444e-abf8-4fc6a34f023e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of C# / .NET',
       INTERMEDIATE: 'Independent execution of bounded C# / .NET tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for C# / .NET',
       ADVANCED: 'Owns C# / .NET components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for C# / .NET at org scale',
     },
@@ -656,7 +666,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains performance optimization & cache awareness accurately under assessment conditions',
           'Applies performance optimization & cache awareness to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates performance optimization & cache awareness in timed assessment items',
         ],
@@ -697,12 +707,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c' ], criticalCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c', '66630e84-70ec-453b-ae76-a5b56b2d87dc', '18163587-8eba-49be-a27f-578540cc297d' ], criticalCompetencyIds: [ '18163587-8eba-49be-a27f-578540cc297d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c', '66630e84-70ec-453b-ae76-a5b56b2d87dc', '18163587-8eba-49be-a27f-578540cc297d', 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b' ], criticalCompetencyIds: [ 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c', '66630e84-70ec-453b-ae76-a5b56b2d87dc', '18163587-8eba-49be-a27f-578540cc297d', 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b', '30463732-2f0c-4c5c-afcc-09540ef0e3c2' ], criticalCompetencyIds: [ 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b', '30463732-2f0c-4c5c-afcc-09540ef0e3c2' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'ad3b22da-451a-45c8-a3a9-83c435352a6c', '66630e84-70ec-453b-ae76-a5b56b2d87dc', '18163587-8eba-49be-a27f-578540cc297d', 'd88ac038-cac1-4f4b-ae48-cddb5f65e16b', '30463732-2f0c-4c5c-afcc-09540ef0e3c2', '862a2b48-9ce2-416c-aec9-cb94c6c929c7' ], criticalCompetencyIds: [ '30463732-2f0c-4c5c-afcc-09540ef0e3c2', '862a2b48-9ce2-416c-aec9-cb94c6c929c7' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of C++',
       INTERMEDIATE: 'Independent execution of bounded C++ tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for C++',
       ADVANCED: 'Owns C++ components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for C++ at org scale',
     },
@@ -774,7 +786,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains unsafe code, ffi & systems integration accurately under assessment conditions',
           'Applies unsafe code, ffi & systems integration to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates unsafe code, ffi & systems integration in timed assessment items',
         ],
@@ -815,12 +827,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6' ], criticalCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6', '9f01b32e-50e5-454d-a824-4ea4542a6974', '3c30312d-b65c-4e18-abeb-5087328b4238' ], criticalCompetencyIds: [ '3c30312d-b65c-4e18-abeb-5087328b4238' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6', '9f01b32e-50e5-454d-a824-4ea4542a6974', '3c30312d-b65c-4e18-abeb-5087328b4238', '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f' ], criticalCompetencyIds: [ '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6', '9f01b32e-50e5-454d-a824-4ea4542a6974', '3c30312d-b65c-4e18-abeb-5087328b4238', '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f', '0f189776-19c9-413e-ac54-39c7295a848f' ], criticalCompetencyIds: [ '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f', '0f189776-19c9-413e-ac54-39c7295a848f' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '48a7bc1a-2153-4c36-aea1-3f16f549fdc6', '9f01b32e-50e5-454d-a824-4ea4542a6974', '3c30312d-b65c-4e18-abeb-5087328b4238', '55df270e-39c7-4fd6-a6a8-6ce6bc8c078f', '0f189776-19c9-413e-ac54-39c7295a848f', '34f90e80-dc77-45f8-a6bc-e78ac30490dc' ], criticalCompetencyIds: [ '0f189776-19c9-413e-ac54-39c7295a848f', '34f90e80-dc77-45f8-a6bc-e78ac30490dc' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Rust',
       INTERMEDIATE: 'Independent execution of bounded Rust tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Rust',
       ADVANCED: 'Owns Rust components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Rust at org scale',
     },
@@ -892,7 +906,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains functional patterns & interop with java accurately under assessment conditions',
           'Applies functional patterns & interop with java to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates functional patterns & interop with java in timed assessment items',
         ],
@@ -933,12 +947,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3' ], criticalCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3', '72dd82c4-c48b-40c6-aa12-9f421eec1e39', 'e7fa81ec-d6dc-4f08-a853-f87b3848027e' ], criticalCompetencyIds: [ 'e7fa81ec-d6dc-4f08-a853-f87b3848027e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3', '72dd82c4-c48b-40c6-aa12-9f421eec1e39', 'e7fa81ec-d6dc-4f08-a853-f87b3848027e', '33103905-d651-443f-af00-0e955b02458e' ], criticalCompetencyIds: [ '33103905-d651-443f-af00-0e955b02458e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3', '72dd82c4-c48b-40c6-aa12-9f421eec1e39', 'e7fa81ec-d6dc-4f08-a853-f87b3848027e', '33103905-d651-443f-af00-0e955b02458e', '9b41709e-3b31-4559-ad31-01bfb0fb2571' ], criticalCompetencyIds: [ '33103905-d651-443f-af00-0e955b02458e', '9b41709e-3b31-4559-ad31-01bfb0fb2571' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '78993fb5-2016-4609-a2c9-70b21da269b3', '72dd82c4-c48b-40c6-aa12-9f421eec1e39', 'e7fa81ec-d6dc-4f08-a853-f87b3848027e', '33103905-d651-443f-af00-0e955b02458e', '9b41709e-3b31-4559-ad31-01bfb0fb2571', 'a5dd9346-9463-4973-aa63-812db202f7fb' ], criticalCompetencyIds: [ '9b41709e-3b31-4559-ad31-01bfb0fb2571', 'a5dd9346-9463-4973-aa63-812db202f7fb' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Kotlin',
       INTERMEDIATE: 'Independent execution of bounded Kotlin tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Kotlin',
       ADVANCED: 'Owns Kotlin components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Kotlin at org scale',
     },
@@ -1010,7 +1026,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains concurrency, combine & async/await accurately under assessment conditions',
           'Applies concurrency, combine & async/await to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates concurrency, combine & async/await in timed assessment items',
         ],
@@ -1051,12 +1067,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12' ], criticalCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12', '7cc3c174-1540-445d-afe0-0ccf7ba64a28', '25552444-2ebd-45b2-a331-2db27f651a6d' ], criticalCompetencyIds: [ '25552444-2ebd-45b2-a331-2db27f651a6d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12', '7cc3c174-1540-445d-afe0-0ccf7ba64a28', '25552444-2ebd-45b2-a331-2db27f651a6d', 'ac9e0816-d68d-4093-a711-c56a4266de54' ], criticalCompetencyIds: [ 'ac9e0816-d68d-4093-a711-c56a4266de54' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12', '7cc3c174-1540-445d-afe0-0ccf7ba64a28', '25552444-2ebd-45b2-a331-2db27f651a6d', 'ac9e0816-d68d-4093-a711-c56a4266de54', 'ca8cd5fc-62de-4aaa-a12e-af294601b74c' ], criticalCompetencyIds: [ 'ac9e0816-d68d-4093-a711-c56a4266de54', 'ca8cd5fc-62de-4aaa-a12e-af294601b74c' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4f14488a-2e9f-410d-aa1a-0219f31fcb12', '7cc3c174-1540-445d-afe0-0ccf7ba64a28', '25552444-2ebd-45b2-a331-2db27f651a6d', 'ac9e0816-d68d-4093-a711-c56a4266de54', 'ca8cd5fc-62de-4aaa-a12e-af294601b74c', '0e773219-6973-4174-a90f-06656d31b5e2' ], criticalCompetencyIds: [ 'ca8cd5fc-62de-4aaa-a12e-af294601b74c', '0e773219-6973-4174-a90f-06656d31b5e2' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Swift',
       INTERMEDIATE: 'Independent execution of bounded Swift tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Swift',
       ADVANCED: 'Owns Swift components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Swift at org scale',
     },
@@ -1128,7 +1146,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains transactions, isolation & locking accurately under assessment conditions',
           'Applies transactions, isolation & locking to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates transactions, isolation & locking in timed assessment items',
         ],
@@ -1169,12 +1187,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2' ], criticalCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2', 'b1d1b1b7-b86e-4cba-aab2-b3e0649b1d08', '5c027d64-473c-40a6-a86a-de01e173abe0' ], criticalCompetencyIds: [ '5c027d64-473c-40a6-a86a-de01e173abe0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2', 'b1d1b1b7-b86e-4cba-aab2-b3e0649b1d08', '5c027d64-473c-40a6-a86a-de01e173abe0', '7c5483db-6e7d-4594-a2f2-be324f580ff7' ], criticalCompetencyIds: [ '7c5483db-6e7d-4594-a2f2-be324f580ff7' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2', 'b1d1b1b7-b86e-4cba-aab2-b3e0649b1d08', '5c027d64-473c-40a6-a86a-de01e173abe0', '7c5483db-6e7d-4594-a2f2-be324f580ff7', 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa' ], criticalCompetencyIds: [ '7c5483db-6e7d-4594-a2f2-be324f580ff7', 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6578d134-67b9-45f6-a4ea-34e09ed1eff2', 'b1d1b1b7-b86e-4cba-aab2-b3e0649b1d08', '5c027d64-473c-40a6-a86a-de01e173abe0', '7c5483db-6e7d-4594-a2f2-be324f580ff7', 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa', 'a50adaaf-86ba-46fa-a0e6-fdacc998d503' ], criticalCompetencyIds: [ 'a2f247e1-b0d4-495e-ab7f-5969d15fd3fa', 'a50adaaf-86ba-46fa-a0e6-fdacc998d503' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of SQL',
       INTERMEDIATE: 'Independent execution of bounded SQL tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for SQL',
       ADVANCED: 'Owns SQL components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for SQL at org scale',
     },
@@ -1246,7 +1266,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains statistical modeling & r packages accurately under assessment conditions',
           'Applies statistical modeling & r packages to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates statistical modeling & r packages in timed assessment items',
         ],
@@ -1287,12 +1307,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e' ], criticalCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e', 'a6a4090c-3d72-46bc-a41a-50c8a169cd42', 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c' ], criticalCompetencyIds: [ 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e', 'a6a4090c-3d72-46bc-a41a-50c8a169cd42', 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c', 'd331c76a-0ab6-4944-a9d5-fc52a809d301' ], criticalCompetencyIds: [ 'd331c76a-0ab6-4944-a9d5-fc52a809d301' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e', 'a6a4090c-3d72-46bc-a41a-50c8a169cd42', 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c', 'd331c76a-0ab6-4944-a9d5-fc52a809d301', '72a26ba6-7c55-49d8-a33b-782bbec401fe' ], criticalCompetencyIds: [ 'd331c76a-0ab6-4944-a9d5-fc52a809d301', '72a26ba6-7c55-49d8-a33b-782bbec401fe' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '9c28c23d-00c2-4bf8-aa35-8dc83d720f5e', 'a6a4090c-3d72-46bc-a41a-50c8a169cd42', 'a4a67df6-47ec-48eb-ae2c-a226d2ec5b7c', 'd331c76a-0ab6-4944-a9d5-fc52a809d301', '72a26ba6-7c55-49d8-a33b-782bbec401fe', '9bb640be-ae86-4883-ac63-4ba5da9761e9' ], criticalCompetencyIds: [ '72a26ba6-7c55-49d8-a33b-782bbec401fe', '9bb640be-ae86-4883-ac63-4ba5da9761e9' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of R',
       INTERMEDIATE: 'Independent execution of bounded R tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for R',
       ADVANCED: 'Owns R components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for R at org scale',
     },
@@ -1364,7 +1386,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains advanced type system & pattern matching accurately under assessment conditions',
           'Applies advanced type system & pattern matching to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates advanced type system & pattern matching in timed assessment items',
         ],
@@ -1405,12 +1427,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb' ], criticalCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb', 'c47314dd-e908-4289-a4ae-4b74a6797f2b', '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e' ], criticalCompetencyIds: [ '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb', 'c47314dd-e908-4289-a4ae-4b74a6797f2b', '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e', 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f' ], criticalCompetencyIds: [ 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb', 'c47314dd-e908-4289-a4ae-4b74a6797f2b', '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e', 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f', 'c57d90eb-e7bc-4fd1-a606-93b7453415c9' ], criticalCompetencyIds: [ 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f', 'c57d90eb-e7bc-4fd1-a606-93b7453415c9' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'e27f6991-0d5d-4a9a-a0fb-a761dd5c60eb', 'c47314dd-e908-4289-a4ae-4b74a6797f2b', '025ea8ac-1c42-4d86-a8f9-664b1fcdec9e', 'db78d1b0-2db2-4faf-a0fb-3f04b4cf5a6f', 'c57d90eb-e7bc-4fd1-a606-93b7453415c9', 'e927bd50-6051-4e0b-a945-395921333e74' ], criticalCompetencyIds: [ 'c57d90eb-e7bc-4fd1-a606-93b7453415c9', 'e927bd50-6051-4e0b-a945-395921333e74' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Scala',
       INTERMEDIATE: 'Independent execution of bounded Scala tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Scala',
       ADVANCED: 'Owns Scala components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Scala at org scale',
     },
@@ -1482,7 +1506,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains auth, rate limiting & api security accurately under assessment conditions',
           'Applies auth, rate limiting & api security to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates auth, rate limiting & api security in timed assessment items',
         ],
@@ -1523,12 +1547,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2' ], criticalCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2', 'bf0de8e5-8c77-4279-ae95-78c122120b53', '474ddc4f-b186-45f8-a428-8bee5cbd20e1' ], criticalCompetencyIds: [ '474ddc4f-b186-45f8-a428-8bee5cbd20e1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2', 'bf0de8e5-8c77-4279-ae95-78c122120b53', '474ddc4f-b186-45f8-a428-8bee5cbd20e1', 'fa7f9bba-3acf-4709-aa6c-4beb6f500494' ], criticalCompetencyIds: [ 'fa7f9bba-3acf-4709-aa6c-4beb6f500494' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2', 'bf0de8e5-8c77-4279-ae95-78c122120b53', '474ddc4f-b186-45f8-a428-8bee5cbd20e1', 'fa7f9bba-3acf-4709-aa6c-4beb6f500494', '3565d9b9-545a-4ef0-a091-d9be39fd7824' ], criticalCompetencyIds: [ 'fa7f9bba-3acf-4709-aa6c-4beb6f500494', '3565d9b9-545a-4ef0-a091-d9be39fd7824' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'fb63f0c3-4422-437b-a426-c784deaef0b2', 'bf0de8e5-8c77-4279-ae95-78c122120b53', '474ddc4f-b186-45f8-a428-8bee5cbd20e1', 'fa7f9bba-3acf-4709-aa6c-4beb6f500494', '3565d9b9-545a-4ef0-a091-d9be39fd7824', '1e9b00db-b684-4832-a51d-c63b6af6c427' ], criticalCompetencyIds: [ '3565d9b9-545a-4ef0-a091-d9be39fd7824', '1e9b00db-b684-4832-a51d-c63b6af6c427' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of API Design',
       INTERMEDIATE: 'Independent execution of bounded API Design tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for API Design',
       ADVANCED: 'Owns API Design components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for API Design at org scale',
     },
@@ -1600,7 +1626,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains dynamic programming & greedy methods accurately under assessment conditions',
           'Applies dynamic programming & greedy methods to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates dynamic programming & greedy methods in timed assessment items',
         ],
@@ -1641,12 +1667,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2' ], criticalCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2', '5fbbf941-e7f0-446c-a5fe-0b3fc40a7f21', '099b1472-62d1-4258-a452-b4ad122f09b1' ], criticalCompetencyIds: [ '099b1472-62d1-4258-a452-b4ad122f09b1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2', '5fbbf941-e7f0-446c-a5fe-0b3fc40a7f21', '099b1472-62d1-4258-a452-b4ad122f09b1', 'feef8103-9da5-45c9-a8ab-f88801ccc467' ], criticalCompetencyIds: [ 'feef8103-9da5-45c9-a8ab-f88801ccc467' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2', '5fbbf941-e7f0-446c-a5fe-0b3fc40a7f21', '099b1472-62d1-4258-a452-b4ad122f09b1', 'feef8103-9da5-45c9-a8ab-f88801ccc467', '489be34f-7c5e-4447-a80b-21d508d5d873' ], criticalCompetencyIds: [ 'feef8103-9da5-45c9-a8ab-f88801ccc467', '489be34f-7c5e-4447-a80b-21d508d5d873' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f25545a5-f30a-47f7-abff-60a052eaeea2', '5fbbf941-e7f0-446c-a5fe-0b3fc40a7f21', '099b1472-62d1-4258-a452-b4ad122f09b1', 'feef8103-9da5-45c9-a8ab-f88801ccc467', '489be34f-7c5e-4447-a80b-21d508d5d873', '7e9bb7c3-659a-4981-ad5a-c6739e80343a' ], criticalCompetencyIds: [ '489be34f-7c5e-4447-a80b-21d508d5d873', '7e9bb7c3-659a-4981-ad5a-c6739e80343a' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Algorithms & Performance',
       INTERMEDIATE: 'Independent execution of bounded Algorithms & Performance tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Algorithms & Performance',
       ADVANCED: 'Owns Algorithms & Performance components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Algorithms & Performance at org scale',
     },
@@ -1718,7 +1746,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains iam, security groups & secrets management accurately under assessment conditions',
           'Applies iam, security groups & secrets management to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates iam, security groups & secrets management in timed assessment items',
         ],
@@ -1759,12 +1787,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de' ], criticalCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de', '664456d4-b6f5-44b6-a52a-f9d8d21d3e41', 'c1aa820c-2274-44e4-aa40-8b65fa87032b' ], criticalCompetencyIds: [ 'c1aa820c-2274-44e4-aa40-8b65fa87032b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de', '664456d4-b6f5-44b6-a52a-f9d8d21d3e41', 'c1aa820c-2274-44e4-aa40-8b65fa87032b', 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e' ], criticalCompetencyIds: [ 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de', '664456d4-b6f5-44b6-a52a-f9d8d21d3e41', 'c1aa820c-2274-44e4-aa40-8b65fa87032b', 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e', '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c' ], criticalCompetencyIds: [ 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e', '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '55c76148-5681-43f5-a10a-93ad5ea586de', '664456d4-b6f5-44b6-a52a-f9d8d21d3e41', 'c1aa820c-2274-44e4-aa40-8b65fa87032b', 'bb1c8eb7-b59f-45c9-a81b-5be5a75eb75e', '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c', '36330b42-a81f-4f02-ac02-c024bc63d3bd' ], criticalCompetencyIds: [ '63d2f1c9-2982-4a07-a5b6-f16ef0e97a0c', '36330b42-a81f-4f02-ac02-c024bc63d3bd' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of AWS',
       INTERMEDIATE: 'Independent execution of bounded AWS tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for AWS',
       ADVANCED: 'Owns AWS components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for AWS at org scale',
     },
@@ -1836,7 +1866,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains entra id, rbac & key vault accurately under assessment conditions',
           'Applies entra id, rbac & key vault to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates entra id, rbac & key vault in timed assessment items',
         ],
@@ -1877,12 +1907,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487' ], criticalCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487', '73f3d6ae-91b3-4e0c-a97d-5bab77191cb9', 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd' ], criticalCompetencyIds: [ 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487', '73f3d6ae-91b3-4e0c-a97d-5bab77191cb9', 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd', '68f5370c-b7de-4e73-a528-26a14f9ea0de' ], criticalCompetencyIds: [ '68f5370c-b7de-4e73-a528-26a14f9ea0de' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487', '73f3d6ae-91b3-4e0c-a97d-5bab77191cb9', 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd', '68f5370c-b7de-4e73-a528-26a14f9ea0de', 'e24a1d07-982e-4005-a7f3-f27db80ef1b4' ], criticalCompetencyIds: [ '68f5370c-b7de-4e73-a528-26a14f9ea0de', 'e24a1d07-982e-4005-a7f3-f27db80ef1b4' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '2c93f40f-941b-44de-aa6a-78a32722e487', '73f3d6ae-91b3-4e0c-a97d-5bab77191cb9', 'da8d3beb-e9f3-4b66-ae26-dd7b9e4e00cd', '68f5370c-b7de-4e73-a528-26a14f9ea0de', 'e24a1d07-982e-4005-a7f3-f27db80ef1b4', '0568590a-f17e-4dba-acdb-c16c47b72d63' ], criticalCompetencyIds: [ 'e24a1d07-982e-4005-a7f3-f27db80ef1b4', '0568590a-f17e-4dba-acdb-c16c47b72d63' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Azure',
       INTERMEDIATE: 'Independent execution of bounded Azure tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Azure',
       ADVANCED: 'Owns Azure components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Azure at org scale',
     },
@@ -1954,7 +1986,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains iam, vpc & cloud armor security accurately under assessment conditions',
           'Applies iam, vpc & cloud armor security to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates iam, vpc & cloud armor security in timed assessment items',
         ],
@@ -1995,12 +2027,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e' ], criticalCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e', 'ab8c33e1-6631-4c51-ae70-229d916dce95', '934624d8-e287-4dc6-a91e-e1bde4d63772' ], criticalCompetencyIds: [ '934624d8-e287-4dc6-a91e-e1bde4d63772' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e', 'ab8c33e1-6631-4c51-ae70-229d916dce95', '934624d8-e287-4dc6-a91e-e1bde4d63772', '6f22da75-930f-417c-ac65-775308a532b4' ], criticalCompetencyIds: [ '6f22da75-930f-417c-ac65-775308a532b4' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e', 'ab8c33e1-6631-4c51-ae70-229d916dce95', '934624d8-e287-4dc6-a91e-e1bde4d63772', '6f22da75-930f-417c-ac65-775308a532b4', 'b5ec7473-f6a9-4500-a23b-596e72a08df0' ], criticalCompetencyIds: [ '6f22da75-930f-417c-ac65-775308a532b4', 'b5ec7473-f6a9-4500-a23b-596e72a08df0' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '564e57ab-7aa7-44b5-a82b-a50165ca3a8e', 'ab8c33e1-6631-4c51-ae70-229d916dce95', '934624d8-e287-4dc6-a91e-e1bde4d63772', '6f22da75-930f-417c-ac65-775308a532b4', 'b5ec7473-f6a9-4500-a23b-596e72a08df0', 'e24a0bff-3ebe-4f22-a4ee-fec6468ccc85' ], criticalCompetencyIds: [ 'b5ec7473-f6a9-4500-a23b-596e72a08df0', 'e24a0bff-3ebe-4f22-a4ee-fec6468ccc85' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Google Cloud (GCP)',
       INTERMEDIATE: 'Independent execution of bounded Google Cloud (GCP) tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Google Cloud (GCP)',
       ADVANCED: 'Owns Google Cloud (GCP) components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Google Cloud (GCP) at org scale',
     },
@@ -2072,7 +2106,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains pipeline security & supply chain hardening accurately under assessment conditions',
           'Applies pipeline security & supply chain hardening to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates pipeline security & supply chain hardening in timed assessment items',
         ],
@@ -2113,12 +2147,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489' ], criticalCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489', 'b6e1cc6b-0c0c-486f-a3c8-eb37bdee2bb9', '561c4f4f-3d74-4468-aae0-bca2f28b6b27' ], criticalCompetencyIds: [ '561c4f4f-3d74-4468-aae0-bca2f28b6b27' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489', 'b6e1cc6b-0c0c-486f-a3c8-eb37bdee2bb9', '561c4f4f-3d74-4468-aae0-bca2f28b6b27', '06361992-cf4b-4723-ada0-ea8e0fa7662a' ], criticalCompetencyIds: [ '06361992-cf4b-4723-ada0-ea8e0fa7662a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489', 'b6e1cc6b-0c0c-486f-a3c8-eb37bdee2bb9', '561c4f4f-3d74-4468-aae0-bca2f28b6b27', '06361992-cf4b-4723-ada0-ea8e0fa7662a', 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6' ], criticalCompetencyIds: [ '06361992-cf4b-4723-ada0-ea8e0fa7662a', 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '24787c65-1248-41ad-a010-f5a2fd15e489', 'b6e1cc6b-0c0c-486f-a3c8-eb37bdee2bb9', '561c4f4f-3d74-4468-aae0-bca2f28b6b27', '06361992-cf4b-4723-ada0-ea8e0fa7662a', 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6', '4d099e04-e6b6-47c9-a181-9adc981fd1be' ], criticalCompetencyIds: [ 'fc93f670-f37a-4ee5-ab9e-45a7ead6e3c6', '4d099e04-e6b6-47c9-a181-9adc981fd1be' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of CI/CD',
       INTERMEDIATE: 'Independent execution of bounded CI/CD tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for CI/CD',
       ADVANCED: 'Owns CI/CD components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for CI/CD at org scale',
     },
@@ -2190,7 +2226,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains scheduling, autoscaling & resource limits accurately under assessment conditions',
           'Applies scheduling, autoscaling & resource limits to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates scheduling, autoscaling & resource limits in timed assessment items',
         ],
@@ -2231,12 +2267,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52' ], criticalCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52', 'dad490b0-2a89-4e03-ad82-0b7580037bba', '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0' ], criticalCompetencyIds: [ '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52', 'dad490b0-2a89-4e03-ad82-0b7580037bba', '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0', '8dbc0a02-5313-444f-a3bb-25f60362a998' ], criticalCompetencyIds: [ '8dbc0a02-5313-444f-a3bb-25f60362a998' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52', 'dad490b0-2a89-4e03-ad82-0b7580037bba', '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0', '8dbc0a02-5313-444f-a3bb-25f60362a998', '8ed6de3e-b6b1-470d-ada3-4b98218f96e4' ], criticalCompetencyIds: [ '8dbc0a02-5313-444f-a3bb-25f60362a998', '8ed6de3e-b6b1-470d-ada3-4b98218f96e4' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '528c1b0c-bf63-4ac6-a056-a0c8b5703e52', 'dad490b0-2a89-4e03-ad82-0b7580037bba', '8d76a764-5a7b-4d9e-a7f6-b9bc74e9beb0', '8dbc0a02-5313-444f-a3bb-25f60362a998', '8ed6de3e-b6b1-470d-ada3-4b98218f96e4', '42fcbad3-816d-4ad0-a995-2e0eab648421' ], criticalCompetencyIds: [ '8ed6de3e-b6b1-470d-ada3-4b98218f96e4', '42fcbad3-816d-4ad0-a995-2e0eab648421' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Containers & Kubernetes',
       INTERMEDIATE: 'Independent execution of bounded Containers & Kubernetes tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Containers & Kubernetes',
       ADVANCED: 'Owns Containers & Kubernetes components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Containers & Kubernetes at org scale',
     },
@@ -2308,7 +2346,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains distributed tracing & correlation ids accurately under assessment conditions',
           'Applies distributed tracing & correlation ids to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates distributed tracing & correlation ids in timed assessment items',
         ],
@@ -2349,12 +2387,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308' ], criticalCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308', '014964e9-65ff-4ce2-abfd-3dce2a5477c2', 'fd681316-5926-4a65-acc2-9bb966a9a52d' ], criticalCompetencyIds: [ 'fd681316-5926-4a65-acc2-9bb966a9a52d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308', '014964e9-65ff-4ce2-abfd-3dce2a5477c2', 'fd681316-5926-4a65-acc2-9bb966a9a52d', 'c88d8912-077d-4417-a600-3f9418c8f960' ], criticalCompetencyIds: [ 'c88d8912-077d-4417-a600-3f9418c8f960' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308', '014964e9-65ff-4ce2-abfd-3dce2a5477c2', 'fd681316-5926-4a65-acc2-9bb966a9a52d', 'c88d8912-077d-4417-a600-3f9418c8f960', 'ec3c5b55-f195-432e-a323-4912facdc253' ], criticalCompetencyIds: [ 'c88d8912-077d-4417-a600-3f9418c8f960', 'ec3c5b55-f195-432e-a323-4912facdc253' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3592afbb-eac0-4084-a3e4-865fcb238308', '014964e9-65ff-4ce2-abfd-3dce2a5477c2', 'fd681316-5926-4a65-acc2-9bb966a9a52d', 'c88d8912-077d-4417-a600-3f9418c8f960', 'ec3c5b55-f195-432e-a323-4912facdc253', 'bb9d437a-cd6b-414b-a128-e5f88b083a24' ], criticalCompetencyIds: [ 'ec3c5b55-f195-432e-a323-4912facdc253', 'bb9d437a-cd6b-414b-a128-e5f88b083a24' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Observability',
       INTERMEDIATE: 'Independent execution of bounded Observability tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Observability',
       ADVANCED: 'Owns Observability components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Observability at org scale',
     },
@@ -2426,7 +2466,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains drift detection & automated rollback accurately under assessment conditions',
           'Applies drift detection & automated rollback to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates drift detection & automated rollback in timed assessment items',
         ],
@@ -2467,12 +2507,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6' ], criticalCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6', '3b5bf0ea-0f34-4eb8-a8f3-09171bc4ea9f', '34f7d912-b26c-4164-ade6-9c355f90a754' ], criticalCompetencyIds: [ '34f7d912-b26c-4164-ade6-9c355f90a754' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6', '3b5bf0ea-0f34-4eb8-a8f3-09171bc4ea9f', '34f7d912-b26c-4164-ade6-9c355f90a754', 'f08bed64-ef4d-47f9-aade-3a019b06b5de' ], criticalCompetencyIds: [ 'f08bed64-ef4d-47f9-aade-3a019b06b5de' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6', '3b5bf0ea-0f34-4eb8-a8f3-09171bc4ea9f', '34f7d912-b26c-4164-ade6-9c355f90a754', 'f08bed64-ef4d-47f9-aade-3a019b06b5de', '4a0af11a-63ee-4701-a273-ac9817c1ba64' ], criticalCompetencyIds: [ 'f08bed64-ef4d-47f9-aade-3a019b06b5de', '4a0af11a-63ee-4701-a273-ac9817c1ba64' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'ea08b6c1-0ead-47a4-aae5-297d71c544d6', '3b5bf0ea-0f34-4eb8-a8f3-09171bc4ea9f', '34f7d912-b26c-4164-ade6-9c355f90a754', 'f08bed64-ef4d-47f9-aade-3a019b06b5de', '4a0af11a-63ee-4701-a273-ac9817c1ba64', 'bc7b36dc-c7fc-4caf-a442-aa302b235575' ], criticalCompetencyIds: [ '4a0af11a-63ee-4701-a273-ac9817c1ba64', 'bc7b36dc-c7fc-4caf-a442-aa302b235575' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of GitOps',
       INTERMEDIATE: 'Independent execution of bounded GitOps tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for GitOps',
       ADVANCED: 'Owns GitOps components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for GitOps at org scale',
     },
@@ -2544,7 +2586,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains backup, recovery & replication accurately under assessment conditions',
           'Applies backup, recovery & replication to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates backup, recovery & replication in timed assessment items',
         ],
@@ -2585,12 +2627,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e' ], criticalCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e', '1a2e6480-e1a0-465b-a0e1-59a1ab0f71a3', '4a499265-1e92-4cc9-ad05-b9c5f5d4368b' ], criticalCompetencyIds: [ '4a499265-1e92-4cc9-ad05-b9c5f5d4368b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e', '1a2e6480-e1a0-465b-a0e1-59a1ab0f71a3', '4a499265-1e92-4cc9-ad05-b9c5f5d4368b', 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85' ], criticalCompetencyIds: [ 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e', '1a2e6480-e1a0-465b-a0e1-59a1ab0f71a3', '4a499265-1e92-4cc9-ad05-b9c5f5d4368b', 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85', '73715340-dd7c-46bc-a562-eea795f27638' ], criticalCompetencyIds: [ 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85', '73715340-dd7c-46bc-a562-eea795f27638' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f21d04b3-482c-46d4-aa33-dba02adf956e', '1a2e6480-e1a0-465b-a0e1-59a1ab0f71a3', '4a499265-1e92-4cc9-ad05-b9c5f5d4368b', 'fabd5492-ec3a-41e7-ac0b-1d024ae64d85', '73715340-dd7c-46bc-a562-eea795f27638', '9394f57d-6e16-4c97-ae3b-f04dc8c51be4' ], criticalCompetencyIds: [ '73715340-dd7c-46bc-a562-eea795f27638', '9394f57d-6e16-4c97-ae3b-f04dc8c51be4' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Relational Databases',
       INTERMEDIATE: 'Independent execution of bounded Relational Databases tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Relational Databases',
       ADVANCED: 'Owns Relational Databases components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Relational Databases at org scale',
     },
@@ -2662,7 +2706,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains consistency, replication & sharding accurately under assessment conditions',
           'Applies consistency, replication & sharding to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates consistency, replication & sharding in timed assessment items',
         ],
@@ -2703,12 +2747,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6' ], criticalCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6', '0c9330b8-4c84-46b2-a020-cda094233c28', 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2' ], criticalCompetencyIds: [ 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6', '0c9330b8-4c84-46b2-a020-cda094233c28', 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2', 'f925237b-777d-449d-a122-2e3a602191b9' ], criticalCompetencyIds: [ 'f925237b-777d-449d-a122-2e3a602191b9' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6', '0c9330b8-4c84-46b2-a020-cda094233c28', 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2', 'f925237b-777d-449d-a122-2e3a602191b9', '786284a6-8ba0-4eb3-a811-40614c7a5f69' ], criticalCompetencyIds: [ 'f925237b-777d-449d-a122-2e3a602191b9', '786284a6-8ba0-4eb3-a811-40614c7a5f69' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '26392b78-9797-4672-ad4d-a1ed9798c3c6', '0c9330b8-4c84-46b2-a020-cda094233c28', 'ec3fe041-4ba7-43fc-a8cf-b60985cbb6f2', 'f925237b-777d-449d-a122-2e3a602191b9', '786284a6-8ba0-4eb3-a811-40614c7a5f69', '3dc0641b-1ef8-411f-a889-055fb5cd395f' ], criticalCompetencyIds: [ '786284a6-8ba0-4eb3-a811-40614c7a5f69', '3dc0641b-1ef8-411f-a889-055fb5cd395f' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of NoSQL Databases',
       INTERMEDIATE: 'Independent execution of bounded NoSQL Databases tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for NoSQL Databases',
       ADVANCED: 'Owns NoSQL Databases components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for NoSQL Databases at org scale',
     },
@@ -2780,7 +2826,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains slowly changing dimensions & historization accurately under assessment conditions',
           'Applies slowly changing dimensions & historization to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates slowly changing dimensions & historization in timed assessment items',
         ],
@@ -2821,12 +2867,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6' ], criticalCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6', 'd293f932-5ea8-4fd5-aa52-3b46eceefac1', '18ea278b-63de-402c-aed7-32dd6474ed79' ], criticalCompetencyIds: [ '18ea278b-63de-402c-aed7-32dd6474ed79' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6', 'd293f932-5ea8-4fd5-aa52-3b46eceefac1', '18ea278b-63de-402c-aed7-32dd6474ed79', '080ea3ee-b76b-4042-a6ff-970af8e1cb1c' ], criticalCompetencyIds: [ '080ea3ee-b76b-4042-a6ff-970af8e1cb1c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6', 'd293f932-5ea8-4fd5-aa52-3b46eceefac1', '18ea278b-63de-402c-aed7-32dd6474ed79', '080ea3ee-b76b-4042-a6ff-970af8e1cb1c', 'e3f8b8a5-689a-4780-afe3-e369d4793837' ], criticalCompetencyIds: [ '080ea3ee-b76b-4042-a6ff-970af8e1cb1c', 'e3f8b8a5-689a-4780-afe3-e369d4793837' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '3fc2315a-3e21-41ae-a2e7-884ccf3b6dd6', 'd293f932-5ea8-4fd5-aa52-3b46eceefac1', '18ea278b-63de-402c-aed7-32dd6474ed79', '080ea3ee-b76b-4042-a6ff-970af8e1cb1c', 'e3f8b8a5-689a-4780-afe3-e369d4793837', '59e411e5-9b42-4337-ad96-9af7e6ca054b' ], criticalCompetencyIds: [ 'e3f8b8a5-689a-4780-afe3-e369d4793837', '59e411e5-9b42-4337-ad96-9af7e6ca054b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Data Modeling',
       INTERMEDIATE: 'Independent execution of bounded Data Modeling tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Data Modeling',
       ADVANCED: 'Owns Data Modeling components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Data Modeling at org scale',
     },
@@ -2898,7 +2946,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains partitioning & archival strategies accurately under assessment conditions',
           'Applies partitioning & archival strategies to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates partitioning & archival strategies in timed assessment items',
         ],
@@ -2939,12 +2987,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1' ], criticalCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1', '0598f60f-052b-444c-a85f-5d405063a6fd', '8b7380dd-f7fd-4c91-a5e6-b987f658162c' ], criticalCompetencyIds: [ '8b7380dd-f7fd-4c91-a5e6-b987f658162c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1', '0598f60f-052b-444c-a85f-5d405063a6fd', '8b7380dd-f7fd-4c91-a5e6-b987f658162c', '607bec2a-dd04-4376-ade0-37b649a91bb0' ], criticalCompetencyIds: [ '607bec2a-dd04-4376-ade0-37b649a91bb0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1', '0598f60f-052b-444c-a85f-5d405063a6fd', '8b7380dd-f7fd-4c91-a5e6-b987f658162c', '607bec2a-dd04-4376-ade0-37b649a91bb0', 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9' ], criticalCompetencyIds: [ '607bec2a-dd04-4376-ade0-37b649a91bb0', 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '06cc3911-b0b5-44c7-a8a5-fbf6a60bdee1', '0598f60f-052b-444c-a85f-5d405063a6fd', '8b7380dd-f7fd-4c91-a5e6-b987f658162c', '607bec2a-dd04-4376-ade0-37b649a91bb0', 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9', '39607d51-686e-40cc-a552-44c3e255965e' ], criticalCompetencyIds: [ 'ab750df8-b49f-4c44-a9b0-24ada1de5ad9', '39607d51-686e-40cc-a552-44c3e255965e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Database Performance Tuning',
       INTERMEDIATE: 'Independent execution of bounded Database Performance Tuning tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Database Performance Tuning',
       ADVANCED: 'Owns Database Performance Tuning components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Database Performance Tuning at org scale',
     },
@@ -3016,7 +3066,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains incremental processing & idempotent jobs accurately under assessment conditions',
           'Applies incremental processing & idempotent jobs to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates incremental processing & idempotent jobs in timed assessment items',
         ],
@@ -3057,12 +3107,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d' ], criticalCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d', 'a558d9a0-6d57-4a77-adb3-6cbe2c25ec1d', '80e2350d-8c73-4135-a04d-465597d26e94' ], criticalCompetencyIds: [ '80e2350d-8c73-4135-a04d-465597d26e94' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d', 'a558d9a0-6d57-4a77-adb3-6cbe2c25ec1d', '80e2350d-8c73-4135-a04d-465597d26e94', '67de1155-013f-484c-aaa8-295a50830ba3' ], criticalCompetencyIds: [ '67de1155-013f-484c-aaa8-295a50830ba3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d', 'a558d9a0-6d57-4a77-adb3-6cbe2c25ec1d', '80e2350d-8c73-4135-a04d-465597d26e94', '67de1155-013f-484c-aaa8-295a50830ba3', 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef' ], criticalCompetencyIds: [ '67de1155-013f-484c-aaa8-295a50830ba3', 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '85e96613-9bf6-4e79-af56-c516f3a9b34d', 'a558d9a0-6d57-4a77-adb3-6cbe2c25ec1d', '80e2350d-8c73-4135-a04d-465597d26e94', '67de1155-013f-484c-aaa8-295a50830ba3', 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef', 'de53778e-fcb4-4ed6-afee-8e3319738bce' ], criticalCompetencyIds: [ 'c0d72a42-7915-488d-ae1f-d82dbd50f1ef', 'de53778e-fcb4-4ed6-afee-8e3319738bce' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of ETL / ELT',
       INTERMEDIATE: 'Independent execution of bounded ETL / ELT tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for ETL / ELT',
       ADVANCED: 'Owns ETL / ELT components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for ETL / ELT at org scale',
     },
@@ -3134,7 +3186,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains batch vs streaming on big data platforms accurately under assessment conditions',
           'Applies batch vs streaming on big data platforms to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates batch vs streaming on big data platforms in timed assessment items',
         ],
@@ -3175,12 +3227,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda' ], criticalCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda', 'dfebf3ea-e653-4ce6-af9e-5bcbeb1e25c4', '0bf396fc-95ed-4fb0-aabe-ec036e3475ec' ], criticalCompetencyIds: [ '0bf396fc-95ed-4fb0-aabe-ec036e3475ec' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda', 'dfebf3ea-e653-4ce6-af9e-5bcbeb1e25c4', '0bf396fc-95ed-4fb0-aabe-ec036e3475ec', '5b382661-4df2-4f4a-ab13-c95c565a6ed4' ], criticalCompetencyIds: [ '5b382661-4df2-4f4a-ab13-c95c565a6ed4' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda', 'dfebf3ea-e653-4ce6-af9e-5bcbeb1e25c4', '0bf396fc-95ed-4fb0-aabe-ec036e3475ec', '5b382661-4df2-4f4a-ab13-c95c565a6ed4', '991988eb-03cc-4b55-a34f-d631e8f9c191' ], criticalCompetencyIds: [ '5b382661-4df2-4f4a-ab13-c95c565a6ed4', '991988eb-03cc-4b55-a34f-d631e8f9c191' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'febd184c-a588-4eed-a1f5-462ba88afeda', 'dfebf3ea-e653-4ce6-af9e-5bcbeb1e25c4', '0bf396fc-95ed-4fb0-aabe-ec036e3475ec', '5b382661-4df2-4f4a-ab13-c95c565a6ed4', '991988eb-03cc-4b55-a34f-d631e8f9c191', '96d8508d-2010-46b0-acd8-5896cf456417' ], criticalCompetencyIds: [ '991988eb-03cc-4b55-a34f-d631e8f9c191', '96d8508d-2010-46b0-acd8-5896cf456417' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Big Data Processing',
       INTERMEDIATE: 'Independent execution of bounded Big Data Processing tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Big Data Processing',
       ADVANCED: 'Owns Big Data Processing components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Big Data Processing at org scale',
     },
@@ -3252,7 +3306,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains model deployment & serving patterns accurately under assessment conditions',
           'Applies model deployment & serving patterns to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates model deployment & serving patterns in timed assessment items',
         ],
@@ -3293,12 +3347,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb' ], criticalCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb', '9f34278c-3072-48b9-a7fe-0df558ff113a', 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45' ], criticalCompetencyIds: [ 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb', '9f34278c-3072-48b9-a7fe-0df558ff113a', 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45', '19187728-5d06-4ca3-a2e6-61442c80c53a' ], criticalCompetencyIds: [ '19187728-5d06-4ca3-a2e6-61442c80c53a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb', '9f34278c-3072-48b9-a7fe-0df558ff113a', 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45', '19187728-5d06-4ca3-a2e6-61442c80c53a', '48a48609-58c2-47bf-ae36-7f7e68a49cd5' ], criticalCompetencyIds: [ '19187728-5d06-4ca3-a2e6-61442c80c53a', '48a48609-58c2-47bf-ae36-7f7e68a49cd5' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '7944a17b-d7e5-4459-a34b-f1e5040d8bdb', '9f34278c-3072-48b9-a7fe-0df558ff113a', 'd4f10f65-09f2-44e0-a184-84ae5d6d6c45', '19187728-5d06-4ca3-a2e6-61442c80c53a', '48a48609-58c2-47bf-ae36-7f7e68a49cd5', 'a52a6009-3a52-42b9-afa7-96eb0556b3d6' ], criticalCompetencyIds: [ '48a48609-58c2-47bf-ae36-7f7e68a49cd5', 'a52a6009-3a52-42b9-afa7-96eb0556b3d6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Machine Learning',
       INTERMEDIATE: 'Independent execution of bounded Machine Learning tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Machine Learning',
       ADVANCED: 'Owns Machine Learning components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Machine Learning at org scale',
     },
@@ -3370,7 +3426,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains transfer learning & fine-tuning workflows accurately under assessment conditions',
           'Applies transfer learning & fine-tuning workflows to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates transfer learning & fine-tuning workflows in timed assessment items',
         ],
@@ -3411,12 +3467,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f' ], criticalCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f', 'e75fc9b2-fba8-42c0-a336-7e9b7b0f425d', '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8' ], criticalCompetencyIds: [ '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f', 'e75fc9b2-fba8-42c0-a336-7e9b7b0f425d', '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8', 'f091950d-dc16-4ca2-a766-2584e14a1426' ], criticalCompetencyIds: [ 'f091950d-dc16-4ca2-a766-2584e14a1426' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f', 'e75fc9b2-fba8-42c0-a336-7e9b7b0f425d', '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8', 'f091950d-dc16-4ca2-a766-2584e14a1426', '1ce2a779-f70e-4e6a-a409-5f1860a74228' ], criticalCompetencyIds: [ 'f091950d-dc16-4ca2-a766-2584e14a1426', '1ce2a779-f70e-4e6a-a409-5f1860a74228' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6293d1b6-385a-4bc2-a2d9-4089f922e31f', 'e75fc9b2-fba8-42c0-a336-7e9b7b0f425d', '9db9c76b-3cd3-4f29-a47b-26c2e0bad5e8', 'f091950d-dc16-4ca2-a766-2584e14a1426', '1ce2a779-f70e-4e6a-a409-5f1860a74228', '1e0a9fd0-e41b-4e12-a70c-b12d6ca30a4d' ], criticalCompetencyIds: [ '1ce2a779-f70e-4e6a-a409-5f1860a74228', '1e0a9fd0-e41b-4e12-a70c-b12d6ca30a4d' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Deep Learning',
       INTERMEDIATE: 'Independent execution of bounded Deep Learning tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Deep Learning',
       ADVANCED: 'Owns Deep Learning components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Deep Learning at org scale',
     },
@@ -3488,7 +3546,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains fine-tuning llms for nlp tasks accurately under assessment conditions',
           'Applies fine-tuning llms for nlp tasks to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates fine-tuning llms for nlp tasks in timed assessment items',
         ],
@@ -3529,12 +3587,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181' ], criticalCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181', 'd3194ee5-7889-459d-a773-ed37d90e8c02', '70e1a8ee-469e-4648-a57b-96ca4d30654b' ], criticalCompetencyIds: [ '70e1a8ee-469e-4648-a57b-96ca4d30654b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181', 'd3194ee5-7889-459d-a773-ed37d90e8c02', '70e1a8ee-469e-4648-a57b-96ca4d30654b', '3835522b-2d4c-44c5-a90e-9b942355e4c3' ], criticalCompetencyIds: [ '3835522b-2d4c-44c5-a90e-9b942355e4c3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181', 'd3194ee5-7889-459d-a773-ed37d90e8c02', '70e1a8ee-469e-4648-a57b-96ca4d30654b', '3835522b-2d4c-44c5-a90e-9b942355e4c3', '3ddea190-abce-490c-a79a-c9f905c080f2' ], criticalCompetencyIds: [ '3835522b-2d4c-44c5-a90e-9b942355e4c3', '3ddea190-abce-490c-a79a-c9f905c080f2' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '29c6f7eb-0742-427d-ad4e-fd44c8df5181', 'd3194ee5-7889-459d-a773-ed37d90e8c02', '70e1a8ee-469e-4648-a57b-96ca4d30654b', '3835522b-2d4c-44c5-a90e-9b942355e4c3', '3ddea190-abce-490c-a79a-c9f905c080f2', '430efde4-e291-4077-ade4-3fcf0b707b4e' ], criticalCompetencyIds: [ '3ddea190-abce-490c-a79a-c9f905c080f2', '430efde4-e291-4077-ade4-3fcf0b707b4e' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of NLP',
       INTERMEDIATE: 'Independent execution of bounded NLP tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for NLP',
       ADVANCED: 'Owns NLP components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for NLP at org scale',
     },
@@ -3606,7 +3666,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains fine-tuning, adapters & evaluation harnesses accurately under assessment conditions',
           'Applies fine-tuning, adapters & evaluation harnesses to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates fine-tuning, adapters & evaluation harnesses in timed assessment items',
         ],
@@ -3647,12 +3707,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99' ], criticalCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99', 'dcd55a20-e027-4bfa-a040-62596fb059f9', '550da4be-333c-469b-a37f-2ab42b0676d6' ], criticalCompetencyIds: [ '550da4be-333c-469b-a37f-2ab42b0676d6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99', 'dcd55a20-e027-4bfa-a040-62596fb059f9', '550da4be-333c-469b-a37f-2ab42b0676d6', '573f57eb-d22d-4012-a764-ecd4f2a70f1c' ], criticalCompetencyIds: [ '573f57eb-d22d-4012-a764-ecd4f2a70f1c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99', 'dcd55a20-e027-4bfa-a040-62596fb059f9', '550da4be-333c-469b-a37f-2ab42b0676d6', '573f57eb-d22d-4012-a764-ecd4f2a70f1c', '2779d61d-0783-4197-ac50-d24a667a0fb0' ], criticalCompetencyIds: [ '573f57eb-d22d-4012-a764-ecd4f2a70f1c', '2779d61d-0783-4197-ac50-d24a667a0fb0' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'fea5a5d9-2971-429a-a62b-f630ca5d4d99', 'dcd55a20-e027-4bfa-a040-62596fb059f9', '550da4be-333c-469b-a37f-2ab42b0676d6', '573f57eb-d22d-4012-a764-ecd4f2a70f1c', '2779d61d-0783-4197-ac50-d24a667a0fb0', '39fa9d9d-9422-4a16-aff5-63d2e86e6fdf' ], criticalCompetencyIds: [ '2779d61d-0783-4197-ac50-d24a667a0fb0', '39fa9d9d-9422-4a16-aff5-63d2e86e6fdf' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of LLM Engineering',
       INTERMEDIATE: 'Independent execution of bounded LLM Engineering tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for LLM Engineering',
       ADVANCED: 'Owns LLM Engineering components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for LLM Engineering at org scale',
     },
@@ -3724,7 +3786,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains model registry, promotion & rollback accurately under assessment conditions',
           'Applies model registry, promotion & rollback to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates model registry, promotion & rollback in timed assessment items',
         ],
@@ -3765,12 +3827,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261' ], criticalCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261', '04f9c438-709b-40ec-a490-450a2f18574b', '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27' ], criticalCompetencyIds: [ '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261', '04f9c438-709b-40ec-a490-450a2f18574b', '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27', '9d1204ad-a9cb-464f-a8ed-47faa33b452f' ], criticalCompetencyIds: [ '9d1204ad-a9cb-464f-a8ed-47faa33b452f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261', '04f9c438-709b-40ec-a490-450a2f18574b', '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27', '9d1204ad-a9cb-464f-a8ed-47faa33b452f', 'b10c3723-136a-4c94-a49d-662e0ff06383' ], criticalCompetencyIds: [ '9d1204ad-a9cb-464f-a8ed-47faa33b452f', 'b10c3723-136a-4c94-a49d-662e0ff06383' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'd2ec2c06-df20-471c-a37e-12df1a7bf261', '04f9c438-709b-40ec-a490-450a2f18574b', '5b099c9b-9cc3-4f4f-ae9c-317a5e4d2a27', '9d1204ad-a9cb-464f-a8ed-47faa33b452f', 'b10c3723-136a-4c94-a49d-662e0ff06383', '031b377e-7d41-45f3-adae-fa053dfd605d' ], criticalCompetencyIds: [ 'b10c3723-136a-4c94-a49d-662e0ff06383', '031b377e-7d41-45f3-adae-fa053dfd605d' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of MLOps',
       INTERMEDIATE: 'Independent execution of bounded MLOps tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for MLOps',
       ADVANCED: 'Owns MLOps components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for MLOps at org scale',
     },
@@ -3842,7 +3906,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains object detection, segmentation & tracking accurately under assessment conditions',
           'Applies object detection, segmentation & tracking to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates object detection, segmentation & tracking in timed assessment items',
         ],
@@ -3883,12 +3947,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6' ], criticalCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6', 'ef0e51e9-26d7-408e-acbb-cfe096f9a880', 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585' ], criticalCompetencyIds: [ 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6', 'ef0e51e9-26d7-408e-acbb-cfe096f9a880', 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585', '55ab40ac-b992-4e74-a89e-944173e41c30' ], criticalCompetencyIds: [ '55ab40ac-b992-4e74-a89e-944173e41c30' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6', 'ef0e51e9-26d7-408e-acbb-cfe096f9a880', 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585', '55ab40ac-b992-4e74-a89e-944173e41c30', '1e240bc3-4134-4179-a793-d3362a2ac3be' ], criticalCompetencyIds: [ '55ab40ac-b992-4e74-a89e-944173e41c30', '1e240bc3-4134-4179-a793-d3362a2ac3be' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'b8df58c7-2b7d-48df-aa2b-220d302fbbf6', 'ef0e51e9-26d7-408e-acbb-cfe096f9a880', 'ac81206d-9a3b-4efd-a7f0-8d4562c8f585', '55ab40ac-b992-4e74-a89e-944173e41c30', '1e240bc3-4134-4179-a793-d3362a2ac3be', 'da5b0aaa-1150-4b79-a52f-40b59a38a890' ], criticalCompetencyIds: [ '1e240bc3-4134-4179-a793-d3362a2ac3be', 'da5b0aaa-1150-4b79-a52f-40b59a38a890' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Computer Vision',
       INTERMEDIATE: 'Independent execution of bounded Computer Vision tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Computer Vision',
       ADVANCED: 'Owns Computer Vision components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Computer Vision at org scale',
     },
@@ -3960,7 +4026,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains a/b testing, power analysis & sample size accurately under assessment conditions',
           'Applies a/b testing, power analysis & sample size to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates a/b testing, power analysis & sample size in timed assessment items',
         ],
@@ -4001,12 +4067,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed' ], criticalCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed', '36ca22e9-c1a7-4669-acf1-72006357d4c7', 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2' ], criticalCompetencyIds: [ 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed', '36ca22e9-c1a7-4669-acf1-72006357d4c7', 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2', 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5' ], criticalCompetencyIds: [ 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed', '36ca22e9-c1a7-4669-acf1-72006357d4c7', 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2', 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5', 'b9203bab-2916-4911-ad6f-71c0a4a80263' ], criticalCompetencyIds: [ 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5', 'b9203bab-2916-4911-ad6f-71c0a4a80263' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'e80b2287-25e6-45bd-af37-a296b1bad6ed', '36ca22e9-c1a7-4669-acf1-72006357d4c7', 'c7cbe89b-6496-4bc0-aa47-f69514fa0bc2', 'e40e8542-6b4a-47c3-aebc-7fb54c08c5b5', 'b9203bab-2916-4911-ad6f-71c0a4a80263', '81af7e4f-c8fd-4fa1-acc2-47f5f84e32b0' ], criticalCompetencyIds: [ 'b9203bab-2916-4911-ad6f-71c0a4a80263', '81af7e4f-c8fd-4fa1-acc2-47f5f84e32b0' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Statistics & A/B Testing',
       INTERMEDIATE: 'Independent execution of bounded Statistics & A/B Testing tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Statistics & A/B Testing',
       ADVANCED: 'Owns Statistics & A/B Testing components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Statistics & A/B Testing at org scale',
     },
@@ -4078,7 +4146,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains secure coding reviews & sast/dast tooling accurately under assessment conditions',
           'Applies secure coding reviews & sast/dast tooling to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates secure coding reviews & sast/dast tooling in timed assessment items',
         ],
@@ -4119,12 +4187,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649' ], criticalCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649', 'd9a187a5-1f52-4d8b-af81-f99fb44d8c97', '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5' ], criticalCompetencyIds: [ '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649', 'd9a187a5-1f52-4d8b-af81-f99fb44d8c97', '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5', 'f866f404-7b32-4886-a6d9-9c9720220af5' ], criticalCompetencyIds: [ 'f866f404-7b32-4886-a6d9-9c9720220af5' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649', 'd9a187a5-1f52-4d8b-af81-f99fb44d8c97', '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5', 'f866f404-7b32-4886-a6d9-9c9720220af5', '91661917-0146-4fd3-addf-6a2322275a6f' ], criticalCompetencyIds: [ 'f866f404-7b32-4886-a6d9-9c9720220af5', '91661917-0146-4fd3-addf-6a2322275a6f' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '6e8c8a9a-be32-4111-a516-4a43d4ffa649', 'd9a187a5-1f52-4d8b-af81-f99fb44d8c97', '2ac4f708-c493-4d7e-a3f3-fdccfd4139c5', 'f866f404-7b32-4886-a6d9-9c9720220af5', '91661917-0146-4fd3-addf-6a2322275a6f', '374bbe65-6916-45fc-a9a7-a0e2f4b7ac52' ], criticalCompetencyIds: [ '91661917-0146-4fd3-addf-6a2322275a6f', '374bbe65-6916-45fc-a9a7-a0e2f4b7ac52' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Application Security',
       INTERMEDIATE: 'Independent execution of bounded Application Security tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Application Security',
       ADVANCED: 'Owns Application Security components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Application Security at org scale',
     },
@@ -4196,7 +4266,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains encryption at rest/in transit & kms accurately under assessment conditions',
           'Applies encryption at rest/in transit & kms to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates encryption at rest/in transit & kms in timed assessment items',
         ],
@@ -4237,12 +4307,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef' ], criticalCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef', 'f3ac6e30-2128-478d-a38c-a068b60c85f9', '0c0bff0f-339d-4536-a287-a52002a0fa6b' ], criticalCompetencyIds: [ '0c0bff0f-339d-4536-a287-a52002a0fa6b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef', 'f3ac6e30-2128-478d-a38c-a068b60c85f9', '0c0bff0f-339d-4536-a287-a52002a0fa6b', 'd441c829-9780-4f42-a8f2-33f4dab6e509' ], criticalCompetencyIds: [ 'd441c829-9780-4f42-a8f2-33f4dab6e509' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef', 'f3ac6e30-2128-478d-a38c-a068b60c85f9', '0c0bff0f-339d-4536-a287-a52002a0fa6b', 'd441c829-9780-4f42-a8f2-33f4dab6e509', '3eee9333-8912-4732-a566-2fd728a481e6' ], criticalCompetencyIds: [ 'd441c829-9780-4f42-a8f2-33f4dab6e509', '3eee9333-8912-4732-a566-2fd728a481e6' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'a1a9f1de-a69f-4bfb-acee-2bd9438d2fef', 'f3ac6e30-2128-478d-a38c-a068b60c85f9', '0c0bff0f-339d-4536-a287-a52002a0fa6b', 'd441c829-9780-4f42-a8f2-33f4dab6e509', '3eee9333-8912-4732-a566-2fd728a481e6', '31988b85-20ca-4238-a41e-471eb67da82f' ], criticalCompetencyIds: [ '3eee9333-8912-4732-a566-2fd728a481e6', '31988b85-20ca-4238-a41e-471eb67da82f' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Cloud Security',
       INTERMEDIATE: 'Independent execution of bounded Cloud Security tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Cloud Security',
       ADVANCED: 'Owns Cloud Security components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Cloud Security at org scale',
     },
@@ -4314,7 +4386,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains reporting, cvss scoring & remediation guidance accurately under assessment conditions',
           'Applies reporting, cvss scoring & remediation guidance to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates reporting, cvss scoring & remediation guidance in timed assessment items',
         ],
@@ -4355,12 +4427,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0' ], criticalCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0', '48665b91-f9c2-43e2-afb4-8662851ab517', 'f62a26f8-55ce-41d9-a589-47b487d506d8' ], criticalCompetencyIds: [ 'f62a26f8-55ce-41d9-a589-47b487d506d8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0', '48665b91-f9c2-43e2-afb4-8662851ab517', 'f62a26f8-55ce-41d9-a589-47b487d506d8', '1c6b676d-1189-47bc-a744-5c6f440f6c6a' ], criticalCompetencyIds: [ '1c6b676d-1189-47bc-a744-5c6f440f6c6a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0', '48665b91-f9c2-43e2-afb4-8662851ab517', 'f62a26f8-55ce-41d9-a589-47b487d506d8', '1c6b676d-1189-47bc-a744-5c6f440f6c6a', 'f58e8cb8-7c94-455e-acee-904ed9ebf063' ], criticalCompetencyIds: [ '1c6b676d-1189-47bc-a744-5c6f440f6c6a', 'f58e8cb8-7c94-455e-acee-904ed9ebf063' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f96403b6-9ec4-46ae-abb2-f0447da2cba0', '48665b91-f9c2-43e2-afb4-8662851ab517', 'f62a26f8-55ce-41d9-a589-47b487d506d8', '1c6b676d-1189-47bc-a744-5c6f440f6c6a', 'f58e8cb8-7c94-455e-acee-904ed9ebf063', '6635d459-a4f3-4838-abe2-4b02d4026c44' ], criticalCompetencyIds: [ 'f58e8cb8-7c94-455e-acee-904ed9ebf063', '6635d459-a4f3-4838-abe2-4b02d4026c44' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Penetration Testing',
       INTERMEDIATE: 'Independent execution of bounded Penetration Testing tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Penetration Testing',
       ADVANCED: 'Owns Penetration Testing components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Penetration Testing at org scale',
     },
@@ -4432,7 +4506,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains metrics analysis & bottleneck identification accurately under assessment conditions',
           'Applies metrics analysis & bottleneck identification to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates metrics analysis & bottleneck identification in timed assessment items',
         ],
@@ -4473,12 +4547,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086' ], criticalCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086', 'd47729ab-55c1-4c67-a297-8b993c1589d3', '127658bd-56c3-4df9-a9d2-19ddfc00d140' ], criticalCompetencyIds: [ '127658bd-56c3-4df9-a9d2-19ddfc00d140' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086', 'd47729ab-55c1-4c67-a297-8b993c1589d3', '127658bd-56c3-4df9-a9d2-19ddfc00d140', '6abc6339-4d19-4995-a593-2cf71c18adff' ], criticalCompetencyIds: [ '6abc6339-4d19-4995-a593-2cf71c18adff' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086', 'd47729ab-55c1-4c67-a297-8b993c1589d3', '127658bd-56c3-4df9-a9d2-19ddfc00d140', '6abc6339-4d19-4995-a593-2cf71c18adff', '338e2b35-92de-49c1-a7ee-bf5068b12ee8' ], criticalCompetencyIds: [ '6abc6339-4d19-4995-a593-2cf71c18adff', '338e2b35-92de-49c1-a7ee-bf5068b12ee8' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '2c67f934-b3ee-4a9c-a482-60dd75b7e086', 'd47729ab-55c1-4c67-a297-8b993c1589d3', '127658bd-56c3-4df9-a9d2-19ddfc00d140', '6abc6339-4d19-4995-a593-2cf71c18adff', '338e2b35-92de-49c1-a7ee-bf5068b12ee8', 'a0e9aff9-320a-4a60-a0d8-53b0c137a997' ], criticalCompetencyIds: [ '338e2b35-92de-49c1-a7ee-bf5068b12ee8', 'a0e9aff9-320a-4a60-a0d8-53b0c137a997' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Performance Testing',
       INTERMEDIATE: 'Independent execution of bounded Performance Testing tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Performance Testing',
       ADVANCED: 'Owns Performance Testing components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Performance Testing at org scale',
     },
@@ -4550,7 +4626,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains test environment provisioning & service virtualization accurately under assessment conditions',
           'Applies test environment provisioning & service virtualization to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates test environment provisioning & service virtualization in timed assessment items',
         ],
@@ -4591,12 +4667,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4' ], criticalCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4', '24cb47ae-92da-43f7-a9bd-2dda8da776dc', '622ed24b-aae8-47f2-a0e5-68aa6618d8d9' ], criticalCompetencyIds: [ '622ed24b-aae8-47f2-a0e5-68aa6618d8d9' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4', '24cb47ae-92da-43f7-a9bd-2dda8da776dc', '622ed24b-aae8-47f2-a0e5-68aa6618d8d9', 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1' ], criticalCompetencyIds: [ 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4', '24cb47ae-92da-43f7-a9bd-2dda8da776dc', '622ed24b-aae8-47f2-a0e5-68aa6618d8d9', 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1', '6cac7101-0d6f-44cd-a376-8e531397321b' ], criticalCompetencyIds: [ 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1', '6cac7101-0d6f-44cd-a376-8e531397321b' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5906b9fd-6068-4a14-a344-7a4862ce2dc4', '24cb47ae-92da-43f7-a9bd-2dda8da776dc', '622ed24b-aae8-47f2-a0e5-68aa6618d8d9', 'c7c65db9-a41f-4bf5-a7b1-7aeb792c6dd1', '6cac7101-0d6f-44cd-a376-8e531397321b', '9d59519b-f98e-4320-a73a-b104fae0b3c6' ], criticalCompetencyIds: [ '6cac7101-0d6f-44cd-a376-8e531397321b', '9d59519b-f98e-4320-a73a-b104fae0b3c6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Quality Engineering',
       INTERMEDIATE: 'Independent execution of bounded Quality Engineering tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Quality Engineering',
       ADVANCED: 'Owns Quality Engineering components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Quality Engineering at org scale',
     },
@@ -4668,7 +4746,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains breaking change detection & versioning accurately under assessment conditions',
           'Applies breaking change detection & versioning to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates breaking change detection & versioning in timed assessment items',
         ],
@@ -4709,12 +4787,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d' ], criticalCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d', '5b26d97b-6985-4a05-a7ca-0db8e30d7772', 'bf405e31-148c-47ed-a49c-8c224ef6f058' ], criticalCompetencyIds: [ 'bf405e31-148c-47ed-a49c-8c224ef6f058' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d', '5b26d97b-6985-4a05-a7ca-0db8e30d7772', 'bf405e31-148c-47ed-a49c-8c224ef6f058', 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4' ], criticalCompetencyIds: [ 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d', '5b26d97b-6985-4a05-a7ca-0db8e30d7772', 'bf405e31-148c-47ed-a49c-8c224ef6f058', 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4', '9c90c509-8ad8-4685-ade0-a6451edfb1b2' ], criticalCompetencyIds: [ 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4', '9c90c509-8ad8-4685-ade0-a6451edfb1b2' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '937f3085-8690-41bf-a81d-f8b40da1834d', '5b26d97b-6985-4a05-a7ca-0db8e30d7772', 'bf405e31-148c-47ed-a49c-8c224ef6f058', 'bab5b70e-f43c-45c4-a7a1-052f0f0b35c4', '9c90c509-8ad8-4685-ade0-a6451edfb1b2', 'f1890350-b7b1-4580-addf-30aad92a7716' ], criticalCompetencyIds: [ '9c90c509-8ad8-4685-ade0-a6451edfb1b2', 'f1890350-b7b1-4580-addf-30aad92a7716' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of API Testing',
       INTERMEDIATE: 'Independent execution of bounded API Testing tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for API Testing',
       ADVANCED: 'Owns API Testing components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for API Testing at org scale',
     },
@@ -4786,7 +4866,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains networking, room & background work accurately under assessment conditions',
           'Applies networking, room & background work to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates networking, room & background work in timed assessment items',
         ],
@@ -4827,12 +4907,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825' ], criticalCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825', '34ca8370-6e25-4b8c-ad5b-4b93b765856e', 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b' ], criticalCompetencyIds: [ 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825', '34ca8370-6e25-4b8c-ad5b-4b93b765856e', 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b', '558d5481-7e77-4f26-afae-e839237d942c' ], criticalCompetencyIds: [ '558d5481-7e77-4f26-afae-e839237d942c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825', '34ca8370-6e25-4b8c-ad5b-4b93b765856e', 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b', '558d5481-7e77-4f26-afae-e839237d942c', '9a37c9c9-065a-451a-a03f-3438945a97db' ], criticalCompetencyIds: [ '558d5481-7e77-4f26-afae-e839237d942c', '9a37c9c9-065a-451a-a03f-3438945a97db' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '8bf5dafa-ae3d-4dea-a54c-88a748dd1825', '34ca8370-6e25-4b8c-ad5b-4b93b765856e', 'aff91065-52d5-4cd8-aa9c-14e9e8943a7b', '558d5481-7e77-4f26-afae-e839237d942c', '9a37c9c9-065a-451a-a03f-3438945a97db', '228c3ffb-aee0-4748-a9c6-da271c000d9b' ], criticalCompetencyIds: [ '9a37c9c9-065a-451a-a03f-3438945a97db', '228c3ffb-aee0-4748-a9c6-da271c000d9b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Android Development',
       INTERMEDIATE: 'Independent execution of bounded Android Development tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Android Development',
       ADVANCED: 'Owns Android Development components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Android Development at org scale',
     },
@@ -4904,7 +4986,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains accessibility, localization & hig compliance accurately under assessment conditions',
           'Applies accessibility, localization & hig compliance to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates accessibility, localization & hig compliance in timed assessment items',
         ],
@@ -4945,12 +5027,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8' ], criticalCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8', '298d9508-e368-426b-a33e-645a56700d84', 'a9236013-1d1c-4198-aeae-d3661cf320af' ], criticalCompetencyIds: [ 'a9236013-1d1c-4198-aeae-d3661cf320af' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8', '298d9508-e368-426b-a33e-645a56700d84', 'a9236013-1d1c-4198-aeae-d3661cf320af', '941908ec-8b23-45e9-a67f-ef6284af372e' ], criticalCompetencyIds: [ '941908ec-8b23-45e9-a67f-ef6284af372e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8', '298d9508-e368-426b-a33e-645a56700d84', 'a9236013-1d1c-4198-aeae-d3661cf320af', '941908ec-8b23-45e9-a67f-ef6284af372e', 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d' ], criticalCompetencyIds: [ '941908ec-8b23-45e9-a67f-ef6284af372e', 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'b5a39439-49f7-46db-a055-36c0d4114ac8', '298d9508-e368-426b-a33e-645a56700d84', 'a9236013-1d1c-4198-aeae-d3661cf320af', '941908ec-8b23-45e9-a67f-ef6284af372e', 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d', 'cb7067aa-cb5f-49f5-a196-48af6b834c69' ], criticalCompetencyIds: [ 'd45b8b07-fdf2-47bd-ae79-1f0559f1ff2d', 'cb7067aa-cb5f-49f5-a196-48af6b834c69' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of iOS Development',
       INTERMEDIATE: 'Independent execution of bounded iOS Development tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for iOS Development',
       ADVANCED: 'Owns iOS Development components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for iOS Development at org scale',
     },
@@ -5022,7 +5106,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains api integration, auth & error boundaries accurately under assessment conditions',
           'Applies api integration, auth & error boundaries to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates api integration, auth & error boundaries in timed assessment items',
         ],
@@ -5063,12 +5147,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083' ], criticalCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083', 'd622fc73-8b07-4b1e-abc7-be5f838d3457', '56e38307-f46b-43ba-a84f-fe367ba6f420' ], criticalCompetencyIds: [ '56e38307-f46b-43ba-a84f-fe367ba6f420' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083', 'd622fc73-8b07-4b1e-abc7-be5f838d3457', '56e38307-f46b-43ba-a84f-fe367ba6f420', 'a712895f-5d09-4896-aae0-c08b6dcfc98c' ], criticalCompetencyIds: [ 'a712895f-5d09-4896-aae0-c08b6dcfc98c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083', 'd622fc73-8b07-4b1e-abc7-be5f838d3457', '56e38307-f46b-43ba-a84f-fe367ba6f420', 'a712895f-5d09-4896-aae0-c08b6dcfc98c', '0c2df9ba-8b33-4a19-ad55-f68e4836f402' ], criticalCompetencyIds: [ 'a712895f-5d09-4896-aae0-c08b6dcfc98c', '0c2df9ba-8b33-4a19-ad55-f68e4836f402' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '56bc8c8a-4de7-46fc-a38a-5d7074ecc083', 'd622fc73-8b07-4b1e-abc7-be5f838d3457', '56e38307-f46b-43ba-a84f-fe367ba6f420', 'a712895f-5d09-4896-aae0-c08b6dcfc98c', '0c2df9ba-8b33-4a19-ad55-f68e4836f402', 'c4b6d9f7-b6ee-45d1-aab4-db22b393b424' ], criticalCompetencyIds: [ '0c2df9ba-8b33-4a19-ad55-f68e4836f402', 'c4b6d9f7-b6ee-45d1-aab4-db22b393b424' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Frontend Frameworks',
       INTERMEDIATE: 'Independent execution of bounded Frontend Frameworks tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Frontend Frameworks',
       ADVANCED: 'Owns Frontend Frameworks components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Frontend Frameworks at org scale',
     },
@@ -5140,7 +5226,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains network waterfall, caching & cdn usage accurately under assessment conditions',
           'Applies network waterfall, caching & cdn usage to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates network waterfall, caching & cdn usage in timed assessment items',
         ],
@@ -5181,12 +5267,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8' ], criticalCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8', '2155138c-e65d-4323-ab70-85d02b1664f9', 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0' ], criticalCompetencyIds: [ 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8', '2155138c-e65d-4323-ab70-85d02b1664f9', 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0', '4a3fd88d-091a-4cb1-a8da-458ab41411e8' ], criticalCompetencyIds: [ '4a3fd88d-091a-4cb1-a8da-458ab41411e8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8', '2155138c-e65d-4323-ab70-85d02b1664f9', 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0', '4a3fd88d-091a-4cb1-a8da-458ab41411e8', 'bf1ff996-edf7-4ae9-a188-e878444fe8b3' ], criticalCompetencyIds: [ '4a3fd88d-091a-4cb1-a8da-458ab41411e8', 'bf1ff996-edf7-4ae9-a188-e878444fe8b3' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'cf955839-15c3-4412-a471-78285c1f18f8', '2155138c-e65d-4323-ab70-85d02b1664f9', 'ced200a8-e6be-4d38-a05c-dd7aad7d3ea0', '4a3fd88d-091a-4cb1-a8da-458ab41411e8', 'bf1ff996-edf7-4ae9-a188-e878444fe8b3', '09c6ff7a-1ea0-4df0-a411-c2a9895db7d8' ], criticalCompetencyIds: [ 'bf1ff996-edf7-4ae9-a188-e878444fe8b3', '09c6ff7a-1ea0-4df0-a411-c2a9895db7d8' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Frontend Performance',
       INTERMEDIATE: 'Independent execution of bounded Frontend Performance tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Frontend Performance',
       ADVANCED: 'Owns Frontend Performance components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Frontend Performance at org scale',
     },
@@ -5258,7 +5346,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains side effects, async data & caching layers accurately under assessment conditions',
           'Applies side effects, async data & caching layers to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates side effects, async data & caching layers in timed assessment items',
         ],
@@ -5299,12 +5387,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5' ], criticalCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5', '022a06ed-00ba-4d08-acae-4b90890e7865', 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f' ], criticalCompetencyIds: [ 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5', '022a06ed-00ba-4d08-acae-4b90890e7865', 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f', 'b20726d5-c3a8-433c-afaf-eb1b346fa089' ], criticalCompetencyIds: [ 'b20726d5-c3a8-433c-afaf-eb1b346fa089' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5', '022a06ed-00ba-4d08-acae-4b90890e7865', 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f', 'b20726d5-c3a8-433c-afaf-eb1b346fa089', '410bee6e-c1ac-4e54-adad-33ca3ae15589' ], criticalCompetencyIds: [ 'b20726d5-c3a8-433c-afaf-eb1b346fa089', '410bee6e-c1ac-4e54-adad-33ca3ae15589' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '5f5db762-438a-49c3-a0f3-2c57a16516b5', '022a06ed-00ba-4d08-acae-4b90890e7865', 'cb6cf2fe-d5f1-4776-aa6a-ec49195db62f', 'b20726d5-c3a8-433c-afaf-eb1b346fa089', '410bee6e-c1ac-4e54-adad-33ca3ae15589', '7d4f64c0-fabd-41e1-a7f5-4ae4178eb519' ], criticalCompetencyIds: [ '410bee6e-c1ac-4e54-adad-33ca3ae15589', '7d4f64c0-fabd-41e1-a7f5-4ae4178eb519' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of State Management',
       INTERMEDIATE: 'Independent execution of bounded State Management tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for State Management',
       ADVANCED: 'Owns State Management components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for State Management at org scale',
     },
@@ -5376,7 +5466,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains firewalls, vpns & network security basics accurately under assessment conditions',
           'Applies firewalls, vpns & network security basics to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates firewalls, vpns & network security basics in timed assessment items',
         ],
@@ -5417,12 +5507,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3' ], criticalCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3', 'b677998d-e93b-4dd6-a825-c2438e0c8cec', '05b01edc-5930-4bab-abf2-d4af7e4f989c' ], criticalCompetencyIds: [ '05b01edc-5930-4bab-abf2-d4af7e4f989c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3', 'b677998d-e93b-4dd6-a825-c2438e0c8cec', '05b01edc-5930-4bab-abf2-d4af7e4f989c', '25aee8d9-0fe0-4034-ab61-2b4056979083' ], criticalCompetencyIds: [ '25aee8d9-0fe0-4034-ab61-2b4056979083' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3', 'b677998d-e93b-4dd6-a825-c2438e0c8cec', '05b01edc-5930-4bab-abf2-d4af7e4f989c', '25aee8d9-0fe0-4034-ab61-2b4056979083', 'f8f90021-7fc9-4d76-aec9-16421a1d13b1' ], criticalCompetencyIds: [ '25aee8d9-0fe0-4034-ab61-2b4056979083', 'f8f90021-7fc9-4d76-aec9-16421a1d13b1' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'f4941daa-15a7-47bd-aa69-c25b7559c4d3', 'b677998d-e93b-4dd6-a825-c2438e0c8cec', '05b01edc-5930-4bab-abf2-d4af7e4f989c', '25aee8d9-0fe0-4034-ab61-2b4056979083', 'f8f90021-7fc9-4d76-aec9-16421a1d13b1', '3536939e-ce0d-4238-a207-d7880306e433' ], criticalCompetencyIds: [ 'f8f90021-7fc9-4d76-aec9-16421a1d13b1', '3536939e-ce0d-4238-a207-d7880306e433' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Networking',
       INTERMEDIATE: 'Independent execution of bounded Networking tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Networking',
       ADVANCED: 'Owns Networking components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Networking at org scale',
     },
@@ -5494,7 +5586,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains shell scripting & automation accurately under assessment conditions',
           'Applies shell scripting & automation to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates shell scripting & automation in timed assessment items',
         ],
@@ -5535,12 +5627,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166' ], criticalCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166', 'dfa8bbd1-62d6-43e0-a863-ab4f5057a06e', '02e86911-21e1-4a86-a6c2-9c81ed840b0a' ], criticalCompetencyIds: [ '02e86911-21e1-4a86-a6c2-9c81ed840b0a' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166', 'dfa8bbd1-62d6-43e0-a863-ab4f5057a06e', '02e86911-21e1-4a86-a6c2-9c81ed840b0a', '04b24364-0898-4c1c-aae8-5d8033ceb792' ], criticalCompetencyIds: [ '04b24364-0898-4c1c-aae8-5d8033ceb792' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166', 'dfa8bbd1-62d6-43e0-a863-ab4f5057a06e', '02e86911-21e1-4a86-a6c2-9c81ed840b0a', '04b24364-0898-4c1c-aae8-5d8033ceb792', '42f35839-d362-4fd0-a4db-3dff09e72804' ], criticalCompetencyIds: [ '04b24364-0898-4c1c-aae8-5d8033ceb792', '42f35839-d362-4fd0-a4db-3dff09e72804' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ 'efe6366e-cfd1-4c95-a7db-46b6459b0166', 'dfa8bbd1-62d6-43e0-a863-ab4f5057a06e', '02e86911-21e1-4a86-a6c2-9c81ed840b0a', '04b24364-0898-4c1c-aae8-5d8033ceb792', '42f35839-d362-4fd0-a4db-3dff09e72804', '177101d2-a11d-4859-af0c-afd77511062b' ], criticalCompetencyIds: [ '42f35839-d362-4fd0-a4db-3dff09e72804', '177101d2-a11d-4859-af0c-afd77511062b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Linux Administration',
       INTERMEDIATE: 'Independent execution of bounded Linux Administration tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Linux Administration',
       ADVANCED: 'Owns Linux Administration components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Linux Administration at org scale',
     },
@@ -5612,7 +5706,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains security vulnerabilities & audit practices accurately under assessment conditions',
           'Applies security vulnerabilities & audit practices to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates security vulnerabilities & audit practices in timed assessment items',
         ],
@@ -5653,12 +5747,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f' ], criticalCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f', '3a8af3d1-5416-403f-ade3-8a9747fe2cd2', 'a8967bde-76db-42be-ac0f-627f0a3d7eda' ], criticalCompetencyIds: [ 'a8967bde-76db-42be-ac0f-627f0a3d7eda' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f', '3a8af3d1-5416-403f-ade3-8a9747fe2cd2', 'a8967bde-76db-42be-ac0f-627f0a3d7eda', 'b8ce245a-62c3-4261-abb3-d913baf248d8' ], criticalCompetencyIds: [ 'b8ce245a-62c3-4261-abb3-d913baf248d8' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f', '3a8af3d1-5416-403f-ade3-8a9747fe2cd2', 'a8967bde-76db-42be-ac0f-627f0a3d7eda', 'b8ce245a-62c3-4261-abb3-d913baf248d8', '4f5deb16-237e-4f4d-a438-454aed18c2d1' ], criticalCompetencyIds: [ 'b8ce245a-62c3-4261-abb3-d913baf248d8', '4f5deb16-237e-4f4d-a438-454aed18c2d1' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '562468a2-710a-4be3-a6fc-bf3fd9e87d2f', '3a8af3d1-5416-403f-ade3-8a9747fe2cd2', 'a8967bde-76db-42be-ac0f-627f0a3d7eda', 'b8ce245a-62c3-4261-abb3-d913baf248d8', '4f5deb16-237e-4f4d-a438-454aed18c2d1', 'cb02f918-46be-4829-a088-21791d1aee06' ], criticalCompetencyIds: [ '4f5deb16-237e-4f4d-a438-454aed18c2d1', 'cb02f918-46be-4829-a088-21791d1aee06' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Blockchain Development',
       INTERMEDIATE: 'Independent execution of bounded Blockchain Development tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Blockchain Development',
       ADVANCED: 'Owns Blockchain Development components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Blockchain Development at org scale',
     },
@@ -5730,7 +5826,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains iot security, provisioning & pki accurately under assessment conditions',
           'Applies iot security, provisioning & pki to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates iot security, provisioning & pki in timed assessment items',
         ],
@@ -5771,12 +5867,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b' ], criticalCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b', 'e0954ffe-8e12-4710-a0ae-583b477c03a8', 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc' ], criticalCompetencyIds: [ 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b', 'e0954ffe-8e12-4710-a0ae-583b477c03a8', 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc', '32f84915-7734-4616-a3cf-e358b5c688b1' ], criticalCompetencyIds: [ '32f84915-7734-4616-a3cf-e358b5c688b1' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b', 'e0954ffe-8e12-4710-a0ae-583b477c03a8', 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc', '32f84915-7734-4616-a3cf-e358b5c688b1', '8aea9d04-8af3-4f01-a937-8788d86a737a' ], criticalCompetencyIds: [ '32f84915-7734-4616-a3cf-e358b5c688b1', '8aea9d04-8af3-4f01-a937-8788d86a737a' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '4a123e81-6071-45fc-ae08-1043334e7c5b', 'e0954ffe-8e12-4710-a0ae-583b477c03a8', 'de1d0591-7cf5-44d9-a588-ed2c2182f4cc', '32f84915-7734-4616-a3cf-e358b5c688b1', '8aea9d04-8af3-4f01-a937-8788d86a737a', 'ec007ee2-e8bc-4d95-a4e6-de54bcdf3507' ], criticalCompetencyIds: [ '8aea9d04-8af3-4f01-a937-8788d86a737a', 'ec007ee2-e8bc-4d95-a4e6-de54bcdf3507' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of IoT Development',
       INTERMEDIATE: 'Independent execution of bounded IoT Development tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for IoT Development',
       ADVANCED: 'Owns IoT Development components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for IoT Development at org scale',
     },
@@ -5848,7 +5946,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains interaction design & spatial ux accurately under assessment conditions',
           'Applies interaction design & spatial ux to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates interaction design & spatial ux in timed assessment items',
         ],
@@ -5889,12 +5987,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704' ], criticalCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704', '51c0ee1a-a92d-433e-a3cf-c6d7c81313c0', 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338' ], criticalCompetencyIds: [ 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704', '51c0ee1a-a92d-433e-a3cf-c6d7c81313c0', 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338', '24b43bd4-db2a-4cf8-afdb-69d061f3126c' ], criticalCompetencyIds: [ '24b43bd4-db2a-4cf8-afdb-69d061f3126c' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704', '51c0ee1a-a92d-433e-a3cf-c6d7c81313c0', 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338', '24b43bd4-db2a-4cf8-afdb-69d061f3126c', '53b35de6-e7de-45a7-a29d-3816af75de84' ], criticalCompetencyIds: [ '24b43bd4-db2a-4cf8-afdb-69d061f3126c', '53b35de6-e7de-45a7-a29d-3816af75de84' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '7f7ec038-b09d-45f0-a10e-1da4cf9f8704', '51c0ee1a-a92d-433e-a3cf-c6d7c81313c0', 'fb9b8f8d-9aae-42a9-aa2a-79c6c5dea338', '24b43bd4-db2a-4cf8-afdb-69d061f3126c', '53b35de6-e7de-45a7-a29d-3816af75de84', '67a88ae6-8923-4755-a415-cfc6354c46b6' ], criticalCompetencyIds: [ '53b35de6-e7de-45a7-a29d-3816af75de84', '67a88ae6-8923-4755-a415-cfc6354c46b6' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of AR / VR Development',
       INTERMEDIATE: 'Independent execution of bounded AR / VR Development tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for AR / VR Development',
       ADVANCED: 'Owns AR / VR Development components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for AR / VR Development at org scale',
     },
@@ -5966,7 +6066,7 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
           'Explains hooks, signed commits & repo hygiene accurately under assessment conditions',
           'Applies hooks, signed commits & repo hygiene to bounded practical problems',
         ],
-        difficulty: 'ADVANCED',
+        difficulty: 'PROFICIENT',
         assessmentCriteria: [
           'Demonstrates hooks, signed commits & repo hygiene in timed assessment items',
         ],
@@ -6007,12 +6107,14 @@ export const SKILL_COMPETENCY_INDEX: Readonly<Record<string, SkillBlueprint>> = 
     proficiencyRequirements: [
       { level: 'BEGINNER', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d' ], criticalCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'INTERMEDIATE', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d', 'c66f5149-7600-4f00-adfa-64c80eda79c4', '3881361d-f02b-4394-ae53-f116f3a75f0e' ], criticalCompetencyIds: [ '3881361d-f02b-4394-ae53-f116f3a75f0e' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
+      { level: 'PROFICIENT', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d', 'c66f5149-7600-4f00-adfa-64c80eda79c4', '3881361d-f02b-4394-ae53-f116f3a75f0e', '36bb440b-6de2-49ae-a52a-3018b7749129' ], criticalCompetencyIds: [ '36bb440b-6de2-49ae-a52a-3018b7749129' ], realWorldApplicationRequired: false, substantialApplicationRequired: false, interviewRequired: false },
       { level: 'ADVANCED', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d', 'c66f5149-7600-4f00-adfa-64c80eda79c4', '3881361d-f02b-4394-ae53-f116f3a75f0e', '36bb440b-6de2-49ae-a52a-3018b7749129', '914698df-ad0a-4d68-af51-757f2e5e37f1' ], criticalCompetencyIds: [ '36bb440b-6de2-49ae-a52a-3018b7749129', '914698df-ad0a-4d68-af51-757f2e5e37f1' ], realWorldApplicationRequired: true, substantialApplicationRequired: false, interviewRequired: true },
       { level: 'PROFESSIONAL', requiredCompetencyIds: [ '88c8c87a-a17c-4f05-a9b4-c7deb86fd86d', 'c66f5149-7600-4f00-adfa-64c80eda79c4', '3881361d-f02b-4394-ae53-f116f3a75f0e', '36bb440b-6de2-49ae-a52a-3018b7749129', '914698df-ad0a-4d68-af51-757f2e5e37f1', '9898d4a7-7dfe-4202-af42-f8c7b4e8312b' ], criticalCompetencyIds: [ '914698df-ad0a-4d68-af51-757f2e5e37f1', '9898d4a7-7dfe-4202-af42-f8c7b4e8312b' ], realWorldApplicationRequired: true, substantialApplicationRequired: true, interviewRequired: true },
     ],
     proficiencyDefinitions: {
       BEGINNER: 'Conceptual understanding with supervised application of Git & Version Control',
       INTERMEDIATE: 'Independent execution of bounded Git & Version Control tasks',
+      PROFICIENT: 'Reliable independent delivery on typical production scenarios for Git & Version Control',
       ADVANCED: 'Owns Git & Version Control components end-to-end with trade-off reasoning',
       PROFESSIONAL: 'Sets standards and architecture for Git & Version Control at org scale',
     },
