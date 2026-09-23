@@ -101,9 +101,20 @@ export class StorageService implements OnModuleInit {
     return rewriteSignedUrlForBrowser(signed);
   }
 
-  /** Removes an object by key (best-effort cleanup when DB writes fail). */
-  async deleteObject(objectKey: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+  /** Overwrites an object at a fixed key (idempotent defense artifacts, etc.). */
+  async putObjectBuffer(params: {
+    objectKey: string;
+    buffer: Buffer;
+    contentType: string;
+  }): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: params.objectKey,
+        Body: params.buffer,
+        ContentType: params.contentType,
+      }),
+    );
   }
 
   /** Downloads an object buffer by key. */

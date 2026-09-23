@@ -1,6 +1,7 @@
 'use client';
 
 import { ProficiencyLevelHint } from '@smart/ui';
+import { SKILL_PROFICIENCIES } from '@smart/contracts';
 
 export { ProficiencyLevelHint };
 
@@ -13,7 +14,7 @@ function levelCircleClass(size: 'md' | 'sm'): string {
 export function ProficiencyLevelCircles({
   actualLevel,
   requiredLevel,
-  maxLevel = 4,
+  maxLevel = SKILL_PROFICIENCIES.length,
   mode = 'requirement',
   size = 'md',
 }: {
@@ -94,7 +95,7 @@ export function ProficiencyLevelLegend() {
           <span className="font-medium text-rose-700">Dashed outline</span> — still required by the
           opening; not yet verified at that level.
         </li>
-        <li>Numbers are Level 1–4 (hover the ℹ icon for Beginner → Professional mapping).</li>
+        <li>Numbers are Level 1–5 (hover the ℹ icon for Beginner → Professional mapping).</li>
       </ul>
     </div>
   );

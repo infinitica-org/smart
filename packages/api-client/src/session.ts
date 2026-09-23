@@ -111,6 +111,21 @@ export type PortalOrigins = {
   company: string;
 };
 
+/**
+ * Reads the three portal origin env vars with their shared defaults — was
+ * copy-pasted identically across web-student/web-tpo/web-admin/web-auth.
+ * `@smart/api-client` is in every portal's `transpilePackages`, so each
+ * app's own Next.js build still inlines these `NEXT_PUBLIC_*` reads at
+ * build time, same as if the object were declared locally.
+ */
+export function resolvePortalOriginsFromEnv(): PortalOrigins {
+  return {
+    student: process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001',
+    tpo: process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002',
+    admin: process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003',
+  };
+}
+
 export function portalHomeForRole(role: UserRole, origins: PortalOrigins): string | null {
   switch (role) {
     case 'STUDENT':

@@ -5,6 +5,7 @@ import {
   ConnectableSignalSourceIdSchema,
   ConnectSignalSourceRequestSchema,
   RefreshSignalsRequestSchema,
+  SelectRepositoriesRequestSchema,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -37,10 +38,19 @@ export class SignalIngestionController {
     return this.service.listConnections(user.sub);
   }
 
+  @Post('connect/GITHUB/repositories')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Select GitHub repositories for analysis.' })
+  selectRepositories(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const parsed = SelectRepositoriesRequestSchema.parse(body);
+    return this.service.selectGithubRepositories(user.sub, parsed.selectedRepoFullNames);
+  }
+
   @Post('connect/:sourceId')
   @Roles('STUDENT')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Connect GitHub, HackerRank, or LeetCode.' })
+  @ApiOperation({ summary: 'Connect GitHub, HackerRank, LeetCode, LinkedIn, or Credly.' })
   connect(
     @CurrentUser() user: RequestUser,
     @Param('sourceId') sourceIdParam: string,

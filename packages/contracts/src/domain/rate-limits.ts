@@ -130,6 +130,26 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     rationale: 'Invitation preview and accept endpoints; caps token enumeration.',
   },
   {
+    key: 'auth.register',
+    scope: 'IP',
+    limit: 5,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:auth_register:ip:{id}',
+    rationale: 'Caps automated self-serve account-creation spam.',
+    onViolation: 'ALERT',
+  },
+  {
+    key: 'auth.passwordResetRequest',
+    scope: 'IP',
+    limit: 5,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:auth_password_reset:ip:{id}',
+    rationale: 'Caps password-reset email bombing against a single or enumerated set of addresses.',
+    onViolation: 'ALERT',
+  },
+  {
     key: 'tpo.import',
     scope: 'INSTITUTION',
     limit: 10,
@@ -277,6 +297,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     burst: 3,
     redisKey: 'rl:resume_parse:user:{id}',
     rationale: 'Each parse spends LLM tokens; onboarding retries must not flood the P3 bucket.',
+  },
+  {
+    key: 'workExperience.resendReminder',
+    scope: 'USER',
+    limit: 3,
+    windowSeconds: 3600,
+    burst: 1,
+    redisKey: 'rl:we_resend_reminder:user:{id}',
+    rationale:
+      'Limits student-initiated manager endorsement reminder email resends to protect manager inboxes.',
   },
   {
     key: 'evaluation.skillInterview',
@@ -601,4 +631,5 @@ export const REDIS_TTL_SECONDS = {
   leetcodeProfile: 60 * 60,
   signalIngestionDedupe: 60 * 60,
   signalSourceCooldown: 15 * 60,
+  skillEvidenceInference: 7 * 24 * 60 * 60,
 } as const;

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { PROFICIENCY_LEVEL_ORDER } from './skill-levels.js';
+
 /**
  * SMART canonical domain enumerations.
  *
@@ -144,6 +146,10 @@ export type PlanCode = z.infer<typeof PlanCodeSchema>;
 export const TENANT_VERIFICATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export const TenantVerificationStatusSchema = z.enum(TENANT_VERIFICATION_STATUSES);
 export type TenantVerificationStatus = z.infer<typeof TenantVerificationStatusSchema>;
+
+export const ORG_TYPES = ['UNIVERSITY', 'EMPLOYER'] as const;
+export const OrgTypeSchema = z.enum(ORG_TYPES);
+export type OrgType = z.infer<typeof OrgTypeSchema>;
 
 /** CN-T09 — reservation claims the username; activation happens separately (first visibility opt-in). */
 export const USERNAME_STATUSES = ['RESERVED', 'ACTIVE'] as const;
@@ -405,12 +411,7 @@ export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
  * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
  * Silver / Bronze) still come from cut scores — do not invent a parallel score.
  */
-export const SKILL_PROFICIENCIES = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-] as const;
+export const SKILL_PROFICIENCIES = PROFICIENCY_LEVEL_ORDER;
 export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
 export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 

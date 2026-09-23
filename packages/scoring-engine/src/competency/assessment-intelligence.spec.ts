@@ -56,7 +56,7 @@ describe('assessment-intelligence', () => {
         targetProficiency: 'ADVANCED',
       }),
     );
-    expect(output.highestAssessmentSupportedProficiency).toBe('INTERMEDIATE');
+    expect(output.highestAssessmentSupportedProficiency).toBe('PROFICIENT');
     expect(output.assessmentPassed).toBe(false);
   });
 

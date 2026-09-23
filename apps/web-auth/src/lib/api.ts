@@ -5,18 +5,15 @@ import {
   createSmartApi,
   getAccessToken,
   portalHomeForRole,
+  resolvePortalOriginsFromEnv,
   returnToForRole,
   storeAccessToken,
 } from '@smart/api-client';
 import type { AuthenticatedUser } from '@smart/contracts';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const studentUrl = process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001';
-const tpoUrl = process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002';
-const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003';
-const companyUrl = process.env.NEXT_PUBLIC_COMPANY_URL ?? 'http://localhost:3006';
-
-const portalOrigins = { student: studentUrl, tpo: tpoUrl, admin: adminUrl, company: companyUrl };
+const portalOrigins = resolvePortalOriginsFromEnv();
+const { student: studentUrl, tpo: tpoUrl, admin: adminUrl } = portalOrigins;
 
 export const apiClient = new SmartApiClient({
   baseUrl,

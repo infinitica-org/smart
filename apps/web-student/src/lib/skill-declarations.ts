@@ -13,6 +13,7 @@ import {
   type SkillClaimDto,
   type SkillClaimStatus,
   proficiencyLevelUiLabel,
+  SKILL_PROFICIENCIES,
 } from '@smart/contracts';
 import { canVerifySkills } from './profile-progress';
 
@@ -23,18 +24,12 @@ export const CATEGORY_LABELS: Record<SkillCategoryId, string> = Object.fromEntri
 ) as Record<SkillCategoryId, string>;
 
 export const PROFICIENCY_OPTIONS = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
+  ...SKILL_PROFICIENCIES,
 ] as const satisfies readonly SkillProficiency[];
 
-export const PROFICIENCY_LABELS: Record<string, string> = {
-  BEGINNER: proficiencyLevelUiLabel('BEGINNER'),
-  INTERMEDIATE: proficiencyLevelUiLabel('INTERMEDIATE'),
-  ADVANCED: proficiencyLevelUiLabel('ADVANCED'),
-  PROFESSIONAL: proficiencyLevelUiLabel('PROFESSIONAL'),
-};
+export const PROFICIENCY_LABELS: Record<string, string> = Object.fromEntries(
+  SKILL_PROFICIENCIES.map((level) => [level, proficiencyLevelUiLabel(level)]),
+);
 
 export function skillsForCategory(categoryId: SkillCategoryId) {
   return SKILL_DEFINITIONS.filter((skill) => skill.categoryId === categoryId);

@@ -13,8 +13,10 @@ import {
   AbandonProjectDefenseResponseSchema,
   CompleteProjectDefenseRequestSchema,
   CompleteProjectDefenseResponseSchema,
-  PROJECT_DEFENSE_GRADER_PROMPT_REF,
+  PROJECT_DEFENSE_GRADER_V2_PROMPT_REF,
   PROJECT_DEFENSE_EXAMINER_PROMPT_REF,
+  ProjectDefenseOutcomeDtoSchema,
+  getSkillBlueprint,
   PROJECT_DEFENSE_MAX_DURATION_SECONDS,
   PROJECT_DEFENSE_RUBRIC_WEIGHTS,
   PROJECT_DEFENSE_SESSION_TTL_SECONDS,
@@ -38,10 +40,11 @@ import {
   type StartProjectDefenseResponse,
 } from '@smart/contracts';
 import {
-  ProjectDefenseGradeOutputSchema,
+  ProjectDefenseGradeOutputV2Schema,
   projectDefenseExaminerTemplate,
-  projectDefenseGraderTemplate,
+  projectDefenseGraderV2Template,
 } from '@smart/prompts';
+import { ProjectDefenseRecordService } from './project-defense-record.service.js';
 import { computeDefenseScore } from '@smart/scoring-engine';
 import { Effect } from 'effect';
 import { z } from 'zod';
@@ -113,6 +116,10 @@ function activeProjectKey(projectId: string): string {
   return `project:defense:active:${projectId}`;
 }
 
+function defenseConsentKey(projectId: string): string {
+  return `project:defense:consent:${projectId}`;
+}
+
 function defenseAudioKeyPrefix(projectId: string): string {
   return `project-defense/${projectId}/`;
 }
@@ -142,7 +149,32 @@ export class ProjectDefenseService {
     private readonly interviewGate: ProjectInterviewGateService,
     @Inject(ProctoringService) private readonly proctoring: ProctoringService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(ProjectDefenseRecordService)
+    private readonly defenseRecords: ProjectDefenseRecordService,
   ) {}
+
+  async getOutcome(projectId: string, userId: string) {
+    const project = await this.loadOwnedProject(projectId, userId);
+    const interview = await this.interviewGate.getState(projectId);
+    const record = await this.defenseRecords.load(projectId);
+    const appealOpen = record?.appeals.some((row) => row.status === 'OPEN') ?? false;
+    const canAppeal =
+      Boolean(record) &&
+      !appealOpen &&
+      (project.status === 'UNDER_REVIEW' || project.status === 'REJECTED');
+    const showTranscript = project.status === 'VERIFIED';
+
+    return ProjectDefenseOutcomeDtoSchema.parse({
+      projectId: project.id,
+      projectStatus: project.status,
+      interviewStatus: interview.interviewStatus,
+      interviewCompletedAt: interview.interviewCompletedAt,
+      grade: record?.grade ?? null,
+      transcript: showTranscript ? (record?.transcript ?? null) : null,
+      canAppeal,
+      appealOpen,
+    });
+  }
 
   async prepare(projectId: string, userId: string): Promise<PrepareProjectDefenseResponse> {
     await this.assertInterviewAllowed(projectId, userId);
@@ -225,8 +257,15 @@ export class ProjectDefenseService {
       await this.interviewGate.markInProgress(projectId);
     } else if (!stored.startedAt) {
       await this.proctoring.assertInterviewReady(userId, stored.sessionId);
+      const onboard = await this.proctoring.onboarding(userId, stored.sessionId);
       stored.startedAt = new Date().toISOString();
       await this.persistSession(stored);
+      await this.redis.set(
+        defenseConsentKey(projectId),
+        JSON.stringify({ consentAt: onboard.consentAt, sessionId: stored.sessionId }),
+        'EX',
+        PROJECT_DEFENSE_SESSION_TTL_SECONDS,
+      );
       await this.interviewGate.markInProgress(projectId);
     }
 
@@ -412,7 +451,7 @@ export class ProjectDefenseService {
             defenseQuality: 0,
           },
           routedToReview: true,
-          promptRef: PROJECT_DEFENSE_GRADER_PROMPT_REF,
+          promptRef: PROJECT_DEFENSE_GRADER_V2_PROMPT_REF,
           auditId: null,
         })
       : await (async () => {
@@ -427,10 +466,29 @@ export class ProjectDefenseService {
             ownershipConcernReason: parsed.ownershipConcernReason,
             dimensions: parsed.dimensions,
             routedToReview,
-            promptRef: PROJECT_DEFENSE_GRADER_PROMPT_REF,
+            promptRef: PROJECT_DEFENSE_GRADER_V2_PROMPT_REF,
             auditId,
+            justification: parsed.justification,
+            demonstratedClaims: parsed.demonstratedClaims,
+            inferredClaims: parsed.inferredClaims,
+            competencyScores: parsed.competencyScores,
           });
         })();
+
+    const consentRaw = await this.redis.get(defenseConsentKey(projectId));
+    const consentMeta = consentRaw
+      ? (JSON.parse(consentRaw) as { consentAt: string | null; sessionId: string })
+      : { consentAt: null, sessionId: session.sessionId };
+
+    await this.defenseRecords.saveCompleted({
+      projectId,
+      sessionId: session.sessionId,
+      studentId: userId,
+      consentAt: consentMeta.consentAt,
+      proctoringSessionId: consentMeta.sessionId,
+      transcript: session.turns,
+      grade,
+    });
 
     const projectStatus = grade.routedToReview ? 'UNDER_REVIEW' : 'VERIFIED';
 
@@ -442,6 +500,10 @@ export class ProjectDefenseService {
     await this.prisma.project.update({
       where: { id: projectId },
       data: { status: projectStatus },
+    });
+    await this.prisma.projectVerificationReport.updateMany({
+      where: { projectId },
+      data: { routedToReview: grade.routedToReview },
     });
 
     await this.outbox.enqueueEnvelope({
@@ -583,13 +645,15 @@ export class ProjectDefenseService {
     return stubExaminerTurn(session, secondsRemaining);
   }
 
-  private async runGrader(
-    session: StoredDefenseSession,
-  ): Promise<{ parsed: z.infer<typeof ProjectDefenseGradeOutputSchema>; auditId: string | null }> {
+  private async runGrader(session: StoredDefenseSession): Promise<{
+    parsed: z.infer<typeof ProjectDefenseGradeOutputV2Schema>;
+    auditId: string | null;
+  }> {
+    const competencies = await this.loadGraderCompetencies(session.projectId);
     if (this.gateway.hasCallableProvider()) {
       const gradeResult = await this.gateway.complete({
-        promptRef: PROJECT_DEFENSE_GRADER_PROMPT_REF,
-        modelRole: projectDefenseGraderTemplate.modelRole,
+        promptRef: PROJECT_DEFENSE_GRADER_V2_PROMPT_REF,
+        modelRole: projectDefenseGraderV2Template.modelRole,
         priority: 'P2_ASYNC_EVAL',
         variables: {
           projectTitle: session.context.projectTitle,
@@ -599,13 +663,14 @@ export class ProjectDefenseService {
           qlixReportDigest: session.context.qlixReportDigest ?? null,
           transcript: session.turns.map((t) => ({ role: t.role, text: t.text })),
           weights: PROJECT_DEFENSE_RUBRIC_WEIGHTS,
+          competencies,
         },
         correlation: { responseId: session.projectId },
-        maxOutputTokens: projectDefenseGraderTemplate.maxOutputTokens,
+        maxOutputTokens: projectDefenseGraderV2Template.maxOutputTokens,
         temperature: 0,
       });
       return {
-        parsed: ProjectDefenseGradeOutputSchema.parse(gradeResult.output),
+        parsed: ProjectDefenseGradeOutputV2Schema.parse(gradeResult.output),
         auditId: gradeResult.auditId ?? null,
       };
     }
@@ -646,6 +711,26 @@ export class ProjectDefenseService {
   /** Production with proctoring must go through prepare → onboarding → start. */
   private requiresPreparedSession(): boolean {
     return env.PROCTORING_FULL && env.NODE_ENV !== 'test';
+  }
+
+  private async loadGraderCompetencies(
+    projectId: string,
+  ): Promise<Array<{ competencyId: string; capability: string }>> {
+    const mappings = await this.prisma.projectSkillMapping.findMany({
+      where: { projectId },
+      take: 3,
+    });
+    const competencies: Array<{ competencyId: string; capability: string }> = [];
+    for (const mapping of mappings) {
+      const blueprint = getSkillBlueprint(mapping.skillCode);
+      for (const row of blueprint?.competencyModel ?? []) {
+        competencies.push({
+          competencyId: row.competencyId,
+          capability: row.capability,
+        });
+      }
+    }
+    return competencies.slice(0, 20);
   }
 
   private buildContext(
@@ -716,6 +801,13 @@ export class ProjectDefenseService {
 
   private async assertInterviewAllowed(projectId: string, userId: string): Promise<void> {
     const project = await this.loadOwnedProject(projectId, userId);
+    if (project.isActive === false) {
+      throw new BadRequestException({
+        error: 'project_inactive',
+        message: 'Ownership interview is not available for an inactive project.',
+        statusCode: 400,
+      });
+    }
     const interview = await this.interviewGate.getState(projectId);
     if (project.qlixCheckId && !project.report) {
       throw new ConflictException({

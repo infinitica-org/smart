@@ -61,6 +61,13 @@ export const CreateInstitutionRequestSchema = z.object({
 });
 export type CreateInstitutionRequest = z.infer<typeof CreateInstitutionRequestSchema>;
 
+export const ConfigureInstitutionSettingsSchema = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  domains: z.array(InstitutionDomainSchema).min(1).optional(),
+  campuses: z.array(z.string().trim().min(2).max(100)).optional(),
+});
+export type ConfigureInstitutionSettings = z.infer<typeof ConfigureInstitutionSettingsSchema>;
+
 export const InstitutionDtoSchema = z.object({
   institutionId: UuidSchema,
   name: z.string(),

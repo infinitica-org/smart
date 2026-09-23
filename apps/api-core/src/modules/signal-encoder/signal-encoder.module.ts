@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CorroborationModule } from '../corroboration/corroboration.module.js';
+import { EvidenceModule } from '../evidence/evidence.module.js';
 import { CredentialVerifiedFusionConsumer } from './credential-verified-fusion.consumer.js';
 import { ProjectDefenseCompletedFusionConsumer } from './project-defense-completed-fusion.consumer.js';
 import { RuleBasedEncoder } from './rule-based.encoder.js';
@@ -7,7 +8,7 @@ import { SignalIngestedEncoderConsumer } from './signal-ingested.encoder-consume
 import { SkillDimensionResolver } from './skill-dimension.resolver.js';
 
 @Module({
-  imports: [CorroborationModule],
+  imports: [CorroborationModule, EvidenceModule],
   providers: [
     SkillDimensionResolver,
     RuleBasedEncoder,

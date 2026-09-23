@@ -6,15 +6,22 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import {
-  CompanyPortalAccountSchema,
-  type AuthTokenResponse,
-  type AuthenticatedUser,
-  type CompanyPortalAccount,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import type {
+  AuthTokenResponse,
+  AuthenticatedUser,
+  RegisterRequest,
+  SelectableInstitutionDto,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
@@ -59,6 +66,7 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
@@ -74,6 +82,112 @@ export class AuthService {
       });
     }
     assertTenantLoginAllowed(user);
+
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.login',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
+    return this.issueSession(user, reply);
+  }
+
+  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
+    return this.prisma.institution.findMany({
+      where: { deactivatedAt: null, heldAt: null },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.institutionId },
+    });
+    if (!institution || institution.deactivatedAt || institution.heldAt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        passwordHash,
+        role: 'STUDENT',
+        emailVerified: false,
+        institutionId: institution.id,
+      },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
+
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.register',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
+    return this.issueSession(user, reply);
+  }
+
+  async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
+    return this.prisma.institution.findMany({
+      where: { deactivatedAt: null, heldAt: null },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+    const email = body.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'A user with this email already exists.',
+        statusCode: 409,
+      });
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.institutionId },
+    });
+    if (!institution || institution.deactivatedAt || institution.heldAt) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution not found.',
+        statusCode: 404,
+      });
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        passwordHash,
+        role: 'STUDENT',
+        emailVerified: false,
+        institutionId: institution.id,
+      },
+      include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
+    });
 
     return this.issueSession(user, reply);
   }
@@ -127,6 +241,14 @@ export class AuthService {
 
     if (existing.revokedAt) {
       await this.revokeFamily(existing.familyId);
+      await this.auditPublisher.record({
+        actorId: existing.userId,
+        action: 'auth.refresh_reuse_detected',
+        resourceType: 'user',
+        resourceId: existing.userId,
+        reasonCode: null,
+        metadata: { familyId: existing.familyId },
+      });
       clearRefreshCookie(reply);
       throw unauthorized('Refresh token reuse detected. Sign in again.');
     }
@@ -172,6 +294,13 @@ export class AuthService {
       });
       if (existing) {
         await this.revokeFamily(existing.familyId);
+        await this.auditPublisher.record({
+          actorId: existing.userId,
+          action: 'auth.logout',
+          resourceType: 'user',
+          resourceId: existing.userId,
+          reasonCode: null,
+        });
       }
     }
     clearRefreshCookie(reply);

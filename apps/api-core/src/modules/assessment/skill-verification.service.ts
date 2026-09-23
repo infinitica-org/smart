@@ -59,6 +59,7 @@ import {
   claimProficiencyFromDemonstrated,
   hasDemonstratedProficiency,
 } from './verified-proficiency.js';
+import type { CompetencyFusionResult, ProficiencyLevel } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { env } from '../../platform/config/env.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -69,12 +70,14 @@ import {
   SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
 } from '../evaluation/evaluation.service.js';
 import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
+import { EvidenceSkillInferenceService } from '../evidence/evidence-skill-inference.service.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
 import { AssessmentIntelligenceService } from './assessment-intelligence.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
 import { buildSkillPolymorphicSession } from './polymorphic-assessment-session.mapper.js';
 import { SKILL_VERIFY_GRADE_QUEUE } from '../../platform/queue/queue.names.js';
 import type { SkillVerifyGradeJobPayload } from './skill-verify-grade.processor.js';
+import { resolveDemonstratedProficiencyForFinalize } from '@smart/scoring-engine';
 
 /** Max LLM regens after the first cached question set for a pending verification session. */
 const SKILL_VERIFY_INTERVIEW_MAX_REGENERATIONS = 2;
@@ -206,6 +209,8 @@ export class SkillVerificationService {
     private readonly intelligence: AssessmentIntelligenceService,
     @Inject(VerificationOrchestratorService)
     private readonly verification: VerificationOrchestratorService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly evidenceSkillInference: EvidenceSkillInferenceService,
     @Inject(ProfileCompletionService)
     private readonly profileCompletion: ProfileCompletionService,
     @Optional()
@@ -612,7 +617,7 @@ export class SkillVerificationService {
         await this.gradeQueue.add(
           'grade',
           { sessionId, userId },
-          { jobId: `skill-verify-grade:${sessionId}` },
+          { jobId: `skill-verify-grade-${sessionId}` },
         );
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
@@ -667,6 +672,8 @@ export class SkillVerificationService {
             blueprint,
             grade: mergedGrade,
             competencyIdsByIndex,
+            targetProficiency: claim.proficiency,
+            verificationMode: 'declared-target',
             allowUpwardProbe: false,
           })
         : null;
@@ -871,6 +878,17 @@ export class SkillVerificationService {
     return this.finalizeVerification(user, sessionId);
   }
 
+  private async runCompetencyFusion(
+    studentId: string,
+    catalogSkillCode: string,
+    assessmentResult: AssessmentResult,
+  ): Promise<CompetencyFusionResult | null> {
+    return this.evidenceSkillInference.fuseForVerification(studentId, catalogSkillCode, {
+      competencyResults: assessmentResult.competencyResults,
+      targetProficiency: assessmentResult.targetProficiency as ProficiencyLevel,
+    });
+  }
+
   async finalizeVerification(
     user: RequestUser,
     sessionId: string,
@@ -885,7 +903,32 @@ export class SkillVerificationService {
       });
     }
     const claim = await this.loadOwnClaim(user.sub, stored.claimId);
-    const demonstrated = stored.pendingAssessmentResult.highestAssessmentSupportedProficiency;
+
+    const fusionResult = await this.runCompetencyFusion(
+      user.sub,
+      stored.catalogSkillCode,
+      stored.pendingAssessmentResult,
+    );
+
+    if (
+      fusionResult?.proficiencyInferenceReason === 'INSUFFICIENT_EVIDENCE' &&
+      fusionResult.inferredDomainProficiency === null
+    ) {
+      throw new BadRequestException({
+        error: 'insufficient_evidence',
+        message:
+          'Not enough verified project evidence to support proficiency fusion for this skill.',
+        statusCode: 400,
+      });
+    }
+
+    const pendingSupported = stored.pendingAssessmentResult.highestAssessmentSupportedProficiency;
+    const demonstrated = resolveDemonstratedProficiencyForFinalize({
+      assessmentSupported: hasDemonstratedProficiency(pendingSupported) ? pendingSupported : null,
+      fusionInferred: fusionResult?.inferredDomainProficiency ?? null,
+      interviewPassed: stored.interviewPassed === true,
+      fusion: fusionResult,
+    });
     if (!hasDemonstratedProficiency(demonstrated)) {
       throw new BadRequestException({
         error: 'verification_not_demonstrated',
@@ -927,6 +970,14 @@ export class SkillVerificationService {
     );
     const settledAssessmentResult = {
       ...stored.pendingAssessmentResult,
+      ...(fusionResult
+        ? {
+            highestAssessmentSupportedProficiency: fusionResult.inferredDomainProficiency,
+            confidence: fusionResult.confidence,
+            uncertainties: fusionResult.capabilityGaps,
+            recommendedNextStep: fusionResult.recommendedNextStep,
+          }
+        : {}),
       recommendedNextStep: gate.recommendedNextStep,
       requiresInterview: gate.requiresInterview,
       requiresEvidenceVerification: gate.requiresEvidence,

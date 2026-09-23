@@ -170,6 +170,11 @@ enum TenantVerificationStatus {
   REJECTED
 }
 
+enum OrganizationType {
+  UNIVERSITY
+  EMPLOYER
+}
+
 enum CompanyMode {
   SERVICE
   PRODUCT
@@ -212,6 +217,7 @@ enum CompanyVerificationDocumentUploadedBy {
 enum SkillProficiency {
   BEGINNER
   INTERMEDIATE
+  PROFICIENT
   ADVANCED
   PROFESSIONAL
 }
@@ -280,6 +286,8 @@ model Institution {
   heldAt             DateTime?                @map("held_at") @db.Timestamptz(6)
   planId             String                   @map("plan_id") @db.Uuid
   plan               SubscriptionPlan         @relation(fields: [planId], references: [id])
+  organizationId     String?                  @map("organization_id") @db.Uuid
+  organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users                User[]
@@ -292,6 +300,7 @@ model Institution {
   webhooks             WebhookEndpoint[]
   featureFlagOverrides FeatureFlagOverride[]
 
+  @@index([organizationId])
   @@map("institutions")
 }
 
@@ -395,36 +404,37 @@ model User {
   showInProgressItems    Boolean         @default(false) @map("show_in_progress_items")
   createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  refreshTokens                        RefreshToken[]
-  attempts                             Attempt[]
-  certificates                         Certificate[]
-  placements                           PlacementRecord[]
-  batchesCreated                       Batch[]                       @relation("BatchCreatedBy")
-  invitationsReceived                  Invitation[]
-  invitationsSent                      Invitation[]                  @relation("InvitationInvitedBy")
-  companyId                            String?                       @map("company_id") @db.Uuid
-  company                              Company?                      @relation(fields: [companyId], references: [id])
-  skillClaims                          SkillClaim[]
-  projects                             Project[]
-  applications                         Application[]
-  cognitiveProfile                     CognitiveProfile?
-  communicationProfile                 CommunicationProfile?
-  auditLogs                            AuditLog[]
-  jobOpeningsCreated                   JobOpening[]                  @relation("JobOpeningCreatedBy")
-  matchRunsRequested                   MatchRun[]                    @relation("MatchRunRequestedBy")
-  notifications                        Notification[]
-  workExperiences                      WorkExperience[]
-  candidateCertificates                CandidateCertificate[]
-  candidateEducations                  CandidateEducation[]
-  candidateLanguages                   CandidateLanguage[]
-  evidenceRecords                      EvidenceRecord[]
-  professionalCredentials              ProfessionalCredential[]
-  passiveSignalEvidence                PassiveSignalEvidence[]
-  evidenceProfile                      CandidateEvidenceProfile?
-  studentCapabilities                  StudentCapability[]
-  companyOnboardingSessions            CompanyOnboardingSession[]    @relation("CompanyOnboardingUser")
-  companyVerificationsReviewed         CompanyVerification[]         @relation("CompanyVerificationReviewedBy")
-  companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
+  refreshTokens         RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
+  attempts              Attempt[]
+  certificates          Certificate[]
+  placements            PlacementRecord[]
+  batchesCreated        Batch[]                @relation("BatchCreatedBy")
+  invitationsReceived   Invitation[]
+  invitationsSent       Invitation[]           @relation("InvitationInvitedBy")
+  companyId             String?                @map("company_id") @db.Uuid
+  company               Company?               @relation(fields: [companyId], references: [id])
+  skillClaims           SkillClaim[]
+  projects              Project[]
+  applications          Application[]
+  cognitiveProfile      CognitiveProfile?
+  communicationProfile  CommunicationProfile?
+  auditLogs             AuditLog[]
+  jobOpeningsCreated    JobOpening[]           @relation("JobOpeningCreatedBy")
+  matchRunsRequested    MatchRun[]             @relation("MatchRunRequestedBy")
+  notifications         Notification[]
+  workExperiences       WorkExperience[]
+  candidateCertificates CandidateCertificate[]
+  candidateEducations   CandidateEducation[]
+  candidateLanguages    CandidateLanguage[]
+  evidenceRecords       EvidenceRecord[]
+  professionalCredentials ProfessionalCredential[]
+  passiveSignalEvidence PassiveSignalEvidence[]
+  corroborationSnapshots CorroborationSnapshot[]
+  corroborationReviewFlags CorroborationReviewFlag[]
+  evidenceProfile       CandidateEvidenceProfile?
+  studentCapabilities   StudentCapability[]
 
   careerDomainId String? @map("career_domain_id")
   targetRoleId   String? @map("target_role_id")
@@ -447,6 +457,32 @@ model RefreshToken {
 
   @@index([userId, familyId])
   @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model ApiKey {
@@ -825,12 +861,14 @@ model Organization {
   id                 String                   @id @default(uuid()) @db.Uuid
   name               String
   domain             String?                  @unique
+  orgType            OrganizationType         @default(EMPLOYER) @map("org_type")
   verificationStatus TenantVerificationStatus @default(PENDING) @map("verification_status")
   verificationReason String?                  @map("verification_reason")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   companies       Company[]
+  institutions    Institution[]
   workExperiences WorkExperience[]
 
   @@map("organizations")
@@ -1049,6 +1087,8 @@ model Project {
   snapshotSha String?       @map("snapshot_sha")
   qlixCheckId String?       @map("qlix_check_id")
   status      ProjectStatus @default(SUBMITTED)
+  /// Current portfolio participation. False after replacement; verification status is unchanged.
+  isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   projectType      String?               @map("project_type")
@@ -1069,6 +1109,7 @@ model Project {
   studentCapabilities StudentCapability[]
 
   @@index([studentId, status])
+  @@index([studentId, isActive])
   @@map("projects")
 }
 
@@ -1866,10 +1907,31 @@ model EvidenceRecord {
   artifacts      EvidenceArtifact[]
   claimLinks     SkillClaimEvidenceLink[]
   contradictions EvidenceContradiction[]
+  versions      EvidenceRecordVersion[]
 
   @@index([studentId, evidenceType])
   @@index([studentId, verificationStatus])
   @@map("evidence_records")
+}
+
+model EvidenceRecordVersion {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  evidenceId               String                     @map("evidence_id") @db.Uuid
+  evidence                 EvidenceRecord             @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  versionNumber            Int                        @map("version_number")
+  snapshot                 Json
+  mutationKey              String                     @map("mutation_key")
+  actorId                  String?                    @map("actor_id") @db.Uuid
+  organizationId           String?                    @map("organization_id") @db.Uuid
+  source                   String
+  priorVerificationStatus  EvidenceVerificationStatus? @map("prior_verification_status")
+  newVerificationStatus    EvidenceVerificationStatus @map("new_verification_status")
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([evidenceId, versionNumber])
+  @@unique([evidenceId, mutationKey])
+  @@index([evidenceId, createdAt])
+  @@map("evidence_record_versions")
 }
 
 model EvidenceArtifact {
@@ -2022,5 +2084,42 @@ model PassiveSignalEvidence {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([studentId, source])
+  @@unique([studentId, source])
   @@map("passive_signal_evidence")
 }
+
+model CorroborationSnapshot {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taxonomyVersion   String   @map("taxonomy_version")
+  updatedAt         DateTime @map("updated_at") @db.Timestamptz(6)
+  readouts          Json
+  pendingFlagIds    String[] @map("pending_flag_ids")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId])
+  @@map("corroboration_snapshots")
+}
+
+model CorroborationReviewFlag {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId     String?  @map("institution_id") @db.Uuid
+  claimId           String?  @map("claim_id") @db.Uuid
+  skillCode         String   @map("skill_code")
+  severity          String
+  reason            String
+  passiveScore      Decimal  @map("passive_score") @db.Decimal(5, 4)
+  assessmentScore   Decimal  @map("assessment_score") @db.Decimal(5, 4)
+  createdAt         DateTime @map("created_at") @db.Timestamptz(6)
+  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote    String?  @map("resolution_note")
+
+  @@index([userId])
+  @@index([claimId, skillCode])
+  @@index([resolvedAt])
+  @@map("corroboration_review_flags")
+}
+

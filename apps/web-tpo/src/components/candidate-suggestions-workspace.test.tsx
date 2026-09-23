@@ -140,6 +140,7 @@ const mockShortlist: ShortlistDto = {
   candidates: [candidateB, candidateA], // Deliberately out of order (0.75 then 0.92)
   totalCandidatesConsidered: 15,
   eligiblePoolCount: 15,
+  candidatesScoredCount: 2,
   matchMethod: 'SKILL_CAPABILITY',
   minSkillCoverageApplied: 0.6,
 };

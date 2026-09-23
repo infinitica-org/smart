@@ -16,6 +16,7 @@ import {
 import { AssessmentResultSchema } from '../domain/evidence/assessment-result.js';
 import { SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateSchema, IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
+import { PublicCompetencyEvidenceSummarySchema } from './public-candidate-profile.dto.js';
 import { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
@@ -153,6 +154,17 @@ export const POTENTIAL_FIT_BANDS = ['STRONG', 'MODERATE', 'STRETCH'] as const;
 export const PotentialFitSchema = z.enum(POTENTIAL_FIT_BANDS);
 export type PotentialFit = z.infer<typeof PotentialFitSchema>;
 
+export const TRANSFER_SKILL_REASONS = ['SAME_CATEGORY', 'CAPABILITY_OVERLAP'] as const;
+export const TransferSkillReasonSchema = z.enum(TRANSFER_SKILL_REASONS);
+export type TransferSkillReason = z.infer<typeof TransferSkillReasonSchema>;
+
+export const TransferSkillRowSchema = z.object({
+  skillCode: TaxonomySkillCodeSchema,
+  skillName: z.string(),
+  reason: TransferSkillReasonSchema,
+});
+export type TransferSkillRow = z.infer<typeof TransferSkillRowSchema>;
+
 /**
  * One matched candidate. `explanation` is required, not optional: a TPO must be
  * able to defend a shortlist to an employer, and an unexplained similarity
@@ -167,7 +179,10 @@ export const CandidateMatchDtoSchema = z.object({
   headlineTier: CertifiableTierSchema,
   /** Cosine similarity — optional V1; omit or 0 when method is RULES. */
   similarityScore: z.number().min(0).max(1),
-  /** Rank shown to the TPO. Rules are P0 (ADR 0012). */
+  /**
+   * Rank shown to the TPO. For `SKILL_CAPABILITY`, verified required-skill demand (0–1 display;
+   * may sort on uncapped raw when above bar). Not self-reported or blended capability score.
+   */
   matchScore: z.number().min(0).max(1),
   method: MatchMethodSchema.default('RULES'),
   explanation: z.object({
@@ -205,6 +220,10 @@ export const CandidateMatchDtoSchema = z.object({
       })
       .optional(),
     verifiedSkills: z.array(VerifiedSkillSummarySchema).optional(),
+    requiredSkillsHeld: z.number().int().min(0).optional(),
+    requiredSkillsMissing: z.number().int().min(0).optional(),
+    transferSkills: z.array(TransferSkillRowSchema).optional(),
+    competencyEvidenceSummaries: z.array(PublicCompetencyEvidenceSummarySchema).max(12).optional(),
   }),
 });
 export type CandidateMatchDto = z.infer<typeof CandidateMatchDtoSchema>;
@@ -219,6 +238,8 @@ export const ShortlistDtoSchema = z.object({
   totalCandidatesConsidered: z.number().int(),
   /** S6-VV-76 — pre-ranking eligible-pool size (post batch/CGPA/skill filters). */
   eligiblePoolCount: z.number().int(),
+  /** Students with at least one verified required skill before `limit` (S6-RM-23). */
+  candidatesScoredCount: z.number().int().min(0).optional(),
   matchMethod: MatchMethodSchema.optional(),
   minSkillCoverageApplied: z.number().min(0).max(1).optional(),
   jobRequirements: z

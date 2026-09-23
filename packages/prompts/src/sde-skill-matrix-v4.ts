@@ -8,6 +8,7 @@
 export const SDE_V4_PROFICIENCIES = [
   'BEGINNER',
   'INTERMEDIATE',
+  'PROFICIENT',
   'ADVANCED',
   'PROFESSIONAL',
 ] as const;
@@ -50,6 +51,7 @@ export interface SdeV4SkillDefinition {
 const CLOSED = {
   BEGINNER: { MCQ: 8, TRACE: 3 },
   INTERMEDIATE: { MCQ: 5, TRACE: 2 },
+  PROFICIENT: { MCQ: 3, TRACE: 2 },
   ADVANCED: { MCQ: 2, TRACE: 1 },
   PROFESSIONAL: { MCQ: 1, TRACE: 1 },
 } as const;
@@ -59,8 +61,15 @@ function level(
   openFormats: readonly SdeV4Format[],
   flavorNotes: readonly string[],
 ): SdeV4LevelSpec {
-  const timeMinutes = proficiency === 'BEGINNER' ? 20 : proficiency === 'INTERMEDIATE' ? 40 : 55;
-  const passMarkPercent = proficiency === 'INTERMEDIATE' || proficiency === 'ADVANCED' ? 75 : 80;
+  const timeMinutes =
+    proficiency === 'BEGINNER'
+      ? 20
+      : proficiency === 'INTERMEDIATE'
+        ? 40
+        : proficiency === 'PROFICIENT'
+          ? 48
+          : 55;
+  const passMarkPercent = proficiency === 'BEGINNER' || proficiency === 'PROFESSIONAL' ? 80 : 75;
   return {
     timeMinutes,
     passMarkPercent,
@@ -73,6 +82,7 @@ function level(
 type FlavorSpec = {
   readonly beginner: readonly string[];
   readonly intermediate: readonly string[];
+  readonly proficient?: readonly string[];
   readonly advanced: readonly string[];
   readonly professional: readonly string[];
 };
@@ -88,6 +98,7 @@ function levelsForFamily(
   return {
     BEGINNER: level('BEGINNER', open(1), flavors.beginner),
     INTERMEDIATE: level('INTERMEDIATE', open(2), flavors.intermediate),
+    PROFICIENT: level('PROFICIENT', open(2), flavors.proficient ?? flavors.intermediate),
     ADVANCED: level('ADVANCED', open(3), flavors.advanced),
     PROFESSIONAL: level('PROFESSIONAL', open(3), flavors.professional),
   };
@@ -228,6 +239,7 @@ export const SDE_V4_SKILL_BY_CODE: ReadonlyMap<string, SdeV4SkillDefinition> = n
 export const SDE_V4_ITEM_TOTALS: Readonly<Record<SdeV4Proficiency, number>> = {
   BEGINNER: 12,
   INTERMEDIATE: 9,
+  PROFICIENT: 7,
   ADVANCED: 6,
   PROFESSIONAL: 5,
 };

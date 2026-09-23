@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+@source '../components/**/*.{ts,tsx}';
+
+@theme {
+  --color-bg: #131313;
+  --color-surface: #ffffff;
+  --color-surface-dark: #3a302e;
+  --color-ink: #111111;
+  --color-ink-inverse: #ffffff;
+  --color-muted: #6b6b6b;
+  --color-accent: #ff4800;
+  --color-accent-gradient-start: #ff7300;
+  --color-accent-gradient-end: #ff3333;
+  --color-accent-dim: rgba(255, 72, 0, 0.12);
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-line-dark: rgba(255, 255, 255, 0.12);
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-manrope), system-ui, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
+  --font-manrope: var(--font-manrope), sans-serif;
+  --font-montserrat: var(--font-montserrat), sans-serif;
+  --font-cabinet: var(--font-manrope), sans-serif;
+  --font-axiforma: var(--font-manrope), sans-serif;
+}
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-cabinet {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+.font-axiforma {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+.font-manrope {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+.font-hero-hand {
+  font-family: var(--font-hero-hand), 'Segoe Script', cursive;
+}
+
+.font-hero-marker {
+  font-family: var(--font-hero-marker), 'Comic Sans MS', cursive;
+  font-weight: 700;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 500ms ease-out,
+    transform 500ms ease-out;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

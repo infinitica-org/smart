@@ -15,10 +15,11 @@ import {
 } from './templates/sde-skill-form.js';
 
 describe('SDE v4 matrix', () => {
-  it('has eleven skills and 12/9/6/5 item totals', () => {
+  it('has eleven skills and 12/9/7/6/5 item totals', () => {
     expect(SDE_V4_SKILLS).toHaveLength(11);
     expect(SDE_V4_ITEM_TOTALS.BEGINNER).toBe(12);
     expect(SDE_V4_ITEM_TOTALS.INTERMEDIATE).toBe(9);
+    expect(SDE_V4_ITEM_TOTALS.PROFICIENT).toBe(7);
     expect(SDE_V4_ITEM_TOTALS.ADVANCED).toBe(6);
     expect(SDE_V4_ITEM_TOTALS.PROFESSIONAL).toBe(5);
   });
@@ -34,7 +35,13 @@ describe('SDE v4 matrix', () => {
   it('uses only CODING or SCENARIO for open items (no DEBUG or DESIGN_REASONING)', () => {
     for (const skill of SDE_V4_SKILLS) {
       const allowed = skill.taskFamily === 'CODING' ? 'CODING' : 'SCENARIO';
-      for (const proficiency of ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'] as const) {
+      for (const proficiency of [
+        'BEGINNER',
+        'INTERMEDIATE',
+        'PROFICIENT',
+        'ADVANCED',
+        'PROFESSIONAL',
+      ] as const) {
         const open = skill.levels[proficiency].openFormats;
         expect(open.every((format) => format === allowed)).toBe(true);
         expect(open.some((format) => format === 'DEBUG' || format === 'DESIGN_REASONING')).toBe(

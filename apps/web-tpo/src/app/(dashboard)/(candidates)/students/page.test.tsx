@@ -23,5 +23,7 @@ describe('CandidatesPage', () => {
     expect(screen.getByRole('combobox', { name: /Filter by Proficiency/i })).toBeDefined();
     expect(screen.getByRole('option', { name: 'Level 4' })).toBeDefined();
     expect(screen.queryByRole('link', { name: /Onboard Candidates/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Whitelist/i })).toBeNull();
+    expect(await screen.findByRole('heading', { name: /^Students$/i })).toBeDefined();
   });
 });

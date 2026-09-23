@@ -44,7 +44,7 @@ describe('WorkExperienceVerificationPage', () => {
     expect(
       await screen.findByRole('heading', { name: /Work Experience Verification/i }),
     ).toBeDefined();
-    expect(screen.getByText('Candidate')).toBeDefined();
+    expect(await screen.findByText('Candidate')).toBeDefined();
     expect(screen.getByText('Jane Candidate')).toBeDefined();
     expect(screen.getByText('Acme Corp')).toBeDefined();
     expect(screen.getByText('PENDING_EMPLOYER')).toBeDefined();

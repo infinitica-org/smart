@@ -48,6 +48,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
         count: vi.fn().mockResolvedValue(0),
       },
       candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
+      studentCapability: { findMany: vi.fn().mockResolvedValue([]) },
     };
     storage.getSignedDownloadUrl.mockClear();
     service = new PublicProfileService(prisma, storage as never);
