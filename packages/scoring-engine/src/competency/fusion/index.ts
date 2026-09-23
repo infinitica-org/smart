@@ -9,3 +9,4 @@ export * from './source-adapters/assessment.adapter.js';
 export * from './source-adapters/project.adapter.js';
 export * from './qlix-project-observations.js';
 export * from './skill-evidence-inference.js';
+export * from './skill-level-explanation.js';

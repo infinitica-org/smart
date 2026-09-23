@@ -2348,6 +2348,19 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Single candidate fit from a completed match run snapshot.',
   },
   {
+    method: 'GET',
+    path: '/placement/candidates/:studentId/skills/:skillCode/inspection',
+    module: 'matching',
+    owner: 'Ramansh',
+    roles: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
+    rateLimit: 'placement.matchRunStatus',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary:
+      'TPO/employer skill inspection with confidence indicators and verified vs AI readout (SKL-03).',
+  },
+  {
     method: 'POST',
     path: '/placement/openings/:openingId/parse-jd',
     module: 'placement',
@@ -3384,6 +3397,19 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary:
       'Fused skill proficiency and confidence from all linked evidence (SKL-02); separate from verified claim level.',
+  },
+  {
+    method: 'GET',
+    path: '/users/me/skills/:skillCode/level-explanation',
+    module: 'evidence',
+    owner: 'Ramansh',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary:
+      'Student why-this-level explanation: verified vs assessment vs evidence fusion (SKL-03).',
   },
   {
     method: 'POST',

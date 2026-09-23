@@ -14,6 +14,7 @@ import {
 import { Rocket, Sparkles } from 'lucide-react';
 import { ProficiencyLevelCircles, ProficiencyLevelLegend } from './proficiency-level-ui';
 import { sectionLabelClass, mutedTextClass, cardClass } from '../../lib/tpo-ui';
+import { EmployerSkillInspectionPanel } from './EmployerSkillInspectionPanel';
 
 type GapTab = 'skills' | 'competencies';
 
@@ -33,7 +34,7 @@ function otherVerifiedSkills(
   return (verified ?? []).filter((skill) => !requiredCodes.has(skill.skillCode));
 }
 
-function RequirementSkillRow({ row }: { row: SkillFitRow }) {
+function RequirementSkillRow({ row, onInspect }: { row: SkillFitRow; onInspect?: () => void }) {
   const required = proficiencyLevelNumber(row.requiredProficiency);
   const actual = row.actualProficiency ? proficiencyLevelNumber(row.actualProficiency) : 0;
   const met = row.status === 'MET';
@@ -58,6 +59,15 @@ function RequirementSkillRow({ row }: { row: SkillFitRow }) {
           : ' · No verified level on profile'}
       </p>
       <ProficiencyLevelCircles actualLevel={actual} requiredLevel={required} />
+      {onInspect ? (
+        <button
+          type="button"
+          onClick={onInspect}
+          className="mt-1 text-xs font-semibold text-[var(--ds-green)] hover:underline"
+        >
+          Inspect skill evidence
+        </button>
+      ) : null}
     </li>
   );
 }
@@ -168,6 +178,9 @@ export function CandidateSkillGapPanel({
   const [tab, setTab] = useState<GapTab>(
     hasSkills ? 'skills' : hasCompetencies ? 'competencies' : 'skills',
   );
+  const [inspectSkillCode, setInspectSkillCode] = useState<string | null>(null);
+  const inspectSkillName =
+    skillFit.find((row) => row.skillCode === inspectSkillCode)?.skillName ?? inspectSkillCode;
 
   if (!hasSkills && !hasCompetencies) {
     return null;
@@ -218,7 +231,11 @@ export function CandidateSkillGapPanel({
               </p>
               <ul className="flex flex-col gap-3">
                 {skillFit.map((row) => (
-                  <RequirementSkillRow key={row.skillCode} row={row} />
+                  <RequirementSkillRow
+                    key={row.skillCode}
+                    row={row}
+                    onInspect={() => setInspectSkillCode(row.skillCode)}
+                  />
                 ))}
               </ul>
             </div>
@@ -227,6 +244,14 @@ export function CandidateSkillGapPanel({
               No taxonomy skills were attached to this opening for matching.
             </p>
           )}
+
+          {inspectSkillCode && inspectSkillName ? (
+            <EmployerSkillInspectionPanel
+              studentId={candidate.studentId}
+              skillCode={inspectSkillCode}
+              skillName={inspectSkillName}
+            />
+          ) : null}
 
           {otherSkills.length > 0 ? (
             <div>

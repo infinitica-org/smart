@@ -122,6 +122,7 @@ import {
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
   EvidenceRecordDtoSchema,
+  GetSkillLevelExplanationResponseSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
   ProjectSkillMappingDtoSchema,
@@ -961,6 +962,11 @@ export function evidenceApi(client: SmartApiClient) {
     getProfile: () =>
       client.get(prefixed('/users/me/evidence-profile'), {
         schema: CandidateEvidenceProfileDtoSchema,
+      }),
+
+    getSkillLevelExplanation: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/level-explanation`), {
+        schema: GetSkillLevelExplanationResponseSchema,
       }),
 
     saveOnboardingSelection: (body: SaveOnboardingSelectionRequest) =>

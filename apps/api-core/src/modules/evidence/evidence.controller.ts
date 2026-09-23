@@ -19,6 +19,7 @@ import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceService } from './evidence.service.js';
 import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
+import { SkillLevelExplanationService } from './skill-level-explanation.service.js';
 
 const CREDENTIAL_DOCUMENT_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -29,6 +30,8 @@ export class EvidenceController {
     @Inject(EvidenceService) private readonly evidence: EvidenceService,
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
+    @Inject(SkillLevelExplanationService)
+    private readonly skillExplanation: SkillLevelExplanationService,
   ) {}
 
   @Get('evidence')
@@ -62,6 +65,20 @@ export class EvidenceController {
     @Param('skillCode') skillCode: string,
   ) {
     return this.skillInference.getForStudent(user.sub, skillCode);
+  }
+
+  @Get('skills/:skillCode/level-explanation')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Student-facing why-this-level explanation (verified vs assessment vs evidence fusion) (SKL-03).',
+  })
+  getSkillLevelExplanation(
+    @CurrentUser() user: RequestUser,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillExplanation.getForStudent(user.sub, skillCode);
   }
 
   @Patch('evidence-profile/onboarding-selection')
