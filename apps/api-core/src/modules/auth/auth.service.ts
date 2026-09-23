@@ -21,6 +21,7 @@ import type {
   SelectableInstitutionDto,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
@@ -62,6 +63,7 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
@@ -78,6 +80,13 @@ export class AuthService {
     }
     assertTenantLoginAllowed(user);
 
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.login',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
     return this.issueSession(user, reply);
   }
 
@@ -124,6 +133,13 @@ export class AuthService {
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
 
+    await this.auditPublisher.record({
+      actorId: user.id,
+      action: 'auth.register',
+      resourceType: 'user',
+      resourceId: user.id,
+      reasonCode: null,
+    });
     return this.issueSession(user, reply);
   }
 
@@ -167,6 +183,14 @@ export class AuthService {
 
     if (existing.revokedAt) {
       await this.revokeFamily(existing.familyId);
+      await this.auditPublisher.record({
+        actorId: existing.userId,
+        action: 'auth.refresh_reuse_detected',
+        resourceType: 'user',
+        resourceId: existing.userId,
+        reasonCode: null,
+        metadata: { familyId: existing.familyId },
+      });
       clearRefreshCookie(reply);
       throw unauthorized('Refresh token reuse detected. Sign in again.');
     }
@@ -210,6 +234,13 @@ export class AuthService {
       });
       if (existing) {
         await this.revokeFamily(existing.familyId);
+        await this.auditPublisher.record({
+          actorId: existing.userId,
+          action: 'auth.logout',
+          resourceType: 'user',
+          resourceId: existing.userId,
+          reasonCode: null,
+        });
       }
     }
     clearRefreshCookie(reply);

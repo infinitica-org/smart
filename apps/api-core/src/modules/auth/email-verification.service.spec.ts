@@ -16,7 +16,11 @@ describe('EmailVerificationService.sendForUser', () => {
       },
     };
     const emailQueue = { add: vi.fn() };
-    const service = new EmailVerificationService(prisma as never, emailQueue as never);
+    const service = new EmailVerificationService(
+      prisma as never,
+      emailQueue as never,
+      { record: vi.fn() } as never,
+    );
 
     await service.sendForUser(userId, 'student@example.com', 'Test Student');
 
@@ -53,16 +57,28 @@ describe('EmailVerificationService.confirm', () => {
       user: { update: vi.fn() },
       $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
     };
-    const service = new EmailVerificationService(prisma as never, { add: vi.fn() } as never);
+    const auditPublisher = { record: vi.fn() };
+    const service = new EmailVerificationService(
+      prisma as never,
+      { add: vi.fn() } as never,
+      auditPublisher as never,
+    );
 
     await service.confirm(raw);
 
     expect(prisma.$transaction).toHaveBeenCalled();
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: userId, action: 'auth.email_verified' }),
+    );
   });
 
   it('rejects an unknown token with 404', async () => {
     const prisma = { emailVerificationToken: { findUnique: vi.fn(async () => null) } };
-    const service = new EmailVerificationService(prisma as never, { add: vi.fn() } as never);
+    const service = new EmailVerificationService(
+      prisma as never,
+      { add: vi.fn() } as never,
+      { record: vi.fn() } as never,
+    );
 
     await expect(service.confirm('bogus')).rejects.toMatchObject({
       response: { statusCode: 404 },
@@ -81,7 +97,11 @@ describe('EmailVerificationService.confirm', () => {
         })),
       },
     };
-    const service = new EmailVerificationService(prisma as never, { add: vi.fn() } as never);
+    const service = new EmailVerificationService(
+      prisma as never,
+      { add: vi.fn() } as never,
+      { record: vi.fn() } as never,
+    );
 
     await expect(service.confirm('used')).rejects.toMatchObject({
       response: { statusCode: 410 },
@@ -100,7 +120,11 @@ describe('EmailVerificationService.confirm', () => {
         })),
       },
     };
-    const service = new EmailVerificationService(prisma as never, { add: vi.fn() } as never);
+    const service = new EmailVerificationService(
+      prisma as never,
+      { add: vi.fn() } as never,
+      { record: vi.fn() } as never,
+    );
 
     await expect(service.confirm('expired')).rejects.toMatchObject({
       response: { statusCode: 410 },
