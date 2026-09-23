@@ -47,6 +47,7 @@ function setup() {
       { createAndEnqueue: vi.fn().mockResolvedValue({ invitation: {} }) } as never,
       auditPublisher as never,
       noopRedis as never,
+      {} as never,
     ),
   };
 }

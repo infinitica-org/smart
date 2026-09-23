@@ -174,6 +174,55 @@ export const COMPANY_MODES = ['SERVICE', 'PRODUCT'] as const;
 export const CompanyModeSchema = z.enum(COMPANY_MODES);
 export type CompanyMode = z.infer<typeof CompanyModeSchema>;
 
+/** CO onboarding — applicant progress (distinct from TenantVerificationStatus on Company). */
+export const COMPANY_ONBOARDING_STATUSES = [
+  'DRAFT',
+  'EMAIL_VERIFICATION_PENDING',
+  'EMAIL_VERIFIED',
+  'SUBMITTED',
+  'PENDING_REVIEW',
+  'RESUBMISSION_ALLOWED',
+  'ACCOUNT_ACTIVE',
+  'WITHDRAWN',
+  'EXPIRED',
+] as const;
+export const CompanyOnboardingStatusSchema = z.enum(COMPANY_ONBOARDING_STATUSES);
+export type CompanyOnboardingStatus = z.infer<typeof CompanyOnboardingStatusSchema>;
+
+export const REPRESENTATIVE_RELATIONSHIPS = [
+  'FOUNDER',
+  'HR',
+  'RECRUITER',
+  'DIRECTOR',
+  'OTHER',
+] as const;
+export const RepresentativeRelationshipSchema = z.enum(REPRESENTATIVE_RELATIONSHIPS);
+export type RepresentativeRelationship = z.infer<typeof RepresentativeRelationshipSchema>;
+
+export const COMPANY_VERIFICATION_DOCUMENT_TYPES = [
+  'BUSINESS_REGISTRATION',
+  'CERTIFICATE_OF_INCORPORATION',
+  'TAX_DOCUMENT',
+  'GOVERNMENT_ID',
+  'AUTHORITY_PROOF',
+  'COMPANY_LOGO',
+  'OTHER',
+] as const;
+export const CompanyVerificationDocumentTypeSchema = z.enum(COMPANY_VERIFICATION_DOCUMENT_TYPES);
+export type CompanyVerificationDocumentType = z.infer<typeof CompanyVerificationDocumentTypeSchema>;
+
+export const COMPANY_VERIFICATION_DOCUMENT_REVIEW_STATUSES = [
+  'PENDING',
+  'ACCEPTED',
+  'REJECTED',
+] as const;
+export const CompanyVerificationDocumentReviewStatusSchema = z.enum(
+  COMPANY_VERIFICATION_DOCUMENT_REVIEW_STATUSES,
+);
+export type CompanyVerificationDocumentReviewStatus = z.infer<
+  typeof CompanyVerificationDocumentReviewStatusSchema
+>;
+
 export const CANDIDATE_VIEW_REASON_CODES = [
   'support_ticket',
   'integrity_review',

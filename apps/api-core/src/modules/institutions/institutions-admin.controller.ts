@@ -165,6 +165,15 @@ export class InstitutionsAdminController {
     return this.institutions.listVerificationQueue();
   }
 
+  @Get('verification-queue/:tenantId/review')
+  verificationReview(
+    @Param('tenantId') tenantId: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    GetVerificationReviewQuerySchema.parse(compactQuery(query));
+    return this.institutions.getCompanyVerificationReview(tenantId);
+  }
+
   @Post('verification-queue/:tenantId/resolve')
   resolveVerification(
     @Param('tenantId') tenantId: string,

@@ -3,6 +3,7 @@
 exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → policy so a silent matrix drift fails CI 1`] = `
 {
   "DELETE /admin/blocked-words/:id": "role.superAdmin",
+  "DELETE /public/company/onboarding/sessions/:sessionToken/documents/:documentId": "company.onboarding.documentDelete",
   "DELETE /signals/disconnect/:sourceId": "signals.connect",
   "DELETE /users/me/education/:id": "role.student",
   "DELETE /users/me/education/:id/documents/:documentId": "role.student",
@@ -39,6 +40,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /admin/student-capabilities/review-queue": "role.superAdmin",
   "GET /admin/students/search": "role.superAdmin",
   "GET /admin/verification-queue": "role.superAdmin",
+  "GET /admin/verification-queue/:tenantId/review": "role.superAdmin",
   "GET /analytics/cohort-readiness": "role.institutionAdmin",
   "GET /analytics/correlation": "role.institutionAdmin",
   "GET /analytics/gap-report": "role.institutionAdmin",
@@ -93,6 +95,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /projects/github/repos": "projects.github",
   "GET /projects/github/status": "projects.github",
   "GET /public/candidates/:slug": "verify.publicProfile",
+  "GET /public/company/onboarding/sessions/:sessionToken": "company.onboarding.read",
   "GET /signals/connections": "signals.connections.read",
   "GET /student/entitlements": "role.student",
   "GET /student/growth-report": "role.student",
@@ -146,6 +149,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PATCH /me/notifications/:notificationId/read": "role.student",
   "PATCH /placement/applications/:applicationId/stage": "placement.application",
   "PATCH /placement/employers/:employerId": "placement.opening",
+  "PATCH /public/company/onboarding/sessions/:sessionToken": "company.onboarding.draft",
   "PATCH /tpo/batches/:batchId": "role.institutionAdmin",
   "PATCH /tpo/institution/settings": "role.institutionAdmin",
   "PATCH /users/me/evidence-profile/onboarding-selection": "role.student",

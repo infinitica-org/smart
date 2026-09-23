@@ -9,6 +9,9 @@ import {
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { Roles } from '../../common/guards/roles.decorator.js';
 import { InvitationsService } from '../invitations/invitations.service.js';
 import { AuthService } from './auth.service.js';
 import { EmailVerificationService } from './email-verification.service.js';
@@ -91,6 +94,13 @@ export class AuthController {
     return this.invitations.preview(token);
   }
 
+  /** Minimal COMPANY-only boundary for portal auth (Phase 6). */
+  @Get('company/account')
+  @Roles('COMPANY')
+  companyAccount(@CurrentUser() user: RequestUser) {
+    return this.auth.getCompanyPortalAccount(user.sub);
+  }
+
   @Public()
   @Post('invitations/:token/accept')
   async acceptInvitation(
@@ -100,6 +110,6 @@ export class AuthController {
   ) {
     const parsed = AcceptInvitationRequestSchema.parse(body);
     const user = await this.invitations.accept(token, parsed.password);
-    return this.auth.issueSession(user, reply);
+    return this.auth.issueSessionAfterInviteAccept(user, reply);
   }
 }

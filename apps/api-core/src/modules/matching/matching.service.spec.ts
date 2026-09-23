@@ -164,7 +164,7 @@ describe('SE-T05 match authorization', () => {
     ]);
   });
 
-  it.each(['B2B_PARTNER', 'STUDENT', 'SUPER_ADMIN'])(
+  it.each(['B2B_PARTNER', 'COMPANY', 'STUDENT', 'SUPER_ADMIN'])(
     'rejects %s on POST /placement/match',
     (role) => {
       const guard = new RolesGuard({

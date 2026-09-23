@@ -270,6 +270,7 @@ export const INVITATION_EMAIL_TEMPLATES = [
   'institution-admin-invite',
   'student-invite',
   'invite-reminder',
+  'company-portal-invite',
 ] as const;
 
 export const InvitationSentDataSchema = z.object({

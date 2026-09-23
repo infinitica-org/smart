@@ -74,6 +74,7 @@ function setup(existingUsers: ExistingUser[] = [], pendingInvitationCount = 1) {
       invitations as never,
       auditPublisher as never,
       noopRedis as never,
+      {} as never,
     ),
   };
 }

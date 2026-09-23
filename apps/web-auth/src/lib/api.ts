@@ -38,6 +38,6 @@ export function redirectForRole(
   window.location.href = buildPortalRedirectUrl(target, accessToken);
 }
 
-export { buildPortalRedirectUrl, studentUrl, tpoUrl, adminUrl, portalOrigins };
+export { buildPortalRedirectUrl, studentUrl, tpoUrl, adminUrl, companyUrl, portalOrigins };
 
 export const studentDashboardUrl = `${studentUrl.replace(/\/$/u, '')}/dashboard`;

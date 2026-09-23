@@ -66,6 +66,7 @@ function setup(existingUsers: ExistingUser[] = []) {
       invitations as never,
       auditPublisher as never,
       noopRedis as never,
+      {} as never,
     ),
   };
 }
