@@ -122,7 +122,10 @@ import {
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
   EvidenceRecordDtoSchema,
+  GetSkillEvidenceInferenceResponseSchema,
   GetSkillLevelExplanationResponseSchema,
+  ListCapabilityInferenceReviewQueueResponseSchema,
+  CorrectStudentCapabilityResponseSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
   ProjectSkillMappingDtoSchema,
@@ -753,6 +756,17 @@ export function onboardingApi(client: SmartApiClient) {
         schema: ResolveProjectReviewResponseSchema,
       }),
 
+    capabilityInferenceReviewQueue: (limit?: number) =>
+      client.get(prefixed('/admin/student-capabilities/review-queue'), {
+        schema: ListCapabilityInferenceReviewQueueResponseSchema,
+        query: limit !== undefined ? { limit: String(limit) } : undefined,
+      }),
+
+    correctStudentCapability: (capabilityId: string, body: unknown) =>
+      client.post(prefixed(`/admin/student-capabilities/${capabilityId}/correct`), body, {
+        schema: CorrectStudentCapabilityResponseSchema,
+      }),
+
     /** CN-T09 — super-admin-curated blocked-word list. */
     listBlockedWords: () =>
       client.get(prefixed('/admin/blocked-words'), {
@@ -967,6 +981,11 @@ export function evidenceApi(client: SmartApiClient) {
     getSkillLevelExplanation: (skillCode: string) =>
       client.get(prefixed(`/users/me/skills/${skillCode}/level-explanation`), {
         schema: GetSkillLevelExplanationResponseSchema,
+      }),
+
+    getSkillEvidenceInference: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/evidence-inference`), {
+        schema: GetSkillEvidenceInferenceResponseSchema,
       }),
 
     saveOnboardingSelection: (body: SaveOnboardingSelectionRequest) =>
