@@ -18,13 +18,18 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceService } from './evidence.service.js';
+import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
 
 const CREDENTIAL_DOCUMENT_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 @ApiTags('evidence')
 @Controller(`${API_PREFIX}/users/me`)
 export class EvidenceController {
-  constructor(@Inject(EvidenceService) private readonly evidence: EvidenceService) {}
+  constructor(
+    @Inject(EvidenceService) private readonly evidence: EvidenceService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
+  ) {}
 
   @Get('evidence')
   @Roles('STUDENT')
@@ -44,6 +49,19 @@ export class EvidenceController {
   @ApiBearerAuth()
   getProfile(@CurrentUser() user: RequestUser) {
     return this.evidence.getEvidenceProfile(user.sub);
+  }
+
+  @Get('skills/:skillCode/evidence-inference')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Evidence-fused skill proficiency and confidence (distinct from verified claim).',
+  })
+  getSkillEvidenceInference(
+    @CurrentUser() user: RequestUser,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillInference.getForStudent(user.sub, skillCode);
   }
 
   @Patch('evidence-profile/onboarding-selection')

@@ -34,6 +34,7 @@ export const SMART_TOPICS = {
   signalEncoded: 'smart.signal.encoded',
   corroborationUpdated: 'smart.corroboration.updated',
   credentialVerified: 'smart.credential.verified',
+  skillInferenceUpdated: 'smart.skill.inference.updated',
 } as const;
 
 export type SmartTopic = (typeof SMART_TOPICS)[keyof typeof SMART_TOPICS];
@@ -304,6 +305,17 @@ export const TOPIC_SPECS: readonly TopicSpec[] = [
     partitionKey: 'userId',
     purpose:
       'Trust-weighted competency readout refreshed. Never promotes SkillClaim status; may carry review flags.',
+  },
+  {
+    topic: SMART_TOPICS.skillInferenceUpdated,
+    producerOwner: 'Ramansh',
+    producerModule: 'evidence',
+    consumerModules: ['notifications', 'analytics'],
+    partitions: 6,
+    retentionHours: 168,
+    partitionKey: 'userId',
+    purpose:
+      'Evidence-to-skill fusion snapshot changed (proficiency or confidence). Not a verified claim.',
   },
   {
     topic: SMART_TOPICS.credentialVerified,

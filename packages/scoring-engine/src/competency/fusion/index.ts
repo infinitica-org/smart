@@ -7,3 +7,5 @@ export * from './proficiency-fusion.js';
 export * from './finalize-demonstrated-proficiency.js';
 export * from './source-adapters/assessment.adapter.js';
 export * from './source-adapters/project.adapter.js';
+export * from './qlix-project-observations.js';
+export * from './skill-evidence-inference.js';

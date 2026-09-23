@@ -26,7 +26,7 @@ export const ObservationBundleSchema = z.object({
   observations: z.array(ObservationSchema).max(50).default([]),
   authenticityFlags: z.array(z.string().max(100)).max(20).default([]),
   appliedCeiling: z
-    .enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'])
+    .enum(['BEGINNER', 'INTERMEDIATE', 'PROFICIENT', 'ADVANCED', 'PROFESSIONAL'])
     .nullable()
     .optional(),
   metadata: z

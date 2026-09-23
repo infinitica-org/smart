@@ -149,6 +149,7 @@ function makeService(deps: {
     (deps.verification ?? {
       evaluateClaimVerification: vi.fn(),
     }) as never,
+    { fuseForVerification: vi.fn().mockResolvedValue(null) } as never,
     (deps.profile ?? {
       assertCompleteForSkillVerification: vi.fn().mockResolvedValue(undefined),
       isCompleteForSkillVerification: vi.fn().mockResolvedValue(true),

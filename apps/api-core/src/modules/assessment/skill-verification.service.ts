@@ -59,16 +59,7 @@ import {
   claimProficiencyFromDemonstrated,
   hasDemonstratedProficiency,
 } from './verified-proficiency.js';
-import { Effect } from 'effect';
-import { fuseDomainCapability } from '@smart/scoring-engine';
-import type {
-  CompetencyFusionResult,
-  FusionInput,
-  ProficiencyLevel,
-  ProjectVerificationReportDto,
-} from '@smart/contracts';
-import { assessmentToObservationBundle } from '@smart/scoring-engine';
-import { projectToObservationBundle } from '@smart/scoring-engine';
+import type { CompetencyFusionResult, ProficiencyLevel } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { env } from '../../platform/config/env.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
@@ -79,6 +70,7 @@ import {
   SKILL_INTERVIEW_EXAMINER_PROMPT_REF,
 } from '../evaluation/evaluation.service.js';
 import { VerificationOrchestratorService } from '../evidence/verification-orchestrator.service.js';
+import { EvidenceSkillInferenceService } from '../evidence/evidence-skill-inference.service.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
 import { AssessmentIntelligenceService } from './assessment-intelligence.service.js';
 import { applySkillClaimTransition, type SkillClaimEvent } from './skill-claim-state-machine.js';
@@ -217,6 +209,8 @@ export class SkillVerificationService {
     private readonly intelligence: AssessmentIntelligenceService,
     @Inject(VerificationOrchestratorService)
     private readonly verification: VerificationOrchestratorService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly evidenceSkillInference: EvidenceSkillInferenceService,
     @Inject(ProfileCompletionService)
     private readonly profileCompletion: ProfileCompletionService,
     @Optional()
@@ -889,50 +883,10 @@ export class SkillVerificationService {
     catalogSkillCode: string,
     assessmentResult: AssessmentResult,
   ): Promise<CompetencyFusionResult | null> {
-    const blueprint = getSkillBlueprint(catalogSkillCode);
-    if (!blueprint?.competencyModel?.length) return null;
-
-    const projectEvidence = await this.prisma.evidenceRecord.findMany({
-      where: {
-        studentId,
-        evidenceType: 'PROJECT',
-        relatedSkillCodes: { has: catalogSkillCode },
-        verificationStatus: 'VERIFIED',
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 1,
-    });
-
-    const firstEvidence = projectEvidence.at(0);
-    if (!firstEvidence) return null;
-
-    const projectReport = firstEvidence.sourcePayload as unknown as ProjectVerificationReportDto;
-    if (!projectReport || (projectReport.confidence ?? 1) < 0.5) return null;
-
-    const assessmentBundle = assessmentToObservationBundle({
+    return this.evidenceSkillInference.fuseForVerification(studentId, catalogSkillCode, {
       competencyResults: assessmentResult.competencyResults,
-      testedItemCount: assessmentResult.competencyResults.filter((r) => r.status !== 'NOT_TESTED')
-        .length,
-      proctoringRiskHigh: false,
-      competencyModel: blueprint.competencyModel,
+      targetProficiency: assessmentResult.targetProficiency as ProficiencyLevel,
     });
-
-    const projectBundle = projectToObservationBundle(projectReport, blueprint);
-    if (!projectBundle.available) return null;
-
-    const targetProficiency = assessmentResult.targetProficiency as ProficiencyLevel;
-
-    const fusionInput: FusionInput = {
-      competencyModel: blueprint.competencyModel,
-      proficiencyRequirements: blueprint.proficiencyRequirements ?? [],
-      sources: [assessmentBundle, projectBundle],
-      targetProficiency,
-      proctoringRiskHigh: false,
-      ruleSetVersion: 'v1',
-    };
-
-    const fusionResult = await fuseDomainCapability(fusionInput).pipe(Effect.runPromise);
-    return fusionResult;
   }
 
   async finalizeVerification(
@@ -955,6 +909,18 @@ export class SkillVerificationService {
       stored.catalogSkillCode,
       stored.pendingAssessmentResult,
     );
+
+    if (
+      fusionResult?.proficiencyInferenceReason === 'INSUFFICIENT_EVIDENCE' &&
+      fusionResult.inferredDomainProficiency === null
+    ) {
+      throw new BadRequestException({
+        error: 'insufficient_evidence',
+        message:
+          'Not enough verified project evidence to support proficiency fusion for this skill.',
+        statusCode: 400,
+      });
+    }
 
     const pendingSupported = stored.pendingAssessmentResult.highestAssessmentSupportedProficiency;
     const demonstrated = resolveDemonstratedProficiencyForFinalize({

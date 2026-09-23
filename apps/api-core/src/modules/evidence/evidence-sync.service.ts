@@ -25,6 +25,7 @@ import {
 } from './project-evidence.adapter.js';
 import { toReportDto, type ReportRow } from '../evaluation/project-verify.mapper.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
+import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
 
 @Injectable()
 export class EvidenceSyncService {
@@ -32,6 +33,8 @@ export class EvidenceSyncService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
     private readonly reconciliation: EvidenceReconciliationService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
 
   async syncWorkExperienceEvidenceRecord(
@@ -116,6 +119,7 @@ export class EvidenceSyncService {
     }
 
     await this.reconciliation.reconcileForStudent(studentId);
+    await this.skillInference.recomputeForStudentSkills(studentId, payload.relatedSkillCodes);
   }
 
   async syncProjectEvidenceRecord(studentId: string, projectId: string): Promise<void> {
@@ -249,6 +253,7 @@ export class EvidenceSyncService {
     }
 
     await this.reconciliation.reconcileForStudent(studentId);
+    await this.skillInference.recomputeForStudentSkills(studentId, payload.relatedSkillCodes);
   }
 
   /** Links the project evidence row to each tagged skill claim (Advanced/Professional gates). */

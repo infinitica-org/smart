@@ -528,4 +528,5 @@ export const REDIS_TTL_SECONDS = {
   leetcodeProfile: 60 * 60,
   signalIngestionDedupe: 60 * 60,
   signalSourceCooldown: 15 * 60,
+  skillEvidenceInference: 7 * 24 * 60 * 60,
 } as const;

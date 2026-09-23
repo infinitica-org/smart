@@ -12,6 +12,8 @@ import { ProjectDefenseRecordService } from './project-defense-record.service.js
 import { ProjectDefenseService } from './project-defense.service.js';
 import { ProjectReviewAdminController } from './project-review-admin.controller.js';
 import { ProjectReviewService } from './project-review.service.js';
+import { CapabilityInferenceReviewController } from './capability-inference-review.controller.js';
+import { CapabilityInferenceReviewService } from './capability-inference-review.service.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { ProjectSubmittedConsumer } from './project-submitted.consumer.js';
 import { ProjectVerifyRunnerService } from './project-verify-runner.service.js';
@@ -32,12 +34,18 @@ import { QlixRecalibrationService } from './qlix-recalibration.service.js';
     ProctoringModule,
     SpeechModule,
   ],
-  controllers: [EvaluationController, ProjectDefenseController, ProjectReviewAdminController],
+  controllers: [
+    EvaluationController,
+    ProjectDefenseController,
+    ProjectReviewAdminController,
+    CapabilityInferenceReviewController,
+  ],
   providers: [
     EvaluationService,
     ProjectDefenseService,
     ProjectDefenseRecordService,
     ProjectReviewService,
+    CapabilityInferenceReviewService,
     ProjectInterviewGateService,
     ProjectVerifyRunnerService,
     ProjectSubmittedConsumer,
