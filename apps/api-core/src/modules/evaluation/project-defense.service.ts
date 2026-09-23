@@ -801,6 +801,13 @@ export class ProjectDefenseService {
 
   private async assertInterviewAllowed(projectId: string, userId: string): Promise<void> {
     const project = await this.loadOwnedProject(projectId, userId);
+    if (project.isActive === false) {
+      throw new BadRequestException({
+        error: 'project_inactive',
+        message: 'Ownership interview is not available for an inactive project.',
+        statusCode: 400,
+      });
+    }
     const interview = await this.interviewGate.getState(projectId);
     if (project.qlixCheckId && !project.report) {
       throw new ConflictException({

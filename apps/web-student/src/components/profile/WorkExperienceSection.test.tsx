@@ -13,6 +13,7 @@ const restartWorkExperienceVerification = vi.fn();
 const uploadWorkExperienceProofDocument = vi.fn();
 const attachWorkExperienceDocument = vi.fn();
 const removeWorkExperienceDocument = vi.fn();
+const resendWorkExperienceManagerEndorsement = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -31,6 +32,8 @@ vi.mock('@/lib/api', () => ({
         sendWorkExperienceManagerEndorsement(...args),
       restartWorkExperienceVerification: (...args: unknown[]) =>
         restartWorkExperienceVerification(...args),
+      resendWorkExperienceManagerEndorsement: (...args: unknown[]) =>
+        resendWorkExperienceManagerEndorsement(...args),
       uploadWorkExperienceProofDocument: (...args: unknown[]) =>
         uploadWorkExperienceProofDocument(...args),
       attachWorkExperienceDocument: (...args: unknown[]) => attachWorkExperienceDocument(...args),
@@ -152,6 +155,7 @@ describe('WorkExperienceSection (WE-T01 & WE-T04)', () => {
     sendWorkExperienceVerification.mockReset();
     sendWorkExperienceManagerEndorsement.mockReset();
     restartWorkExperienceVerification.mockReset();
+    resendWorkExperienceManagerEndorsement.mockReset();
     uploadWorkExperienceProofDocument.mockReset();
   });
 

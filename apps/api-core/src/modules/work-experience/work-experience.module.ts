@@ -11,6 +11,7 @@ import { WorkExperienceService } from './work-experience.service.js';
 
 import { EvidenceModule } from '../evidence/evidence.module.js';
 import { InstitutionsModule } from '../institutions/institutions.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PublicProfileModule } from '../public-profile/public-profile.module.js';
 
 @Module({
@@ -22,6 +23,7 @@ import { PublicProfileModule } from '../public-profile/public-profile.module.js'
     InstitutionsModule,
     PublicProfileModule,
     EvidenceModule,
+    NotificationsModule,
   ],
   controllers: [
     WorkExperienceController,

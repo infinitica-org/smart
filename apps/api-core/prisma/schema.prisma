@@ -957,6 +957,8 @@ model Project {
   snapshotSha String?       @map("snapshot_sha")
   qlixCheckId String?       @map("qlix_check_id")
   status      ProjectStatus @default(SUBMITTED)
+  /// Current portfolio participation. False after replacement; verification status is unchanged.
+  isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   projectType       String?  @map("project_type")
@@ -977,6 +979,7 @@ model Project {
   studentCapabilities StudentCapability[]
 
   @@index([studentId, status])
+  @@index([studentId, isActive])
   @@map("projects")
 }
 

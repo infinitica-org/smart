@@ -22,6 +22,10 @@ describe('EmailProcessor', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      workExperienceManagerEndorsement: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
       workExperience: {
         findUnique: vi.fn(),
         update: vi.fn(),

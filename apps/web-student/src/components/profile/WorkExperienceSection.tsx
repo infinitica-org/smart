@@ -109,6 +109,38 @@ export function WorkExperienceSection() {
     isCoolingDown: isVerificationResendCoolingDown,
   } = usePerActionCooldown(WORK_EXPERIENCE_RESEND_COOLDOWN_MS);
 
+  // Manager Endorsement state
+  const [resendingManagerId, setResendingManagerId] = useState<string | null>(null);
+  const {
+    startCooldown: startManagerResendCooldown,
+    remainingMs: managerResendRemainingMs,
+    isCoolingDown: isManagerResendCoolingDown,
+  } = usePerActionCooldown(WORK_EXPERIENCE_RESEND_COOLDOWN_MS);
+
+  const handleResendManagerEndorsement = async (experienceId: string) => {
+    if (isManagerResendCoolingDown(experienceId)) return;
+    setResendingManagerId(experienceId);
+    setError(null);
+    setVerificationSuccess(null);
+    try {
+      const res = await api.users.resendWorkExperienceManagerEndorsement(experienceId);
+      startManagerResendCooldown(experienceId);
+      setVerificationSuccess(
+        res.message || 'Manager endorsement reminder email queued for delivery.',
+      );
+      await fetchExperiences();
+    } catch (err: unknown) {
+      if (isSmartApiError(err) && err.statusCode === 429 && err.retryAfterSeconds) {
+        startManagerResendCooldown(experienceId, err.retryAfterSeconds * 1000);
+      }
+      setError(
+        workExperienceSaveErrorMessage(err, 'Failed to resend manager endorsement reminder.'),
+      );
+    } finally {
+      setResendingManagerId(null);
+    }
+  };
+
   // Form Fields
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
