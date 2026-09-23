@@ -82,6 +82,7 @@ import {
   scoreClosedChoice,
   assignCompetencyIds,
   scaleFormCounts,
+  competencySlotCountForProficiency,
   evaluateAssessmentIntelligence,
 } from '@smart/scoring-engine';
 import { getSkillDefinition, type SkillBlueprint } from '@smart/contracts';
@@ -473,6 +474,9 @@ export class EvaluationService {
       spec.closed,
       spec.openFormats.length,
       stage === 'FULL' ? 'FULL' : 'DIAGNOSTIC',
+      blueprint && stage === 'DIAGNOSTIC'
+        ? { minItemCount: competencySlotCountForProficiency(proficiency) }
+        : undefined,
     );
     const attemptId = request.attemptId ?? randomUUID();
     const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
@@ -605,6 +609,7 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
+              proficiency,
             )
           : undefined;
         items.push({
@@ -630,6 +635,7 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
+              proficiency,
             )
           : undefined;
         items.push({
@@ -966,6 +972,7 @@ export class EvaluationService {
     slot: CompetencySlot | undefined,
     format: SdeV4Format,
     index: number,
+    targetProficiency: (typeof SDE_V4_PROFICIENCIES)[number],
   ): string[] {
     if (slot) {
       const match = /^C(\d)$/i.exec(slot);
@@ -974,7 +981,7 @@ export class EvaluationService {
         if (comp) return [comp.competencyId];
       }
     }
-    return assignCompetencyIds(format, index, blueprint.competencyModel);
+    return assignCompetencyIds(format, index, blueprint.competencyModel, targetProficiency);
   }
 
   private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(

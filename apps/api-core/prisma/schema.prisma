@@ -177,6 +177,7 @@ enum CompanyMode {
 enum SkillProficiency {
   BEGINNER
   INTERMEDIATE
+  PROFICIENT
   ADVANCED
   PROFESSIONAL
 }

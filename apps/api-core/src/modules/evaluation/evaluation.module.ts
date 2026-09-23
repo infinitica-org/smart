@@ -8,7 +8,10 @@ import { SpeechModule } from '../speech/speech.module.js';
 import { EvaluationController } from './evaluation.controller.js';
 import { EvaluationService } from './evaluation.service.js';
 import { ProjectDefenseController } from './project-defense.controller.js';
+import { ProjectDefenseRecordService } from './project-defense-record.service.js';
 import { ProjectDefenseService } from './project-defense.service.js';
+import { ProjectReviewAdminController } from './project-review-admin.controller.js';
+import { ProjectReviewService } from './project-review.service.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { ProjectSubmittedConsumer } from './project-submitted.consumer.js';
 import { ProjectVerifyRunnerService } from './project-verify-runner.service.js';
@@ -29,10 +32,12 @@ import { QlixRecalibrationService } from './qlix-recalibration.service.js';
     ProctoringModule,
     SpeechModule,
   ],
-  controllers: [EvaluationController, ProjectDefenseController],
+  controllers: [EvaluationController, ProjectDefenseController, ProjectReviewAdminController],
   providers: [
     EvaluationService,
     ProjectDefenseService,
+    ProjectDefenseRecordService,
+    ProjectReviewService,
     ProjectInterviewGateService,
     ProjectVerifyRunnerService,
     ProjectSubmittedConsumer,
