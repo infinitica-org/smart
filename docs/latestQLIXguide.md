@@ -537,28 +537,28 @@ SMART is supported only when repository-level code evidence exists. Text and sin
 
 ## Competency request fields
 
-| Field                | Required | Contract                                           |
-| -------------------- | -------- | -------------------------------------------------- |
-| competencyId         | Yes      | UUID.                                              |
-| capability           | Yes      | String, max 2000.                                  |
-| difficulty           | Yes      | BEGINNER, INTERMEDIATE, ADVANCED, or PROFESSIONAL. |
-| role                 | Yes      | core, supporting, or critical.                     |
-| observableBehaviours | No       | Up to 50 strings, each max 1000.                   |
-| assessmentCriteria   | No       | Up to 50 strings, each max 1000.                   |
+| Field                | Required | Contract                                                       |
+| -------------------- | -------- | -------------------------------------------------------------- |
+| competencyId         | Yes      | UUID.                                                          |
+| capability           | Yes      | String, max 2000.                                              |
+| difficulty           | Yes      | BEGINNER, INTERMEDIATE, PROFICIENT, ADVANCED, or PROFESSIONAL. |
+| role                 | Yes      | core, supporting, or critical.                                 |
+| observableBehaviours | No       | Up to 50 strings, each max 1000.                               |
+| assessmentCriteria   | No       | Up to 50 strings, each max 1000.                               |
 
 ## smartAssessment output
 
-| Field                     | Meaning                                                         |
-| ------------------------- | --------------------------------------------------------------- |
-| schemaVersion             | smart-assessment-1.0.                                           |
-| rubricVersion             | smart-rubric-1.0.                                               |
-| relevanceScore            | 0-100 or null; reviewer-derived.                                |
-| qualityScore              | 0-100 or null; deterministic engine measurement.                |
-| authenticityScore         | 0-100 or null; deterministic engine measurement.                |
-| appliedProficiencyCeiling | BEGINNER, INTERMEDIATE, ADVANCED, PROFESSIONAL, or null.        |
-| competencyObservations[]  | Exactly one item per requested competencyId, in request order.  |
-| qualitySignals            | Tests, CI, Dockerfile, test-token share, and primary languages. |
-| gaps[]                    | Up to 10 reviewer-identified gaps.                              |
+| Field                     | Meaning                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| schemaVersion             | smart-assessment-1.0.                                                |
+| rubricVersion             | smart-rubric-1.0.                                                    |
+| relevanceScore            | 0-100 or null; reviewer-derived.                                     |
+| qualityScore              | 0-100 or null; deterministic engine measurement.                     |
+| authenticityScore         | 0-100 or null; deterministic engine measurement.                     |
+| appliedProficiencyCeiling | BEGINNER, INTERMEDIATE, PROFICIENT, ADVANCED, PROFESSIONAL, or null. |
+| competencyObservations[]  | Exactly one item per requested competencyId, in request order.       |
+| qualitySignals            | Tests, CI, Dockerfile, test-token share, and primary languages.      |
+| gaps[]                    | Up to 10 reviewer-identified gaps.                                   |
 
 ## Observation contract
 
