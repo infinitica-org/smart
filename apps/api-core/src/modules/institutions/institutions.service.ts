@@ -278,6 +278,13 @@ export class InstitutionsService {
     );
 
     const [dto] = await this.toInstitutionDtos([updated]);
+    if (!dto) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Institution DTO mapping failed.',
+        statusCode: 404,
+      });
+    }
     return dto;
   }
 
