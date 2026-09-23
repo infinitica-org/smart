@@ -11,6 +11,8 @@ export const SIGNAL_SOURCE_IDS = [
   'GITHUB',
   'HACKERRANK',
   'LEETCODE',
+  'LINKEDIN',
+  'CREDLY',
   'RESUME',
   'MANUAL',
   'EXTERNALCERT',
