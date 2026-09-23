@@ -13,6 +13,7 @@ import {
   getSkillBlueprint,
   type AssessmentResult,
   type ProficiencyLevel,
+  type SkillEvidenceInferenceSnapshot,
 } from '@smart/contracts';
 import {
   assessmentToObservationBundle,
@@ -24,6 +25,11 @@ import { QlixSmartAssessmentSchema } from '../evaluation/qlix-client.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import {
+  buildFusionCapabilityRows,
+  fusionCapabilityModelVersion,
+  FUSION_CAPABILITY_MODEL_PREFIX,
+} from './fusion-capability-sync.js';
 
 const CAPABILITY_MODEL_VERSION = 'capability-inference-v1' as const;
 
@@ -95,6 +101,8 @@ export class EvidenceSkillInferenceService {
         ruleSetVersion: FUSION_RULE_SET_VERSION,
         taxonomyVersion: ACTIVE_TAXONOMY_VERSION,
         capabilityModelVersion: CAPABILITY_MODEL_VERSION,
+        assessmentBlueprintRef: blueprint.assessmentBlueprint ?? undefined,
+        interviewBlueprintRef: blueprint.interviewBlueprint ?? undefined,
         promptRefs: [...new Set([CAPABILITY_INFERENCE_PROMPT_REF, ...promptRefs])],
         evidenceRecordIds,
       },
@@ -124,6 +132,8 @@ export class EvidenceSkillInferenceService {
       REDIS_TTL_SECONDS.skillEvidenceInference,
       JSON.stringify(snapshot),
     );
+
+    await this.persistFusionCapabilities(snapshot);
 
     if (previousProficiency !== inference.inferredProficiency) {
       await this.publishLevelChange(studentId, skillCode, snapshot, previousProficiency);
@@ -304,6 +314,42 @@ export class EvidenceSkillInferenceService {
       return level;
     }
     return null;
+  }
+
+  private async persistFusionCapabilities(snapshot: SkillEvidenceInferenceSnapshot): Promise<void> {
+    const modelVersion = fusionCapabilityModelVersion({
+      ruleSetVersion: snapshot.provenance.ruleSetVersion,
+      taxonomyVersion: snapshot.provenance.taxonomyVersion,
+      capabilityModelVersion:
+        snapshot.provenance.capabilityModelVersion ?? CAPABILITY_MODEL_VERSION,
+    });
+
+    await this.prisma.studentCapability.deleteMany({
+      where: {
+        studentId: snapshot.studentId,
+        skillCode: snapshot.skillCode,
+        modelVersion: { startsWith: FUSION_CAPABILITY_MODEL_PREFIX },
+      },
+    });
+
+    const rows = buildFusionCapabilityRows(snapshot, modelVersion);
+    if (rows.length === 0) return;
+
+    await this.prisma.studentCapability.createMany({
+      data: rows.map((row) => ({
+        studentId: row.studentId,
+        skillCode: row.skillCode,
+        capabilityLabel: row.capabilityLabel,
+        category: row.category,
+        confidenceScore: row.confidenceScore,
+        proficiency: row.proficiency,
+        evidenceRefs: row.evidenceRefs,
+        modelVersion: row.modelVersion,
+        assessmentVerified: row.assessmentVerified,
+        projectId: row.projectId,
+        qlixCheckId: row.qlixCheckId,
+      })),
+    });
   }
 
   private async publishLevelChange(

@@ -14,9 +14,12 @@ import { CredentialVerificationProcessor } from './verification/credential-verif
 import { CredentialVerificationService } from './verification/credential-verification.service.js';
 import { VerificationOrchestratorService } from './verification-orchestrator.service.js';
 import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
+import { SkillInferenceUpdatedConsumer } from './skill-inference-updated.consumer.js';
+import { SkillVerificationInferenceConsumer } from './skill-verification-inference.consumer.js';
 
 @Module({
-  imports: [SkillClaimDeclareModule],
+  imports: [SkillClaimDeclareModule, NotificationsModule],
   controllers: [EvidenceController],
   providers: [
     EvidenceService,
@@ -32,6 +35,8 @@ import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.modul
     CredentialVerificationService,
     CredentialVerificationProcessor,
     CredentialDedupService,
+    SkillInferenceUpdatedConsumer,
+    SkillVerificationInferenceConsumer,
   ],
   exports: [
     EvidenceService,

@@ -36,6 +36,7 @@ import {
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
+import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -57,7 +58,18 @@ export class EvidenceService {
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
     @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
+
+  private async recomputeInferenceForSkills(
+    studentId: string,
+    skillCodes: readonly string[],
+  ): Promise<void> {
+    const codes = skillCodes.map((c) => c.trim()).filter(Boolean);
+    if (codes.length === 0) return;
+    await this.skillInference.recomputeForStudentSkills(studentId, codes);
+  }
 
   async listEvidence(
     studentId: string,
@@ -130,6 +142,7 @@ export class EvidenceService {
     });
 
     await this.reconciliation.reconcileForStudent(studentId);
+    await this.recomputeInferenceForSkills(studentId, row.relatedSkillCodes);
     return toEvidenceRecordDto(row);
   }
 
@@ -173,6 +186,7 @@ export class EvidenceService {
       include: { artifacts: true },
     });
     await this.reconciliation.reconcileForStudent(studentId);
+    await this.recomputeInferenceForSkills(studentId, row.relatedSkillCodes);
     return toEvidenceRecordDto(row);
   }
 
@@ -185,6 +199,7 @@ export class EvidenceService {
     const input = LinkEvidenceToClaimRequestSchema.parse(body);
     const claim = await this.prisma.skillClaim.findFirst({
       where: { id: input.claimId, studentId },
+      include: { skill: { select: { code: true } } },
     });
     if (!claim) {
       throw new NotFoundException({
@@ -202,6 +217,7 @@ export class EvidenceService {
       },
       update: { weight: input.weight },
     });
+    await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
     return toSkillClaimEvidenceLinkDto(link);
   }
 
