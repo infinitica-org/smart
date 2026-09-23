@@ -2,7 +2,15 @@
  * Shared proficiency level types and assessment thresholds for skill verification.
  */
 
-export type ProficiencyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
+export const PROFICIENCY_LEVEL_ORDER = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'PROFICIENT',
+  'ADVANCED',
+  'PROFESSIONAL',
+] as const;
+
+export type ProficiencyLevel = (typeof PROFICIENCY_LEVEL_ORDER)[number];
 export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER' | 'CODING';
 
 export interface QuestionCounts {
@@ -25,6 +33,7 @@ export interface LevelThreshold {
 export const LEVEL_QUESTION_TOTALS: Record<ProficiencyLevel, number> = {
   BEGINNER: 20,
   INTERMEDIATE: 20,
+  PROFICIENT: 25,
   ADVANCED: 30,
   PROFESSIONAL: 30,
 };
@@ -35,6 +44,7 @@ export const LEVEL_VERIFICATION_METHOD: Record<
 > = {
   BEGINNER: { interviewRequired: false, projectRequired: false },
   INTERMEDIATE: { interviewRequired: false, projectRequired: false },
+  PROFICIENT: { interviewRequired: false, projectRequired: false },
   ADVANCED: { interviewRequired: true, projectRequired: false },
   PROFESSIONAL: { interviewRequired: true, projectRequired: true },
 };
@@ -42,6 +52,7 @@ export const LEVEL_VERIFICATION_METHOD: Record<
 export const DEFAULT_COMPETENCY_BARS: Readonly<Record<ProficiencyLevel, string>> = {
   BEGINNER: 'Conceptual understanding; supervised tasks',
   INTERMEDIATE: 'Independent, bounded-scope execution',
+  PROFICIENT: 'Consistent independent delivery; typical production scenarios',
   ADVANCED: 'Owns a component end-to-end; trade-off reasoning',
   PROFESSIONAL: 'Sets standards / architecture / strategy',
 };
@@ -65,6 +76,14 @@ export function levels(
       interviewRequired: false,
       projectRequired: false,
       competencyBar: bars.INTERMEDIATE,
+    },
+    PROFICIENT: {
+      passMark: 67,
+      timeMinutes: 50,
+      questionCounts: { MCQ: 9, TRUE_FALSE: 5, SHORT_ANSWER: 4, LONG_ANSWER: 3, CODING: 4 },
+      interviewRequired: false,
+      projectRequired: false,
+      competencyBar: bars.PROFICIENT,
     },
     ADVANCED: {
       passMark: 70,
@@ -118,17 +137,11 @@ export function assertSkillQuestionCounts(skill: {
   }
 }
 
-/** Canonical proficiency ordering for UI level numbers (1–4). */
-export const PROFICIENCY_LEVEL_ORDER: readonly ProficiencyLevel[] = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-];
-
+/** Canonical proficiency ordering for UI level numbers (1–5). */
 export const PROFICIENCY_TRADITIONAL_LABELS: Readonly<Record<ProficiencyLevel, string>> = {
   BEGINNER: 'Beginner',
   INTERMEDIATE: 'Intermediate',
+  PROFICIENT: 'Proficient',
   ADVANCED: 'Advanced',
   PROFESSIONAL: 'Professional',
 };
@@ -137,7 +150,7 @@ export function proficiencyLevelIndex(level: string): number {
   return PROFICIENCY_LEVEL_ORDER.indexOf(level as ProficiencyLevel);
 }
 
-/** Maps BEGINNER → 1 … PROFESSIONAL → 4; unknown → 0. */
+/** Maps BEGINNER → 1 … PROFESSIONAL → 5; unknown → 0. */
 export function proficiencyLevelNumber(level: string): number {
   const idx = proficiencyLevelIndex(level);
   return idx >= 0 ? idx + 1 : 0;

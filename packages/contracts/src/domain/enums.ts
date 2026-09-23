@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { PROFICIENCY_LEVEL_ORDER } from './skill-levels.js';
+
 /**
  * SMART canonical domain enumerations.
  *
@@ -127,6 +129,7 @@ export const USER_ROLES = [
   'PLACEMENT_STAFF',
   'STUDENT',
   'B2B_PARTNER', // X-SMART-API-KEY holder
+  'COMPANY', // B2B company portal representative (tenant = User.companyId)
   'PUBLIC', // unauthenticated verification traffic
 ] as const;
 export const UserRoleSchema = z.enum(USER_ROLES);
@@ -359,12 +362,7 @@ export type JdParseStatus = z.infer<typeof JdParseStatusSchema>;
  * Claimed skill proficiency on a catalog skill (PRD v1 §7.3). Tiers (Gold /
  * Silver / Bronze) still come from cut scores — do not invent a parallel score.
  */
-export const SKILL_PROFICIENCIES = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-] as const;
+export const SKILL_PROFICIENCIES = PROFICIENCY_LEVEL_ORDER;
 export const SkillProficiencySchema = z.enum(SKILL_PROFICIENCIES);
 export type SkillProficiency = z.infer<typeof SkillProficiencySchema>;
 

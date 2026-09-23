@@ -28,7 +28,13 @@ export const QUESTION_FORMATS = [
 export const QuestionFormatSchema = z.enum(QUESTION_FORMATS);
 export type QuestionFormat = z.infer<typeof QuestionFormatSchema>;
 
-export const QUESTION_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'] as const;
+export const QUESTION_LEVELS = [
+  'BEGINNER',
+  'INTERMEDIATE',
+  'PROFICIENT',
+  'ADVANCED',
+  'PROFESSIONAL',
+] as const;
 export const QuestionLevelSchema = z.enum(QUESTION_LEVELS);
 export type QuestionLevel = z.infer<typeof QuestionLevelSchema>;
 

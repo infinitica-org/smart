@@ -11,6 +11,8 @@ export const PASSIVE_SIGNAL_SOURCE_IDS = [
   'GITHUB',
   'HACKERRANK',
   'LEETCODE',
+  'LINKEDIN',
+  'CREDLY',
   'RESUME',
   'MANUAL',
   'EXTERNALCERT',
@@ -24,6 +26,8 @@ export const SIGNAL_CONSENT_SCOPES: Readonly<Record<PassiveSignalSourceId, reado
   GITHUB: ['github.onboarding.public_repos', 'github.profile.public_refresh'],
   HACKERRANK: ['hackerrank.profile.public', 'hackerrank.oauth.read'],
   LEETCODE: ['leetcode.profile.public'],
+  LINKEDIN: ['linkedin.profile.public', 'linkedin.profile.import'],
+  CREDLY: ['credly.badge.public', 'credential.provider.public'],
   RESUME: ['resume.upload.explicit'],
   MANUAL: ['manual.admin.attested'],
   // Candidate declared and verified the credential themselves — no third-party OAuth grant to scope.

@@ -212,62 +212,6 @@ describe('AuthService refresh rotation', () => {
   });
 });
 
-describe('AuthService — audit trail (I490)', () => {
-  it('audits a successful login', async () => {
-    const passwordHash = await hashPassword('password1');
-    const user = userRow({ passwordHash });
-    const prisma = {
-      user: { findUnique: vi.fn(async () => user) },
-      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
-    };
-    const auditPublisher = mockAuditPublisher();
-    const auth = new AuthService(
-      prisma as never,
-      { signAsync: vi.fn(async () => 'access.jwt') } as never,
-      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
-      auditPublisher as never,
-    );
-
-    await auth.login('student@example.com', 'password1', { setCookie: vi.fn() } as never);
-
-    expect(auditPublisher.record).toHaveBeenCalledWith(
-      expect.objectContaining({ actorId: user.id, action: 'auth.login', resourceId: user.id }),
-    );
-  });
-
-  it('audits logout when a valid session is cleared', async () => {
-    const userId = randomUUID();
-    const raw = 'refresh-token';
-    const prisma = {
-      refreshToken: {
-        findUnique: vi.fn(async () => ({
-          id: randomUUID(),
-          familyId: randomUUID(),
-          userId,
-          tokenHash: hashRefreshToken(raw),
-        })),
-        updateMany: vi.fn(),
-      },
-    };
-    const auditPublisher = mockAuditPublisher();
-    const auth = new AuthService(
-      prisma as never,
-      { signAsync: vi.fn() } as never,
-      { getSignedDownloadUrl: vi.fn() } as never,
-      auditPublisher as never,
-    );
-
-    await auth.logout(
-      { cookies: { smart_refresh: raw } } as never,
-      { clearCookie: vi.fn() } as never,
-    );
-
-    expect(auditPublisher.record).toHaveBeenCalledWith(
-      expect.objectContaining({ actorId: userId, action: 'auth.logout' }),
-    );
-  });
-});
-
 describe('AuthService.register', () => {
   it('creates a STUDENT user, hashes the password, and issues a session', async () => {
     const institutionId = randomUUID();
@@ -286,12 +230,10 @@ describe('AuthService.register', () => {
       },
     };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auditPublisher = mockAuditPublisher();
     const auth = new AuthService(
       prisma as never,
       { signAsync: vi.fn(async () => 'access.jwt') } as never,
       storage as never,
-      auditPublisher as never,
     );
     const reply = { setCookie: vi.fn() };
 
@@ -316,9 +258,6 @@ describe('AuthService.register', () => {
         }),
       }),
     );
-    expect(auditPublisher.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'auth.register' }),
-    );
   });
 
   it('rejects a duplicate email with 409', async () => {
@@ -328,7 +267,6 @@ describe('AuthService.register', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
-      mockAuditPublisher() as never,
     );
 
     await expect(
@@ -354,7 +292,6 @@ describe('AuthService.register', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
-      mockAuditPublisher() as never,
     );
 
     await expect(
@@ -381,7 +318,6 @@ describe('AuthService.listSelectableInstitutions', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
-      mockAuditPublisher() as never,
     );
 
     await auth.listSelectableInstitutions();

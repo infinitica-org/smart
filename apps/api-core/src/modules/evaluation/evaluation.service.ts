@@ -82,6 +82,7 @@ import {
   scoreClosedChoice,
   assignCompetencyIds,
   scaleFormCounts,
+  competencySlotCountForProficiency,
   evaluateAssessmentIntelligence,
 } from '@smart/scoring-engine';
 import { getSkillDefinition, type SkillBlueprint } from '@smart/contracts';
@@ -135,8 +136,21 @@ const ExaminerOutputSchema = z.object({
 
 const GraderOutputSchema = z.object({
   passed: z.boolean(),
-  explanation: z.string().min(10).max(SKILL_INTERVIEW_EXPLANATION_MAX_CHARS),
+  explanation: z.string().min(1),
 });
+
+export function coerceSkillInterviewExplanation(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.length >= 10 && trimmed.length <= SKILL_INTERVIEW_EXPLANATION_MAX_CHARS) {
+    return trimmed;
+  }
+  if (trimmed.length > SKILL_INTERVIEW_EXPLANATION_MAX_CHARS) {
+    const slice = trimmed.slice(0, SKILL_INTERVIEW_EXPLANATION_MAX_CHARS - 1).trimEnd();
+    const candidate = slice.length >= 10 ? `${slice}…` : slice.padEnd(10, '.');
+    return candidate.slice(0, SKILL_INTERVIEW_EXPLANATION_MAX_CHARS);
+  }
+  return 'Interview graded.';
+}
 
 @Injectable()
 export class EvaluationService {
@@ -414,11 +428,12 @@ export class EvaluationService {
         temperature: 0,
       });
       const parsed = GraderOutputSchema.parse(result.output);
+      const explanation = coerceSkillInterviewExplanation(parsed.explanation);
       return GradeSkillInterviewResponseSchema.parse({
         skillCode: request.skillCode,
         proficiency: request.proficiency,
         passed: parsed.passed,
-        explanation: parsed.explanation,
+        explanation,
         promptRef: SKILL_INTERVIEW_GRADER_PROMPT_REF,
         auditId: result.auditId ?? null,
       });
@@ -459,6 +474,9 @@ export class EvaluationService {
       spec.closed,
       spec.openFormats.length,
       stage === 'FULL' ? 'FULL' : 'DIAGNOSTIC',
+      blueprint && stage === 'DIAGNOSTIC'
+        ? { minItemCount: competencySlotCountForProficiency(proficiency) }
+        : undefined,
     );
     const attemptId = request.attemptId ?? randomUUID();
     const priorStems = (request.priorStems ?? []).map((stem) => stem.slice(0, 200)).slice(0, 40);
@@ -591,6 +609,7 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
+              proficiency,
             )
           : undefined;
         items.push({
@@ -616,6 +635,7 @@ export class EvaluationService {
               this.competencySlotFromItem(item),
               item.format,
               index,
+              proficiency,
             )
           : undefined;
         items.push({
@@ -952,6 +972,7 @@ export class EvaluationService {
     slot: CompetencySlot | undefined,
     format: SdeV4Format,
     index: number,
+    targetProficiency: (typeof SDE_V4_PROFICIENCIES)[number],
   ): string[] {
     if (slot) {
       const match = /^C(\d)$/i.exec(slot);
@@ -960,7 +981,7 @@ export class EvaluationService {
         if (comp) return [comp.competencyId];
       }
     }
-    return assignCompetencyIds(format, index, blueprint.competencyModel);
+    return assignCompetencyIds(format, index, blueprint.competencyModel, targetProficiency);
   }
 
   private orderClosed<T extends { format: 'MCQ' | 'TRACE' }>(

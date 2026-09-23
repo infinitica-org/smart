@@ -3,8 +3,17 @@
 # Enforced by GitHub branch protection: "Require review from Code Owners".
 # Authoritative companion document: /TEAM.md
 #
-# Later rules win. The first rule makes Tino (System Architect) a mandatory
-# reviewer on EVERY pull request; subsequent rules add the module owner.
+# Review model (updated — see docs/delivery/BRANCHING.md §4):
+#   - Feature PRs to `dev`   → reviewed and merged by the MODULE OWNER of the
+#                              touched paths.  Tino is NOT required on every PR.
+#   - PRs to `qa` or `main`  → require Tino's explicit approval (release gate).
+#   - Architect-controlled paths (contracts, CI, arch docs) → always require Tino.
+#
+# NOTE — GitHub Free plan: CODEOWNERS auto-requests reviews but cannot mechanically
+# BLOCK a merge without the "Require review from Code Owners" protection, which
+# requires GitHub Teams or above.  When you upgrade, enable that option in
+# Settings → Branches → Branch protection rules for dev / qa / main and this
+# file immediately becomes fully enforced with no further changes.
 #
 # Team GitHub handles (see TEAM.md §1):
 #   @brittytino         Tino               (System Architect & Reviewer)
@@ -15,12 +24,8 @@
 #   @11vedikaa          Vedika G           (Data & AI/Backend Engineer)
 
 # ---------------------------------------------------------------------------
-# 0. Global — the architect reviews everything
-# ---------------------------------------------------------------------------
-*                                       @brittytino
-
-# ---------------------------------------------------------------------------
-# 1. Architecture, contracts and quality gates — architect only
+# 0. Architect-controlled paths — Tino is the ONLY required reviewer.
+#    These paths cross all modules and must not drift without architect sign-off.
 # ---------------------------------------------------------------------------
 /ARCHITECTURE.md                        @brittytino
 /SERVICES_VIEW.md                       @brittytino
@@ -28,6 +33,7 @@
 /TEAM.md                                @brittytino
 /README.md                              @brittytino
 /CONTRIBUTING.md                        @brittytino
+/AGENTS.md                              @brittytino
 /docs/adr/                              @brittytino
 /docs/delivery/                         @brittytino
 /docs/engineering/                      @brittytino
@@ -43,62 +49,65 @@
 /packages/config-tailwind/              @brittytino
 
 # ---------------------------------------------------------------------------
-# 2. Vishal V — Senior Backend Engineer (Platform Core)
+# 1. Vishal V — Senior Backend Engineer (Platform Core)
+#    Also acts as the secondary reviewer / backend escalation path for
+#    Ramansh, Vedika, and Vishal Bharath on backend internals.
 # ---------------------------------------------------------------------------
-/apps/api-core/src/main.ts              @vis465 @brittytino
-/apps/api-core/src/app.module.ts        @vis465 @brittytino
-/apps/api-core/src/platform/            @vis465 @brittytino
-/apps/api-core/src/common/              @vis465 @brittytino
-/apps/api-core/src/modules/auth/        @vis465 @brittytino
-/apps/api-core/src/modules/users/       @vis465 @brittytino
-/apps/api-core/src/modules/rate-limit/  @vis465 @brittytino
-/apps/api-core/src/modules/sandbox/     @vis465 @brittytino
-/apps/api-core/prisma/                  @vis465 @brittytino
-/packages/observability/                @vis465 @brittytino
-/infra/                                 @vis465 @brittytino
-/scripts/                               @vis465 @brittytino
-/tools/load-tests/                      @vis465 @brittytino
+/apps/api-core/src/main.ts              @vis465
+/apps/api-core/src/app.module.ts        @vis465
+/apps/api-core/src/platform/            @vis465
+/apps/api-core/src/common/              @vis465
+/apps/api-core/src/modules/auth/        @vis465
+/apps/api-core/src/modules/users/       @vis465
+/apps/api-core/src/modules/rate-limit/  @vis465
+/apps/api-core/src/modules/sandbox/     @vis465
+/apps/api-core/prisma/                  @vis465
+/packages/observability/                @vis465
+/infra/                                 @vis465
+/scripts/                               @vis465
+/tools/load-tests/                      @vis465
 
 # ---------------------------------------------------------------------------
-# 3. Satheswaran V — Frontend & Full-Stack Engineer (Experience Layer)
+# 2. Satheswaran V — Frontend & Full-Stack Engineer (Experience Layer)
 # ---------------------------------------------------------------------------
-/packages/ui/                           @Satheshwaran26 @brittytino
-/packages/api-client/                   @Satheshwaran26 @brittytino
-/apps/web-student/                      @Satheshwaran26 @brittytino
-/apps/web-tpo/                          @Satheshwaran26 @brittytino
-/tests/e2e/                             @Satheshwaran26 @brittytino
+/packages/ui/                           @Satheshwaran26
+/packages/api-client/                   @Satheshwaran26
+/apps/web-student/                      @Satheshwaran26
+/apps/web-tpo/                          @Satheshwaran26
+/tests/e2e/                             @Satheshwaran26
 
 # ---------------------------------------------------------------------------
-# 4. Vishal Bharath R — Full-Stack & Backend (Assessment Lifecycle & Trust Chain)
+# 3. Vishal Bharath R — Full-Stack & Backend (Assessment Lifecycle & Trust Chain)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/assessment/  @vishalbharath @brittytino
-/apps/api-core/src/modules/certificate/ @vishalbharath @brittytino
-/apps/api-core/src/modules/webhooks/    @vishalbharath @brittytino
-/apps/web-verify/                       @vishalbharath @brittytino
-/apps/web-admin/                        @vishalbharath @brittytino
+/apps/api-core/src/modules/assessment/  @vishalbharath
+/apps/api-core/src/modules/certificate/ @vishalbharath
+/apps/api-core/src/modules/webhooks/    @vishalbharath
+/apps/web-verify/                       @vishalbharath
+/apps/web-admin/                        @vishalbharath
 
 # ---------------------------------------------------------------------------
-# 5. Ramansh — AI Engineer (LLM & Vector boundaries)
+# 4. Ramansh — AI Engineer (LLM & Vector boundaries)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/ai-gateway/  @Ram9012 @brittytino
-/apps/api-core/src/modules/evaluation/  @Ram9012 @brittytino
-/apps/api-core/src/modules/matching/    @Ram9012 @brittytino
-/packages/scoring-engine/               @Ram9012 @brittytino
-/packages/prompts/                      @Ram9012 @brittytino
+/apps/api-core/src/modules/ai-gateway/  @Ram9012
+/apps/api-core/src/modules/evaluation/  @Ram9012
+/apps/api-core/src/modules/matching/    @Ram9012
+/packages/scoring-engine/               @Ram9012
+/packages/prompts/                      @Ram9012
 
 # ---------------------------------------------------------------------------
-# 6. Vedika G — Data & AI/Backend Engineer (Content & Data Spine)
+# 5. Vedika G — Data & AI/Backend Engineer (Content & Data Spine)
 # ---------------------------------------------------------------------------
-/apps/api-core/src/modules/catalog/     @11vedikaa @brittytino
-/apps/api-core/src/modules/calibration/ @11vedikaa @brittytino
-/apps/api-core/src/modules/placement/   @11vedikaa @brittytino
-/apps/api-core/src/modules/analytics/   @11vedikaa @brittytino
-/tools/content-pipeline/                @11vedikaa @brittytino
-/docs/product/                          @11vedikaa @brittytino
-/docs/blueprints/                       @11vedikaa @brittytino
+/apps/api-core/src/modules/catalog/     @11vedikaa
+/apps/api-core/src/modules/calibration/ @11vedikaa
+/apps/api-core/src/modules/placement/   @11vedikaa
+/apps/api-core/src/modules/analytics/   @11vedikaa
+/tools/content-pipeline/                @11vedikaa
+/docs/product/                          @11vedikaa
+/docs/blueprints/                       @11vedikaa
+
 # Frozen MMP PRD — architect steward (later rule wins over /docs/product/)
 /docs/product/prd-v1/                   @brittytino
 
 # Golden evaluation sets are co-owned: prompt changes must not silently
 # regress grading quality.
-/packages/prompts/src/templates/goldens/ @Ram9012 @11vedikaa @brittytino
+/packages/prompts/src/templates/goldens/ @Ram9012 @11vedikaa

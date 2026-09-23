@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { API_PREFIX, type ListMyProjectsResponse, type ProjectDto } from '@smart/contracts';
+import {
+  API_PREFIX,
+  type ListMyProjectsResponse,
+  type ProjectDto,
+  type ReplaceProjectResponse,
+} from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
@@ -44,5 +49,27 @@ export class ProjectsController {
     @Param('projectId') projectId: string,
   ): Promise<ProjectDto> {
     return this.service.getForStudent(user.sub, projectId);
+  }
+
+  @Post(':projectId/replace')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Replace an owned project with another; the old project becomes inactive.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Old project marked inactive; replacement remains the current project.',
+  })
+  @ApiResponse({ status: 400, description: 'Self-replacement or invalid request.' })
+  @ApiResponse({ status: 403, description: 'JWT subject does not own one or both projects.' })
+  @ApiResponse({ status: 404, description: 'Unknown project id.' })
+  @ApiResponse({ status: 409, description: 'Project is already inactive.' })
+  replace(
+    @CurrentUser() user: RequestUser,
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+  ): Promise<ReplaceProjectResponse> {
+    return this.service.replace(user.sub, projectId, body);
   }
 }

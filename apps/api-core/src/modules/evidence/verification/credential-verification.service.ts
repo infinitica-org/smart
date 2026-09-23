@@ -9,6 +9,8 @@ import { Tier3OcrVerifier } from '../../candidate-certificates/verification/tier
 import type { TierVerificationResult } from '../../candidate-certificates/verification/tier1-issuer-adapter.js';
 import { publishCredentialVerified } from '../../candidate-certificates/verification/credential-verified-publisher.js';
 import { EvidenceReconciliationService } from '../evidence-reconciliation.service.js';
+import { EvidenceVersionService } from '../evidence-version.service.js';
+import type { EvidenceRecordRow } from '../evidence-version.snapshot.js';
 
 /**
  * Credential types with a known automated verification path today.
@@ -43,6 +45,7 @@ export class CredentialVerificationService {
     @Inject(Tier2PublicUrlVerifier) private readonly tier2Verifier: Tier2PublicUrlVerifier,
     @Inject(Tier3OcrVerifier) private readonly tier3Verifier: Tier3OcrVerifier,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Inject(EvidenceVersionService) private readonly evidenceVersions: EvidenceVersionService,
   ) {}
 
   async runVerification(credentialId: string): Promise<void> {
@@ -162,20 +165,52 @@ export class CredentialVerificationService {
 
     const evidenceRecord = await this.prisma.evidenceRecord.findFirst({
       where: { studentId, evidenceType: 'CREDENTIAL', sourceEntityId: credentialId },
+      include: { artifacts: true },
     });
     if (evidenceRecord) {
-      await this.prisma.evidenceRecord.update({
-        where: { id: evidenceRecord.id },
-        data: {
-          verificationStatus: evidenceStatus,
-          verificationMetadata: {
-            tier: result.tier,
-            resultStatus: result.status,
-            confidence: result.confidence,
-            reason: result.reason,
-            ...(result.metadata ?? {}),
-          } as Prisma.InputJsonValue,
-        },
+      const verificationMetadata = {
+        tier: result.tier,
+        resultStatus: result.status,
+        confidence: result.confidence,
+        reason: result.reason,
+        ...(result.metadata ?? {}),
+      } as Prisma.InputJsonValue;
+
+      const mergedCandidate = {
+        ...evidenceRecord,
+        verificationStatus: evidenceStatus,
+        verificationMetadata,
+      } as EvidenceRecordRow;
+
+      if (
+        evidenceRecord.verificationStatus === evidenceStatus &&
+        this.evidenceVersions.contentEquals(evidenceRecord, mergedCandidate)
+      ) {
+        await this.reconciliation.reconcileForStudent(studentId);
+        return;
+      }
+
+      const mutationKey = `credential-verify:${credentialId}:${result.tier}:${result.status}:${result.confidence}`;
+      const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.evidenceRecord.update({
+          where: { id: evidenceRecord.id },
+          data: {
+            verificationStatus: evidenceStatus,
+            verificationMetadata,
+          },
+          include: { artifacts: true },
+        });
+
+        await this.evidenceVersions.appendVersion(tx, updated, {
+          mutationKey,
+          actorId: null,
+          organizationId,
+          source: 'SYSTEM',
+          priorVerificationStatus: evidenceRecord.verificationStatus,
+          newVerificationStatus: updated.verificationStatus,
+        });
       });
     }
 

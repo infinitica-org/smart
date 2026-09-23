@@ -22,7 +22,7 @@ const OUTPUT_SHAPE = `{
   "education": [{ "institutionName", "degree"?, "fieldOfStudy"?, "startDate"?, "endDate"?, "current"?, "grade"? }],
   "experiences": [{ "role", "company", "location"?, "startDate"?, "endDate"?, "description"?, "tags"? }],
   "skills": [
-    { "type": "technical", "name", "proficiency": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" },
+    { "type": "technical", "name", "proficiency": "BEGINNER" | "INTERMEDIATE" | "PROFICIENT" | "ADVANCED" | "PROFESSIONAL" },
     { "type": "language", "name", "proficiency": "NATIVE" | "FLUENT" | "CONVERSATIONAL" | "BASIC" }
   ],
   "parseConfidence": number,
@@ -47,7 +47,7 @@ export const resumeParseTemplate: PromptTemplate<ResumeParseVariables> = {
       '- Never invent employers, degrees, dates, or skills that are not in the text.',
       '- Never emit ids, verified flags, or catalog skill codes.',
       '- Omit a field rather than guess. List omitted dotted paths in missingFields.',
-      '- Technical proficiency is BEGINNER, INTERMEDIATE, or ADVANCED only.',
+      '- Technical proficiency is BEGINNER, INTERMEDIATE, PROFICIENT, ADVANCED, or PROFESSIONAL only.',
       '- Language proficiency is NATIVE, FLUENT, CONVERSATIONAL, or BASIC only.',
       '- parseConfidence is 0-1. Use below 0.6 when the resume is sparse or ambiguous.',
       '',

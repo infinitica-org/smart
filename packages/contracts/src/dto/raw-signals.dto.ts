@@ -74,10 +74,30 @@ export const LeetcodeRawPayloadSchema = z.object({
 });
 export type LeetcodeRawPayload = z.infer<typeof LeetcodeRawPayloadSchema>;
 
+export const LinkedinRawPayloadSchema = z.object({
+  sourceId: z.literal('LINKEDIN'),
+  linkedinUrl: z.string().min(1).max(2048),
+  importedSections: z
+    .array(z.enum(['workHistory', 'education', 'skills', 'certifications']))
+    .optional(),
+  verificationStatus: z.literal('UNVERIFIED').default('UNVERIFIED'),
+});
+export type LinkedinRawPayload = z.infer<typeof LinkedinRawPayloadSchema>;
+
+export const CredlyRawPayloadSchema = z.object({
+  sourceId: z.literal('CREDLY'),
+  providerId: z.string().min(1).max(100),
+  badgeIdOrUrl: z.string().min(1).max(2048),
+  verificationStatus: z.literal('UNVERIFIED').default('UNVERIFIED'),
+});
+export type CredlyRawPayload = z.infer<typeof CredlyRawPayloadSchema>;
+
 export const RawSignalPayloadSchema = z.discriminatedUnion('sourceId', [
   GithubRawPayloadSchema,
   HackerrankRawPayloadSchema,
   LeetcodeRawPayloadSchema,
+  LinkedinRawPayloadSchema,
+  CredlyRawPayloadSchema,
 ]);
 export type RawSignalPayload = z.infer<typeof RawSignalPayloadSchema>;
 

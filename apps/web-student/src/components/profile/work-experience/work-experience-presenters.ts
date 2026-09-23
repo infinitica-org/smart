@@ -71,9 +71,7 @@ export function companyInitials(companyName: string): string {
 }
 
 export function getManagerEndorsementStatus(exp: WorkExperienceDto): string | null {
-  const raw = (exp as unknown as Record<string, unknown>).managerEndorsement;
-  if (!raw || typeof raw !== 'object') return null;
-  return String((raw as Record<string, unknown>).status || 'PENDING');
+  return exp.managerEndorsement?.status ?? null;
 }
 
 export function workExperienceRuleCheck(exp: WorkExperienceDto) {

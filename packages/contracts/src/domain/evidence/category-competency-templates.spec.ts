@@ -34,7 +34,7 @@ describe('category-competency-templates', () => {
       'PROGRAMMING_LANGUAGES',
     );
     expect(blueprint.competencyModel).toHaveLength(6);
-    expect(blueprint.proficiencyRequirements).toHaveLength(4);
+    expect(blueprint.proficiencyRequirements).toHaveLength(5);
   });
 });
 
