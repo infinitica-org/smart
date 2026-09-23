@@ -85,6 +85,70 @@ describe('CapabilityInferenceService', () => {
     );
   });
 
+  it('maps demonstrated QLIX proficiency ceiling PROFICIENT to claim proficiency', async () => {
+    const smartAssessmentJson = {
+      appliedProficiencyCeiling: 'PROFICIENT',
+      competencyObservations: [
+        {
+          competencyId: 'a12803b7-ad4b-48a4-a042-5a948daaf7ef',
+          status: 'DEMONSTRATED',
+          confidence: 'HIGH',
+          evidenceSnippets: ['Async worker pool with bounded concurrency.'],
+        },
+      ],
+      gaps: [],
+    };
+
+    const createMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma = {
+      skillClaim: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ skill: { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' } }]),
+      },
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: projectId,
+          studentId,
+          title: 'API service',
+          problem: 'Latency spikes',
+          approach: 'Added async I/O',
+          outcome: 'Stable p99',
+          stack: 'Python',
+          skillMappings: [
+            {
+              skillCode: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT',
+              specificContribution: 'Async I/O layer',
+            },
+          ],
+          qlixCheckResult: {
+            checkId,
+            skillsJson: { totals: { analyzedTokens: 900 } },
+            smartAssessmentJson,
+          },
+        }),
+      },
+      studentCapability: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), createMany },
+    };
+    const service = new CapabilityInferenceService(
+      prisma as never,
+      { buildDigest: vi.fn().mockReturnValue('similarityIndex=8') } as never,
+      { hasCallableProvider: vi.fn().mockReturnValue(false) } as never,
+    );
+
+    await service.inferForProject(projectId, studentId);
+
+    expect(createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            proficiency: 'PROFICIENT',
+          }),
+        ]),
+      }),
+    );
+  });
+
   it('returns zero when qlix check result is missing', async () => {
     const prisma = {
       project: {

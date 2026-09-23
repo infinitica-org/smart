@@ -3,6 +3,10 @@ import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthService, hashPassword, hashRefreshToken } from './auth.service.js';
 
+function mockAuditPublisher() {
+  return { record: vi.fn() };
+}
+
 function userRow(overrides: Record<string, unknown> = {}) {
   return {
     id: randomUUID(),
@@ -35,7 +39,12 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'access.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
     const cookies: string[] = [];
     const reply = {
       setCookie: (_name: string, value: string) => {
@@ -82,7 +91,12 @@ describe('AuthService refresh rotation', () => {
     };
     const jwt = { signAsync: vi.fn(async () => 'rotated.jwt') };
     const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
-    const auth = new AuthService(prisma as never, jwt as never, storage as never);
+    const auth = new AuthService(
+      prisma as never,
+      jwt as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
     const request = { cookies: { smart_refresh: raw } };
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -114,6 +128,7 @@ describe('AuthService refresh rotation', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
     const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
 
@@ -125,6 +140,44 @@ describe('AuthService refresh rotation', () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(reply.clearCookie).toHaveBeenCalled();
+  });
+
+  it('audits refresh-token reuse', async () => {
+    const familyId = randomUUID();
+    const userId = randomUUID();
+    const raw = 'stolen';
+    const prisma = {
+      refreshToken: {
+        findUnique: vi.fn(async () => ({
+          id: randomUUID(),
+          familyId,
+          userId,
+          tokenHash: hashRefreshToken(raw),
+          expiresAt: new Date(Date.now() + 60_000),
+          revokedAt: new Date(),
+          user: userRow({ id: userId }),
+        })),
+        updateMany: vi.fn(async () => ({ count: 2 })),
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.refresh(
+        { cookies: { smart_refresh: raw } } as never,
+        { setCookie: vi.fn(), clearCookie: vi.fn() } as never,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: userId, action: 'auth.refresh_reuse_detected' }),
+    );
   });
 
   it('blocks tenant login when the institution is on hold', async () => {
@@ -146,6 +199,7 @@ describe('AuthService refresh rotation', () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       storage as never,
+      mockAuditPublisher() as never,
     );
     await expect(auth.login('student@example.com', 'password1', {} as never)).rejects.toMatchObject(
       {
@@ -154,6 +208,122 @@ describe('AuthService refresh rotation', () => {
           message: 'This institution is on hold. You cannot use SMART until it is released.',
         },
       },
+    );
+  });
+});
+
+describe('AuthService.register', () => {
+  it('creates a STUDENT user, hashes the password, and issues a session', async () => {
+    const institutionId = randomUUID();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) =>
+          userRow({ ...data, id: randomUUID() }),
+        ),
+      },
+      institution: {
+        findUnique: vi.fn(async () => ({ id: institutionId, deactivatedAt: null, heldAt: null })),
+      },
+      refreshToken: {
+        create: vi.fn(async ({ data }: { data: unknown }) => data),
+      },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      storage as never,
+    );
+    const reply = { setCookie: vi.fn() };
+
+    const result = await auth.register(
+      {
+        email: 'New@Example.com',
+        password: 'password1',
+        fullName: 'New Student',
+        institutionId,
+      },
+      reply as never,
+    );
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'new@example.com',
+          role: 'STUDENT',
+          emailVerified: false,
+          institutionId,
+        }),
+      }),
+    );
+  });
+
+  it('rejects a duplicate email with 409', async () => {
+    const prisma = { user: { findUnique: vi.fn(async () => userRow()) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await expect(
+      auth.register(
+        {
+          email: 'student@example.com',
+          password: 'password1',
+          fullName: 'X',
+          institutionId: randomUUID(),
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 409 } });
+  });
+
+  it('rejects an unknown or ineligible institution with 404', async () => {
+    const prisma = {
+      user: { findUnique: vi.fn(async () => null) },
+      institution: { findUnique: vi.fn(async () => null) },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await expect(
+      auth.register(
+        {
+          email: 'x@example.com',
+          password: 'password1',
+          fullName: 'X',
+          institutionId: randomUUID(),
+        },
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ response: { statusCode: 404 } });
+  });
+});
+
+describe('AuthService.listSelectableInstitutions', () => {
+  it('excludes deactivated and held institutions', async () => {
+    const prisma = {
+      institution: { findMany: vi.fn(async () => [{ id: randomUUID(), name: 'Active U' }]) },
+    };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      storage as never,
+    );
+
+    await auth.listSelectableInstitutions();
+
+    expect(prisma.institution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { deactivatedAt: null, heldAt: null } }),
     );
   });
 });

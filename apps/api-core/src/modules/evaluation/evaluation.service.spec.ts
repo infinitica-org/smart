@@ -52,6 +52,25 @@ describe('EvaluationService skill interview (SE-T02)', () => {
     });
   });
 
+  it('truncates an overlong grader explanation instead of failing the gateway', async () => {
+    const longWhy = 'x'.repeat(200);
+    const complete = vi.fn().mockResolvedValue({
+      output: { passed: true, explanation: longWhy },
+      auditId: null,
+    });
+    const service = new EvaluationService(gatewayWithComplete(complete));
+
+    const result = await service.gradeSkillInterview({
+      skillCode: 'SYSTEM_DESIGN_ARCHITECTURE',
+      proficiency: 'ADVANCED',
+      items,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.explanation.length).toBeLessThanOrEqual(160);
+    expect(result.explanation.length).toBeGreaterThanOrEqual(10);
+  });
+
   it('returns pass/fail plus a visible why from a stubbed grade call', async () => {
     const complete = vi.fn().mockResolvedValue({
       output: {

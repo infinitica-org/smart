@@ -4,6 +4,8 @@ import { EmailProcessor } from './email.processor.js';
 import type {
   WorkExperienceReminderJobPayload,
   WorkExperienceExpireJobPayload,
+  WorkExperienceManagerReminderJobPayload,
+  WorkExperienceManagerExpireJobPayload,
 } from '../mailer/mailer.types.js';
 
 describe('EmailProcessor', () => {
@@ -25,6 +27,10 @@ describe('EmailProcessor', () => {
         update: vi.fn(),
       },
       workExperience: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
+      workExperienceManagerEndorsement: {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
@@ -132,63 +138,119 @@ describe('EmailProcessor', () => {
     });
   });
 
-  it('processes send-manager-reminder job and updates reminderSentAt ONLY after mailer dispatch succeeds', async () => {
+  describe('send-manager-reminder', () => {
     const endorsementId = randomUUID();
-    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000); // 48h remaining
-
-    prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
-      id: endorsementId,
-      respondedAt: null,
-      expiresAt,
-    });
-    prisma.workExperienceManagerEndorsement.update.mockResolvedValueOnce({});
-
-    const mockJob: any = {
-      name: 'send-manager-reminder',
+    const payload: WorkExperienceManagerReminderJobPayload = {
+      endorsementId,
+      to: 'manager@acme.com',
+      template: 'work-experience-manager-reminder',
       data: {
-        endorsementId,
-        to: 'manager@acme.com',
-        template: 'work-experience-manager-reminder',
-        data: { candidateName: 'John Doe', surveyUrl: 'https://verify.smart.app/survey/123' },
+        managerName: 'Jane Smith',
+        candidateName: 'John Doe',
+        companyName: 'Acme Corp',
+        roleTitle: 'Engineer',
+        startDate: '2022-01-01',
+        endDate: 'Present',
+        surveyUrl: 'https://verify.example/work-experience/manager-survey/abc',
+        expiresAtFormatted: '2 days',
       },
     };
 
-    await processor.process(mockJob);
+    it('sends reminder for active pending endorsement', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: null,
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+      prisma.workExperienceManagerEndorsement.update.mockResolvedValueOnce({});
 
-    expect(mailer.send).toHaveBeenCalledWith({
-      to: 'manager@acme.com',
-      template: 'work-experience-manager-reminder',
-      data: { candidateName: 'John Doe', surveyUrl: 'https://verify.smart.app/survey/123' },
+      await processor.process({ name: 'send-manager-reminder', data: payload });
+
+      expect(mailer.send).toHaveBeenCalledWith({
+        to: payload.to,
+        template: payload.template,
+        data: payload.data,
+      });
+      expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
+        where: { id: endorsementId },
+        data: { reminderSentAt: expect.any(Date) },
+      });
     });
 
-    expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
-      where: { id: endorsementId },
-      data: { reminderSentAt: expect.any(Date) },
+    it('does not send reminder when endorsement already responded', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: new Date(),
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      await processor.process({ name: 'send-manager-reminder', data: payload });
+
+      expect(mailer.send).not.toHaveBeenCalled();
+      expect(prisma.workExperienceManagerEndorsement.update).not.toHaveBeenCalled();
+    });
+
+    it('does not send reminder when endorsement has expired', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: null,
+        expiresAt: new Date(Date.now() - 3600000),
+      });
+
+      await processor.process({ name: 'send-manager-reminder', data: payload });
+
+      expect(mailer.send).not.toHaveBeenCalled();
+      expect(prisma.workExperienceManagerEndorsement.update).not.toHaveBeenCalled();
     });
   });
 
-  it('does NOT dispatch email or update reminderSentAt if manager endorsement has already responded or expired', async () => {
+  describe('expire-manager-endorsement', () => {
     const endorsementId = randomUUID();
+    const experienceId = randomUUID();
+    const payload: WorkExperienceManagerExpireJobPayload = { endorsementId, experienceId };
 
-    prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
-      id: endorsementId,
-      respondedAt: new Date(),
-      expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+    it('marks pending endorsement as EXPIRED', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: null,
+        status: 'PENDING',
+      });
+      prisma.workExperienceManagerEndorsement.update.mockResolvedValueOnce({});
+
+      await processor.process({ name: 'expire-manager-endorsement', data: payload });
+
+      expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
+        where: { id: endorsementId },
+        data: { status: 'EXPIRED' },
+      });
     });
 
-    const mockJob: any = {
-      name: 'send-manager-reminder',
-      data: {
-        endorsementId,
-        to: 'manager@acme.com',
-        template: 'work-experience-manager-reminder',
-        data: { candidateName: 'John Doe' },
-      },
-    };
+    it('does not change endorsement that already has a response', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: new Date(),
+        status: 'CONFIRMED',
+      });
 
-    await processor.process(mockJob);
+      await processor.process({ name: 'expire-manager-endorsement', data: payload });
 
-    expect(mailer.send).not.toHaveBeenCalled();
-    expect(prisma.workExperienceManagerEndorsement.update).not.toHaveBeenCalled();
+      expect(prisma.workExperienceManagerEndorsement.update).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent when endorsement is already EXPIRED', async () => {
+      prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValueOnce({
+        id: endorsementId,
+        respondedAt: null,
+        status: 'EXPIRED',
+      });
+      prisma.workExperienceManagerEndorsement.update.mockResolvedValueOnce({});
+
+      await processor.process({ name: 'expire-manager-endorsement', data: payload });
+
+      expect(prisma.workExperienceManagerEndorsement.update).toHaveBeenCalledWith({
+        where: { id: endorsementId },
+        data: { status: 'EXPIRED' },
+      });
+    });
   });
 });

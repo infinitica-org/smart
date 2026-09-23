@@ -10,6 +10,8 @@ export type EmailTemplateName =
   | 'verification-passed'
   | 'verification-failed'
   | 'verification-locked'
+  | 'email-verification'
+  | 'password-reset'
   | 'work-experience-verifier-invite'
   | 'work-experience-verifier-reminder'
   | 'certificate-endorsement-request'
@@ -39,6 +41,18 @@ export interface StageChangeEmailData {
   readonly fromStage: string | null;
   readonly toStage: string;
   readonly applicationsUrl: string;
+}
+
+export interface EmailVerificationEmailData {
+  readonly fullName: string;
+  readonly verifyUrl: string;
+  readonly expiresAtFormatted: string;
+}
+
+export interface PasswordResetEmailData {
+  readonly fullName: string;
+  readonly resetUrl: string;
+  readonly expiresAtFormatted: string;
 }
 
 export interface VerificationEmailData {
@@ -80,6 +94,8 @@ export interface CertificateEndorsementRequestEmailData {
 
 export type EmailTemplateData =
   | InviteEmailData
+  | EmailVerificationEmailData
+  | PasswordResetEmailData
   | OpportunityEmailData
   | StageChangeEmailData
   | VerificationEmailData

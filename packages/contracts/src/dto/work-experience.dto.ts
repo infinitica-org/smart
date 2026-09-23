@@ -449,6 +449,19 @@ export const UpdateWorkExperienceSchema = CreateWorkExperienceBaseSchema.partial
 );
 export type UpdateWorkExperienceDto = z.infer<typeof UpdateWorkExperienceSchema>;
 
+/** Latest manager endorsement request summary for student-facing work experience views. */
+export const WorkExperienceManagerEndorsementSummarySchema = z.object({
+  endorsementId: z.string().uuid(),
+  status: ManagerEndorsementStatusSchema,
+  managerEmail: z.string().email(),
+  managerName: z.string().nullable(),
+  sentAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+});
+export type WorkExperienceManagerEndorsementSummaryDto = z.infer<
+  typeof WorkExperienceManagerEndorsementSummarySchema
+>;
+
 export const WorkExperienceSchema = z.object({
   id: z.string().uuid(),
   studentId: z.string().uuid(),
@@ -481,6 +494,8 @@ export const WorkExperienceSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   documents: z.array(WorkExperienceDocumentSchema).default([]),
+  /** Latest manager endorsement request, when one exists. */
+  managerEndorsement: WorkExperienceManagerEndorsementSummarySchema.nullable().optional(),
   /** Evidence-framework projection of this work experience entry. */
   evidence: WorkExperienceEvidenceSchema.optional(),
 });
@@ -627,8 +642,17 @@ export type ManagerSkillRatingDto = z.infer<typeof ManagerSkillRatingSchema>;
  * against the offer-letter domain or Organization.domain is also performed.
  */
 export const SendManagerEndorsementSchema = z.object({
-  managerEmail: z.string().email('Invalid manager email').min(1, 'Manager email is required'),
-  managerName: z.string().min(1).max(120).optional().nullable(),
+  managerEmail: z
+    .string()
+    .trim()
+    .email('Invalid manager email')
+    .min(1, 'Manager email is required')
+    .transform((value) => value.toLowerCase()),
+  managerName: z
+    .string()
+    .trim()
+    .min(2, 'Endorser name must be at least 2 characters')
+    .max(120, 'Endorser name must be 120 characters or fewer'),
 });
 export type SendManagerEndorsementDto = z.infer<typeof SendManagerEndorsementSchema>;
 
@@ -639,6 +663,8 @@ export const SendManagerEndorsementResponseSchema = z.object({
   managerEmail: z.string(),
   expiresAt: z.string().datetime(),
   message: z.string(),
+  /** True when an active pending request already existed and was returned without re-sending. */
+  idempotent: z.boolean().optional(),
 });
 export type SendManagerEndorsementResponseDto = z.infer<
   typeof SendManagerEndorsementResponseSchema

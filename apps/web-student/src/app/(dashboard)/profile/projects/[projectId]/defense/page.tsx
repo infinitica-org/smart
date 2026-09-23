@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import type { ProjectDto } from '@smart/contracts';
 import { Alert, Button } from '@smart/ui';
 import { ArrowLeft } from 'lucide-react';
+import { ProjectDefenseOutcomePanel } from '@/components/profile/ProjectDefenseOutcomePanel';
 import { ProjectDefensePlayer } from '@/components/profile/ProjectDefensePlayer';
 import { api } from '@/lib/api';
 import { needsOwnershipInterview } from '@/lib/project-submission';
@@ -78,6 +79,7 @@ export default function ProjectDefensePage() {
         <Alert tone="success" title="Already complete">
           You have already finished the ownership interview for this project.
         </Alert>
+        <ProjectDefenseOutcomePanel projectId={projectId} />
         <Button type="button" onClick={backToProfile}>
           Back to profile
         </Button>

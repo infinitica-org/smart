@@ -15,7 +15,12 @@ import { RedisService } from '../../platform/redis/redis.service.js';
 import { QlixClient, type QlixCheckResult } from './qlix-client.js';
 import { ProjectInterviewGateService } from './project-interview-gate.service.js';
 import { routeQlixResult } from './project-verify.heuristics.js';
-import { encodeReportExplanation, type StoredReportMeta } from './project-verify.mapper.js';
+import {
+  decodeReportMeta,
+  encodeReportExplanation,
+  type StoredReportMeta,
+} from './project-verify.mapper.js';
+import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
 
 export interface QlixPollJobPayload {
   projectId: string;
@@ -40,6 +45,7 @@ export class QlixPollService {
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(RedisService) private readonly redis: RedisService,
     @InjectQueue(QLIX_POLL_QUEUE) private readonly pollQueue: Queue<QlixPollJobPayload>,
+    @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
   ) {}
 
   async cacheSnapshot(projectId: string, snapshot: ProjectGithubSnapshot): Promise<void> {
@@ -58,7 +64,17 @@ export class QlixPollService {
     const existing = await this.prisma.projectVerificationReport.findUnique({
       where: { projectId: payload.projectId },
     });
-    if (existing) return;
+    if (existing) {
+      if (existing.explanation) {
+        const { meta } = decodeReportMeta(existing.explanation);
+        if (meta?.qlixStatus === 'COMPLETED' || meta?.qlixStatus === 'TIMEOUT') {
+          return;
+        }
+      }
+      await this.prisma.projectVerificationReport.delete({
+        where: { projectId: payload.projectId },
+      });
+    }
 
     const elapsed = Date.now() - payload.startedAtMs;
     if (elapsed >= env.QLIX_POLL_HARD_CAP_MS) {
@@ -250,6 +266,8 @@ export class QlixPollService {
       where: { id: payload.projectId },
       data: { status: routed.routedToReview ? 'UNDER_REVIEW' : 'SUBMITTED' },
     });
+
+    await this.evidenceSync.syncProjectEvidenceRecord(payload.studentId, payload.projectId);
 
     if (routed.opensInterviewGate) {
       await this.interviewGate.markVerifyComplete(payload.projectId);

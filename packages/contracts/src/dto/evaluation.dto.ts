@@ -272,17 +272,14 @@ export type GradeSkillInterviewResponse = z.infer<typeof GradeSkillInterviewResp
 
 /* -------------------- SDE v4 skill form (assessment-only) ----------------- */
 
+import { PROFICIENCY_LEVEL_ORDER } from '../domain/skill-levels.js';
+
 /**
  * LLM-generated form from SDE Skill Verification Framework v4.
  * Does not change INF-05 L1 banks or skill-interview routes.
  * Implementation: Ramansh (`evaluation` + prompts). Session/settle: assessment.
  */
-export const SDE_V4_FORM_PROFICIENCIES = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-] as const;
+export const SDE_V4_FORM_PROFICIENCIES = PROFICIENCY_LEVEL_ORDER;
 export const SdeV4FormProficiencySchema = z.enum(SDE_V4_FORM_PROFICIENCIES);
 export type SdeV4FormProficiency = z.infer<typeof SdeV4FormProficiencySchema>;
 

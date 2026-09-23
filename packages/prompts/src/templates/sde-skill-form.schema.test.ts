@@ -43,4 +43,21 @@ describe('SdeOpenBatchGradeSchema index guardrails', () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  it('clips oversized missedTests fields from the grader before schema validation', () => {
+    const long = 'x'.repeat(500);
+    const parsed = SdeOpenBatchGradeSchema.safeParse({
+      grades: [
+        {
+          index: 0,
+          marksAwarded: 4,
+          justification: 'Partial credit; several hidden cases failed.',
+          missedTests: [{ input: long, expected: long, reason: long }],
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.grades[0]?.missedTests?.[0]?.input).toHaveLength(400);
+  });
 });

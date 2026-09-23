@@ -31,6 +31,8 @@ import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { MATCH_RUN_QUEUE } from '../../platform/queue/queue.names.js';
 import { InstitutionsService } from '../institutions/institutions.service.js';
+import type { CompetencyStatus } from '@smart/contracts';
+import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { QlixSmartAssessmentSchema } from '../evaluation/qlix-client.js';
 import { buildSkillCapabilityJob } from './job-profile.js';
 import {
@@ -210,10 +212,16 @@ function buildEligibleStudentsQuery(
       LIMIT 1
     ) c ON true
     LEFT JOIN LATERAL (
-      SELECT json_agg(json_build_object('code', sk.code, 'domain', sk.domain, 'proficiency', sc.proficiency)) AS skills
+      SELECT json_agg(json_build_object(
+        'code', sk.code,
+        'domain', sk.domain,
+        'proficiency', COALESCE(sc.final_proficiency::text, sc.proficiency::text)
+      )) AS skills
       FROM skill_claims sc
       JOIN skills sk ON sk.id = sc.skill_id
-      WHERE sc.student_id = u.id AND sc.status = 'VERIFIED'
+      WHERE sc.student_id = u.id
+        AND sc.status = 'VERIFIED'
+        AND (sc.verified_until IS NULL OR sc.verified_until > NOW())
     ) sc_agg ON true
     WHERE ${Prisma.join(conditions, ' AND ')}
   `;
@@ -512,11 +520,10 @@ export class MatchingService {
       qlixObservations: evidence.qlixByStudent.get(student.id) ?? [],
     }));
 
-    const ranked = rankSkillCapabilityCandidates(
+    const { ranked, candidatesScoredCount } = rankSkillCapabilityCandidates(
       job,
       pool,
       request.limit,
-      request.minSkillCoverage,
     );
     const byId = new Map(filtered.map((student) => [student.id, student]));
     const generatedAt = new Date().toISOString();
@@ -529,6 +536,9 @@ export class MatchingService {
       })),
       requiredCapabilities: job.requiredCapabilities,
     });
+
+    const rankedStudentIds = ranked.map((score) => score.studentId);
+    const explainability = await this.loadExplainabilityContext(rankedStudentIds);
 
     const candidates = [];
     for (const [index, score] of ranked.entries()) {
@@ -566,6 +576,9 @@ export class MatchingService {
           method,
           recruiterSummary,
           studentSummary,
+          competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(
+            explainability.capabilitiesByStudent.get(student.id) ?? [],
+          ),
         }),
       );
     }
@@ -591,6 +604,7 @@ export class MatchingService {
       candidates,
       totalCandidatesConsidered: pool.length,
       eligiblePoolCount: filtered.length,
+      candidatesScoredCount,
       matchMethod: method,
       minSkillCoverageApplied: request.minSkillCoverage,
       jobRequirements,
@@ -674,6 +688,9 @@ export class MatchingService {
           gapCompetencies: mergedExplanation.gapCompetencies,
           why: mergedExplanation.why,
           verifiedSkills: mapVerifiedSkillsSummary(student.verifiedSkills),
+          competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(
+            explainability.capabilitiesByStudent.get(student.id) ?? [],
+          ),
           rules: {
             skill: score.s / 1000,
             proficiency: score.p / 1000,
@@ -766,20 +783,45 @@ export class MatchingService {
       }),
     ]);
 
-    const seenAttemptByStudent = new Set<string>();
+    const competencyStatusRank = (status: CompetencyStatus): number => {
+      switch (status) {
+        case 'DEMONSTRATED':
+          return 4;
+        case 'PARTIALLY_DEMONSTRATED':
+          return 3;
+        case 'UNCERTAIN':
+          return 2;
+        case 'NOT_DEMONSTRATED':
+          return 1;
+        default:
+          return 0;
+      }
+    };
+
+    const mergedByStudent = new Map<
+      string,
+      Map<string, { competencyId: string; status: CompetencyStatus }>
+    >();
+
     for (const attempt of attempts) {
       const studentId = attempt.claim.studentId;
-      if (seenAttemptByStudent.has(studentId)) continue;
       const parsed = AssessmentResultSchema.safeParse(attempt.assessmentResultJson);
       if (!parsed.success) continue;
-      seenAttemptByStudent.add(studentId);
-      competencyResultsByStudent.set(
-        studentId,
-        parsed.data.competencyResults.map((row) => ({
-          competencyId: row.competencyId,
-          status: row.status,
-        })),
-      );
+      const byCompetency = mergedByStudent.get(studentId) ?? new Map();
+      for (const row of parsed.data.competencyResults) {
+        const existing = byCompetency.get(row.competencyId);
+        if (!existing || competencyStatusRank(row.status) > competencyStatusRank(existing.status)) {
+          byCompetency.set(row.competencyId, {
+            competencyId: row.competencyId,
+            status: row.status,
+          });
+        }
+      }
+      mergedByStudent.set(studentId, byCompetency);
+    }
+
+    for (const [studentId, byCompetency] of mergedByStudent) {
+      competencyResultsByStudent.set(studentId, [...byCompetency.values()]);
     }
 
     for (const row of inferred) {
@@ -851,6 +893,8 @@ export class MatchingService {
         skillCode: string | null;
         assessmentVerified: boolean;
         confidenceScore: number;
+        proficiency: string;
+        evidenceRefs: string[];
       }>
     >;
     qlixProjectsByStudent: Map<string, QlixProjectExplainability[]>;
@@ -862,6 +906,8 @@ export class MatchingService {
         skillCode: string | null;
         assessmentVerified: boolean;
         confidenceScore: number;
+        proficiency: string;
+        evidenceRefs: string[];
       }>
     >();
     const qlixProjectsByStudent = new Map<string, QlixProjectExplainability[]>();
@@ -882,6 +928,8 @@ export class MatchingService {
           skillCode: true,
           assessmentVerified: true,
           confidenceScore: true,
+          proficiency: true,
+          evidenceRefs: true,
         },
       }),
       this.prisma.project.findMany({
@@ -909,6 +957,8 @@ export class MatchingService {
         skillCode: row.skillCode,
         assessmentVerified: row.assessmentVerified,
         confidenceScore: row.confidenceScore,
+        proficiency: row.proficiency,
+        evidenceRefs: row.evidenceRefs,
       });
       capabilitiesByStudent.set(row.studentId, bucket);
     }

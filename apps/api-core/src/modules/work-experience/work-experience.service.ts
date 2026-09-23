@@ -1,6 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto';
+
+/** Raw manager endorsement tokens are 32 bytes encoded as lowercase hex (WE-T03). */
+const MANAGER_ENDORSEMENT_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -26,6 +30,8 @@ import type {
   GetManagerEndorsementSurveyDto,
   SubmitManagerEndorsementDto,
   SubmitManagerEndorsementResponseDto,
+  WorkExperienceManagerEndorsementSummaryDto,
+  ManagerEndorsementStatus,
   AdminWorkExperienceReviewRequest,
   ApproveWorkExperienceAuthenticityResponse,
   UpdateWorkExperienceDto,
@@ -43,6 +49,8 @@ import {
   WorkExperienceLetterAuthenticityExtractSchema,
   ValidateWorkExperienceProofResponseSchema,
   SubmitWorkExperienceVerificationSchema,
+  SendManagerEndorsementSchema,
+  SubmitManagerEndorsementSchema,
   isDisallowedEndorserEmailDomain,
   skillsClaimedSnapshotWhenVerified,
   validateWorkExperienceEffectiveUpdate,
@@ -122,6 +130,16 @@ interface RawWorkExperience {
     artifactId?: string | null;
     activity?: unknown;
   }>;
+  managerEndorsements?: Array<{
+    id: string;
+    managerEmail: string;
+    managerName?: string | null;
+    status: string;
+    sentAt: Date;
+    expiresAt: Date;
+    respondedAt?: Date | null;
+    createdAt: Date;
+  }>;
 }
 
 interface RawWorkExperienceDocument {
@@ -192,6 +210,10 @@ export class WorkExperienceService {
   private readonly evidenceInclude = {
     documents: true,
     structuredResponsibilities: true,
+    managerEndorsements: {
+      orderBy: { createdAt: 'desc' as const },
+      take: 1,
+    },
   } as const;
 
   private async syncEvidenceRecord(
@@ -282,6 +304,23 @@ export class WorkExperienceService {
     });
   }
 
+  private mapManagerEndorsementSummary(
+    exp: RawWorkExperience,
+  ): WorkExperienceManagerEndorsementSummaryDto | null {
+    const latest = exp.managerEndorsements?.[0];
+    if (!latest) {
+      return null;
+    }
+    return {
+      endorsementId: latest.id,
+      status: latest.status as ManagerEndorsementStatus,
+      managerEmail: latest.managerEmail,
+      managerName: latest.managerName ?? null,
+      sentAt: latest.sentAt.toISOString(),
+      expiresAt: latest.expiresAt.toISOString(),
+    };
+  }
+
   private mapToDto(exp: RawWorkExperience): WorkExperienceDto {
     const skillsClaimed = exp.skills ?? [];
     return WorkExperienceSchema.parse({
@@ -315,8 +354,88 @@ export class WorkExperienceService {
       createdAt: exp.createdAt.toISOString(),
       updatedAt: exp.updatedAt.toISOString(),
       documents: (exp.documents || []).map((doc) => this.mapDocumentToDto(doc)),
+      managerEndorsement: this.mapManagerEndorsementSummary(exp),
       evidence: buildEvidenceFromWorkExperienceRow(exp as WorkExperienceWithEvidenceRelations),
     });
+  }
+
+  private buildSendManagerEndorsementResponse(
+    endorsement: { id: string; managerEmail: string; expiresAt: Date },
+    idempotent: boolean,
+  ): SendManagerEndorsementResponseDto {
+    return {
+      success: true,
+      endorsementId: endorsement.id,
+      managerEmail: endorsement.managerEmail,
+      expiresAt: endorsement.expiresAt.toISOString(),
+      idempotent,
+      message: idempotent
+        ? `Manager endorsement request is already pending for ${endorsement.managerEmail}.`
+        : `Manager endorsement request dispatched to ${endorsement.managerEmail}. Valid for 5 days.`,
+    };
+  }
+
+  private assertManagerEndorsementTokenFormat(rawToken: string): void {
+    if (
+      !rawToken ||
+      typeof rawToken !== 'string' ||
+      !MANAGER_ENDORSEMENT_TOKEN_PATTERN.test(rawToken)
+    ) {
+      throw new NotFoundException('Invalid endorsement token.');
+    }
+  }
+
+  private managerContactsMatch(
+    stored: { managerEmail: string; managerName: string | null },
+    incoming: { managerEmail: string; managerName: string },
+  ): boolean {
+    return (
+      stored.managerEmail.toLowerCase().trim() === incoming.managerEmail &&
+      (stored.managerName ?? '').trim() === incoming.managerName.trim()
+    );
+  }
+
+  private async resolveManagerEndorsementRequestState(experienceId: string): Promise<
+    | {
+        kind: 'active_pending';
+        endorsement: {
+          id: string;
+          managerEmail: string;
+          managerName: string | null;
+          expiresAt: Date;
+        };
+      }
+    | { kind: 'confirmed' }
+    | { kind: 'new' }
+  > {
+    const now = new Date();
+    const [activePending, confirmed] = await Promise.all([
+      this.prisma.workExperienceManagerEndorsement.findFirst({
+        where: {
+          experienceId,
+          status: 'PENDING',
+          respondedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, managerEmail: true, managerName: true, expiresAt: true },
+      }),
+      this.prisma.workExperienceManagerEndorsement.findFirst({
+        where: {
+          experienceId,
+          status: 'CONFIRMED',
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (confirmed) {
+      return { kind: 'confirmed' };
+    }
+    if (activePending) {
+      return { kind: 'active_pending', endorsement: activePending };
+    }
+    return { kind: 'new' };
   }
 
   /** WE-T02 — company-lite / B2B surfaces must never receive raw letter file URLs. */
@@ -2057,7 +2176,31 @@ export class WorkExperienceService {
 
     await this.assertWorkExperienceCompleteness(exp);
 
-    const managerEmail = payload.managerEmail.toLowerCase().trim();
+    const parsedPayload = SendManagerEndorsementSchema.safeParse(payload);
+    if (!parsedPayload.success) {
+      const firstIssue = parsedPayload.error.issues[0];
+      throw new BadRequestException({
+        error: 'validation_failed',
+        message: firstIssue?.message ?? 'Invalid manager endorsement request.',
+        statusCode: 400,
+      });
+    }
+    const { managerEmail, managerName } = parsedPayload.data;
+
+    const requestState = await this.resolveManagerEndorsementRequestState(experienceId);
+    if (requestState.kind === 'confirmed') {
+      throw new ConflictException(
+        'Manager endorsement is already complete for this work experience.',
+      );
+    }
+    if (requestState.kind === 'active_pending') {
+      if (this.managerContactsMatch(requestState.endorsement, { managerEmail, managerName })) {
+        return this.buildSendManagerEndorsementResponse(requestState.endorsement, true);
+      }
+      throw new ConflictException(
+        'A manager endorsement request is already pending for different contact details. Wait for the current endorser to respond or for the link to expire before requesting another endorser.',
+      );
+    }
 
     // 1. Reject personal / free email providers
     if (isDisallowedEndorserEmailDomain(managerEmail)) {
@@ -2068,8 +2211,12 @@ export class WorkExperienceService {
 
     // 2. Domain matching: extract authoritative employer domain
     const resolvedDomain = this.extractOfferLetterDomain(exp);
+    const managerDomain = extractDomain(managerEmail);
+    let domainMatch: boolean | null = null;
+
     if (resolvedDomain) {
       const domainValidation = validateEmployerDomain(managerEmail, `https://${resolvedDomain}`);
+      domainMatch = domainValidation.domainMatch;
       if (!domainValidation.domainMatch) {
         throw new BadRequestException(
           `Manager email domain (${domainValidation.verifierDomain}) does not match employer domain (${resolvedDomain}). Please use your official company email.`,
@@ -2088,7 +2235,7 @@ export class WorkExperienceService {
         experienceId,
         tokenHash,
         managerEmail,
-        managerName: payload.managerName ?? null,
+        managerName,
         resolvedDomain: resolvedDomain ?? null,
         expiresAt,
         status: 'PENDING',
@@ -2097,7 +2244,7 @@ export class WorkExperienceService {
 
     const surveyUrl = `${env.VERIFY_APP_URL}/work-experience/manager-survey/${rawToken}`;
     const emailData = {
-      managerName: payload.managerName ?? 'Hiring Manager',
+      managerName,
       candidateName: exp.student?.fullName ?? 'Candidate',
       companyName: exp.companyName,
       roleTitle: exp.role,
@@ -2113,11 +2260,15 @@ export class WorkExperienceService {
 
     if (this.emailQueue) {
       // Initial invite
-      await this.emailQueue.add('send', {
-        to: managerEmail,
-        template: 'work-experience-manager-invite',
-        data: emailData,
-      });
+      await this.emailQueue.add(
+        'send',
+        {
+          to: managerEmail,
+          template: 'work-experience-manager-invite',
+          data: emailData,
+        },
+        { jobId: `manager-invite:${endorsement.id}` },
+      );
 
       // Day-3 (72h) reminder
       await this.emailQueue.add(
@@ -2128,14 +2279,20 @@ export class WorkExperienceService {
           template: 'work-experience-manager-reminder',
           data: { ...emailData, expiresAtFormatted: '2 days' },
         } as WorkExperienceManagerReminderJobPayload,
-        { delay: 72 * 60 * 60 * 1000, jobId: `manager-reminder-${endorsement.id}` },
+        {
+          delay: 72 * 60 * 60 * 1000,
+          jobId: `manager-reminder:${endorsement.id}`,
+        },
       );
 
       // Day-5 (120h) expiry marker
       await this.emailQueue.add(
         'expire-manager-endorsement',
         { endorsementId: endorsement.id, experienceId },
-        { delay: TTL_120H },
+        {
+          delay: TTL_120H,
+          jobId: `manager-expire:${endorsement.id}`,
+        },
       );
     }
 
@@ -2148,17 +2305,20 @@ export class WorkExperienceService {
       metadata: {
         endorsementId: endorsement.id,
         managerEmail,
+        managerDomain,
         resolvedDomain,
+        domainMatch,
       },
     });
 
-    return {
-      success: true,
-      endorsementId: endorsement.id,
-      managerEmail,
-      expiresAt: expiresAt.toISOString(),
-      message: `Manager endorsement request dispatched to ${managerEmail}. Valid for 5 days.`,
-    };
+    return this.buildSendManagerEndorsementResponse(
+      {
+        id: endorsement.id,
+        managerEmail: endorsement.managerEmail,
+        expiresAt: endorsement.expiresAt,
+      },
+      false,
+    );
   }
 
   /**
@@ -2281,9 +2441,7 @@ export class WorkExperienceService {
    * Returns minimal candidate info; no excess PII.
    */
   async getManagerEndorsementByToken(rawToken: string): Promise<GetManagerEndorsementSurveyDto> {
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new NotFoundException('Invalid endorsement token.');
-    }
+    this.assertManagerEndorsementTokenFormat(rawToken);
 
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
@@ -2338,9 +2496,8 @@ export class WorkExperienceService {
     payload: SubmitManagerEndorsementDto,
     meta?: { ip?: string; userAgent?: string },
   ): Promise<SubmitManagerEndorsementResponseDto> {
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new NotFoundException('Invalid endorsement token.');
-    }
+    this.assertManagerEndorsementTokenFormat(rawToken);
+    const parsedPayload = SubmitManagerEndorsementSchema.parse(payload);
 
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const endorsement = await this.prisma.workExperienceManagerEndorsement.findUnique({
@@ -2362,7 +2519,7 @@ export class WorkExperienceService {
 
     const exp = endorsement.experience;
     const now = new Date();
-    const newStatus = payload.confirmed ? 'CONFIRMED' : 'DISPUTED';
+    const newStatus = parsedPayload.confirmed ? 'CONFIRMED' : 'DISPUTED';
 
     // Update endorsement record
     await this.prisma.workExperienceManagerEndorsement.update({
@@ -2370,18 +2527,18 @@ export class WorkExperienceService {
       data: {
         respondedAt: now,
         status: newStatus,
-        confirmed: payload.confirmed,
-        skillRatings: payload.skillRatings
-          ? (payload.skillRatings as unknown as Prisma.InputJsonValue)
+        confirmed: parsedPayload.confirmed,
+        skillRatings: parsedPayload.skillRatings
+          ? (parsedPayload.skillRatings as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull,
-        comments: payload.comments ?? null,
+        comments: parsedPayload.comments ?? null,
         ipAddress: meta?.ip ?? null,
         userAgent: meta?.userAgent ?? null,
       },
     });
 
     // Recalculate overall_verified
-    const completedConfirmed = payload.confirmed === true;
+    const completedConfirmed = parsedPayload.confirmed === true;
     // docOk: check if experience already has doc_ok set, or if at least one doc is VALIDATED
     const currentExp = await this.prisma.workExperience.findUnique({
       where: { id: exp.id },
@@ -2405,23 +2562,16 @@ export class WorkExperienceService {
 
     await this.auditPublisher.record({
       actorId: null,
-      action: payload.confirmed
+      action: parsedPayload.confirmed
         ? 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED'
         : 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
       resourceType: 'WorkExperience',
       resourceId: exp.id,
-      reasonCode: payload.confirmed ? 'manager_confirmed' : 'manager_disputed',
+      reasonCode: parsedPayload.confirmed ? 'manager_confirmed' : 'manager_disputed',
       metadata: {
         endorsementId: endorsement.id,
         overallVerified,
-        skillRatings: payload.skillRatings ?? null,
-        managerEmailDistinctStudentCount: investigationFacts.managerEmailDistinctStudentCount,
-        managerEmailDisputedCount: investigationFacts.managerEmailDisputedCount,
-        ...(investigationFacts.submissionIpDistinctStudentCount !== null
-          ? {
-              submissionIpDistinctStudentCount: investigationFacts.submissionIpDistinctStudentCount,
-            }
-          : {}),
+        skillRatings: parsedPayload.skillRatings ?? null,
       },
     });
 
@@ -2439,8 +2589,8 @@ export class WorkExperienceService {
     return {
       success: true,
       status: newStatus as SubmitManagerEndorsementResponseDto['status'],
-      message: payload.confirmed
-        ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
+      message: parsedPayload.confirmed
+        ? "Thank you for confirming the candidate's role, employment dates, and responsibilities as their manager. Your manager endorsement has been recorded."
         : 'Your response has been recorded. The candidate has been notified.',
     };
   }

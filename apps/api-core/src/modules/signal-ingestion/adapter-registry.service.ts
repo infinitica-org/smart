@@ -4,6 +4,8 @@ import type { SignalSourceAdapter } from './adapters/signal-source.adapter.js';
 import { GithubSignalAdapter } from './adapters/github-signal.adapter.js';
 import { HackerrankSignalAdapter } from './adapters/hackerrank-signal.adapter.js';
 import { LeetcodeSignalAdapter } from './adapters/leetcode-signal.adapter.js';
+import { LinkedinSignalAdapter } from './adapters/linkedin-signal.adapter.js';
+import { CredentialProviderSignalAdapter } from './adapters/credential-provider-signal.adapter.js';
 
 /**
  * Registry of passive signal source adapters keyed by sourceId.
@@ -18,11 +20,15 @@ export class AdapterRegistryService {
     @Inject(GithubSignalAdapter) github: GithubSignalAdapter,
     @Inject(HackerrankSignalAdapter) hackerrank: HackerrankSignalAdapter,
     @Inject(LeetcodeSignalAdapter) leetcode: LeetcodeSignalAdapter,
+    @Inject(LinkedinSignalAdapter) linkedin: LinkedinSignalAdapter,
+    @Inject(CredentialProviderSignalAdapter) credly: CredentialProviderSignalAdapter,
   ) {
     this.adapters = new Map<ConnectableSignalSourceId, SignalSourceAdapter>();
     this.adapters.set('GITHUB', github);
     this.adapters.set('HACKERRANK', hackerrank);
     this.adapters.set('LEETCODE', leetcode);
+    this.adapters.set('LINKEDIN', linkedin);
+    this.adapters.set('CREDLY', credly);
   }
 
   get(sourceId: ConnectableSignalSourceId): SignalSourceAdapter {

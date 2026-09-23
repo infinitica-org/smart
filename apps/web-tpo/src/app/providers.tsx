@@ -2,7 +2,12 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { PORTAL_ROLES, getAccessToken, storeAccessToken } from '@smart/api-client';
+import {
+  PORTAL_ROLES,
+  getAccessToken,
+  resolvePortalOriginsFromEnv,
+  storeAccessToken,
+} from '@smart/api-client';
 import { RolesGuard, SessionBootstrap } from '@smart/ui';
 import { signOut } from '../lib/auth';
 
@@ -11,11 +16,7 @@ const MOCK_DEV_TPO_TOKEN =
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const authUrl = process.env.NEXT_PUBLIC_AUTH_URL ?? 'http://localhost:3005';
-const PORTAL_ORIGINS = {
-  student: process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001',
-  tpo: process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002',
-  admin: process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003',
-};
+const PORTAL_ORIGINS = resolvePortalOriginsFromEnv();
 const PUBLIC_PATHS = ['/auth'] as const;
 
 export function Providers({ children }: { children: React.ReactNode }) {

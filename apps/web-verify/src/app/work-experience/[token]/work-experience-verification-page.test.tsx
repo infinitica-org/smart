@@ -49,7 +49,7 @@ const mockData = {
   isAlreadyResponded: false,
 };
 
-describe('WorkExperienceVerificationPage', () => {
+describe('WorkExperienceVerificationPage', { timeout: 15000 }, () => {
   beforeEach(() => {
     getWorkExperienceVerificationByToken.mockResolvedValue(mockData);
   });

@@ -10,6 +10,7 @@ import {
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
@@ -195,6 +196,7 @@ export class PublicProfileService {
       certificate,
       externalCertificates,
       educationRecords,
+      capabilityRows,
     ] = await Promise.all([
       this.prisma.skillClaim.findMany({
         where: { studentId: userId, status: 'VERIFIED' },
@@ -226,6 +228,11 @@ export class PublicProfileService {
       this.prisma.candidateEducation.findMany({
         where: { studentId: userId },
         orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.studentCapability.findMany({
+        where: { studentId: userId },
+        take: 20,
+        orderBy: { confidenceScore: 'desc' },
       }),
     ]);
 
@@ -286,6 +293,7 @@ export class PublicProfileService {
         grade: edu.grade ?? null,
       })),
       showInProgressItems: showInProgress,
+      competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
     };
   }
 }
