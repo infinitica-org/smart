@@ -104,6 +104,8 @@ describe('WorkExperienceService', () => {
         create: vi.fn(),
         findFirst: vi.fn(),
         findUnique: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
         update: vi.fn(),
       },
       workExperienceResponsibility: {
@@ -2539,10 +2541,16 @@ describe('WorkExperienceService', () => {
     });
 
     describe('submitManagerEndorsement', () => {
+      beforeEach(() => {
+        prisma.workExperienceManagerEndorsement.findMany.mockResolvedValue([]);
+        prisma.workExperienceManagerEndorsement.count.mockResolvedValue(0);
+      });
+
       it('confirms endorsement and sets overallVerified=true when docOk=true', async () => {
         const mockEndorsement = {
           id: randomUUID(),
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2591,6 +2599,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: endorsementId,
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2627,6 +2636,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: randomUUID(),
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2674,6 +2684,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: endorsementId,
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2754,6 +2765,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: randomUUID(),
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2784,6 +2796,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: randomUUID(),
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2808,6 +2821,7 @@ describe('WorkExperienceService', () => {
         const mockEndorsement = {
           id: randomUUID(),
           experienceId,
+          managerEmail: 'manager@acme.com',
           expiresAt: new Date(Date.now() + 86400000),
           respondedAt: null,
           experience: mockExp,
@@ -2826,6 +2840,214 @@ describe('WorkExperienceService', () => {
           service.submitManagerEndorsement('valid-token', { confirmed: true }),
         ).rejects.toThrow('email queue unavailable');
         expect(notifications.notify).toHaveBeenCalledTimes(1);
+      });
+
+      describe('manager endorsement investigation facts (VER-02)', () => {
+        function buildPendingEndorsement(overrides: Record<string, unknown> = {}) {
+          return {
+            id: randomUUID(),
+            experienceId,
+            managerEmail: 'manager@acme.com',
+            expiresAt: new Date(Date.now() + 86400000),
+            respondedAt: null,
+            experience: mockExp,
+            ...overrides,
+          };
+        }
+
+        function mockSuccessfulSubmissionMocks() {
+          prisma.workExperienceManagerEndorsement.update.mockResolvedValue({});
+          prisma.workExperience.findUnique.mockResolvedValue({ id: experienceId, docOk: true });
+          prisma.workExperience.update.mockResolvedValue({
+            id: experienceId,
+            completedConfirmed: true,
+            overallVerified: true,
+          });
+        }
+
+        it('records distinct student count for the manager email in audit metadata', async () => {
+          const otherStudentId = randomUUID();
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement(),
+          );
+          mockSuccessfulSubmissionMocks();
+          prisma.workExperienceManagerEndorsement.findMany.mockImplementation(({ where }: any) => {
+            if (where?.managerEmail) {
+              return Promise.resolve([
+                { experience: { studentId: mockStudentId } },
+                { experience: { studentId: otherStudentId } },
+                { experience: { studentId: mockStudentId } },
+              ]);
+            }
+            return Promise.resolve([]);
+          });
+          prisma.workExperienceManagerEndorsement.count.mockResolvedValue(0);
+
+          await service.submitManagerEndorsement('valid-token', { confirmed: true });
+
+          expect(auditPublisher.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED',
+              metadata: expect.objectContaining({
+                managerEmailDistinctStudentCount: 2,
+                managerEmailDisputedCount: 0,
+              }),
+            }),
+          );
+        });
+
+        it('records disputed endorsement count for the manager email in audit metadata', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement(),
+          );
+          mockSuccessfulSubmissionMocks();
+          prisma.workExperienceManagerEndorsement.findMany.mockResolvedValue([
+            { experience: { studentId: mockStudentId } },
+          ]);
+          prisma.workExperienceManagerEndorsement.count.mockResolvedValue(3);
+
+          await service.submitManagerEndorsement('valid-token', { confirmed: false });
+
+          expect(auditPublisher.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
+              metadata: expect.objectContaining({
+                managerEmailDistinctStudentCount: 1,
+                managerEmailDisputedCount: 3,
+              }),
+            }),
+          );
+        });
+
+        it('records distinct student count for the submission IP when provided', async () => {
+          const otherStudentId = randomUUID();
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement(),
+          );
+          mockSuccessfulSubmissionMocks();
+          prisma.workExperienceManagerEndorsement.findMany.mockImplementation(({ where }: any) => {
+            if (where?.managerEmail) {
+              return Promise.resolve([{ experience: { studentId: mockStudentId } }]);
+            }
+            if (where?.ipAddress === '203.0.113.10') {
+              return Promise.resolve([
+                { experience: { studentId: mockStudentId } },
+                { experience: { studentId: otherStudentId } },
+              ]);
+            }
+            return Promise.resolve([]);
+          });
+          prisma.workExperienceManagerEndorsement.count.mockResolvedValue(0);
+
+          await service.submitManagerEndorsement(
+            'valid-token',
+            { confirmed: true },
+            { ip: '203.0.113.10', userAgent: 'Mozilla/5.0' },
+          );
+
+          expect(auditPublisher.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              metadata: expect.objectContaining({
+                submissionIpDistinctStudentCount: 2,
+              }),
+            }),
+          );
+        });
+
+        it('keeps existing CONFIRMED audit action and appends factual metadata only', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement(),
+          );
+          mockSuccessfulSubmissionMocks();
+
+          await service.submitManagerEndorsement('valid-token', { confirmed: true });
+
+          expect(auditPublisher.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_CONFIRMED',
+              reasonCode: 'manager_confirmed',
+              metadata: expect.objectContaining({
+                endorsementId: expect.any(String),
+                overallVerified: true,
+                managerEmailDistinctStudentCount: 0,
+                managerEmailDisputedCount: 0,
+              }),
+            }),
+          );
+          const metadata = auditPublisher.record.mock.calls.at(-1)?.[0]?.metadata as Record<
+            string,
+            unknown
+          >;
+          expect(metadata).not.toHaveProperty('suspicious');
+          expect(metadata).not.toHaveProperty('riskScore');
+          expect(metadata).not.toHaveProperty('fraudDetected');
+        });
+
+        it('keeps existing DISPUTED audit action and appends factual metadata only', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement(),
+          );
+          mockSuccessfulSubmissionMocks();
+          prisma.workExperience.update.mockResolvedValue({
+            id: experienceId,
+            completedConfirmed: false,
+            overallVerified: false,
+          });
+
+          await service.submitManagerEndorsement('valid-token', { confirmed: false });
+
+          expect(auditPublisher.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              action: 'WORK_EXPERIENCE_MANAGER_ENDORSEMENT_DISPUTED',
+              reasonCode: 'manager_disputed',
+              metadata: expect.objectContaining({
+                managerEmailDistinctStudentCount: 0,
+                managerEmailDisputedCount: 0,
+              }),
+            }),
+          );
+        });
+
+        it('does not run investigation queries for invalid tokens', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(null);
+
+          await expect(
+            service.submitManagerEndorsement('bad-token', { confirmed: true }),
+          ).rejects.toBeInstanceOf(NotFoundException);
+
+          expect(prisma.workExperienceManagerEndorsement.findMany).not.toHaveBeenCalled();
+          expect(prisma.workExperienceManagerEndorsement.count).not.toHaveBeenCalled();
+        });
+
+        it('does not run investigation queries for expired tokens', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement({
+              expiresAt: new Date(Date.now() - 3600000),
+            }),
+          );
+
+          await expect(
+            service.submitManagerEndorsement('expired-token', { confirmed: true }),
+          ).rejects.toBeInstanceOf(BadRequestException);
+
+          expect(prisma.workExperienceManagerEndorsement.findMany).not.toHaveBeenCalled();
+          expect(prisma.workExperienceManagerEndorsement.count).not.toHaveBeenCalled();
+        });
+
+        it('does not run investigation queries for already-responded tokens', async () => {
+          prisma.workExperienceManagerEndorsement.findUnique.mockResolvedValue(
+            buildPendingEndorsement({
+              respondedAt: new Date(),
+            }),
+          );
+
+          await expect(
+            service.submitManagerEndorsement('used-token', { confirmed: true }),
+          ).rejects.toBeInstanceOf(BadRequestException);
+
+          expect(prisma.workExperienceManagerEndorsement.findMany).not.toHaveBeenCalled();
+          expect(prisma.workExperienceManagerEndorsement.count).not.toHaveBeenCalled();
+        });
       });
     });
   });

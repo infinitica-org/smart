@@ -148,6 +148,9 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   'companyDomain',
   'domainMatch',
   'resolvedDomain',
+  'managerEmailDistinctStudentCount',
+  'managerEmailDisputedCount',
+  'submissionIpDistinctStudentCount',
 ]);
 
 /** Title-cases a raw `SCREAMING_SNAKE_CASE` or `dot.snake_case` string as a graceful fallback. */

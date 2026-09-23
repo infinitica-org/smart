@@ -2398,6 +2398,11 @@ export class WorkExperienceService {
       },
     });
 
+    const investigationFacts = await this.getManagerEndorsementInvestigationFacts({
+      managerEmail: endorsement.managerEmail,
+      submissionIp: meta?.ip ?? null,
+    });
+
     await this.auditPublisher.record({
       actorId: null,
       action: payload.confirmed
@@ -2410,6 +2415,13 @@ export class WorkExperienceService {
         endorsementId: endorsement.id,
         overallVerified,
         skillRatings: payload.skillRatings ?? null,
+        managerEmailDistinctStudentCount: investigationFacts.managerEmailDistinctStudentCount,
+        managerEmailDisputedCount: investigationFacts.managerEmailDisputedCount,
+        ...(investigationFacts.submissionIpDistinctStudentCount !== null
+          ? {
+              submissionIpDistinctStudentCount: investigationFacts.submissionIpDistinctStudentCount,
+            }
+          : {}),
       },
     });
 
@@ -2430,6 +2442,61 @@ export class WorkExperienceService {
       message: payload.confirmed
         ? 'Thank you for confirming this work experience. Your endorsement has been recorded.'
         : 'Your response has been recorded. The candidate has been notified.',
+    };
+  }
+
+  /**
+   * VER-02: Factual cross-student counts for admin investigation via existing audit logs.
+   * Observations only — no thresholds, flags, or automated decisions.
+   */
+  private async getManagerEndorsementInvestigationFacts(params: {
+    managerEmail: string;
+    submissionIp: string | null;
+  }): Promise<{
+    managerEmailDistinctStudentCount: number;
+    managerEmailDisputedCount: number;
+    submissionIpDistinctStudentCount: number | null;
+  }> {
+    const normalizedEmail = params.managerEmail.toLowerCase().trim();
+
+    const [emailEndorsements, disputedCount, ipEndorsements] = await Promise.all([
+      this.prisma.workExperienceManagerEndorsement.findMany({
+        where: { managerEmail: normalizedEmail },
+        select: { experience: { select: { studentId: true } } },
+      }),
+      this.prisma.workExperienceManagerEndorsement.count({
+        where: { managerEmail: normalizedEmail, status: 'DISPUTED' },
+      }),
+      params.submissionIp
+        ? this.prisma.workExperienceManagerEndorsement.findMany({
+            where: {
+              ipAddress: params.submissionIp,
+              respondedAt: { not: null },
+            },
+            select: { experience: { select: { studentId: true } } },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const managerEmailDistinctStudentCount = new Set(
+      emailEndorsements
+        .map((row) => row.experience?.studentId)
+        .filter((studentId): studentId is string => Boolean(studentId)),
+    ).size;
+
+    const submissionIpDistinctStudentCount =
+      ipEndorsements === null
+        ? null
+        : new Set(
+            ipEndorsements
+              .map((row) => row.experience?.studentId)
+              .filter((studentId): studentId is string => Boolean(studentId)),
+          ).size;
+
+    return {
+      managerEmailDistinctStudentCount,
+      managerEmailDisputedCount: disputedCount,
+      submissionIpDistinctStudentCount,
     };
   }
 
