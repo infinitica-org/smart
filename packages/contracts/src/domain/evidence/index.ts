@@ -23,3 +23,4 @@ export * from './skill-evidence-context.js';
 export * from './category-competency-templates.js';
 export * from './skill-competency-registry.js';
 export * from './skill-demonstration-evidence.js';
+export * from './competency-fusion.js';

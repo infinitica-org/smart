@@ -125,6 +125,7 @@ function makeService(deps: {
     (deps.prisma ?? {
       skillClaim: { findUnique: vi.fn(), update: vi.fn() },
       skillVerificationAttempt: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
+      evidenceRecord: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction: vi.fn(),
     }) as never,
     (deps.redis ?? {
@@ -249,6 +250,9 @@ describe('SkillVerificationService pending verification flow', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn(),
       },
+      evidenceRecord: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       verificationDecision: {
         create: vi.fn().mockResolvedValue({ id: 'decision-1' }),
       },
@@ -335,6 +339,9 @@ describe('SkillVerificationService pending verification flow', () => {
         update: vi.fn().mockResolvedValue(claimMarkedInProgress()),
       },
       skillVerificationAttempt: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      evidenceRecord: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       $transaction: vi.fn(),
     };
 

@@ -35,6 +35,7 @@ import {
 } from './evidence.mapper.js';
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
+import { EvidenceSyncService } from './evidence-sync.service.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -55,6 +56,7 @@ export class EvidenceService {
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
   ) {}
 
   async listEvidence(
@@ -437,6 +439,12 @@ export class EvidenceService {
       ),
     ]);
     await this.skillClaimAutoDeclare.ensureClaimsForProjectTags(
+      studentId,
+      projectId,
+      items.map((item) => item.skillCode),
+    );
+    await this.evidenceSync.syncProjectEvidenceRecord(studentId, projectId);
+    await this.evidenceSync.linkProjectEvidenceToTaggedClaims(
       studentId,
       projectId,
       items.map((item) => item.skillCode),

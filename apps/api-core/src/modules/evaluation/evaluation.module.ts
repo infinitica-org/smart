@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AiGatewayModule } from '../ai-gateway/ai-gateway.module.js';
 import { CorroborationModule } from '../corroboration/corroboration.module.js';
+import { EvidenceModule } from '../evidence/evidence.module.js';
 import { GithubIntegrationModule } from '../integrations/github/github-integration.module.js';
 import { ProctoringModule } from '../proctoring/proctoring.module.js';
 import { SpeechModule } from '../speech/speech.module.js';
@@ -23,6 +24,7 @@ import { QlixRecalibrationService } from './qlix-recalibration.service.js';
   imports: [
     AiGatewayModule,
     CorroborationModule,
+    EvidenceModule,
     GithubIntegrationModule,
     ProctoringModule,
     SpeechModule,

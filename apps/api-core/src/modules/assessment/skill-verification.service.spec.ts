@@ -138,7 +138,7 @@ describe('SkillVerificationService', () => {
     expect(gradeQueue.add).toHaveBeenCalledWith(
       'grade',
       { sessionId: SESSION_ID, userId: STUDENT_ID },
-      { jobId: `skill-verify-grade:${SESSION_ID}` },
+      { jobId: `skill-verify-grade-${SESSION_ID}` },
     );
   });
 

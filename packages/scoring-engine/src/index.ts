@@ -32,6 +32,7 @@ export * from './proficiency/sde-v4-scoring.js';
 export * from './competency/assessment-intelligence.js';
 export * from './competency/verification-settlement.js';
 export * from './competency/item-mapping.js';
+export * from './competency/fusion/index.js';
 
 /* ---------------------------- Reliability gates --------------------------- */
 export * from './reliability/agreement.js';
