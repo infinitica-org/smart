@@ -1,62 +1,108 @@
-# CI/CD & Deployment Architecture (GitHub Teams)
+# CI/CD & GitHub Plan Architecture
 
 > Owner: Tino (System Architect) · Applies to: SMART Monorepo
 
-SMART leverages the **GitHub Teams** plan for CI/CD, providing **3,000 Linux minutes per month**. We rely exclusively on GitHub-hosted `ubuntu-latest` runners (2 vCPU / 7 GB RAM) to keep builds isolated, reproducible, and to free our VPS environments from heavy compilation workloads.
+---
 
-## 1. CI Pipeline Architecture
+## 1. Current Plan Status — GitHub Free
 
-Our CI pipeline (`.github/workflows/ci.yml`) runs on `push` and `pull_request` against our three core branches: `main`, `qa`, and `dev`.
+SMART is currently on the **GitHub Free** organisational plan.
 
-### Caching Strategy (Saving Minutes)
+| Limit                            | Value                              |
+| -------------------------------- | ---------------------------------- |
+| CI minutes (Linux runners)       | **2,000 minutes / month**          |
+| Concurrent jobs                  | 20                                 |
+| CODEOWNERS enforcement           | ❌ Not available (Teams+ required) |
+| Required reviewers (branch rule) | ✅ Available (any user, not owner-scoped) |
+| Self-hosted runners              | ✅ Unlimited                       |
 
-To optimize our 3,000 monthly minutes, we heavily utilize caching:
+> [!WARNING]
+> The 2,000 monthly minutes are **already exhausted** as of September 2026. Until the plan is upgraded or a self-hosted runner is added, new CI runs will queue without starting.
 
-- **`actions/setup-node`:** Caches the `pnpm` global store to avoid downloading unchanged npm packages.
-- **Turborepo Cache (`.turbo`):** Caches the outputs of our Next.js and backend builds. If a package (e.g., `web-student`) hasn't changed, Turbo instantly replays the cached output instead of recompiling it, saving massive amounts of compute time.
+### Immediate options (pick one)
 
-### Concurrency
+| Option | Effort | Cost | Notes |
+|--------|--------|------|-------|
+| **A. Upgrade to GitHub Teams** | Low (billing change) | $4/user/month (~$24/mo for 6 users) | 3,000 minutes/month + CODEOWNERS enforcement unlocked — **recommended** |
+| **B. Add a self-hosted runner** | Medium (VPS setup) | ~$0 (use an idle VM) | Unlimited minutes; do NOT run on the same VPS as a live environment |
+| **C. Reduce CI trigger frequency** | Low (config change) | Free | Skip CI on `[skip ci]` commits; use `paths` filters to avoid running on docs-only changes |
 
-Because we run on isolated `ubuntu-latest` runners, `turbo` executes tasks (linting, typechecking, building) concurrently using all available cores, rather than being throttled.
+---
 
-## 2. PR Governance & Flow Enforcement
+## 2. CI Pipeline Architecture
 
-We enforce a strict linear promotion path: **`dev` → `qa` → `main`**.
+Our CI pipeline (`.github/workflows/ci.yml`) runs on `pull_request` and `push` against `main`, `qa`, and `dev`.
 
-This is automatically validated by our `.github/workflows/enforce-pr-flow.yml` workflow, which ensures:
+### Caching Strategy (conserving minutes)
 
-1. Pull Requests targeting `qa` **must** originate from `dev`.
-2. Pull Requests targeting `main` **must** originate from `qa`.
-3. Only the user `@brittytino` is permitted to author a PR targeting `main`.
+To maximise the monthly budget, the pipeline uses aggressive caching:
 
-_Note: This workflow is a secondary defense. The primary defense should be GitHub's Branch Protection Rules configured in the repository settings._
+- **`actions/setup-node`:** Caches the `pnpm` global store — avoids re-downloading unchanged packages.
+- **Turborepo cache (`.turbo`):** Caches build outputs per `github.sha`. If a package hasn't changed, Turbo replays the cached output instantly — this is the biggest minute-saver on a monorepo.
 
-## 3. Automated Deployments
+> [!TIP]
+> Because of Turbo caching, a typical PR that touches only one package (e.g. `apps/api-core`) should complete CI in **5–8 minutes**, not 25. If you see consistently long runs, check that the `.turbo` cache is being restored (look for "Cache restored" in the CI log).
 
-Deployments trigger automatically when a PR is merged (or a push occurs) and the subsequent CI run passes successfully.
+### Concurrency cancellation
 
-- **Dev Environment:** Managed by `deploy-dev.yml`. Triggers on a successful CI run on the `dev` branch. Syncs to the VPS and executes `deploy-vps.sh dev`.
-- **QA Environment:** Managed by `deploy-qa.yml`. Triggers on a successful CI run on the `qa` branch. Syncs to the VPS and executes `deploy-vps.sh qa`.
-- **Production Environment:** Managed by `deploy-prod.yml`. Triggers on a successful CI run on the `main` branch. Syncs to the VPS and executes `deploy-vps.sh prod`.
+The `concurrency` block in `ci.yml` cancels in-progress runs when a new push arrives on the same ref. This prevents minute waste from stacked pushes during active development.
 
-## 4. Zero-Downtime / Blue-Green Deployment
+---
 
-To eliminate downtime during VPS deployments, we use a Blue-Green deployment strategy.
+## 3. PR Governance & Flow Enforcement
 
-Because SMART uses Docker Compose with statically bound host ports (e.g., `3000`), Docker cannot start a new container before stopping the old one if they share the same port. To solve this, our deployment script (`scripts/blue-green-deploy.sh`) orchestrates a color-coded environment swap:
+The promotion path `dev → qa → main` is enforced by `.github/workflows/enforce-pr-flow.yml`:
 
-1. **Isolation:** We run the app as either the `smart-<env>-blue` or `smart-<env>-green` docker-compose project.
-2. **Build & Start:** The script pulls code, determines the _inactive_ color, builds the images, and starts the inactive stack in the background.
-3. **Health Check & Migrations:** It waits for the `api` container of the new stack to report as healthy and applies Prisma migrations.
-4. **Traffic Swap:** Once verified, a standalone reverse proxy (e.g., Caddy running outside of docker-compose) is reloaded to route traffic from the old color to the new color.
-5. **Teardown:** The old docker-compose stack is gracefully shut down.
+1. PRs to `qa` must come from `dev`.
+2. PRs to `main` must come from `qa` and must be authored by `@brittytino`.
+3. PRs to `dev` must come from a feature branch (not `qa`, `main`, or `develop`).
+4. Branch name and PR title convention violations are posted as PR comments (warning, non-blocking).
 
-_To fully utilize this script, the Caddy service must be extracted from the `docker-compose.yml` into a host-level system service._
+Label completeness is checked by `.github/workflows/pr-label-check.yml` (warning comment only, never blocks CI).
 
-## 5. Troubleshooting: "Minute Limits"
+---
 
-If you see CI jobs stuck in a `Queued` state or refusing to start with billing errors:
+## 4. CODEOWNERS — Free Plan Limitation
 
-1. Verify you haven't exceeded the 3,000 minutes provided by the GitHub Teams plan.
-2. Ensure there are no failed payment methods on the GitHub organization billing page.
-3. If minutes run out, you can set up a dedicated self-hosted runner (e.g., a cheap Hetzner VM) and temporarily revert the `runs-on` targets in the workflows from `ubuntu-latest` to your self-hosted labels. **Do not** share a CI runner with your live application VPS.
+> [!IMPORTANT]
+> On GitHub Free, the `CODEOWNERS` file auto-requests reviews from the listed owners, but **cannot mechanically block a merge** if those owners haven't approved. The "Require review from Code Owners" branch protection option is only available on **GitHub Teams or above**.
+>
+> **Current enforcement:** process-based. The module owner is accountable for the quality of PRs into `dev`. Tino is accountable for architect-owned paths. When you upgrade, flip the switch in Settings → Branches and CODEOWNERS is immediately enforced with no file changes required.
+
+---
+
+## 5. Automated Deployments
+
+| Branch | Workflow | Trigger | Target |
+|--------|----------|---------|--------|
+| `dev`  | `deploy-dev.yml`  | Successful CI on `dev`  | kvm2 `smart-dev`  |
+| `qa`   | `deploy-qa.yml`   | Successful CI on `qa`   | kvm2 `smart-qa`   |
+| `main` | `deploy-prod.yml` | Successful CI on `main` | kvm4 `smart-prod` |
+
+Deployments use a **blue-green strategy** (`scripts/blue-green-deploy.sh`) to eliminate downtime. See script header for operation details.
+
+---
+
+## 6. Troubleshooting: Minutes Exhausted
+
+If CI jobs are stuck in a `Queued` state or return billing errors:
+
+1. Check the organisation's billing page: Settings → Billing & Plans.
+2. If minutes are exhausted:
+   - Option A: Upgrade to GitHub Teams (see §1).
+   - Option B: Register a self-hosted runner temporarily. In `.github/workflows/ci.yml` change `runs-on: ubuntu-latest` → `runs-on: self-hosted`. **Never run a CI runner on the same host as a live environment.**
+3. Docs-only or chore commits can skip CI by including `[skip ci]` in the commit message.
+
+---
+
+## 7. GitHub Teams — Migration Checklist
+
+When the organisation upgrades to GitHub Teams:
+
+- [ ] Verify billing is active and plan shows 3,000 Linux minutes/month.
+- [ ] Settings → Branches → `dev` protection rule: enable **"Require review from Code Owners"**.
+- [ ] Settings → Branches → `qa` protection rule: enable **"Require review from Code Owners"** + "Restrict who can dismiss pull request reviews" → `@brittytino`.
+- [ ] Settings → Branches → `main` protection rule: enable **"Require review from Code Owners"**.
+- [ ] No changes to `.github/CODEOWNERS` required — already correct.
+- [ ] Update this document: remove the Free plan limitation notes, update minute budget to 3,000.
+- [ ] Announce to team: CODEOWNERS is now mechanically enforced.
