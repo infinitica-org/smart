@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -15,6 +15,13 @@ export class CapabilityInferenceReviewController {
     @Inject(CapabilityInferenceReviewService)
     private readonly reviews: CapabilityInferenceReviewService,
   ) {}
+
+  @Get('review-queue')
+  @ApiOperation({ summary: 'List low-confidence inferred capabilities awaiting review (SKL-02).' })
+  listReviewQueue(@Query('limit') limit?: string) {
+    const parsed = limit ? Number.parseInt(limit, 10) : 50;
+    return this.reviews.listReviewQueue(Number.isFinite(parsed) ? parsed : 50);
+  }
 
   @Post(':capabilityId/correct')
   @ApiOperation({ summary: 'Correct or approve a low-confidence inferred capability.' })

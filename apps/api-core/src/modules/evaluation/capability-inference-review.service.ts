@@ -2,12 +2,13 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import {
   CorrectStudentCapabilityRequestSchema,
   CorrectStudentCapabilityResponseSchema,
+  ListCapabilityInferenceReviewQueueResponseSchema,
   UuidSchema,
 } from '@smart/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { EvidenceSkillInferenceService } from '../evidence/evidence-skill-inference.service.js';
 
-const LOW_CONFIDENCE_THRESHOLD = 0.55;
+export const LOW_CONFIDENCE_THRESHOLD = 0.55;
 
 @Injectable()
 export class CapabilityInferenceReviewService {
@@ -16,6 +17,28 @@ export class CapabilityInferenceReviewService {
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
+
+  async listReviewQueue(limit = 50) {
+    const take = Math.min(Math.max(limit, 1), 100);
+    const rows = await this.prisma.studentCapability.findMany({
+      where: { confidenceScore: { lt: LOW_CONFIDENCE_THRESHOLD } },
+      orderBy: { inferredAt: 'desc' },
+      take,
+    });
+
+    return ListCapabilityInferenceReviewQueueResponseSchema.parse({
+      items: rows.map((row) => ({
+        capabilityId: row.id,
+        studentId: row.studentId,
+        skillCode: row.skillCode,
+        capabilityLabel: row.capabilityLabel,
+        proficiency: row.proficiency,
+        confidenceScore: row.confidenceScore,
+        modelVersion: row.modelVersion,
+        inferredAt: row.inferredAt.toISOString(),
+      })),
+    });
+  }
 
   async correctCapability(capabilityId: string, body: unknown, reviewerId: string) {
     const id = UuidSchema.parse(capabilityId);
