@@ -49,16 +49,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
   };
-  const evidenceVersions = {
-    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
-    createInitialVersion: vi.fn().mockResolvedValue('created'),
-    appendVersion: vi.fn().mockResolvedValue('created'),
-    contentEquals: vi.fn().mockReturnValue(false),
-    hashContent: vi.fn().mockReturnValue('hash-1'),
-    listStudentEvidenceVersions: vi.fn(),
-    getStudentEvidenceVersion: vi.fn(),
-    listCandidateEvidenceVersions: vi.fn(),
-    getCandidateEvidenceVersion: vi.fn(),
+  const evidenceSync = {
+    syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
+    linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
   const service = new EvidenceService(
     prisma as any,
@@ -67,7 +60,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue as any,
     dedup,
     skillClaimAutoDeclare as any,
-    evidenceVersions as any,
+    evidenceSync as any,
   );
   return {
     service,
@@ -77,7 +70,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     credentialVerificationQueue,
     dedup,
     skillClaimAutoDeclare,
-    evidenceVersions,
+    evidenceSync,
   };
 }
 
@@ -190,7 +183,7 @@ describe('EvidenceService credentials', () => {
         verificationStatus: 'PENDING',
       },
     ]);
-    const { service, skillClaimAutoDeclare } = buildService({
+    const { service, skillClaimAutoDeclare, evidenceSync } = buildService({
       prisma: {
         project: { findFirst },
         projectSkillMapping: { deleteMany, create: createMapping, findMany },
@@ -207,6 +200,12 @@ describe('EvidenceService credentials', () => {
     ]);
 
     expect(skillClaimAutoDeclare.ensureClaimsForProjectTags).toHaveBeenCalledWith(
+      'student-1',
+      'proj-1',
+      ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],
+    );
+    expect(evidenceSync.syncProjectEvidenceRecord).toHaveBeenCalledWith('student-1', 'proj-1');
+    expect(evidenceSync.linkProjectEvidenceToTaggedClaims).toHaveBeenCalledWith(
       'student-1',
       'proj-1',
       ['PYTHON_APPLICATION_BACKEND_DEVELOPMENT'],

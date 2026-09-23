@@ -8,6 +8,8 @@ import {
   ListAuditLogsQuerySchema,
   ListInstitutionStudentsQuerySchema,
   ListInstitutionsQuerySchema,
+  ListPartnershipRequestsQuerySchema,
+  ReviewPartnershipRequestSchema,
   ResolveVerificationRequestSchema,
   SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
@@ -33,6 +35,36 @@ function compactQuery(
 @Roles('SUPER_ADMIN')
 export class InstitutionsAdminController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
+
+  @Get('partnerships/requests')
+  listPartnershipRequests(@Query() query: Record<string, string | undefined>) {
+    return this.institutions.listPartnershipRequests(
+      ListPartnershipRequestsQuerySchema.parse(compactQuery(query)),
+    );
+  }
+
+  @Get('partnerships/requests/:id')
+  getPartnershipRequest(@Param('id') id: string) {
+    return this.institutions.getPartnershipRequestById(id);
+  }
+
+  @Post('partnerships/requests/:id/decision')
+  reviewPartnershipRequest(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.reviewPartnershipRequest(
+      id,
+      ReviewPartnershipRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Post('partnerships/requests/:id/provision')
+  provisionUniversityAccount(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.institutions.provisionUniversityAccount(id, user.sub);
+  }
 
   @Post('students/:userId/profile')
   viewProfile(

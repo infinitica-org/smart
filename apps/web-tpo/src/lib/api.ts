@@ -18,6 +18,7 @@ import {
   PlacementEmployerDetailSchema,
   PlacementEmployerSummarySchema,
   MatchRunDtoSchema,
+  GetEmployerSkillInspectionResponseSchema,
   UploadJobOpeningDocumentResponseSchema,
   UploadJobOpeningLogoResponseSchema,
   ShortlistDtoSchema,
@@ -113,6 +114,11 @@ export const matchingApi = {
     apiClient.get(`${API_PREFIX}/placement/match-runs/${runId}`, {
       schema: MatchRunDtoSchema,
     }),
+  inspectCandidateSkill: (studentId: string, skillCode: string) =>
+    apiClient.get(
+      `${API_PREFIX}/placement/candidates/${studentId}/skills/${encodeURIComponent(skillCode)}/inspection`,
+      { schema: GetEmployerSkillInspectionResponseSchema },
+    ),
 };
 
 export const applicationsApi = {

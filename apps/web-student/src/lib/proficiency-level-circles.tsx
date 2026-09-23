@@ -1,10 +1,10 @@
-import { proficiencyLevelNumber } from '@smart/contracts';
+import { proficiencyLevelNumber, SKILL_PROFICIENCIES } from '@smart/contracts';
 import { cn } from '@smart/ui';
 
 /** Student-facing verified depth (green through achieved level). */
 export function ProficiencyLevelCircles({
   proficiency,
-  maxLevel = 4,
+  maxLevel = SKILL_PROFICIENCIES.length,
   size = 'md',
 }: {
   proficiency: string;

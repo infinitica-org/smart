@@ -54,6 +54,12 @@ function setup() {
       findUnique: vi.fn().mockResolvedValue(projectRow),
       update: vi.fn().mockResolvedValue(projectRow),
     },
+    projectSkillMapping: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    projectVerificationReport: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   };
   const gateway = {
     hasCallableProvider: vi.fn().mockReturnValue(true),
@@ -96,6 +102,14 @@ function setup() {
   const proctoring = {
     assertInterviewReady: vi.fn().mockResolvedValue(undefined),
     isProctorLocked: vi.fn().mockResolvedValue(false),
+    onboarding: vi.fn().mockResolvedValue({
+      consentAt: new Date().toISOString(),
+      onboardingPassed: true,
+    }),
+  };
+  const defenseRecords = {
+    load: vi.fn().mockResolvedValue(null),
+    saveCompleted: vi.fn().mockResolvedValue({}),
   };
 
   const service = new ProjectDefenseService(
@@ -107,6 +121,7 @@ function setup() {
     interviewGate as never,
     proctoring as never,
     outbox as never,
+    defenseRecords as never,
   );
 
   return { service, gateway, speech, interviewGate, prisma, outbox, redisStore, proctoring };
@@ -360,7 +375,9 @@ describe('ProjectDefenseService', () => {
           ownershipConcern: false,
           ownershipConcernReason: null,
           justification: 'Candidate explained concrete decisions.',
-          evidence: ['Named Redis timeout fix'],
+          demonstratedClaims: ['Named Redis timeout fix'],
+          inferredClaims: [],
+          competencyScores: [],
         },
         auditId: randomUUID(),
       });
@@ -408,7 +425,9 @@ describe('ProjectDefenseService', () => {
           ownershipConcern: false,
           ownershipConcernReason: null,
           justification: 'Candidate explained concrete websocket ownership decisions.',
-          evidence: [],
+          demonstratedClaims: [],
+          inferredClaims: [],
+          competencyScores: [],
         },
         auditId: randomUUID(),
       });

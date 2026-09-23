@@ -1,0 +1,58 @@
+name: PR Label & Template Check
+
+# Checks that every feature PR targeting `dev` has the required labels:
+#   - At least one priority label  (P0-blocker | P1 | P1-high | P2-droppable)
+#   - At least one area label      (area:backend | area:frontend | area:ai | area:data | area:infra | area:contracts)
+#   - At least one sprint label    (sprint-0 … sprint-6)
+#
+# This is a WARNING-only job (always passes) so it never blocks CI.
+# Engineers are expected to self-correct before requesting review.
+#
+# NOTE: This workflow uses the GITHUB_TOKEN secret which is automatically
+# available — no extra secrets configuration needed on the Free plan.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  label-check:
+    name: Check PR labels & template
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    # Only run on PRs targeting dev
+    if: github.base_ref == 'dev'
+    steps:
+      - name: Verify required labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+
+          # Parse label list
+          HAS_PRIORITY=$(echo "$LABELS" | grep -qE '"P0-blocker"|"P1"|"P1-high"|"P2-droppable"' && echo yes || echo no)
+          HAS_AREA=$(echo "$LABELS"     | grep -qE '"area:' && echo yes || echo no)
+          HAS_SPRINT=$(echo "$LABELS"   | grep -qE '"sprint-[0-9]' && echo yes || echo no)
+
+          if [ "$HAS_PRIORITY" == "no" ]; then
+            MISSING="${MISSING}\n- **Priority label** missing — add one of: \`P0-blocker\`, \`P1\`, \`P1-high\`, \`P2-droppable\`"
+          fi
+          if [ "$HAS_AREA" == "no" ]; then
+            MISSING="${MISSING}\n- **Area label** missing — add one of: \`area:backend\`, \`area:frontend\`, \`area:ai\`, \`area:data\`, \`area:infra\`, \`area:contracts\`"
+          fi
+          if [ "$HAS_SPRINT" == "no" ]; then
+            MISSING="${MISSING}\n- **Sprint label** missing — add e.g. \`sprint-6\`"
+          fi
+
+          if [ -n "$MISSING" ]; then
+            BODY="### 🏷️ Missing Required Labels\n\nThis PR is missing the following labels. Please add them before requesting review:\n${MISSING}\n\n_See \`.cursor/rules/09-commits-and-prs.mdc\` for the full labelling policy._"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(printf '%b' "$BODY")" || true
+            echo "Label check warnings posted — not failing CI."
+          else
+            echo "All required labels are present. ✅"
+          fi

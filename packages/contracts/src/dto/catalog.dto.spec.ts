@@ -147,6 +147,7 @@ describe('SkillPassThresholdsDtoSchema', () => {
     const parsed = SkillPassThresholdsDtoSchema.parse({
       BEGINNER: { assessmentPass: 0.6, interviewPass: null, assessmentWeight: 1 },
       INTERMEDIATE: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
+      PROFICIENT: { assessmentPass: 0.67, interviewPass: null, assessmentWeight: 1 },
       ADVANCED: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
       PROFESSIONAL: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
     });
@@ -166,6 +167,7 @@ describe('CompetencyDtoSchema passThresholds (optional until catalog seed)', () 
       passThresholds: {
         BEGINNER: { assessmentPass: 0.6, interviewPass: null, assessmentWeight: 1 },
         INTERMEDIATE: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
+        PROFICIENT: { assessmentPass: 0.67, interviewPass: null, assessmentWeight: 1 },
         ADVANCED: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
         PROFESSIONAL: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
       },

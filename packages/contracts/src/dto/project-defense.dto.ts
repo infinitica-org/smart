@@ -5,6 +5,14 @@ import { IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 
 export const PROJECT_DEFENSE_EXAMINER_PROMPT_REF = 'project-defense-examiner@1' as const;
 export const PROJECT_DEFENSE_GRADER_PROMPT_REF = 'project-defense-grader@1' as const;
+export const PROJECT_DEFENSE_GRADER_V2_PROMPT_REF = 'project-defense-grader@2' as const;
+
+export const ProjectDefenseCompetencyScoreSchema = z.object({
+  competencyId: z.string().min(1).max(80),
+  score: z.number().min(0).max(100),
+  status: z.enum(['DEMONSTRATED', 'PARTIALLY_DEMONSTRATED', 'NOT_DEMONSTRATED', 'UNCERTAIN']),
+});
+export type ProjectDefenseCompetencyScore = z.infer<typeof ProjectDefenseCompetencyScoreSchema>;
 /** Maximum wall-clock interview duration (10 minutes). */
 export const PROJECT_DEFENSE_MAX_DURATION_SECONDS = 10 * 60;
 /** Minimum student answers before the examiner may end the interview early. */
@@ -117,8 +125,71 @@ export const ProjectDefenseGradeSchema = z.object({
   routedToReview: z.boolean(),
   promptRef: z.string().regex(/^[a-z0-9-]+@\d+$/),
   auditId: UuidSchema.nullable(),
+  justification: z.string().max(2_000).optional(),
+  demonstratedClaims: z.array(z.string().max(500)).max(15).optional(),
+  inferredClaims: z.array(z.string().max(500)).max(15).optional(),
+  competencyScores: z.array(ProjectDefenseCompetencyScoreSchema).max(20).optional(),
 });
 export type ProjectDefenseGrade = z.infer<typeof ProjectDefenseGradeSchema>;
+
+export const ProjectDefensePersistedRecordSchema = z.object({
+  projectId: UuidSchema,
+  sessionId: UuidSchema,
+  studentId: UuidSchema,
+  consentAt: IsoDateTimeSchema.nullable(),
+  proctoringSessionId: UuidSchema,
+  transcript: z.array(DefenseTurnSchema),
+  grade: ProjectDefenseGradeSchema,
+  completedAt: IsoDateTimeSchema,
+  appeals: z
+    .array(
+      z.object({
+        appealId: UuidSchema,
+        reason: z.string().min(8).max(2_000),
+        createdAt: IsoDateTimeSchema,
+        status: z.enum(['OPEN', 'RESOLVED']),
+      }),
+    )
+    .max(10),
+  reviewResolutions: z
+    .array(
+      z.object({
+        resolution: z.enum(['APPROVE', 'REJECT']),
+        reason: z.string().min(8).max(2_000),
+        reviewedBy: UuidSchema,
+        reviewedAt: IsoDateTimeSchema,
+        priorStatus: z.enum(['VERIFIED', 'UNDER_REVIEW', 'REJECTED']),
+        newStatus: z.enum(['VERIFIED', 'UNDER_REVIEW', 'REJECTED']),
+      }),
+    )
+    .max(20),
+});
+export type ProjectDefensePersistedRecord = z.infer<typeof ProjectDefensePersistedRecordSchema>;
+
+export const ProjectDefenseOutcomeDtoSchema = z.object({
+  projectId: UuidSchema,
+  projectStatus: z.enum(['VERIFIED', 'UNDER_REVIEW', 'REJECTED', 'SUBMITTED']),
+  interviewStatus: ProjectInterviewStatusSchema,
+  interviewCompletedAt: IsoDateTimeSchema.nullable(),
+  /** Full grade when VERIFIED; summary only when under review. */
+  grade: ProjectDefenseGradeSchema.nullable(),
+  transcript: z.array(DefenseTurnSchema).nullable(),
+  canAppeal: z.boolean(),
+  appealOpen: z.boolean(),
+});
+export type ProjectDefenseOutcomeDto = z.infer<typeof ProjectDefenseOutcomeDtoSchema>;
+
+export const ProjectDefenseAppealRequestSchema = z.object({
+  reason: z.string().min(8).max(2_000),
+});
+export type ProjectDefenseAppealRequest = z.infer<typeof ProjectDefenseAppealRequestSchema>;
+
+export const ProjectDefenseAppealResponseSchema = z.object({
+  projectId: UuidSchema,
+  projectStatus: z.literal('UNDER_REVIEW'),
+  appealId: UuidSchema,
+});
+export type ProjectDefenseAppealResponse = z.infer<typeof ProjectDefenseAppealResponseSchema>;
 
 export const CompleteProjectDefenseRequestSchema = z.object({
   sessionId: UuidSchema,

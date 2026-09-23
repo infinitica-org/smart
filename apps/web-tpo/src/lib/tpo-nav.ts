@@ -5,7 +5,6 @@ import {
   Landmark,
   LayoutDashboard,
   LayoutGrid,
-  Settings,
   ShieldCheck,
   UserPlus,
   UserSearch,
@@ -118,21 +117,15 @@ export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
     groupLabel: 'Workspace',
     items: [
       {
-        name: 'Candidates Repository',
+        name: 'Students',
         href: '/students',
-        description: 'Search and review onboarded candidates',
+        description: 'Search and review whitelisted students',
         icon: Users,
-      },
-      {
-        name: 'Candidate Onboarding',
-        href: '/provisioning',
-        description: 'Invite candidates and manage batch roster',
-        icon: UserPlus,
       },
       {
         name: 'Batches',
         href: '/batches',
-        description: 'Group candidates into cohorts for filtering and access',
+        description: 'Group students into cohorts for filtering',
         icon: LayoutGrid,
       },
     ],
@@ -141,12 +134,13 @@ export const CANDIDATES_NAV_GROUPS: TpoNavGroup[] = [
 
 export const CANDIDATES_NAV: TpoNavLink[] = CANDIDATES_NAV_GROUPS.flatMap((group) => group.items);
 
+/** Primary topbar — university wireframe IA */
 export const TPO_NAV: TpoNavItem[] = [
   { kind: 'link', name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { kind: 'link', name: 'Candidates', href: '/students', icon: Users },
-  { kind: 'link', name: 'Placement', href: '/companies', icon: Briefcase },
+  { kind: 'link', name: 'Students', href: '/students', icon: Users },
+  { kind: 'link', name: 'Whitelist', href: '/whitelist', icon: UserPlus },
+  { kind: 'link', name: 'Employers', href: '/companies', icon: Briefcase },
   { kind: 'link', name: 'Reports', href: '/reports', icon: BarChart3 },
-  { kind: 'link', name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 /** Nav hrefs that must match exactly (sibling routes under the same prefix). */
@@ -188,4 +182,23 @@ export function isPlacementRoute(pathname: string): boolean {
 /** True on candidates workspace routes (repository or onboarding). */
 export function isCandidatesRoute(pathname: string): boolean {
   return CANDIDATES_NAV.some((link) => isNavLinkActive(pathname, link.href));
+}
+
+/** Topbar Students — roster and batch routes. */
+export function isStudentsTopNavActive(pathname: string): boolean {
+  return (
+    isNavLinkActive(pathname, '/students') ||
+    isNavLinkActive(pathname, '/batches') ||
+    pathname.startsWith('/work-experience-verification') ||
+    pathname.startsWith('/skill-verification')
+  );
+}
+
+/** Topbar Whitelist — hub, onboarding, and legacy provisioning URL. */
+export function isWhitelistTopNavActive(pathname: string): boolean {
+  return (
+    isNavLinkActive(pathname, '/whitelist') ||
+    isNavLinkActive(pathname, '/onboarding') ||
+    isNavLinkActive(pathname, '/provisioning')
+  );
 }

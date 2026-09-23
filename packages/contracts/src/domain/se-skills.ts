@@ -25,10 +25,11 @@ export type SkillTagType = (typeof SKILL_TAG_TYPES)[number];
 export const TOOL_PROFICIENCY_TIERS = ['AWARE', 'WORKING', 'PRODUCTION'] as const;
 export type ToolProficiencyTier = (typeof TOOL_PROFICIENCY_TIERS)[number];
 
-/** Shared 4-band competency bars (framework-level definitions). */
+/** Shared five-band competency bars (framework-level definitions). */
 export const SE_PROFICIENCY_BARS: Readonly<Record<ProficiencyLevel, string>> = {
   BEGINNER: 'Conceptual understanding; supervised tasks',
   INTERMEDIATE: 'Independent, bounded-scope execution',
+  PROFICIENT: 'Consistent independent delivery; typical production scenarios',
   ADVANCED: 'Owns a component end-to-end; trade-off reasoning',
   PROFESSIONAL: 'Sets standards / architecture / strategy',
 };

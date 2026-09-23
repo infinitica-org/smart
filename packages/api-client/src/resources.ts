@@ -98,6 +98,7 @@ import {
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   LinkedinOauthUrlResponseSchema,
+  SelectableInstitutionDtoSchema,
   ListCertificateVerificationEventsResponseSchema,
   ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
@@ -122,10 +123,10 @@ import {
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
   EvidenceRecordDtoSchema,
-  EvidenceRecordVersionDtoSchema,
-  EvidenceRecordVersionRedactedDtoSchema,
-  ListEvidenceRecordVersionsResponseSchema,
-  ListEvidenceRecordVersionsRedactedResponseSchema,
+  GetSkillEvidenceInferenceResponseSchema,
+  GetSkillLevelExplanationResponseSchema,
+  ListCapabilityInferenceReviewQueueResponseSchema,
+  CorrectStudentCapabilityResponseSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
   ProjectSkillMappingDtoSchema,
@@ -159,6 +160,11 @@ import {
   ProjectDefenseAudioUploadResponseSchema,
   ProjectDefenseReplyResponseSchema,
   CompleteProjectDefenseResponseSchema,
+  ProjectDefenseAppealResponseSchema,
+  ProjectDefenseOutcomeDtoSchema,
+  ListProjectReviewQueueResponseSchema,
+  ProjectReviewDetailDtoSchema,
+  ResolveProjectReviewResponseSchema,
   SaveDraftResponseSchema,
   RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
@@ -237,6 +243,38 @@ export function authApi(client: SmartApiClient) {
 
     changePassword: (body: { currentPassword: string; newPassword: string }) =>
       client.post<void>(prefixed('/users/me/password'), body),
+
+    listInstitutions: () =>
+      client.get(prefixed('/auth/institutions'), {
+        schema: SelectableInstitutionDtoSchema.array(),
+        anonymous: true,
+      }),
+
+    register: (body: {
+      email: string;
+      password: string;
+      fullName: string;
+      institutionId: string;
+    }) =>
+      client.post(prefixed('/auth/register'), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+
+    verifyEmail: (token: string) =>
+      client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
+        anonymous: true,
+      }),
+
+    requestPasswordReset: (body: { email: string }) =>
+      client.post<void>(prefixed('/auth/password-reset/request'), body, {
+        anonymous: true,
+      }),
+
+    confirmPasswordReset: (token: string, body: { newPassword: string }) =>
+      client.post<void>(prefixed(`/auth/password-reset/${token}/confirm`), body, {
+        anonymous: true,
+      }),
 
     previewInvitation: (token: string) =>
       client.get(prefixed(`/auth/invitations/${token}`), {
@@ -736,6 +774,32 @@ export function onboardingApi(client: SmartApiClient) {
         schema: IntegrityQueueItemDtoSchema,
       }),
 
+    projectReviewQueue: () =>
+      client.get(prefixed('/admin/project-review-queue'), {
+        schema: ListProjectReviewQueueResponseSchema,
+      }),
+
+    projectReviewDetail: (projectId: string) =>
+      client.get(prefixed(`/admin/project-review-queue/${projectId}`), {
+        schema: ProjectReviewDetailDtoSchema,
+      }),
+
+    resolveProjectReview: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/admin/project-review-queue/${projectId}/resolve`), body, {
+        schema: ResolveProjectReviewResponseSchema,
+      }),
+
+    capabilityInferenceReviewQueue: (limit?: number) =>
+      client.get(prefixed('/admin/student-capabilities/review-queue'), {
+        schema: ListCapabilityInferenceReviewQueueResponseSchema,
+        query: limit !== undefined ? { limit: String(limit) } : undefined,
+      }),
+
+    correctStudentCapability: (capabilityId: string, body: unknown) =>
+      client.post(prefixed(`/admin/student-capabilities/${capabilityId}/correct`), body, {
+        schema: CorrectStudentCapabilityResponseSchema,
+      }),
+
     /** CN-T09 — super-admin-curated blocked-word list. */
     listBlockedWords: () =>
       client.get(prefixed('/admin/blocked-words'), {
@@ -955,6 +1019,16 @@ export function evidenceApi(client: SmartApiClient) {
     getProfile: () =>
       client.get(prefixed('/users/me/evidence-profile'), {
         schema: CandidateEvidenceProfileDtoSchema,
+      }),
+
+    getSkillLevelExplanation: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/level-explanation`), {
+        schema: GetSkillLevelExplanationResponseSchema,
+      }),
+
+    getSkillEvidenceInference: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/evidence-inference`), {
+        schema: GetSkillEvidenceInferenceResponseSchema,
       }),
 
     saveOnboardingSelection: (body: SaveOnboardingSelectionRequest) =>
@@ -1313,6 +1387,16 @@ export function projectsApi(client: SmartApiClient) {
     completeDefense: (projectId: string, body: unknown) =>
       client.post(prefixed(`/projects/${projectId}/defense/complete`), body, {
         schema: CompleteProjectDefenseResponseSchema,
+      }),
+
+    defenseOutcome: (projectId: string) =>
+      client.get(prefixed(`/projects/${projectId}/defense/outcome`), {
+        schema: ProjectDefenseOutcomeDtoSchema,
+      }),
+
+    appealDefense: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/appeal`), body, {
+        schema: ProjectDefenseAppealResponseSchema,
       }),
   };
 }

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
+  ClipboardList,
   CreditCard,
   GraduationCap,
   HeartPulse,
@@ -52,6 +53,12 @@ export const sidebarItems: NavGroup[] = [
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
       { id: 'integrity', title: 'Integrity queue', url: '/admin/integrity', icon: ShieldAlert },
+      {
+        id: 'project-review',
+        title: 'Project review',
+        url: '/admin/project-review',
+        icon: ClipboardList,
+      },
       {
         id: 'blocked-words',
         title: 'Blocked words',
