@@ -61,13 +61,14 @@ contributes product code; a sprint plan that does so is mis-scoped and must be c
 
 **Accountable for:**
 
-1. **Mandatory reviewer on every pull request** (`* @brittytino` in CODEOWNERS). No pull request merges without architect approval.
-2. **Contract change control** — every change to `@smart/contracts` requires a pull request with an ADR link, a migration note, and notification to all affected owners within the same pull request body.
-3. **Daily Architecture Review Board (17:00 IST)** — thirty minutes, all open pull requests triaged to `merge`, `changes-requested`, or `escalate`. No pull request remains untriaged for more than 24 hours.
-4. **Definition of Done enforcement** — per `docs/delivery/DEFINITION_OF_DONE.md`. Rejections are made on the basis of the Definition of Done, not subjective preference.
-5. **Cross-module integration correctness** — Kafka topic contracts, SLA budgets, the rate-limit matrix, and the RBAC matrix.
-6. **Release management** — cutting `release/*` branches and providing sign-off on the code freeze and the General Availability (GA) tag, per the schedule maintained in `docs/delivery/AGILE_PLAN.md`.
-7. **Technical debt register** (`docs/engineering/TECH_DEBT.md`) — any change merged with a known compromise is logged here within the same pull request.
+1. **Mandatory reviewer on architect-owned paths only** — `packages/contracts/`, `.github/workflows/`, `.github/CODEOWNERS`, `ARCHITECTURE.md`, `docs/adr/`, `docs/delivery/`, build-graph files (`turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`). No change to these paths merges without Tino's approval. Feature PRs touching only module-owned paths (`apps/api-core/src/modules/*`, `apps/web-*`, `packages/ui`, etc.) are reviewed and merged by the module owner — Tino's review is not required.
+2. **Release gate** — Tino is the mandatory reviewer and merger of all promotion pull requests: `dev → qa` and `qa → main`. This is the architectural checkpoint for an entire sprint's worth of work.
+3. **Contract change control** — every change to `@smart/contracts` requires a pull request with an ADR link, a migration note, and notification to all affected owners within the same pull request body.
+4. **Daily Architecture Review Board (17:00 IST)** — thirty minutes. Purpose: triage flagged PRs (those touching architect-owned paths or tagged `area:contracts`), unblock cross-module design questions, and review any PR an engineer has escalated. Feature PRs in module-owned paths are not tabled here unless there is a design question.
+5. **Definition of Done enforcement** — per `docs/delivery/DEFINITION_OF_DONE.md`. Rejections are made on the basis of the Definition of Done, not subjective preference.
+6. **Cross-module integration correctness** — Kafka topic contracts, SLA budgets, the rate-limit matrix, and the RBAC matrix.
+7. **Release management** — cutting `release/*` branches and providing sign-off on the code freeze and the General Availability (GA) tag, per the schedule maintained in `docs/delivery/AGILE_PLAN.md`.
+8. **Technical debt register** (`docs/engineering/TECH_DEBT.md`) — any change merged with a known compromise is logged here within the same pull request.
 
 Tino does not implement feature modules, resolve other engineers' failing tests, or assume
 ownership of a blocked ticket. Blocked tickets are reassigned during standup and are not absorbed
@@ -283,16 +284,16 @@ Full policy: [`docs/delivery/BRANCHING.md`](./docs/delivery/BRANCHING.md).
 main ──────────────────────────────────────────────▶  production. Only @brittytino merges.
  │
  └── qa ───────────────────────────────────────────▶  release candidate / UAT
-      │
+      │     ← Tino reviews and merges (release gate)
       └── dev ─────────────────────────────────────▶  team integration (default base)
-           │
-           ├── feat/S1-VV-04-redis-rate-limit-guard
-           ├── feat/S2-VB-11-attempt-timer-autosubmit
-           └── fix/S2-RM-19-gemini-failover-timeout
+           │     ← module owners review and merge feature PRs
+           ├── feat/S6-VV-84-org-unification-schema
+           ├── feat/S6-VB-xx-endorsement-reminder
+           └── fix/S6-RM-21-gemini-failover-timeout
 ```
 
 - The `develop` branch is deprecated; `dev` is the designated integration branch.
-- Branch name format: `<type>/S<sprint>-<initials>-<nn>-<slug>`
+- Branch name format: `<type>/S<sprint>-<INITIALS>-<nn>-<slug>`
 - Initials: `TN` Tino · `VV` Vishal V · `SV` Satheswaran V · `VB` Vishal Bharath R · `RM` Ramansh · `VG` Vedika G
 
 **Pull request rules:**
@@ -300,9 +301,11 @@ main ─────────────────────────
 - Maximum 400 changed lines of non-generated code per pull request. Larger changes must be split.
 - Title follows Conventional Commits and names the ticket: `feat(rate-limit): sliding window Lua guard (S1-VV-04)`.
 - Feature pull requests target `dev`. Promotion from `dev` to `qa` to `main` occurs via separate promotion pull requests (only Tino / `@brittytino` merges into `main`).
-- Every pull request requires: a linked ticket, a completed template, passing CI, Tino's approval, and the module owner's approval if it touches another owner's module.
+- **Review model for `dev` PRs:** The module owner of the touched paths is the required reviewer. Tino's review is only required for PRs touching architect-owned paths (`packages/contracts`, `.github/workflows/`, `.github/CODEOWNERS`, architecture docs, build-graph files). See [`.github/CODEOWNERS`](./.github/CODEOWNERS).
+- Every pull request requires: a linked ticket, a completed PR template, passing CI, and at least one approval from the module owner.
 - Squash merge only. `dev` history retains one commit per ticket.
 - A pull request open for more than 24 hours without review must be raised in standup rather than left unaddressed.
+- Required labels: one priority (`P0-blocker` / `P1` / `P1-high` / `P2-droppable`), one area (`area:backend` / `area:frontend` / `area:ai` / `area:data` / `area:infra` / `area:contracts`), one sprint (`sprint-0` … `sprint-6`). The `pr-label-check` workflow will auto-comment if labels are missing.
 
 ### 4.3 Escalation Path
 
@@ -328,14 +331,14 @@ main ─────────────────────────
 
 ## 5. Capacity & Velocity Assumptions
 
-| Engineer         | Feature Capacity                              | Review Load                            |
-| ---------------- | --------------------------------------------- | -------------------------------------- |
-| Tino             | 0 story points                                | Approximately 100% — all pull requests |
-| Vishal V         | 8 story points per sprint (steady-state rate) | Secondary reviewer, backend            |
-| Satheswaran V    | 8 story points per sprint (steady-state rate) | Secondary reviewer, frontend           |
-| Vishal Bharath R | 8 story points per sprint (steady-state rate) | Secondary reviewer, full-stack         |
-| Ramansh          | 8 story points per sprint (steady-state rate) | AI/scoring reviews                     |
-| Vedika G         | 8 story points per sprint (steady-state rate) | Content/data reviews                   |
+| Engineer         | Feature Capacity                              | Review Load                                                                                           |
+| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Tino             | 0 story points                                | Architect-owned paths (contracts, CI, arch docs) + all promotion PRs (`dev→qa`, `qa→main`)            |
+| Vishal V         | 8 story points per sprint (steady-state rate) | **Primary reviewer** for all backend PRs; backend escalation path for Ramansh, Vedika, Vishal Bharath |
+| Satheswaran V    | 8 story points per sprint (steady-state rate) | **Primary reviewer** for all frontend PRs (`packages/ui`, `apps/web-*`, `packages/api-client`)        |
+| Vishal Bharath R | 8 story points per sprint (steady-state rate) | **Primary reviewer** for assessment lifecycle & trust chain modules                                   |
+| Ramansh          | 8 story points per sprint (steady-state rate) | **Primary reviewer** for AI/scoring modules; co-reviewer with Vedika on golden eval sets              |
+| Vedika G         | 8 story points per sprint (steady-state rate) | **Primary reviewer** for content, data spine, analytics modules                                       |
 
 Planned team velocity is calculated on the basis of five delivery individual contributors (ICs).
 Any sprint plan that assumes six delivery engineers is invalid, since Tino's capacity is reserved

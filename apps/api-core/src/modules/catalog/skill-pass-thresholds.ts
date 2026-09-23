@@ -7,6 +7,7 @@ import type { SkillPassThresholdsDto } from '@smart/contracts';
 export const PRD_73_DEFAULT_PASS_THRESHOLDS: SkillPassThresholdsDto = {
   BEGINNER: { assessmentPass: 0.6, interviewPass: null, assessmentWeight: 1 },
   INTERMEDIATE: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
+  PROFICIENT: { assessmentPass: 0.67, interviewPass: null, assessmentWeight: 1 },
   ADVANCED: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
   PROFESSIONAL: { assessmentPass: 0.6, interviewPass: 0.6, assessmentWeight: 0.4 },
 };

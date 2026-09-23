@@ -18,13 +18,21 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceService } from './evidence.service.js';
+import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
+import { SkillLevelExplanationService } from './skill-level-explanation.service.js';
 
 const CREDENTIAL_DOCUMENT_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 @ApiTags('evidence')
 @Controller(`${API_PREFIX}/users/me`)
 export class EvidenceController {
-  constructor(@Inject(EvidenceService) private readonly evidence: EvidenceService) {}
+  constructor(
+    @Inject(EvidenceService) private readonly evidence: EvidenceService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
+    @Inject(SkillLevelExplanationService)
+    private readonly skillExplanation: SkillLevelExplanationService,
+  ) {}
 
   @Get('evidence')
   @Roles('STUDENT')
@@ -44,6 +52,33 @@ export class EvidenceController {
   @ApiBearerAuth()
   getProfile(@CurrentUser() user: RequestUser) {
     return this.evidence.getEvidenceProfile(user.sub);
+  }
+
+  @Get('skills/:skillCode/evidence-inference')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Evidence-fused skill proficiency and confidence (distinct from verified claim).',
+  })
+  getSkillEvidenceInference(
+    @CurrentUser() user: RequestUser,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillInference.getForStudent(user.sub, skillCode);
+  }
+
+  @Get('skills/:skillCode/level-explanation')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Student-facing why-this-level explanation (verified vs assessment vs evidence fusion) (SKL-03).',
+  })
+  getSkillLevelExplanation(
+    @CurrentUser() user: RequestUser,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillExplanation.getForStudent(user.sub, skillCode);
   }
 
   @Patch('evidence-profile/onboarding-selection')
@@ -72,6 +107,27 @@ export class EvidenceController {
   @ApiBearerAuth()
   update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
     return this.evidence.updateEvidence(user.sub, id, body);
+  }
+
+  @Get('evidence/:evidenceId/versions')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List historical versions for an evidence record (VER-01).' })
+  listEvidenceVersions(@CurrentUser() user: RequestUser, @Param('evidenceId') evidenceId: string) {
+    return this.evidence.listEvidenceVersions(user.sub, evidenceId);
+  }
+
+  @Get('evidence/:evidenceId/versions/:versionNumber')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a specific historical evidence version (VER-01).' })
+  getEvidenceVersion(
+    @CurrentUser() user: RequestUser,
+    @Param('evidenceId') evidenceId: string,
+    @Param('versionNumber') versionNumber: string,
+  ) {
+    const parsed = Number.parseInt(versionNumber, 10);
+    return this.evidence.getEvidenceVersion(user.sub, evidenceId, parsed);
   }
 
   @Post('evidence/:id/link-claim')

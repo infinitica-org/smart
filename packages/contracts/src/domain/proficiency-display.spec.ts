@@ -12,18 +12,21 @@ describe('proficiency display helpers', () => {
   it('maps proficiency enums to level numbers and UI labels', () => {
     expect(proficiencyLevelNumber('BEGINNER')).toBe(1);
     expect(proficiencyLevelUiLabel('BEGINNER')).toBe('Level 1');
-    expect(proficiencyLevelNumber('PROFESSIONAL')).toBe(4);
-    expect(proficiencyLevelUiLabel('PROFESSIONAL')).toBe('Level 4');
+    expect(proficiencyLevelNumber('PROFICIENT')).toBe(3);
+    expect(proficiencyLevelUiLabel('PROFICIENT')).toBe('Level 3');
+    expect(proficiencyLevelNumber('PROFESSIONAL')).toBe(5);
+    expect(proficiencyLevelUiLabel('PROFESSIONAL')).toBe('Level 5');
     expect(proficiencyLevelNumber('UNKNOWN')).toBe(0);
     expect(proficiencyLevelUiLabel('UNKNOWN')).toBe('UNKNOWN');
   });
 
-  it('builds a four-line legend for tooltips', () => {
+  it('builds a five-line legend for tooltips', () => {
     expect(proficiencyLegendEntries()).toEqual([
       { level: 1, traditionalLabel: 'Beginner' },
       { level: 2, traditionalLabel: 'Intermediate' },
-      { level: 3, traditionalLabel: 'Advanced' },
-      { level: 4, traditionalLabel: 'Professional' },
+      { level: 3, traditionalLabel: 'Proficient' },
+      { level: 4, traditionalLabel: 'Advanced' },
+      { level: 5, traditionalLabel: 'Professional' },
     ]);
   });
 

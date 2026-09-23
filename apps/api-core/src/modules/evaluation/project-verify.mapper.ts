@@ -137,6 +137,7 @@ export type ProjectRow = {
   snapshotSha: string | null;
   qlixCheckId: string | null;
   status: string;
+  isActive: boolean;
   createdAt: Date;
   report: ReportRow | null;
 };
@@ -192,6 +193,7 @@ export function toProjectDto(row: ProjectRow, interview?: ProjectInterviewState)
     githubUrl: row.githubUrl,
     liveUrl: row.liveUrl,
     status: row.status,
+    isActive: row.isActive,
     createdAt: row.createdAt.toISOString(),
     report: row.report ? toReportDto(row.report) : null,
     interviewRequired: interview?.interviewRequired ?? false,

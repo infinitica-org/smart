@@ -1,0 +1,95 @@
+name: Enforce PR Flow
+
+# Validates:
+#  1. PRs to `main`  must come from `qa`  and be authored by brittytino.
+#  2. PRs to `qa`    must come from `dev`.
+#  3. PRs to `dev`   must come from a feature/fix/chore/docs/refactor/test/perf branch
+#                    (not directly from qa or main, and not from develop).
+#  4. Branch name must follow <type>/S<n>-<INITIALS>-<nn>-<slug> convention (warning only).
+#  5. PR title must follow Conventional Commits + ticket format (warning only).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  enforce-flow:
+    name: PR flow & naming check
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write   # needed to post comments
+    steps:
+      - name: Validate PR base, head, author, title, and branch name
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          WARNINGS=""
+          ERRORS=""
+
+          echo "Base: $BASE_BRANCH | Head: $HEAD_BRANCH | Author: $AUTHOR"
+
+          # ── 1. main must come from qa and only brittytino may author it ──
+          if [ "$BASE_BRANCH" == "main" ]; then
+            if [ "$HEAD_BRANCH" != "qa" ]; then
+              ERRORS="${ERRORS}\n❌ PRs to \`main\` must come from \`qa\`. Found \`$HEAD_BRANCH\`."
+            fi
+            if [ "$AUTHOR" != "brittytino" ]; then
+              ERRORS="${ERRORS}\n❌ Only \`@brittytino\` may open a PR into \`main\`. Found \`$AUTHOR\`."
+            fi
+          fi
+
+          # ── 2. qa must come from dev ──
+          if [ "$BASE_BRANCH" == "qa" ]; then
+            if [ "$HEAD_BRANCH" != "dev" ]; then
+              ERRORS="${ERRORS}\n❌ PRs to \`qa\` must come from \`dev\`. Found \`$HEAD_BRANCH\`."
+            fi
+            if [ "$AUTHOR" != "brittytino" ]; then
+              echo "::error::Only 'brittytino' is allowed to create PRs to 'qa'."
+              exit 1
+            fi
+          fi
+
+          # ── 3. dev must NOT come from qa, main, or develop ──
+          if [ "$BASE_BRANCH" == "dev" ]; then
+            if [ "$HEAD_BRANCH" == "qa" ] || [ "$HEAD_BRANCH" == "main" ] || [ "$HEAD_BRANCH" == "develop" ]; then
+              ERRORS="${ERRORS}\n❌ PRs to \`dev\` must come from a feature branch, not from \`$HEAD_BRANCH\`."
+            fi
+          fi
+
+          # ── 4. Branch naming convention check (warning) ──
+          # Expected: <type>/S<n>-<INITIALS>-<nn>-<slug>
+          # e.g.  feat/S6-VV-04-redis-rate-limit-guard
+          BRANCH_PATTERN="^(feat|fix|chore|docs|refactor|test|perf)/S[0-9]+-[A-Z]+-[0-9]+-[a-z0-9-]+$"
+          if [ "$BASE_BRANCH" == "dev" ] && ! echo "$HEAD_BRANCH" | grep -qE "$BRANCH_PATTERN"; then
+            WARNINGS="${WARNINGS}\n⚠️  Branch name \`$HEAD_BRANCH\` does not follow the required format: \`<type>/S<n>-<INITIALS>-<nn>-<slug>\`  (e.g. \`feat/S6-VV-04-redis-rate-limit-guard\`)."
+          fi
+
+          # ── 5. PR title Conventional Commits check (warning) ──
+          # Expected: <type>(<scope>): <summary> (S<n>-<XX>-<nn>)
+          TITLE_PATTERN="^(feat|fix|perf|refactor|test|docs|build|ci|chore|revert|content|prompt|adr)\([a-z0-9:,-]+\): .+ \(S[0-9]+-[A-Z]+-[0-9]+\)$"
+          if ! echo "$PR_TITLE" | grep -qE "$TITLE_PATTERN"; then
+            WARNINGS="${WARNINGS}\n⚠️  PR title \`$PR_TITLE\` does not follow Conventional Commits format: \`<type>(<scope>): <summary> (S<n>-XX-nn)\`."
+          fi
+
+          # ── Post warnings as PR comment (free-plan compatible) ──
+          if [ -n "$WARNINGS" ]; then
+            COMMENT="### ⚠️ PR Convention Warnings\n\nThese are non-blocking style issues. Please fix before merging.\n${WARNINGS}\n\n_See \`docs/delivery/BRANCHING.md\` and \`.cursor/rules/09-commits-and-prs.mdc\` for the full policy._"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$(printf '%b' "$COMMENT")" || true
+          fi
+
+          # ── Fail on hard errors ──
+          if [ -n "$ERRORS" ]; then
+            echo ""
+            echo "PR flow validation FAILED:"
+            printf '%b\n' "$ERRORS"
+            exit 1
+          fi
+
+          echo "PR flow validation passed."

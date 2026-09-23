@@ -82,7 +82,6 @@ export function CandidateSuggestionCard({
   whyText,
   skillCoveragePct,
   capabilityCoveragePct,
-  minSkillCoverageApplied,
   selected,
   opportunitySent,
   sending,
@@ -96,7 +95,6 @@ export function CandidateSuggestionCard({
   whyText: string;
   skillCoveragePct?: number;
   capabilityCoveragePct?: number;
-  minSkillCoverageApplied?: number;
   selected: boolean;
   opportunitySent: boolean;
   sending: boolean;
@@ -114,6 +112,9 @@ export function CandidateSuggestionCard({
   const competencyGapCount = (candidate.explanation.capabilityFit ?? []).filter(
     (row) => row.hitScore < 0.5,
   ).length;
+  const evidenceSummaries = candidate.explanation.competencyEvidenceSummaries ?? [];
+  const previewEvidence = evidenceSummaries.slice(0, 3);
+  const extraEvidenceCount = Math.max(0, evidenceSummaries.length - previewEvidence.length);
 
   return (
     <article className={`${cardClass} flex flex-col gap-5`}>
@@ -166,11 +167,9 @@ export function CandidateSuggestionCard({
         <div className="flex flex-col gap-2 rounded-xl border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)]/60 px-4 py-3 sm:flex-row sm:items-end sm:gap-6">
           <CoverageMeter label="Skill coverage" value={skillCoveragePct ?? 0} />
           <CoverageMeter label="Capability coverage" value={capabilityCoveragePct ?? 0} />
-          {minSkillCoverageApplied !== undefined ? (
-            <p className={`text-[11px] sm:pb-0.5 ${mutedTextClass}`}>
-              Min skill gate {Math.round(minSkillCoverageApplied * 100)}%
-            </p>
-          ) : null}
+          <p className={`text-[11px] sm:pb-0.5 ${mutedTextClass}`}>
+            Ranked by verified required skills
+          </p>
         </div>
       ) : null}
 
@@ -209,6 +208,39 @@ export function CandidateSuggestionCard({
                 >
                   +{extraSkillCount} more opening skill{extraSkillCount === 1 ? '' : 's'} in sidebar
                 </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {previewEvidence.length > 0 ? (
+            <div>
+              <p className={`mb-2 ${sectionLabelClass}`}>Demonstrated capabilities</p>
+              <ul className="flex flex-col gap-2">
+                {previewEvidence.map((row) => (
+                  <li
+                    key={`${row.capabilityLabel}-${row.skillCode ?? 'general'}`}
+                    className="rounded-xl border border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-3 py-2.5"
+                  >
+                    <p className="text-sm font-medium text-[var(--ds-text)]">
+                      {row.capabilityLabel}
+                    </p>
+                    <p className={`mt-0.5 text-[11px] ${mutedTextClass}`}>
+                      {row.proficiency.replace(/_/g, ' ').toLowerCase()}
+                      {' · '}
+                      {Math.round(row.confidenceScore * 100)}% confidence
+                    </p>
+                    {row.evidenceSnippets[0] ? (
+                      <p className={`mt-1.5 text-xs leading-snug ${mutedTextClass}`}>
+                        {row.evidenceSnippets[0]}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {extraEvidenceCount > 0 ? (
+                <p className={`mt-2 text-xs ${mutedTextClass}`}>
+                  +{extraEvidenceCount} more capability signal{extraEvidenceCount === 1 ? '' : 's'}
+                </p>
               ) : null}
             </div>
           ) : null}

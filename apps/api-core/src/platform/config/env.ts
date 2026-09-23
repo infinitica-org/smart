@@ -68,6 +68,8 @@ const EnvSchema = z.object({
   VERIFY_APP_URL: z.string().default('http://localhost:3004'),
 
   INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().positive().default(48),
+  PASSWORD_RESET_TTL_HOURS: z.coerce.number().int().positive().default(2),
 
   S3_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
   /** Browser-reachable S3/MinIO base URL for presigned PUT/GET (defaults to S3_ENDPOINT). */

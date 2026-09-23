@@ -71,6 +71,15 @@ export const PublicExternalCertificateSchema = z.object({
 });
 export type PublicExternalCertificate = z.infer<typeof PublicExternalCertificateSchema>;
 
+export const PublicCompetencyEvidenceSummarySchema = z.object({
+  skillCode: z.string().nullable(),
+  capabilityLabel: z.string(),
+  proficiency: z.string(),
+  confidenceScore: z.number().min(0).max(1),
+  evidenceSnippets: z.array(z.string().max(500)).max(5),
+});
+export type PublicCompetencyEvidenceSummary = z.infer<typeof PublicCompetencyEvidenceSummarySchema>;
+
 export const PublicEducationSchema = z.object({
   institutionName: z.string(),
   degree: z.string().nullable(),
@@ -99,6 +108,7 @@ export const PublicCandidateProfileDtoSchema = z.object({
   externalCertificates: z.array(PublicExternalCertificateSchema),
   /** College-confirmed education entries when present. */
   education: z.array(PublicEducationSchema).default([]),
+  competencyEvidenceSummaries: z.array(PublicCompetencyEvidenceSummarySchema).default([]),
   /** CN-T09 — echoes the owner's opt-in state so the frontend can label in-progress entries. */
   showInProgressItems: z.boolean().default(false),
 });

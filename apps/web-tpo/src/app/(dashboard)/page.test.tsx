@@ -59,31 +59,23 @@ afterEach(() => {
 });
 
 describe('DashboardPage', () => {
-  it('renders bento sections and KPI values from API data', async () => {
+  it('renders university KPIs and roster from API data', async () => {
     render(<DashboardPage />);
 
     expect(await screen.findByText('Pilot TPO')).toBeDefined();
-    expect(screen.getByText('Total Onboarded')).toBeDefined();
-    expect(screen.getAllByText('Verified Skills').length).toBeGreaterThan(0);
-    expect(screen.getByText('Recent Candidates')).toBeDefined();
-    expect(screen.getByText('No upcoming activities')).toBeDefined();
-
-    expect(screen.queryByText('Domain Readiness')).toBeNull();
-    expect(screen.queryByText('Invites Accepted')).toBeNull();
-    expect(screen.queryByText('Onboarding Completion')).toBeNull();
+    expect(screen.getByText('Whitelisted')).toBeDefined();
+    expect(screen.getByText('Fully verified')).toBeDefined();
+    expect(screen.getByText('Opportunities matched')).toBeDefined();
+    expect(screen.getByText('Student roster')).toBeDefined();
     expect(screen.getByText('Ada Lovelace')).toBeDefined();
   });
 
-  it('links onboarding and roster actions to existing routes', async () => {
+  it('links roster to students list', async () => {
     render(<DashboardPage />);
 
     await screen.findByText('Pilot TPO');
-    expect(
-      screen.getAllByRole('link', { name: /Onboard Candidates/i })[0]?.getAttribute('href'),
-    ).toBe('/provisioning');
-    expect(screen.getByRole('link', { name: /View all/i }).getAttribute('href')).toBe('/students');
-    expect(screen.getByRole('link', { name: /Manage Openings/i }).getAttribute('href')).toBe(
-      '/openings',
+    expect(screen.getByRole('link', { name: /View all students/i }).getAttribute('href')).toBe(
+      '/students',
     );
   });
 
@@ -91,7 +83,10 @@ describe('DashboardPage', () => {
     apiMock.listTpoStudents.mockResolvedValueOnce([]);
     render(<DashboardPage />);
 
-    expect((await screen.findAllByText('No candidates onboarded yet')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('No students whitelisted yet')).toBeDefined();
+    expect(screen.getByRole('link', { name: /Open whitelist/i }).getAttribute('href')).toBe(
+      '/whitelist',
+    );
   });
 
   it('does not use neon dashboard accent #00fad0 or global tpo-accent tokens', async () => {

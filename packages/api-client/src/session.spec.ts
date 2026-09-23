@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLoginUrl,
   decodeAccessTokenRole,
@@ -8,6 +8,7 @@ import {
   isSafeReturnTo,
   PORTAL_ROLES,
   portalHomeForRole,
+  resolvePortalOriginsFromEnv,
   returnToForRole,
   roleAllowsPortal,
 } from './session.js';
@@ -27,6 +28,28 @@ const origins = {
   tpo: 'http://localhost:3002',
   admin: 'http://localhost:3003',
 };
+
+describe('resolvePortalOriginsFromEnv', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('falls back to the default local ports when unset', () => {
+    expect(resolvePortalOriginsFromEnv()).toEqual(origins);
+  });
+
+  it('reads the NEXT_PUBLIC_* overrides when set', () => {
+    vi.stubEnv('NEXT_PUBLIC_STUDENT_URL', 'https://student.example.com');
+    vi.stubEnv('NEXT_PUBLIC_TPO_URL', 'https://tpo.example.com');
+    vi.stubEnv('NEXT_PUBLIC_ADMIN_URL', 'https://admin.example.com');
+
+    expect(resolvePortalOriginsFromEnv()).toEqual({
+      student: 'https://student.example.com',
+      tpo: 'https://tpo.example.com',
+      admin: 'https://admin.example.com',
+    });
+  });
+});
 
 describe('decodeAccessTokenRole', () => {
   it('reads role from issued tokens that omit iss/aud', () => {

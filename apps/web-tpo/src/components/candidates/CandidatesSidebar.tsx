@@ -19,7 +19,7 @@ export function CandidatesSidebar() {
           <p className="text-[13px] font-semibold tracking-tight text-[var(--ds-text)]">
             Candidates
           </p>
-          <p className="text-[11px] text-[var(--ds-text-muted)]">Roster & onboarding</p>
+          <p className="text-[11px] text-[var(--ds-text-muted)]">Roster & batches</p>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">

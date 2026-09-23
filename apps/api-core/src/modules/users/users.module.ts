@@ -9,6 +9,8 @@ import { CandidateEducationService } from '../candidate-education/candidate-educ
 import { CandidateLanguagesController } from '../candidate-languages/candidate-languages.controller.js';
 import { CandidateLanguagesService } from '../candidate-languages/candidate-languages.service.js';
 import { ProfileCompletionService } from './profile-completion.service.js';
+import { UserAdminService } from './user-admin.service.js';
+import { UsersAdminController } from './users-admin.controller.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
@@ -16,12 +18,14 @@ import { UsersService } from './users.service.js';
   imports: [AuthModule, AiGatewayModule, GithubIntegrationModule, GeocodingIntegrationModule],
   controllers: [
     UsersController,
+    UsersAdminController,
     CandidateEducationController,
     CandidateEducationTpoController,
     CandidateLanguagesController,
   ],
   providers: [
     UsersService,
+    UserAdminService,
     CandidateEducationService,
     CandidateLanguagesService,
     ProfileCompletionService,

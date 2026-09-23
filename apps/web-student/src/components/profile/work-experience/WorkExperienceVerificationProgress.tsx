@@ -122,8 +122,7 @@ export function WorkExperienceVerificationProgress({
   ];
 
   if (managerEndorsementStatus) {
-    const endorsed =
-      managerEndorsementStatus === 'VERIFIED' || managerEndorsementStatus === 'APPROVED';
+    const endorsed = managerEndorsementStatus === 'CONFIRMED';
     steps.push({
       key: 'manager',
       label: 'Manager Endorsement',
@@ -131,8 +130,18 @@ export function WorkExperienceVerificationProgress({
         ? 'Complete'
         : managerEndorsementStatus === 'PENDING'
           ? 'Pending'
-          : managerEndorsementStatus,
-      state: endorsed ? 'complete' : managerEndorsementStatus === 'PENDING' ? 'active' : 'pending',
+          : managerEndorsementStatus === 'EXPIRED'
+            ? 'Expired'
+            : managerEndorsementStatus === 'DISPUTED'
+              ? 'Disputed'
+              : managerEndorsementStatus,
+      state: endorsed
+        ? 'complete'
+        : managerEndorsementStatus === 'PENDING'
+          ? 'active'
+          : managerEndorsementStatus === 'EXPIRED' || managerEndorsementStatus === 'DISPUTED'
+            ? 'warning'
+            : 'pending',
     });
   }
 

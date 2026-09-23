@@ -27,7 +27,8 @@ import {
   type EvidenceProvenanceItemDto,
   type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
-  type EvidenceVerificationStatus,
+  type EvidenceRecordVersionDto,
+  type ListEvidenceRecordVersionsResponse,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
@@ -36,6 +37,7 @@ import {
   type VerificationDecisionDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import {
@@ -70,6 +72,8 @@ import {
 } from './evidence.mapper.js';
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
+import { EvidenceSyncService } from './evidence-sync.service.js';
+import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -92,9 +96,19 @@ export class EvidenceService {
     @Inject(CredentialDedupService) private readonly dedup: CredentialDedupService,
     @Inject(SkillClaimAutoDeclareService)
     private readonly skillClaimAutoDeclare: SkillClaimAutoDeclareService,
-    @Inject(AuditPublisherService)
-    private readonly auditPublisher?: AuditPublisherService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
+
+  private async recomputeInferenceForSkills(
+    studentId: string,
+    skillCodes: readonly string[],
+  ): Promise<void> {
+    const codes = skillCodes.map((c) => c.trim()).filter(Boolean);
+    if (codes.length === 0) return;
+    await this.skillInference.recomputeForStudentSkills(studentId, codes);
+  }
 
   async listEvidence(
     studentId: string,
@@ -143,52 +157,79 @@ export class EvidenceService {
       });
     }
 
-    const row = await this.prisma.evidenceRecord.create({
-      data: {
-        studentId,
-        evidenceType: input.evidenceType,
-        source: input.source,
-        sourceOwner: input.sourceOwner,
-        sourceReference: input.sourceReference,
-        evidenceDate: input.evidenceDate,
-        submissionDate: input.submissionDate ? new Date(input.submissionDate) : new Date(),
-        claim: input.claim,
-        context: input.context,
-        provenance: input.provenance as Prisma.InputJsonValue | undefined,
-        accessibility: input.accessibility ?? 'PRIVATE',
-        relatedSkillCodes: input.relatedSkillIds ?? [],
-        verificationStatus: 'PENDING',
-        freshness: input.freshness as Prisma.InputJsonValue | undefined,
-        sourceEntityId: input.sourceEntityId,
-        sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
-        verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
-      },
-      include: { artifacts: true },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.evidenceRecord.create({
+        data: {
+          studentId,
+          evidenceType: input.evidenceType,
+          source: input.source,
+          sourceOwner: input.sourceOwner,
+          sourceReference: input.sourceReference,
+          evidenceDate: input.evidenceDate,
+          submissionDate: input.submissionDate ? new Date(input.submissionDate) : new Date(),
+          claim: input.claim,
+          context: input.context,
+          provenance: input.provenance as Prisma.InputJsonValue | undefined,
+          accessibility: input.accessibility ?? 'PRIVATE',
+          relatedSkillCodes: input.relatedSkillIds ?? [],
+          verificationStatus: 'PENDING',
+          freshness: input.freshness as Prisma.InputJsonValue | undefined,
+          sourceEntityId: input.sourceEntityId,
+          sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
+          verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
+        },
+        include: { artifacts: true },
+      });
+
+      const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+      await this.evidenceVersions.createInitialVersion(tx, created, {
+        mutationKey: `create:${created.id}`,
+        actorId: studentId,
+        organizationId,
+        source: created.source,
+        priorVerificationStatus: null,
+        newVerificationStatus: created.verificationStatus,
+      });
+
+      return created;
     });
 
     await this.reconciliation.reconcileForStudent(studentId);
-
-    if (this.auditPublisher) {
-      await this.auditPublisher.record({
-        actorId: studentId,
-        action: 'evidence.created',
-        resourceType: 'evidence_record',
-        resourceId: row.id,
-        reasonCode: null,
-        metadata: {
-          priorState: null,
-          newState: {
-            verificationStatus: row.verificationStatus,
-            source: row.source,
-            evidenceType: row.evidenceType,
-          },
-          source: row.source,
-          evidenceType: row.evidenceType,
-        },
-      });
-    }
-
+    await this.recomputeInferenceForSkills(studentId, row.relatedSkillCodes);
     return toEvidenceRecordDto(row);
+  }
+
+  async listEvidenceVersions(
+    studentId: string,
+    evidenceId: string,
+  ): Promise<ListEvidenceRecordVersionsResponse> {
+    return this.evidenceVersions.listStudentEvidenceVersions(studentId, evidenceId);
+  }
+
+  async getEvidenceVersion(
+    studentId: string,
+    evidenceId: string,
+    versionNumber: number,
+  ): Promise<EvidenceRecordVersionDto> {
+    return this.evidenceVersions.getStudentEvidenceVersion(studentId, evidenceId, versionNumber);
+  }
+
+  async listCandidateEvidenceVersions(caller: RequestUser, studentId: string, evidenceId: string) {
+    return this.evidenceVersions.listCandidateEvidenceVersions(caller, studentId, evidenceId);
+  }
+
+  async getCandidateEvidenceVersion(
+    caller: RequestUser,
+    studentId: string,
+    evidenceId: string,
+    versionNumber: number,
+  ) {
+    return this.evidenceVersions.getCandidateEvidenceVersion(
+      caller,
+      studentId,
+      evidenceId,
+      versionNumber,
+    );
   }
 
   async updateEvidence(
@@ -196,7 +237,18 @@ export class EvidenceService {
     evidenceId: string,
     body: unknown,
   ): Promise<EvidenceRecordDto> {
-    const existing = await this.getEvidence(studentId, evidenceId);
+    const existingRow = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, studentId },
+      include: { artifacts: true },
+    });
+    if (!existingRow) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence not found.',
+        statusCode: 404,
+      });
+    }
+
     const input = UpdateEvidenceRequestSchema.parse(body);
     const candidate = {
       claim: input.claim,
@@ -210,56 +262,72 @@ export class EvidenceService {
       });
     }
 
-    const row = await this.prisma.evidenceRecord.update({
-      where: { id: evidenceId },
-      data: {
-        source: input.source,
-        sourceOwner: input.sourceOwner,
-        sourceReference: input.sourceReference,
-        evidenceDate: input.evidenceDate,
-        submissionDate: input.submissionDate ? new Date(input.submissionDate) : undefined,
-        claim: input.claim,
-        context: input.context,
-        provenance: input.provenance as Prisma.InputJsonValue | undefined,
-        accessibility: input.accessibility,
-        relatedSkillCodes: input.relatedSkillIds,
-        freshness: input.freshness as Prisma.InputJsonValue | undefined,
-        sourceEntityId: input.sourceEntityId,
-        sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
-        verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
-      },
-      include: { artifacts: true },
-    });
-    await this.reconciliation.reconcileForStudent(studentId);
+    const mergedCandidate = {
+      ...existingRow,
+      source: input.source ?? existingRow.source,
+      sourceOwner: input.sourceOwner ?? existingRow.sourceOwner,
+      sourceReference: input.sourceReference ?? existingRow.sourceReference,
+      evidenceDate: input.evidenceDate ?? existingRow.evidenceDate,
+      submissionDate: input.submissionDate
+        ? new Date(input.submissionDate)
+        : existingRow.submissionDate,
+      claim: input.claim ?? existingRow.claim,
+      context: input.context ?? existingRow.context,
+      provenance: (input.provenance as Prisma.InputJsonValue | undefined) ?? existingRow.provenance,
+      accessibility: input.accessibility ?? existingRow.accessibility,
+      relatedSkillCodes: input.relatedSkillIds ?? existingRow.relatedSkillCodes,
+      freshness: (input.freshness as Prisma.InputJsonValue | undefined) ?? existingRow.freshness,
+      sourceEntityId: input.sourceEntityId ?? existingRow.sourceEntityId,
+      sourcePayload:
+        (input.sourcePayload as Prisma.InputJsonValue | undefined) ?? existingRow.sourcePayload,
+      verificationMetadata:
+        (input.verificationMetadata as Prisma.InputJsonValue | undefined) ??
+        existingRow.verificationMetadata,
+    } as EvidenceRecordRow;
 
-    if (this.auditPublisher) {
-      await this.auditPublisher.record({
-        actorId: studentId,
-        action: 'evidence.updated',
-        resourceType: 'evidence_record',
-        resourceId: row.id,
-        reasonCode: null,
-        metadata: {
-          priorState: {
-            verificationStatus: existing.verificationStatus,
-            source: existing.source,
-            evidenceType: existing.evidenceType,
-            claim: existing.claim ?? null,
-            relatedSkillCodes: existing.relatedSkillIds ?? [],
-          },
-          newState: {
-            verificationStatus: row.verificationStatus,
-            source: row.source,
-            evidenceType: row.evidenceType,
-            claim: row.claim ?? null,
-            relatedSkillCodes: row.relatedSkillCodes ?? [],
-          },
-          source: row.source,
-          evidenceType: row.evidenceType,
-        },
-      });
+    if (this.evidenceVersions.contentEquals(existingRow, mergedCandidate)) {
+      return toEvidenceRecordDto(existingRow);
     }
 
+    const contentHash = this.evidenceVersions.hashContent(mergedCandidate);
+    const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.evidenceRecord.update({
+        where: { id: evidenceId },
+        data: {
+          source: input.source,
+          sourceOwner: input.sourceOwner,
+          sourceReference: input.sourceReference,
+          evidenceDate: input.evidenceDate,
+          submissionDate: input.submissionDate ? new Date(input.submissionDate) : undefined,
+          claim: input.claim,
+          context: input.context,
+          provenance: input.provenance as Prisma.InputJsonValue | undefined,
+          accessibility: input.accessibility,
+          relatedSkillCodes: input.relatedSkillIds,
+          freshness: input.freshness as Prisma.InputJsonValue | undefined,
+          sourceEntityId: input.sourceEntityId,
+          sourcePayload: input.sourcePayload as Prisma.InputJsonValue | undefined,
+          verificationMetadata: input.verificationMetadata as Prisma.InputJsonValue | undefined,
+        },
+        include: { artifacts: true },
+      });
+
+      await this.evidenceVersions.appendVersion(tx, updated, {
+        mutationKey: `update:${evidenceId}:${contentHash}`,
+        actorId: studentId,
+        organizationId,
+        source: updated.source,
+        priorVerificationStatus: existingRow.verificationStatus,
+        newVerificationStatus: updated.verificationStatus,
+      });
+
+      return updated;
+    });
+
+    await this.reconciliation.reconcileForStudent(studentId);
+    await this.recomputeInferenceForSkills(studentId, row.relatedSkillCodes);
     return toEvidenceRecordDto(row);
   }
 
@@ -297,7 +365,8 @@ export class EvidenceService {
 
     // 1. Verify claim exists and belongs to studentId
     const claim = await this.prisma.skillClaim.findFirst({
-      where: { id: targetClaimId, studentId },
+      where: { id: input.claimId, studentId },
+      include: { skill: { select: { code: true } } },
     });
     if (!claim) {
       throw new NotFoundException({
@@ -323,102 +392,8 @@ export class EvidenceService {
         studentId,
       },
     });
-
-    if (evidenceRecords.length !== input.evidenceIds.length) {
-      const foundIds = new Set(evidenceRecords.map((e) => e.id));
-      const missing = input.evidenceIds.filter((id: string) => !foundIds.has(id));
-      throw new NotFoundException({
-        error: 'evidence_not_found',
-        message: `Evidence record(s) not found: ${missing.join(', ')}`,
-        statusCode: 404,
-      });
-    }
-
-    const rejectedEvidence = evidenceRecords.filter((e) => e.verificationStatus === 'REJECTED');
-    if (rejectedEvidence.length > 0) {
-      throw new BadRequestException({
-        error: 'invalid_evidence_state',
-        message: `Cannot associate rejected evidence item(s): ${rejectedEvidence.map((e) => e.id).join(', ')}`,
-        statusCode: 400,
-      });
-    }
-
-    // 4. Atomic upsert to ensure idempotency and prevent duplicates
-    const links = await this.prisma.$transaction(
-      input.evidenceIds.map((evidenceId: string) =>
-        this.prisma.skillClaimEvidenceLink.upsert({
-          where: { claimId_evidenceId: { claimId: targetClaimId, evidenceId } },
-          create: {
-            claimId: targetClaimId,
-            evidenceId,
-            weight: input.weight,
-          },
-          update: { weight: input.weight },
-        }),
-      ),
-    );
-
-    // 5. Trigger asynchronous reconciliation & recalculations
-    const reconciliation = await this.reconciliation.reconcileForStudent(studentId);
-
-    // 6. Record audit log
-    if (this.auditPublisher) {
-      await this.auditPublisher.record({
-        actorId: studentId,
-        action: 'evidence.associated_with_claim',
-        resourceType: 'skill_claim',
-        resourceId: targetClaimId,
-        reasonCode: null,
-        metadata: {
-          claimId: targetClaimId,
-          evidenceIds: input.evidenceIds,
-          associatedCount: links.length,
-          weight: input.weight,
-        },
-      });
-    }
-
-    return {
-      claimId: targetClaimId,
-      associatedCount: links.length,
-      links: links.map(toSkillClaimEvidenceLinkDto),
-      reconciliation,
-    };
-  }
-
-  async linkEvidenceToClaim(
-    studentId: string,
-    evidenceId: string,
-    body: unknown,
-  ): Promise<SkillClaimEvidenceLinkDto> {
-    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
-    let input: { claimId: string; weight?: number };
-    try {
-      input = LinkEvidenceToClaimRequestSchema.parse({ ...raw, evidenceId });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new BadRequestException({
-          error: 'validation_failed',
-          message: err.issues.map((e: z.ZodIssue) => e.message).join(' '),
-          statusCode: 400,
-        });
-      }
-      throw err;
-    }
-    const result = await this.associateEvidenceWithClaim(studentId, input.claimId, {
-      claimId: input.claimId,
-      evidenceIds: [evidenceId],
-      weight: input.weight,
-    });
-    const link = result.links[0];
-    if (!link) {
-      throw new BadRequestException({
-        error: 'association_failed',
-        message: 'Failed to create evidence link.',
-        statusCode: 400,
-      });
-    }
-    return link;
+    await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
+    return toSkillClaimEvidenceLinkDto(link);
   }
 
   async getEvidenceProfile(studentId: string): Promise<CandidateEvidenceProfileDto> {
@@ -512,16 +487,29 @@ export class EvidenceService {
       },
     });
 
-    await this.prisma.evidenceRecord.create({
-      data: {
-        studentId,
-        evidenceType: 'CREDENTIAL',
-        source: 'CANDIDATE',
-        relatedSkillCodes: input.coveredSkills ?? [],
-        sourceEntityId: row.id,
-        claim: input.credentialName,
-        verificationStatus: 'PENDING',
-      },
+    const organizationId = await this.evidenceVersions.resolveStudentOrganizationId(studentId);
+    await this.prisma.$transaction(async (tx) => {
+      const evidence = await tx.evidenceRecord.create({
+        data: {
+          studentId,
+          evidenceType: 'CREDENTIAL',
+          source: 'CANDIDATE',
+          relatedSkillCodes: input.coveredSkills ?? [],
+          sourceEntityId: row.id,
+          claim: input.credentialName,
+          verificationStatus: 'PENDING',
+        },
+        include: { artifacts: true },
+      });
+
+      await this.evidenceVersions.createInitialVersion(tx, evidence, {
+        mutationKey: `create:${evidence.id}`,
+        actorId: studentId,
+        organizationId,
+        source: evidence.source,
+        priorVerificationStatus: null,
+        newVerificationStatus: evidence.verificationStatus,
+      });
     });
 
     await this.reconciliation.reconcileForStudent(studentId);
@@ -659,6 +647,12 @@ export class EvidenceService {
       projectId,
       items.map((item) => item.skillCode),
     );
+    await this.evidenceSync.syncProjectEvidenceRecord(studentId, projectId);
+    await this.evidenceSync.linkProjectEvidenceToTaggedClaims(
+      studentId,
+      projectId,
+      items.map((item) => item.skillCode),
+    );
     return this.listProjectSkillMappings(studentId, projectId);
   }
 
@@ -671,6 +665,13 @@ export class EvidenceService {
         error: 'not_found',
         message: 'Project not found.',
         statusCode: 404,
+      });
+    }
+    if (row.isActive === false) {
+      throw new BadRequestException({
+        error: 'project_inactive',
+        message: 'This project is inactive and cannot be updated.',
+        statusCode: 400,
       });
     }
   }

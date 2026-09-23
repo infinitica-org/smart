@@ -99,6 +99,7 @@ import {
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
   LinkedinOauthUrlResponseSchema,
+  SelectableInstitutionDtoSchema,
   ListCertificateVerificationEventsResponseSchema,
   ListGithubReposResponseSchema,
   ListMyApplicationsResponseSchema,
@@ -125,6 +126,10 @@ import {
   CandidateEvidenceProfileDtoSchema,
   CandidateEvidenceProvenanceResponseSchema,
   EvidenceRecordDtoSchema,
+  GetSkillEvidenceInferenceResponseSchema,
+  GetSkillLevelExplanationResponseSchema,
+  ListCapabilityInferenceReviewQueueResponseSchema,
+  CorrectStudentCapabilityResponseSchema,
   ProfessionalCredentialDtoSchema,
   PassiveSignalEvidenceDtoSchema,
   ProjectSkillMappingDtoSchema,
@@ -152,12 +157,18 @@ import {
   ProctoringVoiceResponseSchema,
   ProctoringWarningSnapshotSchema,
   ProjectDtoSchema,
+  ReplaceProjectResponseSchema,
   AbandonProjectDefenseResponseSchema,
   PrepareProjectDefenseResponseSchema,
   StartProjectDefenseResponseSchema,
   ProjectDefenseAudioUploadResponseSchema,
   ProjectDefenseReplyResponseSchema,
   CompleteProjectDefenseResponseSchema,
+  ProjectDefenseAppealResponseSchema,
+  ProjectDefenseOutcomeDtoSchema,
+  ListProjectReviewQueueResponseSchema,
+  ProjectReviewDetailDtoSchema,
+  ResolveProjectReviewResponseSchema,
   SaveDraftResponseSchema,
   RunSdeSkillFormCodeResponseSchema,
   WorkExperienceSchema,
@@ -169,6 +180,7 @@ import {
   GetManagerEndorsementSurveySchema,
   SubmitManagerEndorsementResponseSchema,
   SendManagerEndorsementResponseSchema,
+  ResendManagerEndorsementResponseSchema,
   WorkExperienceOpsDashboardItemSchema,
   type CreateWorkExperienceDto,
   type UpdateWorkExperienceDto,
@@ -180,6 +192,16 @@ import {
   ProfileVisibilityResponseSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
+  ListAdminLevelsResponseSchema,
+  AdminLevelDtoSchema,
+  ListAdminItemsResponseSchema,
+  AdminItemDtoSchema,
+  ListAdminCutScoresResponseSchema,
+  AdminCutScoreDtoSchema,
+  ListGradingQueueResponseSchema,
+  ManualGradeResponseResultSchema,
+  ListSkillRetakePoliciesResponseSchema,
+  SkillRetakePolicyDtoSchema,
   VoidWorkExperienceResponseSchema,
   ApproveWorkExperienceAuthenticityResponseSchema,
   VoidCandidateCertificateResponseSchema,
@@ -236,6 +258,38 @@ export function authApi(client: SmartApiClient) {
 
     changePassword: (body: { currentPassword: string; newPassword: string }) =>
       client.post<void>(prefixed('/users/me/password'), body),
+
+    listInstitutions: () =>
+      client.get(prefixed('/auth/institutions'), {
+        schema: SelectableInstitutionDtoSchema.array(),
+        anonymous: true,
+      }),
+
+    register: (body: {
+      email: string;
+      password: string;
+      fullName: string;
+      institutionId: string;
+    }) =>
+      client.post(prefixed('/auth/register'), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
+
+    verifyEmail: (token: string) =>
+      client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
+        anonymous: true,
+      }),
+
+    requestPasswordReset: (body: { email: string }) =>
+      client.post<void>(prefixed('/auth/password-reset/request'), body, {
+        anonymous: true,
+      }),
+
+    confirmPasswordReset: (token: string, body: { newPassword: string }) =>
+      client.post<void>(prefixed(`/auth/password-reset/${token}/confirm`), body, {
+        anonymous: true,
+      }),
 
     previewInvitation: (token: string) =>
       client.get(prefixed(`/auth/invitations/${token}`), {
@@ -534,6 +588,15 @@ export function usersApi(client: SmartApiClient) {
         schema: SendManagerEndorsementResponseSchema,
       }),
 
+    resendWorkExperienceManagerEndorsement: (id: string) =>
+      client.post(
+        prefixed(`/users/me/work-experiences/${id}/resend-manager-endorsement`),
+        {},
+        {
+          schema: ResendManagerEndorsementResponseSchema,
+        },
+      ),
+
     getWorkExperienceManagerEndorsementByToken: (token: string) =>
       client.get(prefixed(`/users/work-experiences/manager-survey/${token}`), {
         schema: GetManagerEndorsementSurveySchema,
@@ -735,6 +798,32 @@ export function onboardingApi(client: SmartApiClient) {
         schema: IntegrityQueueItemDtoSchema,
       }),
 
+    projectReviewQueue: () =>
+      client.get(prefixed('/admin/project-review-queue'), {
+        schema: ListProjectReviewQueueResponseSchema,
+      }),
+
+    projectReviewDetail: (projectId: string) =>
+      client.get(prefixed(`/admin/project-review-queue/${projectId}`), {
+        schema: ProjectReviewDetailDtoSchema,
+      }),
+
+    resolveProjectReview: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/admin/project-review-queue/${projectId}/resolve`), body, {
+        schema: ResolveProjectReviewResponseSchema,
+      }),
+
+    capabilityInferenceReviewQueue: (limit?: number) =>
+      client.get(prefixed('/admin/student-capabilities/review-queue'), {
+        schema: ListCapabilityInferenceReviewQueueResponseSchema,
+        query: limit !== undefined ? { limit: String(limit) } : undefined,
+      }),
+
+    correctStudentCapability: (capabilityId: string, body: unknown) =>
+      client.post(prefixed(`/admin/student-capabilities/${capabilityId}/correct`), body, {
+        schema: CorrectStudentCapabilityResponseSchema,
+      }),
+
     /** CN-T09 — super-admin-curated blocked-word list. */
     listBlockedWords: () =>
       client.get(prefixed('/admin/blocked-words'), {
@@ -747,6 +836,59 @@ export function onboardingApi(client: SmartApiClient) {
       }),
 
     removeBlockedWord: (id: string) => client.delete<void>(prefixed(`/admin/blocked-words/${id}`)),
+
+    listAdminLevels: () =>
+      client.get(prefixed('/admin/levels'), { schema: ListAdminLevelsResponseSchema }),
+
+    createAdminLevel: (body: unknown) =>
+      client.post(prefixed('/admin/levels'), body, { schema: AdminLevelDtoSchema }),
+
+    updateAdminLevel: (levelId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/levels/${levelId}`), body, { schema: AdminLevelDtoSchema }),
+
+    listAdminItems: (levelId: string) =>
+      client.get(prefixed(`/admin/levels/${levelId}/items`), {
+        schema: ListAdminItemsResponseSchema,
+      }),
+
+    createAdminItem: (levelId: string, body: unknown) =>
+      client.post(prefixed(`/admin/levels/${levelId}/items`), body, {
+        schema: AdminItemDtoSchema,
+      }),
+
+    updateAdminItem: (itemId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/items/${itemId}`), body, { schema: AdminItemDtoSchema }),
+
+    listAdminCutScores: (levelId: string) =>
+      client.get(prefixed(`/admin/levels/${levelId}/cut-scores`), {
+        schema: ListAdminCutScoresResponseSchema,
+      }),
+
+    upsertAdminCutScore: (levelId: string, body: unknown) =>
+      client.post(prefixed(`/admin/levels/${levelId}/cut-scores`), body, {
+        schema: AdminCutScoreDtoSchema,
+      }),
+
+    listGradingQueue: (query?: { page?: number; pageSize?: number }) =>
+      client.get(prefixed('/admin/grading-queue'), {
+        schema: ListGradingQueueResponseSchema,
+        query,
+      }),
+
+    gradeResponse: (responseId: string, body: unknown) =>
+      client.post(prefixed(`/admin/responses/${responseId}/grade`), body, {
+        schema: ManualGradeResponseResultSchema,
+      }),
+
+    listSkillRetakePolicies: () =>
+      client.get(prefixed('/admin/skills/retake-policies'), {
+        schema: ListSkillRetakePoliciesResponseSchema,
+      }),
+
+    updateSkillRetakePolicy: (skillId: string, body: unknown) =>
+      client.patch(prefixed(`/admin/skills/${skillId}/retake-policy`), body, {
+        schema: SkillRetakePolicyDtoSchema,
+      }),
 
     /** SA-T08 — one-directional; there is no "un-void". */
     voidCandidateCertificate: (id: string, body: VoidRequest) =>
@@ -936,6 +1078,16 @@ export function evidenceApi(client: SmartApiClient) {
         schema: EvidenceRecordDtoSchema,
       }),
 
+    listVersions: (evidenceId: string) =>
+      client.get(prefixed(`/users/me/evidence/${evidenceId}/versions`), {
+        schema: ListEvidenceRecordVersionsResponseSchema,
+      }),
+
+    getVersion: (evidenceId: string, versionNumber: number) =>
+      client.get(prefixed(`/users/me/evidence/${evidenceId}/versions/${versionNumber}`), {
+        schema: EvidenceRecordVersionDtoSchema,
+      }),
+
     create: (body: CreateEvidenceRequest) =>
       client.post(prefixed('/users/me/evidence'), body, {
         schema: EvidenceRecordDtoSchema,
@@ -944,6 +1096,16 @@ export function evidenceApi(client: SmartApiClient) {
     getProfile: () =>
       client.get(prefixed('/users/me/evidence-profile'), {
         schema: CandidateEvidenceProfileDtoSchema,
+      }),
+
+    getSkillLevelExplanation: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/level-explanation`), {
+        schema: GetSkillLevelExplanationResponseSchema,
+      }),
+
+    getSkillEvidenceInference: (skillCode: string) =>
+      client.get(prefixed(`/users/me/skills/${skillCode}/evidence-inference`), {
+        schema: GetSkillEvidenceInferenceResponseSchema,
       }),
 
     saveOnboardingSelection: (body: SaveOnboardingSelectionRequest) =>
@@ -1244,17 +1406,21 @@ export function placementApi(client: SmartApiClient) {
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
 
-    getCandidateEvidenceProvenance: (studentId: string) =>
-      client.get(prefixed(`/placement/candidates/${studentId}/evidence`), {
-        schema: CandidateEvidenceProvenanceResponseSchema,
+    listCandidateEvidenceVersions: (studentId: string, evidenceId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/versions`), {
+        schema: z.union([
+          ListEvidenceRecordVersionsResponseSchema,
+          ListEvidenceRecordVersionsRedactedResponseSchema,
+        ]),
       }),
 
-    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
-      client.post(
-        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
-        body,
+    getCandidateEvidenceVersion: (studentId: string, evidenceId: string, versionNumber: number) =>
+      client.get(
+        prefixed(
+          `/placement/candidates/${studentId}/evidence/${evidenceId}/versions/${versionNumber}`,
+        ),
         {
-          schema: ReviewEvidenceResponseSchema,
+          schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
         },
       ),
   };
@@ -1269,6 +1435,11 @@ export function projectsApi(client: SmartApiClient) {
 
     get: (projectId: string) =>
       client.get(prefixed(`/projects/${projectId}`), { schema: ProjectDtoSchema }),
+
+    replace: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/replace`), body, {
+        schema: ReplaceProjectResponseSchema,
+      }),
 
     prepareDefense: (projectId: string) =>
       client.post(prefixed(`/projects/${projectId}/defense/prepare`), undefined, {
@@ -1298,6 +1469,16 @@ export function projectsApi(client: SmartApiClient) {
     completeDefense: (projectId: string, body: unknown) =>
       client.post(prefixed(`/projects/${projectId}/defense/complete`), body, {
         schema: CompleteProjectDefenseResponseSchema,
+      }),
+
+    defenseOutcome: (projectId: string) =>
+      client.get(prefixed(`/projects/${projectId}/defense/outcome`), {
+        schema: ProjectDefenseOutcomeDtoSchema,
+      }),
+
+    appealDefense: (projectId: string, body: unknown) =>
+      client.post(prefixed(`/projects/${projectId}/defense/appeal`), body, {
+        schema: ProjectDefenseAppealResponseSchema,
       }),
   };
 }

@@ -18,7 +18,7 @@ export type SkillRegistryProfile = {
   readonly flavorNotes: readonly string[];
   readonly proficiencyVerificationOverrides?: Partial<
     Record<
-      'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL',
+      'BEGINNER' | 'INTERMEDIATE' | 'PROFICIENT' | 'ADVANCED' | 'PROFESSIONAL',
       ProficiencyVerificationOverride
     >
   >;
