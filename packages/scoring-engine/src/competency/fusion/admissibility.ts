@@ -1,7 +1,12 @@
-import type { SkillCompetency, CompetencyStatus, TrustTier } from '@smart/contracts';
+import {
+  PROFICIENCY_LEVEL_ORDER,
+  type SkillCompetency,
+  type CompetencyStatus,
+  type TrustTier,
+} from '@smart/contracts';
 import type { ObservationBundle } from '@smart/contracts';
 
-const DIFFICULTY_ORDER = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'] as const;
+const DIFFICULTY_ORDER = PROFICIENCY_LEVEL_ORDER;
 
 export function difficultyIndex(d: SkillCompetency['difficulty']): number {
   if (!d) return 0;

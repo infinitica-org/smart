@@ -1,4 +1,8 @@
-import type { CompetencyStatus } from '@smart/contracts';
+import {
+  PROFICIENCY_LEVEL_ORDER,
+  type CompetencyStatus,
+  type ProficiencyLevel,
+} from '@smart/contracts';
 
 export const STATUS_ORDINAL = {
   NOT_TESTED: 0,
@@ -48,23 +52,16 @@ export function capConfidence(
   return minConfidence(level, cap);
 }
 
-const PROFICIENCY_ORDER: readonly ('BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL')[] = [
-  'BEGINNER',
-  'INTERMEDIATE',
-  'ADVANCED',
-  'PROFESSIONAL',
-];
+const PROFICIENCY_ORDER = PROFICIENCY_LEVEL_ORDER;
 
-export function proficiencyCapOrdinal(
-  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL',
-): number {
+export function proficiencyCapOrdinal(level: ProficiencyLevel): number {
   return PROFICIENCY_ORDER.indexOf(level);
 }
 
 export function capProficiency(
-  current: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL' | null,
-  cap: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL',
-): 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL' | null {
+  current: ProficiencyLevel | null,
+  cap: ProficiencyLevel,
+): ProficiencyLevel | null {
   if (current === null) return null;
   return proficiencyCapOrdinal(current) > proficiencyCapOrdinal(cap) ? cap : current;
 }

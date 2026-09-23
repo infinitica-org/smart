@@ -1,8 +1,11 @@
 import { computeAssessmentConfidence } from '../assessment-intelligence.js';
 import { minConfidence, capConfidence } from './status-ordinal.js';
-import type { CapabilityProfileEntry } from '@smart/contracts';
-import type { ProficiencyRequirement } from '@smart/contracts';
-import type { CompetencyResult } from '@smart/contracts';
+import type {
+  CapabilityProfileEntry,
+  CompetencyResult,
+  ProficiencyLevel,
+  ProficiencyRequirement,
+} from '@smart/contracts';
 
 const DOMAIN_VETO_CAP: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
 
@@ -13,7 +16,7 @@ export function computeDomainConfidence(input: {
   projectTrust: 'TRUSTED' | 'PROVISIONAL' | 'UNTRUSTED' | 'UNAVAILABLE' | null;
   projectReport: { scores?: { confidence?: number } } | null;
   appliedDomainVetoIds: string[];
-  inferredDomainProficiency: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL' | null;
+  inferredDomainProficiency: ProficiencyLevel | null;
   capabilityProfile: readonly CapabilityProfileEntry[];
   requirements: readonly ProficiencyRequirement[];
 }): { confidence: 'LOW' | 'MEDIUM' | 'HIGH'; confidenceReason: string } {

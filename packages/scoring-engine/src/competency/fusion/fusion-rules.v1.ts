@@ -1,5 +1,10 @@
 import { FUSION_RULE_SET_VERSION } from '@smart/contracts';
-import type { SkillCompetency, CompetencyStatus, TrustTier } from '@smart/contracts';
+import type {
+  ProficiencyLevel,
+  SkillCompetency,
+  CompetencyStatus,
+  TrustTier,
+} from '@smart/contracts';
 import { difficultyIndex } from './admissibility.js';
 
 export { FUSION_RULE_SET_VERSION };
@@ -24,7 +29,7 @@ export interface VetoEffect {
   statusCeiling?: CompetencyStatus;
   statusFloor?: CompetencyStatus;
   divergenceId?: string;
-  domainCap?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
+  domainCap?: ProficiencyLevel;
   ignoreProject?: boolean;
   unresolvedConflict?: boolean;
   forceProvisionalSettlement?: boolean;
@@ -33,7 +38,7 @@ export interface VetoEffect {
 export interface VetoInput extends FusionRuleContext {
   candidateStatus: CompetencyStatus;
   projectFlags: string[];
-  appliedCeiling: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL' | null;
+  appliedCeiling: ProficiencyLevel | null;
   preferProvisionalOnCriticalConflict: boolean;
 }
 

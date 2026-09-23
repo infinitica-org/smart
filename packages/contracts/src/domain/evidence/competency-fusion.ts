@@ -73,7 +73,7 @@ export const CompetencyFusionResultSchema = z.object({
   skillCode: z.string().min(1).max(80),
   capabilityProfile: z.array(CapabilityProfileEntrySchema).max(50).default([]),
   inferredDomainProficiency: z
-    .enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PROFESSIONAL'])
+    .enum(['BEGINNER', 'INTERMEDIATE', 'PROFICIENT', 'ADVANCED', 'PROFESSIONAL'])
     .nullable(),
   proficiencyInferenceReason: z
     .enum(['INSUFFICIENT_EVIDENCE', 'VETO_BLOCKED'])
