@@ -45,9 +45,14 @@ write_metric_file() {
   mv "${METRICS_DIR}/.${stem}.prom.tmp" "${METRICS_DIR}/${stem}.prom"
 }
 
+HOLDER_PID=""
 on_error() {
   local line="$1"
   log "FAILED at line ${line}"
+  if [[ -n "$HOLDER_PID" ]]; then
+    touch "${RUN_DIR}/dump.done" 2>/dev/null || true
+    kill "$HOLDER_PID" 2>/dev/null || true
+  fi
   write_metric_file smart_backup_failure \
     '# HELP smart_backup_last_failure_timestamp_seconds Unix time of the last failed backup run.' \
     '# TYPE smart_backup_last_failure_timestamp_seconds gauge' \
@@ -59,22 +64,58 @@ trap 'on_error $LINENO' ERR
 mkdir -p "$RUN_DIR"
 log "starting -> ${DAILY}"
 
-# 1. Postgres: custom-format dump streamed through age.
-pg_dump --format=custom --no-owner --no-privileges \
+# 1. Postgres. A holder psql session opens a REPEATABLE READ transaction,
+#    exports its snapshot and takes the sanity row counts inside it; pg_dump then
+#    dumps that same snapshot, so the manifest counts match the dump exactly and
+#    the restore drill can require equality. The holder waits (via \!) until the
+#    dump finishes, keeping the snapshot alive.
+tables_present="$(psql -X -Atqc "SELECT string_agg(t, ' ') FROM unnest(string_to_array('${SANITY_TABLES}', ' ')) AS t WHERE to_regclass('public.' || t) IS NOT NULL")"
+counts_sql=""
+for table in $tables_present; do
+  counts_sql+="SELECT '${table}', count(*) FROM public.\"${table}\";"$'\n'
+done
+{
+  echo 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;'
+  echo "\o ${RUN_DIR}/snapshot.id"
+  echo 'SELECT pg_export_snapshot();'
+  echo "\o ${RUN_DIR}/counts.txt"
+  printf '%s' "$counts_sql"
+  echo "SELECT '_migration', coalesce((SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1), '');"
+  echo '\o'
+  echo "\! touch ${RUN_DIR}/snapshot.ready"
+  echo "\! while [ ! -f ${RUN_DIR}/dump.done ]; do sleep 1; done"
+  echo 'COMMIT;'
+} >"${RUN_DIR}/snapshot.sql"
+psql -X -Atq -F ' ' -v ON_ERROR_STOP=1 -f "${RUN_DIR}/snapshot.sql" &
+HOLDER_PID=$!
+for _ in $(seq 1 60); do
+  [[ -f "${RUN_DIR}/snapshot.ready" ]] && break
+  kill -0 "$HOLDER_PID" 2>/dev/null || break
+  sleep 1
+done
+[[ -f "${RUN_DIR}/snapshot.ready" ]] || {
+  log "could not open a snapshot"
+  false
+}
+
+pg_dump --snapshot="$(tr -d '[:space:]' <"${RUN_DIR}/snapshot.id")" --format=custom --no-owner --no-privileges \
   | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "${RUN_DIR}/db.dump.age"
+touch "${RUN_DIR}/dump.done"
+wait "$HOLDER_PID"
+HOLDER_PID=""
 DB_BYTES="$(stat -c %s "${RUN_DIR}/db.dump.age")"
 log "database dump encrypted (${DB_BYTES} bytes)"
 
-# Row counts + latest migration, taken right after the dump for the drill to compare.
 counts_json=""
-for table in $SANITY_TABLES; do
-  if [[ "$(psql -Atqc "SELECT to_regclass('public.${table}') IS NOT NULL")" == "t" ]]; then
-    count="$(psql -Atqc "SELECT count(*) FROM public.\"${table}\"")"
-    counts_json+="${counts_json:+,}\"${table}\":${count}"
+LAST_MIGRATION=""
+while read -r name value; do
+  if [[ "$name" == "_migration" ]]; then
+    LAST_MIGRATION="${value:-}"
+  elif [[ -n "$name" ]]; then
+    counts_json+="${counts_json:+,}\"${name}\":${value}"
   fi
-done
-LAST_MIGRATION="$(psql -Atqc "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1" 2>/dev/null || true)"
-PG_VERSION="$(psql -Atqc 'SHOW server_version')"
+done <"${RUN_DIR}/counts.txt"
+PG_VERSION="$(psql -X -Atqc 'SHOW server_version')"
 
 # 2. MinIO objects: mirror the bucket, then tar | age. The mirror is plaintext
 #    on the work volume for the duration of the run only.
@@ -113,6 +154,7 @@ sha() { sha256sum "$1" | cut -d' ' -f1; }
 } >"${RUN_DIR}/manifest.json"
 
 # 4. Upload: artifacts first, manifest last.
+rm -f "${RUN_DIR}"/snapshot.* "${RUN_DIR}/counts.txt" "${RUN_DIR}/dump.done"
 rclone copy "$RUN_DIR" "$DAILY" --exclude manifest.json
 rclone copyto "${RUN_DIR}/manifest.json" "${DAILY}/manifest.json"
 if [[ "$(date -u +%u)" == "7" ]]; then
