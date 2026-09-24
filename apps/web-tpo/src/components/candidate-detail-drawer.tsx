@@ -68,10 +68,7 @@ export function CandidateDetailDrawer({
               <User className="size-4 stroke-[2]" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-900 leading-tight">
-                {candidate.fullName}
-              </h2>
-              <p className="text-[11px] text-zinc-500">{candidate.email}</p>
+              <h2 className="text-sm font-bold text-zinc-900 leading-tight">Candidate details</h2>
             </div>
           </div>
           <button
@@ -95,6 +92,7 @@ export function CandidateDetailDrawer({
 
         {/* Drawer Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <h3 className="sr-only">Candidate profile</h3>
           <CandidateRepositoryProfileView
             candidate={candidate}
             claims={claims}
