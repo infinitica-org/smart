@@ -241,78 +241,122 @@ export default function Page() {
         <EmptyState icon={Users}>No students matched.</EmptyState>
       ) : null}
       {hits && hits.length > 0 ? (
-        <DataTable headers={['Name', 'Email', 'Institution', 'Invite', 'Access']}>
-          {hits.map((hit) => (
-            <TableRow key={hit.userId}>
-              <TableCell className="font-medium">{hit.fullName}</TableCell>
-              <TableCell>{hit.email}</TableCell>
-              <TableCell>
-                <Button variant="link" className="px-0" asChild>
-                  <Link href={`/admin/institutions/${hit.institutionId}`}>
-                    {hit.institutionName}
-                  </Link>
-                </Button>
-              </TableCell>
-              <TableCell>{hit.inviteStatus ?? 'NONE'}</TableCell>
-              <TableCell className="space-x-2">
-                <StatusBadge status={hit.heldAt ? 'On hold' : 'Active'} />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    void (async () => {
-                      if (viewReason.trim().length < 8) {
-                        setError('Enter a view reason of at least 8 characters.');
-                        return;
-                      }
-                      try {
-                        setProfile(
-                          await api.onboarding.viewCandidateProfile(hit.userId, {
-                            reasonCode: viewCode,
-                            reason: viewReason.trim(),
-                          }),
-                        );
-                      } catch (err) {
-                        setError(isSmartApiError(err) ? err.message : 'Profile view failed.');
-                      }
-                    })();
-                  }}
-                >
-                  View
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    void (async () => {
-                      if (reason.trim().length < 8) {
-                        setError('Enter a reason of at least 8 characters.');
-                        return;
-                      }
-                      try {
-                        if (hit.heldAt) {
-                          await api.onboarding.releaseStudentHold(hit.userId, {
-                            reason: reason.trim(),
-                          });
-                        } else {
-                          await api.onboarding.holdStudent(hit.userId, {
-                            reason: reason.trim(),
-                          });
-                        }
-                        await refresh();
-                      } catch (err) {
-                        setError(isSmartApiError(err) ? err.message : 'Hold update failed.');
-                      }
-                    })();
-                  }}
-                >
-                  {hit.heldAt ? 'Release' : 'Hold'}
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+        <DataTable
+          headers={['Candidate', 'Institution', 'Invite Progress', 'Access Status', 'Actions']}
+        >
+          {hits.map((hit) => {
+            const initials =
+              hit.fullName
+                .split(' ')
+                .map((n) => n[0])
+                .filter(Boolean)
+                .slice(0, 2)
+                .join('')
+                .toUpperCase() || 'ST';
+
+            return (
+              <TableRow key={hit.userId}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-900 text-xs font-bold text-white shadow-2xs">
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-bold text-zinc-900 text-xs">{hit.fullName}</div>
+                      <div className="truncate text-[11px] text-zinc-500">{hit.email}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    className="px-0 text-xs font-medium text-zinc-900 hover:underline"
+                    asChild
+                  >
+                    <Link href={`/admin/institutions/${hit.institutionId}`}>
+                      {hit.institutionName}
+                    </Link>
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  {hit.inviteStatus === 'ACCEPTED' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 shadow-2xs">
+                      <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                      Accepted
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/90 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 shadow-2xs">
+                      <span className="size-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+                      {hit.inviteStatus ?? 'Pending'}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={hit.heldAt ? 'On hold' : 'Active'} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs"
+                      onClick={() => {
+                        void (async () => {
+                          if (viewReason.trim().length < 8) {
+                            setError('Enter a view reason of at least 8 characters.');
+                            return;
+                          }
+                          try {
+                            setProfile(
+                              await api.onboarding.viewCandidateProfile(hit.userId, {
+                                reasonCode: viewCode,
+                                reason: viewReason.trim(),
+                              }),
+                            );
+                          } catch (err) {
+                            setError(isSmartApiError(err) ? err.message : 'Profile view failed.');
+                          }
+                        })();
+                      }}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs"
+                      onClick={() => {
+                        void (async () => {
+                          if (reason.trim().length < 8) {
+                            setError('Enter a reason of at least 8 characters.');
+                            return;
+                          }
+                          try {
+                            if (hit.heldAt) {
+                              await api.onboarding.releaseStudentHold(hit.userId, {
+                                reason: reason.trim(),
+                              });
+                            } else {
+                              await api.onboarding.holdStudent(hit.userId, {
+                                reason: reason.trim(),
+                              });
+                            }
+                            await refresh();
+                          } catch (err) {
+                            setError(isSmartApiError(err) ? err.message : 'Hold update failed.');
+                          }
+                        })();
+                      }}
+                    >
+                      {hit.heldAt ? 'Release' : 'Hold'}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </DataTable>
       ) : null}
       {profile ? (

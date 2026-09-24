@@ -13,15 +13,18 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { CompanyPortalAccountSchema } from '@smart/contracts';
-import type {
-  AuthTokenResponse,
-  AuthenticatedUser,
-  CompanyPortalAccount,
-  RegisterRequest,
-  SelectableInstitutionDto,
+import {
+  CompanyPortalAccountSchema,
+  isDisallowedEndorserEmailDomain,
+  type AuthTokenResponse,
+  type AuthenticatedUser,
+  type CompanyPortalAccount,
+  type RegisterRequest,
+  type RegisterStudentRequest,
+  type SelectableInstitutionDto,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
@@ -158,6 +161,89 @@ export class AuthService {
     return this.issueSession(user, reply);
   }
 
+  async registerStudent(
+    dto: RegisterStudentRequest,
+    reply: FastifyReply,
+  ): Promise<AuthTokenResponse> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    if (isDisallowedEndorserEmailDomain(normalizedEmail)) {
+      throw new UnprocessableEntityException({
+        error: 'personal_email_not_allowed',
+        message:
+          'Personal email addresses (e.g. Gmail, Yahoo) are not permitted. Please use your official university email.',
+        statusCode: 422,
+      });
+    }
+
+    const emailDomain = normalizedEmail.split('@')[1];
+    if (!emailDomain) {
+      throw new UnprocessableEntityException({
+        error: 'invalid_email_domain',
+        message: 'Invalid email address domain.',
+        statusCode: 422,
+      });
+    }
+
+    const institutions = await this.prisma.institution.findMany({
+      select: { id: true, domain: true },
+    });
+    const matchedInstitution = institutions.find((inst) => {
+      const cleanInstDomain = inst.domain.trim().toLowerCase();
+      return emailDomain === cleanInstDomain || emailDomain.endsWith(`.${cleanInstDomain}`);
+    });
+
+    if (!matchedInstitution) {
+      throw new UnprocessableEntityException({
+        error: 'unregistered_university_domain',
+        message:
+          'Your university domain is not registered on SMART. Please contact your placement administrator.',
+        statusCode: 422,
+      });
+    }
+
+    const passwordHash = await hashPassword(dto.password);
+
+    try {
+      const user = await this.prisma.$transaction(async (tx) => {
+        return tx.user.create({
+          data: {
+            email: normalizedEmail,
+            fullName: dto.fullName,
+            passwordHash,
+            role: 'STUDENT',
+            provider: 'PASSWORD',
+            emailVerified: false,
+            institutionId: matchedInstitution.id,
+            onboardingCompleted: false,
+          },
+          include: {
+            institution: true,
+            company: true,
+            primaryTrack: true,
+            secondaryTrack: true,
+          },
+        });
+      });
+
+      return this.issueSession(user, reply);
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        throw new ConflictException({
+          error: 'email_exists',
+          message: 'An account with this email address already exists.',
+          statusCode: 409,
+        });
+      }
+      throw err;
+    }
+  }
+
   async issueSession(user: UserWithAuthIncludes, reply: FastifyReply): Promise<AuthTokenResponse> {
     const familyId = randomUUID();
     const rawRefresh = createRefreshToken();
@@ -285,7 +371,7 @@ export class AuthService {
     if (!user) {
       throw unauthorized('User not found.');
     }
-    if (user.role !== 'COMPANY' || !user.companyId || !user.company) {
+    if (user.role !== 'COMPANY') {
       throw new ForbiddenException({
         error: 'forbidden',
         message: 'You do not have permission to perform this action.',
@@ -295,10 +381,10 @@ export class AuthService {
     const base = await toAuthenticatedUserWithPhoto(this.storage, user);
     return CompanyPortalAccountSchema.parse({
       ...base,
-      companyVerificationStatus: user.company.verificationStatus,
-      companyWebsite: user.company.website,
-      companyIndustry: user.company.taxonomyDomain,
-      companyLocation: user.company.location,
+      companyVerificationStatus: user.company?.verificationStatus ?? 'APPROVED',
+      companyWebsite: user.company?.website ?? null,
+      companyIndustry: user.company?.taxonomyDomain ?? null,
+      companyLocation: user.company?.location ?? null,
     });
   }
 

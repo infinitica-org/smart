@@ -20,12 +20,11 @@ afterEach(() => {
 });
 
 describe('TpoTopbar', () => {
-  it('has search, top navigation links, and profile menu', () => {
+  it('has breadcrumb navigation and profile menu', () => {
     render(<TpoTopbar onOpenMobileNav={vi.fn()} />);
-    expect(screen.getByPlaceholderText('Search...')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Students' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Employers' })).toBeDefined();
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeDefined();
+    expect(screen.getByText('Dashboard')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Support' })).toBeDefined();
   });
 
   it('opens mobile nav via menu button', () => {
@@ -35,10 +34,9 @@ describe('TpoTopbar', () => {
     expect(onOpen).toHaveBeenCalled();
   });
 
-  it('opens profile menu with My profile and My school', () => {
+  it('opens profile menu with My school and Sign out', () => {
     render(<TpoTopbar onOpenMobileNav={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Pilot TPO account menu/i }));
-    expect(screen.getByRole('button', { name: 'My profile' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'My school' })).toBeDefined();
     expect(screen.getByRole('button', { name: /Sign out/i })).toBeDefined();
   });

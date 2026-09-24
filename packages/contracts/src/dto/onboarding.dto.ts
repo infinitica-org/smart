@@ -59,7 +59,45 @@ export const CreateInstitutionRequestSchema = z.object({
   name: z.string().trim().min(2).max(200),
   domain: InstitutionDomainSchema,
 });
+
 export type CreateInstitutionRequest = z.infer<typeof CreateInstitutionRequestSchema>;
+
+export const ConnectPartnerUniversityRequestSchema = z.object({
+  institutionId: UuidSchema,
+});
+export type ConnectPartnerUniversityRequest = z.infer<typeof ConnectPartnerUniversityRequestSchema>;
+
+export const PartnerUniversityOptionDtoSchema = z.object({
+  institutionId: UuidSchema,
+  name: z.string(),
+  domain: z.string(),
+});
+export type PartnerUniversityOptionDto = z.infer<typeof PartnerUniversityOptionDtoSchema>;
+
+export const StudentInstitutionPartnershipStatusDtoSchema = z.object({
+  institutionId: UuidSchema.nullable(),
+  institutionName: z.string().nullable(),
+  isPartnered: z.boolean(),
+});
+export type StudentInstitutionPartnershipStatusDto = z.infer<
+  typeof StudentInstitutionPartnershipStatusDtoSchema
+>;
+
+export const UniversityContactRequestStatusSchema = z.enum(['PENDING']);
+export type UniversityContactRequestStatus = z.infer<typeof UniversityContactRequestStatusSchema>;
+
+export const RequestUniversityContactRequestSchema = z.object({
+  universityName: z.string().trim().min(2, 'Enter the university name.').max(200),
+});
+export type RequestUniversityContactRequest = z.infer<typeof RequestUniversityContactRequestSchema>;
+
+export const UniversityContactRequestDtoSchema = z.object({
+  id: UuidSchema,
+  universityName: z.string(),
+  status: UniversityContactRequestStatusSchema,
+  createdAt: IsoDateTimeSchema,
+});
+export type UniversityContactRequestDto = z.infer<typeof UniversityContactRequestDtoSchema>;
 
 export const ConfigureInstitutionSettingsSchema = z.object({
   name: z.string().trim().min(2).max(200).optional(),
@@ -243,6 +281,42 @@ export const InviteUserRequestSchema = z.object({
   email: EmailSchema,
 });
 export type InviteUserRequest = z.infer<typeof InviteUserRequestSchema>;
+
+export const StaffRoleSchema = z.enum(['PLACEMENT_STAFF', 'INSTITUTION_ADMIN']);
+export type StaffRole = z.infer<typeof StaffRoleSchema>;
+
+export const InviteStaffRequestSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required').max(100),
+  lastName: z.string().trim().min(1, 'Last name is required').max(100),
+  email: EmailSchema,
+  role: StaffRoleSchema.default('PLACEMENT_STAFF'),
+  department: z.string().trim().max(200).optional().nullable(),
+});
+export type InviteStaffRequest = z.infer<typeof InviteStaffRequestSchema>;
+
+export const UpdateStaffRoleRequestSchema = z.object({
+  role: StaffRoleSchema,
+});
+export type UpdateStaffRoleRequest = z.infer<typeof UpdateStaffRoleRequestSchema>;
+
+export const UpdateStaffCampusRequestSchema = z.object({
+  campus: z.string().trim().max(200).nullable().optional(),
+});
+export type UpdateStaffCampusRequest = z.infer<typeof UpdateStaffCampusRequestSchema>;
+
+export const StaffMemberDtoSchema = z.object({
+  userId: UuidSchema,
+  email: EmailSchema,
+  fullName: z.string(),
+  role: StaffRoleSchema,
+  groupLabel: z.string().nullable(),
+  inviteStatus: InvitationStatusSchema.nullable(),
+  lastSentAt: IsoDateTimeSchema.nullable(),
+  acceptedAt: IsoDateTimeSchema.nullable(),
+  heldAt: IsoDateTimeSchema.nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+});
+export type StaffMemberDto = z.infer<typeof StaffMemberDtoSchema>;
 
 export const InvitationPreviewDtoSchema = z.object({
   fullName: z.string(),

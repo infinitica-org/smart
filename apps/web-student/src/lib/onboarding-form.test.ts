@@ -124,6 +124,71 @@ describe('onboarding-form', () => {
     expect(payload.lastName).toBeUndefined();
   });
 
+  it('omits academicProgram when study program and graduation year are blank', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    const payload = buildOnboardingDraftPayload(form);
+    expect(payload.academicProgram).toBeUndefined();
+  });
+
+  it('includes only the filled academicProgram fields in the draft payload', () => {
+    const form = emptyOnboardingForm();
+    form.academicProgram = { studyProgram: 'B.Tech CSE', graduationYear: '' };
+    const payload = buildOnboardingDraftPayload(form);
+    expect(payload.academicProgram).toEqual({ studyProgram: 'B.Tech CSE' });
+  });
+
+  it('parses a valid graduation year into a number in the complete request', () => {
+    const form = emptyOnboardingForm();
+    form.firstName = 'Ada';
+    form.lastName = 'Lovelace';
+    form.phoneNumber = '9876543210';
+    form.linkedinUrl = 'https://www.linkedin.com/in/ada';
+    form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
+    form.jobPreferences = {
+      expectedCtcLakhs: '8',
+      currentLocation: 'Bengaluru',
+      preferredLocations: ['Bengaluru'],
+    };
+    form.dpdpConsent = true;
+    form.academicProgram = { studyProgram: 'B.Tech CSE', graduationYear: '2026' };
+
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.academicProgram).toEqual({ studyProgram: 'B.Tech CSE', graduationYear: 2026 });
+  });
+
+  it('hydrates academicProgram from a server-persisted draft', () => {
+    const form = applyServerDraft(emptyOnboardingForm(), {
+      academicProgram: { studyProgram: 'B.Tech CSE', graduationYear: 2026 },
+      skills: [],
+    });
+    expect(form.academicProgram).toEqual({ studyProgram: 'B.Tech CSE', graduationYear: '2026' });
+  });
+
+  it('hydrates onboardingStep from a server-persisted draft (I212)', () => {
+    const form = applyServerDraft(emptyOnboardingForm(), {
+      onboardingStep: 'academics',
+      skills: [],
+    });
+    expect(form.onboardingStep).toBe('academics');
+  });
+
+  it('includes a valid onboardingStep in the draft payload', () => {
+    const form = emptyOnboardingForm();
+    form.onboardingStep = 'languages';
+    const payload = buildOnboardingDraftPayload(form);
+    expect(payload.onboardingStep).toBe('languages');
+  });
+
+  it('omits an invalid/stale onboardingStep from the draft payload rather than sending garbage', () => {
+    const form = emptyOnboardingForm();
+    form.onboardingStep = 'not-a-real-step';
+    const payload = buildOnboardingDraftPayload(form);
+    expect(payload.onboardingStep).toBeUndefined();
+  });
+
   it('pre-fills profile fields from a resume parse draft', () => {
     const draft = ResumeParseDraftSchema.parse({
       basicInfo: {

@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthService, hashPassword, hashRefreshToken } from './auth.service.js';
+import {
+  AuthService,
+  buildAccessTokenClaims as _buildAccessTokenClaims,
+  hashPassword,
+  hashRefreshToken,
+  toAuthenticatedUser as _toAuthenticatedUser,
+} from './auth.service.js';
 
 function mockAuditPublisher() {
   return { record: vi.fn() };

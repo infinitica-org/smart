@@ -17,6 +17,25 @@ import { SkillDiscoverySchema, SocialVerificationSchema } from './candidate-soci
  * scope for this payload — see `EnrollTrackRequest` in `auth.dto.ts`.
  */
 
+/**
+ * I211 — the version of the consent/privacy/verification terms the student agreed to.
+ * Bump this when the terms text changes materially; existing accepted consent records
+ * keep the version they were accepted under, so a policy change can be detected and
+ * (if ever required) the student re-prompted, rather than silently assuming an old
+ * acceptance still covers new terms.
+ */
+export const CURRENT_CONSENT_VERSION = 'v1';
+
+/** Onboarding wizard step ids — used to persist where a student should resume (I212). */
+export const OnboardingStepIdSchema = z.enum([
+  'profile',
+  'academics',
+  'languages',
+  'social',
+  'preferences',
+]);
+export type OnboardingStepId = z.infer<typeof OnboardingStepIdSchema>;
+
 /** Human-readable labels for interest-domain pickers (onboarding + profile). */
 export const INTEREST_DOMAIN_LABELS: Readonly<
   Record<z.infer<typeof InterestDomainSchema>, string>
@@ -69,6 +88,21 @@ export const CandidateAcademicScoresSchema = z.object({
   hasActiveBacklog: z.boolean().optional(),
 });
 export type CandidateAcademicScores = z.infer<typeof CandidateAcademicScoresSchema>;
+
+/**
+ * Study program + graduation year — collected during onboarding. graduationYear is
+ * denormalized onto `User.graduationYear` (see schema.prisma) for placement filtering.
+ */
+export const CandidateAcademicProgramSchema = z.object({
+  studyProgram: z.string().min(1).max(120).optional(),
+  graduationYear: z
+    .number()
+    .int()
+    .min(1950)
+    .max(new Date().getFullYear() + 8)
+    .optional(),
+});
+export type CandidateAcademicProgram = z.infer<typeof CandidateAcademicProgramSchema>;
 
 export const WORK_MODES = ['FULL_TIME', 'PART_TIME', 'REMOTE', 'HYBRID'] as const;
 export const WorkModeSchema = z.enum(WORK_MODES);
@@ -128,6 +162,8 @@ export const CompleteCandidateOnboardingRequestSchema = z.object({
   jobPreferences: CandidateOnboardingJobPreferencesSchema.optional(),
   /** Progressive profile — optional at onboarding completion. */
   academicScores: CandidateAcademicScoresSchema.optional(),
+  /** Progressive profile — optional at onboarding completion. */
+  academicProgram: CandidateAcademicProgramSchema.optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   /** DPDP consent must be explicitly accepted to complete onboarding. */
@@ -140,6 +176,8 @@ export type CompleteCandidateOnboardingRequest = z.infer<
 export const CandidateOnboardingProfileSchema = CompleteCandidateOnboardingRequestSchema.extend({
   dpdpConsentAt: z.string().datetime(),
   completedAt: z.string().datetime(),
+  /** I211 — the consent/terms version in effect when this student accepted. */
+  consentVersion: z.string().optional(),
 });
 export type CandidateOnboardingProfile = z.infer<typeof CandidateOnboardingProfileSchema>;
 
@@ -166,6 +204,9 @@ export const CandidateOnboardingDraftSchema = z.object({
   skills: z.array(CandidateOnboardingSkillSchema.partial()).max(40).optional(),
   jobPreferences: CandidateOnboardingJobPreferencesSchema.partial().optional(),
   academicScores: CandidateAcademicScoresSchema.partial().optional(),
+  academicProgram: CandidateAcademicProgramSchema.partial().optional(),
+  /** I212 — last step the student reached; used to resume onboarding at the right place. */
+  onboardingStep: OnboardingStepIdSchema.optional(),
   socialVerification: SocialVerificationSchema.optional(),
   skillDiscovery: SkillDiscoverySchema.optional(),
   dpdpConsent: z.boolean().optional(),

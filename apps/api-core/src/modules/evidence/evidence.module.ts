@@ -5,9 +5,7 @@ import { Tier3OcrVerifier } from '../candidate-certificates/verification/tier3-o
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceCatalogService } from './evidence-catalog.service.js';
 import { EvidenceController } from './evidence.controller.js';
-import { EvidenceExpirationProcessor } from './evidence-expiration.processor.js';
 import { EvidenceExpirationService } from './evidence-expiration.service.js';
-import { EvidenceReconciliationProcessor } from './evidence-reconciliation.processor.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
 import { EvidenceVersionService } from './evidence-version.service.js';

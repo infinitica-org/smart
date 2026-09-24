@@ -1,8 +1,14 @@
 import { ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { CandidateEvidenceProvenanceResponseSchema as _CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
+import type { RequestUser as _RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceService } from './evidence.service.js';
 
+const _CLAIM_ID_1 = '11111111-1111-4111-8111-111111111111';
+const _EVIDENCE_ID_1 = '22222222-2222-4222-8222-222222222222';
+const _EVIDENCE_ID_2 = '33333333-3333-4333-8333-333333333333';
+const _STUDENT_ID = '44444444-4444-4444-8444-444444444444';
 function buildService(overrides?: { prisma?: Record<string, unknown> }) {
   const evidenceRecordCreate = vi.fn().mockResolvedValue({
     id: 'evidence-1',
@@ -53,7 +59,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     getJob: vi.fn().mockResolvedValue(null),
   };
   const dedup = new CredentialDedupService(prisma as never);
-  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+  const _auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
 
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),

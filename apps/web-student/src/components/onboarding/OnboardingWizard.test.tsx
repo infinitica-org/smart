@@ -23,6 +23,26 @@ vi.mock('@/lib/api', () => ({
     auth: {
       enrollTrack: (...args: unknown[]) => enrollTrack(...args),
     },
+    onboarding: {
+      getInstitutionPartnershipStatus: vi.fn().mockResolvedValue({
+        institutionId: 'inst_1',
+        institutionName: 'PSG Tech',
+        isPartnered: true,
+      }),
+      listPartnerUniversities: vi.fn().mockResolvedValue([
+        {
+          institutionId: 'inst_1',
+          name: 'PSG College of Technology',
+          domain: 'psgtech.ac.in',
+          isPartnered: true,
+        },
+      ]),
+      connectPartnerUniversity: vi.fn().mockResolvedValue({
+        userId: 'usr_1',
+        institutionId: 'inst_1',
+        institutionName: 'PSG College of Technology',
+      }),
+    },
   },
 }));
 
@@ -52,49 +72,28 @@ describe('OnboardingWizard', () => {
     enrollTrack.mockResolvedValue({ primaryTrack: 'TECH_FULLSTACK' });
   });
 
-  it('does not include a skills selection step in the wizard', () => {
-    expect(WIZARD_STEP_META.map((step) => step.id)).not.toContain('skills');
-  });
-
-  it('starts with profile and does not include a resume upload step', () => {
+  it('defines the correct 3-step student onboarding wizard order', () => {
     const stepOrder = WIZARD_STEP_META.map((step) => step.id);
-    expect(stepOrder[0]).toBe('profile');
-    expect(stepOrder).not.toContain('resume');
-    expect(stepOrder).toContain('academics');
+    expect(stepOrder).toEqual(['phone', 'school', 'profile']);
   });
 
-  it('opens on the profile step for a new candidate', async () => {
+  it('opens on the phone verification step for a new student', async () => {
     render(<OnboardingWizard />);
 
     await waitFor(() => {
-      expect(screen.getByText("Let's set up your profile")).toBeTruthy();
+      expect(screen.getByText('Verify your mobile number')).toBeTruthy();
     });
 
-    expect(screen.queryByText(/upload your resume/i)).toBeNull();
+    expect(screen.getByTestId('phone-number-input')).toBeTruthy();
+    expect(screen.getByTestId('otp-code-input')).toBeTruthy();
   });
 
-  it('hydrates an uploaded profile photo from the onboarding response', async () => {
-    getOnboarding.mockResolvedValue({
-      draft: { firstName: 'Ada', lastName: 'Lovelace' },
-      profilePhotoUrl: 'https://cdn.example/photo.jpg',
-      onboardingCompleted: false,
-    });
-
-    render(<OnboardingWizard />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Let's set up your profile")).toBeTruthy();
-    });
-
-    expect(screen.getByRole('button', { name: /change photo/i })).toBeTruthy();
-  });
-
-  it('resumes past legacy skills data to the languages step', async () => {
+  it('resumes at the explicitly persisted onboardingStep', async () => {
     getOnboarding.mockResolvedValue({
       draft: {
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-        skills: [{ type: 'technical', name: 'JavaScript', proficiency: 'Intermediate' }],
+        phoneNumber: '9876543210',
+        dpdpConsent: true,
+        onboardingStep: 'school',
       },
       profilePhotoUrl: null,
       onboardingCompleted: false,
@@ -103,16 +102,27 @@ describe('OnboardingWizard', () => {
     render(<OnboardingWizard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Languages you know')).toBeTruthy();
+      expect(screen.getByText(/Connect to/i)).toBeTruthy();
     });
-
-    expect(screen.queryByText('Your skills')).toBeNull();
   });
 
-  it('does not include a stream selection step', () => {
-    const stepOrder = WIZARD_STEP_META.map((step) => step.id);
-    expect(stepOrder).not.toContain('stream');
-    expect(stepOrder.indexOf('academics')).toBe(stepOrder.indexOf('profile') + 1);
-    expect(stepOrder.indexOf('languages')).toBe(stepOrder.indexOf('academics') + 1);
+  it('renders Basic Profile step when moving to profile', async () => {
+    getOnboarding.mockResolvedValue({
+      draft: {
+        phoneNumber: '9876543210',
+        dpdpConsent: true,
+        onboardingStep: 'profile',
+      },
+      profilePhotoUrl: null,
+      onboardingCompleted: false,
+    });
+
+    render(<OnboardingWizard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Basic Profile')).toBeTruthy();
+      expect(screen.getByTestId('first-name-input')).toBeTruthy();
+      expect(screen.getByTestId('major-study-program-input')).toBeTruthy();
+    });
   });
 });

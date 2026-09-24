@@ -61,12 +61,12 @@ export function UpcomingActivitiesCard() {
       </div>
 
       {loading ? (
-        <div className={`${dashboardSkeletonClass} mt-8 h-36 w-full rounded-2xl`} />
+        <div className={`${dashboardSkeletonClass} mt-8 h-36 w-full rounded-xl`} />
       ) : events.length === 0 ? (
         <div
           className={`mt-8 flex flex-col items-center justify-center px-6 py-12 text-center ${dashboardHomeEmptySurfaceClass}`}
         >
-          <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-[var(--tpo-dash-empty-icon-bg,#f1f5f9)] text-[var(--tpo-dash-empty-icon,#64748b)] shadow-[var(--ds-card-shadow)]">
+          <span className="mb-4 flex size-12 items-center justify-center rounded-lg bg-[var(--tpo-dash-empty-icon-bg,#f1f5f9)] text-[var(--tpo-dash-empty-icon,#64748b)] shadow-[var(--ds-card-shadow)]">
             <CalendarDays className="size-5" strokeWidth={1.5} />
           </span>
           <p className="text-[14px] font-semibold text-[var(--ds-text)]">No upcoming activities</p>

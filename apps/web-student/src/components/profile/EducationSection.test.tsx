@@ -186,7 +186,7 @@ describe('EducationSection', () => {
           fileName: 'degree.pdf',
         }),
       );
-      expect(screen.getByText('1 file')).toBeTruthy();
+      expect(screen.getByText(/1 document\(s\)/i)).toBeTruthy();
     });
   });
 });

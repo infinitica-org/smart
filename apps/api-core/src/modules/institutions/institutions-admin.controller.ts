@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query } from '@
 import {
   API_PREFIX,
   CreateInstitutionRequestSchema,
+  GetVerificationReviewQuerySchema,
   GlobalStudentSearchQuerySchema,
   GetVerificationReviewQuerySchema,
   InvitePlatformAdminRequestSchema,

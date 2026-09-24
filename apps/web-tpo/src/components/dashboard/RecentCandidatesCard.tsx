@@ -50,9 +50,9 @@ export function RecentCandidatesCard({ students, claims, loading }: RecentCandid
       </div>
 
       {loading ? (
-        <div className={`${dashboardSkeletonClass} mt-5 h-48 w-full rounded-2xl`} />
+        <div className={`${dashboardSkeletonClass} mt-5 h-48 w-full rounded-xl`} />
       ) : preview.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-6 py-10 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-6 py-10 text-center">
           <p className="text-[14px] font-semibold text-[var(--ds-text)]">
             No candidates onboarded yet
           </p>
@@ -67,7 +67,7 @@ export function RecentCandidatesCard({ students, claims, loading }: RecentCandid
           </Link>
         </div>
       ) : (
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--tpo-dash-table-border,#e8edf3)]">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--tpo-dash-table-border,#e8edf3)]">
           <table className="w-full min-w-[720px] text-left text-[13px]">
             <thead>
               <tr className="border-b border-[var(--tpo-dash-table-border,#e8edf3)] bg-[var(--tpo-dash-table-head,#f8fafc)] text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">

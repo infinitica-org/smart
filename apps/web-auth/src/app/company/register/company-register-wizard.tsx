@@ -12,9 +12,9 @@ import {
 } from '../../../lib/company-onboarding-session';
 
 const inputClass =
-  'w-full rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 text-[15px] text-[#172033] placeholder:text-[#94a3b8] focus:border-[#0f9f8f] focus:outline-none focus:ring-2 focus:ring-[#ecfdf5]';
+  'w-full h-11 rounded-[11px] border border-[#e5e7eb] bg-white px-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] transition-[border-color,box-shadow] duration-150 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10';
 
-const labelClass = 'mb-1.5 block text-[13px] font-medium text-[#64748b]';
+const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6b7280]';
 
 type Step = 'start' | 'details' | 'email' | 'documents' | 'submit' | 'done';
 
@@ -225,11 +225,11 @@ export function CompanyRegisterWizard() {
   return (
     <section className="mx-auto w-full max-w-xl px-4 py-10">
       <div className="flex flex-col items-center text-center">
-        <SmartLogo kind="mark" tone="on-light" className="size-11" title="SMART" />
-        <h1 className="mt-8 text-2xl font-semibold tracking-tight text-[#172033]">
+        <SmartLogo kind="wordmark" tone="on-light" className="h-8 w-auto" title="SMART" />
+        <h1 className="mt-8 text-2xl font-bold tracking-tight text-[#111827]">
           Register your company
         </h1>
-        <p className="mt-2 text-sm text-[#64748b]">
+        <p className="mt-2 text-sm text-[#6b7280]">
           Self-serve onboarding for the SMART company portal. After review, you will receive an
           invite to set your password.
         </p>
@@ -479,15 +479,21 @@ export function CompanyRegisterWizard() {
             SMART will review your company details. When approved, you will receive a portal invite
             email to set your password and sign in.
           </p>
-          <Link href="/login" className="inline-block text-[#0f9f8f] font-medium underline">
+          <Link
+            href="/company/login"
+            className="inline-block text-black font-semibold underline hover:opacity-80"
+          >
             Back to sign in
           </Link>
         </div>
       ) : null}
 
-      <p className="mt-10 text-center text-sm text-[#64748b]">
+      <p className="mt-10 text-center text-sm text-[#6b7280]">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-[#172033] underline">
+        <Link
+          href="/company/login"
+          className="font-semibold text-[#111827] underline hover:text-black"
+        >
           Sign in
         </Link>
       </p>
@@ -497,8 +503,8 @@ export function CompanyRegisterWizard() {
 
 function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="space-y-3 rounded-lg border border-[#e2e8f0] p-4">
-      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+    <fieldset className="space-y-3 rounded-[11px] border border-[#e5e7eb] p-4">
+      <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">
         {title}
       </legend>
       {children}
@@ -522,7 +528,7 @@ function WizardActions({
       <button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-[#172033] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0f172a] disabled:opacity-70"
+        className="rounded-[11px] bg-black px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-neutral-800 active:scale-[0.98] disabled:opacity-70"
       >
         {loading ? 'Please wait…' : primaryLabel}
       </button>
@@ -531,7 +537,7 @@ function WizardActions({
           type="button"
           disabled={loading}
           onClick={onSecondary}
-          className="rounded-lg border border-[#e2e8f0] px-5 py-3 text-sm font-medium text-[#334155]"
+          className="rounded-[11px] border border-[#e5e7eb] bg-white px-5 py-3 text-sm font-semibold text-[#111827] shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
         >
           {secondaryLabel}
         </button>

@@ -30,11 +30,13 @@ import {
   CandidateResumeFileSchema,
   CandidateResumeFilesSchema,
   CompleteCandidateOnboardingRequestSchema,
+  CURRENT_CONSENT_VERSION,
   DeleteResumeRequestSchema,
   SaveCandidateOnboardingDraftRequestSchema,
   SMART_TOPICS,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
@@ -64,6 +66,7 @@ export class UsersService {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   async getMe(userId: string): Promise<AuthenticatedUser> {
@@ -224,8 +227,26 @@ export class UsersService {
         ...(parsed.data.academicScores?.hasActiveBacklog !== undefined
           ? { hasActiveBacklog: parsed.data.academicScores.hasActiveBacklog }
           : {}),
+        ...(parsed.data.academicProgram?.graduationYear !== undefined
+          ? { graduationYear: parsed.data.academicProgram.graduationYear }
+          : {}),
       },
     });
+
+    if (parsed.data.academicProgram) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'student.academic_program_updated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          source: 'draft',
+          previous: existing.academicProgram ?? null,
+          next: parsed.data.academicProgram,
+        },
+      });
+    }
 
     if (user.onboardingCompleted) {
       return this.getOnboarding(userId);
@@ -409,6 +430,17 @@ export class UsersService {
       };
     }
 
+    if (patch.academicProgram && typeof patch.academicProgram === 'object') {
+      const current =
+        existing.academicProgram && typeof existing.academicProgram === 'object'
+          ? (existing.academicProgram as Record<string, unknown>)
+          : {};
+      merged.academicProgram = {
+        ...current,
+        ...(patch.academicProgram as Record<string, unknown>),
+      };
+    }
+
     if (patch.socialVerification && typeof patch.socialVerification === 'object') {
       const current =
         existing.socialVerification && typeof existing.socialVerification === 'object'
@@ -482,10 +514,15 @@ export class UsersService {
     }
 
     const now = new Date();
+    const isFirstConsent = !user.dpdpConsentAt;
+    // Preserve the original consent timestamp on a retry — completing onboarding twice
+    // must not look like a brand-new consent event.
+    const consentTimestamp = user.dpdpConsentAt ?? now;
     const details = {
       ...request,
-      dpdpConsentAt: now.toISOString(),
+      dpdpConsentAt: consentTimestamp.toISOString(),
       completedAt: now.toISOString(),
+      consentVersion: CURRENT_CONSENT_VERSION,
     };
 
     const updated = await this.prisma.user.update({
@@ -494,14 +531,45 @@ export class UsersService {
         fullName: `${request.firstName} ${request.lastName}`.trim(),
         onboardingCompleted: true,
         onboardingDetails: details as Prisma.InputJsonValue,
-        dpdpConsentAt: now,
+        dpdpConsentAt: consentTimestamp,
         cgpa: request.academicScores?.cgpa ?? undefined,
         sscPercentage: request.academicScores?.sscPercentage ?? undefined,
         hscPercentage: request.academicScores?.hscPercentage ?? undefined,
         hasActiveBacklog: request.academicScores?.hasActiveBacklog ?? undefined,
+        graduationYear: request.academicProgram?.graduationYear ?? undefined,
       },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+
+    if (request.academicProgram) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'student.academic_program_updated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: { source: 'complete', previous: null, next: request.academicProgram },
+      });
+    }
+
+    if (isFirstConsent) {
+      // Guarded on isFirstConsent so retrying/re-submitting onboarding completion
+      // (same request replayed after a network failure) never records a second
+      // consent-acceptance audit event for the same acceptance.
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'student.consent_accepted',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          source: 'onboarding_complete',
+          consentVersion: CURRENT_CONSENT_VERSION,
+          previous: null,
+          next: { dpdpConsent: true, acceptedAt: consentTimestamp.toISOString() },
+        },
+      });
+    }
 
     const selectedSkillNames = request.skillDiscovery?.selectedSkillNames ?? [];
     // Only the languages the candidate actually kept checked count toward

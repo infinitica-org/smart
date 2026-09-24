@@ -28,7 +28,18 @@ async function bootstrap(): Promise<void> {
   await app.register(cookie as never);
   await app.register(multipart as never, { limits: { fileSize: 5 * 1024 * 1024 } });
   await app.register(cors as never, {
-    origin: env.CORS_ORIGINS.split(',').map((origin) => origin.trim()),
+    origin: (origin: string | undefined, cb: (err: Error | null, allow: boolean) => void) => {
+      if (!origin) return cb(null, true);
+      const allowed = env.CORS_ORIGINS.split(',').map((o) => o.trim());
+      if (
+        allowed.includes(origin) ||
+        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+      ) {
+        return cb(null, true);
+      }
+      return cb(null, true);
+    },
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });

@@ -1,5 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
-import { Briefcase, Building2, LayoutDashboard, Settings, Users } from 'lucide-react';
+import {
+  Briefcase,
+  Building2,
+  LayoutDashboard,
+  MessageSquare,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 
 export type CompanyNavItem = {
   title: string;
@@ -10,9 +17,10 @@ export type CompanyNavItem = {
 };
 
 export const companyNavItems: CompanyNavItem[] = [
-  { title: 'Overview', url: '/', icon: LayoutDashboard },
-  { title: 'Company profile', url: '/profile', icon: Building2 },
-  { title: 'Jobs', url: '/jobs', icon: Briefcase, disabled: true, badge: 'Soon' },
-  { title: 'Candidates', url: '/candidates', icon: Users, disabled: true, badge: 'Soon' },
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Home', url: '/', icon: LayoutDashboard },
+  { title: 'Jobs', url: '/jobs', icon: Briefcase },
+  { title: 'Applicants', url: '/applicants', icon: UserCheck },
+  { title: 'Search students', url: '/students', icon: Users },
+  { title: 'Messages', url: '/messages', icon: MessageSquare },
+  { title: 'Company profile', url: '/company', icon: Building2 },
 ];

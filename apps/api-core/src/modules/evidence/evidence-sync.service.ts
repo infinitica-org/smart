@@ -39,6 +39,8 @@ export class EvidenceSyncService {
     private readonly evidenceVersions: EvidenceVersionService,
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
+    @Inject(EvidenceVersionService)
+    private readonly evidenceVersions: EvidenceVersionService,
   ) {}
 
   async syncWorkExperienceEvidenceRecord(

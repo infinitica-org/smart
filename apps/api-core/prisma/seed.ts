@@ -44,7 +44,7 @@ interface RawItem {
 }
 
 const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://smart:smart@127.0.0.1:5432/smart?schema=public';
+  process.env['DATABASE_URL'] ?? 'postgresql://smart:CHANGE_ME@127.0.0.1:5433/smart?schema=public';
 
 async function main(): Promise<void> {
   const prisma = new PrismaClient({
@@ -240,32 +240,69 @@ async function main(): Promise<void> {
     }
   }
 
+  const company = await prisma.company.upsert({
+    where: { domain: seedDomain },
+    update: {
+      name: 'SMART Pilot Employer',
+      planId: proPlan.id,
+      verificationStatus: 'APPROVED',
+    },
+    create: {
+      name: 'SMART Pilot Employer',
+      domain: seedDomain,
+      planId: proPlan.id,
+      verificationStatus: 'APPROVED',
+    },
+  });
+
   const fullstack = await prisma.track.findUniqueOrThrow({ where: { code: 'TECH_FULLSTACK' } });
-  const passwordHash = await hashPassword(seedPassword);
+  const devPasswordHash = await hashPassword(seedPassword);
+  const companyPasswordHash = await hashPassword('Password123!');
 
   const accounts: Array<{
     email: string;
     fullName: string;
-    role: 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'STUDENT';
+    role: 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'STUDENT' | 'COMPANY';
+    institutionId: string | null;
+    companyId: string | null;
     primaryTrackId: string | null;
+    passwordHash: string;
   }> = [
     {
       email: seedEmails.admin,
       fullName: 'SMART Super Admin',
       role: 'SUPER_ADMIN',
+      institutionId: null,
+      companyId: null,
       primaryTrackId: null,
+      passwordHash: devPasswordHash,
     },
     {
       email: seedEmails.tpo,
       fullName: tpoFullName,
       role: 'INSTITUTION_ADMIN',
+      institutionId: institution.id,
+      companyId: null,
       primaryTrackId: null,
+      passwordHash: devPasswordHash,
     },
     {
       email: seedEmails.student,
       fullName: 'Pilot Student',
       role: 'STUDENT',
+      institutionId: institution.id,
+      companyId: null,
       primaryTrackId: fullstack.id,
+      passwordHash: devPasswordHash,
+    },
+    {
+      email: seedEmails.company,
+      fullName: 'Pilot Recruiter',
+      role: 'COMPANY',
+      institutionId: null,
+      companyId: company.id,
+      primaryTrackId: null,
+      passwordHash: companyPasswordHash,
     },
   ];
 
@@ -273,14 +310,22 @@ async function main(): Promise<void> {
   for (const account of accounts) {
     const user = await prisma.user.upsert({
       where: { email: account.email },
-      update: { passwordHash, fullName: account.fullName },
+      update: {
+        passwordHash: account.passwordHash,
+        fullName: account.fullName,
+        role: account.role,
+        companyId: account.companyId,
+        institutionId: account.institutionId,
+        emailVerified: true,
+      },
       create: {
         email: account.email,
         fullName: account.fullName,
-        passwordHash,
+        passwordHash: account.passwordHash,
         role: account.role,
         emailVerified: true,
-        institutionId: account.role === 'SUPER_ADMIN' ? null : institution.id,
+        institutionId: account.institutionId,
+        companyId: account.companyId,
         primaryTrackId: account.primaryTrackId,
       },
     });
@@ -315,7 +360,7 @@ async function main(): Promise<void> {
   });
 
   console.log(
-    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Login as ${seedEmails.student} (password from SEED_PASSWORD or dest default)`,
+    `Seed complete — ${String(TRACK_DEFINITIONS.length)} tracks, ${String(TRACK_DEFINITIONS.length * 5)} levels, pilot batch "${pilotBatch.name}" seeded. Logins: student (${seedEmails.student}), company (${seedEmails.company}), tpo (${seedEmails.tpo}), admin (${seedEmails.admin}). Password: ${seedPassword}`,
   );
   await prisma.$disconnect();
 }

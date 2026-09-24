@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Lightbulb, Sparkles } from 'lucide-react';
+
+import { CheckCircle2, Lightbulb } from 'lucide-react';
+
 import { PrimaryButton } from '../wizard-ui';
 
 interface LoadingBeat {
@@ -106,53 +109,47 @@ export default function CompletionSequence({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            className="flex flex-col items-center"
+            className="flex flex-col items-center justify-center"
           >
-            <div className="relative mb-8 h-14 w-14 flex-none">
-              <span className="absolute inset-0 animate-ping rounded-full bg-foreground/20" />
-              <span className="absolute inset-0 rounded-full border-2 border-border" />
-              <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-foreground" />
+            {/* Soft Circular Disc with Spinner */}
+            <div className="mb-10 flex h-24 w-24 items-center justify-center rounded-full bg-zinc-100/90 dark:bg-zinc-800/80">
+              <div className="h-12 w-12 rounded-full border-[2.5px] border-zinc-200/80 dark:border-zinc-700 border-t-black dark:border-t-white animate-spin" />
             </div>
 
-            <AnimatePresence mode="wait">
-              {beat?.kind === 'fact' ? (
+            {/* Insight Text */}
+            <div className="min-h-[80px] flex items-center justify-center max-w-lg px-6">
+              <AnimatePresence mode="wait">
                 <motion.div
-                  key={beatIndex}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex max-w-md items-center justify-center gap-2.5"
-                >
-                  <Lightbulb className="h-5 w-5 flex-none text-foreground" />
-                  <p className="text-lg leading-relaxed font-medium text-muted-foreground">
-                    {beat.text}
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.p
                   key={beatIndex}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.25 }}
-                  className="text-lg font-medium text-muted-foreground"
+                  transition={{ duration: 0.3 }}
+                  className="text-base sm:text-lg font-normal text-zinc-600 dark:text-zinc-300 leading-relaxed text-center"
                 >
-                  {beat?.text}
-                </motion.p>
-              )}
-            </AnimatePresence>
+                  {beat?.kind === 'fact' ? (
+                    <span className="inline-flex items-center justify-center flex-wrap gap-x-2">
+                      <Lightbulb className="inline-block h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100 align-middle" />
+                      <span>{beat.text}</span>
+                    </span>
+                  ) : (
+                    <span>{beat?.text}</span>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-            <div className="mt-8 flex items-center gap-1.5">
+            {/* Pagination / Progress Dots */}
+            <div className="mt-10 flex items-center justify-center gap-1.5">
               {LOADING_BEATS.map((item, idx) => (
                 <span
                   key={item.text}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === beatIndex
-                      ? 'w-5 bg-foreground'
+                      ? 'w-6 bg-black dark:bg-white'
                       : idx < beatIndex
-                        ? 'w-1.5 bg-foreground/40'
-                        : 'w-1.5 bg-border'
+                        ? 'w-1.5 bg-zinc-400 dark:bg-zinc-500'
+                        : 'w-1.5 bg-zinc-200 dark:bg-zinc-700'
                   }`}
                 />
               ))}
@@ -173,14 +170,6 @@ export default function CompletionSequence({
               className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-foreground/30 bg-muted/10"
             >
               <CheckCircle2 className="h-10 w-10 text-foreground" />
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.8, type: 'spring', stiffness: 180, damping: 14 }}
-                className="absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-background shadow-lg shadow-foreground/30"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-              </motion.span>
             </motion.div>
 
             <motion.h1

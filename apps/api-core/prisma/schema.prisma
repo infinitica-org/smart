@@ -350,6 +350,28 @@ model Invitation {
   @@map("invitations")
 }
 
+enum UniversityContactRequestStatus {
+  PENDING
+}
+
+/// STU-01 — a student's ask for SMART to contact a university that isn't yet
+/// a partner. No outbound notification is wired for this ticket; this is
+/// purely an internal, auditable record for ops to review later.
+model UniversityContactRequest {
+  id                        String                          @id @default(uuid()) @db.Uuid
+  studentUserId             String                          @map("student_user_id") @db.Uuid
+  student                   User                             @relation(fields: [studentUserId], references: [id], onDelete: Cascade)
+  universityName            String                          @map("university_name")
+  /// Trimmed + lowercased `universityName`, used only for de-dup matching.
+  normalizedUniversityName  String                          @map("normalized_university_name")
+  status                    UniversityContactRequestStatus  @default(PENDING)
+  createdAt                 DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([studentUserId, normalizedUniversityName])
+  @@index([studentUserId])
+  @@map("university_contact_requests")
+}
+
 model User {
   id                     String          @id @default(uuid()) @db.Uuid
   email                  String          @unique
@@ -387,6 +409,11 @@ model User {
   hscPercentage          Decimal?        @map("hsc_percentage") @db.Decimal(5, 2)
   /// Active academic backlog (placement eligibility).
   hasActiveBacklog       Boolean?        @map("has_active_backlog")
+  /// Study program (e.g. "B.Tech CSE") + graduation year, collected during onboarding.
+  /// graduationYear is denormalized onto User (like cgpa/sscPercentage above) so placement
+  /// pool filtering (packages/contracts/src/dto/placement.dto.ts filters.graduationYear)
+  /// can query it directly. studyProgram stays JSON-only in onboardingDetails.
+  graduationYear         Int?            @map("graduation_year")
   /// CN-T09 — display-case username; uniqueness is enforced on `usernameNormalized`, not this column.
   username               String?         @map("username")
   /// CN-T09 — lowercased/trimmed form used for case-insensitive uniqueness and lookups.
@@ -435,6 +462,10 @@ model User {
   corroborationReviewFlags CorroborationReviewFlag[]
   evidenceProfile       CandidateEvidenceProfile?
   studentCapabilities   StudentCapability[]
+  universityContactRequests UniversityContactRequest[]
+  companyOnboardingSessions CompanyOnboardingSession[] @relation("CompanyOnboardingUser")
+  companyVerificationsReviewed CompanyVerification[] @relation("CompanyVerificationReviewedBy")
+  companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
 
   companyOnboardingSessions      CompanyOnboardingSession[]       @relation("CompanyOnboardingUser")
   companyVerificationsReviewed   CompanyVerification[]            @relation("CompanyVerificationReviewedBy")
