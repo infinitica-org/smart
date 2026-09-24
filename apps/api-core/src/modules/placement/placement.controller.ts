@@ -41,6 +41,7 @@ import {
   type UploadJobOpeningDocumentResponse,
   type UploadJobOpeningLogoResponse,
 } from '@smart/contracts';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -69,6 +70,10 @@ export class PlacementController {
   ) {}
 
   @Get('candidates/:studentId/evidence/:evidenceId/versions')
+  @AuditAccess('evidence', 'evidenceId', {
+    action: 'evidence.accessed',
+    subjectParam: 'studentId',
+  })
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List historical evidence versions for a candidate (VER-01).' })
@@ -81,6 +86,10 @@ export class PlacementController {
   }
 
   @Get('candidates/:studentId/evidence/:evidenceId/versions/:versionNumber')
+  @AuditAccess('evidence', 'evidenceId', {
+    action: 'evidence.accessed',
+    subjectParam: 'studentId',
+  })
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a specific historical evidence version (VER-01).' })

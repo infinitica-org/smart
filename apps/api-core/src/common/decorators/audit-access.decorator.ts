@@ -7,6 +7,10 @@ export interface AuditAccessOptions {
   resourceType: string;
   /** Route param holding the resource id. */
   idParam: string;
+  /** Audit action; defaults to `admin.data_accessed`. */
+  action?: string;
+  /** Route param holding the data subject (the student) when it isn't the resource itself. */
+  subjectParam?: string;
 }
 
 /**
@@ -15,5 +19,9 @@ export interface AuditAccessOptions {
  * person's (or one tenant's) personal data to an admin, TPO or company user.
  * Enforced by AuditAccessInterceptor; throttled per actor + resource.
  */
-export const AuditAccess = (resourceType: string, idParam: string) =>
-  SetMetadata(AUDIT_ACCESS_KEY, { resourceType, idParam } satisfies AuditAccessOptions);
+export const AuditAccess = (
+  resourceType: string,
+  idParam: string,
+  extra: Pick<AuditAccessOptions, 'action' | 'subjectParam'> = {},
+) =>
+  SetMetadata(AUDIT_ACCESS_KEY, { resourceType, idParam, ...extra } satisfies AuditAccessOptions);

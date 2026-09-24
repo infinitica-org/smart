@@ -52,6 +52,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
 
   // audit-access.interceptor.ts (S6-VV-103)
   'admin.data_accessed': 'Viewed personal data',
+  'evidence.accessed': 'Accessed sensitive evidence',
   'admin.skill_retake_policy.updated': 'Updated skill retake policy',
 
   // candidate-certificates.service.ts
@@ -150,6 +151,8 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   // audit-access.interceptor.ts (S6-VV-103)
   'actorRole',
   'route',
+  'subjectId',
+  'endorsementId',
 
   // work-experience.service.ts
   'attemptId',

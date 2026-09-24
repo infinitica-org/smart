@@ -9,6 +9,7 @@ import { CompaniesAdminController } from '../../modules/institutions/companies-a
 import { InstitutionsAdminController } from '../../modules/institutions/institutions-admin.controller.js';
 import { InstitutionsTpoController } from '../../modules/institutions/institutions-tpo.controller.js';
 import { PlacementMatchController } from '../../modules/matching/placement-match.controller.js';
+import { PlacementController } from '../../modules/placement/placement.controller.js';
 import {
   AUDIT_ACCESS_THROTTLE_SECONDS,
   AuditAccessInterceptor,
@@ -17,8 +18,15 @@ import {
 class Controller {
   audited() {}
 
+  evidence() {}
+
   plain() {}
 }
+AuditAccess('evidence', 'evidenceId', { action: 'evidence.accessed', subjectParam: 'studentId' })(
+  Controller.prototype,
+  'evidence',
+  Object.getOwnPropertyDescriptor(Controller.prototype, 'evidence') as PropertyDescriptor,
+);
 // Applied by hand: the spec transform doesn't compile decorator syntax.
 AuditAccess('user', 'studentId')(
   Controller.prototype,
@@ -75,7 +83,7 @@ describe('AuditAccessInterceptor (S6-VV-103)', () => {
 
     expect(body).toEqual({ body: true });
     expect(redis.set).toHaveBeenCalledWith(
-      'audit:access:tpo-1:user:stu-1',
+      'audit:access:admin.data_accessed:tpo-1:user:stu-1',
       '1',
       'EX',
       AUDIT_ACCESS_THROTTLE_SECONDS,
@@ -148,6 +156,61 @@ describe('AuditAccessInterceptor (S6-VV-103)', () => {
     expect(audit.record).toHaveBeenCalledTimes(1);
   });
 
+  it('records evidence access with its own action and the data subject (S6-VV-104)', async () => {
+    const { interceptor, audit, redis } = setup();
+
+    await firstValueFrom(
+      interceptor.intercept(
+        context(
+          'evidence',
+          { sub: 'company-user', role: 'COMPANY' },
+          {
+            studentId: 'stu-1',
+            evidenceId: 'ev-9',
+          },
+        ),
+        ok,
+      ),
+    );
+
+    expect(redis.set).toHaveBeenCalledWith(
+      'audit:access:evidence.accessed:company-user:evidence:ev-9',
+      '1',
+      'EX',
+      AUDIT_ACCESS_THROTTLE_SECONDS,
+      'NX',
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'company-user',
+        action: 'evidence.accessed',
+        resourceType: 'evidence',
+        resourceId: 'ev-9',
+        metadata: expect.objectContaining({ subjectId: 'stu-1', actorRole: 'COMPANY' }),
+      }),
+    );
+  });
+
+  it('does not record a student opening their own evidence', async () => {
+    const { interceptor, audit } = setup();
+
+    await firstValueFrom(
+      interceptor.intercept(
+        context(
+          'evidence',
+          { sub: 'stu-1', role: 'STUDENT' },
+          {
+            studentId: 'stu-1',
+            evidenceId: 'ev-9',
+          },
+        ),
+        ok,
+      ),
+    );
+
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it('never fails the read because auditing failed', async () => {
     const { interceptor } = setup({ auditFails: true });
 
@@ -176,4 +239,17 @@ describe('routes that expose one person or tenant to an admin carry @AuditAccess
       idParam,
     });
   });
+
+  it.each(['listCandidateEvidenceVersions', 'getCandidateEvidenceVersion'])(
+    'PlacementController.%s logs evidence access against the student (S6-VV-104)',
+    (handler) => {
+      const method = (PlacementController.prototype as unknown as Record<string, object>)[handler];
+      expect(Reflect.getMetadata(AUDIT_ACCESS_KEY, method as object)).toEqual({
+        resourceType: 'evidence',
+        idParam: 'evidenceId',
+        action: 'evidence.accessed',
+        subjectParam: 'studentId',
+      });
+    },
+  );
 });
