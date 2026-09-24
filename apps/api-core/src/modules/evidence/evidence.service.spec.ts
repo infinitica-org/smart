@@ -69,6 +69,22 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
+  const skillInference = {
+    recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+  };
+  const evidenceVersions = {
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('org-1'),
+    createInitialVersion: vi.fn().mockResolvedValue('created'),
+    appendVersion: vi.fn().mockResolvedValue('created'),
+    contentEquals: vi.fn().mockReturnValue(false),
+    hashContent: vi.fn().mockReturnValue('hash'),
+    listStudentEvidenceVersions: vi.fn().mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getStudentEvidenceVersion: vi.fn(),
+    listCandidateEvidenceVersions: vi
+      .fn()
+      .mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getCandidateEvidenceVersion: vi.fn(),
+  };
   const service = new EvidenceService(
     prisma as any,
     reconciliation as any,
@@ -78,6 +94,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare as any,
     evidenceSync as any,
+    skillInference as any,
+    evidenceVersions as any,
+    _auditPublisher as any,
   );
   return {
     service,
@@ -89,6 +108,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare,
     evidenceSync,
+    skillInference,
+    evidenceVersions,
+    auditPublisher: _auditPublisher,
   };
 }
 
