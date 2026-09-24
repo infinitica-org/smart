@@ -24,10 +24,44 @@ export const CountryCodeSchema = z
 
 export const MAX_COMPANY_VERIFICATION_DOCUMENT_BYTES = 5 * 1024 * 1024;
 
+/** Employee-count bands a company can choose from during onboarding. */
+export const COMPANY_SIZE_BANDS = [
+  '1-10',
+  '11-50',
+  '51-200',
+  '201-500',
+  '501-1000',
+  '1001-5000',
+  '5001+',
+] as const;
+export type CompanySizeBand = (typeof COMPANY_SIZE_BANDS)[number];
+export const CompanySizeBandSchema = z.enum(COMPANY_SIZE_BANDS, {
+  message: 'Choose a company size from the list.',
+});
+
+export const COMPANY_SIZE_BAND_LABELS: Record<CompanySizeBand, string> = {
+  '1-10': '1–10 employees',
+  '11-50': '11–50 employees',
+  '51-200': '51–200 employees',
+  '201-500': '201–500 employees',
+  '501-1000': '501–1,000 employees',
+  '1001-5000': '1,001–5,000 employees',
+  '5001+': '5,001+ employees',
+};
+
+/** Digits only (8 to 15), with an optional leading +. Spaces and dashes are not accepted. */
+export const CompanyPhoneSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^\+?[0-9]{8,15}$/,
+    'Enter a valid phone number: digits only, 8 to 15 digits, with an optional leading +.',
+  );
+
 export const CompanyRepresentativeSchema = z.object({
   fullName: z.string().trim().min(2).max(200),
   workEmail: EmailSchema,
-  phone: z.string().trim().min(8).max(32),
+  phone: CompanyPhoneSchema,
   jobTitle: z.string().trim().min(1).max(120),
   department: z.string().trim().max(120).optional(),
   relationship: RepresentativeRelationshipSchema,
@@ -54,8 +88,8 @@ export const CompanySignupProfileSchema = z.object({
   /** Industry taxonomy (SA-09) — not the unique `Company.domain` slug. */
   taxonomyDomain: z.string().trim().min(1).max(80).optional(),
   mode: CompanyModeSchema,
-  sizeBand: z.string().trim().min(1).max(40),
-  publicPhone: z.string().trim().max(32).optional(),
+  sizeBand: CompanySizeBandSchema,
+  publicPhone: z.union([CompanyPhoneSchema, z.literal('')]).optional(),
   publicEmail: EmailSchema,
   description: z.string().trim().max(5000).optional(),
   address: CompanyAddressSchema,

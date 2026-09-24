@@ -138,6 +138,11 @@ export default function PublicProfilePreviewPage() {
                       {profile.fullName}
                     </h1>
                     <p className="mt-1 font-medium text-gray-600 dark:text-gray-400">{headline}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {profile.acceptsEmployerMessages
+                        ? 'Open to employer messages'
+                        : 'Not accepting employer messages'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {profile.certificate ? (

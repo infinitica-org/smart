@@ -7,6 +7,7 @@ import { CandidateEducationService, isEducationEligible } from './candidate-educ
 describe('CandidateEducationService', () => {
   let service: CandidateEducationService;
   let prismaMock: any;
+  let auditPublisher: any;
 
   const studentId = '11111111-1111-4111-8111-111111111111';
   const otherStudentId = '22222222-2222-4222-8222-222222222222';
@@ -56,7 +57,11 @@ describe('CandidateEducationService', () => {
         findUnique: vi.fn(),
       },
     };
-    service = new CandidateEducationService(prismaMock as unknown as PrismaService);
+    auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+    service = new CandidateEducationService(
+      prismaMock as unknown as PrismaService,
+      auditPublisher as never,
+    );
   });
 
   describe('listForStudent', () => {
@@ -652,6 +657,114 @@ describe('CandidateEducationService', () => {
 
       expect(result.fileName).toBe('degree.pdf');
       expect(prismaMock.candidateEducationDocument.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('audit trail (STU-02)', () => {
+    const now = new Date();
+    const row = (overrides: Record<string, unknown> = {}) => ({
+      id: eduId,
+      studentId,
+      institutionName: 'College of Tech',
+      degree: 'B.Tech',
+      fieldOfStudy: 'CS',
+      startDate: null,
+      endDate: null,
+      current: true,
+      grade: null,
+      degreeDetails: null,
+      status: 'verified',
+      rejectionReason: null,
+      createdAt: now,
+      updatedAt: now,
+      documents: [],
+      ...overrides,
+    });
+
+    it('records the actor when an entry is created', async () => {
+      prismaMock.candidateEducation.create.mockResolvedValue(row({ status: 'unverified' }));
+
+      await service.create(studentId, { institutionName: 'College of Tech', current: true });
+
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: studentId,
+          action: 'candidate_education.created',
+          resourceType: 'candidate_education',
+          resourceId: eduId,
+        }),
+      );
+    });
+
+    it('records prior and new status when an update resets verification', async () => {
+      prismaMock.candidateEducation.findUnique.mockResolvedValue(row({ status: 'verified' }));
+      prismaMock.candidateEducation.update.mockResolvedValue(row({ status: 'unverified' }));
+
+      await service.update(studentId, eduId, { grade: '9.1' });
+
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'candidate_education.updated',
+          metadata: { priorStatus: 'verified', newStatus: 'unverified' },
+        }),
+      );
+    });
+
+    it('records deletion by the owner', async () => {
+      prismaMock.candidateEducation.findUnique.mockResolvedValue(row());
+      prismaMock.candidateEducation.delete.mockResolvedValue({});
+
+      await service.delete(studentId, eduId);
+
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({ actorId: studentId, action: 'candidate_education.deleted' }),
+      );
+    });
+
+    it('writes no audit record and changes nothing when the caller is not the owner', async () => {
+      prismaMock.candidateEducation.findUnique.mockResolvedValue(
+        row({ studentId: otherStudentId }),
+      );
+
+      await expect(service.delete(studentId, eduId)).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(prismaMock.candidateEducation.delete).not.toHaveBeenCalled();
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+
+    it('writes no audit record for an invalid payload', async () => {
+      await expect(service.create(studentId, { institutionName: '' })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prismaMock.candidateEducation.create).not.toHaveBeenCalled();
+      expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+
+    it('does not double-record when a delete is repeated after it succeeded', async () => {
+      prismaMock.candidateEducation.findUnique.mockResolvedValueOnce(row());
+      prismaMock.candidateEducation.delete.mockResolvedValue({});
+      await service.delete(studentId, eduId);
+
+      prismaMock.candidateEducation.findUnique.mockResolvedValueOnce(null);
+      await expect(service.delete(studentId, eduId)).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(auditPublisher.record).toHaveBeenCalledTimes(1);
+    });
+
+    it('attributes a college confirmation to the reviewing admin', async () => {
+      prismaMock.candidateEducation.findUnique.mockResolvedValue(row({ status: 'unverified' }));
+      prismaMock.user.findUnique.mockResolvedValue({ id: studentId, institutionId: instId });
+      prismaMock.candidateEducation.update.mockResolvedValue(row({ status: 'verified' }));
+
+      await service.confirmByHomeCollege(eduId, homeTpoUser);
+
+      expect(auditPublisher.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: homeTpoUser.sub,
+          action: 'candidate_education.confirmed',
+          metadata: { studentId, priorStatus: 'unverified', newStatus: 'verified' },
+        }),
+      );
     });
   });
 });

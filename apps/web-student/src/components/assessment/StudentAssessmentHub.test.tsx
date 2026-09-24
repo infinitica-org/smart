@@ -81,7 +81,7 @@ describe('StudentAssessmentHub', () => {
   it('lists declared claims and starts assessment in inline session', async () => {
     listSkillClaimsMock.mockResolvedValue([
       { claimId: 'claim-1', skillCode: 'SE_REACT', status: 'DECLARED', lastAttemptId: null },
-      { claimId: 'claim-2', skillCode: 'SE_PYTHON', status: 'DECLARED', lastAttemptId: 'att-1' },
+      { claimId: 'claim-2', skillCode: 'SE_PYTHON', status: 'VERIFIED', lastAttemptId: 'att-1' },
     ]);
 
     render(<StudentAssessmentHub />);

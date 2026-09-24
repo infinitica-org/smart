@@ -133,4 +133,67 @@ describe('CredentialsSection', () => {
     render(<CredentialsSection />);
     expect(await screen.findByText('attorney-license.pdf')).toBeDefined();
   });
+
+  const pendingCredential = {
+    credentialId: 'cred-1',
+    issuer: 'Amazon Web Services',
+    credentialName: 'AWS Certified Solutions Architect',
+    credentialType: 'CERTIFICATION',
+    status: 'PENDING_VERIFICATION',
+  };
+
+  function uploadFile(file: File) {
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+  }
+
+  it('rejects unsupported file types without calling the API', async () => {
+    listCredentials.mockResolvedValue([pendingCredential]);
+    render(<CredentialsSection />);
+    await screen.findByText('AWS Certified Solutions Architect');
+
+    uploadFile(new File(['x'], 'run.exe', { type: 'application/x-msdownload' }));
+
+    expect(await screen.findByText(/Use a PDF, JPG, or PNG/i)).toBeDefined();
+    expect(uploadCredentialDocument).not.toHaveBeenCalled();
+  });
+
+  it('rejects documents over 5MB without calling the API', async () => {
+    listCredentials.mockResolvedValue([pendingCredential]);
+    render(<CredentialsSection />);
+    await screen.findByText('AWS Certified Solutions Architect');
+
+    const big = new File(['x'], 'big.pdf', { type: 'application/pdf' });
+    Object.defineProperty(big, 'size', { value: 5 * 1024 * 1024 + 1 });
+    uploadFile(big);
+
+    expect(await screen.findByText(/5MB or smaller/i)).toBeDefined();
+    expect(uploadCredentialDocument).not.toHaveBeenCalled();
+  });
+
+  it('reports an upload failure and lets the student retry the same document', async () => {
+    listCredentials.mockResolvedValue([pendingCredential]);
+    uploadCredentialDocument.mockRejectedValueOnce(new Error('boom'));
+    uploadCredentialDocument.mockResolvedValueOnce({});
+    render(<CredentialsSection />);
+    await screen.findByText('AWS Certified Solutions Architect');
+    const file = new File(['cert'], 'license.pdf', { type: 'application/pdf' });
+
+    uploadFile(file);
+    expect(await screen.findByText('Document upload failed.')).toBeDefined();
+    // The credential is still listed and still pending: nothing was lost.
+    expect(screen.getByText('Pending verification')).toBeDefined();
+
+    uploadFile(file);
+    await waitFor(() => expect(uploadCredentialDocument).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText('Document upload failed.')).toBeNull());
+  });
+
+  it('shows a revoked verification outcome instead of a pending state', async () => {
+    listCredentials.mockResolvedValue([{ ...pendingCredential, status: 'REVOKED' }]);
+    render(<CredentialsSection />);
+
+    expect(await screen.findByText('Revoked')).toBeDefined();
+    expect(screen.queryByText('Pending verification')).toBeNull();
+  });
 });

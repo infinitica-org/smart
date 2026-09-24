@@ -17,6 +17,7 @@ describe('WorkExperienceService', () => {
   let prisma: any;
   let auditPublisher: any;
   let aiGateway: any;
+  let notifications: any;
   let publicProfileService: any;
   let evidenceSync: any;
   let storage: any;

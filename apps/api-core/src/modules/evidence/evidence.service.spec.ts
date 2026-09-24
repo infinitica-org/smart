@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { CandidateEvidenceProvenanceResponseSchema as _CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
 import type { RequestUser as _RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -333,5 +333,75 @@ describe('EvidenceService versioning', () => {
 
     expect(prisma.evidenceRecord.update).not.toHaveBeenCalled();
     expect(evidenceVersions.appendVersion).not.toHaveBeenCalled();
+  });
+});
+
+describe('EvidenceService credentials: isolation and validation (STU-02)', () => {
+  const pdf = { buffer: Buffer.from('%PDF'), fileName: 'cert.pdf', mimeType: 'application/pdf' };
+
+  it('lists only the caller’s credentials', async () => {
+    const { service, prisma } = buildService();
+
+    await service.listCredentials('student-1');
+
+    expect(prisma.professionalCredential.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { studentId: 'student-1' } }),
+    );
+  });
+
+  it('does not let a student attach a document to someone else’s credential', async () => {
+    const { service, prisma, storageService } = buildService({
+      prisma: {
+        professionalCredential: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          update: vi.fn(),
+        },
+      },
+    });
+
+    await expect(
+      service.uploadCredentialDocument('student-2', 'cred-1', pdf),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.professionalCredential.findFirst).toHaveBeenCalledWith({
+      where: { id: 'cred-1', studentId: 'student-2' },
+    });
+    expect(storageService.upload).not.toHaveBeenCalled();
+    expect(prisma.professionalCredential.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsupported document types before storing anything', async () => {
+    const { service, storageService } = buildService();
+
+    await expect(
+      service.uploadCredentialDocument('student-1', 'cred-1', {
+        ...pdf,
+        fileName: 'cert.exe',
+        mimeType: 'application/x-msdownload',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(storageService.upload).not.toHaveBeenCalled();
+  });
+
+  it('rejects documents over the 5MB limit before storing anything', async () => {
+    const { service, storageService } = buildService();
+
+    await expect(
+      service.uploadCredentialDocument('student-1', 'cred-1', {
+        ...pdf,
+        buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(storageService.upload).not.toHaveBeenCalled();
+  });
+
+  it('does not create a credential from an invalid payload', async () => {
+    const { service, prisma } = buildService();
+
+    await expect(service.createCredential('student-1', { issuer: '' })).rejects.toBeDefined();
+
+    expect(prisma.professionalCredential.create).not.toHaveBeenCalled();
   });
 });

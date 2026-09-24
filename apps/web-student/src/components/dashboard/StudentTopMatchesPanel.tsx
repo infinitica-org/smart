@@ -9,6 +9,8 @@ export interface MatchItem {
   companyName: string;
   location: string;
   matchPercentage: number;
+  /** The student already has an application for this opening. */
+  applied?: boolean;
 }
 
 export function StudentTopMatchesPanel({ matches = [] }: { matches?: MatchItem[] }) {
@@ -76,6 +78,11 @@ export function StudentTopMatchesPanel({ matches = [] }: { matches?: MatchItem[]
                       <span className="font-semibold text-zinc-900 text-sm dark:text-white">
                         {item.roleTitle}
                       </span>
+                      {item.applied ? (
+                        <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                          Applied
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-4 py-3.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">
