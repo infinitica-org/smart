@@ -3,14 +3,14 @@
 # docs/delivery/BACKUP_RESTORE.md.
 FROM alpine:3.20
 
-RUN apk add --no-cache bash coreutils ca-certificates tzdata postgresql16-client age rclone
+RUN apk add --no-cache bash coreutils ca-certificates tzdata postgresql16-client age rclone jq
 
 # All rclone remotes come from RCLONE_CONFIG_* env vars; an empty config file
 # silences the missing-config notice.
 ENV RCLONE_CONFIG=/etc/rclone.conf
 RUN touch /etc/rclone.conf
 
-COPY entrypoint.sh backup.sh /usr/local/bin/
+COPY entrypoint.sh backup.sh restore.sh /usr/local/bin/
 # Strip CR in case the build context came from a Windows checkout (core.autocrlf).
 RUN sed -i 's/\r$//' /usr/local/bin/*.sh && chmod +x /usr/local/bin/*.sh
 

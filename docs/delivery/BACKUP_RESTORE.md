@@ -93,5 +93,57 @@ Alert (S6-VV-125): `time() - smart_backup_last_success_timestamp_seconds > 26h`,
 
 ## Restoring
 
-A backup is only as good as its last restore. The restore drill and the full-restore
-procedure are covered by S6-VV-98.
+A backup is only as good as its last restore. `infra/backup/restore.sh` (in the same
+image) does both the routine drill and a real disaster recovery. It always:
+
+1. Picks a complete backup (`--run <timestamp>`, default newest with a manifest; `--tier daily|weekly|monthly`).
+2. Verifies the sha256 of each artifact against `manifest.json` before decrypting anything.
+3. Decrypts with the **private** key and `pg_restore`s into the target database.
+4. Requires the manifest's row counts and latest Prisma migration to match **exactly**. The
+   counts come from the same snapshot as the dump, so any difference is a real problem.
+5. With `--objects`, also decrypts the object archive and checks the file count.
+
+It exits non-zero on any failed check. The private key is mounted read-only for the one run
+and is never copied onto the server.
+
+### Monthly restore drill (required)
+
+Run it on the VPS, or on any machine with Docker and the repo, pointing at the same `.env`:
+
+```bash
+C="docker compose --env-file .env.prod -f infra/docker/docker-compose.yml --profile apps --profile vps"
+$C run --rm --no-deps \
+  -v /path/to/smart-backup-age.key:/run/secrets/backup_age_key:ro \
+  backup restore.sh --objects
+```
+
+This restores into a scratch database, `smart_restore_check`, on the same Postgres, runs the
+checks, then drops it. The live `smart` database is never touched. A pass writes
+`smart_backup_last_restore_test_timestamp_seconds`; alert if it goes stale for more than 35
+days. Record every drill in the log below.
+
+### Disaster recovery (live restore)
+
+Only when the live data is lost or corrupted. **This drops and recreates the live database.**
+
+1. Stop writers: `$C stop api` (and anything else that writes to Postgres or MinIO).
+2. Pick the backup (`--run <timestamp>`; list them with
+   `$C run --rm --no-deps backup rclone lsf offsite:<bucket>/<env>/daily`).
+3. Restore the database and put the objects back into MinIO:
+
+   ```bash
+   $C run --rm --no-deps \
+     -v /path/to/smart-backup-age.key:/run/secrets/backup_age_key:ro \
+     backup restore.sh --run <timestamp> --target-db smart --force-live --restore-objects
+   ```
+
+4. `bash scripts/deploy-vps.sh <env>` to bring everything back up. `prisma migrate deploy` is
+   a no-op when the backup is on the current schema, and applies anything newer.
+5. Expect to lose up to 24 h of data (RPO). Tell affected users, and check the audit log for
+   the gap.
+
+### Drill log
+
+| Date (UTC) | Environment                                                    | Backup                         | Result | Notes                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | -------------------------------------------------------------- | ------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-24 | local throwaway stack (`pgvector:pg16` + MinIO, 67 migrations) | `drill/daily/20260924T192408Z` | PASS   | 7/7 row counts + latest migration matched; 3/3 objects. Also passed: a tampered artifact is rejected by checksum; a wrong key fails to decrypt; restoring over `smart` without `--force-live` is refused; a full `--force-live --restore-objects` recovery brought 14 → 25 users and 2 → 3 objects back, and `prisma migrate status` was up to date afterwards. First real-environment drill pending D1 (off-site target). |
