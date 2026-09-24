@@ -6,6 +6,8 @@ import {
   VerificationQueueItemDtoSchema,
 } from './onboarding.dto.js';
 import {
+  COMPANY_SIZE_BANDS,
+  COMPANY_SIZE_BAND_LABELS,
   CompanyOnboardingVerificationDocumentDtoSchema,
   CompanyRepresentativeSchema,
   CompanySignupProfileSchema,
@@ -400,5 +402,80 @@ describe('AuthenticatedUserSchema company fields', () => {
   it('accepts legacy payloads without company fields until auth phase ships', () => {
     const { companyId: _c, companyName: _n, ...legacy } = baseUser;
     expect(AuthenticatedUserSchema.safeParse(legacy).success).toBe(true);
+  });
+});
+
+describe('company size band (dropdown values)', () => {
+  const profile = {
+    displayName: 'Acme Labs',
+    legalName: 'Acme Labs Private Limited',
+    website: 'https://acme.example',
+    sector: 'Software',
+    mode: 'SERVICE' as const,
+    sizeBand: '51-200',
+    publicEmail: 'hello@acme.example',
+    address: { line1: '1 Main Street', city: 'Bengaluru', country: 'IN' },
+  };
+
+  it('accepts every offered band', () => {
+    for (const sizeBand of COMPANY_SIZE_BANDS) {
+      expect(CompanySignupProfileSchema.safeParse({ ...profile, sizeBand }).success).toBe(true);
+    }
+  });
+
+  it('labels every offered band', () => {
+    for (const band of COMPANY_SIZE_BANDS) {
+      expect(COMPANY_SIZE_BAND_LABELS[band]).toMatch(/employees$/);
+    }
+  });
+
+  it('rejects free text with a message the user can act on', () => {
+    for (const sizeBand of ['lots', '51 to 200', '', '10000', '51-200 ']) {
+      const result = CompanySignupProfileSchema.safeParse({ ...profile, sizeBand });
+      if (sizeBand === '51-200 ') {
+        // Surrounding whitespace is trimmed before the enum check by the API layer; the enum itself is strict.
+        expect(result.success).toBe(false);
+        continue;
+      }
+      expect(result.success).toBe(false);
+      expect(JSON.stringify(result.error?.issues)).toContain(
+        'Choose a company size from the list.',
+      );
+    }
+  });
+});
+
+describe('company phone number (digits only)', () => {
+  const rep = {
+    fullName: 'Ada Recruiter',
+    workEmail: 'ada@acme.example',
+    jobTitle: 'Head of Talent',
+    relationship: 'HR' as const,
+  };
+
+  it('accepts digits with an optional leading +', () => {
+    for (const phone of ['+919876543210', '9876543210', '12345678', '123456789012345']) {
+      expect(CompanyRepresentativeSchema.safeParse({ ...rep, phone }).success).toBe(true);
+    }
+  });
+
+  it('rejects letters, spaces, dashes, brackets and out-of-range lengths', () => {
+    for (const phone of [
+      'call me',
+      '+91 98765 43210',
+      '98765-43210',
+      '(987) 6543210',
+      '1234567',
+      '1234567890123456',
+      '++919876543210',
+      '',
+    ]) {
+      expect(CompanyRepresentativeSchema.safeParse({ ...rep, phone }).success).toBe(false);
+    }
+  });
+
+  it('explains the rule in the error message', () => {
+    const result = CompanyRepresentativeSchema.safeParse({ ...rep, phone: 'abc' });
+    expect(JSON.stringify(result.error?.issues)).toContain('digits only');
   });
 });

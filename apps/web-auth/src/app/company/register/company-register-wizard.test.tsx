@@ -1,0 +1,83 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { COMPANY_SIZE_BANDS } from '@smart/contracts';
+import { SmartApiError } from '@smart/api-client';
+
+const getSession = vi.fn();
+const updateDraft = vi.fn();
+const sendVerification = vi.fn();
+
+vi.mock('../../../lib/api', () => ({
+  api: {
+    public: {
+      getCompanyOnboardingSession: (...a: unknown[]) => getSession(...a),
+      updateCompanyOnboardingDraft: (...a: unknown[]) => updateDraft(...a),
+      sendCompanyOnboardingEmailVerification: (...a: unknown[]) => sendVerification(...a),
+    },
+  },
+}));
+vi.mock('next/link', () => ({
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
+
+import { CompanyRegisterWizard } from './company-register-wizard';
+import { COMPANY_ONBOARDING_SESSION_KEY } from '../../../lib/company-onboarding-session';
+
+async function openDetailsStep() {
+  window.localStorage.setItem(COMPANY_ONBOARDING_SESSION_KEY, 'token');
+  window.sessionStorage.setItem(COMPANY_ONBOARDING_SESSION_KEY, 'token');
+  getSession.mockResolvedValue({
+    onboardingStatus: 'DRAFT',
+    representative: { fullName: 'Ada', workEmail: 'ada@acme.example' },
+    profile: {},
+  });
+  render(<CompanyRegisterWizard />);
+  return screen.findByLabelText('Phone number');
+}
+
+beforeEach(() => {
+  getSession.mockReset();
+  updateDraft.mockReset();
+  sendVerification.mockReset();
+});
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
+
+describe('CompanyRegisterWizard details step', () => {
+  it('offers company size as a dropdown of the predefined bands', async () => {
+    await openDetailsStep();
+    const select = screen.getByLabelText('Number of employees') as HTMLSelectElement;
+    expect(select.tagName).toBe('SELECT');
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([...COMPANY_SIZE_BANDS]);
+  });
+
+  it('strips non-digits from the phone number as the user types', async () => {
+    const phone = (await openDetailsStep()) as HTMLInputElement;
+    fireEvent.change(phone, { target: { value: '+91 98-76abc' } });
+    expect(phone.value).toBe('+919876');
+  });
+
+  it('shows which fields failed instead of a generic validation message', async () => {
+    const phone = await openDetailsStep();
+    updateDraft.mockRejectedValue(
+      new SmartApiError({
+        statusCode: 422,
+        error: 'validation_failed',
+        message: 'Request failed validation.',
+        details: [{ path: 'representative.phone', message: 'Enter a valid phone number.' }],
+      }),
+    );
+    fireEvent.change(phone, { target: { value: '9876543210' } });
+    const form = phone.closest('form');
+    if (!form) throw new Error('form missing');
+    fireEvent.submit(form);
+    const alert = await screen.findByRole('alert');
+    await waitFor(() => expect(alert.textContent).toContain('Phone: Enter a valid phone number.'));
+    expect(alert.textContent).not.toBe('Request failed validation.');
+  });
+});
