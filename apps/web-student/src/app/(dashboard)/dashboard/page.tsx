@@ -76,6 +76,7 @@ export default function DashboardPage() {
         companyName: match.companyName,
         location: match.location ?? 'Location not specified',
         matchPercentage: match.matchPercent,
+        applied: match.source === 'APPLICATION',
       })),
     [summary],
   );

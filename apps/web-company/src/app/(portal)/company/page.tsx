@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Building2, Pencil, Globe, MapPin, ShieldCheck, Mail, Check } from 'lucide-react';
 import { useCompanyAccount } from '@/lib/use-company-account';
+import { buildAboutDraft } from '../../../lib/about-template';
+import { LocationInput } from '../../../components/location-input';
 import { Modal, PageHeader } from '../../../components/ui';
 import {
   card,
@@ -252,10 +254,9 @@ export default function CompanyProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={label}>Location / Headquarters</label>
-              <input
-                type="text"
-                value={editForm.location}
-                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+              <LocationInput
+                value={editForm.location ?? ''}
+                onChange={(next) => setEditForm({ ...editForm, location: next })}
                 className={input}
               />
             </div>
@@ -271,7 +272,16 @@ export default function CompanyProfilePage() {
           </div>
 
           <div>
-            <label className={label}>About Organization</label>
+            <div className="flex items-center justify-between">
+              <label className={label}>About Organization</label>
+              <button
+                type="button"
+                className="text-xs font-semibold text-blue-700 hover:underline"
+                onClick={() => setEditForm({ ...editForm, about: buildAboutDraft(editForm) })}
+              >
+                Draft from my details
+              </button>
+            </div>
             <textarea
               rows={4}
               value={editForm.about}
