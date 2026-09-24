@@ -145,6 +145,37 @@ describe('assertCanReadCandidateEvidenceVersions', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('denies an unverified company before checking application ownership', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'student-1',
+          role: 'STUDENT',
+          institutionId: 'inst-1',
+        }),
+      },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'PENDING' }),
+      },
+      application: {
+        count: vi.fn().mockResolvedValue(1),
+      },
+    };
+
+    await expect(
+      assertCanReadCandidateEvidenceVersions(
+        prisma as never,
+        {
+          sub: 'company-user',
+          role: 'COMPANY',
+          companyId: 'company-1',
+        } as never,
+        'student-1',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.application.count).not.toHaveBeenCalled();
+  });
+
   it('requires company application relationship for redacted access', async () => {
     const prisma = {
       user: {
@@ -153,6 +184,9 @@ describe('assertCanReadCandidateEvidenceVersions', () => {
           role: 'STUDENT',
           institutionId: 'inst-1',
         }),
+      },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
       },
       application: {
         count: vi.fn().mockResolvedValue(0),
@@ -180,6 +214,9 @@ describe('assertCanReadCandidateEvidenceVersions', () => {
           role: 'STUDENT',
           institutionId: 'inst-1',
         }),
+      },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
       },
       application: {
         count: vi.fn().mockResolvedValue(1),
