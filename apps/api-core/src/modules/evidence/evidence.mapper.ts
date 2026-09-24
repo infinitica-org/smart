@@ -1,5 +1,6 @@
 import type {
   EvidenceRecordDto,
+  EvidenceRecordVersionDto,
   PassiveSignalEvidenceDto,
   ProfessionalCredentialDto,
   ProjectSkillMappingDto,
@@ -10,6 +11,7 @@ import type {
 import type {
   EvidenceArtifact,
   EvidenceRecord,
+  EvidenceRecordVersion,
   PassiveSignalEvidence,
   ProfessionalCredential,
   ProjectSkillMapping,
@@ -48,6 +50,22 @@ export function toEvidenceRecordDto(
     sourcePayload: (row.sourcePayload as Record<string, unknown>) ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toEvidenceRecordVersionDto(row: EvidenceRecordVersion): EvidenceRecordVersionDto {
+  const snapshot = row.snapshot as EvidenceRecordDto;
+  return {
+    versionId: row.id,
+    evidenceId: row.evidenceId,
+    versionNumber: row.versionNumber,
+    snapshot,
+    actorId: row.actorId,
+    organizationId: row.organizationId,
+    source: row.source as EvidenceRecordVersionDto['source'],
+    priorVerificationStatus: row.priorVerificationStatus ?? null,
+    newVerificationStatus: row.newVerificationStatus,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

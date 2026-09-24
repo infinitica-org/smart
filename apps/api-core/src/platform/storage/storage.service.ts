@@ -3,6 +3,7 @@ import type { OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
@@ -124,6 +125,11 @@ export class StorageService implements OnModuleInit {
     const byteArray = await response.Body?.transformToByteArray();
     if (!byteArray) throw new Error(`Empty or missing object for key ${objectKey}`);
     return Buffer.from(byteArray);
+  }
+
+  /** Deletes an object by key (S3 delete is idempotent — missing keys succeed). */
+  async deleteObject(objectKey: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
   }
 }
 

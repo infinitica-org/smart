@@ -991,6 +991,17 @@ const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       );
     }
+
+    if (itemId && url.includes('/resend-manager-endorsement') && method === 'POST') {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Manager endorsement reminder email queued for delivery.',
+          expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
   }
 
   if (url.includes('/users/me/education') || url.includes('/me/education')) {

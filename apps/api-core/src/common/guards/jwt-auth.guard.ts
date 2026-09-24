@@ -9,6 +9,7 @@ export interface RequestUser {
   readonly sub: string;
   readonly role: string;
   readonly inst: string | null;
+  readonly companyId?: string | null;
 }
 
 @Injectable()

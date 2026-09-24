@@ -10,13 +10,25 @@ export type EmailTemplateName =
   | 'verification-passed'
   | 'verification-failed'
   | 'verification-locked'
+  | 'email-verification'
+  | 'password-reset'
   | 'work-experience-verifier-invite'
   | 'work-experience-verifier-reminder'
   | 'certificate-endorsement-request'
   /** WE-T03: manager endorsement invite (domain-validated corporate email, 5-day TTL) */
   | 'work-experience-manager-invite'
   /** WE-T03: manager endorsement reminder at day 3 (72h) */
-  | 'work-experience-manager-reminder';
+  | 'work-experience-manager-reminder'
+  /** CO self-onboarding: corporate email OTP (session holder, not JWT). */
+  | 'company-onboarding-email-verify'
+  /** Phase 6: company representative password setup after SA approval. */
+  | 'company-portal-invite';
+
+export interface CompanyOnboardingEmailVerifyData {
+  readonly fullName: string;
+  readonly verificationCode: string;
+  readonly expiresAtFormatted: string;
+}
 
 export interface InviteEmailData {
   readonly fullName: string;
@@ -39,6 +51,18 @@ export interface StageChangeEmailData {
   readonly fromStage: string | null;
   readonly toStage: string;
   readonly applicationsUrl: string;
+}
+
+export interface EmailVerificationEmailData {
+  readonly fullName: string;
+  readonly verifyUrl: string;
+  readonly expiresAtFormatted: string;
+}
+
+export interface PasswordResetEmailData {
+  readonly fullName: string;
+  readonly resetUrl: string;
+  readonly expiresAtFormatted: string;
 }
 
 export interface VerificationEmailData {
@@ -80,13 +104,16 @@ export interface CertificateEndorsementRequestEmailData {
 
 export type EmailTemplateData =
   | InviteEmailData
+  | EmailVerificationEmailData
+  | PasswordResetEmailData
   | OpportunityEmailData
   | StageChangeEmailData
   | VerificationEmailData
   | WorkExperienceVerifierInviteEmailData
   | WorkExperienceVerifierReminderEmailData
   | CertificateEndorsementRequestEmailData
-  | WorkExperienceManagerEndorsementEmailData;
+  | WorkExperienceManagerEndorsementEmailData
+  | CompanyOnboardingEmailVerifyData;
 
 export interface EmailJobPayload {
   readonly to: string;

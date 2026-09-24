@@ -227,6 +227,17 @@ export class WorkExperienceController {
     return this.service.sendManagerEndorsement(user.sub, id, body);
   }
 
+  @Post(':id/resend-manager-endorsement')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'WE-T03: Resend a reminder email to manager for pending work-experience endorsement.',
+  })
+  @ApiResponse({ status: 200, description: 'Manager endorsement reminder email queued.' })
+  resendManagerEndorsement(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.service.resendManagerEndorsement(user.sub, id);
+  }
+
   @Post(':id/restart-verification')
   @Roles('STUDENT')
   @ApiBearerAuth()

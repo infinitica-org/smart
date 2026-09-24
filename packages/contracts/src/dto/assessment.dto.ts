@@ -407,3 +407,167 @@ export const PolymorphicAssessmentSessionDtoSchema = z.object({
   serverRemainingSeconds: z.number().int().nonnegative().optional(),
 });
 export type PolymorphicAssessmentSessionDto = z.infer<typeof PolymorphicAssessmentSessionDtoSchema>;
+
+/* ------------------------ admin level authoring (T10) ----------------------- */
+
+export const ADMIN_LEVEL_DURATION_MIN = 1;
+export const ADMIN_LEVEL_DURATION_MAX = 480;
+
+export const AdminLevelDtoSchema = z.object({
+  levelId: UuidSchema,
+  trackId: UuidSchema,
+  trackCode: TrackCodeSchema,
+  trackName: z.string().min(1),
+  levelNumber: LevelNumberSchema,
+  name: z.string().min(2).max(200),
+  format: LevelFormatSchema,
+  durationMinutes: z.number().int().min(ADMIN_LEVEL_DURATION_MIN).max(ADMIN_LEVEL_DURATION_MAX),
+  itemCount: z.number().int().nonnegative(),
+  createdAt: IsoDateTimeSchema,
+});
+export type AdminLevelDto = z.infer<typeof AdminLevelDtoSchema>;
+
+export const ListAdminLevelsResponseSchema = z.object({
+  levels: z.array(AdminLevelDtoSchema),
+});
+export type ListAdminLevelsResponse = z.infer<typeof ListAdminLevelsResponseSchema>;
+
+export const CreateAdminLevelRequestSchema = z.object({
+  trackId: UuidSchema,
+  levelNumber: LevelNumberSchema,
+  name: z.string().min(2).max(200),
+  format: LevelFormatSchema,
+  durationMinutes: z.number().int().min(ADMIN_LEVEL_DURATION_MIN).max(ADMIN_LEVEL_DURATION_MAX),
+});
+export type CreateAdminLevelRequest = z.infer<typeof CreateAdminLevelRequestSchema>;
+
+export const UpdateAdminLevelRequestSchema = z
+  .object({
+    name: z.string().min(2).max(200).optional(),
+    format: LevelFormatSchema.optional(),
+    durationMinutes: z
+      .number()
+      .int()
+      .min(ADMIN_LEVEL_DURATION_MIN)
+      .max(ADMIN_LEVEL_DURATION_MAX)
+      .optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'At least one field must be provided.',
+  });
+export type UpdateAdminLevelRequest = z.infer<typeof UpdateAdminLevelRequestSchema>;
+
+/* ------------------------ admin item authoring (T11) ---------------------- */
+
+export const AdminItemOptionDtoSchema = z.object({
+  optionId: UuidSchema,
+  label: z.string().min(1).max(8),
+  text: z.string().min(1).max(2_000),
+  isCorrect: z.boolean(),
+});
+export type AdminItemOptionDto = z.infer<typeof AdminItemOptionDtoSchema>;
+
+export const AdminItemDtoSchema = z.object({
+  itemId: UuidSchema,
+  levelId: UuidSchema,
+  competencyId: UuidSchema,
+  competencyName: z.string().min(1),
+  itemType: ItemTypeSchema,
+  stem: z.string().min(10).max(8_000),
+  modelAnswer: z.string().max(8_000).nullable(),
+  difficultyTag: z.enum(['EASY', 'MEDIUM', 'HARD', 'EXPERT']),
+  active: z.boolean(),
+  formCode: z.string().min(1).max(8),
+  options: z.array(AdminItemOptionDtoSchema),
+  createdAt: IsoDateTimeSchema,
+});
+export type AdminItemDto = z.infer<typeof AdminItemDtoSchema>;
+
+export const ListAdminItemsResponseSchema = z.object({
+  items: z.array(AdminItemDtoSchema),
+});
+export type ListAdminItemsResponse = z.infer<typeof ListAdminItemsResponseSchema>;
+
+export const AdminItemOptionInputSchema = z.object({
+  label: z.string().min(1).max(8),
+  text: z.string().min(1).max(2_000),
+  isCorrect: z.boolean(),
+});
+export type AdminItemOptionInput = z.infer<typeof AdminItemOptionInputSchema>;
+
+export const CreateAdminItemRequestSchema = z.object({
+  competencyId: UuidSchema,
+  itemType: ItemTypeSchema,
+  stem: z.string().min(10).max(8_000),
+  modelAnswer: z.string().max(8_000).optional(),
+  difficultyTag: z.enum(['EASY', 'MEDIUM', 'HARD', 'EXPERT']).default('MEDIUM'),
+  formCode: z.string().min(1).max(8).default('A'),
+  options: z.array(AdminItemOptionInputSchema).max(12).default([]),
+});
+export type CreateAdminItemRequest = z.infer<typeof CreateAdminItemRequestSchema>;
+
+export const UpdateAdminItemRequestSchema = z
+  .object({
+    competencyId: UuidSchema.optional(),
+    stem: z.string().min(10).max(8_000).optional(),
+    modelAnswer: z.string().max(8_000).nullable().optional(),
+    difficultyTag: z.enum(['EASY', 'MEDIUM', 'HARD', 'EXPERT']).optional(),
+    active: z.boolean().optional(),
+    options: z.array(AdminItemOptionInputSchema).max(12).optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'At least one field must be provided.',
+  });
+export type UpdateAdminItemRequest = z.infer<typeof UpdateAdminItemRequestSchema>;
+
+export const AdminCutScoreDtoSchema = z.object({
+  cutScoreId: UuidSchema,
+  levelId: UuidSchema,
+  tier: z.enum(['GOLD', 'SILVER', 'BRONZE']),
+  mean: ScoreSchema,
+  sd: z.number().min(0),
+  published: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+});
+export type AdminCutScoreDto = z.infer<typeof AdminCutScoreDtoSchema>;
+
+export const ListAdminCutScoresResponseSchema = z.object({
+  cutScores: z.array(AdminCutScoreDtoSchema),
+});
+export type ListAdminCutScoresResponse = z.infer<typeof ListAdminCutScoresResponseSchema>;
+
+export const UpsertAdminCutScoreRequestSchema = z.object({
+  tier: z.enum(['GOLD', 'SILVER', 'BRONZE']),
+  mean: ScoreSchema,
+  sd: z.number().min(0).max(100),
+});
+export type UpsertAdminCutScoreRequest = z.infer<typeof UpsertAdminCutScoreRequestSchema>;
+
+/* ---------------------- skill retake policy admin (T19) -------------------- */
+
+export const SkillRetakePolicyDtoSchema = z.object({
+  skillId: UuidSchema,
+  code: z.string().min(2).max(64),
+  name: z.string().min(1),
+  cooldownDays: z.number().int().min(1).max(365),
+  validityDays: z.number().int().min(1).max(730),
+  beginnerPassThreshold: ScoreSchema,
+  active: z.boolean(),
+});
+export type SkillRetakePolicyDto = z.infer<typeof SkillRetakePolicyDtoSchema>;
+
+export const ListSkillRetakePoliciesResponseSchema = z.object({
+  skills: z.array(SkillRetakePolicyDtoSchema),
+});
+export type ListSkillRetakePoliciesResponse = z.infer<typeof ListSkillRetakePoliciesResponseSchema>;
+
+export const UpdateSkillRetakePolicyRequestSchema = z
+  .object({
+    cooldownDays: z.number().int().min(1).max(365).optional(),
+    validityDays: z.number().int().min(1).max(730).optional(),
+    beginnerPassThreshold: ScoreSchema.optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'At least one field must be provided.',
+  });
+export type UpdateSkillRetakePolicyRequest = z.infer<typeof UpdateSkillRetakePolicyRequestSchema>;

@@ -244,6 +244,11 @@ body {
   --tpo-dash-empty-icon: #64748b;
 }
 
+.tpo-dashboard {
+  background-image: radial-gradient(ellipse 90% 45% at 50% -5%, rgba(204, 251, 241, 0.45) 0%, rgba(240, 253, 250, 0.2) 50%, transparent 80%);
+  background-repeat: no-repeat;
+}
+
 .tpo-dashboard .dashboard-hero-card {
   background: linear-gradient(
     105deg,

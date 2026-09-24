@@ -761,7 +761,10 @@ export class MatchingService {
         },
       }),
       this.prisma.studentCapability.findMany({
-        where: { studentId: { in: [...studentIds] } },
+        where: {
+          studentId: { in: [...studentIds] },
+          OR: [{ projectId: null }, { project: { isActive: true } }],
+        },
         select: {
           studentId: true,
           capabilityLabel: true,
@@ -771,7 +774,11 @@ export class MatchingService {
         },
       }),
       this.prisma.project.findMany({
-        where: { studentId: { in: [...studentIds] }, qlixCheckResult: { isNot: null } },
+        where: {
+          studentId: { in: [...studentIds] },
+          isActive: true,
+          qlixCheckResult: { isNot: null },
+        },
         include: { qlixCheckResult: { select: { smartAssessmentJson: true } } },
       }),
     ]);
@@ -911,7 +918,10 @@ export class MatchingService {
 
     const [capabilities, projects] = await Promise.all([
       this.prisma.studentCapability.findMany({
-        where: { studentId: { in: [...studentIds] } },
+        where: {
+          studentId: { in: [...studentIds] },
+          OR: [{ projectId: null }, { project: { isActive: true } }],
+        },
         select: {
           studentId: true,
           capabilityLabel: true,
@@ -925,6 +935,7 @@ export class MatchingService {
       this.prisma.project.findMany({
         where: {
           studentId: { in: [...studentIds] },
+          isActive: true,
           qlixCheckResult: { isNot: null },
         },
         include: {

@@ -108,7 +108,7 @@ describe('AC-T06 authorization', () => {
     },
   );
 
-  it.each(['B2B_PARTNER', 'STUDENT', 'SUPER_ADMIN'] as const)(
+  it.each(['B2B_PARTNER', 'COMPANY', 'STUDENT', 'SUPER_ADMIN'] as const)(
     'rejects %s on the send-to-company route',
     (role) => {
       const guard = new RolesGuard({

@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { EvidenceSyncService } from '../../modules/evidence/evidence-sync.service.js';
 import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -18,6 +19,7 @@ export class EmailProcessor extends WorkerHost {
   constructor(
     @Inject(MailerService) private readonly mailer: MailerService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
   ) {
     super();
   }
@@ -84,6 +86,7 @@ export class EmailProcessor extends WorkerHost {
               where: { id: experienceId },
               data: { status: 'EXPIRED' },
             });
+            await this.evidenceSync.syncWorkExperienceEvidenceRecord(exp.studentId, experienceId);
           }
         }
       }

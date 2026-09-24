@@ -44,6 +44,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { EvidenceService } from '../evidence/evidence.service.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
 
@@ -64,7 +65,65 @@ export class PlacementController {
   constructor(
     @Inject(PlacementService) private readonly service: PlacementService,
     @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
+    @Inject(EvidenceService) private readonly evidence: EvidenceService,
   ) {}
+
+  @Get('candidates/:studentId/evidence')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get candidate evidence records categorized by provenance (VER-01).' })
+  getCandidateEvidenceProvenance(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.evidence.getCandidateEvidenceProvenance(user, studentId);
+  }
+
+  @Post('candidates/:studentId/evidence/:evidenceId/review')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Reviewer marks candidate evidence accepted, rejected, or needing information (VER-01).',
+  })
+  reviewCandidateEvidence(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('evidenceId') evidenceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.evidence.reviewEvidence(user, studentId, evidenceId, body);
+  }
+
+  @Get('candidates/:studentId/evidence/:evidenceId/versions')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List historical evidence versions for a candidate (VER-01).' })
+  listCandidateEvidenceVersions(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
+    return this.evidence.listCandidateEvidenceVersions(user, studentId, evidenceId);
+  }
+
+  @Get('candidates/:studentId/evidence/:evidenceId/versions/:versionNumber')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a specific historical evidence version (VER-01).' })
+  getCandidateEvidenceVersion(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('evidenceId') evidenceId: string,
+    @Param('versionNumber') versionNumber: string,
+  ) {
+    return this.evidence.getCandidateEvidenceVersion(
+      user,
+      studentId,
+      evidenceId,
+      Number.parseInt(versionNumber, 10),
+    );
+  }
 
   @Get('_meta')
   meta() {

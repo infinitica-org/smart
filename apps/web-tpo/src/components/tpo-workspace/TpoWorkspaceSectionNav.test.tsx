@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Users, UserPlus, LayoutGrid } from 'lucide-react';
+import { Users, LayoutGrid } from 'lucide-react';
 import { TpoWorkspaceSectionNav } from './TpoWorkspaceSectionNav';
 
 const navState = vi.hoisted(() => ({ pathname: '/students' }));
@@ -11,16 +11,10 @@ vi.mock('next/navigation', () => ({
 
 const items = [
   {
-    name: 'Candidates Repository',
+    name: 'Students',
     href: '/students',
     description: '',
     icon: Users,
-  },
-  {
-    name: 'Candidate Onboarding',
-    href: '/provisioning',
-    description: '',
-    icon: UserPlus,
   },
   { name: 'Batches', href: '/batches', description: '', icon: LayoutGrid },
 ];
@@ -44,16 +38,12 @@ describe('TpoWorkspaceSectionNav', () => {
     );
 
     expect(screen.getByText('Candidates')).toBeDefined();
-    expect(screen.getByRole('link', { name: /Candidates Repository/ }).getAttribute('href')).toBe(
-      '/students',
-    );
-    expect(screen.getByRole('link', { name: /Candidate Onboarding/ }).getAttribute('href')).toBe(
-      '/provisioning',
-    );
+    expect(screen.getByRole('link', { name: /^Students$/ }).getAttribute('href')).toBe('/students');
+    expect(screen.queryByRole('link', { name: /Whitelist/i })).toBeNull();
   });
 
   it('marks the active route', () => {
-    navState.pathname = '/provisioning';
+    navState.pathname = '/batches';
     render(
       <TpoWorkspaceSectionNav
         sectionTitle="Candidates"
@@ -62,8 +52,8 @@ describe('TpoWorkspaceSectionNav', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('link', { name: /Candidate Onboarding/ }).getAttribute('aria-current'),
-    ).toBe('page');
+    expect(screen.getByRole('link', { name: /^Batches$/ }).getAttribute('aria-current')).toBe(
+      'page',
+    );
   });
 });

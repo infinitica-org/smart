@@ -38,6 +38,8 @@ function setup() {
       prisma as never,
       invitations as never,
       auditPublisher as never,
+      {} as never,
+      {} as never,
     ),
   };
 }
