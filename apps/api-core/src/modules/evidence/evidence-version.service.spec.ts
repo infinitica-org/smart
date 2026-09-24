@@ -236,6 +236,62 @@ describe('assertCanReadCandidateEvidenceVersions', () => {
     expect(access.redacted).toBe(true);
   });
 
+  it.each([
+    ['deactivated', { deactivatedAt: new Date('2026-09-20T00:00:00.000Z'), heldAt: null }],
+    ['held', { deactivatedAt: null, heldAt: new Date('2026-09-20T00:00:00.000Z') }],
+  ])(
+    'hides a %s student from a company that has an application (S6-VV-148)',
+    async (_label, state) => {
+      const prisma = {
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 'student-1',
+            role: 'STUDENT',
+            institutionId: 'inst-1',
+            ...state,
+          }),
+        },
+        company: {
+          findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
+        },
+        application: {
+          count: vi.fn().mockResolvedValue(1),
+        },
+      };
+
+      await expect(
+        assertCanReadCandidateEvidenceVersions(
+          prisma as never,
+          { sub: 'company-user', role: 'COMPANY', companyId: 'company-1' } as never,
+          'student-1',
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.application.count).not.toHaveBeenCalled();
+    },
+  );
+
+  it('still lets the student’s own institution read a deactivated student’s evidence', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'student-1',
+          role: 'STUDENT',
+          institutionId: 'inst-1',
+          deactivatedAt: new Date('2026-09-20T00:00:00.000Z'),
+          heldAt: null,
+        }),
+      },
+    };
+
+    const access = await assertCanReadCandidateEvidenceVersions(
+      prisma as never,
+      { sub: 'tpo-1', role: 'PLACEMENT_STAFF', inst: 'inst-1' } as never,
+      'student-1',
+    );
+
+    expect(access.redacted).toBe(false);
+  });
+
   it('throws not found for missing candidate', async () => {
     const prisma = {
       user: {
