@@ -12,7 +12,7 @@ import {
 import { useStudentReadiness } from '@/lib/use-student-readiness';
 
 export default function ReadinessPage() {
-  const { data, isLoading, isError, refetch } = useStudentReadiness();
+  const { data, isLoading, isError, isFetching, refetch } = useStudentReadiness();
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pt-2 pb-16 font-sans">
@@ -31,7 +31,11 @@ export default function ReadinessPage() {
           role="alert"
           className="flex items-center justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
         >
-          <span>Could not load your readiness. Nothing was changed; try again.</span>
+          <span>
+            {data
+              ? 'Could not refresh your readiness. Showing your last loaded values; nothing was changed.'
+              : 'Could not load your readiness. Nothing was changed; try again.'}
+          </span>
           <button
             type="button"
             onClick={() => void refetch()}
@@ -40,6 +44,12 @@ export default function ReadinessPage() {
             Retry
           </button>
         </div>
+      ) : null}
+
+      {data && isFetching && !isError ? (
+        <p role="status" className="text-xs text-zinc-500 dark:text-zinc-400">
+          Updating your readiness…
+        </p>
       ) : null}
 
       {isLoading ? (

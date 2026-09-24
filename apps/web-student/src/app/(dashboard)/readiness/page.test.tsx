@@ -56,11 +56,12 @@ function summary(over: Partial<StudentReadinessSummary> = {}): StudentReadinessS
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ReadinessPage />
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 
 describe('ReadinessPage (PRF-02)', () => {
@@ -336,6 +337,43 @@ describe('ReadinessPage (PRF-02)', () => {
     await waitFor(() => expect(getReadiness).toHaveBeenCalledTimes(2));
     expect(await screen.findByTestId('identity-card')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows an updating state while recalculating and keeps the last values visible', async () => {
+    let release: (value: StudentReadinessSummary) => void = () => undefined;
+    getReadiness.mockResolvedValueOnce(summary()).mockReturnValueOnce(
+      new Promise<StudentReadinessSummary>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { client } = renderPage();
+    expect(await screen.findByTestId('identity-card')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+
+    void client.invalidateQueries();
+    expect((await screen.findByRole('status')).textContent).toMatch(/updating your readiness/i);
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+
+    release(summary());
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  });
+
+  it('keeps the last loaded values and says so when a refresh fails, then recovers on retry', async () => {
+    getReadiness
+      .mockResolvedValueOnce(summary())
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue(summary());
+    const { client } = renderPage();
+    expect(await screen.findByTestId('identity-card')).toBeTruthy();
+
+    void client.invalidateQueries();
+    expect((await screen.findByRole('alert')).textContent).toMatch(
+      /showing your last loaded values/i,
+    );
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   });
 
   it('shows real evidence completeness and which required items are missing (I333)', async () => {
