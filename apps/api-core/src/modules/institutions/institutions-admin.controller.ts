@@ -99,8 +99,11 @@ export class InstitutionsAdminController {
   }
 
   @Post('institutions')
-  createInstitution(@Body() body: unknown) {
-    return this.institutions.createInstitution(CreateInstitutionRequestSchema.parse(body));
+  createInstitution(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.createInstitution(
+      CreateInstitutionRequestSchema.parse(body),
+      user.sub,
+    );
   }
 
   @Get('institutions')

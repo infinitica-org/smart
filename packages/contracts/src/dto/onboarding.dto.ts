@@ -106,6 +106,10 @@ export const ConfigureInstitutionSettingsSchema = z.object({
 });
 export type ConfigureInstitutionSettings = z.infer<typeof ConfigureInstitutionSettingsSchema>;
 
+/** S6-VV-105 — the user behind a create / last change; null for rows that predate tracking. */
+export const RecordActorDtoSchema = z.object({ userId: UuidSchema, email: z.string() }).nullable();
+export type RecordActorDto = z.infer<typeof RecordActorDtoSchema>;
+
 export const InstitutionDtoSchema = z.object({
   institutionId: UuidSchema,
   name: z.string(),
@@ -127,6 +131,9 @@ export const InstitutionDtoSchema = z.object({
    */
   activeStudents30d: z.number().int().nonnegative().optional(),
   createdAt: IsoDateTimeSchema,
+  /** Detail response only (like activeStudents30d). */
+  createdBy: RecordActorDtoSchema.optional(),
+  updatedBy: RecordActorDtoSchema.optional(),
 });
 export type InstitutionDto = z.infer<typeof InstitutionDtoSchema>;
 
@@ -618,6 +625,9 @@ export const CompanyDtoSchema = z.object({
   deactivatedAt: IsoDateTimeSchema.nullable(),
   userCount: z.number().int().nonnegative(),
   createdAt: IsoDateTimeSchema,
+  /** Detail response only. */
+  createdBy: RecordActorDtoSchema.optional(),
+  updatedBy: RecordActorDtoSchema.optional(),
 });
 export type CompanyDto = z.infer<typeof CompanyDtoSchema>;
 

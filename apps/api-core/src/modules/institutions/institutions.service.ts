@@ -73,6 +73,7 @@ import ExcelJS from 'exceljs';
 import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { resolveRecordActors } from './record-actors.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 import { toAuthenticatedUser } from '../auth/auth.service.js';
@@ -287,6 +288,7 @@ export class InstitutionsService {
       data: {
         name: body.name ?? institution.name,
         domain: primaryDomain,
+        updatedById: adminUserId,
       },
       include: { plan: true },
     });
@@ -308,7 +310,10 @@ export class InstitutionsService {
 
   /* ----------------------------- platform admin ----------------------------- */
 
-  async createInstitution(body: CreateInstitutionRequest): Promise<InstitutionDto> {
+  async createInstitution(
+    body: CreateInstitutionRequest,
+    actorId: string | null = null,
+  ): Promise<InstitutionDto> {
     const domain = body.domain.toLowerCase();
     const existing = await this.prisma.institution.findUnique({ where: { domain } });
     if (existing) {
@@ -327,7 +332,13 @@ export class InstitutionsService {
       });
     }
     const institution = await this.prisma.institution.create({
-      data: { name: body.name, domain, planId: freePlan.id },
+      data: {
+        name: body.name,
+        domain,
+        planId: freePlan.id,
+        createdById: actorId,
+        updatedById: actorId,
+      },
       include: { plan: true },
     });
     const [created] = await this.toInstitutionDtos([institution]);
@@ -572,8 +583,11 @@ export class InstitutionsService {
     if (!dto) {
       throw new Error('Institution DTO mapping returned no rows for an existing institution');
     }
-    const activeStudents30d = await this.countActiveStudents30d(institutionId);
-    return { ...dto, activeStudents30d };
+    const [activeStudents30d, actors] = await Promise.all([
+      this.countActiveStudents30d(institutionId),
+      resolveRecordActors(this.prisma, institution),
+    ]);
+    return { ...dto, activeStudents30d, ...actors };
   }
 
   /**
@@ -627,6 +641,7 @@ export class InstitutionsService {
       }
       data.plan = { connect: { id: plan.id } };
     }
+    data.updatedBy = { connect: { id: actorId } };
     await this.prisma.institution.update({ where: { id: institutionId }, data });
     if (body.planCode) {
       // A plan reassignment changes this institution's effective entitlements
@@ -653,7 +668,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { heldAt: new Date() },
+      data: { heldAt: new Date(), updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -674,7 +689,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { heldAt: null },
+      data: { heldAt: null, updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -695,7 +710,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { deactivatedAt: new Date() },
+      data: { deactivatedAt: new Date(), updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -716,7 +731,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { deactivatedAt: null, heldAt: null },
+      data: { deactivatedAt: null, heldAt: null, updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -1340,6 +1355,7 @@ export class InstitutionsService {
         data: {
           verificationStatus: body.decision,
           verificationReason: body.reason,
+          updatedById: actorId,
           ...(plan ? { planId: plan.id } : {}),
         },
       });
