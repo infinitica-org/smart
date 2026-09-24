@@ -147,15 +147,7 @@ export const ASSIGNABLE_USER_ROLES = [
   'SUPER_ADMIN',
   'INSTITUTION_ADMIN',
   'PLACEMENT_STAFF',
-  'STUDENT',
-  'B2B_PARTNER',
-  'COMPANY',
 ] as const;
-
-export const AssignRoleRequestSchema = z.object({
-  role: z.enum(ASSIGNABLE_USER_ROLES),
-});
-export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;
 
 export const ListInstitutionsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),

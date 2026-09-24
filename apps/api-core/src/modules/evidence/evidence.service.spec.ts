@@ -59,7 +59,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     getJob: vi.fn().mockResolvedValue(null),
   };
   const dedup = new CredentialDedupService(prisma as never);
-  const _auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
 
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),

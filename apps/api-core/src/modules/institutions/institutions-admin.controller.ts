@@ -4,7 +4,6 @@ import {
   CreateInstitutionRequestSchema,
   GetVerificationReviewQuerySchema,
   GlobalStudentSearchQuerySchema,
-  GetVerificationReviewQuerySchema,
   InvitePlatformAdminRequestSchema,
   InviteUserRequestSchema,
   ListAuditLogsQuerySchema,

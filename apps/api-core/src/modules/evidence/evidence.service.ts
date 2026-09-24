@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
@@ -5,6 +6,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
@@ -13,6 +15,7 @@ import {
   AssociateEvidenceWithClaimRequestSchema,
   CreateEvidenceRequestSchema,
   CreateVerificationDecisionRequestSchema,
+  LinkEvidenceToClaimRequestSchema,
   ProfessionalCredentialSchema,
   ProjectSkillMappingSchema,
   ReviewEvidenceRequestSchema,
@@ -28,13 +31,15 @@ import {
   type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
   type EvidenceRecordVersionDto,
-  type EvidenceVerificationStatus,
   type ListEvidenceRecordVersionsResponse,
   type PassiveSignalEvidenceDto,
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
   type ReviewEvidenceResponse,
+  type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
+  type EvidenceSkillDisputeRequest,
+  type EvidenceSkillDisputeResponse,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -84,6 +89,8 @@ const CREDENTIAL_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class EvidenceService {
+  private readonly logger = new Logger(EvidenceService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
@@ -411,7 +418,13 @@ export class EvidenceService {
         create: { claimId: claim.id, evidenceId: record.id, weight: 1 },
         update: { weight: 1 },
       });
-      links.push(toSkillClaimEvidenceLinkDto(link));
+      links.push({
+        linkId: link.id,
+        claimId: link.claimId,
+        evidenceId: link.evidenceId,
+        weight: Number(link.weight),
+        createdAt: link.createdAt.toISOString(),
+      });
     }
 
     await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
@@ -453,15 +466,11 @@ export class EvidenceService {
     });
     await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
     return {
-      claimId: claim.id,
-      associatedCount: evidenceRecords.length,
-      links: evidenceRecords.map((r) => ({
-        linkId: r.id,
-        claimId: claim.id,
-        evidenceId: r.id,
-        weight: 1.0,
-        createdAt: r.createdAt.toISOString(),
-      })),
+      linkId: link.id,
+      claimId: link.claimId,
+      evidenceId: link.evidenceId,
+      weight: Number(link.weight),
+      createdAt: link.createdAt.toISOString(),
     };
   }
 
@@ -1057,6 +1066,14 @@ export class EvidenceService {
 
     const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
 
+    if (targetStatus === 'VERIFIED' && updated.relatedSkillCodes?.length > 0) {
+      this.recomputeInferenceForSkills(studentId, updated.relatedSkillCodes).catch((err) => {
+        this.logger.warn(
+          `Failed cascading skill inference recomputation for student ${studentId}: ${err}`,
+        );
+      });
+    }
+
     return {
       evidence: toEvidenceRecordDto(updated),
       decision: input.decision,
@@ -1104,5 +1121,48 @@ export class EvidenceService {
       }
       return { status: 'FAILED', jobId };
     }
+  }
+
+  async submitEvidenceSkillDispute(
+    studentId: string,
+    body: EvidenceSkillDisputeRequest,
+  ): Promise<EvidenceSkillDisputeResponse> {
+    const record = await this.prisma.evidenceRecord.findFirst({
+      where: { id: body.evidenceId, studentId },
+    });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence record not found.',
+        statusCode: 404,
+      });
+    }
+
+    const disputeId = randomUUID ? randomUUID() : (await import('node:crypto')).randomUUID();
+    const now = new Date().toISOString();
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: studentId,
+        action: 'evidence.disputed',
+        resourceType: 'evidence_record',
+        resourceId: body.evidenceId,
+        reasonCode: 'STUDENT_DISPUTE',
+        metadata: {
+          disputeId,
+          skillCode: body.skillCode,
+          reason: body.reason,
+          submittedAt: now,
+        },
+      });
+    }
+
+    return {
+      disputeId,
+      evidenceId: body.evidenceId,
+      skillCode: body.skillCode,
+      status: 'UNDER_REVIEW',
+      submittedAt: now,
+    };
   }
 }

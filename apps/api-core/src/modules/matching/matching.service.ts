@@ -54,6 +54,7 @@ import {
 } from './rules-ranker.js';
 import {
   PROFICIENCY_RANK,
+  SKILL_CAPABILITY_RANKER_VERSION,
   rankSkillCapabilityCandidates,
   type InferredCapabilityRow,
   type QlixCompetencyObservation,
@@ -151,9 +152,16 @@ function buildEligibleStudentsQuery(
     'batchIds' | 'minCgpa' | 'requiredSkillCodes' | 'filters' | 'openingEligibility'
   >,
 ): Prisma.Sql {
+  /**
+   * MAT-01 / I374: Exclusion of protected attributes from matching pipeline.
+   * Demographic fields (gender, caste, religion, age, disability, photo) are explicitly excluded
+   * from query conditions, ranking inputs, and scoring weights. Matching relies exclusively on
+   * verified competencies, proctored evaluation scores, and academic batch criteria.
+   */
   const conditions: Prisma.Sql[] = [
     Prisma.sql`u.institution_id = ${institutionId}::uuid`,
     Prisma.sql`u.role = 'STUDENT'`,
+    Prisma.sql`u.profile_visible = TRUE`,
     Prisma.sql`EXISTS (SELECT 1 FROM skill_claims sc_any WHERE sc_any.student_id = u.id AND sc_any.status = 'VERIFIED')`,
   ];
   if (request.batchIds.length) {
@@ -336,6 +344,7 @@ export class MatchingService {
       runId: run.id,
       jdId: run.jdId,
       status: run.status,
+      rankerVersion: SKILL_CAPABILITY_RANKER_VERSION,
       eligiblePoolCount: run.eligiblePoolCount,
       suggestedCount: run.suggestedCount,
       errorMessage: run.errorMessage,

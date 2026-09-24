@@ -2572,7 +2572,7 @@ export class WorkExperienceService {
         endorsementId: endorsement.id,
         overallVerified,
         skillRatings: parsedPayload.skillRatings ?? null,
-        investigationFacts,
+        investigationFacts: _investigationFacts,
       },
     });
 

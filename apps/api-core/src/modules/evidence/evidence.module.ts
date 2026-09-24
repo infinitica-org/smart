@@ -17,6 +17,8 @@ import { CredentialVerificationService } from './verification/credential-verific
 import { VerificationOrchestratorService } from './verification-orchestrator.service.js';
 import { SkillClaimDeclareModule } from '../assessment/skill-claim-declare.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
+import { EvidenceExpirationProcessor } from './evidence-expiration.processor.js';
+import { EvidenceReconciliationProcessor } from './evidence-reconciliation.processor.js';
 import { SkillInferenceUpdatedConsumer } from './skill-inference-updated.consumer.js';
 import { SkillVerificationInferenceConsumer } from './skill-verification-inference.consumer.js';
 
