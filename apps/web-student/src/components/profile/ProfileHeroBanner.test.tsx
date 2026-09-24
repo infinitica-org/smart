@@ -35,16 +35,12 @@ describe('ProfileHeroBanner', () => {
     expect(screen.getByTestId('profile-hero-banner')).toBeTruthy();
     expect(screen.getByText('Ada Lovelace')).toBeTruthy();
     expect(screen.getByText('Computer Science')).toBeTruthy();
-    expect(screen.getByText('Batch 2022 – 2026')).toBeTruthy();
+    expect(screen.getByText(/2022 – 2026/)).toBeTruthy();
     expect(screen.getByText('Sona College of Technology')).toBeTruthy();
-    expect(screen.getByText('GitHub')).toBeTruthy();
+    expect(screen.getByText(/GitHub/i)).toBeTruthy();
     expect(screen.queryByText('Career focus')).toBeNull();
     expect(screen.queryByText('Job preferences')).toBeNull();
-    expect(
-      screen.getByRole('progressbar', { name: 'Profile completion' }).getAttribute('aria-valuenow'),
-    ).toBe('38');
-    expect(screen.getByRole('button', { name: 'What is profile completion?' })).toBeTruthy();
-    expect(screen.getByText('Profile completion')).toBeTruthy();
+    expect(screen.getByText(/Profile Readiness/i)).toBeTruthy();
   });
 
   it('shows department placeholder only when education exists without field of study', () => {

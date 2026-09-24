@@ -23,12 +23,12 @@ export function NavMain({ items }: { items: readonly NavGroup[] }) {
   return (
     <>
       {items.map((group) => (
-        <SidebarGroup key={group.id} className="px-2">
-          <SidebarGroupLabel className="px-2 font-heading text-[11px] tracking-[0.16em] text-sidebar-foreground/40 uppercase group-data-[collapsible=icon]:pointer-events-none">
+        <SidebarGroup key={group.id} className="px-1 py-1.5">
+          <SidebarGroupLabel className="px-2.5 text-[10px] font-bold tracking-[0.14em] text-zinc-400 dark:text-zinc-500 uppercase group-data-[collapsible=icon]:pointer-events-none">
             {group.label}
           </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
+          <SidebarGroupContent className="mt-0.5">
+            <SidebarMenu className="gap-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(pathname, item);
@@ -40,13 +40,17 @@ export function NavMain({ items }: { items: readonly NavGroup[] }) {
                       isActive={active}
                       className={
                         active
-                          ? 'h-10 rounded-xl bg-accent font-medium text-accent-foreground hover:bg-accent hover:text-accent-foreground data-active:bg-accent data-active:text-accent-foreground'
-                          : 'h-10 rounded-xl text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                          ? 'h-9 rounded-lg bg-zinc-900 text-xs font-semibold text-white shadow-xs hover:bg-zinc-900 hover:text-white dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-100 transition-all'
+                          : 'h-9 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors'
                       }
                     >
-                      <Link prefetch={false} href={item.url}>
-                        <Icon strokeWidth={1.75} />
-                        <span>{item.title}</span>
+                      <Link
+                        prefetch={false}
+                        href={item.url}
+                        className="flex items-center gap-2.5 px-2.5"
+                      >
+                        <Icon strokeWidth={active ? 2 : 1.75} className="size-4 shrink-0" />
+                        <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

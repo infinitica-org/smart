@@ -54,6 +54,7 @@ export * from './dto/certificate.dto.js';
 export * from './dto/placement.dto.js';
 export * from './dto/analytics.dto.js';
 export * from './dto/onboarding.dto.js';
+export * from './dto/company-onboarding.dto.js';
 export * from './dto/partnership.dto.js';
 export * from './dto/candidate-onboarding.dto.js';
 export * from './dto/candidate-social.dto.js';
@@ -75,6 +76,8 @@ export * from './dto/raw-signals.dto.js';
 export * from './dto/signal-connections.dto.js';
 export * from './dto/corroboration.dto.js';
 export * from './dto/evidence.dto.js';
+export * from './dto/evidence-review.dto.js';
+export * from './dto/evidence-version.dto.js';
 export * from './dto/capability-inference-review.dto.js';
 
 /* -------------------------------- events ---------------------------------- */

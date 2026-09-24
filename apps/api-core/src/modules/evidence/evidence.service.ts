@@ -14,13 +14,13 @@ import {
   AssociateEvidenceWithClaimRequestSchema,
   CreateEvidenceRequestSchema,
   CreateVerificationDecisionRequestSchema,
-  LinkEvidenceToClaimRequestSchema,
   ProfessionalCredentialSchema,
   ProjectSkillMappingSchema,
   ReviewEvidenceRequestSchema,
   SaveOnboardingSelectionRequestSchema,
   UpdateEvidenceRequestSchema,
   evidenceRequiresRelatedSkills,
+  type EvidenceVerificationStatus,
   type AssociateEvidenceWithClaimRequest,
   type AssociateEvidenceWithClaimResponse,
   type CandidateEvidenceProfileDto,
@@ -34,7 +34,6 @@ import {
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
   type ReviewEvidenceResponse,
-  type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
@@ -49,6 +48,7 @@ import {
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
+import type { EvidenceRecordRow } from './evidence-version.snapshot.js';
 import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
 import {
   isIdempotentReviewRequest,
@@ -69,13 +69,13 @@ import {
   toPassiveSignalEvidenceDto,
   toProfessionalCredentialDto,
   toProjectSkillMappingDto,
-  toSkillClaimEvidenceLinkDto,
   toVerificationDecisionDto,
 } from './evidence.mapper.js';
 import type { CredentialVerificationJobPayload } from './verification/credential-verification.processor.js';
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
 import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -101,10 +101,10 @@ export class EvidenceService {
     @Inject(EvidenceSyncService) private readonly evidenceSync: EvidenceSyncService,
     @Inject(EvidenceSkillInferenceService)
     private readonly skillInference: EvidenceSkillInferenceService,
-    @Inject(EvidenceVersionService) private readonly evidenceVersions: EvidenceVersionService,
-    @Optional()
+    @Inject(EvidenceVersionService)
+    private readonly evidenceVersions: EvidenceVersionService,
     @Inject(AuditPublisherService)
-    private readonly auditPublisher?: AuditPublisherService,
+    private readonly auditPublisher: AuditPublisherService,
   ) {}
 
   private async recomputeInferenceForSkills(
@@ -399,7 +399,17 @@ export class EvidenceService {
       },
     });
     await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
-    return toSkillClaimEvidenceLinkDto(link);
+    return {
+      claimId: claim.id,
+      associatedCount: evidenceRecords.length,
+      links: evidenceRecords.map((r) => ({
+        linkId: r.id,
+        claimId: claim.id,
+        evidenceId: r.id,
+        weight: 1.0,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
   }
 
   async getEvidenceProfile(studentId: string): Promise<CandidateEvidenceProfileDto> {

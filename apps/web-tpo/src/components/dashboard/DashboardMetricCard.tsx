@@ -43,7 +43,7 @@ export function DashboardMetricCard({
           <p className={dashboardMetricHintClass}>{hint}</p>
         </div>
         <span
-          className={`relative flex size-10 shrink-0 items-center justify-center rounded-2xl ${accentStyle.iconWrap}`}
+          className={`relative flex size-10 shrink-0 items-center justify-center rounded-lg ${accentStyle.iconWrap}`}
         >
           <Icon className="size-[18px]" strokeWidth={1.5} />
         </span>

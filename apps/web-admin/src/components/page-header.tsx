@@ -16,15 +16,15 @@ export function IconWell({
   return (
     <span
       className={cn(
-        'flex size-9 shrink-0 items-center justify-center rounded-2xl',
-        tone === 'accent' && 'bg-accent text-accent-foreground',
-        tone === 'teal' && 'bg-secondary text-secondary-foreground',
-        tone === 'inverse' && 'bg-foreground text-background',
-        tone === 'muted' && 'bg-muted text-foreground',
+        'flex size-9 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-100/90 text-zinc-900 shadow-2xs dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100',
+        tone === 'inverse' &&
+          'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950',
+        tone === 'muted' &&
+          'border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300',
         className,
       )}
     >
-      <Icon className="size-5" strokeWidth={1.75} aria-hidden />
+      <Icon className="size-4.5" strokeWidth={1.75} aria-hidden />
     </span>
   );
 }
@@ -43,15 +43,15 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
       <div className="flex items-start gap-3">
         {icon ? <IconWell icon={icon} tone={tone} /> : null}
         <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
+          <h1 className="font-heading text-xl font-bold tracking-tight text-zinc-950 dark:text-white md:text-2xl">
             {title}
           </h1>
           {description ? (
-            <p className="max-w-xl text-sm text-muted-foreground">{description}</p>
+            <p className="max-w-2xl text-xs text-zinc-500 dark:text-zinc-400">{description}</p>
           ) : null}
         </div>
       </div>

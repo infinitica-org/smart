@@ -6,8 +6,11 @@ import { ThemeProvider } from '@smart/ui/theme-provider';
 import { TooltipProvider } from '@smart/ui/tooltip';
 
 export const metadata: Metadata = {
-  title: 'Company portal · SMART',
-  description: 'Authenticated employer workspace on SMART.',
+  title: {
+    default: 'Company Portal · SMART',
+    template: '%s · SMART Employers',
+  },
+  description: 'Post jobs, find verified students, and manage your hiring pipeline.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

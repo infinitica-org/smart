@@ -35,11 +35,12 @@ describe('seed account env', () => {
     expect(resolveSeedTpoFullName({ SEED_TPO_FULL_NAME: 'Jane Doe' })).toBe('Jane Doe');
   });
 
-  it('builds the three login emails on that domain', () => {
+  it('builds the login emails on that domain', () => {
     expect(seedAccountEmails('becomesmart.online')).toEqual({
       admin: 'admin@becomesmart.online',
       tpo: 'tpo@becomesmart.online',
       student: 'student@becomesmart.online',
+      company: 'company@becomesmart.online',
     });
   });
 });

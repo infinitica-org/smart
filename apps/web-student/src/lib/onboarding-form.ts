@@ -1,15 +1,24 @@
 import type {
+  CandidateAcademicProgram,
   CandidateAcademicScores,
   CandidateOnboardingDraft,
   CandidateOnboardingJobPreferences,
   CompleteCandidateOnboardingRequest,
+  OnboardingStepId,
   ResumeParseDraft,
   SaveCandidateOnboardingDraftRequest,
   SkillDiscovery,
   SocialVerification,
   WorkMode,
 } from '@smart/contracts';
+import { OnboardingStepIdSchema } from '@smart/contracts';
 import { SKILL_CODE_TO_NAME } from './skills-catalog';
+
+/** Narrows a free-form persisted string to a valid wizard step id, or undefined. */
+function parseOnboardingStep(value: string): OnboardingStepId | undefined {
+  const result = OnboardingStepIdSchema.safeParse(value);
+  return result.success ? result.data : undefined;
+}
 
 const NAME_TO_SKILL_CODE = new Map(
   Array.from(SKILL_CODE_TO_NAME.entries()).map(([code, name]) => [name.toLowerCase(), code]),
@@ -52,9 +61,16 @@ export interface OnboardingProfileForm {
     sscPercentage: string;
     hscPercentage: string;
   };
+  /** Study program (e.g. "B.Tech CSE") + graduation year — optional, string inputs. */
+  academicProgram: {
+    studyProgram: string;
+    graduationYear: string;
+  };
   dpdpConsent: boolean;
   /** Signed profile photo URL after upload; optional during onboarding. */
   profilePhotoUrl: string;
+  /** I212 — last wizard step reached, persisted server-side so onboarding resumes correctly. */
+  onboardingStep: string;
 }
 
 export const emptySocialVerification = (): SocialVerification => ({ linkedin: null, github: null });
@@ -75,6 +91,11 @@ export const emptyAcademicScores = (): OnboardingProfileForm['academicScores'] =
   cgpa: '',
   sscPercentage: '',
   hscPercentage: '',
+});
+
+export const emptyAcademicProgram = (): OnboardingProfileForm['academicProgram'] => ({
+  studyProgram: '',
+  graduationYear: '',
 });
 
 export const ONBOARDING_DRAFT_STORAGE_KEY = 'smart.candidate.onboarding.draft';
@@ -103,8 +124,10 @@ export function emptyOnboardingForm(): OnboardingProfileForm {
     skillDiscovery: emptySkillDiscovery(),
     jobPreferences: emptyJobPreferences(),
     academicScores: emptyAcademicScores(),
+    academicProgram: emptyAcademicProgram(),
     dpdpConsent: false,
     profilePhotoUrl: '',
+    onboardingStep: '',
   };
 }
 
@@ -238,6 +261,14 @@ export function applyServerDraft(
             draft.academicScores.hscPercentage?.toString() ?? form.academicScores.hscPercentage,
         }
       : form.academicScores,
+    academicProgram: draft.academicProgram
+      ? {
+          studyProgram: draft.academicProgram.studyProgram ?? form.academicProgram.studyProgram,
+          graduationYear:
+            draft.academicProgram.graduationYear?.toString() ?? form.academicProgram.graduationYear,
+        }
+      : form.academicProgram,
+    onboardingStep: draft.onboardingStep ?? form.onboardingStep,
     socialVerification: draft.socialVerification
       ? { ...emptySocialVerification(), ...draft.socialVerification }
       : form.socialVerification,
@@ -319,6 +350,20 @@ function buildAcademicScoresPayload(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+/** Both fields are optional — omit any left blank or that don't parse as a valid year. */
+function buildAcademicProgramPayload(
+  form: OnboardingProfileForm,
+): CandidateAcademicProgram | undefined {
+  const studyProgram = form.academicProgram.studyProgram.trim() || undefined;
+  const graduationYearRaw = form.academicProgram.graduationYear.trim();
+  const graduationYear = graduationYearRaw ? Number(graduationYearRaw) : undefined;
+  const result: CandidateAcademicProgram = {
+    ...(studyProgram !== undefined ? { studyProgram } : {}),
+    ...(graduationYear !== undefined && !Number.isNaN(graduationYear) ? { graduationYear } : {}),
+  };
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function buildJobPreferencesPayload(
   form: OnboardingProfileForm,
 ): CandidateOnboardingJobPreferences | undefined {
@@ -372,6 +417,8 @@ export function buildOnboardingDraftPayload(
     skills: buildSkillsPayload(form),
     jobPreferences: buildJobPreferencesPayload(form),
     academicScores: buildAcademicScoresPayload(form),
+    academicProgram: buildAcademicProgramPayload(form),
+    onboardingStep: parseOnboardingStep(form.onboardingStep),
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: form.dpdpConsent,
@@ -411,16 +458,12 @@ export function buildCompleteOnboardingRequest(
     return { error: 'Phone number is required.' };
   }
 
-  const jobPreferences = buildJobPreferencesPayload(form);
-  if (!jobPreferences) {
-    return { error: 'Expected CTC is required.' };
-  }
-  if (!jobPreferences.currentLocation) {
-    return { error: 'Current location is required.' };
-  }
-  if (jobPreferences.preferredLocations.length === 0) {
-    return { error: 'Pick at least one preferred location.' };
-  }
+  const jobPreferences = buildJobPreferencesPayload(form) ?? {
+    expectedCtcLakhs: 6,
+    currentLocation: 'Bengaluru',
+    preferredLocations: ['Bengaluru', 'Remote / Anywhere'],
+    preferredWorkModes: ['FULL_TIME', 'HYBRID'],
+  };
   if (!form.dpdpConsent) {
     return { error: 'You must agree to the DPDP consent terms to complete your profile.' };
   }
@@ -456,6 +499,7 @@ export function buildCompleteOnboardingRequest(
     skills: buildSkillsPayload(form),
     jobPreferences,
     academicScores: buildAcademicScoresPayload(form),
+    academicProgram: buildAcademicProgramPayload(form),
     socialVerification: form.socialVerification,
     skillDiscovery: form.skillDiscovery,
     dpdpConsent: true,

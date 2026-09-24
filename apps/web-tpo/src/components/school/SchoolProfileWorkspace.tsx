@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isSmartApiError } from '@smart/api-client';
+import { Building2 } from 'lucide-react';
 import type { TenantEntitlementsDto } from '@smart/contracts';
+import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api, employersApi } from '../../lib/api';
 import {
   imageFileToDataUrl,
@@ -127,6 +129,14 @@ export function SchoolProfileWorkspace() {
 
   return (
     <div className={`${bentoPageStackClass} max-w-[880px]`}>
+      <TpoBentoPageHeader
+        compact
+        title="Institution Profile"
+        description="Public-facing institution branding, logo, banner, and summary visible to recruiting employers."
+        icon={Building2}
+        accent="blue"
+      />
+
       {error ? <div className={dashboardErrorNoticeClass}>{error}</div> : null}
       {notice ? <div className={dashboardSuccessNoticeClass}>{notice}</div> : null}
 

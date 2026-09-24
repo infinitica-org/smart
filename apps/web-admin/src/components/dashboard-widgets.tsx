@@ -27,29 +27,35 @@ export function KpiTile({
 }) {
   const content = (
     <motion.article
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className={cn(
-        'flex items-start justify-between gap-3 rounded-2xl bg-card p-5 text-card-foreground',
-        href && 'transition-colors hover:bg-secondary',
+        'group flex h-full flex-col justify-between rounded-md border border-zinc-200/80 bg-white p-4 text-zinc-900 shadow-2xs transition-all hover:border-zinc-300 hover:shadow-xs dark:border-zinc-800 dark:bg-zinc-900/90 dark:text-zinc-100 dark:hover:border-zinc-700',
+        href && 'cursor-pointer hover:-translate-y-0.5',
       )}
     >
-      <div className="space-y-2">
-        <p className="text-sm text-card-foreground/70">{label}</p>
-        <p className="font-heading text-4xl font-semibold tracking-tight">
-          <NumberTicker value={value} className="text-card-foreground" />
-        </p>
-        {hint ? <p className="text-xs text-card-foreground/70">{hint}</p> : null}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</p>
+        <IconWell icon={icon} tone={tone} />
       </div>
-      <IconWell icon={icon} tone={tone} />
+      <div className="mt-2 space-y-1">
+        <p className="font-heading text-3xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
+          <NumberTicker value={value} className="text-zinc-950 dark:text-white" />
+        </p>
+        {hint ? (
+          <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
+            {hint}
+          </p>
+        ) : null}
+      </div>
     </motion.article>
   );
 
   if (!href) return content;
 
   return (
-    <Link href={href} prefetch={false} className="block rounded-2xl">
+    <Link href={href} prefetch={false} className="block rounded-md">
       {content}
     </Link>
   );
@@ -70,16 +76,21 @@ export function Panel({
 }) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={cn('flex h-full flex-col rounded-2xl bg-card text-card-foreground', className)}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className={cn(
+        'flex h-full flex-col rounded-md border border-zinc-200/80 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900',
+        className,
+      )}
     >
-      <header className="flex items-start justify-between gap-3 px-5 pt-5">
+      <header className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800/60">
         <div>
-          <h2 className="font-heading text-lg font-semibold tracking-tight">{title}</h2>
+          <h2 className="font-heading text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            {title}
+          </h2>
           {description ? (
-            <p className="mt-0.5 text-xs text-card-foreground/70">{description}</p>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{description}</p>
           ) : null}
         </div>
         {action}
@@ -97,23 +108,31 @@ export function TenantMix({
   legend: { id: string; label: string; value: number; color: string }[];
 }) {
   return (
-    <Panel title="Tenant health" description="Active campuses versus held and off.">
+    <Panel
+      title="Tenant Health"
+      description="Active universities & organizations versus held/deactivated."
+    >
       <div className="flex flex-col items-center gap-6 md:flex-row">
         <AnimatedCircularProgressBar
           value={percent}
           label="Active"
-          className="size-36"
-          gaugePrimaryColor="var(--brand-teal)"
-          gaugeSecondaryColor="color-mix(in srgb, #ffffff 22%, var(--brand-teal))"
+          className="size-32"
+          gaugePrimaryColor="#10b981"
+          gaugeSecondaryColor="#e2e8f0"
         />
-        <ul className="w-full space-y-3 text-sm">
+        <ul className="w-full space-y-2.5 text-xs">
           {legend.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full" style={{ background: item.color }} />
+            <li
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50/80 px-3 py-2 dark:bg-zinc-800/50"
+            >
+              <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
+                <span className="size-2 rounded-full" style={{ background: item.color }} />
                 {item.label}
               </span>
-              <span className="tabular-nums text-card-foreground/70">{item.value}</span>
+              <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                {item.value}
+              </span>
             </li>
           ))}
         </ul>
@@ -128,22 +147,32 @@ export function PlanMix({
   items: { id: string; label: string; value: number; max?: number }[];
 }) {
   return (
-    <Panel title="Plan mix" description="How tenants sit across Free, Basic, Pro.">
-      <ul className="space-y-4">
+    <Panel title="Plan Distribution" description="Enterprise, Standard, and Free tier allocation.">
+      <ul className="space-y-3">
         {items.length === 0 ? (
-          <li className="text-sm text-card-foreground/70">Nothing to show yet.</li>
+          <li className="text-xs text-zinc-500">Nothing to show yet.</li>
         ) : (
           items.map((item) => {
             const max = item.max && item.max > 0 ? item.max : Math.max(item.value, 1);
             const pct = Math.min(100, Math.round((item.value / max) * 100));
             return (
-              <li key={item.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{item.label}</span>
-                  <span className="tabular-nums text-card-foreground/70">{item.value}</span>
+              <li
+                key={item.id}
+                className="space-y-1.5 rounded-lg bg-zinc-50/60 p-2.5 dark:bg-zinc-800/40"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                    {item.label}
+                  </span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    {item.value}
+                  </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-card-foreground/15">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                <div className="h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-zinc-700">
+                  <div
+                    className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100 transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </li>
             );
@@ -167,9 +196,14 @@ export function OpsBoard({
   }[];
 }) {
   return (
-    <section className="space-y-4">
-      <h2 className="font-heading text-lg font-semibold tracking-tight">Operations board</h2>
-      <ol className="grid gap-6 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Operational Queues
+        </h2>
+        <span className="text-[11px] font-medium text-zinc-400">Action Required</span>
+      </div>
+      <ol className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
         {steps.map((step) => {
           const Icon = step.icon;
           return (
@@ -177,20 +211,24 @@ export function OpsBoard({
               <Link
                 href={step.href}
                 prefetch={false}
-                className="flex h-full flex-col gap-4 rounded-2xl bg-card p-4 text-card-foreground transition-colors hover:bg-secondary"
+                className="group flex h-full flex-col justify-between rounded-md border border-zinc-200/80 bg-white p-4 shadow-2xs transition-all hover:border-zinc-300 hover:shadow-xs dark:border-zinc-800 dark:bg-zinc-900/90 dark:hover:border-zinc-700 hover:-translate-y-0.5"
               >
-                <span className="flex items-center justify-between">
-                  <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <div className="flex items-center justify-between">
+                  <span className="flex size-8 items-center justify-center rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 group-hover:bg-zinc-900 group-hover:text-white transition-colors">
                     <Icon className="size-4" strokeWidth={1.75} aria-hidden />
                   </span>
-                  <span className="font-heading text-3xl font-semibold tabular-nums">
-                    <NumberTicker value={step.value} className="text-card-foreground" />
+                  <span className="font-heading text-2xl font-extrabold tabular-nums text-zinc-950 dark:text-white">
+                    <NumberTicker value={step.value} className="text-zinc-950 dark:text-white" />
                   </span>
-                </span>
-                <span>
-                  <span className="block text-sm font-medium">{step.label}</span>
-                  <span className="text-xs text-card-foreground/70">{step.hint}</span>
-                </span>
+                </div>
+                <div className="mt-3">
+                  <span className="block text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {step.label}
+                  </span>
+                  <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                    {step.hint}
+                  </span>
+                </div>
               </Link>
             </li>
           );

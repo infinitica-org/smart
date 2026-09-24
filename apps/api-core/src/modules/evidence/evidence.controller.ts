@@ -134,7 +134,7 @@ export class EvidenceController {
   @Roles('STUDENT')
   @ApiBearerAuth()
   linkClaim(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: unknown) {
-    return this.evidence.linkEvidenceToClaim(user.sub, id, body);
+    return this.evidence.associateEvidenceWithClaim(user.sub, id, body);
   }
 
   @Post('skill-claims/:claimId/associate-evidence')

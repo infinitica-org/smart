@@ -4,7 +4,10 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'TPO console · SMART',
+  title: {
+    default: 'TPO Console · SMART',
+    template: '%s · SMART TPO',
+  },
   description: 'Cohort readiness, JD ingest, shortlists.',
 };
 

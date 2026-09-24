@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type {
   InvitationDto,
@@ -13,6 +14,7 @@ import type {
 } from '@smart/contracts';
 import { SMART_TOPICS } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
 import type { EmailTemplateName } from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
@@ -39,6 +41,9 @@ export class InvitationsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(KafkaOutboxService) private readonly outbox: KafkaOutboxService,
+    @Optional()
+    @Inject(AuditPublisherService)
+    private readonly auditPublisher?: AuditPublisherService,
   ) {}
 
   async preview(rawToken: string): Promise<InvitationPreviewDto> {
@@ -70,32 +75,49 @@ export class InvitationsService {
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await this.prisma.user.update({
-      where: { id: invitation.userId },
-      data: {
-        passwordHash,
-        emailVerified: true,
-        fullName: invitation.fullName,
-        // Seed the onboarding draft with what we already know so a freshly
-        // invited student never has to retype their own name — this is the
-        // very first authenticated write for this account, so there is no
-        // existing draft to merge with or clobber.
-        ...(invitation.role === 'STUDENT'
-          ? { onboardingDetails: onboardingSeedFromFullName(invitation.fullName) }
-          : {}),
-      },
-      include: {
-        institution: true,
-        company: true,
-        primaryTrack: true,
-        secondaryTrack: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: invitation.userId },
+        data: {
+          passwordHash,
+          emailVerified: true,
+          fullName: invitation.fullName,
+          ...(invitation.role === 'STUDENT'
+            ? { onboardingDetails: onboardingSeedFromFullName(invitation.fullName) }
+            : {}),
+        },
+        include: {
+          institution: true,
+          company: true,
+          primaryTrack: true,
+          secondaryTrack: true,
+        },
+      });
+
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      });
+
+      return updatedUser;
     });
 
-    await this.prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { status: 'ACCEPTED', acceptedAt: new Date() },
-    });
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: user.id,
+        action: 'staff.account_activated',
+        resourceType: 'user',
+        resourceId: user.id,
+        reasonCode: 'INVITATION_ACCEPTED',
+        metadata: {
+          institutionId: invitation.institutionId,
+          previousState: 'INVITED',
+          newState: 'ACTIVE',
+          role: invitation.role,
+          invitationId: invitation.id,
+        },
+      });
+    }
 
     return user;
   }

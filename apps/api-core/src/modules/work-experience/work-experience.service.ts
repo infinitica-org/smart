@@ -2555,7 +2555,7 @@ export class WorkExperienceService {
       },
     });
 
-    const investigationFacts = await this.getManagerEndorsementInvestigationFacts({
+    const _investigationFacts = await this.getManagerEndorsementInvestigationFacts({
       managerEmail: endorsement.managerEmail,
       submissionIp: meta?.ip ?? null,
     });

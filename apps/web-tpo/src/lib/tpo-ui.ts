@@ -5,29 +5,29 @@
  */
 
 export const surfaceClass =
-  'relative overflow-hidden rounded-[20px] border border-[var(--ds-border)] bg-[var(--ds-surface)] shadow-[var(--ds-card-shadow)] transition-[border-color,box-shadow] duration-200';
+  'relative overflow-hidden rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface)] shadow-[var(--ds-card-shadow)] transition-[border-color,box-shadow] duration-200';
 
 export const cardClass = `${surfaceClass} p-6`;
 
 export const cardCompactClass = `${surfaceClass} p-4`;
 
 export const primaryButtonClass =
-  'inline-flex items-center justify-center gap-2 rounded-[9px] bg-[var(--tpo-accent)] px-4 py-2 text-sm font-semibold text-[var(--ds-text)] transition hover:bg-[var(--tpo-accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white shadow-2xs transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-50';
 
 export const primaryButtonSmClass =
-  'inline-flex items-center justify-center gap-2 rounded-[9px] bg-[var(--tpo-accent)] px-3 py-1.5 text-xs font-semibold text-[var(--ds-text)] transition hover:bg-[var(--tpo-accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-50';
 
 export const secondaryButtonClass =
-  'inline-flex items-center justify-center gap-2 rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2 text-sm font-semibold text-[var(--ds-text)] transition hover:bg-[var(--ds-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-900 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-50';
 
 export const secondaryButtonSmClass =
-  'inline-flex items-center justify-center gap-2 rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ds-text)] transition hover:bg-[var(--ds-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-50';
 
 export const inputClass =
-  'w-full rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2 text-sm text-[var(--ds-text)] placeholder:text-[var(--ds-text-subtle)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)]';
+  'w-full rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2 text-sm text-[var(--ds-text)] placeholder:text-[var(--ds-text-subtle)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)]';
 
 export const selectClass =
-  'h-10 rounded-[9px] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 text-sm font-medium text-[var(--ds-text)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)] disabled:opacity-50';
+  'h-10 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 text-sm font-medium text-[var(--ds-text)] transition focus:border-[var(--tpo-accent-border)] focus:outline-2 focus:outline-offset-0 focus:outline-[var(--tpo-accent)] disabled:opacity-50';
 
 export const labelClass = 'text-xs font-semibold text-[var(--ds-text-secondary)]';
 
