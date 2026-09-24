@@ -1,13 +1,25 @@
 import { z } from 'zod';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
 
-/** STU-02 — edit personal information after onboarding. */
-export const UpdatePersonalInfoRequestSchema = z.object({
-  fullName: z
+/** STU-02 — edit personal information after onboarding. Phone changes need OTP, so are out of scope. */
+const PersonalNameSchema = (label: string) =>
+  z
     .string()
     .trim()
-    .min(2, 'Full name must be at least 2 characters.')
-    .max(100, 'Full name must be at most 100 characters.'),
+    .min(1, `${label} is required.`)
+    .max(50, `${label} must be at most 50 characters.`);
+
+export const UpdatePersonalInfoRequestSchema = z.object({
+  firstName: PersonalNameSchema('First name'),
+  lastName: PersonalNameSchema('Last name'),
+  gender: z.string().trim().max(40, 'Gender must be at most 40 characters.').nullable().optional(),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be a valid date (YYYY-MM-DD).')
+    .refine((value) => !Number.isNaN(Date.parse(value)), 'Date of birth must be a valid date.')
+    .refine((value) => Date.parse(value) <= Date.now(), 'Date of birth cannot be in the future.')
+    .nullable()
+    .optional(),
   graduationYear: z
     .number()
     .int('Graduation year must be a whole number.')
@@ -19,8 +31,14 @@ export const UpdatePersonalInfoRequestSchema = z.object({
 export type UpdatePersonalInfoRequest = z.infer<typeof UpdatePersonalInfoRequestSchema>;
 
 export const PersonalInfoResponseSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
   fullName: z.string(),
   email: z.string(),
+  gender: z.string().nullable(),
+  dateOfBirth: z.string().nullable(),
+  /** Read-only here; changing a phone number requires OTP verification. */
+  phone: z.string().nullable(),
   graduationYear: z.number().int().nullable(),
 });
 export type PersonalInfoResponse = z.infer<typeof PersonalInfoResponseSchema>;

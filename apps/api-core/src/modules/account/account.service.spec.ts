@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
-import { CreateDataRequestSchema, DeactivateAccountRequestSchema } from '@smart/contracts';
+import {
+  CreateDataRequestSchema,
+  DeactivateAccountRequestSchema,
+  UpdatePersonalInfoRequestSchema,
+} from '@smart/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountService } from './account.service.js';
 
@@ -21,6 +25,15 @@ describe('AccountService (STU-02)', () => {
           graduationYear: 2027,
           allowEmployerMessages: true,
           deactivatedAt: null,
+          onboardingDetails: {
+            firstName: 'Ada',
+            lastName: 'Lovelace',
+            gender: 'Female',
+            dateOfBirth: '2003-12-10',
+            phoneCountryCode: '+91',
+            phoneNumber: '9876543210',
+            about: 'Keep me',
+          },
         }),
         update: vi.fn().mockImplementation(({ data }) =>
           Promise.resolve({
@@ -50,35 +63,98 @@ describe('AccountService (STU-02)', () => {
     service = new AccountService(prisma, auditPublisher, auth);
   });
 
-  describe('updatePersonalInfo', () => {
-    it('updates the profile and audits the prior and new state', async () => {
-      const result = await service.updatePersonalInfo(userId, {
-        fullName: 'Ada L',
+  describe('personal info', () => {
+    it('reads names, gender, date of birth and a read-only phone from the onboarding snapshot', async () => {
+      const info = await service.getPersonalInfo(userId);
+      expect(info).toEqual({
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        fullName: 'Ada Lovelace',
+        email: 'ada@example.com',
+        gender: 'Female',
+        dateOfBirth: '2003-12-10',
+        phone: '+91 9876543210',
+        graduationYear: 2027,
+      });
+    });
+
+    it('falls back to splitting the full name before onboarding is complete', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        fullName: 'Grace Brewster Hopper',
+        email: 'g@example.com',
+        graduationYear: null,
+        onboardingDetails: null,
+      });
+      const info = await service.getPersonalInfo(userId);
+      expect(info.firstName).toBe('Grace');
+      expect(info.lastName).toBe('Brewster Hopper');
+      expect(info.phone).toBeNull();
+    });
+
+    it('updates the column and the onboarding snapshot, preserving unrelated fields and the phone', async () => {
+      await service.updatePersonalInfo(userId, {
+        firstName: 'Augusta',
+        lastName: 'King',
+        gender: 'Female',
+        dateOfBirth: '2003-12-11',
         graduationYear: 2028,
       });
 
-      expect(prisma.user.update).toHaveBeenCalledWith(
+      const data = prisma.user.update.mock.calls[0][0].data;
+      expect(data.fullName).toBe('Augusta King');
+      expect(data.graduationYear).toBe(2028);
+      expect(data.onboardingDetails).toEqual(
         expect.objectContaining({
-          where: { id: userId },
-          data: { fullName: 'Ada L', graduationYear: 2028 },
-        }),
-      );
-      expect(result.fullName).toBe('Ada L');
-      expect(auditPublisher.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actorId: userId,
-          action: 'personal_info.updated',
-          metadata: {
-            prior: { fullName: 'Ada Lovelace', graduationYear: 2027 },
-            next: { fullName: 'Ada L', graduationYear: 2028 },
-          },
+          firstName: 'Augusta',
+          lastName: 'King',
+          dateOfBirth: '2003-12-11',
+          phoneNumber: '9876543210',
+          about: 'Keep me',
         }),
       );
     });
 
-    it('leaves graduationYear untouched when it is not supplied', async () => {
-      await service.updatePersonalInfo(userId, { fullName: 'Ada L' });
-      expect(prisma.user.update.mock.calls[0][0].data).toEqual({ fullName: 'Ada L' });
+    it('never creates an onboarding snapshot for a student who has not onboarded', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        fullName: 'Grace Hopper',
+        email: 'g@example.com',
+        graduationYear: null,
+        onboardingDetails: null,
+      });
+
+      await service.updatePersonalInfo(userId, { firstName: 'Grace', lastName: 'H' });
+
+      const data = prisma.user.update.mock.calls[0][0].data;
+      expect(data).toEqual({ fullName: 'Grace H' });
+    });
+
+    it('audits prior and new values but leaves contact details out', async () => {
+      await service.updatePersonalInfo(userId, { firstName: 'Augusta', lastName: 'King' });
+
+      const call = auditPublisher.record.mock.calls[0][0];
+      expect(call.action).toBe('personal_info.updated');
+      expect(call.metadata.prior.firstName).toBe('Ada');
+      expect(JSON.stringify(call.metadata)).not.toContain('9876543210');
+      expect(JSON.stringify(call.metadata)).not.toContain('ada@example.com');
+    });
+
+    it('rejects invalid names, future birth dates and malformed dates', () => {
+      const ok = { firstName: 'Ada', lastName: 'L' };
+      expect(UpdatePersonalInfoRequestSchema.safeParse({ ...ok, firstName: ' ' }).success).toBe(
+        false,
+      );
+      expect(
+        UpdatePersonalInfoRequestSchema.safeParse({ ...ok, lastName: 'x'.repeat(51) }).success,
+      ).toBe(false);
+      expect(
+        UpdatePersonalInfoRequestSchema.safeParse({ ...ok, dateOfBirth: '2999-01-01' }).success,
+      ).toBe(false);
+      expect(
+        UpdatePersonalInfoRequestSchema.safeParse({ ...ok, dateOfBirth: '10/12/2003' }).success,
+      ).toBe(false);
+      expect(
+        UpdatePersonalInfoRequestSchema.safeParse({ ...ok, dateOfBirth: '2003-12-10' }).success,
+      ).toBe(true);
     });
   });
 

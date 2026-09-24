@@ -7,13 +7,20 @@ import { UpdatePersonalInfoRequestSchema } from '@smart/contracts';
 import { api } from '@/lib/api';
 import { fieldClass, primaryButtonClass, SettingsCard, StatusMessage } from './account-ui';
 
+const GENDER_SUGGESTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+
+const labelClass = 'grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300';
+
 export function PersonalInfoCard() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['me', 'personal'] as const,
     queryFn: () => api.users.getPersonalInfo(),
   });
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +28,10 @@ export function PersonalInfoCard() {
 
   useEffect(() => {
     if (!data) return;
-    setFullName(data.fullName);
+    setFirstName(data.firstName);
+    setLastName(data.lastName);
+    setGender(data.gender ?? '');
+    setDateOfBirth(data.dateOfBirth ?? '');
     setGraduationYear(data.graduationYear?.toString() ?? '');
   }, [data]);
 
@@ -29,7 +39,10 @@ export function PersonalInfoCard() {
     setError(null);
     setSaved(false);
     const parsed = UpdatePersonalInfoRequestSchema.safeParse({
-      fullName,
+      firstName,
+      lastName,
+      gender: gender.trim() === '' ? null : gender,
+      dateOfBirth: dateOfBirth === '' ? null : dateOfBirth,
       graduationYear: graduationYear.trim() === '' ? null : Number(graduationYear),
     });
     if (!parsed.success) {
@@ -51,7 +64,7 @@ export function PersonalInfoCard() {
   return (
     <SettingsCard
       title="Personal information"
-      description="Your name and graduation year, as shown on your profile."
+      description="Your name, date of birth and graduation year, as shown on your profile."
     >
       {isLoading ? (
         <p className="text-xs text-zinc-500">Loading…</p>
@@ -59,15 +72,46 @@ export function PersonalInfoCard() {
         <StatusMessage kind="error">Could not load your details.</StatusMessage>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-            Full name
+          <label className={labelClass}>
+            First name
             <input
               className={fieldClass}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
             />
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+          <label className={labelClass}>
+            Last name
+            <input
+              className={fieldClass}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Gender
+            <input
+              className={fieldClass}
+              list="gender-suggestions"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+            />
+            <datalist id="gender-suggestions">
+              {GENDER_SUGGESTIONS.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
+          </label>
+          <label className={labelClass}>
+            Date of birth
+            <input
+              type="date"
+              className={fieldClass}
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
             Graduation year
             <input
               className={fieldClass}
@@ -76,7 +120,11 @@ export function PersonalInfoCard() {
               onChange={(e) => setGraduationYear(e.target.value)}
             />
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-zinc-700 sm:col-span-2 dark:text-zinc-300">
+          <label className={labelClass}>
+            Phone (verified — cannot be edited here)
+            <input className={fieldClass} value={data?.phone ?? '—'} disabled readOnly />
+          </label>
+          <label className={`${labelClass} sm:col-span-2`}>
             Email
             <input className={fieldClass} value={data?.email ?? ''} disabled readOnly />
           </label>

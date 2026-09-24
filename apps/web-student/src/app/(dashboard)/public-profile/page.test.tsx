@@ -26,6 +26,7 @@ const baseProfile = {
   education: [],
   competencyEvidenceSummaries: [],
   showInProgressItems: false,
+  acceptsEmployerMessages: true,
 };
 
 function renderPage() {
@@ -59,6 +60,16 @@ describe('PublicProfilePreviewPage (employer-visible preview)', () => {
     expect(screen.getByText(/0 of 3 declared/)).toBeTruthy();
     // No proof yet, so the verified badge must not appear.
     expect(screen.queryByText('SMART Verified')).toBeNull();
+  });
+
+  it('shows employers whether messaging is on or off', async () => {
+    const { unmount } = renderPage();
+    expect(await screen.findByText('Open to employer messages')).toBeTruthy();
+    unmount();
+
+    users.getMyPublicProfile.mockResolvedValue({ ...baseProfile, acceptsEmployerMessages: false });
+    renderPage();
+    expect(await screen.findByText('Not accepting employer messages')).toBeTruthy();
   });
 
   it('shows only verified skills and the verified badge', async () => {

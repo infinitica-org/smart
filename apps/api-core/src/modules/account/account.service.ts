@@ -10,11 +10,33 @@ import type {
   UpdateMessagingPreferenceRequest,
   UpdatePersonalInfoRequest,
 } from '@smart/contracts';
+import type { Prisma } from '../../generated/prisma/index.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuthService } from '../auth/auth.service.js';
 
 const OPEN_STATUSES = ['OPEN', 'IN_REVIEW'] as const;
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function str(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+/** Audit the editable fields only; contact details stay out of the audit metadata. */
+function pickAudited(info: PersonalInfoResponse) {
+  return {
+    firstName: info.firstName,
+    lastName: info.lastName,
+    gender: info.gender,
+    dateOfBirth: info.dateOfBirth,
+    graduationYear: info.graduationYear,
+  };
+}
 
 function toDataRequest(row: {
   id: string;
@@ -46,9 +68,21 @@ export class AccountService {
   async getPersonalInfo(userId: string): Promise<PersonalInfoResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { fullName: true, email: true, graduationYear: true },
+      select: { fullName: true, email: true, graduationYear: true, onboardingDetails: true },
     });
-    return user;
+    const details = asRecord(user.onboardingDetails);
+    const [fallbackFirst = '', ...rest] = user.fullName.trim().split(/\s+/);
+    const phoneNumber = str(details.phoneNumber);
+    return {
+      firstName: str(details.firstName) ?? fallbackFirst,
+      lastName: str(details.lastName) ?? rest.join(' '),
+      fullName: user.fullName,
+      email: user.email,
+      gender: str(details.gender),
+      dateOfBirth: str(details.dateOfBirth),
+      phone: phoneNumber ? `${str(details.phoneCountryCode) ?? ''} ${phoneNumber}`.trim() : null,
+      graduationYear: user.graduationYear,
+    };
   }
 
   async updatePersonalInfo(
@@ -56,14 +90,32 @@ export class AccountService {
     body: UpdatePersonalInfoRequest,
   ): Promise<PersonalInfoResponse> {
     const before = await this.getPersonalInfo(userId);
-    const updated = await this.prisma.user.update({
+    const current = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { onboardingDetails: true },
+    });
+    const details = asRecord(current.onboardingDetails);
+    // Keep the onboarding snapshot in step with the columns, but never create one for a
+    // student who has not finished onboarding.
+    const nextDetails = current.onboardingDetails
+      ? ({
+          ...details,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          ...(body.gender !== undefined ? { gender: body.gender ?? undefined } : {}),
+          ...(body.dateOfBirth !== undefined ? { dateOfBirth: body.dateOfBirth ?? undefined } : {}),
+        } as Prisma.InputJsonValue)
+      : undefined;
+
+    await this.prisma.user.update({
       where: { id: userId },
       data: {
-        fullName: body.fullName,
+        fullName: `${body.firstName} ${body.lastName}`,
         ...(body.graduationYear !== undefined ? { graduationYear: body.graduationYear } : {}),
+        ...(nextDetails ? { onboardingDetails: nextDetails } : {}),
       },
-      select: { fullName: true, email: true, graduationYear: true },
     });
+    const after = await this.getPersonalInfo(userId);
 
     await this.auditPublisher.record({
       actorId: userId,
@@ -72,11 +124,11 @@ export class AccountService {
       resourceId: userId,
       reasonCode: null,
       metadata: {
-        prior: { fullName: before.fullName, graduationYear: before.graduationYear },
-        next: { fullName: updated.fullName, graduationYear: updated.graduationYear },
+        prior: pickAudited(before),
+        next: pickAudited(after),
       },
     });
-    return updated;
+    return after;
   }
 
   async getMessagingPreference(userId: string): Promise<MessagingPreferenceResponse> {

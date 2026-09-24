@@ -36,27 +36,53 @@ beforeEach(() => {
 describe('PersonalInfoCard', () => {
   beforeEach(() => {
     users.getPersonalInfo.mockResolvedValue({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
       fullName: 'Ada Lovelace',
       email: 'ada@example.com',
+      gender: 'Female',
+      dateOfBirth: '2003-12-10',
+      phone: '+91 9876543210',
       graduationYear: 2027,
     });
   });
 
-  it('loads the current details and saves an edit', async () => {
-    users.updatePersonalInfo.mockResolvedValue({
-      fullName: 'Ada L',
-      email: 'ada@example.com',
-      graduationYear: 2027,
-    });
+  const savedInfo = {
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    fullName: 'Ada Lovelace',
+    email: 'ada@example.com',
+    gender: 'Female',
+    dateOfBirth: '2003-12-10',
+    phone: '+91 9876543210',
+    graduationYear: 2027,
+  };
+
+  it('loads every current detail and shows the phone as read-only', async () => {
     renderWithClient(<PersonalInfoCard />);
 
-    const name = await screen.findByDisplayValue('Ada Lovelace');
-    fireEvent.change(name, { target: { value: 'Ada L' } });
+    expect(await screen.findByDisplayValue('Ada')).toBeTruthy();
+    expect(screen.getByDisplayValue('Lovelace')).toBeTruthy();
+    expect(screen.getByDisplayValue('Female')).toBeTruthy();
+    expect(screen.getByDisplayValue('2003-12-10')).toBeTruthy();
+    const phone = screen.getByDisplayValue('+91 9876543210') as HTMLInputElement;
+    expect(phone.disabled).toBe(true);
+  });
+
+  it('saves an edit with the new fields', async () => {
+    users.updatePersonalInfo.mockResolvedValue({ ...savedInfo, firstName: 'Augusta' });
+    renderWithClient(<PersonalInfoCard />);
+
+    fireEvent.change(await screen.findByDisplayValue('Ada'), { target: { value: 'Augusta' } });
+    fireEvent.change(screen.getByDisplayValue('2003-12-10'), { target: { value: '2003-12-11' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() =>
       expect(users.updatePersonalInfo).toHaveBeenCalledWith({
-        fullName: 'Ada L',
+        firstName: 'Augusta',
+        lastName: 'Lovelace',
+        gender: 'Female',
+        dateOfBirth: '2003-12-11',
         graduationYear: 2027,
       }),
     );
@@ -65,26 +91,33 @@ describe('PersonalInfoCard', () => {
 
   it('shows field guidance and does not submit invalid input', async () => {
     renderWithClient(<PersonalInfoCard />);
-    fireEvent.change(await screen.findByDisplayValue('Ada Lovelace'), { target: { value: 'A' } });
+    fireEvent.change(await screen.findByDisplayValue('Ada'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect((await screen.findByRole('alert')).textContent).toMatch(/at least 2 characters/i);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/first name is required/i);
+    expect(users.updatePersonalInfo).not.toHaveBeenCalled();
+  });
+
+  it('rejects a birth date in the future', async () => {
+    renderWithClient(<PersonalInfoCard />);
+    fireEvent.change(await screen.findByDisplayValue('2003-12-10'), {
+      target: { value: '2999-01-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/cannot be in the future/i);
     expect(users.updatePersonalInfo).not.toHaveBeenCalled();
   });
 
   it('keeps the input and lets the user retry after a failure', async () => {
     users.updatePersonalInfo.mockRejectedValueOnce(new Error('network'));
-    users.updatePersonalInfo.mockResolvedValueOnce({
-      fullName: 'Ada Lovelace',
-      email: 'ada@example.com',
-      graduationYear: 2027,
-    });
+    users.updatePersonalInfo.mockResolvedValueOnce(savedInfo);
     renderWithClient(<PersonalInfoCard />);
-    await screen.findByDisplayValue('Ada Lovelace');
+    await screen.findByDisplayValue('Ada');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/could not save/i);
-    expect(screen.getByDisplayValue('Ada Lovelace')).toBeTruthy();
+    expect(screen.getByDisplayValue('Ada')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Saved.')).toBeTruthy();

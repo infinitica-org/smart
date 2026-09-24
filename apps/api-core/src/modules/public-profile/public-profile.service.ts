@@ -184,6 +184,7 @@ export class PublicProfileService {
         profilePhotoObjectKey: true,
         primaryTrack: { select: { code: true } },
         showInProgressItems: true,
+        allowEmployerMessages: true,
       },
     });
     const showInProgress = owner.showInProgressItems;
@@ -293,6 +294,7 @@ export class PublicProfileService {
         grade: edu.grade ?? null,
       })),
       showInProgressItems: showInProgress,
+      acceptsEmployerMessages: owner.allowEmployerMessages,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
     };
   }

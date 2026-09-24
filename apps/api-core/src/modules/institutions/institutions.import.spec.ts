@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import ExcelJS from 'exceljs';
+const { Workbook } = ExcelJS;
 import { describe, expect, it, vi } from 'vitest';
 import { InstitutionsService } from './institutions.service.js';
 
@@ -92,16 +93,22 @@ describe('InstitutionsService import file boundary', () => {
     await expect(probe(service, file, fileName)).rejects.toThrow(message);
   });
 
-  // ExcelJS parses the full 10,001-row CSV before the row-limit check, which
-  // regularly exceeds Vitest's default 5s on CI. The 10k cap itself is unchanged.
   it('rejects spreadsheets above the candidate row limit', async () => {
+    // Stub the ExcelJS Workbook instance so csv.read resolves immediately
+    // and worksheets returns a fake sheet with rowCount above the 10 000 cap.
+    // This avoids the multi-second ExcelJS parse of 10 001 real rows.
+    const fakeSheet = { rowCount: 10_002 };
+    const fakeRead = vi.fn().mockResolvedValue(undefined);
+
+    vi.spyOn(Workbook.prototype, 'csv', 'get').mockReturnValue({ read: fakeRead } as never);
+    vi.spyOn(Workbook.prototype, 'worksheets', 'get').mockReturnValue([fakeSheet] as never);
+
     const { service } = setup();
-    const rows = Array.from(
-      { length: 10_001 },
-      (_, i) => `S${String(i)},s${String(i)}@example.test`,
+    const tiny = Buffer.from('Name,Email\nA,a@b.test');
+    await expect(probe(service, tiny, 'candidates.csv')).rejects.toThrow(
+      '10000 candidate row limit',
     );
-    await expect(
-      probe(service, Buffer.from(['Name,Email', ...rows].join('\n')), 'candidates.csv'),
-    ).rejects.toThrow('10000 candidate row limit');
-  }, 45_000);
+
+    vi.restoreAllMocks();
+  });
 });

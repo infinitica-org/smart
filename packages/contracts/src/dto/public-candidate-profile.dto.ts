@@ -111,6 +111,8 @@ export const PublicCandidateProfileDtoSchema = z.object({
   competencyEvidenceSummaries: z.array(PublicCompetencyEvidenceSummarySchema).default([]),
   /** CN-T09 — echoes the owner's opt-in state so the frontend can label in-progress entries. */
   showInProgressItems: z.boolean().default(false),
+  /** STU-02 — false when the student has turned employer messages off. */
+  acceptsEmployerMessages: z.boolean().default(true),
 });
 export type PublicCandidateProfileDto = z.infer<typeof PublicCandidateProfileDtoSchema>;
 
