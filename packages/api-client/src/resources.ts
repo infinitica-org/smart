@@ -17,6 +17,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  ListActiveSessionsQuery,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
@@ -74,6 +75,7 @@ import {
   CompleteSkillVerifyResponseSchema,
   CertVerifyPrepareDtoSchema,
   CertVerifySessionDtoSchema,
+  ActiveSessionDtoSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -788,6 +790,15 @@ export function onboardingApi(client: SmartApiClient) {
         schema: z.array(AuditLogDtoSchema),
         query,
       }),
+
+    listActiveSessions: (query?: ListActiveSessionsQuery) =>
+      client.get(prefixed('/admin/sessions'), {
+        schema: z.array(ActiveSessionDtoSchema),
+        query,
+      }),
+
+    revokeSession: (sessionId: string, body: TenantActionReason) =>
+      client.post<void>(prefixed(`/admin/sessions/${sessionId}/revoke`), body),
 
     viewCandidateProfile: (userId: string, body: ViewCandidateRequest) =>
       client.post(prefixed(`/admin/students/${userId}/profile`), body, {

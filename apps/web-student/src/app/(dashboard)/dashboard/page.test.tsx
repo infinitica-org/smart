@@ -40,7 +40,7 @@ describe('DashboardPage', () => {
   it('renders student dashboard hero, verification banner, stat cards, top matches, and activity feed', async () => {
     renderWithQueryClient(<DashboardPage />);
 
-    expect(screen.getByRole('heading', { name: /Welcome/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Ada/i })).toBeTruthy();
     expect(screen.getByTestId('student-verification-banner')).toBeTruthy();
     expect(screen.getByText('Your profile is 33% verified')).toBeTruthy();
     expect(screen.getByText('Strong-fit matches')).toBeTruthy();

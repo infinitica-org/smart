@@ -48,6 +48,7 @@ describe('EvidenceSyncService versioning', () => {
     };
 
     const reconciliation = { reconcileForStudent: vi.fn() };
+    const skillInference = { recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined) };
     const evidenceVersions = {
       resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
       contentEquals: vi.fn().mockReturnValue(true),

@@ -104,9 +104,9 @@ describe('WorkExperienceService', () => {
       workExperienceManagerEndorsement: {
         create: vi.fn(),
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
         findUnique: vi.fn(),
-        findMany: vi.fn(),
-        count: vi.fn(),
         update: vi.fn(),
       },
       workExperienceResponsibility: {

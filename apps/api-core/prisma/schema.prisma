@@ -377,6 +377,10 @@ model User {
   email                  String          @unique
   fullName               String          @map("full_name")
   passwordHash           String?         @map("password_hash")
+  /// S6-VV-92 — consecutive wrong-password count since the last successful login or lockout; never serialized.
+  failedLoginAttempts    Int             @default(0) @map("failed_login_attempts")
+  /// S6-VV-92 — set once failedLoginAttempts hits the threshold; login is refused until this passes.
+  loginLockedUntil       DateTime?       @map("login_locked_until") @db.Timestamptz(6)
   role                   UserRole
   provider               AuthProvider    @default(PASSWORD)
   emailVerified          Boolean         @default(false) @map("email_verified")
