@@ -17,7 +17,7 @@ jobs:
     name: PR flow & naming check
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write   # needed to post comments
+      pull-requests: write # needed to post comments
     steps:
       - name: Validate PR base, head, author, title, and branch name
         env:
