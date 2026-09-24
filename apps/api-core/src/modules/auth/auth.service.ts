@@ -35,7 +35,6 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
-import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { resolveSessionHold } from '../../common/session-hold.js';
 import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
