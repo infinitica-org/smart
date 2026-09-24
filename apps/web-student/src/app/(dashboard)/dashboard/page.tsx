@@ -15,7 +15,7 @@ import {
   Layers,
   FileBadge,
 } from 'lucide-react';
-import type { DashboardAttentionState } from '@smart/contracts';
+import type { DashboardActivityKind, DashboardAttentionState } from '@smart/contracts';
 import {
   DashboardListPanel,
   type DashboardBadgeTone,
@@ -42,6 +42,12 @@ const ATTENTION_BADGE: Record<
   PROCESSING: { label: 'In progress', tone: 'neutral' },
 };
 
+const ACTIVITY_ICON: Record<DashboardActivityKind, ActivityFeedItem['icon']> = {
+  PROFILE: 'eye',
+  VERIFICATION: 'trending',
+  APPLICATION: 'file',
+};
+
 function stageText(stage: string): string {
   const text = stage.replace(/_/g, ' ').toLowerCase();
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -65,7 +71,7 @@ export default function DashboardPage() {
   const matchItems: MatchItem[] = useMemo(
     () =>
       (summary?.topMatches ?? []).map((match) => ({
-        id: match.applicationId,
+        id: match.applicationId ?? match.openingId,
         roleTitle: match.roleTitle,
         companyName: match.companyName,
         location: match.location ?? 'Location not specified',
@@ -78,7 +84,7 @@ export default function DashboardPage() {
     () =>
       (summary?.recentActivity ?? []).map((item) => ({
         id: item.id,
-        icon: 'file' as const,
+        icon: ACTIVITY_ICON[item.kind],
         text: item.label,
       })),
     [summary],
@@ -89,7 +95,7 @@ export default function DashboardPage() {
     {
       label: 'Top matches',
       value: summary?.topMatches.length ?? 0,
-      subtext: 'Scored by SMART',
+      subtext: 'Skills-based fit',
       icon: Target,
       href: '/matches',
     },

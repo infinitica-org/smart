@@ -131,6 +131,7 @@ describe('DashboardPage (STU-03)', () => {
       summary({
         topMatches: [
           {
+            source: 'APPLICATION',
             applicationId: APPLICATION,
             openingId: OPENING,
             roleTitle: 'Backend Engineer',
@@ -170,6 +171,8 @@ describe('DashboardPage (STU-03)', () => {
         recentActivity: [
           {
             id: 'audit-1',
+            kind: 'VERIFICATION',
+            byYou: false,
             label: 'Candidate education updated',
             occurredAt: '2026-09-24T00:00:00.000Z',
           },
@@ -238,5 +241,58 @@ describe('DashboardPage (STU-03)', () => {
     await waitFor(() => expect(getDashboard).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('Your profile is 50% verified')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows an unapplied opening as a scored match', async () => {
+    getDashboard.mockResolvedValue(
+      summary({
+        topMatches: [
+          {
+            source: 'OPENING',
+            applicationId: null,
+            openingId: OPENING,
+            roleTitle: 'Platform Engineer',
+            companyName: 'Initech',
+            location: null,
+            matchPercent: 91,
+            stage: null,
+          },
+        ],
+      }),
+    );
+    renderPage();
+
+    expect(await screen.findByText('Platform Engineer')).toBeTruthy();
+    expect(screen.getByText(/Initech · Location not specified/)).toBeTruthy();
+    expect(screen.getByText(/91/)).toBeTruthy();
+  });
+
+  it('lists certificate and project verification steps that need attention', async () => {
+    getDashboard.mockResolvedValue(
+      summary({
+        attentionItems: [
+          {
+            id: 'certificate-1',
+            kind: 'CERTIFICATE',
+            state: 'FAILED',
+            title: 'Cloud Basics (Coursera)',
+            detail: 'Verification did not pass.',
+            href: '/profile?section=certifications',
+          },
+          {
+            id: 'project-1',
+            kind: 'PROJECT',
+            state: 'PROCESSING',
+            title: 'Weather API',
+            detail: 'Your project is being reviewed.',
+            href: '/profile?section=projects',
+          },
+        ],
+      }),
+    );
+    renderPage();
+
+    await screen.findByText('Cloud Basics (Coursera)');
+    expect(screen.getByText('Weather API')).toBeTruthy();
   });
 });

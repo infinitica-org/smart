@@ -4,6 +4,7 @@ import {
   EMPLOYER_VIEWER_ROLES,
   SKILL_DEFINITIONS,
   type DashboardActivityItem,
+  type DashboardActivityKind,
   type DashboardApplication,
   type DashboardAttentionItem,
   type DashboardMatch,
@@ -16,6 +17,12 @@ import {
 } from '@smart/contracts';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import {
+  PROFICIENCY_RANK,
+  scoreCandidate,
+  type RankerCandidate,
+  type RankerJob,
+} from '../matching/rules-ranker.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -34,20 +41,24 @@ export const ACTIVE_APPLICATION_STAGES = [
   'OFFER',
 ] as const;
 
-/** Only these audit actions are shown to the student as "activity". */
-const ACTIVITY_ACTION_PREFIXES = [
-  'personal_info.',
-  'candidate_education.',
-  'work_experience.',
-  'candidate_certificate.',
-  'evidence.',
-  'skill_',
-  'profile_visibility.',
-  'messaging_preference.',
-  'data_request.',
-] as const;
+/**
+ * Audit actions shown to the student as "activity", with the kind each one belongs to.
+ * Anything not listed here is never surfaced.
+ */
+const ACTIVITY_KIND_BY_PREFIX: ReadonlyArray<readonly [string, DashboardActivityKind]> = [
+  ['personal_info.', 'PROFILE'],
+  ['profile_visibility.', 'PROFILE'],
+  ['profile_view_setting.', 'PROFILE'],
+  ['messaging_preference.', 'PROFILE'],
+  ['data_request.', 'PROFILE'],
+  ['candidate_education.', 'VERIFICATION'],
+  ['work_experience.', 'VERIFICATION'],
+  ['candidate_certificate.', 'VERIFICATION'],
+  ['evidence.', 'VERIFICATION'],
+  ['skill_', 'VERIFICATION'],
+];
 
-const NEXT_ACTION_BY_AREA: Record<string, Omit<DashboardNextAction, 'href'> & { href: string }> = {
+const NEXT_ACTION_BY_AREA: Record<string, DashboardNextAction> = {
   skills: {
     title: 'Add your skills',
     description: 'Tell SMART what you already know.',
@@ -104,8 +115,34 @@ export function humanizeAction(action: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+export function activityKindFor(action: string): DashboardActivityKind | null {
+  for (const [prefix, kind] of ACTIVITY_KIND_BY_PREFIX) {
+    if (action.startsWith(prefix)) return kind;
+  }
+  return null;
+}
+
 function stageLabel(stage: string): string {
   return stage.replace(/_/g, ' ').toLowerCase();
+}
+
+function rankOf(proficiency: string): number {
+  return PROFICIENCY_RANK[proficiency as keyof typeof PROFICIENCY_RANK] ?? 1;
+}
+
+/** An open, recent opening the student is eligible for and has not applied to. */
+interface EligibleOpening {
+  id: string;
+  roleTitle: string;
+  companyName: string;
+  location: string | null;
+  employmentType: string | null;
+  lastDateToApply: Date | null;
+  createdAt: Date;
+  domainCode: string | null;
+  minYearsExperience: number | null;
+  maxYearsExperience: number | null;
+  requiredSkills: { minProficiency: string; skill: { code: string } }[];
 }
 
 @Injectable()
@@ -118,6 +155,9 @@ export class DashboardService {
 
   /** One authorised read model; every section is scoped to `studentId`. */
   async getSummary(studentId: string): Promise<StudentDashboardSummary> {
+    // Opportunities and opening-level matches share one eligible-openings read.
+    const eligible = this.loadEligibleOpenings(studentId);
+
     const [
       progress,
       attentionItems,
@@ -129,8 +169,8 @@ export class DashboardService {
     ] = await Promise.all([
       this.profileCompletion.getProgressForStudent(studentId),
       this.getAttentionItems(studentId),
-      this.getTopMatches(studentId),
-      this.getOpportunities(studentId),
+      eligible.then((rows) => this.topMatchesFrom(studentId, rows)),
+      eligible.then((rows) => this.opportunitiesFrom(rows)),
       this.getActiveApplications(studentId),
       this.getRecentActivity(studentId),
       this.getProfileViews(studentId),
@@ -162,36 +202,62 @@ export class DashboardService {
     return null;
   }
 
+  /**
+   * Verification steps with a persisted state the student should know about. Failures that only
+   * exist as background-job state in Redis have no stored status, so they are not visible here;
+   * a job that keeps failing leaves its record in the in-progress state.
+   */
   async getAttentionItems(studentId: string): Promise<DashboardAttentionItem[]> {
-    const [credentials, education, experiences, claims] = await Promise.all([
-      this.prisma.professionalCredential.findMany({
-        where: { studentId, status: { in: ['PENDING_VERIFICATION', 'REVOKED'] } },
-        select: { id: true, credentialName: true, issuer: true, status: true },
-        orderBy: { createdAt: 'desc' },
-        take: ATTENTION_LIMIT,
-      }),
-      this.prisma.candidateEducation.findMany({
-        where: { studentId, status: { in: ['unverified', 'rejected'] } },
-        select: { id: true, institutionName: true, status: true, rejectionReason: true },
-        orderBy: { createdAt: 'desc' },
-        take: ATTENTION_LIMIT,
-      }),
-      this.prisma.workExperience.findMany({
-        where: {
-          studentId,
-          status: { in: ['DRAFT', 'SUBMITTED', 'PENDING_EMPLOYER', 'REJECTED', 'EXPIRED'] },
-        },
-        select: { id: true, role: true, companyName: true, status: true },
-        orderBy: { createdAt: 'desc' },
-        take: ATTENTION_LIMIT,
-      }),
-      this.prisma.skillClaim.findMany({
-        where: { studentId, status: { in: ['DECLARED', 'BEGINNER_REATTEMPT'] } },
-        select: { id: true, status: true, skill: { select: { code: true, name: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: ATTENTION_LIMIT,
-      }),
-    ]);
+    const [credentials, certificates, education, experiences, projects, claims] = await Promise.all(
+      [
+        this.prisma.professionalCredential.findMany({
+          where: { studentId, status: { in: ['PENDING_VERIFICATION', 'REVOKED'] } },
+          select: { id: true, credentialName: true, issuer: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+        this.prisma.candidateCertificate.findMany({
+          where: {
+            candidateId: studentId,
+            status: { in: ['DECLARED', 'UPLOADED', 'IN_VERIFICATION', 'REJECTED'] },
+          },
+          select: { id: true, title: true, issuer: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+        this.prisma.candidateEducation.findMany({
+          where: { studentId, status: { in: ['unverified', 'rejected'] } },
+          select: { id: true, institutionName: true, status: true, rejectionReason: true },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+        this.prisma.workExperience.findMany({
+          where: {
+            studentId,
+            status: { in: ['DRAFT', 'SUBMITTED', 'PENDING_EMPLOYER', 'REJECTED', 'EXPIRED'] },
+          },
+          select: { id: true, role: true, companyName: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+        this.prisma.project.findMany({
+          where: {
+            studentId,
+            isActive: true,
+            status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'REJECTED'] },
+          },
+          select: { id: true, title: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+        this.prisma.skillClaim.findMany({
+          where: { studentId, status: { in: ['DECLARED', 'BEGINNER_REATTEMPT'] } },
+          select: { id: true, status: true, skill: { select: { code: true, name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: ATTENTION_LIMIT,
+        }),
+      ],
+    );
 
     const items: DashboardAttentionItem[] = [];
 
@@ -206,6 +272,30 @@ export class DashboardService {
           ? 'Verification did not pass. Review the credential and upload supporting proof.'
           : 'Verification is in progress. We will update this when it finishes.',
         href: '/profile?section=credentials',
+      });
+    }
+
+    for (const c of certificates) {
+      const state =
+        c.status === 'REJECTED'
+          ? 'FAILED'
+          : c.status === 'IN_VERIFICATION'
+            ? 'PROCESSING'
+            : 'NEEDS_ACTION';
+      items.push({
+        id: `certificate-${c.id}`,
+        kind: 'CERTIFICATE',
+        state,
+        title: `${c.title} (${c.issuer})`,
+        detail:
+          state === 'FAILED'
+            ? 'Verification did not pass. Check the details and submit again.'
+            : state === 'PROCESSING'
+              ? 'Verification is in progress. We will update this when it finishes.'
+              : c.status === 'UPLOADED'
+                ? 'Submit this certificate for verification.'
+                : 'Upload proof to start verification.',
+        href: '/profile?section=certifications',
       });
     }
 
@@ -245,6 +335,20 @@ export class DashboardService {
       });
     }
 
+    for (const p of projects) {
+      const failed = p.status === 'REJECTED';
+      items.push({
+        id: `project-${p.id}`,
+        kind: 'PROJECT',
+        state: failed ? 'FAILED' : 'PROCESSING',
+        title: p.title,
+        detail: failed
+          ? 'The review did not pass. Update the project and resubmit.'
+          : 'Your project is being reviewed.',
+        href: '/profile?section=projects',
+      });
+    }
+
     for (const claim of claims) {
       items.push({
         id: `skill-${claim.id}`,
@@ -263,8 +367,26 @@ export class DashboardService {
     return items.sort((a, b) => rank[a.state] - rank[b.state]).slice(0, ATTENTION_LIMIT);
   }
 
-  /** Applications the system has scored. Nothing scored yet means an empty list, never a guess. */
+  /** Scored matches for this student. Nothing scorable means an empty list, never a guess. */
   async getTopMatches(studentId: string): Promise<DashboardMatch[]> {
+    return this.topMatchesFrom(studentId, await this.loadEligibleOpenings(studentId));
+  }
+
+  private async topMatchesFrom(
+    studentId: string,
+    openings: readonly EligibleOpening[],
+  ): Promise<DashboardMatch[]> {
+    const [applicationMatches, openingMatches] = await Promise.all([
+      this.getScoredApplications(studentId),
+      this.scoreOpenings(studentId, openings),
+    ]);
+    return [...applicationMatches, ...openingMatches]
+      .sort((a, b) => b.matchPercent - a.matchPercent)
+      .slice(0, LIST_LIMIT);
+  }
+
+  /** Applications the system has already scored, still in play. */
+  private async getScoredApplications(studentId: string): Promise<DashboardMatch[]> {
     const rows = await this.prisma.application.findMany({
       where: {
         studentId,
@@ -282,6 +404,7 @@ export class DashboardService {
       },
     });
     return rows.map((row) => ({
+      source: 'APPLICATION' as const,
       applicationId: row.id,
       openingId: row.openingId,
       roleTitle: row.opening.roleTitle,
@@ -293,12 +416,95 @@ export class DashboardService {
   }
 
   /**
+   * Scores each eligible, unapplied opening against the student's VERIFIED skills with the same
+   * locked rules ranker the institution shortlist uses (years and location are unknown for the
+   * student, exactly as in that shortlist). Openings that list no required skills cannot be
+   * scored meaningfully, and openings where the student holds none of the required skills are
+   * not matches, so both are left out.
+   */
+  private async scoreOpenings(
+    studentId: string,
+    openings: readonly EligibleOpening[],
+  ): Promise<DashboardMatch[]> {
+    const scorable = openings.filter((opening) => opening.requiredSkills.length > 0);
+    if (scorable.length === 0) return [];
+
+    const claims = await this.prisma.skillClaim.findMany({
+      where: { studentId, status: 'VERIFIED' },
+      select: { proficiency: true, skill: { select: { code: true, domain: true } } },
+    });
+    if (claims.length === 0) return [];
+
+    const candidate: RankerCandidate = {
+      studentId,
+      verified: claims.map((claim) => ({
+        code: claim.skill.code,
+        rank: rankOf(claim.proficiency),
+        domain: claim.skill.domain,
+      })),
+      years: null,
+      location: null,
+    };
+
+    const matches: DashboardMatch[] = [];
+    for (const opening of scorable) {
+      const job: RankerJob = {
+        requiredSkills: opening.requiredSkills.map((row) => ({
+          code: row.skill.code,
+          minRank: rankOf(row.minProficiency),
+        })),
+        domainCode: opening.domainCode ?? 'SOFTWARE_IT',
+        minYearsExperience: opening.minYearsExperience,
+        maxYearsExperience: opening.maxYearsExperience,
+        location: opening.location,
+      };
+      const score = scoreCandidate(job, candidate);
+      if (score.s === 0) continue;
+      matches.push({
+        source: 'OPENING',
+        applicationId: null,
+        openingId: opening.id,
+        roleTitle: opening.roleTitle,
+        companyName: opening.companyName,
+        location: opening.location,
+        matchPercent: Math.max(0, Math.min(100, Math.round(score.matchMp / 10))),
+        stage: null,
+      });
+    }
+    return matches;
+  }
+
+  /**
    * Recent OPEN openings at the student's institution that they have not applied to and are
    * eligible for on the fields we store. No institution means no opportunities.
    */
   async getOpportunities(
     studentId: string,
   ): Promise<{ total: number; items: DashboardOpportunity[] }> {
+    return this.opportunitiesFrom(await this.loadEligibleOpenings(studentId));
+  }
+
+  private opportunitiesFrom(openings: readonly EligibleOpening[]): {
+    total: number;
+    items: DashboardOpportunity[];
+  } {
+    return {
+      total: openings.length,
+      items: openings.slice(0, LIST_LIMIT).map((row) => ({
+        openingId: row.id,
+        roleTitle: row.roleTitle,
+        companyName: row.companyName,
+        location: row.location,
+        employmentType: row.employmentType,
+        lastDateToApply: row.lastDateToApply
+          ? row.lastDateToApply.toISOString().slice(0, 10)
+          : null,
+        postedAt: row.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  private async loadEligibleOpenings(studentId: string): Promise<EligibleOpening[]> {
     const student = await this.prisma.user.findUnique({
       where: { id: studentId },
       select: {
@@ -308,7 +514,7 @@ export class DashboardService {
         hasActiveBacklog: true,
       },
     });
-    if (!student?.institutionId) return { total: 0, items: [] };
+    if (!student?.institutionId) return [];
 
     const now = new Date();
     const since = new Date(now.getTime() - NEW_OPPORTUNITY_WINDOW_DAYS * DAY_MS);
@@ -333,13 +539,17 @@ export class DashboardService {
         employmentType: true,
         lastDateToApply: true,
         createdAt: true,
+        domainCode: true,
+        minYearsExperience: true,
+        maxYearsExperience: true,
         minSscPercentage: true,
         minHscPercentage: true,
         backlogsAllowed: true,
+        requiredSkills: { select: { minProficiency: true, skill: { select: { code: true } } } },
       },
     });
 
-    const eligible = rows.filter((row) => {
+    return rows.filter((row) => {
       if (row.minSscPercentage !== null && student.sscPercentage !== null) {
         if (Number(student.sscPercentage) < Number(row.minSscPercentage)) return false;
       }
@@ -349,21 +559,6 @@ export class DashboardService {
       if (!row.backlogsAllowed && student.hasActiveBacklog === true) return false;
       return true;
     });
-
-    return {
-      total: eligible.length,
-      items: eligible.slice(0, LIST_LIMIT).map((row) => ({
-        openingId: row.id,
-        roleTitle: row.roleTitle,
-        companyName: row.companyName,
-        location: row.location,
-        employmentType: row.employmentType,
-        lastDateToApply: row.lastDateToApply
-          ? row.lastDateToApply.toISOString().slice(0, 10)
-          : null,
-        postedAt: row.createdAt.toISOString(),
-      })),
-    };
   }
 
   async getActiveApplications(
@@ -398,17 +593,29 @@ export class DashboardService {
     };
   }
 
-  /** The student's own audited actions plus real stage changes on their applications, newest first. */
+  /**
+   * Allow-listed audited events where the student is the actor OR the subject (for example a
+   * college confirming their education), plus real stage changes on their applications.
+   * Newest first.
+   */
   async getRecentActivity(studentId: string): Promise<DashboardActivityItem[]> {
     const [audits, stageEvents] = await Promise.all([
       this.prisma.auditLog.findMany({
         where: {
-          actorId: studentId,
-          OR: ACTIVITY_ACTION_PREFIXES.map((prefix) => ({ action: { startsWith: prefix } })),
+          AND: [
+            {
+              OR: [
+                { actorId: studentId },
+                { resourceType: 'user', resourceId: studentId },
+                { metadata: { path: ['studentId'], equals: studentId } },
+              ],
+            },
+            { OR: ACTIVITY_KIND_BY_PREFIX.map(([prefix]) => ({ action: { startsWith: prefix } })) },
+          ],
         },
         orderBy: { createdAt: 'desc' },
         take: ACTIVITY_LIMIT,
-        select: { id: true, action: true, createdAt: true },
+        select: { id: true, action: true, actorId: true, createdAt: true },
       }),
       this.prisma.applicationStageEvent.findMany({
         where: { application: { studentId } },
@@ -423,18 +630,27 @@ export class DashboardService {
       }),
     ]);
 
-    const items: DashboardActivityItem[] = [
-      ...audits.map((row) => ({
+    const items: DashboardActivityItem[] = [];
+    for (const row of audits) {
+      const kind = activityKindFor(row.action);
+      if (!kind) continue;
+      items.push({
         id: `audit-${row.id}`,
+        kind,
+        byYou: row.actorId === studentId,
         label: humanizeAction(row.action),
         occurredAt: row.createdAt.toISOString(),
-      })),
-      ...stageEvents.map((row) => ({
+      });
+    }
+    for (const row of stageEvents) {
+      items.push({
         id: `stage-${row.id}`,
+        kind: 'APPLICATION',
+        byYou: false,
         label: `${row.application.opening.roleTitle} at ${row.application.opening.companyName} moved to ${stageLabel(row.toStage)}`,
         occurredAt: row.createdAt.toISOString(),
-      })),
-    ];
+      });
+    }
     return items.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, ACTIVITY_LIMIT);
   }
 

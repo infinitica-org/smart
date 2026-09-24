@@ -19,6 +19,8 @@ describe('DashboardService (STU-03)', () => {
     prisma = {
       professionalCredential: { findMany: vi.fn().mockResolvedValue([]) },
       candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
+      candidateCertificate: { findMany: vi.fn().mockResolvedValue([]) },
+      project: { findMany: vi.fn().mockResolvedValue([]) },
       workExperience: { findMany: vi.fn().mockResolvedValue([]) },
       skillClaim: { findMany: vi.fn().mockResolvedValue([]) },
       application: {
@@ -85,7 +87,16 @@ describe('DashboardService (STU-03)', () => {
       expect(prisma.candidateEducation.findMany.mock.calls[0][0].where.studentId).toBe(studentId);
       expect(prisma.workExperience.findMany.mock.calls[0][0].where.studentId).toBe(studentId);
       expect(prisma.skillClaim.findMany.mock.calls[0][0].where.studentId).toBe(studentId);
-      expect(prisma.auditLog.findMany.mock.calls[0][0].where.actorId).toBe(studentId);
+      expect(prisma.candidateCertificate.findMany.mock.calls[0][0].where.candidateId).toBe(
+        studentId,
+      );
+      expect(prisma.project.findMany.mock.calls[0][0].where.studentId).toBe(studentId);
+      const auditWhere = prisma.auditLog.findMany.mock.calls[0][0].where;
+      expect(auditWhere.AND[0].OR).toEqual([
+        { actorId: studentId },
+        { resourceType: 'user', resourceId: studentId },
+        { metadata: { path: ['studentId'], equals: studentId } },
+      ]);
       expect(prisma.applicationStageEvent.findMany.mock.calls[0][0].where).toEqual({
         application: { studentId },
       });
@@ -300,8 +311,8 @@ describe('DashboardService (STU-03)', () => {
       const items = await service.getRecentActivity(studentId);
 
       const where = prisma.auditLog.findMany.mock.calls[0][0].where;
-      expect(where.actorId).toBe(studentId);
-      expect(JSON.stringify(where.OR)).not.toContain('auth.');
+      expect(where.AND[0].OR[0]).toEqual({ actorId: studentId });
+      expect(JSON.stringify(where.AND[1].OR)).not.toContain('auth.');
       expect(items.map((i) => i.id)).toEqual(['stage-st1', 'audit-au1']);
       expect(items[0]?.label).toBe('Backend at Acme moved to ai verified');
       expect(items[1]?.label).toBe('Candidate education updated');
@@ -362,6 +373,210 @@ describe('DashboardService (STU-03)', () => {
       expect(result).toEqual({ showEmployerViewCount: false });
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(auditPublisher.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAttentionItems: certificates and projects (I228)', () => {
+    it('surfaces certificate and project verification states', async () => {
+      prisma.candidateCertificate.findMany.mockResolvedValue([
+        { id: 'k1', title: 'Cloud Basics', issuer: 'Coursera', status: 'REJECTED' },
+        { id: 'k2', title: 'SQL', issuer: 'Google', status: 'IN_VERIFICATION' },
+        { id: 'k3', title: 'Python', issuer: 'Meta', status: 'DECLARED' },
+        { id: 'k4', title: 'Go', issuer: 'Google', status: 'UPLOADED' },
+      ]);
+      prisma.project.findMany.mockResolvedValue([
+        { id: 'p1', title: 'Weather API', status: 'REJECTED' },
+        { id: 'p2', title: 'Chat app', status: 'UNDER_REVIEW' },
+      ]);
+
+      const items = await service.getAttentionItems(studentId);
+      const byId = (id: string) => items.find((item) => item.id === id);
+
+      expect(byId('certificate-k1')).toMatchObject({ kind: 'CERTIFICATE', state: 'FAILED' });
+      expect(byId('certificate-k2')?.state).toBe('PROCESSING');
+      expect(byId('certificate-k3')?.detail).toBe('Upload proof to start verification.');
+      expect(byId('certificate-k4')?.detail).toBe('Submit this certificate for verification.');
+      expect(byId('project-p1')).toMatchObject({ kind: 'PROJECT', state: 'FAILED' });
+      expect(byId('project-p2')?.state).toBe('PROCESSING');
+      expect(byId('certificate-k1')?.href).toBe('/profile?section=certifications');
+      expect(byId('project-p1')?.href).toBe('/profile?section=projects');
+    });
+
+    it('reads only the student’s active projects in a reviewable state', async () => {
+      await service.getAttentionItems(studentId);
+
+      expect(prisma.project.findMany.mock.calls[0][0].where).toEqual({
+        studentId,
+        isActive: true,
+        status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'REJECTED'] },
+      });
+    });
+  });
+
+  describe('getTopMatches: opening-level scoring (I229)', () => {
+    const openingRow = (over: Record<string, unknown> = {}) => ({
+      id: randomUUID(),
+      roleTitle: 'Backend Engineer',
+      companyName: 'Acme',
+      location: 'Pune',
+      employmentType: 'FULL_TIME',
+      lastDateToApply: null,
+      createdAt: new Date(),
+      domainCode: 'SOFTWARE_IT',
+      minYearsExperience: null,
+      maxYearsExperience: null,
+      minSscPercentage: null,
+      minHscPercentage: null,
+      backlogsAllowed: true,
+      requiredSkills: [{ minProficiency: 'INTERMEDIATE', skill: { code: 'PYTHON' } }],
+      ...over,
+    });
+    const verified = (code: string, proficiency = 'ADVANCED') => ({
+      proficiency,
+      skill: { code, domain: 'SOFTWARE_IT' },
+    });
+
+    it('scores an unapplied opening from the student’s verified skills, source OPENING', async () => {
+      const row = openingRow();
+      prisma.jobOpening.findMany.mockResolvedValue([row]);
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON')]);
+
+      const matches = await service.getTopMatches(studentId);
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0]).toMatchObject({
+        source: 'OPENING',
+        applicationId: null,
+        stage: null,
+        openingId: row.id,
+        roleTitle: 'Backend Engineer',
+      });
+      // Holds the required skill above the ask, in the right domain: a strong score.
+      expect(matches[0]?.matchPercent ?? 0).toBeGreaterThanOrEqual(80);
+      expect(matches[0]?.matchPercent ?? 0).toBeLessThanOrEqual(100);
+    });
+
+    it('only uses VERIFIED skill claims', async () => {
+      prisma.jobOpening.findMany.mockResolvedValue([openingRow()]);
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON')]);
+
+      await service.getTopMatches(studentId);
+
+      const verifiedCall = prisma.skillClaim.findMany.mock.calls.find(
+        (call: any[]) => call[0].where.status === 'VERIFIED',
+      );
+      expect(verifiedCall?.[0].where).toEqual({ studentId, status: 'VERIFIED' });
+    });
+
+    it('does not present an opening the student holds none of the required skills for', async () => {
+      prisma.jobOpening.findMany.mockResolvedValue([openingRow()]);
+      prisma.skillClaim.findMany.mockResolvedValue([verified('JAVA')]);
+
+      expect(await service.getTopMatches(studentId)).toEqual([]);
+    });
+
+    it('does not score openings that list no required skills', async () => {
+      prisma.jobOpening.findMany.mockResolvedValue([openingRow({ requiredSkills: [] })]);
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON')]);
+
+      expect(await service.getTopMatches(studentId)).toEqual([]);
+    });
+
+    it('returns nothing, and does not query claims for scoring, when the student has no verified skills', async () => {
+      prisma.jobOpening.findMany.mockResolvedValue([openingRow()]);
+      prisma.skillClaim.findMany.mockResolvedValue([]);
+
+      expect(await service.getTopMatches(studentId)).toEqual([]);
+    });
+
+    it('scores a lower proficiency lower than a sufficient one', async () => {
+      const row = openingRow({
+        requiredSkills: [{ minProficiency: 'ADVANCED', skill: { code: 'PYTHON' } }],
+      });
+      prisma.jobOpening.findMany.mockResolvedValue([row]);
+
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON', 'ADVANCED')]);
+      const [strong] = await service.getTopMatches(studentId);
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON', 'BEGINNER')]);
+      const [weak] = await service.getTopMatches(studentId);
+
+      expect(strong?.matchPercent ?? 0).toBeGreaterThan(weak?.matchPercent ?? 0);
+    });
+
+    it('merges scored applications and scored openings, best first, capped at five', async () => {
+      prisma.application.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          openingId: 'o-applied',
+          stage: 'SHORTLISTED',
+          matchScore: '0.500',
+          opening: { roleTitle: 'Applied role', companyName: 'Acme', location: null },
+        },
+      ]);
+      prisma.jobOpening.findMany.mockResolvedValue(
+        Array.from({ length: 6 }, (_, i) => openingRow({ roleTitle: 'Open ' + i })),
+      );
+      prisma.skillClaim.findMany.mockResolvedValue([verified('PYTHON')]);
+
+      const matches = await service.getTopMatches(studentId);
+
+      expect(matches).toHaveLength(5);
+      const percents = matches.map((m) => m.matchPercent);
+      expect([...percents].sort((a, b) => b - a)).toEqual(percents);
+      // The 50% application ranks below the strong opening matches, so it is cut by the cap.
+      expect(matches.every((m) => m.source === 'OPENING')).toBe(true);
+    });
+  });
+
+  describe('getRecentActivity: subject events and kinds (I232)', () => {
+    it('includes events where someone else acted on the student’s record and marks who acted', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([
+        {
+          id: 'au-college',
+          action: 'candidate_education.confirmed',
+          actorId: 'admin-1',
+          createdAt: new Date('2026-09-22T08:00:00Z'),
+        },
+        {
+          id: 'au-me',
+          action: 'personal_info.updated',
+          actorId: studentId,
+          createdAt: new Date('2026-09-21T08:00:00Z'),
+        },
+      ]);
+
+      const items = await service.getRecentActivity(studentId);
+
+      expect(items[0]).toMatchObject({
+        id: 'audit-au-college',
+        kind: 'VERIFICATION',
+        byYou: false,
+        label: 'Candidate education confirmed',
+      });
+      expect(items[1]).toMatchObject({ kind: 'PROFILE', byYou: true });
+    });
+
+    it('drops an action that is not on the allow-list even if the query returned it', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'x', action: 'candidate.profile_viewed', actorId: 'staff-1', createdAt: new Date() },
+      ]);
+
+      expect(await service.getRecentActivity(studentId)).toEqual([]);
+    });
+
+    it('tags stage changes as APPLICATION events done by someone else', async () => {
+      prisma.applicationStageEvent.findMany.mockResolvedValue([
+        {
+          id: 'st1',
+          toStage: 'INTERVIEW',
+          createdAt: new Date(),
+          application: { opening: { roleTitle: 'Backend', companyName: 'Acme' } },
+        },
+      ]);
+
+      const [item] = await service.getRecentActivity(studentId);
+
+      expect(item).toMatchObject({ kind: 'APPLICATION', byYou: false });
     });
   });
 });

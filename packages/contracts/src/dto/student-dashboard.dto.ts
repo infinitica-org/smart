@@ -22,8 +22,10 @@ export type DashboardCompletion = z.infer<typeof DashboardCompletionSchema>;
 
 export const DashboardAttentionKindSchema = z.enum([
   'CREDENTIAL',
+  'CERTIFICATE',
   'EDUCATION',
   'WORK_EXPERIENCE',
+  'PROJECT',
   'SKILL',
 ]);
 export type DashboardAttentionKind = z.infer<typeof DashboardAttentionKindSchema>;
@@ -42,15 +44,25 @@ export const DashboardAttentionItemSchema = z.object({
 });
 export type DashboardAttentionItem = z.infer<typeof DashboardAttentionItemSchema>;
 
-/** A system-scored match: `matchPercent` is the score persisted on the student's application. */
+/**
+ * A scored match. `matchPercent` comes from one of two real sources:
+ *  - APPLICATION: the score already persisted on one of the student's active applications;
+ *  - OPENING: an open, eligible opening the student has not applied to, scored against their
+ *    VERIFIED skills with the same locked rules ranker the institution shortlist uses.
+ * `applicationId` and `stage` are only set for APPLICATION matches.
+ */
+export const DashboardMatchSourceSchema = z.enum(['APPLICATION', 'OPENING']);
+export type DashboardMatchSource = z.infer<typeof DashboardMatchSourceSchema>;
+
 export const DashboardMatchSchema = z.object({
-  applicationId: UuidSchema,
+  source: DashboardMatchSourceSchema,
+  applicationId: UuidSchema.nullable(),
   openingId: UuidSchema,
   roleTitle: z.string(),
   companyName: z.string(),
   location: z.string().nullable(),
   matchPercent: z.number().int().min(0).max(100),
-  stage: z.string(),
+  stage: z.string().nullable(),
 });
 export type DashboardMatch = z.infer<typeof DashboardMatchSchema>;
 
@@ -75,8 +87,14 @@ export const DashboardApplicationSchema = z.object({
 });
 export type DashboardApplication = z.infer<typeof DashboardApplicationSchema>;
 
+export const DashboardActivityKindSchema = z.enum(['PROFILE', 'VERIFICATION', 'APPLICATION']);
+export type DashboardActivityKind = z.infer<typeof DashboardActivityKindSchema>;
+
+/** `byYou` is false when someone else acted on the student's record (e.g. a college confirming education). */
 export const DashboardActivityItemSchema = z.object({
   id: z.string(),
+  kind: DashboardActivityKindSchema,
+  byYou: z.boolean(),
   label: z.string(),
   occurredAt: IsoDateTimeSchema,
 });
