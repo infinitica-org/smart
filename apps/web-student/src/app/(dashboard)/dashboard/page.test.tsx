@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from './page';
 
 vi.mock('@/lib/candidate-identity', () => ({
@@ -36,10 +37,15 @@ vi.mock('@/lib/use-profile-progress', () => ({
 }));
 
 describe('DashboardPage', () => {
-  it('renders student dashboard hero, verification banner, stat cards, top matches, and activity feed', () => {
-    render(<DashboardPage />);
+  it('renders student dashboard hero, verification banner, stat cards, top matches, and activity feed', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <DashboardPage />
+      </QueryClientProvider>,
+    );
 
-    expect(screen.getByRole('heading', { name: /Ada/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Ada/i })).toBeTruthy();
     expect(screen.getByTestId('student-verification-banner')).toBeTruthy();
     expect(screen.getByText('Your profile is 33% verified')).toBeTruthy();
     expect(screen.getByText('Strong-fit matches')).toBeTruthy();

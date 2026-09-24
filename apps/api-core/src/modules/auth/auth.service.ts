@@ -88,6 +88,9 @@ export class AuthService {
       });
     }
     assertTenantLoginAllowed(user);
+    if (user.deactivatedAt) {
+      throw unauthorized('This account has been deactivated.');
+    }
 
     await this.auditPublisher.record({
       actorId: user.id,

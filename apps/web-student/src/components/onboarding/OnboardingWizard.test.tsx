@@ -9,6 +9,11 @@ const { push, getOnboarding, saveOnboarding, completeOnboarding, enrollTrack } =
   enrollTrack: vi.fn(),
 }));
 
+// Vitest resolves PNG imports to a URL string; next/image would reject it as a static import.
+vi.mock('next/image', () => ({
+  default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn() }),
 }));
