@@ -4300,6 +4300,43 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Disable portal access for a university staff member.',
   },
+  /* --------------------------- admin operational audit (T14, T15) ------------------- */
+  {
+    method: 'GET',
+    path: '/admin/flagged-organizations',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'REPORTING',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'List flagged, held, rejected, or deactivated institutions and companies.',
+  },
+  {
+    method: 'GET',
+    path: '/admin/verification-events',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'REPORTING',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'List pending and failed background verification outbox events.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/verification-events/:id/retry',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary: 'Manually retry a failed background verification outbox event.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

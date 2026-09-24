@@ -18,11 +18,14 @@ import {
   UpdatePlanCapacityRequestSchema,
   UpdatePlanEntitlementsRequestSchema,
   ViewCandidateRequestSchema,
+  GetAdminDashboardQuerySchema,
 } from '@smart/contracts';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { InstitutionsService } from './institutions.service.js';
+import { KafkaOutboxService } from '../../platform/kafka/kafka-outbox.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 
 function compactQuery(
   query: Record<string, string | undefined>,
@@ -35,7 +38,11 @@ function compactQuery(
 @Controller(`${API_PREFIX}/admin`)
 @Roles('SUPER_ADMIN')
 export class InstitutionsAdminController {
-  constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
+  constructor(
+    @Inject(InstitutionsService) private readonly institutions: InstitutionsService,
+    @Inject(KafkaOutboxService) private readonly kafkaOutbox: KafkaOutboxService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+  ) {}
 
   @Get('partnerships/requests')
   listPartnershipRequests(@Query() query: Record<string, string | undefined>) {
@@ -152,8 +159,31 @@ export class InstitutionsAdminController {
   }
 
   @Get('dashboard')
-  dashboard() {
-    return this.institutions.getDashboard();
+  dashboard(@Query() query: Record<string, string | undefined>) {
+    return this.institutions.getDashboard(GetAdminDashboardQuerySchema.parse(compactQuery(query)));
+  }
+
+  @Get('flagged-organizations')
+  flaggedOrganizations() {
+    return this.institutions.listFlaggedOrganizations();
+  }
+
+  @Get('verification-events')
+  verificationEvents() {
+    return this.kafkaOutbox.listVerificationEvents();
+  }
+
+  @Post('verification-events/:id/retry')
+  async retryVerificationEvent(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    const result = await this.kafkaOutbox.retryEvent(id);
+    await this.auditPublisher.record({
+      actorId: user.sub,
+      action: 'admin.outbox_event.retried',
+      resourceType: 'kafka_outbox',
+      resourceId: id,
+      reasonCode: 'ADMIN_MANUAL_RETRY',
+    });
+    return result;
   }
 
   @Get('audit-logs')

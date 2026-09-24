@@ -60,10 +60,13 @@ import type {
   UpdateCompanyOnboardingDraftRequest,
   SubmitCompanyOnboardingRequest,
   VerifyCorporateEmailRequest,
+  GetAdminDashboardQuery,
 } from '@smart/contracts';
 import {
   API_PREFIX,
   AdminDashboardDtoSchema,
+  FlaggedOrganizationDtoSchema,
+  VerificationEventDtoSchema,
   AiHealthDtoSchema,
   AiUsageSummaryDtoSchema,
   AttemptSessionDtoSchema,
@@ -779,7 +782,30 @@ export function onboardingApi(client: SmartApiClient) {
     studentEntitlements: () =>
       client.get(prefixed('/student/entitlements'), { schema: TenantEntitlementsDtoSchema }),
 
-    dashboard: () => client.get(prefixed('/admin/dashboard'), { schema: AdminDashboardDtoSchema }),
+    dashboard: (query?: GetAdminDashboardQuery) =>
+      client.get(prefixed('/admin/dashboard'), {
+        schema: AdminDashboardDtoSchema,
+        query: query as Record<string, string | undefined>,
+      }),
+
+    flaggedOrganizations: () =>
+      client.get(prefixed('/admin/flagged-organizations'), {
+        schema: z.array(FlaggedOrganizationDtoSchema),
+      }),
+
+    verificationEvents: () =>
+      client.get(prefixed('/admin/verification-events'), {
+        schema: z.array(VerificationEventDtoSchema),
+      }),
+
+    retryVerificationEvent: (id: string) =>
+      client.post(
+        prefixed(`/admin/verification-events/${id}/retry`),
+        {},
+        {
+          schema: VerificationEventDtoSchema,
+        },
+      ),
 
     listAuditLogs: (query?: {
       q?: string;

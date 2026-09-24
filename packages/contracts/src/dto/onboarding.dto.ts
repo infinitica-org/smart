@@ -495,6 +495,24 @@ export const ListAuditLogsQuerySchema = z.object({
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
+export const GetAdminDashboardQuerySchema = z
+  .object({
+    from: IsoDateTimeSchema.optional(),
+    to: IsoDateTimeSchema.optional(),
+    institutionId: UuidSchema.optional(),
+    companyId: UuidSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.from && data.to && new Date(data.from) > new Date(data.to)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'from date must be prior to or equal to to date',
+        path: ['from'],
+      });
+    }
+  });
+export type GetAdminDashboardQuery = z.infer<typeof GetAdminDashboardQuerySchema>;
+
 export const AdminDashboardDtoSchema = z.object({
   institutions: z.object({
     total: z.number().int().nonnegative(),
@@ -521,6 +539,43 @@ export const AdminDashboardDtoSchema = z.object({
   recentAudit: z.array(AuditLogDtoSchema),
 });
 export type AdminDashboardDto = z.infer<typeof AdminDashboardDtoSchema>;
+
+export const FlaggedOrganizationCategorySchema = z.enum([
+  'EMPLOYER_HELD',
+  'EMPLOYER_VERIFICATION_REJECTED',
+  'UNIVERSITY_HELD',
+  'UNIVERSITY_DEACTIVATED',
+]);
+export type FlaggedOrganizationCategory = z.infer<typeof FlaggedOrganizationCategorySchema>;
+
+export const FlaggedOrganizationDtoSchema = z.object({
+  organizationId: UuidSchema,
+  name: z.string(),
+  domain: z.string().nullable(),
+  tenantType: z.enum(['institution', 'company']),
+  status: z.string(),
+  category: FlaggedOrganizationCategorySchema,
+  reason: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  flaggedAt: IsoDateTimeSchema,
+});
+export type FlaggedOrganizationDto = z.infer<typeof FlaggedOrganizationDtoSchema>;
+
+export const VerificationEventStatusSchema = z.enum(['PENDING', 'FAILED', 'PUBLISHED']);
+export type VerificationEventStatus = z.infer<typeof VerificationEventStatusSchema>;
+
+export const VerificationEventDtoSchema = z.object({
+  id: UuidSchema,
+  topic: z.string(),
+  partitionKey: z.string(),
+  source: z.string(),
+  status: VerificationEventStatusSchema,
+  attempts: z.number().int().nonnegative(),
+  lastError: z.string().nullable(),
+  publishedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type VerificationEventDto = z.infer<typeof VerificationEventDtoSchema>;
 
 export const ViewCandidateRequestSchema = z.object({
   reasonCode: CandidateViewReasonCodeSchema,

@@ -66,6 +66,9 @@ import type {
   FeatureFlagDto,
   FeatureFlagOverrideDto,
   FeatureFlagOverrideTenantType,
+  GetAdminDashboardQuery,
+  FlaggedOrganizationDto,
+  FlaggedOrganizationCategory,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
@@ -1150,7 +1153,57 @@ export class InstitutionsService {
     }
   }
 
-  async getDashboard(): Promise<AdminDashboardDto> {
+  async getDashboard(query: GetAdminDashboardQuery = {}): Promise<AdminDashboardDto> {
+    if (query.institutionId && query.companyId) {
+      throw new BadRequestException({
+        error: 'invalid_filter',
+        message: 'Cannot supply both institutionId and companyId to dashboard query.',
+        statusCode: 400,
+      });
+    }
+
+    const fromDate = query.from ? new Date(query.from) : undefined;
+    const toDate = query.to ? new Date(query.to) : undefined;
+    const dateFilter = fromDate || toDate ? { gte: fromDate, lte: toDate } : undefined;
+
+    const DUMMY_UUID = '00000000-0000-0000-0000-000000000000';
+    const instIdFilter = query.companyId ? DUMMY_UUID : query.institutionId;
+    const compIdFilter = query.institutionId ? DUMMY_UUID : query.companyId;
+
+    const instWhere: Prisma.InstitutionWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(instIdFilter ? { id: instIdFilter } : {}),
+    };
+
+    const compWhere: Prisma.CompanyWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(compIdFilter ? { id: compIdFilter } : {}),
+    };
+
+    const userWhere: Prisma.UserWhereInput = {
+      role: 'STUDENT',
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(instIdFilter ? { institutionId: instIdFilter } : {}),
+    };
+
+    const attemptWhere: Prisma.AttemptWhereInput = {
+      integrityFlag: {
+        in: [
+          'FLAGGED_TIMING',
+          'FLAGGED_PROCTOR',
+          'FLAGGED_SIMILARITY',
+          'FLAGGED_AUDIO',
+          'UNDER_REVIEW',
+        ],
+      },
+      ...(dateFilter ? { startedAt: dateFilter } : {}),
+      ...(instIdFilter ? { user: { institutionId: instIdFilter } } : {}),
+    };
+
+    const auditWhere: Prisma.AuditLogWhereInput = {
+      ...(dateFilter ? { createdAt: dateFilter } : {}),
+    };
+
     const [
       total,
       held,
@@ -1165,40 +1218,35 @@ export class InstitutionsService {
       plans,
       recent,
     ] = await Promise.all([
-      this.prisma.institution.count(),
-      this.prisma.institution.count({ where: { heldAt: { not: null }, deactivatedAt: null } }),
-      this.prisma.institution.count({ where: { deactivatedAt: { not: null } } }),
-      this.prisma.user.count({ where: { role: 'STUDENT' } }),
-      this.prisma.user.count({ where: { role: 'STUDENT', heldAt: { not: null } } }),
-      // Mirrors resolveSessionHold(): a student can't log in if their own account is
-      // held OR their institution is held/deactivated, even when their own heldAt is null.
+      this.prisma.institution.count({ where: instWhere }),
+      this.prisma.institution.count({
+        where: { ...instWhere, heldAt: { not: null }, deactivatedAt: null },
+      }),
+      this.prisma.institution.count({
+        where: { ...instWhere, deactivatedAt: { not: null } },
+      }),
+      this.prisma.user.count({ where: userWhere }),
+      this.prisma.user.count({ where: { ...userWhere, heldAt: { not: null } } }),
       this.prisma.user.count({
         where: {
-          role: 'STUDENT',
+          ...userWhere,
           heldAt: null,
           institution: { OR: [{ heldAt: { not: null } }, { deactivatedAt: { not: null } }] },
         },
       }),
-      this.prisma.company.count(),
-      this.prisma.company.count({ where: { verificationStatus: 'PENDING' } }),
-      this.prisma.institution.count({ where: { verificationStatus: 'PENDING' } }),
-      this.prisma.attempt.count({
-        where: {
-          integrityFlag: {
-            in: [
-              'FLAGGED_TIMING',
-              'FLAGGED_PROCTOR',
-              'FLAGGED_SIMILARITY',
-              'FLAGGED_AUDIO',
-              'UNDER_REVIEW',
-            ],
-          },
-        },
+      this.prisma.company.count({ where: compWhere }),
+      this.prisma.company.count({
+        where: { ...compWhere, verificationStatus: 'PENDING' },
       }),
+      this.prisma.institution.count({
+        where: { ...instWhere, verificationStatus: 'PENDING' },
+      }),
+      this.prisma.attempt.count({ where: attemptWhere }),
       this.prisma.subscriptionPlan.findMany({
-        include: { _count: { select: { institutions: true } } },
+        include: { _count: { select: { institutions: { where: instWhere } } } },
       }),
       this.prisma.auditLog.findMany({
+        where: auditWhere,
         include: { actor: { select: { email: true, role: true } } },
         orderBy: { createdAt: 'desc' },
         take: 8,
@@ -1207,14 +1255,14 @@ export class InstitutionsService {
     return {
       institutions: {
         total,
-        active: total - held - deactivated,
+        active: Math.max(0, total - held - deactivated),
         held,
         deactivated,
       },
       companies: { total: companyTotal, pendingVerification: companyPending },
       students: {
         total: studentsTotal,
-        active: studentsTotal - studentsHeld - studentsBlockedByTenant,
+        active: Math.max(0, studentsTotal - studentsHeld - studentsBlockedByTenant),
         held: studentsHeld + studentsBlockedByTenant,
       },
       planMix: plans.map((plan) => ({ code: plan.code, count: plan._count.institutions })),
@@ -1223,6 +1271,75 @@ export class InstitutionsService {
       flaggedAttempts,
       recentAudit: recent.map((row) => this.toAuditDto(row)),
     };
+  }
+
+  async listFlaggedOrganizations(): Promise<FlaggedOrganizationDto[]> {
+    const [companies, institutions] = await Promise.all([
+      this.prisma.company.findMany({
+        where: {
+          OR: [{ heldAt: { not: null } }, { verificationStatus: 'REJECTED' }],
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.institution.findMany({
+        where: {
+          OR: [
+            { heldAt: { not: null } },
+            { deactivatedAt: { not: null } },
+            { verificationStatus: 'REJECTED' },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const flaggedCompanies: FlaggedOrganizationDto[] = companies.map((c) => {
+      let category: FlaggedOrganizationCategory = 'EMPLOYER_HELD';
+      let status = 'On hold';
+      if (c.verificationStatus === 'REJECTED') {
+        category = 'EMPLOYER_VERIFICATION_REJECTED';
+        status = 'Rejected';
+      }
+      return {
+        organizationId: c.id,
+        name: c.name,
+        domain: c.domain ?? null,
+        tenantType: 'company',
+        status,
+        category,
+        reason: null,
+        createdAt: c.createdAt.toISOString(),
+        flaggedAt: c.heldAt?.toISOString() ?? c.createdAt.toISOString(),
+      };
+    });
+
+    const flaggedInstitutions: FlaggedOrganizationDto[] = institutions.map((i) => {
+      let category: FlaggedOrganizationCategory = 'UNIVERSITY_HELD';
+      let status = 'On hold';
+      if (i.deactivatedAt) {
+        category = 'UNIVERSITY_DEACTIVATED';
+        status = 'Deactivated';
+      } else if (i.verificationStatus === 'REJECTED') {
+        category = 'UNIVERSITY_HELD';
+        status = 'Rejected';
+      }
+      return {
+        organizationId: i.id,
+        name: i.name,
+        domain: i.domain ?? null,
+        tenantType: 'institution',
+        status,
+        category,
+        reason: null,
+        createdAt: i.createdAt.toISOString(),
+        flaggedAt:
+          i.heldAt?.toISOString() ?? i.deactivatedAt?.toISOString() ?? i.createdAt.toISOString(),
+      };
+    });
+
+    return [...flaggedCompanies, ...flaggedInstitutions].sort(
+      (a, b) => new Date(b.flaggedAt).getTime() - new Date(a.flaggedAt).getTime(),
+    );
   }
 
   async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {
