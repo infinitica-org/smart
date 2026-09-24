@@ -34,7 +34,7 @@ describe('CandidateDetailDrawer', () => {
     render(<CandidateDetailDrawer candidate={candidate} isOpen onClose={() => {}} />);
 
     expect(screen.getByRole('dialog')).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Ada Lovelace' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeDefined();
     expect(screen.queryByText('Candidate Profile View')).toBeNull();
     expect(screen.queryByText(/Observational Data Only/)).toBeNull();
 

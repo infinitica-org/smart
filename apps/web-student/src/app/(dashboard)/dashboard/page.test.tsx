@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import type { StudentDashboardSummary } from '@smart/contracts';
 import { renderWithQueryClient } from '@/test/render-with-query-client';
 import DashboardPage from './page';
 
@@ -48,12 +49,7 @@ function summary(overrides: Partial<StudentDashboardSummary> = {}): StudentDashb
 }
 
 function renderPage() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={client}>
-      <DashboardPage />
-    </QueryClientProvider>,
-  );
+  return renderWithQueryClient(<DashboardPage />);
 }
 
 describe('DashboardPage', () => {

@@ -51,8 +51,7 @@ jobs:
               ERRORS="${ERRORS}\n❌ PRs to \`qa\` must come from \`dev\`. Found \`$HEAD_BRANCH\`."
             fi
             if [ "$AUTHOR" != "brittytino" ]; then
-              echo "::error::Only 'brittytino' is allowed to create PRs to 'qa'."
-              exit 1
+              ERRORS="${ERRORS}\n❌ Only \`@brittytino\` may open a promotion PR into \`qa\`. Found \`$AUTHOR\`."
             fi
           fi
 
@@ -72,10 +71,10 @@ jobs:
           fi
 
           # ── 5. PR title Conventional Commits check (warning) ──
-          # Expected: <type>(<scope>): <summary> (S<n>-<XX>-<nn>)
-          TITLE_PATTERN="^(feat|fix|perf|refactor|test|docs|build|ci|chore|revert|content|prompt|adr)\([a-z0-9:,-]+\): .+ \(S[0-9]+-[A-Z]+-[0-9]+\)$"
+          # Expected: <type>(<scope>): <summary> (S<n>-<XX>-<nn>) OR release tag (S<n>) / (vX.Y.Z)
+          TITLE_PATTERN="^(feat|fix|perf|refactor|test|docs|build|ci|chore|revert|content|prompt|adr)\([a-z0-9:,-]+\): .+ \((S[0-9]+(-[A-Z]+-[0-9]+)?|v[0-9]+\.[0-9]+\.[0-9]+)\)$"
           if ! echo "$PR_TITLE" | grep -qE "$TITLE_PATTERN"; then
-            WARNINGS="${WARNINGS}\n⚠️  PR title \`$PR_TITLE\` does not follow Conventional Commits format: \`<type>(<scope>): <summary> (S<n>-XX-nn)\`."
+            WARNINGS="${WARNINGS}\n⚠️  PR title \`$PR_TITLE\` does not follow Conventional Commits format: \`<type>(<scope>): <summary> (S<n>-XX-nn)\` or release format \`chore(repo): promote dev to qa (S6)\`."
           fi
 
           # ── Post warnings as PR comment (free-plan compatible) ──

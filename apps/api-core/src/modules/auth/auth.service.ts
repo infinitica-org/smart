@@ -84,6 +84,17 @@ export class AuthService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
   ) {}
 
+  tryVerifyAccessToken(header?: string): RequestUser | null {
+    if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
+      return null;
+    }
+    try {
+      return this.jwt.verify<RequestUser>(header.slice('Bearer '.length));
+    } catch {
+      return null;
+    }
+  }
+
   async login(email: string, password: string, reply: FastifyReply): Promise<AuthTokenResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
