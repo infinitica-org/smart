@@ -11,6 +11,9 @@ vi.mock('@/lib/api', () => ({
     placement: {
       listMyApplications: (...args: unknown[]) => listMyApplications(...args),
     },
+    users: {
+      listWorkExperiences: () => Promise.resolve([]),
+    },
   },
 }));
 
@@ -151,7 +154,7 @@ describe('MyApplicationsTracker', () => {
 
     renderTracker();
 
-    await waitFor(() => expect(screen.getByText('No applications yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No applications in pipeline')).toBeTruthy());
     expect(screen.queryByText('Backend Engineer')).toBeNull();
   });
 
@@ -162,8 +165,8 @@ describe('MyApplicationsTracker', () => {
 
     renderTracker();
 
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
+    await waitFor(() => expect(screen.getByText(/Could not load your applications/i)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
     await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
     expect(listMyApplications).toHaveBeenCalledWith();
   });

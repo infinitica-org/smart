@@ -15,6 +15,7 @@ describe('PublicProfileService project portfolio filter', () => {
     certificate: { findFirst: vi.fn() },
     candidateCertificate: { findMany: vi.fn() },
     candidateEducation: { findMany: vi.fn() },
+    studentCapability: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const storage = { getSignedUrl: vi.fn() };
 

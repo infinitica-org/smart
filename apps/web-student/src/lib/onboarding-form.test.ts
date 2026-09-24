@@ -215,7 +215,7 @@ describe('onboarding-form', () => {
     expect(form.codingProficiencies[0]?.language).toBe('COBOL');
   });
 
-  it('requires job preferences (expected CTC, location, preferred locations)', () => {
+  it('applies default job preferences when not explicitly set', () => {
     const form = emptyOnboardingForm();
     form.firstName = 'Ada';
     form.lastName = 'Lovelace';
@@ -224,21 +224,12 @@ describe('onboarding-form', () => {
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
     form.dpdpConsent = true;
 
-    expect(buildCompleteOnboardingRequest(form)).toEqual({ error: 'Expected CTC is required.' });
-
-    form.jobPreferences.expectedCtcLakhs = '8';
-    expect(buildCompleteOnboardingRequest(form)).toEqual({
-      error: 'Current location is required.',
-    });
-
-    form.jobPreferences.currentLocation = 'Bengaluru';
-    expect(buildCompleteOnboardingRequest(form)).toEqual({
-      error: 'Pick at least one preferred location.',
-    });
-
-    form.jobPreferences.preferredLocations = ['Bengaluru'];
     const result = buildCompleteOnboardingRequest(form);
     expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.jobPreferences?.expectedCtcLakhs).toBe(6);
+    expect(result.jobPreferences?.currentLocation).toBe('Bengaluru');
+    expect(result.jobPreferences?.preferredLocations).toEqual(['Bengaluru', 'Remote / Anywhere']);
   });
 
   it('merges catalog skills and framework picks into the flat skills payload', () => {

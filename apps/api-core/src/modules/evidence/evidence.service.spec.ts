@@ -60,8 +60,6 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     getJob: vi.fn().mockResolvedValue(null),
   };
   const dedup = new CredentialDedupService(prisma as never);
-  const _auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
-
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
   };
@@ -69,6 +67,20 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
+  const skillInference = {
+    recomputeInferredSkills: vi.fn().mockResolvedValue(undefined),
+    recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+  };
+  const evidenceVersions = {
+    snapshotOrCreateInitialVersion: vi.fn().mockResolvedValue(undefined),
+    snapshotOnUpdate: vi.fn().mockResolvedValue(undefined),
+    createInitialVersion: vi.fn().mockResolvedValue(undefined),
+    appendVersion: vi.fn().mockResolvedValue(undefined),
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('org-1'),
+    contentEquals: vi.fn().mockReturnValue(false),
+  };
+  const auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+
   const service = new EvidenceService(
     prisma as any,
     reconciliation as any,
@@ -78,6 +90,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare as any,
     evidenceSync as any,
+    skillInference as any,
+    evidenceVersions as any,
+    auditPublisher as any,
   );
   return {
     service,
@@ -89,6 +104,9 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare,
     evidenceSync,
+    skillInference,
+    evidenceVersions,
+    auditPublisher,
   };
 }
 

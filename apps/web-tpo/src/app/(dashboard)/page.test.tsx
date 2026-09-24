@@ -63,9 +63,9 @@ describe('DashboardPage', () => {
     render(<DashboardPage />);
 
     expect(await screen.findByText('Pilot TPO')).toBeDefined();
-    expect(screen.getByText('Whitelisted')).toBeDefined();
-    expect(screen.getByText('Fully verified')).toBeDefined();
-    expect(screen.getByText('Opportunities matched')).toBeDefined();
+    expect(screen.getByText('Whitelisted Candidates')).toBeDefined();
+    expect(screen.getByText('Fully Verified')).toBeDefined();
+    expect(screen.getByText('Opportunities Matched')).toBeDefined();
     expect(screen.getByText('Student roster')).toBeDefined();
     expect(screen.getByText('Ada Lovelace')).toBeDefined();
   });
@@ -74,7 +74,7 @@ describe('DashboardPage', () => {
     render(<DashboardPage />);
 
     await screen.findByText('Pilot TPO');
-    expect(screen.getByRole('link', { name: /View all students/i }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /View all candidates/i }).getAttribute('href')).toBe(
       '/students',
     );
   });
