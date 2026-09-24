@@ -9,6 +9,8 @@ import { promisify } from 'node:util';
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
@@ -19,9 +21,11 @@ import { JwtService } from '@nestjs/jwt';
 import {
   CompanyPortalAccountSchema,
   isDisallowedEndorserEmailDomain,
+  type ActiveSessionDto,
   type AuthTokenResponse,
   type AuthenticatedUser,
   type CompanyPortalAccount,
+  type ListActiveSessionsQuery,
   type RegisterRequest,
   type RegisterStudentRequest,
   type SelectableInstitutionDto,
@@ -37,6 +41,10 @@ import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
 const scrypt = promisify(scryptCallback);
+
+/** S6-VV-92 — account lockout, independent of the IP-based 'auth.login' rate-limit policy. */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 export type UserWithAuthIncludes = {
   id: string;
@@ -81,7 +89,24 @@ export class AuthService {
       where: { email: email.toLowerCase() },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+
+    if (user?.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      const retryAfterSeconds = Math.ceil((user.loginLockedUntil.getTime() - Date.now()) / 1000);
+      throw new HttpException(
+        {
+          error: 'account_locked',
+          message: `Too many failed attempts. Please wait ${String(retryAfterSeconds)} seconds before retrying.`,
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          retryAfterSeconds,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      if (user) {
+        await this.registerFailedLoginAttempt(user.id, user.failedLoginAttempts);
+      }
       throw new UnauthorizedException({
         error: 'unauthorized',
         message: 'Email or password is incorrect.',
@@ -91,6 +116,13 @@ export class AuthService {
     assertTenantLoginAllowed(user);
     if (user.deactivatedAt) {
       throw unauthorized('This account has been deactivated.');
+    }
+
+    if (user.failedLoginAttempts > 0 || user.loginLockedUntil) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, loginLockedUntil: null },
+      });
     }
 
     await this.auditPublisher.record({
@@ -103,16 +135,30 @@ export class AuthService {
     return this.issueSession(user, reply);
   }
 
-  /**
-   * Best-effort identification of an optional caller on a public route. A missing, malformed
-   * or expired token yields `null`; it never throws and never grants access to anything.
-   */
-  tryVerifyAccessToken(authorization: string | undefined): RequestUser | null {
-    if (typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) return null;
-    try {
-      return this.jwt.verify<RequestUser>(authorization.slice('Bearer '.length));
-    } catch {
-      return null;
+  /** S6-VV-92 — locks the account for LOCKOUT_MINUTES once MAX_FAILED_LOGIN_ATTEMPTS is reached. */
+  private async registerFailedLoginAttempt(
+    userId: string,
+    currentFailedAttempts: number,
+  ): Promise<void> {
+    const nextFailedAttempts = currentFailedAttempts + 1;
+    const shouldLock = nextFailedAttempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: shouldLock ? 0 : nextFailedAttempts,
+        ...(shouldLock
+          ? { loginLockedUntil: new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) }
+          : {}),
+      },
+    });
+    if (shouldLock) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'auth.account_locked',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+      });
     }
   }
 
@@ -370,6 +416,60 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  /** S6-VV-93 — one row per active session, for the SUPER_ADMIN sessions panel. */
+  async listActiveSessions(filter: ListActiveSessionsQuery): Promise<ActiveSessionDto[]> {
+    const rows = await this.prisma.refreshToken.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        ...(filter.userId ? { userId: filter.userId } : {}),
+        ...(filter.email ? { user: { email: filter.email.toLowerCase() } } : {}),
+      },
+      include: { user: { select: { email: true, fullName: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      userEmail: row.user.email,
+      userFullName: row.user.fullName,
+      userRole: row.user.role,
+      familyId: row.familyId,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    }));
+  }
+
+  /** S6-VV-93 — forcefully terminates a session (its whole refresh-token family), audited. */
+  async revokeSession(sessionId: string, actorId: string, reason: string): Promise<void> {
+    const session = await this.prisma.refreshToken.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Session not found.',
+        statusCode: 404,
+      });
+    }
+    if (session.revokedAt || session.expiresAt < new Date()) {
+      throw new ConflictException({
+        error: 'session_already_inactive',
+        message: 'This session is already inactive.',
+        statusCode: 409,
+      });
+    }
+
+    await this.revokeFamily(session.familyId);
+    await this.auditPublisher.record({
+      actorId,
+      action: 'auth.session_revoked',
+      resourceType: 'user',
+      resourceId: session.userId,
+      reasonCode: reason,
+      metadata: { sessionId, familyId: session.familyId },
     });
   }
 

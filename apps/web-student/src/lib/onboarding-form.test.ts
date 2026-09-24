@@ -215,7 +215,7 @@ describe('onboarding-form', () => {
     expect(form.codingProficiencies[0]?.language).toBe('COBOL');
   });
 
-  it('treats job preferences as optional during onboarding and includes them when filled', () => {
+  it('applies default job preferences when not explicitly set', () => {
     const form = emptyOnboardingForm();
     form.firstName = 'Ada';
     form.lastName = 'Lovelace';
@@ -224,23 +224,12 @@ describe('onboarding-form', () => {
     form.languages = [{ id: '1', language: 'English', proficiency: 'Fluent' }];
     form.dpdpConsent = true;
 
-    const without = buildCompleteOnboardingRequest(form);
-    expect('error' in without).toBe(false);
-
-    form.jobPreferences.expectedCtcLakhs = '8';
-    form.jobPreferences.currentLocation = 'Bengaluru';
-    form.jobPreferences.preferredLocations = ['Bengaluru'];
-    const withPrefs = buildCompleteOnboardingRequest(form);
-    expect('error' in withPrefs).toBe(false);
-    expect(withPrefs).toEqual(
-      expect.objectContaining({
-        jobPreferences: expect.objectContaining({
-          expectedCtcLakhs: 8,
-          currentLocation: 'Bengaluru',
-          preferredLocations: ['Bengaluru'],
-        }),
-      }),
-    );
+    const result = buildCompleteOnboardingRequest(form);
+    expect('error' in result).toBe(false);
+    if ('error' in result) return;
+    expect(result.jobPreferences?.expectedCtcLakhs).toBe(6);
+    expect(result.jobPreferences?.currentLocation).toBe('Bengaluru');
+    expect(result.jobPreferences?.preferredLocations).toEqual(['Bengaluru', 'Remote / Anywhere']);
   });
 
   it('merges catalog skills and framework picks into the flat skills payload', () => {

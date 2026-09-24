@@ -60,8 +60,6 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     getJob: vi.fn().mockResolvedValue(null),
   };
   const dedup = new CredentialDedupService(prisma as never);
-  const _auditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
-
   const skillClaimAutoDeclare = {
     ensureClaimsForProjectTags: vi.fn().mockResolvedValue(undefined),
   };
@@ -69,13 +67,21 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
-  const skillInference = { recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined) };
+  const skillInference = {
+    recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+  };
   const evidenceVersions = {
-    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('org-1'),
+    createInitialVersion: vi.fn().mockResolvedValue('created'),
+    appendVersion: vi.fn().mockResolvedValue('created'),
     contentEquals: vi.fn().mockReturnValue(false),
     hashContent: vi.fn().mockReturnValue('hash'),
-    createInitialVersion: vi.fn().mockResolvedValue(undefined),
-    appendVersion: vi.fn().mockResolvedValue(undefined),
+    listStudentEvidenceVersions: vi.fn().mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getStudentEvidenceVersion: vi.fn(),
+    listCandidateEvidenceVersions: vi
+      .fn()
+      .mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getCandidateEvidenceVersion: vi.fn(),
   };
   const service = new EvidenceService(
     prisma as any,
@@ -88,6 +94,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     evidenceSync as any,
     skillInference as any,
     evidenceVersions as any,
+    _auditPublisher as any,
   );
   return {
     service,
@@ -101,6 +108,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     evidenceSync,
     skillInference,
     evidenceVersions,
+    auditPublisher: _auditPublisher,
   };
 }
 

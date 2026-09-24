@@ -28,6 +28,8 @@ function userRow(overrides: Record<string, unknown> = {}) {
     institution: null,
     primaryTrack: null,
     secondaryTrack: null,
+    failedLoginAttempts: 0,
+    loginLockedUntil: null as Date | null,
     ...overrides,
   };
 }
@@ -218,6 +220,123 @@ describe('AuthService refresh rotation', () => {
   });
 });
 
+describe('AuthService.login lockout (S6-VV-92)', () => {
+  it('increments failedLoginAttempts on a wrong password without locking below the threshold', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 2,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update,
+      },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 3, loginLockedUntil: undefined },
+    });
+  });
+
+  it('locks the account once failed attempts reach the threshold, and audits it', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 4,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update,
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, loginLockedUntil: expect.any(Date) },
+    });
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: user.id, action: 'auth.account_locked' }),
+    );
+  });
+
+  it('rejects login while locked, even with the correct password', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      loginLockedUntil: new Date(Date.now() + 60_000),
+    });
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update: vi.fn(),
+      },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'correct-password', {} as never),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'account_locked' }),
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('clears failedLoginAttempts and any lock on a successful login', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 3,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: { findUnique: vi.fn(async () => user), update },
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await auth.login('student@example.com', 'correct-password', {
+      setCookie: vi.fn(),
+    } as never);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, loginLockedUntil: null },
+    });
+  });
+});
+
 describe('AuthService.register', () => {
   it('creates a STUDENT user, hashes the password, and issues a session', async () => {
     const institutionId = randomUUID();
@@ -332,6 +451,139 @@ describe('AuthService.listSelectableInstitutions', () => {
     expect(prisma.institution.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deactivatedAt: null, heldAt: null } }),
     );
+  });
+});
+
+describe('AuthService session admin (S6-VV-93)', () => {
+  function sessionRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: randomUUID(),
+      familyId: randomUUID(),
+      userId: randomUUID(),
+      tokenHash: 'hash',
+      revokedAt: null as Date | null,
+      expiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date(),
+      user: { email: 'student@example.com', fullName: 'Test Student', role: 'STUDENT' },
+      ...overrides,
+    };
+  }
+
+  it('lists active sessions, excluding revoked/expired ones from the query itself', async () => {
+    const row = sessionRow();
+    const findMany = vi.fn(async () => [row]);
+    const prisma = { refreshToken: { findMany } };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    const result = await auth.listActiveSessions({});
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ revokedAt: null, expiresAt: { gt: expect.any(Date) } }),
+      }),
+    );
+    expect(result).toEqual([
+      {
+        id: row.id,
+        userId: row.userId,
+        userEmail: row.user.email,
+        userFullName: row.user.fullName,
+        userRole: row.user.role,
+        familyId: row.familyId,
+        createdAt: row.createdAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
+      },
+    ]);
+  });
+
+  it('filters the list by userId when given', async () => {
+    const userId = randomUUID();
+    const findMany = vi.fn(async () => []);
+    const prisma = { refreshToken: { findMany } };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await auth.listActiveSessions({ userId });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId }) }),
+    );
+  });
+
+  it('revokes the whole session family and audits it', async () => {
+    const row = sessionRow();
+    const prisma = {
+      refreshToken: {
+        findUnique: vi.fn(async () => row),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+    const adminId = randomUUID();
+
+    await auth.revokeSession(row.id, adminId, 'user reported a stolen device');
+
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: row.familyId, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: adminId,
+        action: 'auth.session_revoked',
+        resourceId: row.userId,
+        reasonCode: 'user reported a stolen device',
+      }),
+    );
+  });
+
+  it('rejects revoking a session that is already revoked', async () => {
+    const row = sessionRow({ revokedAt: new Date() });
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => row), updateMany: vi.fn() },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(auth.revokeSession(row.id, randomUUID(), 'reason enough')).rejects.toMatchObject({
+      response: { error: 'session_already_inactive' },
+    });
+    expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects revoking a session that does not exist', async () => {
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => null), updateMany: vi.fn() },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.revokeSession(randomUUID(), randomUUID(), 'reason enough'),
+    ).rejects.toMatchObject({ response: { error: 'not_found' } });
   });
 });
 

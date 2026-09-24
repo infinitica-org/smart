@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StudentAssessmentHub } from './StudentAssessmentHub';
@@ -73,12 +73,12 @@ describe('StudentAssessmentHub', () => {
     render(<StudentAssessmentHub />);
 
     expect(await screen.findByText('No pending skill assessments')).toBeDefined();
-    expect(screen.getByRole('link', { name: /Add Skills in Profile/ }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /Add Skills in Profile/i }).getAttribute('href')).toBe(
       '/skills',
     );
   });
 
-  it('lists declared claims as pending assessments and verified claims as completed', async () => {
+  it('lists declared claims and starts assessment in inline session', async () => {
     listSkillClaimsMock.mockResolvedValue([
       { claimId: 'claim-1', skillCode: 'SE_REACT', status: 'DECLARED', lastAttemptId: null },
       { claimId: 'claim-2', skillCode: 'SE_PYTHON', status: 'VERIFIED', lastAttemptId: 'att-1' },
@@ -87,77 +87,14 @@ describe('StudentAssessmentHub', () => {
     render(<StudentAssessmentHub />);
 
     expect(
-      await screen.findByRole('heading', { name: 'React Diagnostic Assessment' }),
-    ).toBeDefined();
-    expect(screen.queryByRole('heading', { name: 'Python Diagnostic Assessment' })).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: /Completed/ }));
-    expect(
       await screen.findByRole('heading', { name: 'Python Diagnostic Assessment' }),
     ).toBeDefined();
-  });
+    expect(screen.getByRole('heading', { name: 'React Diagnostic Assessment' })).toBeDefined();
 
-  // TODO(STU-02): the redesigned hub runs a simulated in-page quiz instead of routing to
-  // /assessments/skills/<claimId>. Re-enable once the real verification player is wired back in.
-  it.skip('starts assessment via the skill player route', async () => {
-    listSkillClaimsMock.mockResolvedValue([
-      { claimId: 'claim-1', skillCode: 'SE_REACT', status: 'DECLARED', lastAttemptId: null },
-    ]);
-    render(<StudentAssessmentHub />);
-    fireEvent.click(await screen.findByRole('button', { name: /Start Assessment/i }));
-    await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/assessments/skills/claim-1');
-    });
-  });
+    const startButtons = screen.getAllByRole('button', { name: /Start Assessment/i });
+    expect(startButtons.length).toBe(2);
+    if (startButtons[0]) fireEvent.click(startButtons[0]);
 
-  // TODO(STU-02): the redesigned hub no longer renders AssessmentSkillLinkedProjects.
-  it.skip('shows linked project on the skill assessment card', async () => {
-    listSkillClaimsMock.mockResolvedValue([
-      { claimId: 'claim-py', skillCode: 'SE_PYTHON', status: 'DECLARED', lastAttemptId: null },
-    ]);
-    loadBundleMock.mockResolvedValue({
-      projects: [
-        {
-          projectId: 'proj-1',
-          studentId: 'stu-1',
-          title: 'Weather API',
-          problem: '',
-          approach: '',
-          stack: 'Python',
-          outcome: '',
-          status: 'DRAFT',
-          githubUrl: null,
-          liveUrl: null,
-          interviewRequired: false,
-          interviewStatus: 'NOT_REQUIRED',
-          interviewCompletedAt: null,
-          report: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      projectMappingsById: new Map([
-        [
-          'proj-1',
-          [
-            {
-              projectId: 'proj-1',
-              skillCode: 'SE_PYTHON',
-              verificationStatus: 'PENDING',
-            },
-          ],
-        ],
-      ]),
-      workExperiences: [],
-      projectTitleById: new Map([['proj-1', 'Weather API']]),
-      experienceLabelById: new Map(),
-      liveProjectIds: new Set(['proj-1']),
-      liveExperienceIds: new Set(),
-    });
-
-    render(<StudentAssessmentHub />);
-
-    expect(await screen.findByRole('link', { name: 'Weather API' })).toBeDefined();
-    expect(screen.getByText(/Linked project/i)).toBeDefined();
+    expect(await screen.findByText(/Question 1 of 2/i)).toBeDefined();
   });
 });

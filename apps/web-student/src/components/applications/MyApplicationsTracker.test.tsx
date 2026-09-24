@@ -13,7 +13,7 @@ vi.mock('@/lib/api', () => ({
       listMyApplications: (...args: unknown[]) => listMyApplications(...args),
     },
     users: {
-      listWorkExperiences: () => listWorkExperiences(),
+      listWorkExperiences: (...args: unknown[]) => listWorkExperiences(...args),
     },
   },
 }));
@@ -47,8 +47,9 @@ function renderTracker(pollIntervalMs = 60_000): ReturnType<typeof render> {
       <MyApplicationsTracker pollIntervalMs={pollIntervalMs} />
     </QueryClientProvider>,
   );
-  // The tracker opens on the Endorsements tab; these tests exercise the applications list.
-  fireEvent.click(screen.getByRole('button', { name: /ATS Applications Pipeline/ }));
+  // Every test in this file exercises the ATS pipeline, which now lives behind
+  // its own tab (the component defaults to the Endorsements tab).
+  fireEvent.click(screen.getByRole('button', { name: /ATS Applications Pipeline/i }));
   return view;
 }
 

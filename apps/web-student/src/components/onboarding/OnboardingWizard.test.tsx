@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { push, getOnboarding, saveOnboarding, completeOnboarding, enrollTrack } = vi.hoisted(() => ({
@@ -9,9 +9,15 @@ const { push, getOnboarding, saveOnboarding, completeOnboarding, enrollTrack } =
   enrollTrack: vi.fn(),
 }));
 
-// Vitest resolves PNG imports to a URL string; next/image would reject it as a static import.
 vi.mock('next/image', () => ({
-  default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />,
+  default: (props: Record<string, unknown>) => {
+    const { src, alt, ...rest } = props;
+    const srcStr =
+      typeof src === 'object' && src !== null
+        ? (src as { src?: string }).src || ''
+        : String(src || '');
+    return <img src={srcStr} alt={String(alt || '')} {...rest} />;
+  },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -55,6 +61,7 @@ vi.mock('@/lib/tour', () => ({
   markTourAutostart: vi.fn(),
 }));
 
+import { renderWithQueryClient } from '@/test/render-with-query-client';
 import OnboardingWizard from './OnboardingWizard';
 import { WIZARD_STEP_META } from './wizard-ui';
 
@@ -83,7 +90,7 @@ describe('OnboardingWizard', () => {
   });
 
   it('opens on the phone verification step for a new student', async () => {
-    render(<OnboardingWizard />);
+    renderWithQueryClient(<OnboardingWizard />);
 
     await waitFor(() => {
       expect(screen.getByText('Verify your mobile number')).toBeTruthy();
@@ -104,7 +111,7 @@ describe('OnboardingWizard', () => {
       onboardingCompleted: false,
     });
 
-    render(<OnboardingWizard />);
+    renderWithQueryClient(<OnboardingWizard />);
 
     await waitFor(() => {
       expect(screen.getByText(/Connect to/i)).toBeTruthy();
@@ -122,7 +129,7 @@ describe('OnboardingWizard', () => {
       onboardingCompleted: false,
     });
 
-    render(<OnboardingWizard />);
+    renderWithQueryClient(<OnboardingWizard />);
 
     await waitFor(() => {
       expect(screen.getByText('Basic Profile')).toBeTruthy();

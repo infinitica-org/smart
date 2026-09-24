@@ -1,7 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { StudentDashboardSummary } from '@smart/contracts';
+import { describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { renderWithQueryClient } from '@/test/render-with-query-client';
 import DashboardPage from './page';
 
 const { getDashboard } = vi.hoisted(() => ({ getDashboard: vi.fn() }));
@@ -57,13 +56,9 @@ function renderPage() {
   );
 }
 
-describe('DashboardPage (STU-03)', () => {
-  beforeEach(() => {
-    getDashboard.mockReset().mockResolvedValue(summary());
-  });
-
-  it('shows the greeting and the completion status from the summary', async () => {
-    renderPage();
+describe('DashboardPage', () => {
+  it('renders student dashboard hero, verification banner, stat cards, top matches, and activity feed', async () => {
+    renderWithQueryClient(<DashboardPage />);
 
     expect(await screen.findByRole('heading', { name: /Ada/i })).toBeTruthy();
     expect(screen.getByTestId('student-verification-banner')).toBeTruthy();

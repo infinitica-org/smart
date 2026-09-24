@@ -157,7 +157,14 @@ export function WizardPage({ children }: { children: ReactNode }) {
       {/* Top Header Logo */}
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between shrink-0 mb-2 sm:mb-4">
         <div className="flex items-center gap-3">
-          <Image src={textLogo} alt="SMART" className="h-7 sm:h-8 w-auto object-contain" priority />
+          <Image
+            src={textLogo}
+            alt="SMART"
+            width={110}
+            height={30}
+            className="h-7 sm:h-8 w-auto object-contain"
+            priority
+          />
         </div>
       </header>
 
