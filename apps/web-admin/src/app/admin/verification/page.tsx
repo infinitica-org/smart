@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@smart/ui/button';
 import { Card, CardContent } from '@smart/ui/card';
+import { ConfirmDialog } from '@smart/ui';
 import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
@@ -53,6 +54,32 @@ export default function VerificationPage() {
   const [tenantReason, setTenantReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [selectedTenantIds, setSelectedTenantIds] = useState<string[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+
+  function promptConfirm(
+    title: string,
+    description: React.ReactNode,
+    onConfirm: () => Promise<void>,
+    variant: 'danger' | 'warning' | 'primary' = 'danger',
+    confirmText?: string,
+  ) {
+    setConfirmModal({
+      open: true,
+      title,
+      description,
+      onConfirm,
+      variant,
+      confirmText,
+    });
+  }
 
   async function loadData() {
     try {
@@ -124,6 +151,112 @@ export default function VerificationPage() {
       await loadData();
     } catch (err) {
       setError(formatApiError(err, 'Could not resolve candidate escalation.'));
+    }
+  }
+
+  async function handleBulkResolve(decision: 'APPROVED' | 'REJECTED') {
+    if (selectedTenantIds.length === 0) return;
+    const targets = items.filter(
+      (i) => i.tenantType === 'company' && selectedTenantIds.includes(i.tenantId),
+    );
+    if (targets.length === 0) return;
+
+    setError(null);
+    try {
+      const result = await api.onboarding.bulkResolveVerification({
+        tenantType: 'company',
+        decision,
+        reason: tenantReason.trim() || `Bulk ${decision} via Verification Pipeline Monitor`,
+        items: targets.map((t) => ({ tenantId: t.tenantId, submissionId: t.submissionId })),
+      });
+      setSelectedTenantIds([]);
+      setTenantReason('');
+      setActionNotice(
+        `Bulk operation complete: ${result.succeeded} succeeded, ${result.failed} failed out of ${result.total} companies.`,
+      );
+      await loadData();
+    } catch (err) {
+      setError(formatApiError(err, 'Bulk resolve failed.'));
+    }
+  }
+
+  function confirmResolveTenant(item: VerificationQueueItemDto, decision: 'APPROVED' | 'REJECTED') {
+    if (decision === 'REJECTED') {
+      promptConfirm(
+        `Reject ${item.name}?`,
+        `Are you sure you want to reject the company verification request for ${item.name}? This will update the company status to REJECTED.`,
+        async () => {
+          await resolveTenant(item, decision);
+          setConfirmModal(null);
+        },
+        'danger',
+        'Reject Company',
+      );
+    } else {
+      resolveTenant(item, decision).catch(() => {});
+    }
+  }
+
+  function confirmResolveCandidateEscalation(resolution: 'CLEAR' | 'VOID' | 'ESCALATE') {
+    if (!selectedEscalation) return;
+    if (reviewReason.trim().length < 8) {
+      setError('Enter an audit review note of at least 8 characters.');
+      return;
+    }
+
+    if (resolution === 'VOID') {
+      promptConfirm(
+        `Void Attempt for ${selectedEscalation.studentName}?`,
+        `Voiding this assessment attempt will permanently invalidate score outputs for attempt ${selectedEscalation.attemptId}. This action is audited.`,
+        async () => {
+          await resolveCandidateEscalation(resolution);
+          setConfirmModal(null);
+        },
+        'danger',
+        'Void Attempt',
+      );
+    } else if (resolution === 'ESCALATE') {
+      promptConfirm(
+        `Escalate Attempt for ${selectedEscalation.studentName}?`,
+        `Escalating this attempt will mark it for senior committee escalation.`,
+        async () => {
+          await resolveCandidateEscalation(resolution);
+          setConfirmModal(null);
+        },
+        'warning',
+        'Escalate',
+      );
+    } else {
+      resolveCandidateEscalation(resolution).catch(() => {});
+    }
+  }
+
+  function confirmBulkResolve(decision: 'APPROVED' | 'REJECTED') {
+    const count = selectedTenantIds.length;
+    if (count === 0) return;
+
+    if (decision === 'REJECTED') {
+      promptConfirm(
+        `Bulk Reject ${count} Companies?`,
+        `Are you sure you want to REJECT verification for ${count} selected companies? This high-risk action affects multiple organization accounts.`,
+        async () => {
+          await handleBulkResolve(decision);
+          setConfirmModal(null);
+        },
+        'danger',
+        `Bulk Reject (${count})`,
+      );
+    } else {
+      promptConfirm(
+        `Bulk Approve ${count} Companies?`,
+        `Are you sure you want to APPROVE verification for ${count} selected companies?`,
+        async () => {
+          await handleBulkResolve(decision);
+          setConfirmModal(null);
+        },
+        'primary',
+        `Bulk Approve (${count})`,
+      );
     }
   }
 
@@ -347,7 +480,7 @@ export default function VerificationPage() {
                 variant="outline"
                 size="sm"
                 className="rounded-md border-rose-300 text-rose-700 hover:bg-rose-50 text-xs gap-1"
-                onClick={() => void resolveCandidateEscalation('VOID')}
+                onClick={() => confirmResolveCandidateEscalation('VOID')}
               >
                 <XCircle className="h-3.5 w-3.5" />
                 Confirm Void
@@ -356,7 +489,7 @@ export default function VerificationPage() {
               <Button
                 size="sm"
                 className="rounded-md bg-zinc-900 hover:bg-black text-white font-semibold text-xs gap-1 shadow-2xs dark:bg-zinc-100 dark:text-zinc-950"
-                onClick={() => void resolveCandidateEscalation('CLEAR')}
+                onClick={() => confirmResolveCandidateEscalation('CLEAR')}
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Clear & Approve
@@ -392,8 +525,68 @@ export default function VerificationPage() {
               />
             </Field>
 
+            {/* T22: Bulk Resolution Action Bar */}
+            {selectedTenantIds.length > 0 ? (
+              <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                    {selectedTenantIds.length} selected
+                  </span>
+                  <span>Authorized Bulk Verification Decision</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                    onClick={() => setSelectedTenantIds([])}
+                  >
+                    Clear Selection
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-rose-300 bg-white text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                    onClick={() => confirmBulkResolve('REJECTED')}
+                  >
+                    Bulk Reject ({selectedTenantIds.length})
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 bg-zinc-900 text-white text-xs font-semibold hover:bg-black"
+                    onClick={() => confirmBulkResolve('APPROVED')}
+                  >
+                    Bulk Approve ({selectedTenantIds.length})
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <DataTable
               headers={[
+                <input
+                  key="select-all"
+                  type="checkbox"
+                  className="rounded border-zinc-300"
+                  checked={
+                    items.length > 0 &&
+                    items.every(
+                      (i) => i.tenantType !== 'company' || selectedTenantIds.includes(i.tenantId),
+                    )
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedTenantIds(
+                        items.filter((i) => i.tenantType === 'company').map((i) => i.tenantId),
+                      );
+                    } else {
+                      setSelectedTenantIds([]);
+                    }
+                  }}
+                />,
                 'Tenant & Domain',
                 'Type',
                 'Domain',
@@ -414,8 +607,28 @@ export default function VerificationPage() {
                     .join('')
                     .toUpperCase() || 'TN';
 
+                const isSelected = selectedTenantIds.includes(item.tenantId);
+
                 return (
                   <TableRow key={`${item.tenantType}-${item.tenantId}`}>
+                    <TableCell>
+                      {item.tenantType === 'company' ? (
+                        <input
+                          type="checkbox"
+                          className="rounded border-zinc-300"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTenantIds((prev) => [...prev, item.tenantId]);
+                            } else {
+                              setSelectedTenantIds((prev) =>
+                                prev.filter((id) => id !== item.tenantId),
+                              );
+                            }
+                          }}
+                        />
+                      ) : null}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-900 text-xs font-bold text-white shadow-2xs">
@@ -481,7 +694,7 @@ export default function VerificationPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs gap-1"
-                          onClick={() => void resolveTenant(item, 'REJECTED')}
+                          onClick={() => confirmResolveTenant(item, 'REJECTED')}
                         >
                           <X className="h-3.5 w-3.5" />
                           Reject
@@ -490,7 +703,7 @@ export default function VerificationPage() {
                           type="button"
                           size="sm"
                           className="h-7 bg-zinc-900 text-white hover:bg-black px-2.5 text-[11px] font-semibold gap-1 shadow-2xs"
-                          onClick={() => void resolveTenant(item, 'APPROVED')}
+                          onClick={() => confirmResolveTenant(item, 'APPROVED')}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Approve
@@ -604,7 +817,9 @@ export default function VerificationPage() {
                 variant="outline"
                 size="sm"
                 className="rounded-md border-rose-300 text-rose-700 hover:bg-rose-50 text-xs gap-1"
-                onClick={() => void resolveTenant(selectedCompany, 'REJECTED')}
+                onClick={() => {
+                  if (selectedCompany) confirmResolveTenant(selectedCompany, 'REJECTED');
+                }}
               >
                 <X className="h-3.5 w-3.5" />
                 Reject Company
@@ -612,7 +827,9 @@ export default function VerificationPage() {
               <Button
                 size="sm"
                 className="rounded-md bg-zinc-900 hover:bg-black text-white font-semibold text-xs gap-1 shadow-2xs dark:bg-zinc-100 dark:text-zinc-950"
-                onClick={() => void resolveTenant(selectedCompany, 'APPROVED')}
+                onClick={() => {
+                  if (selectedCompany) confirmResolveTenant(selectedCompany, 'APPROVED');
+                }}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Approve Company
@@ -620,6 +837,19 @@ export default function VerificationPage() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {/* High-Risk Action Confirmation Dialog (T24) */}
+      {confirmModal ? (
+        <ConfirmDialog
+          open={confirmModal.open}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          confirmText={confirmModal.confirmText}
+          variant={confirmModal.variant}
+        />
       ) : null}
     </PageStack>
   );

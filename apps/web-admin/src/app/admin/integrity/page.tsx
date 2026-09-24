@@ -15,6 +15,7 @@ import {
 import { Button } from '@smart/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@smart/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@smart/ui/tabs';
+import { ConfirmDialog } from '@smart/ui';
 import { PageHeader } from '@/components/page-header';
 import {
   AdminInput,
@@ -45,6 +46,32 @@ export default function IntegrityPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [_loading, setLoading] = useState(true);
+  const [selectedAttemptIds, setSelectedAttemptIds] = useState<string[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+
+  function promptConfirm(
+    title: string,
+    description: React.ReactNode,
+    onConfirm: () => Promise<void>,
+    variant: 'danger' | 'warning' | 'primary' = 'danger',
+    confirmText?: string,
+  ) {
+    setConfirmModal({
+      open: true,
+      title,
+      description,
+      onConfirm,
+      variant,
+      confirmText,
+    });
+  }
 
   async function loadData(tab: 'PENDING' | 'ESCALATED' | 'ORGANIZATIONS') {
     setLoading(true);
@@ -92,6 +119,108 @@ export default function IntegrityPage() {
       await loadData(activeTab);
     } catch (err) {
       setError(formatApiError(err, 'Resolve failed.'));
+    }
+  }
+
+  async function handleBulkResolveIntegrity(resolution: 'CLEAR' | 'VOID' | 'ESCALATE') {
+    if (selectedAttemptIds.length === 0) return;
+    if (reason.trim().length < 8) {
+      setError('Enter a decision reason of at least 8 characters for the audit log.');
+      return;
+    }
+
+    setError(null);
+    try {
+      const result = await api.onboarding.bulkResolveIntegrity({
+        resolution,
+        reason: reason.trim(),
+        attemptIds: selectedAttemptIds,
+      });
+      setSelectedAttemptIds([]);
+      setReason('');
+      setNotice(
+        `Bulk operation complete: ${result.succeeded} succeeded, ${result.failed} failed out of ${result.total} candidate attempts.`,
+      );
+      await loadData(activeTab);
+    } catch (err) {
+      setError(formatApiError(err, 'Bulk resolve failed.'));
+    }
+  }
+
+  function confirmResolve(item: IntegrityQueueItemDto, resolution: 'CLEAR' | 'VOID' | 'ESCALATE') {
+    if (reason.trim().length < 8) {
+      setError('Enter a decision reason of at least 8 characters for the audit log.');
+      return;
+    }
+
+    if (resolution === 'VOID') {
+      promptConfirm(
+        `Suspend & Void Attempt for ${item.studentName}?`,
+        `Are you sure you want to VOID attempt ${item.attemptId}? Endorsements will be suspended and credentials blocked. This action is audited.`,
+        async () => {
+          await resolve(item.attemptId, resolution);
+          setConfirmModal(null);
+        },
+        'danger',
+        'Void & Suspend',
+      );
+    } else if (resolution === 'ESCALATE') {
+      promptConfirm(
+        `Escalate Flag for ${item.studentName}?`,
+        `Escalate attempt ${item.attemptId} to the senior review committee?`,
+        async () => {
+          await resolve(item.attemptId, resolution);
+          setConfirmModal(null);
+        },
+        'warning',
+        'Escalate Attempt',
+      );
+    } else {
+      resolve(item.attemptId, resolution).catch(() => {});
+    }
+  }
+
+  function confirmBulkResolveIntegrity(resolution: 'CLEAR' | 'VOID' | 'ESCALATE') {
+    const count = selectedAttemptIds.length;
+    if (count === 0) return;
+    if (reason.trim().length < 8) {
+      setError('Enter a decision reason of at least 8 characters for the audit log.');
+      return;
+    }
+
+    if (resolution === 'VOID') {
+      promptConfirm(
+        `Bulk Suspend & Void ${count} Attempts?`,
+        `Are you sure you want to VOID ${count} candidate assessment attempts? This high-risk action suspends candidate verification states across the platform.`,
+        async () => {
+          await handleBulkResolveIntegrity(resolution);
+          setConfirmModal(null);
+        },
+        'danger',
+        `Bulk Void (${count})`,
+      );
+    } else if (resolution === 'ESCALATE') {
+      promptConfirm(
+        `Bulk Escalate ${count} Attempts?`,
+        `Escalate ${count} candidate attempts to senior committee review?`,
+        async () => {
+          await handleBulkResolveIntegrity(resolution);
+          setConfirmModal(null);
+        },
+        'warning',
+        `Bulk Escalate (${count})`,
+      );
+    } else {
+      promptConfirm(
+        `Bulk Dismiss ${count} Integrity Flags?`,
+        `Clear and dismiss flags for ${count} candidate assessment attempts?`,
+        async () => {
+          await handleBulkResolveIntegrity(resolution);
+          setConfirmModal(null);
+        },
+        'primary',
+        `Bulk Dismiss (${count})`,
+      );
     }
   }
 
@@ -186,6 +315,55 @@ export default function IntegrityPage() {
           </span>
         </div>
 
+        {/* T22: Bulk Resolution Action Bar */}
+        {activeTab !== 'ORGANIZATIONS' && selectedAttemptIds.length > 0 ? (
+          <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                {selectedAttemptIds.length} selected
+              </span>
+              <span>Authorized Bulk Integrity Decision</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                onClick={() => setSelectedAttemptIds([])}
+              >
+                Clear Selection
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                onClick={() => confirmBulkResolveIntegrity('CLEAR')}
+              >
+                Bulk Dismiss ({selectedAttemptIds.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-7 text-xs font-semibold"
+                onClick={() => confirmBulkResolveIntegrity('VOID')}
+              >
+                Bulk Suspend ({selectedAttemptIds.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 bg-zinc-900 text-white text-xs font-semibold hover:bg-black"
+                onClick={() => confirmBulkResolveIntegrity('ESCALATE')}
+              >
+                Bulk Escalate ({selectedAttemptIds.length})
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {activeTab === 'ORGANIZATIONS' ? (
           <DataTable
             headers={['Organization', 'Type', 'Category', 'Status', 'Flagged Date']}
@@ -230,7 +408,28 @@ export default function IntegrityPage() {
           </DataTable>
         ) : (
           <DataTable
-            headers={['Candidate', 'Integrity Flag', 'Risk Severity', 'Anomaly Details', 'Actions']}
+            headers={[
+              <input
+                key="select-all"
+                type="checkbox"
+                className="rounded border-zinc-300"
+                checked={
+                  items.length > 0 && items.every((i) => selectedAttemptIds.includes(i.attemptId))
+                }
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedAttemptIds(items.map((i) => i.attemptId));
+                  } else {
+                    setSelectedAttemptIds([]);
+                  }
+                }}
+              />,
+              'Candidate',
+              'Integrity Flag',
+              'Risk Severity',
+              'Anomaly Details',
+              'Actions',
+            ]}
             empty={items.length === 0}
             emptyIcon={ShieldCheck}
           >
@@ -244,8 +443,26 @@ export default function IntegrityPage() {
                   .join('')
                   .toUpperCase() || 'ST';
 
+              const isSelected = selectedAttemptIds.includes(item.attemptId);
+
               return (
                 <TableRow key={item.attemptId}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      className="rounded border-zinc-300"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAttemptIds((prev) => [...prev, item.attemptId]);
+                        } else {
+                          setSelectedAttemptIds((prev) =>
+                            prev.filter((id) => id !== item.attemptId),
+                          );
+                        }
+                      }}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-900 text-xs font-bold text-white shadow-2xs">
@@ -283,7 +500,7 @@ export default function IntegrityPage() {
                         size="sm"
                         variant="outline"
                         className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs gap-1"
-                        onClick={() => void resolve(item.attemptId, 'CLEAR')}
+                        onClick={() => confirmResolve(item, 'CLEAR')}
                       >
                         <CircleCheck className="h-3.5 w-3.5 text-emerald-600" />
                         Dismiss
@@ -293,7 +510,7 @@ export default function IntegrityPage() {
                         size="sm"
                         variant="destructive"
                         className="h-7 px-2.5 text-[11px] font-semibold shadow-2xs gap-1"
-                        onClick={() => void resolve(item.attemptId, 'VOID')}
+                        onClick={() => confirmResolve(item, 'VOID')}
                       >
                         <Ban className="h-3.5 w-3.5" />
                         Suspend
@@ -304,7 +521,7 @@ export default function IntegrityPage() {
                           size="sm"
                           variant="secondary"
                           className="h-7 border border-zinc-200 bg-zinc-100 px-2.5 text-[11px] font-semibold text-zinc-800 hover:bg-zinc-200 shadow-2xs gap-1"
-                          onClick={() => void resolve(item.attemptId, 'ESCALATE')}
+                          onClick={() => confirmResolve(item, 'ESCALATE')}
                         >
                           <TriangleAlert className="h-3.5 w-3.5" />
                           Escalate
@@ -318,6 +535,19 @@ export default function IntegrityPage() {
           </DataTable>
         )}
       </div>
+
+      {/* High-Risk Action Confirmation Dialog (T24) */}
+      {confirmModal ? (
+        <ConfirmDialog
+          open={confirmModal.open}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          confirmText={confirmModal.confirmText}
+          variant={confirmModal.variant}
+        />
+      ) : null}
     </PageStack>
   );
 }

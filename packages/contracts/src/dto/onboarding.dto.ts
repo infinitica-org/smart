@@ -513,6 +513,21 @@ export const GetAdminDashboardQuerySchema = z
   });
 export type GetAdminDashboardQuery = z.infer<typeof GetAdminDashboardQuerySchema>;
 
+export const QueuePerformanceMetricsSchema = z.object({
+  companyVerification: z.object({
+    pending: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    oldestPendingSeconds: z.number().int().nonnegative().nullable(),
+    avgProcessingTimeMs: z.number().int().nonnegative().nullable(),
+  }),
+  kafkaOutbox: z.object({
+    pending: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    avgProcessingTimeMs: z.number().int().nonnegative().nullable(),
+  }),
+});
+export type QueuePerformanceMetrics = z.infer<typeof QueuePerformanceMetricsSchema>;
+
 export const AdminDashboardDtoSchema = z.object({
   institutions: z.object({
     total: z.number().int().nonnegative(),
@@ -537,6 +552,7 @@ export const AdminDashboardDtoSchema = z.object({
   pendingVerifications: z.number().int().nonnegative(),
   flaggedAttempts: z.number().int().nonnegative(),
   recentAudit: z.array(AuditLogDtoSchema),
+  queuePerformance: QueuePerformanceMetricsSchema.optional(),
 });
 export type AdminDashboardDto = z.infer<typeof AdminDashboardDtoSchema>;
 
@@ -792,3 +808,49 @@ export const ResolveIntegrityRequestSchema = z.object({
   reason: z.string().trim().min(8).max(500),
 });
 export type ResolveIntegrityRequest = z.infer<typeof ResolveIntegrityRequestSchema>;
+
+export const BulkResolveCompanyVerificationsRequestSchema = z.object({
+  tenantType: z.literal('company'),
+  decision: z.enum(['APPROVED', 'REJECTED']),
+  reason: z.string().trim().min(3).max(500),
+  items: z
+    .array(
+      z.object({
+        tenantId: UuidSchema,
+        submissionId: UuidSchema.optional(),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+export type BulkResolveCompanyVerificationsRequest = z.infer<
+  typeof BulkResolveCompanyVerificationsRequestSchema
+>;
+
+export const BulkResolveIntegrityRequestSchema = z.object({
+  resolution: z.enum(['CLEAR', 'VOID', 'ESCALATE']),
+  reason: z.string().trim().min(8).max(500),
+  attemptIds: z.array(UuidSchema).min(1).max(50),
+});
+export type BulkResolveIntegrityRequest = z.infer<typeof BulkResolveIntegrityRequestSchema>;
+
+export const BulkOperationResultItemSchema = z.object({
+  id: z.string(),
+  success: z.boolean(),
+  data: z.unknown().optional(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      statusCode: z.number().int(),
+    })
+    .optional(),
+});
+
+export const BulkOperationResultSchema = z.object({
+  total: z.number().int().nonnegative(),
+  succeeded: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  results: z.array(BulkOperationResultItemSchema),
+});
+export type BulkOperationResult = z.infer<typeof BulkOperationResultSchema>;

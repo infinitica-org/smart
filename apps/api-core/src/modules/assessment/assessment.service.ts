@@ -18,6 +18,8 @@ import {
   type IntegrityFlag,
   type IntegrityQueueItemDto,
   type IntegrityQueueStatus,
+  type BulkResolveIntegrityRequest,
+  type BulkOperationResult,
   type ItemType,
   type LevelFormat,
   type LevelNumber,
@@ -1641,5 +1643,52 @@ export class AssessmentService implements OnModuleInit, OnModuleDestroy {
     });
     const totalClassifiedEventCount = await this.classifiedIntegrityEventCount(attemptId);
     return this.toIntegrityQueueItem(updated, totalClassifiedEventCount);
+  }
+
+  async bulkResolveIntegrity(
+    body: BulkResolveIntegrityRequest,
+    actorId: string,
+  ): Promise<BulkOperationResult> {
+    const results: BulkOperationResult['results'] = [];
+    let succeeded = 0;
+    let failed = 0;
+
+    const uniqueAttemptIds = Array.from(new Set(body.attemptIds));
+
+    for (const attemptId of uniqueAttemptIds) {
+      try {
+        const item = await this.resolveIntegrity(
+          attemptId,
+          {
+            resolution: body.resolution,
+            reason: body.reason,
+          },
+          actorId,
+        );
+        succeeded++;
+        results.push({
+          id: attemptId,
+          success: true,
+          data: item,
+        });
+      } catch (err: any) {
+        failed++;
+        const statusCode = err?.status || err?.statusCode || 500;
+        const code = err?.response?.error || err?.error || 'INTERNAL_ERROR';
+        const message = err?.response?.message || err?.message || 'Failed to process attempt.';
+        results.push({
+          id: attemptId,
+          success: false,
+          error: { code: String(code), message: String(message), statusCode: Number(statusCode) },
+        });
+      }
+    }
+
+    return {
+      total: uniqueAttemptIds.length,
+      succeeded,
+      failed,
+      results,
+    };
   }
 }

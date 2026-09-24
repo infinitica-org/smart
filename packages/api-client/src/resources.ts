@@ -30,6 +30,8 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
+  BulkResolveCompanyVerificationsRequest,
+  BulkResolveIntegrityRequest,
   IntegrityQueueStatus,
   SaveDraftRequest,
   StartAttemptRequest,
@@ -108,6 +110,7 @@ import {
   PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
+  BulkOperationResultSchema,
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
@@ -872,6 +875,11 @@ export function onboardingApi(client: SmartApiClient) {
         schema: VerificationQueueItemDtoSchema,
       }),
 
+    bulkResolveVerification: (body: BulkResolveCompanyVerificationsRequest) =>
+      client.post(prefixed('/admin/verification-queue/bulk-resolve'), body, {
+        schema: BulkOperationResultSchema,
+      }),
+
     companyVerificationReview: (companyId: string) =>
       client.get(prefixed(`/admin/verification-queue/${companyId}/review`), {
         schema: CompanyVerificationReviewDetailDtoSchema,
@@ -887,6 +895,11 @@ export function onboardingApi(client: SmartApiClient) {
     resolveIntegrity: (attemptId: string, body: ResolveIntegrityRequest) =>
       client.post(prefixed(`/admin/integrity-queue/${attemptId}/resolve`), body, {
         schema: IntegrityQueueItemDtoSchema,
+      }),
+
+    bulkResolveIntegrity: (body: BulkResolveIntegrityRequest) =>
+      client.post(prefixed('/admin/integrity-queue/bulk-resolve'), body, {
+        schema: BulkOperationResultSchema,
       }),
 
     projectReviewQueue: () =>

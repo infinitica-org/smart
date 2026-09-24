@@ -211,7 +211,7 @@ export function DataTable({
   empty,
   emptyIcon,
 }: {
-  headers: string[];
+  headers: (string | ReactNode)[];
   children: ReactNode;
   empty?: boolean;
   emptyIcon?: LucideIcon;
@@ -224,9 +224,9 @@ export function DataTable({
         <Table>
           <TableHeader>
             <TableRow className="border-b border-zinc-200/80 bg-zinc-50/75 hover:bg-zinc-50/75 dark:border-zinc-800 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/60">
-              {headers.map((header) => (
+              {headers.map((header, idx) => (
                 <TableHead
-                  key={header}
+                  key={typeof header === 'string' ? header : idx}
                   className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
                 >
                   {header}

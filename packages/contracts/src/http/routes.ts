@@ -4337,6 +4337,31 @@ export const ROUTES: readonly RouteSpec[] = [
     slaMs: 200,
     summary: 'Manually retry a failed background verification outbox event.',
   },
+  /* --------------------------- admin bulk resolution (T22) ------------------- */
+  {
+    method: 'POST',
+    path: '/admin/verification-queue/bulk-resolve',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 1500,
+    summary: 'Perform authorized bulk resolutions on company verification queue items.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/integrity-queue/bulk-resolve',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 1500,
+    summary: 'Perform authorized bulk resolutions on candidate integrity escalations.',
+  },
 ] as const;
 
 export function findRoute(method: RouteSpec['method'], path: string): RouteSpec | undefined {

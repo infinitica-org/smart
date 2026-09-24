@@ -69,6 +69,8 @@ import type {
   GetAdminDashboardQuery,
   FlaggedOrganizationDto,
   FlaggedOrganizationCategory,
+  BulkResolveCompanyVerificationsRequest,
+  BulkOperationResult,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
 import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
@@ -1217,6 +1219,12 @@ export class InstitutionsService {
       flaggedAttempts,
       plans,
       recent,
+      companyCompletedCount,
+      oldestPendingCompany,
+      completedCompanyVerifications,
+      outboxPendingCount,
+      outboxCompletedCount,
+      publishedOutboxEvents,
     ] = await Promise.all([
       this.prisma.institution.count({ where: instWhere }),
       this.prisma.institution.count({
@@ -1251,7 +1259,68 @@ export class InstitutionsService {
         orderBy: { createdAt: 'desc' },
         take: 8,
       }),
+      this.prisma.companyVerification.count({
+        where: {
+          reviewedAt: { not: null },
+          ...(dateFilter ? { reviewedAt: dateFilter } : {}),
+          ...(compIdFilter ? { companyId: compIdFilter } : {}),
+        },
+      }),
+      this.prisma.companyVerification.findFirst({
+        where: { reviewedAt: null, ...(compIdFilter ? { companyId: compIdFilter } : {}) },
+        orderBy: { submittedAt: 'asc' },
+        select: { submittedAt: true },
+      }),
+      this.prisma.companyVerification.findMany({
+        where: {
+          reviewedAt: { not: null },
+          ...(dateFilter ? { reviewedAt: dateFilter } : {}),
+          ...(compIdFilter ? { companyId: compIdFilter } : {}),
+        },
+        select: { submittedAt: true, reviewedAt: true },
+        take: 1000,
+      }),
+      this.prisma.kafkaOutbox.count({ where: { publishedAt: null } }),
+      this.prisma.kafkaOutbox.count({
+        where: {
+          publishedAt: { not: null },
+          ...(dateFilter ? { publishedAt: dateFilter } : {}),
+        },
+      }),
+      this.prisma.kafkaOutbox.findMany({
+        where: {
+          publishedAt: { not: null },
+          ...(dateFilter ? { publishedAt: dateFilter } : {}),
+        },
+        select: { createdAt: true, publishedAt: true },
+        take: 1000,
+      }),
     ]);
+
+    const oldestPendingSeconds = oldestPendingCompany?.submittedAt
+      ? Math.max(0, Math.floor((Date.now() - oldestPendingCompany.submittedAt.getTime()) / 1000))
+      : null;
+
+    let companyAvgMs: number | null = null;
+    if (completedCompanyVerifications.length > 0) {
+      const totalMs = completedCompanyVerifications.reduce((sum: number, v) => {
+        const sub = v.submittedAt ? v.submittedAt.getTime() : 0;
+        const rev = v.reviewedAt ? v.reviewedAt.getTime() : sub;
+        return sum + Math.max(0, rev - sub);
+      }, 0);
+      companyAvgMs = Math.round(totalMs / completedCompanyVerifications.length);
+    }
+
+    let outboxAvgMs: number | null = null;
+    if (publishedOutboxEvents.length > 0) {
+      const totalMs = publishedOutboxEvents.reduce((sum: number, o) => {
+        const created = o.createdAt.getTime();
+        const published = o.publishedAt ? o.publishedAt.getTime() : created;
+        return sum + Math.max(0, published - created);
+      }, 0);
+      outboxAvgMs = Math.round(totalMs / publishedOutboxEvents.length);
+    }
+
     return {
       institutions: {
         total,
@@ -1270,6 +1339,74 @@ export class InstitutionsService {
       pendingVerifications: companyPending + institutionPending,
       flaggedAttempts,
       recentAudit: recent.map((row) => this.toAuditDto(row)),
+      queuePerformance: {
+        companyVerification: {
+          pending: companyPending,
+          completed: companyCompletedCount,
+          oldestPendingSeconds,
+          avgProcessingTimeMs: companyAvgMs,
+        },
+        kafkaOutbox: {
+          pending: outboxPendingCount,
+          completed: outboxCompletedCount,
+          avgProcessingTimeMs: outboxAvgMs,
+        },
+      },
+    };
+  }
+
+  async bulkResolveCompanyVerifications(
+    body: BulkResolveCompanyVerificationsRequest,
+    actorId: string,
+  ): Promise<BulkOperationResult> {
+    const results: BulkOperationResult['results'] = [];
+    let succeeded = 0;
+    let failed = 0;
+
+    const uniqueItems = new Map<string, (typeof body.items)[number]>();
+    for (const item of body.items) {
+      if (!uniqueItems.has(item.tenantId)) {
+        uniqueItems.set(item.tenantId, item);
+      }
+    }
+
+    for (const item of Array.from(uniqueItems.values())) {
+      try {
+        const singleResult = await this.resolveVerification(
+          item.tenantId,
+          {
+            tenantType: 'company',
+            decision: body.decision,
+            reason: body.reason,
+            submissionId: item.submissionId,
+          },
+          actorId,
+        );
+        succeeded++;
+        results.push({
+          id: item.tenantId,
+          success: true,
+          data: singleResult,
+        });
+      } catch (err: any) {
+        failed++;
+        const statusCode = err?.status || err?.statusCode || 500;
+        const code = err?.response?.error || err?.error || 'INTERNAL_ERROR';
+        const message =
+          err?.response?.message || err?.message || 'Failed to process company verification.';
+        results.push({
+          id: item.tenantId,
+          success: false,
+          error: { code: String(code), message: String(message), statusCode: Number(statusCode) },
+        });
+      }
+    }
+
+    return {
+      total: uniqueItems.size,
+      succeeded,
+      failed,
+      results,
     };
   }
 

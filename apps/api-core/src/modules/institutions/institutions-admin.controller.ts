@@ -12,6 +12,7 @@ import {
   ListPartnershipRequestsQuerySchema,
   ReviewPartnershipRequestSchema,
   ResolveVerificationRequestSchema,
+  BulkResolveCompanyVerificationsRequestSchema,
   SetFeatureFlagOverrideRequestSchema,
   TenantActionReasonSchema,
   UpdateInstitutionRequestSchema,
@@ -214,6 +215,14 @@ export class InstitutionsAdminController {
     return this.institutions.resolveVerification(
       tenantId,
       ResolveVerificationRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Post('verification-queue/bulk-resolve')
+  bulkResolveVerification(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.institutions.bulkResolveCompanyVerifications(
+      BulkResolveCompanyVerificationsRequestSchema.parse(body),
       user.sub,
     );
   }
