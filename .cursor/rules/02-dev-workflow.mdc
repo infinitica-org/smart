@@ -9,7 +9,9 @@ These rules are **not optional**. If a request would violate them, refuse that p
 
 ## Branching
 
-1. **Never** commit directly to `main`, `qa`, or `dev` (`develop` is deprecated).
+1. **Never** commit directly to `main`, `qa`, or `dev` — **no exceptions, including agents**.
+   - `dev` is a protected branch. All changes enter via a feature/bugfix PR.
+   - Direct pushes to `dev` are mechanically blocked for everyone except `@brittytino` (architect-only emergency access).
 2. **Always** work on a feature branch before any commit:
    `<type>/S<sprint>-<initials>-<nn>-<slug>`
    - Types: `feat` | `fix` | `chore` | `docs` | `refactor` | `test` | `perf`
@@ -46,11 +48,12 @@ pnpm format:check
 1. Push the feature branch with `-u` when ready.
 2. Open a PR into **`dev`** with Conventional title, template body, and **labels** (priority + area + sprint) per `09-commits-and-prs.mdc`.
 3. Do **not** treat local commits as done — **no PR = not delivered**.
-4. Squash-merge only after the **module owner** of the touched paths approves. Agents do not merge unless the user explicitly asks.
-   - Architect-owned paths (`packages/contracts/`, `.github/workflows/`, `.github/CODEOWNERS`, `ARCHITECTURE.md`, `docs/adr/`, `docs/delivery/`, build-graph files) additionally require **Tino's** approval.
-   - All promotion PRs (`dev → qa`, `qa → main`) require Tino's approval and are merged by Tino.
+4. **Tino (`@brittytino`) is the sole reviewer and merger for all PRs into `dev`.**
+   - Do not merge without Tino's explicit approval — `Squash and merge` is done by Tino only.
+   - Architect-owned paths (`packages/contracts/`, `.github/workflows/`, `.github/CODEOWNERS`, `ARCHITECTURE.md`, `docs/adr/`, `docs/delivery/`) require Tino's review regardless of module.
+   - All promotion PRs (`dev → qa`, `qa → main`) are opened, reviewed, and merged by Tino.
 5. Never force-push `main` / `qa` / `dev`. Force-push feature branches only if the user explicitly requests it.
-6. Only `@brittytino` merges into **`main`**. Promote via `dev` → `qa` → `main` PRs.
+6. Only `@brittytino` merges into **`qa`** and **`main`**. Promote via `dev` → `qa` → `main` PRs only.
 
 ## Ownership & scope
 
