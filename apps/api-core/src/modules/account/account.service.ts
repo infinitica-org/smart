@@ -143,6 +143,9 @@ export class AccountService {
     userId: string,
     body: UpdateMessagingPreferenceRequest,
   ): Promise<MessagingPreferenceResponse> {
+    const before = await this.getMessagingPreference(userId);
+    // Repeating the same choice commits nothing and writes no second audit row.
+    if (before.allowEmployerMessages === body.allowEmployerMessages) return before;
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { allowEmployerMessages: body.allowEmployerMessages },
@@ -154,7 +157,10 @@ export class AccountService {
       resourceType: 'user',
       resourceId: userId,
       reasonCode: null,
-      metadata: { allowEmployerMessages: updated.allowEmployerMessages },
+      metadata: {
+        prior: { allowEmployerMessages: before.allowEmployerMessages },
+        next: { allowEmployerMessages: updated.allowEmployerMessages },
+      },
     });
     return { allowEmployerMessages: updated.allowEmployerMessages };
   }

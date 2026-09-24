@@ -165,8 +165,23 @@ describe('AccountService (STU-02)', () => {
       });
       expect(result).toEqual({ allowEmployerMessages: false });
       expect(auditPublisher.record).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'messaging_preference.updated' }),
+        expect.objectContaining({
+          action: 'messaging_preference.updated',
+          metadata: {
+            prior: { allowEmployerMessages: true },
+            next: { allowEmployerMessages: false },
+          },
+        }),
       );
+    });
+
+    it('is idempotent: repeating the current choice writes and audits nothing', async () => {
+      const result = await service.updateMessagingPreference(userId, {
+        allowEmployerMessages: true,
+      });
+      expect(result).toEqual({ allowEmployerMessages: true });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(auditPublisher.record).not.toHaveBeenCalled();
     });
   });
 
