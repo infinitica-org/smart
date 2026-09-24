@@ -10,6 +10,7 @@ import {
   FileText,
   LayoutDashboard,
   MessageSquare,
+  Gauge,
   Settings,
   Sparkles,
   Target,
@@ -34,6 +35,7 @@ const mainNavItems: NavItem[] = [
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'My profile', href: '/profile', icon: User },
   { name: 'Skills', href: '/skills', icon: Award },
+  { name: 'Readiness', href: '/readiness', icon: Gauge },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

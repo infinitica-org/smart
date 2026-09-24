@@ -34,6 +34,7 @@ import { SandboxModule } from './modules/sandbox/sandbox.module.js';
 import { UsernameModule } from './modules/username/username.module.js';
 import { AccountModule } from './modules/account/account.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { ReadinessModule } from './modules/readiness/readiness.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
@@ -74,6 +75,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     UsernameModule,
     AccountModule,
     DashboardModule,
+    ReadinessModule,
     WorkExperienceModule,
     InstitutionsModule,
     CatalogModule,

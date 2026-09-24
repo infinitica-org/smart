@@ -3864,6 +3864,21 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Choose whether I see the employer profile-view count.',
   },
 
+  /* ---------------------- student readiness (PRF-02) ---------------------- */
+  {
+    method: 'GET',
+    path: '/users/me/readiness',
+    module: 'users',
+    owner: 'Satheshwaran V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 250,
+    summary:
+      'My readiness: identity, evidence, skill demonstration, proficiency, role readiness, recommendations.',
+  },
+
   /* ----------------------- candidate certificate verification ---------------------- */
   {
     method: 'POST',

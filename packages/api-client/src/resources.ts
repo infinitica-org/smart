@@ -223,6 +223,7 @@ import {
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
   StudentDashboardSummarySchema,
+  StudentReadinessSummarySchema,
   ProfileViewSettingSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
@@ -468,6 +469,9 @@ export function usersApi(client: SmartApiClient) {
         body,
         schema: ProfileVisibilityResponseSchema,
       }),
+
+    getReadiness: () =>
+      client.get(prefixed('/users/me/readiness'), { schema: StudentReadinessSummarySchema }),
 
     getDashboard: () =>
       client.get(prefixed('/users/me/dashboard'), { schema: StudentDashboardSummarySchema }),
