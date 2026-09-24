@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="relative min-h-dvh bg-background font-sans text-foreground antialiased">
-        <ThemeProvider defaultTheme="dark">
+    <html lang="en" className="light" suppressHydrationWarning>
+      <body className="relative min-h-dvh bg-[var(--ds-canvas,#f8fafc)] font-sans text-[var(--ds-text,#101828)] antialiased">
+        <ThemeProvider defaultTheme="light">
           <TooltipProvider>
             <PortalAuthGate>{children}</PortalAuthGate>
             <Toaster />

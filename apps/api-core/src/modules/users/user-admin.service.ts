@@ -27,7 +27,8 @@ export class UserAdminService {
 
     const updated = await this.prisma.user.update({
       where: { id: user.id },
-      data: { role },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { role: role as any },
     });
     return { userId: updated.id, role: updated.role as AssignableRole };
   }

@@ -57,12 +57,11 @@ body {
   --tpo-accent-border: #99f6e4;
 
   /*
-   * Apple SF Pro via system stack (licensed fonts are not bundled). On macOS/iOS
-   * this resolves to SF Pro Text/Display; elsewhere falls back to system UI sans.
+   * Manrope via @smart/ui/styles.css as primary UI/table font.
    */
   --tpo-font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui,
-    sans-serif;
+    'Manrope', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    system-ui, sans-serif;
 }
 
 /* App-local scan so Magic UI / dashboard classes in @smart/ui always emit. */

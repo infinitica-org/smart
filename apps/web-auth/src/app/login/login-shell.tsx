@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LoginBrandPanel } from './login-brand-panel';
 
 const authFontClass =
   'font-[family-name:var(--auth-font-sans,-apple-system,BlinkMacSystemFont,"Segoe_UI",sans-serif)]';
@@ -6,9 +7,12 @@ const authFontClass =
 export function LoginShell({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`min-h-dvh w-full bg-white text-[#172033] flex flex-col items-center justify-center px-4 py-10 sm:px-6 ${authFontClass}`}
+      className={`min-h-dvh w-full bg-white p-4 text-[#172033] lg:grid lg:h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 lg:p-6 ${authFontClass}`}
     >
-      {children}
+      <LoginBrandPanel />
+      <div className="relative flex min-h-dvh flex-col items-center justify-center px-2 py-10 lg:min-h-0 lg:overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 }

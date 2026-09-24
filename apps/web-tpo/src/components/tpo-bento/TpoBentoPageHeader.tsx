@@ -36,12 +36,10 @@ export function TpoBentoPageHeader({
 
   if (minimal) {
     return (
-      <header className="flex flex-col gap-3 border-b border-[var(--ds-border-subtle)] pb-5 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0 flex-1 space-y-1.5">
+      <header className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h1 className="text-lg font-semibold tracking-tight text-[var(--ds-text)] md:text-xl">
-              {title}
-            </h1>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 md:text-2xl">{title}</h1>
             {badge ? <div className="shrink-0">{badge}</div> : null}
           </div>
           <p className="max-w-2xl text-[13px] leading-relaxed text-[var(--ds-text-muted)] md:text-sm">
@@ -67,8 +65,8 @@ export function TpoBentoPageHeader({
           >
             {Icon ? (
               <span
-                className={`flex shrink-0 items-center justify-center rounded-xl ${accentStyle.iconWrap} ${
-                  compact ? 'size-9 rounded-lg' : 'size-10 rounded-2xl'
+                className={`flex shrink-0 items-center justify-center rounded-lg ${accentStyle.iconWrap} ${
+                  compact ? 'size-9' : 'size-10'
                 }`}
               >
                 <Icon className={compact ? 'size-4' : 'size-[18px]'} strokeWidth={1.5} />

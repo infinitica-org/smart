@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '@smart/contracts';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const portalOrigins = resolvePortalOriginsFromEnv();
-const { student: studentUrl, tpo: tpoUrl, admin: adminUrl } = portalOrigins;
+const { student: studentUrl, tpo: tpoUrl, admin: adminUrl, company: companyUrl } = portalOrigins;
 
 export const apiClient = new SmartApiClient({
   baseUrl,

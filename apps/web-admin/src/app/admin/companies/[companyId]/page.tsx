@@ -63,7 +63,7 @@ export default function CompanyDetailPage() {
         title={company.name}
         description={`${company.planCode} · ${company.verificationStatus}`}
       >
-        <Button variant="outline" asChild>
+        <Button variant="outline" className="rounded-md" asChild>
           <Link href="/admin/companies">
             <ArrowLeft data-icon="inline-start" />
             Back to companies
@@ -142,6 +142,7 @@ export default function CompanyDetailPage() {
             <Button
               type="button"
               variant="outline"
+              className="rounded-md"
               onClick={() => {
                 void (async () => {
                   if (reason.trim().length < 8) {
@@ -166,6 +167,7 @@ export default function CompanyDetailPage() {
             <Button
               type="button"
               variant="destructive"
+              className="rounded-md"
               onClick={() => {
                 void (async () => {
                   if (reason.trim().length < 8) {

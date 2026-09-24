@@ -56,6 +56,7 @@ import type {
   CreateEvidenceRequest,
   SaveOnboardingSelectionRequest,
   CreateVerificationDecisionRequest,
+  RegisterStudentRequest,
   StartCompanyOnboardingRequest,
   UpdateCompanyOnboardingDraftRequest,
   SubmitCompanyOnboardingRequest,
@@ -97,6 +98,11 @@ import {
   GlobalStudentHitDtoSchema,
   InstitutionAdminDtoSchema,
   InstitutionDtoSchema,
+  PartnerUniversityOptionDtoSchema,
+  StudentInstitutionPartnershipStatusDtoSchema,
+  UniversityContactRequestDtoSchema,
+  type ConnectPartnerUniversityRequest,
+  type RequestUniversityContactRequest,
   PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
@@ -137,6 +143,10 @@ import {
   CandidateEvidenceProfileDtoSchema,
   CandidateEvidenceProvenanceResponseSchema,
   EvidenceRecordDtoSchema,
+  EvidenceRecordVersionDtoSchema,
+  EvidenceRecordVersionRedactedDtoSchema,
+  ListEvidenceRecordVersionsResponseSchema,
+  ListEvidenceRecordVersionsRedactedResponseSchema,
   GetSkillEvidenceInferenceResponseSchema,
   GetSkillLevelExplanationResponseSchema,
   ListCapabilityInferenceReviewQueueResponseSchema,
@@ -239,6 +249,12 @@ export function authApi(client: SmartApiClient) {
   return {
     login: (body: { email: string; password: string }) =>
       client.post(prefixed('/auth/login'), body, { schema: AuthTokenResponseSchema }),
+
+    registerStudent: (body: RegisterStudentRequest) =>
+      client.post(prefixed('/auth/register'), body, {
+        schema: AuthTokenResponseSchema,
+        anonymous: true,
+      }),
 
     ssoStart: (body: { provider: string; institutionDomain?: string; redirectUri: string }) =>
       client.post(prefixed('/auth/sso/start'), body, { schema: SsoStartResponseSchema }),
@@ -631,6 +647,27 @@ export function usersApi(client: SmartApiClient) {
 
 export function onboardingApi(client: SmartApiClient) {
   return {
+    listPartnerUniversities: (query?: { q?: string }) =>
+      client.get(prefixed('/public/partner-universities'), {
+        schema: z.array(PartnerUniversityOptionDtoSchema),
+        query,
+      }),
+
+    connectPartnerUniversity: (body: ConnectPartnerUniversityRequest) =>
+      client.post(prefixed('/student/connect-university'), body, {
+        schema: AuthenticatedUserSchema,
+      }),
+
+    getInstitutionPartnershipStatus: () =>
+      client.get(prefixed('/student/institution/partnership-status'), {
+        schema: StudentInstitutionPartnershipStatusDtoSchema,
+      }),
+
+    requestUniversityContact: (body: RequestUniversityContactRequest) =>
+      client.post(prefixed('/student/university-contact-requests'), body, {
+        schema: UniversityContactRequestDtoSchema,
+      }),
+
     createInstitution: (body: z.infer<typeof CreateInstitutionRequestSchema>) =>
       client.post(prefixed('/admin/institutions'), body, { schema: InstitutionDtoSchema }),
 
@@ -1442,6 +1479,20 @@ export function placementApi(client: SmartApiClient) {
         ),
         {
           schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
+        },
+      ),
+
+    getCandidateEvidenceProvenance: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence/provenance`), {
+        schema: CandidateEvidenceProvenanceResponseSchema,
+      }),
+
+    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
+      client.post(
+        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
+        body,
+        {
+          schema: ReviewEvidenceResponseSchema,
         },
       ),
   };

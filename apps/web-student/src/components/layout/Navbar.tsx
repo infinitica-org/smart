@@ -1,225 +1,169 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-
-import { ChevronDown, Compass, LogOut, Menu, UserRound, X } from 'lucide-react';
-
-import { SmartLogo } from '@smart/ui';
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@smart/ui/dropdown-menu';
-
-import { firstNameOf, useCurrentUser } from '@/lib/candidate-identity';
-
+import { usePathname, useRouter } from 'next/navigation';
+import { Bell, ChevronRight, LogOut, Menu, UserRound } from 'lucide-react';
+import { useCurrentUser } from '@/lib/candidate-identity';
 import { CandidateAvatar } from '@/components/profile/CandidateAvatar';
-
 import { signOut } from '@/lib/auth';
 
-import { markTourAutostart, requestTourStart } from '@/lib/tour';
+type Breadcrumb = { label: string; href?: string };
 
-import {
-  topbarFontClass,
-  topbarMobileNavRowClass,
-  topbarNavLinkActiveClass,
-  topbarNavLinkBaseClass,
-  topbarNavUnderlineClass,
-  topbarPrimaryNavClass,
-  topbarProBadgeClass,
-  topbarSeparatorClass,
-  topbarShellClass,
-} from '@/lib/student-topbar-ui';
+function getStudentBreadcrumbs(pathname: string): Breadcrumb[] {
+  if (pathname === '/' || pathname === '/dashboard') {
+    return [{ label: 'Dashboard' }];
+  }
 
-const navItems = [
-  { name: 'Home', href: '/dashboard' },
-  { name: 'Profile', href: '/profile' },
-  { name: 'Assessment', href: '/assessment' },
-  { name: 'Interview', href: '/interview' },
-  { name: 'Jobs', href: '/jobs' },
-];
+  const segments = pathname.split('/').filter(Boolean);
+  const crumbs: Breadcrumb[] = [];
+  const first = segments[0] ?? '';
 
-function TopbarNavLink({
-  href,
-  isActive,
-  children,
-}: {
-  href: string;
-  isActive: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={isActive ? 'page' : undefined}
-      className={`${topbarNavLinkBaseClass} ${isActive ? topbarNavLinkActiveClass : ''}`}
-    >
-      <span>{children}</span>
-      <span
-        aria-hidden
-        className={`${topbarNavUnderlineClass} ${isActive ? 'opacity-100' : 'opacity-0'}`}
-        data-testid={isActive ? 'topbar-nav-active-indicator' : undefined}
-      />
-    </Link>
-  );
+  if (first === 'jobs') crumbs.push({ label: 'Matches & Opportunities' });
+  else if (first === 'profile') crumbs.push({ label: 'My Profile' });
+  else if (first === 'skills') crumbs.push({ label: 'Skills' });
+  else if (first === 'applications') crumbs.push({ label: 'Endorsement Tracking' });
+  else if (first === 'assessments' || first === 'assessment') crumbs.push({ label: 'Assessments' });
+  else if (first === 'interviews' || first === 'interview') crumbs.push({ label: 'Interviews' });
+  else if (first === 'messages') crumbs.push({ label: 'Messages' });
+  else {
+    crumbs.push({
+      label: first.charAt(0).toUpperCase() + first.slice(1).replace(/-/g, ' '),
+    });
+  }
+
+  return crumbs;
 }
 
-function isNavActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+export type StudentTopbarProps = {
+  onOpenMobileNav?: () => void;
+};
 
-export function Navbar() {
-  const pathname = usePathname();
+export function StudentTopbar({ onOpenMobileNav = () => {} }: StudentTopbarProps = {}) {
   const router = useRouter();
   const { data: user } = useCurrentUser();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  const displayName = firstNameOf(user?.fullName) || 'Candidate';
+  useEffect(() => {
+    function onOutsideClick(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, []);
+
+  const pathname = usePathname() || '/dashboard';
+  const breadcrumbs = getStudentBreadcrumbs(pathname);
 
   return (
-    <header className={`${topbarShellClass} ${topbarFontClass} relative px-4 lg:px-6`}>
-      <div className="flex w-full min-w-0 items-stretch">
-        <div className="flex shrink-0 items-center gap-3 self-center">
-          <Link href="/dashboard" aria-label="SMART home" className="group flex items-center gap-2">
-            <SmartLogo
-              kind="mark"
-              tone="on-light"
-              className="size-7 transition-opacity group-hover:opacity-80"
-              title="SMART"
-            />
-            <span className={topbarProBadgeClass}>PRO</span>
-          </Link>
-        </div>
+    <header className="sticky top-0 z-40 flex h-14 w-full shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white px-6 font-sans antialiased select-none dark:border-zinc-800 dark:bg-[#111111]">
+      <div className="flex h-full items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpenMobileNav}
+          aria-label="Open navigation menu"
+          className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 lg:hidden"
+        >
+          <Menu strokeWidth={1.5} className="size-5" />
+        </button>
 
-        <div className={topbarSeparatorClass} aria-hidden />
-
-        <nav data-tour="nav-links" aria-label="Candidate console" className={topbarPrimaryNavClass}>
-          {navItems.map((item) => {
-            const active = isNavActive(pathname, item.href);
-            return (
-              <TopbarNavLink key={item.href} href={item.href} isActive={active}>
-                {item.name}
-              </TopbarNavLink>
-            );
-          })}
+        {/* Dynamic Breadcrumb Navigation */}
+        <nav aria-label="Breadcrumb" className="flex items-center">
+          <ol className="flex items-center gap-1.5 text-xs sm:text-[13px]">
+            {breadcrumbs.map((crumb, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return (
+                <li key={crumb.label + idx} className="flex items-center gap-1.5">
+                  {idx > 0 && (
+                    <ChevronRight className="size-3.5 text-zinc-400 shrink-0" aria-hidden />
+                  )}
+                  {crumb.href && !isLast ? (
+                    <Link
+                      href={crumb.href}
+                      className="font-medium text-zinc-500 hover:text-zinc-900 transition-colors truncate max-w-[120px] sm:max-w-none dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-zinc-900 truncate max-w-[160px] sm:max-w-none dark:text-white">
+                      {crumb.label}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </nav>
-
-        <div className="ml-auto flex shrink-0 items-center gap-1 self-center md:gap-0">
-          <DropdownMenu onOpenChange={() => setMobileMenuOpen(false)}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                data-tour="profile-menu"
-                className="flex max-w-[140px] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-[var(--ds-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] data-[state=open]:bg-[var(--ds-surface-hover)] md:max-w-[220px]"
-              >
-                <CandidateAvatar
-                  fullName={user?.fullName}
-                  profilePhotoUrl={user?.profilePhotoUrl}
-                  className="size-7 border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-xs font-semibold text-[var(--ds-text-secondary)]"
-                  fallbackClassName="bg-transparent text-xs font-semibold text-[var(--ds-text-secondary)]"
-                />
-                <div className="hidden min-w-0 flex-col items-start text-left lg:flex">
-                  <span className="truncate text-[12px] font-semibold leading-tight text-[var(--ds-text)]">
-                    {displayName}
-                  </span>
-                  <span className="truncate text-[10px] font-medium leading-tight text-[var(--ds-text-muted)]">
-                    Candidate
-                  </span>
-                </div>
-                <ChevronDown
-                  strokeWidth={1.5}
-                  className="hidden size-4 shrink-0 text-[var(--ds-text-subtle)] lg:block"
-                  aria-hidden
-                />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" sideOffset={8} className="w-56">
-              <DropdownMenuLabel className="px-2.5 py-2 font-normal">
-                <div className="truncate text-sm font-semibold">
-                  {user?.fullName ?? 'Candidate'}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onSelect={() => router.push('/public-profile')}
-                className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm"
-              >
-                <UserRound className="h-4 w-4" />
-                Public profile
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={() => {
-                  if (pathname === '/dashboard') {
-                    requestTourStart();
-                  } else {
-                    markTourAutostart();
-                    router.push('/dashboard');
-                  }
-                }}
-                className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm"
-              >
-                <Compass className="h-4 w-4" />
-                Take a tour
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onSelect={() => void signOut()}
-                className="cursor-pointer gap-2 rounded-lg px-2.5 py-2 text-sm text-[var(--ds-coral)] focus:bg-[#fef4f4] focus:text-[var(--ds-coral)] dark:focus:bg-rose-950/40"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label="Toggle navigation"
-            aria-expanded={mobileMenuOpen}
-            className="rounded-lg p-2 text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)] xl:hidden"
-          >
-            {mobileMenuOpen ? (
-              <X strokeWidth={1.5} className="size-[18px]" />
-            ) : (
-              <Menu strokeWidth={1.5} className="size-[18px]" />
-            )}
-          </button>
-        </div>
       </div>
 
-      {mobileMenuOpen && (
-        <div className="absolute left-0 top-full z-50 flex w-full flex-col gap-1 border-b border-[var(--ds-border)] bg-[var(--ds-surface)] p-3 shadow-[var(--ds-card-shadow)] xl:hidden">
-          {navItems.map((item) => {
-            const active = isNavActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => setMobileMenuOpen(false)}
-                className={topbarMobileNavRowClass(active)}
+      <div className="flex items-center gap-3">
+        {/* 🔔 Notifications Bell Icon */}
+        <button
+          type="button"
+          aria-label="View notifications"
+          className="relative rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+        >
+          <Bell className="size-4" strokeWidth={1.75} />
+          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-900" />
+        </button>
+
+        {/* User Avatar Circle Dropdown */}
+        <div ref={profileRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((v) => !v)}
+            aria-expanded={profileOpen}
+            aria-label={`${user?.fullName ?? 'Candidate'} account menu`}
+            className="flex items-center rounded-full transition-transform hover:scale-105 focus:outline-none"
+          >
+            <CandidateAvatar
+              fullName={user?.fullName}
+              profilePhotoUrl={user?.profilePhotoUrl}
+              className="size-7 border border-zinc-900 bg-zinc-900 text-xs font-bold text-white shadow-2xs dark:border-zinc-700 dark:bg-zinc-800"
+              fallbackClassName="bg-zinc-900 text-xs font-bold text-white"
+            />
+          </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-[#161616]">
+              <div className="border-b border-zinc-100 px-3 py-2.5 dark:border-zinc-800">
+                <p className="truncate text-xs font-bold text-zinc-900 dark:text-white">
+                  {user?.fullName ?? 'Candidate'}
+                </p>
+                <p className="truncate text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  {user?.email ?? ''}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  router.push('/public-profile');
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                {item.name}
-              </Link>
-            );
-          })}
+                <UserRound strokeWidth={1.75} className="size-4 text-zinc-500" />
+                Public profile
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+              >
+                <LogOut strokeWidth={1.75} className="size-4" />
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </header>
   );
 }
+
+export { StudentTopbar as Navbar };

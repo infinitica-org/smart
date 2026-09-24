@@ -1,19 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  Award,
-  Calendar,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Sparkles,
-  Timer,
-} from 'lucide-react';
+import { Award, Calendar, CheckCircle2, FileText, Sparkles, Clock } from 'lucide-react';
 import type { CandidateCertificateDto } from '@smart/contracts';
 
 import {
-  CERTIFICATE_CARD_ACCENTS,
   certificateManageCtaLabel,
   certificateNeedsAssessment,
   certificateProofSummary,
@@ -22,9 +13,6 @@ import {
   certificateStatusIsVerified,
   certificateStatusLabel,
 } from '@/lib/certificate-entry-presenters';
-
-const metricTileBase =
-  'flex min-h-[4.5rem] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-3 ring-1';
 
 function formatDisplayDate(raw: string | null | undefined): string {
   if (!raw?.trim()) return '—';
@@ -39,179 +27,123 @@ function formatDisplayDate(raw: string | null | undefined): string {
 
 interface CertificateEntryCardProps {
   certificate: CandidateCertificateDto;
-  accentIndex: number;
+  accentIndex?: number;
 }
 
-export function CertificateEntryCard({ certificate, accentIndex }: CertificateEntryCardProps) {
-  const accent =
-    CERTIFICATE_CARD_ACCENTS[accentIndex % CERTIFICATE_CARD_ACCENTS.length] ??
-    CERTIFICATE_CARD_ACCENTS[0];
+export function CertificateEntryCard({ certificate }: CertificateEntryCardProps) {
   const proof = certificateProofSummary(certificate);
   const skillCount = certificate.skills.length;
   const manageHref = `/certificates/add?id=${certificate.certificateId}`;
   const assessmentHref = `/certificates/${certificate.certificateId}/verify`;
 
+  const isVerified = certificateStatusIsVerified(certificate.status);
+  const isRejected = certificateStatusIsRejected(certificate.status);
+  const isPending = certificateStatusIsPending(certificate.status);
+
   return (
-    <article
-      className={`font-[family-name:var(--tpo-font-sans)] overflow-hidden rounded-[18px] border bg-[var(--ds-surface)] shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${accent.cardBorder}`}
-    >
-      <div
-        className={`flex items-start justify-between gap-3 border-b border-[var(--ds-border-subtle)]/80 px-4 py-3.5 ${accent.headerWash}`}
-      >
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span
-            className={`mt-1.5 size-2 shrink-0 rounded-full shadow-sm ${accent.marker}`}
-            aria-hidden
-          />
+    <article className="overflow-hidden rounded-md border border-zinc-200/80 bg-white shadow-2xs font-sans select-none dark:border-zinc-800 dark:bg-[#161616]">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 border-b border-zinc-100 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-[#161616]">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-zinc-100 text-zinc-800 shadow-2xs dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            <Award className="size-4.5" />
+          </div>
+
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.022em] text-[var(--ds-text)]">
+              <h3 className="font-heading text-base font-bold tracking-tight text-zinc-950 dark:text-white">
                 {certificate.title?.trim() || 'Untitled certificate'}
               </h3>
-              {certificateStatusIsVerified(certificate.status) ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-[var(--ds-green-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--ds-green)]">
-                  <CheckCircle2 className="size-3" aria-hidden />
+
+              {isVerified && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <CheckCircle2 className="size-3 text-emerald-600" />
                   Verified
                 </span>
-              ) : null}
-              {certificateStatusIsRejected(certificate.status) ? (
-                <span className="rounded-md bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">
+              )}
+
+              {isPending && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/90 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                  <Clock className="size-3 text-amber-600" />
                   {certificateStatusLabel(certificate.status)}
                 </span>
-              ) : null}
-              {certificateStatusIsPending(certificate.status) ? (
-                <span
-                  className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${accent.pendingBadge}`}
-                >
-                  {certificateStatusLabel(certificate.status)}
+              )}
+
+              {isRejected && (
+                <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
+                  Rejected
                 </span>
-              ) : null}
+              )}
             </div>
-            <p className="mt-0.5 text-[13px] leading-snug tracking-[-0.01em] text-[var(--ds-text-muted)]">
-              {certificate.issuer?.trim() || 'Issuer not set'}
-              {certificate.certificateNumber ? (
-                <span className="text-[var(--ds-text-subtle)]">
-                  {' '}
-                  · ID {certificate.certificateNumber}
-                </span>
-              ) : null}
+
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              {certificate.issuer?.trim() || 'Issuer not specified'}
             </p>
           </div>
         </div>
 
         <Link
           href={manageHref}
-          className="shrink-0 rounded-lg bg-white/70 px-3 py-1.5 text-[12px] font-semibold tracking-[-0.01em] text-[var(--ds-text)] ring-1 ring-[#101828]/[0.06] transition hover:bg-white hover:ring-[var(--ds-green)]/25 hover:text-[var(--ds-green)]"
+          className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
         >
           {certificateManageCtaLabel(certificate.status)}
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 bg-[var(--ds-surface-muted)]/30 p-3 pt-2.5">
-        <div className={`${metricTileBase} ${accent.issuedTile}`}>
-          <span className="text-[11px] font-medium tracking-[-0.01em] text-[var(--ds-text-subtle)]">
-            Issued
+      {/* Bento Tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30">
+        <div className="flex flex-col justify-between rounded-md border border-zinc-200/80 bg-white p-3.5 shadow-2xs dark:border-zinc-800 dark:bg-[#161616]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Issue Date
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text)]">
-            <Calendar
-              className={`size-3.5 shrink-0 ${accent.issuedIcon}`}
-              strokeWidth={1.5}
-              aria-hidden
-            />
-            {formatDisplayDate(certificate.issueDate)}
-          </span>
+          <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-white">
+            <Calendar className="size-3.5 text-zinc-400 shrink-0" />
+            <span>{formatDisplayDate(certificate.issueDate)}</span>
+          </div>
         </div>
 
-        <div className={`${metricTileBase} ${accent.expiryTile}`}>
-          <span className="text-[11px] font-medium tracking-[-0.01em] text-[var(--ds-text-subtle)]">
-            Expires
+        <div className="flex flex-col justify-between rounded-md border border-zinc-200/80 bg-white p-3.5 shadow-2xs dark:border-zinc-800 dark:bg-[#161616]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Credential Proof
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text)]">
-            <Timer
-              className={`size-3.5 shrink-0 ${accent.expiryIcon}`}
-              strokeWidth={1.5}
-              aria-hidden
-            />
-            {formatDisplayDate(certificate.expiryDate)}
-          </span>
+          <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-white">
+            <FileText className="size-3.5 text-zinc-400 shrink-0" />
+            <span className="truncate">{proof.label}</span>
+          </div>
         </div>
 
-        <div className={`${metricTileBase} ${accent.skillsTile}`}>
-          <span className="text-[11px] font-medium tracking-[-0.01em] text-[var(--ds-text-subtle)]">
-            Skills claimed
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text)]">
-            <Sparkles
-              className={`size-3.5 shrink-0 ${accent.skillsIcon}`}
-              strokeWidth={1.5}
-              aria-hidden
-            />
-            {skillCount === 0 ? 'None yet' : `${skillCount} skill${skillCount === 1 ? '' : 's'}`}
-          </span>
-        </div>
+        <div className="flex flex-col justify-between rounded-md border border-zinc-200/80 bg-white p-3.5 shadow-2xs sm:col-span-2 dark:border-zinc-800 dark:bg-[#161616]">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Mapped Skills ({skillCount})
+            </span>
+            {certificateNeedsAssessment(certificate) && (
+              <Link
+                href={assessmentHref}
+                className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
+              >
+                <Sparkles className="size-3 text-amber-400" />
+                Take Assessment
+              </Link>
+            )}
+          </div>
 
-        <div className={`${metricTileBase} ${accent.proofTile}`}>
-          <span className="text-[11px] font-medium tracking-[-0.01em] text-[var(--ds-text-subtle)]">
-            {proof.label}
-          </span>
-          <span
-            className="inline-flex min-w-0 items-center gap-1.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--ds-text-secondary)]"
-            title={proof.detail}
-          >
-            <FileText
-              className={`size-3.5 shrink-0 ${accent.proofIcon}`}
-              strokeWidth={1.5}
-              aria-hidden
-            />
-            <span className="truncate">{proof.detail}</span>
-          </span>
-        </div>
-      </div>
-
-      {skillCount > 0 || certificate.verificationUrl || certificateNeedsAssessment(certificate) ? (
-        <div className="space-y-2.5 border-t border-[var(--ds-border-subtle)]/80 px-4 py-3">
-          {skillCount > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {certificate.skills.slice(0, 4).map((skill) => (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {skillCount > 0 ? (
+              certificate.skills.map((skill) => (
                 <span
                   key={skill.skillCode}
-                  className="rounded-md bg-white/80 px-2 py-0.5 text-[11px] font-medium text-[var(--ds-text-secondary)] ring-1 ring-[#101828]/[0.06]"
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   {skill.skillName}
                 </span>
-              ))}
-              {skillCount > 4 ? (
-                <span className="rounded-md px-2 py-0.5 text-[11px] font-medium text-[var(--ds-text-muted)]">
-                  +{skillCount - 4} more
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-3 text-[12px] font-medium">
-            {certificate.verificationUrl ? (
-              <a
-                href={certificate.verificationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[var(--ds-green)] hover:underline"
-              >
-                <ExternalLink className="size-3.5" aria-hidden />
-                Verify on issuer site
-              </a>
-            ) : null}
-            {certificateNeedsAssessment(certificate) ? (
-              <Link
-                href={assessmentHref}
-                className="inline-flex items-center gap-1 text-[var(--ds-text)] hover:text-[var(--ds-green)]"
-              >
-                <Award className="size-3.5" aria-hidden />
-                Take assessment
-              </Link>
-            ) : null}
+              ))
+            ) : (
+              <span className="text-xs text-zinc-400">No skills mapped yet</span>
+            )}
           </div>
         </div>
-      ) : null}
+      </div>
     </article>
   );
 }

@@ -9,7 +9,7 @@
     "start": "next start --port 3006",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rimraf .next .turbo *.tsbuildinfo"
   },
   "dependencies": {

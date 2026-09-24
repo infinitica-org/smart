@@ -83,7 +83,7 @@ export function PlacementSnapshotCard() {
       </div>
 
       {loading ? (
-        <div className={`${dashboardSkeletonClass} mt-6 h-32 w-full rounded-2xl`} />
+        <div className={`${dashboardSkeletonClass} mt-6 h-32 w-full rounded-xl`} />
       ) : (
         <div className="mt-6 grid grid-cols-3 gap-3 text-center">
           <div>

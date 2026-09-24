@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, Info } from 'lucide-react';
+import { CheckCircle2, Info, Building2, GraduationCap } from 'lucide-react';
 import type { AuthenticatedUser, CandidateEducationDto } from '@smart/contracts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@smart/ui/tooltip';
 
@@ -13,12 +13,6 @@ import {
   primaryDepartmentName,
   primaryInstitutionName,
 } from '@/lib/profile-identity';
-import {
-  profileCardClass,
-  profileHeadingClass,
-  profileMutedTextClass,
-  profileSecondaryTextClass,
-} from '@/lib/profile-ui-classes';
 
 const PROFILE_COMPLETION_HELP =
   'Profile completion tracks the sections recruiters and placement teams expect—skills, education, experience, and more. A complete profile improves matching; gaps may cause you to be skipped.';
@@ -42,10 +36,10 @@ function firstIncompleteAreaHref(
 }
 
 const HERO_AVATAR_CLASS =
-  'h-[104px] w-[104px] shrink-0 rounded-full border-0 bg-[var(--ds-surface-muted)] text-2xl font-semibold text-[var(--ds-text)]';
+  'h-[96px] w-[96px] shrink-0 rounded-full border-0 bg-zinc-100 text-2xl font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white';
 
 const VERIFIED_BADGE_CLASS =
-  'inline-flex items-center gap-1 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--ds-text-secondary)]';
+  'inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300';
 
 export function ProfileHeroBanner({
   user,
@@ -66,119 +60,111 @@ export function ProfileHeroBanner({
   const completed = completedCount ?? 0;
 
   return (
-    <section aria-label="Profile summary" data-testid="profile-hero-banner" className="pt-12">
-      <div className={`${profileCardClass} relative overflow-visible px-0 pb-6 pt-0`}>
-        <div className="grid gap-8 px-5 pt-6 md:px-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-10 lg:pb-7 lg:pt-5">
-          <div className="min-w-0 space-y-1 pt-2 text-center lg:space-y-1.5 lg:pt-14 lg:text-left">
-            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:justify-start">
-              <h2
-                className={`text-[22px] font-semibold leading-tight md:text-[25px] ${profileHeadingClass}`}
-              >
-                {user?.fullName?.trim() || 'Your name'}
-              </h2>
-              {linkedinVerified ? (
-                <span className={VERIFIED_BADGE_CLASS}>
-                  <CheckCircle2 className="h-3 w-3 text-[var(--ds-green)]" aria-hidden="true" />
-                  LinkedIn
-                </span>
-              ) : null}
-              {githubVerified ? (
-                <span className={VERIFIED_BADGE_CLASS}>
-                  <CheckCircle2 className="h-3 w-3 text-[var(--ds-green)]" aria-hidden="true" />
-                  GitHub
-                </span>
-              ) : null}
+    <section
+      aria-label="Profile summary"
+      data-testid="profile-hero-banner"
+      className="font-sans select-none"
+    >
+      <div className="rounded-md border border-zinc-200/80 bg-white p-6 shadow-2xs dark:border-zinc-800 dark:bg-[#161616]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            {/* Avatar with Progress Ring */}
+            <div className="flex shrink-0 items-center justify-center">
+              <ProfileAvatarProgressRing percent={safePercent} loading={loading}>
+                <ProfilePhotoEditControl
+                  fullName={user?.fullName}
+                  profilePhotoUrl={user?.profilePhotoUrl}
+                  avatarClassName={HERO_AVATAR_CLASS}
+                  fallbackClassName="rounded-full bg-zinc-900 text-2xl font-bold text-white dark:bg-white dark:text-zinc-900"
+                />
+              </ProfileAvatarProgressRing>
             </div>
 
-            {departmentName ? (
-              <p
-                className={`text-[15px] font-semibold leading-snug md:text-[17px] ${profileHeadingClass}`}
-              >
-                {departmentName}
-              </p>
-            ) : hasEducation ? (
-              <p
-                className={`text-[15px] font-medium leading-snug md:text-[16px] ${profileMutedTextClass}`}
-              >
-                Department not added yet
-              </p>
-            ) : null}
+            {/* Profile Text Info */}
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-heading text-xl font-bold tracking-tight text-zinc-950 sm:text-2xl dark:text-white">
+                  {user?.fullName?.trim() || 'Your Name'}
+                </h1>
+                {linkedinVerified && (
+                  <span className={VERIFIED_BADGE_CLASS}>
+                    <CheckCircle2 className="size-3 text-emerald-600" />
+                    LinkedIn Verified
+                  </span>
+                )}
+                {githubVerified && (
+                  <span className={VERIFIED_BADGE_CLASS}>
+                    <CheckCircle2 className="size-3 text-emerald-600" />
+                    GitHub Verified
+                  </span>
+                )}
+              </div>
 
-            {batchLabel || collegeName || hasEducation ? (
-              <div
-                className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] leading-snug lg:justify-start ${profileMutedTextClass}`}
-              >
-                {batchLabel ? (
-                  <span className="inline-flex rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-2.5 py-0.5 text-[11px] font-medium tracking-wide text-[var(--ds-text-secondary)]">
+              {departmentName ? (
+                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                  {departmentName}
+                </p>
+              ) : hasEducation ? (
+                <p className="text-xs text-zinc-400">Department not added yet</p>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {batchLabel && (
+                  <span className="inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    <GraduationCap className="size-3 mr-1 text-zinc-500 inline" />
                     {batchLabel}
                   </span>
-                ) : null}
-                {batchLabel && collegeName ? (
-                  <span aria-hidden="true" className="text-[var(--ds-text-subtle)]">
-                    ·
-                  </span>
-                ) : null}
+                )}
                 {collegeName ? (
-                  <span className="font-medium text-[var(--ds-text-muted)]">{collegeName}</span>
+                  <span className="inline-flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-300">
+                    <Building2 className="size-3.5 text-zinc-400" />
+                    {collegeName}
+                  </span>
                 ) : hasEducation ? (
-                  <span>College not added yet</span>
+                  <span>College not specified</span>
                 ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
 
-          <div className="-mt-14 flex flex-col items-center lg:-mt-16 lg:justify-self-end">
-            <ProfileAvatarProgressRing percent={safePercent} loading={loading}>
-              <ProfilePhotoEditControl
-                fullName={user?.fullName}
-                profilePhotoUrl={user?.profilePhotoUrl}
-                avatarClassName={HERO_AVATAR_CLASS}
-                fallbackClassName="rounded-full bg-[var(--ds-green-soft)] text-2xl font-semibold text-[var(--ds-green)]"
-              />
-            </ProfileAvatarProgressRing>
+          {/* Right: Verification Progress Pill Card */}
+          <div className="flex flex-col items-start lg:items-end gap-1.5 shrink-0 border-t lg:border-t-0 border-zinc-100 pt-4 lg:pt-0 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+              <span className="font-heading text-lg font-extrabold text-zinc-950 dark:text-white">
+                {safePercent}%
+              </span>
+              <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                Profile Readiness
+              </span>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="What is profile readiness?"
+                      className="rounded-full p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                    >
+                      <Info className="size-3.5 shrink-0" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6} className="max-w-[260px] text-xs">
+                    {PROFILE_COMPLETION_HELP}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
 
-            {loading ? (
-              <p className={`mt-3 text-sm ${profileSecondaryTextClass}`}>Loading progress…</p>
-            ) : (
-              <>
-                <p
-                  className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 text-[13px] font-medium ${profileSecondaryTextClass}`}
-                >
-                  <span className="font-semibold text-[var(--ds-green)]">{safePercent}%</span>
-                  <span>Profile completion</span>
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label="What is profile completion?"
-                          className="inline-flex rounded-full p-0.5 text-[var(--ds-text-subtle)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-text)]"
-                        >
-                          <Info className="size-3.5 shrink-0" aria-hidden="true" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        sideOffset={6}
-                        className="max-w-[260px] text-left"
-                      >
-                        {PROFILE_COMPLETION_HELP}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </p>
-                <p className={`mt-1 text-[12px] ${profileMutedTextClass}`}>
-                  {completed} of {total} sections complete
-                </p>
-                {completed < total ? (
-                  <Link
-                    href={firstIncompleteAreaHref(areaStatus)}
-                    className="mt-1.5 inline-flex text-[12px] font-medium text-[var(--ds-green)] hover:text-[var(--ds-green-hover)]"
-                  >
-                    View missing sections →
-                  </Link>
-                ) : null}
-              </>
+            <p className="text-[11px] text-zinc-400">
+              {completed} of {total} verification modules complete
+            </p>
+
+            {completed < total && (
+              <Link
+                href={firstIncompleteAreaHref(areaStatus)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-200 pt-0.5"
+              >
+                Complete missing sections →
+              </Link>
             )}
           </div>
         </div>

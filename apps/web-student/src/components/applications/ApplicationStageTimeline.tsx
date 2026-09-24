@@ -18,7 +18,7 @@ export function ApplicationStageTimeline({
 
   return (
     <div>
-      <div className="flex flex-1 gap-1" data-testid="ats-timeline" data-stage={stage}>
+      <div className="flex flex-1 gap-1.5" data-testid="ats-timeline" data-stage={stage}>
         {ATS_PIPELINE_STAGES.map((column) => {
           const reached = stageReached(stage, column);
           const current = !terminal && column === stage;
@@ -26,17 +26,25 @@ export function ApplicationStageTimeline({
             <div key={column} className="min-w-0 flex-1">
               <div
                 className={cn(
-                  'h-1.5 rounded-full',
-                  terminal ? 'bg-white/10' : reached ? 'bg-foreground' : 'bg-white/10',
-                  current && 'shadow-[0_0_10px_rgba(19,19,19,0.45)]',
+                  'h-2 rounded-full transition-all duration-300',
+                  terminal
+                    ? 'bg-zinc-200 dark:bg-zinc-800'
+                    : reached
+                      ? 'bg-zinc-900 dark:bg-white'
+                      : 'bg-zinc-200 dark:bg-zinc-800',
+                  current && 'ring-2 ring-emerald-500/40 bg-emerald-600 dark:bg-emerald-400',
                 )}
                 data-reached={reached ? 'true' : 'false'}
               />
               {labels ? (
                 <p
                   className={cn(
-                    'mt-1.5 hidden truncate text-[10px] sm:block',
-                    current ? 'text-foreground' : 'text-white/30',
+                    'mt-1.5 hidden truncate text-[10px] sm:block font-medium',
+                    current
+                      ? 'font-bold text-zinc-900 dark:text-white'
+                      : reached
+                        ? 'text-zinc-600 dark:text-zinc-300'
+                        : 'text-zinc-400 dark:text-zinc-500',
                   )}
                 >
                   {ATS_STAGE_LABELS[column]}
@@ -47,7 +55,9 @@ export function ApplicationStageTimeline({
         })}
       </div>
       {terminal ? (
-        <p className="mt-2 text-xs font-semibold text-foreground">{ATS_STAGE_LABELS[stage]}</p>
+        <p className="mt-2 text-xs font-semibold text-zinc-900 dark:text-white">
+          {ATS_STAGE_LABELS[stage]}
+        </p>
       ) : null}
     </div>
   );

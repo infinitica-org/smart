@@ -33,10 +33,12 @@ export function seedAccountEmails(domain: string): {
   admin: string;
   tpo: string;
   student: string;
+  company: string;
 } {
   return {
     admin: `admin@${domain}`,
     tpo: `tpo@${domain}`,
     student: `student@${domain}`,
+    company: `company@${domain}`,
   };
 }

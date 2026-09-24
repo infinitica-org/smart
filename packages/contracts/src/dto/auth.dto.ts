@@ -24,6 +24,13 @@ export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequestSchema>;
 
 /* ---------------------------- self-serve register -------------------------- */
 
+export const RegisterStudentRequestSchema = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  email: EmailSchema,
+  password: z.string().min(8).max(200),
+});
+export type RegisterStudentRequest = z.infer<typeof RegisterStudentRequestSchema>;
+
 export const RegisterRequestSchema = z.object({
   email: EmailSchema,
   password: z.string().min(8).max(200),
@@ -189,3 +196,10 @@ export const CreateApiKeyResponseSchema = z.object({
 export type CreateApiKeyResponse = z.infer<typeof CreateApiKeyResponseSchema>;
 
 export const API_KEY_HEADER = 'x-smart-api-key' as const;
+
+/* ------------------------------- role assignment -------------------------- */
+
+export const AssignRoleRequestSchema = z.object({
+  role: UserRoleSchema,
+});
+export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;

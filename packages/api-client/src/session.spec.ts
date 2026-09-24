@@ -43,11 +43,13 @@ describe('resolvePortalOriginsFromEnv', () => {
     vi.stubEnv('NEXT_PUBLIC_STUDENT_URL', 'https://student.example.com');
     vi.stubEnv('NEXT_PUBLIC_TPO_URL', 'https://tpo.example.com');
     vi.stubEnv('NEXT_PUBLIC_ADMIN_URL', 'https://admin.example.com');
+    vi.stubEnv('NEXT_PUBLIC_COMPANY_URL', 'https://company.example.com');
 
     expect(resolvePortalOriginsFromEnv()).toEqual({
       student: 'https://student.example.com',
       tpo: 'https://tpo.example.com',
       admin: 'https://admin.example.com',
+      company: 'https://company.example.com',
     });
   });
 });

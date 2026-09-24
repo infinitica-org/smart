@@ -24,38 +24,6 @@ import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api } from '../../lib/api';
 import { validateInstitutionEmail } from '../../lib/domain-validation';
 import { loadAutoApproveInvites, loadExtraEmailDomains } from '../../lib/tpo-institution-settings';
-import {
-  bentoCardMutedClass,
-  bentoChipClass,
-  bentoCompactCardClass,
-  bentoCompactToolbarClass,
-  bentoSegmentTabActiveClass,
-  bentoSegmentTabIdleClass,
-  bentoSegmentedTabsClass,
-  candidatesControlClass,
-  candidatesPageStackClass,
-  bentoTableBodyRowClass,
-  bentoTableCellClass,
-  bentoTableClass,
-  bentoTableHeadCellClass,
-  bentoTableHeadRowClass,
-  bentoTableShellClass,
-  dashboardErrorNoticeClass,
-  dashboardMetricHintClass,
-  dashboardMintBadgeClass,
-  dashboardPendingBadgeClass,
-  dashboardPillClass,
-  dashboardPrimaryButtonClass,
-  dashboardRoseBadgeClass,
-  dashboardSuccessNoticeClass,
-  dashboardSectionTitleClass,
-} from '../../lib/tpo-dashboard-ui';
-import {
-  inputClass,
-  labelClass,
-  secondaryButtonClass,
-  secondaryButtonSmClass,
-} from '../../lib/tpo-ui';
 
 // ─────────────────── helpers ────────────────────
 
@@ -79,6 +47,14 @@ function safeMsg(err: unknown, fallback: string): string {
   if (isSmartApiError(err)) return err.message;
   if (err instanceof Error) return err.message;
   return fallback;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
+  }
+  return (name.slice(0, 2) || 'ST').toUpperCase();
 }
 
 // ─────────────────── component ────────────────────
@@ -175,6 +151,9 @@ export function WhitelistWorkspace() {
   }, [selectedBatchId]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.title = 'Whitelist · SMART TPO';
+    }
     void loadScaffold();
   }, []); // loadScaffold intentionally omitted — it only runs on mount
 
@@ -399,60 +378,62 @@ export function WhitelistWorkspace() {
   const activeMembers = members.filter((m) => m.emailVerified);
 
   return (
-    <div className={candidatesPageStackClass}>
+    <div className="space-y-4 pb-12">
       <TpoBentoPageHeader
         compact
         title="Whitelist"
         description="Upload and invite candidates by email, bulk paste, or CSV. Only verified institutional domains are accepted."
         icon={UserPlus}
-        accent="mint"
         badge={
-          <span className={`${bentoChipClass} inline-flex items-center gap-1`}>
-            <Lock className="size-3" /> Domain Locked
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200/80 bg-zinc-100/90 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
+            <Lock className="size-3 text-zinc-500" /> Domain Locked
           </span>
         }
         aside={
           <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-            <div className={`${bentoCardMutedClass} flex items-center gap-2.5 !p-3`}>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--tpo-dash-accent-mint-soft)] text-[var(--tpo-dash-accent-mint)]">
-                <ShieldCheck className="size-3.5" />
+            <div className="flex items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white p-3 shadow-2xs">
+              <div className="flex size-8 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-2xs">
+                <ShieldCheck className="size-4" />
               </div>
               <div>
-                <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                   Institution Domain
                 </span>
                 {scaffoldLoading ? (
-                  <Loader2 className="size-3 animate-spin text-[var(--ds-text-muted)]" />
+                  <Loader2 className="size-3 animate-spin text-zinc-400" />
                 ) : (
-                  <span className="text-[13px] font-semibold text-[var(--ds-text)]">
+                  <span className="font-mono text-xs font-bold text-zinc-900">
                     @{domain ?? '(unknown)'}
                   </span>
                 )}
               </div>
             </div>
-            <Link
-              href="/settings"
-              className="text-[12px] font-semibold text-[var(--ds-link)] hover:underline"
-            >
-              Domain settings
+            <Link href="/settings" className="text-xs font-semibold text-zinc-900 hover:underline">
+              Domain settings →
             </Link>
           </div>
         }
       />
 
-      <div className={bentoCompactToolbarClass}>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
-          Active batch
+      {/* Active Batch Selector */}
+      <div className="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-2xs">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          Target Batch Cohort
         </p>
         {scaffoldLoading ? (
-          <Loader2 className="size-4 animate-spin text-[var(--ds-text-muted)]" />
+          <div className="flex items-center gap-2 py-1 text-xs text-zinc-500">
+            <Loader2 className="size-4 animate-spin" /> Loading batches…
+          </div>
         ) : batches.length === 0 ? (
           <form
             onSubmit={handleCreateBatch}
-            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            className="flex flex-col gap-2.5 sm:flex-row sm:items-end"
           >
             <div className="min-w-0 flex-1">
-              <label className={`${labelClass} mb-1.5 block`} htmlFor="whitelist-new-batch">
+              <label
+                className="mb-1.5 block text-xs font-semibold text-zinc-700"
+                htmlFor="whitelist-new-batch"
+              >
                 Create a batch to upload into
               </label>
               <input
@@ -461,59 +442,74 @@ export function WhitelistWorkspace() {
                 value={newBatchName}
                 onChange={(e) => setNewBatchName(e.target.value)}
                 placeholder="e.g. Main Campus 2026"
-                className={inputClass}
+                className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
             <button
               type="submit"
               disabled={creatingBatch || !newBatchName.trim()}
-              className={dashboardPrimaryButtonClass}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-zinc-800 disabled:opacity-50"
             >
               {creatingBatch ? 'Creating…' : 'Create batch'}
             </button>
           </form>
         ) : (
-          <select
-            aria-label="Select batch for onboarding"
-            value={selectedBatchId}
-            onChange={(e) => setSelectedBatchId(e.target.value)}
-            className={candidatesControlClass}
-          >
-            {batches.map((b) => (
-              <option key={b.batchId} value={b.batchId}>
-                {b.name} {b.code ? `(${b.code})` : ''} — {b.memberCount} members
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <select
+              aria-label="Select batch for onboarding"
+              value={selectedBatchId}
+              onChange={(e) => setSelectedBatchId(e.target.value)}
+              className="h-9.5 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 text-xs font-semibold text-zinc-900 transition-all hover:bg-white focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:max-w-md"
+            >
+              {batches.map((b) => (
+                <option key={b.batchId} value={b.batchId}>
+                  {b.name} {b.code ? `(${b.code})` : ''} — {b.memberCount} members
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-zinc-400">
+              {batches.length} active {batches.length === 1 ? 'batch' : 'batches'}
+            </span>
+          </div>
         )}
       </div>
 
       {/* Notifications */}
       {error ? (
-        <div className={`${dashboardErrorNoticeClass} flex items-center justify-between gap-3`}>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 shadow-2xs">
           <div className="flex items-center gap-2">
             <AlertCircle className="size-4 shrink-0" />
             <p>{error}</p>
           </div>
-          <button type="button" onClick={() => setError(null)} className="px-1 text-[#9f1239]">
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="px-1 text-rose-700 hover:text-rose-900"
+          >
             ✕
           </button>
         </div>
       ) : null}
       {successMsg ? (
-        <div className={`${dashboardSuccessNoticeClass} flex items-center justify-between gap-3`}>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800 shadow-2xs">
           <div className="flex items-center gap-2">
-            <CheckCircle className="size-4 shrink-0" />
+            <CheckCircle className="size-4 shrink-0 text-emerald-600" />
             <p>{successMsg}</p>
           </div>
-          <button type="button" onClick={() => setSuccessMsg(null)} className="px-1 text-[#047857]">
+          <button
+            type="button"
+            onClick={() => setSuccessMsg(null)}
+            className="px-1 text-emerald-800 hover:text-emerald-950"
+          >
             ✕
           </button>
         </div>
       ) : null}
 
-      <div className={bentoCompactCardClass}>
-        <div className={bentoSegmentedTabsClass}>
+      {/* Onboarding Mode Workspace */}
+      <div className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-2xs">
+        {/* Segmented Switcher */}
+        <div className="inline-flex items-center gap-1 rounded-lg border border-zinc-200/70 bg-zinc-100/90 p-1 mb-5">
           {(
             [
               ['single', 'Single candidate', Mail],
@@ -524,67 +520,72 @@ export function WhitelistWorkspace() {
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] px-3 py-2 text-[13px] font-semibold transition-colors duration-200 sm:flex-none ${
-                activeTab === tab ? bentoSegmentTabActiveClass : bentoSegmentTabIdleClass
+              className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                activeTab === tab
+                  ? 'bg-white text-zinc-900 shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              <Icon className="size-4 shrink-0" /> {label}
+              <Icon className="size-3.5 shrink-0" /> {label}
             </button>
           ))}
         </div>
 
         {activeTab === 'single' && (
-          <form onSubmit={handleSingleSubmit} className="max-w-3xl space-y-3">
+          <form onSubmit={handleSingleSubmit} className="max-w-2xl space-y-3.5">
             <div>
-              <label className={`${labelClass} mb-1.5 block`}>Candidate Full Name</label>
+              <label className="mb-1.5 block text-xs font-semibold text-zinc-700">
+                Candidate Full Name
+              </label>
               <input
                 type="text"
                 placeholder="e.g. Aarav Sharma"
-                className={inputClass}
+                className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
                 value={singleName}
                 onChange={(e) => setSingleName(e.target.value)}
               />
             </div>
 
             <div>
-              <label className={`${labelClass} mb-1.5 block`}>Candidate Institutional Email</label>
+              <label className="mb-1.5 block text-xs font-semibold text-zinc-700">
+                Candidate Institutional Email
+              </label>
               <div className="relative">
                 <input
                   type="email"
                   placeholder={`student@${domain ?? 'institution.edu'}`}
-                  className={`${inputClass} pr-10`}
+                  className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 pl-3 pr-10 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   value={singleEmail}
                   onChange={(e) => setSingleEmail(e.target.value)}
                 />
                 {singleEmail && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     {isSingleValid ? (
-                      <CheckCircle className="size-4 text-[#047857]" />
+                      <CheckCircle className="size-4 text-emerald-600" />
                     ) : (
-                      <AlertCircle className="size-4 text-[#9f1239]" />
+                      <AlertCircle className="size-4 text-rose-600" />
                     )}
                   </div>
                 )}
               </div>
-              <p className={`${dashboardMetricHintClass} mt-1.5 text-[12px]`}>
+              <p className="mt-1 text-[11px] text-zinc-400">
                 Must belong to @{domain ?? '(loading…)'} or its subdomains. Candidate selects their
                 stream during onboarding.
               </p>
             </div>
 
             <div>
-              <label className={`${labelClass} mb-1.5 block`}>
-                Group / Section{' '}
-                <span className="font-normal text-[var(--ds-text-muted)]">(Optional)</span>
+              <label className="mb-1.5 block text-xs font-semibold text-zinc-700">
+                Group / Section <span className="font-normal text-zinc-400">(Optional)</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g. CSE-A, Batch 2026, Section 1"
-                className={inputClass}
+                className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
                 value={singleGroupLabel}
                 onChange={(e) => setSingleGroupLabel(e.target.value)}
               />
-              <p className={`${dashboardMetricHintClass} mt-1.5 text-[12px]`}>
+              <p className="mt-1 text-[11px] text-zinc-400">
                 Optional group or section label to organize candidates within the batch.
               </p>
             </div>
@@ -592,7 +593,7 @@ export function WhitelistWorkspace() {
             <button
               type="submit"
               disabled={singleSubmitting || !singleName || !singleEmail || !selectedBatchId}
-              className={dashboardPrimaryButtonClass}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-zinc-800 disabled:opacity-50"
             >
               {singleSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -607,56 +608,56 @@ export function WhitelistWorkspace() {
 
         {activeTab === 'bulk' && (
           <div className="space-y-8">
-            <div className="max-w-3xl space-y-3">
+            <div className="max-w-2xl space-y-3.5">
               <div>
-                <h3 className={dashboardSectionTitleClass}>Quick paste</h3>
-                <p className={`${dashboardMetricHintClass} mt-1 text-[12px]`}>
+                <h3 className="text-sm font-bold text-zinc-900">Quick paste</h3>
+                <p className="mt-0.5 text-xs text-zinc-400">
                   Paste institutional emails only — names are inferred from the address. For full
                   name and group columns, use file upload below.
                 </p>
               </div>
               <div>
-                <label className={`${labelClass} mb-2 block`}>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-700">
                   Candidate emails (one per line or comma-separated)
                 </label>
                 <textarea
                   rows={5}
                   placeholder={`student1@${domain ?? 'institution.edu'}\nstudent2@${domain ?? 'institution.edu'}\nstudent3@${domain ?? 'institution.edu'}`}
-                  className={`${inputClass} font-mono`}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50/60 p-3 font-mono text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   value={bulkText}
                   onChange={(e) => setBulkText(e.target.value)}
                 />
               </div>
 
-              <button type="button" onClick={handleBulkParse} className={secondaryButtonClass}>
+              <button
+                type="button"
+                onClick={handleBulkParse}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-900 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-300"
+              >
                 Validate Emails
               </button>
 
               {parsedBulk.length > 0 && (
                 <div className="space-y-3 pt-2">
-                  <h4 className={dashboardSectionTitleClass}>
+                  <h4 className="text-xs font-bold text-zinc-900">
                     Validation Results ({parsedBulk.filter((p) => p.isValid).length} Valid /{' '}
                     {parsedBulk.filter((p) => !p.isValid).length} Invalid)
                   </h4>
 
-                  <div
-                    className={`${bentoCardMutedClass} max-h-48 divide-y divide-[var(--ds-border-subtle)] overflow-y-auto !p-0`}
-                  >
+                  <div className="max-h-48 divide-y divide-zinc-100 overflow-y-auto rounded-lg border border-zinc-200/80 bg-zinc-50/50">
                     {parsedBulk.map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between px-3 py-2.5 text-xs"
+                        className="flex items-center justify-between px-3 py-2 text-xs"
                       >
-                        <span className="font-mono text-[var(--ds-text-secondary)]">
-                          {item.email}
-                        </span>
+                        <span className="font-mono text-zinc-700">{item.email}</span>
                         {item.isValid ? (
-                          <span className={dashboardMintBadgeClass}>
-                            <Check className="size-3" /> Valid Domain
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                            <Check className="size-3 text-emerald-600" /> Valid Domain
                           </span>
                         ) : (
-                          <span className={dashboardRoseBadgeClass}>
-                            <AlertCircle className="size-3" /> Invalid Domain
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                            <AlertCircle className="size-3 text-rose-600" /> Invalid Domain
                           </span>
                         )}
                       </div>
@@ -671,7 +672,7 @@ export function WhitelistWorkspace() {
                       parsedBulk.filter((p) => p.isValid).length === 0 ||
                       !selectedBatchId
                     }
-                    className={dashboardPrimaryButtonClass}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-zinc-800 disabled:opacity-50"
                   >
                     {bulkSubmitting ? (
                       <span className="flex items-center gap-2">
@@ -685,16 +686,16 @@ export function WhitelistWorkspace() {
               )}
             </div>
 
-            <div className="border-t border-[var(--ds-border-subtle)] pt-6">
+            <div className="border-t border-zinc-100 pt-6">
               {!selectedBatchId ? (
-                <p className="text-[13px] text-[var(--ds-text-muted)]">
+                <p className="text-xs text-zinc-500">
                   Create or select an active batch above to upload a CSV or Excel roster.
                 </p>
               ) : !bulkFileImportEnabled ? (
-                <div className={`${bentoCardMutedClass} text-[13px] text-[var(--ds-text-muted)]`}>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600">
                   File import (CSV/Excel) is not enabled on your institution plan. Use{' '}
-                  <strong className="text-[var(--ds-text)]">Quick paste</strong> above, or contact
-                  SMART to enable bulk file import.
+                  <strong className="text-zinc-900">Quick paste</strong> above, or contact SMART to
+                  enable bulk file import.
                 </div>
               ) : (
                 <BatchImportWizard
@@ -712,20 +713,21 @@ export function WhitelistWorkspace() {
         )}
       </div>
 
-      <div className={bentoTableShellClass}>
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--ds-border-subtle)] px-5 py-4">
+      {/* Pending & Active Invitations Table */}
+      <div className="overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--ds-text)]">
-              Pending & Active Invitations
-            </h2>
-            <p className="mt-0.5 text-[12px] text-[var(--ds-text-muted)]">
+            <h2 className="text-sm font-bold text-zinc-900">Pending & Active Invitations</h2>
+            <p className="mt-0.5 text-xs text-zinc-400">
               {selectedBatchId
-                ? `Showing candidates for the selected batch.`
-                : `Select a batch above to see candidates.`}
+                ? `Showing candidates for the selected batch cohort.`
+                : `Select a batch above to view invited candidates.`}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className={bentoChipClass}>{members.length} Total</span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center rounded-md border border-zinc-200/80 bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
+              {members.length} Total
+            </span>
             {!autoApproveInvites && selectedBatchId && pendingMembers.length > 0 ? (
               <button
                 type="button"
@@ -742,7 +744,7 @@ export function WhitelistWorkspace() {
                   }
                 }}
                 disabled={actionLoadingId === 'send-batch'}
-                className={dashboardPrimaryButtonClass}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-zinc-800 disabled:opacity-50"
               >
                 Send pending invites
               </button>
@@ -751,7 +753,7 @@ export function WhitelistWorkspace() {
               type="button"
               onClick={() => void loadMembers()}
               disabled={rosterLoading}
-              className={`${secondaryButtonSmClass} !px-2 !py-2`}
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-zinc-200/90 bg-white text-zinc-700 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-300"
               title="Refresh"
             >
               <RefreshCw className={`size-3.5 ${rosterLoading ? 'animate-spin' : ''}`} />
@@ -760,77 +762,85 @@ export function WhitelistWorkspace() {
         </div>
 
         {!selectedBatchId ? (
-          <div
-            className={`${bentoTableCellClass} py-6 text-center text-[13px] text-[var(--ds-text-muted)]`}
-          >
+          <div className="py-8 text-center text-xs text-zinc-500">
             No batch selected. Choose a batch to view invited candidates.
           </div>
         ) : rosterLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="size-5 animate-spin text-[var(--ds-text-muted)]" />
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-zinc-700" />
           </div>
         ) : members.length === 0 ? (
-          <div
-            className={`${bentoTableCellClass} py-6 text-center text-[13px] text-[var(--ds-text-muted)]`}
-          >
+          <div className="py-8 text-center text-xs text-zinc-500">
             No candidates in this batch yet. Use the tabs above to onboard candidates.
           </div>
         ) : (
-          <div className="overflow-x-auto px-1 pb-1">
-            <table className={bentoTableClass}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs font-sans">
               <thead>
-                <tr className={bentoTableHeadRowClass}>
-                  <th className={bentoTableHeadCellClass}>Candidate</th>
-                  <th className={bentoTableHeadCellClass}>Group</th>
-                  <th className={bentoTableHeadCellClass}>Status</th>
-                  <th className={`${bentoTableHeadCellClass} text-right`}>Actions</th>
+                <tr className="border-b border-zinc-200/80 bg-zinc-50/75 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                  <th className="px-4 py-3">Candidate</th>
+                  <th className="px-4 py-3">Group</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-zinc-100">
                 {activeMembers.map((m) => (
-                  <tr key={m.userId} className={bentoTableBodyRowClass}>
-                    <td className={bentoTableCellClass}>
-                      <div className="font-semibold text-[var(--ds-text)]">{m.fullName}</div>
-                      <div className="font-mono text-[12px] text-[var(--ds-text-muted)]">
-                        {m.email}
+                  <tr key={m.userId} className="transition-colors hover:bg-zinc-50/60">
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-zinc-900 text-xs font-bold text-white shadow-2xs">
+                          {getInitials(m.fullName)}
+                        </span>
+                        <div>
+                          <div className="font-bold text-zinc-900">{m.fullName}</div>
+                          <div className="font-mono text-[11px] text-zinc-500">{m.email}</div>
+                        </div>
                       </div>
                     </td>
-                    <td className={bentoTableCellClass}>{m.groupLabel ?? '—'}</td>
-                    <td className={bentoTableCellClass}>
-                      <span className={dashboardMintBadgeClass}>
-                        <CheckCircle className="size-3" /> Active
+                    <td className="px-4 py-3.5 text-zinc-700 font-medium">{m.groupLabel ?? '—'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 shadow-2xs">
+                        <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                        Active
                       </span>
                     </td>
-                    <td className={`${bentoTableCellClass} text-right text-[var(--ds-text-muted)]`}>
-                      —
-                    </td>
+                    <td className="px-4 py-3.5 text-right text-zinc-400">—</td>
                   </tr>
                 ))}
                 {pendingMembers.map((m) => (
-                  <tr key={m.userId} className={bentoTableBodyRowClass}>
-                    <td className={bentoTableCellClass}>
-                      <div className="font-semibold text-[var(--ds-text)]">{m.fullName}</div>
-                      <div className="font-mono text-[12px] text-[var(--ds-text-muted)]">
-                        {m.email}
+                  <tr key={m.userId} className="transition-colors hover:bg-zinc-50/60">
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-zinc-900 text-xs font-bold text-white shadow-2xs">
+                          {getInitials(m.fullName)}
+                        </span>
+                        <div>
+                          <div className="font-bold text-zinc-900">{m.fullName}</div>
+                          <div className="font-mono text-[11px] text-zinc-500">{m.email}</div>
+                        </div>
                       </div>
                     </td>
-                    <td className={bentoTableCellClass}>{m.groupLabel ?? '—'}</td>
-                    <td className={bentoTableCellClass}>
-                      <span className={dashboardPendingBadgeClass}>Pending Invitation</span>
+                    <td className="px-4 py-3.5 text-zinc-700 font-medium">{m.groupLabel ?? '—'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/90 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 shadow-2xs">
+                        <span className="size-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+                        Pending Invitation
+                      </span>
                     </td>
-                    <td className={`${bentoTableCellClass} text-right`}>
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => void handleCopyInviteLink(m.userId)}
                           disabled={actionLoadingId === `copy-${m.userId}`}
-                          className={secondaryButtonSmClass}
+                          className="inline-flex items-center gap-1 rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-900 shadow-2xs hover:bg-zinc-50"
                           title="Copy Invitation Link"
                         >
                           {actionLoadingId === `copy-${m.userId}` ? (
                             <Loader2 className="size-3 animate-spin" />
                           ) : (
-                            <Copy className="size-3" />
+                            <Copy className="size-3 text-zinc-400" />
                           )}
                           {copiedId === m.userId ? 'Copied!' : 'Copy Link'}
                         </button>
@@ -844,13 +854,13 @@ export function WhitelistWorkspace() {
                                 if (invId) void handleResend(invId);
                               }}
                               disabled={actionLoadingId === `resend-${m.invitation?.invitationId}`}
-                              className={secondaryButtonSmClass}
+                              className="inline-flex items-center gap-1 rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-900 shadow-2xs hover:bg-zinc-50"
                               title="Resend Invitation"
                             >
                               {actionLoadingId === `resend-${m.invitation?.invitationId}` ? (
                                 <Loader2 className="size-3 animate-spin" />
                               ) : (
-                                <RotateCcw className="size-3" />
+                                <RotateCcw className="size-3 text-zinc-400" />
                               )}
                               Resend
                             </button>
@@ -862,7 +872,7 @@ export function WhitelistWorkspace() {
                                 if (invId) void handleRevoke(invId);
                               }}
                               disabled={actionLoadingId === `revoke-${m.invitation.invitationId}`}
-                              className={`${secondaryButtonSmClass} text-[#9f1239] hover:bg-[var(--tpo-dash-accent-rose-soft)]`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200/80 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100"
                               title="Revoke Invitation"
                             >
                               {actionLoadingId === `revoke-${m.invitation.invitationId}` ? (
@@ -881,20 +891,18 @@ export function WhitelistWorkspace() {
                 {members
                   .filter((m) => !m.emailVerified && m.invitation?.status !== 'PENDING')
                   .map((m) => (
-                    <tr key={m.userId} className={`${bentoTableBodyRowClass} opacity-70`}>
-                      <td className={bentoTableCellClass}>
-                        <div className="font-semibold text-[var(--ds-text)]">{m.fullName}</div>
-                        <div className="font-mono text-[12px] text-[var(--ds-text-muted)]">
-                          {m.email}
-                        </div>
+                    <tr key={m.userId} className="opacity-70">
+                      <td className="px-4 py-3.5">
+                        <div className="font-bold text-zinc-900">{m.fullName}</div>
+                        <div className="font-mono text-[11px] text-zinc-500">{m.email}</div>
                       </td>
-                      <td className={bentoTableCellClass}>{m.groupLabel ?? '—'}</td>
-                      <td className={bentoTableCellClass}>
-                        <span className={dashboardPillClass}>
+                      <td className="px-4 py-3.5 text-zinc-700">{m.groupLabel ?? '—'}</td>
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex items-center rounded-md border border-zinc-200/80 bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
                           {m.invitation?.status ?? 'No Invite'}
                         </span>
                       </td>
-                      <td className={`${bentoTableCellClass} text-right`}>—</td>
+                      <td className="px-4 py-3.5 text-right text-zinc-400">—</td>
                     </tr>
                   ))}
               </tbody>

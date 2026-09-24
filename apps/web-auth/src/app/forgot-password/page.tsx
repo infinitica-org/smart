@@ -6,9 +6,9 @@ import { api } from '../../lib/api';
 import { LoginShell } from '../login/login-shell';
 
 const inputClass =
-  'w-full rounded-lg border border-[#e2e8f0] bg-white px-4 py-3.5 text-[15px] text-[#172033] placeholder:text-[#94a3b8] transition-[border-color,box-shadow] focus:border-[#0f9f8f] focus:outline-none focus:ring-2 focus:ring-[#ecfdf5]';
+  'w-full h-11 rounded-[11px] border border-[#e5e7eb] bg-white px-3.5 text-sm text-[#111827] placeholder:text-[#9ca3af] transition-[border-color,box-shadow] duration-150 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10';
 
-const labelClass = 'mb-2 block text-[13px] font-medium tracking-[-0.01em] text-[#64748b]';
+const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6b7280]';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -31,12 +31,12 @@ export default function ForgotPasswordPage() {
   return (
     <LoginShell>
       <section className="flex w-full max-w-[420px] flex-col items-center text-center">
-        <SmartLogo kind="mark" tone="on-light" className="mx-auto size-11" title="SMART" />
+        <SmartLogo kind="wordmark" tone="on-light" className="mx-auto h-8 w-auto" title="SMART" />
 
-        <h1 className="mt-10 text-[2.5rem] font-semibold leading-tight tracking-[-0.03em] text-[#172033] sm:text-[2.875rem]">
+        <h1 className="mt-8 text-[1.75rem] font-bold leading-tight tracking-tight text-[#111827] sm:text-[2rem]">
           Reset your password
         </h1>
-        <p className="mt-3 text-[17px] leading-relaxed tracking-[-0.01em] text-[#64748b] sm:text-lg">
+        <p className="mt-2.5 text-[15px] leading-relaxed text-[#6b7280]">
           {submitted
             ? "If that email has a SMART account, we've sent a reset link."
             : "Enter your email and we'll send you a reset link."}
@@ -45,12 +45,12 @@ export default function ForgotPasswordPage() {
         {submitted ? (
           <a
             href="/login"
-            className="mt-8 flex w-full items-center justify-center rounded-lg bg-[#172033] px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0f172a]"
+            className="mt-8 flex h-11 w-full items-center justify-center rounded-[11px] bg-black px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98]"
           >
             Back to sign in
           </a>
         ) : (
-          <form onSubmit={onSubmit} className="mt-8 w-full space-y-5 text-left">
+          <form onSubmit={onSubmit} className="mt-8 w-full space-y-4 text-left">
             <div>
               <label htmlFor="email" className={labelClass}>
                 Your Email
@@ -69,15 +69,15 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center rounded-lg bg-[#172033] px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0f172a] disabled:opacity-70"
+              className="mt-2 flex h-11 w-full items-center justify-center rounded-[11px] bg-black px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? 'Sending…' : 'Send reset link'}
             </button>
 
-            <div className="flex justify-center pt-1">
+            <div className="flex justify-center pt-2">
               <a
                 href="/login"
-                className="text-[13px] font-medium text-[#172033] underline-offset-4 transition hover:underline"
+                className="text-xs font-semibold text-[#111827] underline-offset-4 hover:underline"
               >
                 Back to sign in
               </a>

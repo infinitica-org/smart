@@ -3,8 +3,85 @@
 @source '../**/*.{ts,tsx}';
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
 
+html,
+body {
+  background-color: var(--ds-canvas, #f8fafc);
+  color: var(--ds-text, #101828);
+}
+
+:root {
+  color-scheme: light;
+
+  --admin-font-sans:
+    'Manrope', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    system-ui, sans-serif;
+  --font-heading:
+    'Manrope', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    system-ui, sans-serif;
+  --font-sans:
+    'Manrope', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+    system-ui, sans-serif;
+
+  --ds-canvas: #f8fafc;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f5f7fa;
+  --ds-surface-hover: #f8fafc;
+  --ds-border: #e4e7ec;
+  --ds-border-subtle: #eef1f4;
+  --ds-border-inner: #e7ebef;
+  --ds-text: #101828;
+  --ds-text-secondary: #475467;
+  --ds-text-muted: #667085;
+  --ds-text-subtle: #98a2b3;
+  --ds-icon: #344054;
+  --ds-link: #006bff;
+  --ds-coral: #e5484d;
+  --ds-coral-border: #f0d9d9;
+  --ds-success: #4ead68;
+  --ds-progress-track: #eef1f4;
+  --ds-empty-icon: #b7c2d0;
+  --ds-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.03);
+  --ds-chip-bg: #ffffff;
+
+  --ds-green: #008f7a;
+  --ds-green-hover: #007a68;
+  --ds-green-soft: #e8f7f3;
+  --ds-nav-active-bg: #eaf8f5;
+
+  --admin-accent: #10b981;
+  --admin-accent-hover: #059669;
+  --admin-accent-tint: #ecfdf5;
+  --admin-accent-border: #a7f3d0;
+}
+
+html,
+body,
+.admin-canvas,
+.admin-console {
+  font-family: var(--admin-font-sans);
+  background-color: var(--ds-canvas, #f8fafc);
+  color: var(--ds-text, #101828);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: var(--admin-font-sans) !important;
+}
+
 @layer components {
-  .admin-canvas {
-    background-color: var(--background);
+  .admin-canvas,
+  .admin-console {
+    background-color: var(--ds-canvas, #f8fafc);
+    font-family: var(--admin-font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
+

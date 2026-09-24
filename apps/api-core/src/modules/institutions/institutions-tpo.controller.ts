@@ -18,6 +18,9 @@ import {
   BatchImportMappingSchema,
   ConfigureInstitutionSettingsSchema,
   CreateBatchRequestSchema,
+  InviteStaffRequestSchema,
+  UpdateStaffRoleRequestSchema,
+  UpdateStaffCampusRequestSchema,
   ListInstitutionStudentsQuerySchema,
   TenantActionReasonSchema,
   UpdateBatchRequestSchema,
@@ -71,6 +74,12 @@ export class InstitutionsTpoController {
         Object.fromEntries(Object.entries(query).filter(([, value]) => value)),
       ),
     );
+  }
+
+  @Get('students/assigned-to-me')
+  @Roles('PLACEMENT_STAFF', 'INSTITUTION_ADMIN')
+  listAssignedStudents(@CurrentUser() user: RequestUser) {
+    return this.institutions.listAssignedStudents(requireInstitutionId(user), user.sub);
   }
 
   @Post('students/:userId/hold')
@@ -261,5 +270,55 @@ export class InstitutionsTpoController {
   @Post('invitations/:invitationId/revoke')
   revokeInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
     return this.institutions.revokeStudentInvitation(invitationId, requireInstitutionId(user));
+  }
+
+  @Get('staff')
+  listStaff(@CurrentUser() user: RequestUser) {
+    return this.institutions.listInstitutionStaff(requireInstitutionId(user));
+  }
+
+  @Post('staff/invitations')
+  inviteStaff(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    const parsed = InviteStaffRequestSchema.parse(body);
+    return this.institutions.inviteStaff(requireInstitutionId(user), parsed, user.sub);
+  }
+
+  @Patch('staff/:userId/role')
+  updateStaffRole(
+    @Param('userId') targetUserId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    const parsed = UpdateStaffRoleRequestSchema.parse(body);
+    return this.institutions.updateStaffRole(
+      requireInstitutionId(user),
+      targetUserId,
+      parsed.role,
+      user.sub,
+    );
+  }
+
+  @Post('staff/:userId/deactivate')
+  deactivateStaffAccess(@Param('userId') targetUserId: string, @CurrentUser() user: RequestUser) {
+    return this.institutions.deactivateStaffAccess(
+      requireInstitutionId(user),
+      targetUserId,
+      user.sub,
+    );
+  }
+
+  @Patch('staff/:userId/campus')
+  updateStaffCampusAccess(
+    @Param('userId') targetUserId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    const parsed = UpdateStaffCampusRequestSchema.parse(body);
+    return this.institutions.updateStaffCampusAccess(
+      requireInstitutionId(user),
+      targetUserId,
+      parsed.campus,
+      user.sub,
+    );
   }
 }
