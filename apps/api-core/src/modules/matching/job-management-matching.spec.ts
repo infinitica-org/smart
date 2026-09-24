@@ -54,7 +54,7 @@ function setupJobMatchingTest() {
       ),
     },
     jobApplication: {
-      create: vi.fn().mockImplementation(({ data }) =>
+      create: vi.fn().mockImplementation(({ data: _data }) =>
         Promise.resolve({
           id: randomUUID(),
           jobId,
