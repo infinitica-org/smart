@@ -134,8 +134,16 @@ export class PublicProfileService {
    */
   async getBySlug(
     identifier: string,
-    viewerInfo?: { viewerId?: string; viewerIp?: string; userAgent?: string },
+    viewerInfo?: { viewerId?: string; viewerIp?: string; userAgent?: string } | RequestUser | null,
+    viewer?: RequestUser | null,
   ): Promise<PublicCandidateProfileDto> {
+    const actualViewer =
+      viewer ?? (viewerInfo && 'role' in viewerInfo ? (viewerInfo as RequestUser) : null);
+    const actualViewerInfo =
+      viewerInfo && 'role' in viewerInfo
+        ? undefined
+        : (viewerInfo as { viewerId?: string; viewerIp?: string; userAgent?: string } | undefined);
+
     const cleanIdentifier = identifier.trim().replace(/^@/, '');
     const bySlug = await this.prisma.user.findUnique({
       where: { publicProfileSlug: cleanIdentifier },
@@ -163,17 +171,19 @@ export class PublicProfileService {
       });
     }
 
-    if (viewerInfo?.viewerIp && this.trustService) {
+    if (actualViewerInfo?.viewerIp && this.trustService) {
       this.trustService
         .logProfileAccess(
           user.id,
-          viewerInfo.viewerId,
-          viewerInfo.viewerIp,
-          viewerInfo.userAgent,
+          actualViewerInfo.viewerId,
+          actualViewerInfo.viewerIp,
+          actualViewerInfo.userAgent,
           cleanIdentifier,
         )
         .catch(() => {});
     }
+
+    await this.recordEmployerView(user.id, actualViewer);
 
     return this.build(user.id);
   }

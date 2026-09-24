@@ -66,10 +66,14 @@ export class PublicProfileController {
     const viewerIp = rawIp.split(',')[0]?.trim() || '127.0.0.1';
     const userAgent = req.headers['user-agent'] as string | undefined;
 
-    return this.service.getBySlug(slug, {
-      viewerId: user?.sub,
-      viewerIp,
-      userAgent,
-    });
+    return this.service.getBySlug(
+      slug,
+      {
+        viewerId: user?.sub,
+        viewerIp,
+        userAgent,
+      },
+      user,
+    );
   }
 }

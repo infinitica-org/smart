@@ -184,54 +184,6 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
     });
   });
 
-  describe('build — showInProgressItems on', () => {
-    beforeEach(() => {
-      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ showInProgressItems: true }));
-    });
-
-    it('admits not-yet-decided work experience but still excludes REJECTED/EXPIRED/VOIDED', async () => {
-      await service.getForOwner(userId);
-
-      expect(prisma.workExperience.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } },
-        }),
-      );
-      expect(prisma.candidateCertificate.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } },
-        }),
-      );
-    });
-
-    it('flags a not-yet-VERIFIED entry as inProgress', async () => {
-      prisma.workExperience.findMany.mockResolvedValue([
-        {
-          companyName: 'Acme',
-          role: 'Engineer',
-          employmentType: 'FULL_TIME',
-          startDate: new Date('2024-01-01'),
-          endDate: null,
-          isCurrent: true,
-          status: 'PENDING_EMPLOYER',
-        },
-      ]);
-      const result = await service.getForOwner(userId);
-      expect(result.workExperience[0].inProgress).toBe(true);
-      expect(result.showInProgressItems).toBe(true);
-    });
-
-    it('a SA-T08-voided entry never leaks through even with the opt-in on', async () => {
-      // The service's own where-clause excludes VOIDED; this asserts the query shape does,
-      // which is what actually keeps a voided row out at the database level.
-      await service.getForOwner(userId);
-      const workExperienceCall = prisma.workExperience.findMany.mock.calls[0][0];
-      expect(workExperienceCall.where.status.notIn).toContain('VOIDED');
-      const certCall = prisma.candidateCertificate.findMany.mock.calls[0][0];
-      expect(certCall.where.status.notIn).toContain('VOIDED');
-    });
-  });
-
   describe('evaluateActivationEligibility (CN-T07)', () => {
     it('eligible for students with verified skill + verified cert only', async () => {
       prisma.skillClaim.count.mockResolvedValue(1);

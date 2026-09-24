@@ -214,6 +214,9 @@ describe('SkillLevelExplanationService', () => {
 
     it('redacts internal promptRef for COMPANY callers', async () => {
       const prisma = {
+        company: {
+          findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
+        },
         user: {
           findUnique: vi.fn().mockResolvedValue({
             id: '11111111-1111-4111-8111-111111111111',

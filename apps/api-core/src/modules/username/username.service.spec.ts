@@ -199,11 +199,11 @@ describe('UsernameService (CN-T09)', () => {
         profileVisible: true,
       });
 
-      await service.updateVisibility(userId, { profileVisible: true, showInProgressItems: true });
+      await service.updateVisibility(userId, { profileVisible: true, hiddenSections: ['skills'] });
 
       const call = prisma.user.update.mock.calls[0][0];
       expect(call.data).not.toHaveProperty('usernameActivatedAt');
-      expect(call.data.showInProgressItems).toBe(true);
+      expect(call.data.hiddenSections).toEqual(['skills']);
     });
 
     it('turning visibility off never de-activates an already-active username', async () => {

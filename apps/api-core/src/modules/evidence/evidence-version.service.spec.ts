@@ -122,6 +122,9 @@ describe('EvidenceVersionService', () => {
   it('lists candidate evidence versions for authorized employer and redacts output', async () => {
     const { service, auditPublisher } = buildService({
       prisma: {
+        company: {
+          findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
+        },
         user: {
           findUnique: vi
             .fn()
@@ -179,6 +182,9 @@ describe('EvidenceVersionService', () => {
   it('rejects version access when evidence does not belong to student', async () => {
     const { service } = buildService({
       prisma: {
+        company: {
+          findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
+        },
         user: {
           findUnique: vi
             .fn()

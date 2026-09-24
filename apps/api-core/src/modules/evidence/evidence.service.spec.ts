@@ -462,6 +462,9 @@ describe('EvidenceService.getCandidateEducation (T2)', () => {
   it('redacts rejectionReason, document fileUrl, and private evidence fields for company callers', async () => {
     const { service } = buildService({
       prisma: {
+        company: {
+          findUnique: vi.fn().mockResolvedValue({ verificationStatus: 'APPROVED' }),
+        },
         user: {
           findUnique: vi
             .fn()
