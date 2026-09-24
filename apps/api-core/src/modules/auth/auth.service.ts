@@ -9,6 +9,8 @@ import { promisify } from 'node:util';
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
@@ -36,6 +38,10 @@ import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
 const scrypt = promisify(scryptCallback);
+
+/** S6-VV-92 — account lockout, independent of the IP-based 'auth.login' rate-limit policy. */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 export type UserWithAuthIncludes = {
   id: string;
@@ -80,7 +86,24 @@ export class AuthService {
       where: { email: email.toLowerCase() },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+
+    if (user?.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      const retryAfterSeconds = Math.ceil((user.loginLockedUntil.getTime() - Date.now()) / 1000);
+      throw new HttpException(
+        {
+          error: 'account_locked',
+          message: `Too many failed attempts. Please wait ${String(retryAfterSeconds)} seconds before retrying.`,
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          retryAfterSeconds,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      if (user) {
+        await this.registerFailedLoginAttempt(user.id, user.failedLoginAttempts);
+      }
       throw new UnauthorizedException({
         error: 'unauthorized',
         message: 'Email or password is incorrect.',
@@ -88,6 +111,13 @@ export class AuthService {
       });
     }
     assertTenantLoginAllowed(user);
+
+    if (user.failedLoginAttempts > 0 || user.loginLockedUntil) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, loginLockedUntil: null },
+      });
+    }
 
     await this.auditPublisher.record({
       actorId: user.id,
@@ -97,6 +127,33 @@ export class AuthService {
       reasonCode: null,
     });
     return this.issueSession(user, reply);
+  }
+
+  /** S6-VV-92 — locks the account for LOCKOUT_MINUTES once MAX_FAILED_LOGIN_ATTEMPTS is reached. */
+  private async registerFailedLoginAttempt(
+    userId: string,
+    currentFailedAttempts: number,
+  ): Promise<void> {
+    const nextFailedAttempts = currentFailedAttempts + 1;
+    const shouldLock = nextFailedAttempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: shouldLock ? 0 : nextFailedAttempts,
+        ...(shouldLock
+          ? { loginLockedUntil: new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) }
+          : {}),
+      },
+    });
+    if (shouldLock) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'auth.account_locked',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+      });
+    }
   }
 
   async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
