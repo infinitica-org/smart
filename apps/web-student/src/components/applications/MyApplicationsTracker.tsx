@@ -494,7 +494,10 @@ export function MyApplicationsTracker({
               Loading your applications…
             </div>
           ) : isError ? (
-            <div className="rounded-md border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800">
+            <div
+              role="alert"
+              className="rounded-md border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800"
+            >
               Could not load your applications from placement service.
               <button
                 type="button"
