@@ -21,6 +21,7 @@ describe('WorkExperienceService', () => {
   let evidenceSync: any;
   let storage: any;
   let emailQueue: any;
+  let notifications: any;
   let service: WorkExperienceService;
 
   const mockStudentId = randomUUID();
@@ -103,8 +104,9 @@ describe('WorkExperienceService', () => {
       workExperienceManagerEndorsement: {
         create: vi.fn(),
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
         findUnique: vi.fn(),
-        findFirst: vi.fn(),
         update: vi.fn(),
       },
       workExperienceResponsibility: {
