@@ -10,7 +10,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
 
   return (
     <OnboardingGate>
-      <div className="student-console flex h-screen overflow-hidden bg-white text-zinc-900 antialiased dark:bg-[#0c0c0c] dark:text-zinc-100 font-sans select-none">
+      <div className="student-console flex h-screen overflow-hidden bg-zinc-50 text-zinc-900 antialiased dark:bg-[#0c0c0c] dark:text-zinc-100 font-sans select-none">
         <StudentSidebar mobileOpen={mobileNavOpen} onMobileOpenChange={setMobileNavOpen} />
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:pl-64">
           <StudentTopbar onOpenMobileNav={() => setMobileNavOpen(true)} />
