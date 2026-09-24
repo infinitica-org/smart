@@ -495,6 +495,12 @@ export const ListAuditLogsQuerySchema = z.object({
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
+/** S6-VV-101 — same filters as the list, plus the file format. */
+export const ExportAuditLogsQuerySchema = ListAuditLogsQuerySchema.extend({
+  format: z.enum(['csv', 'jsonl']).default('csv'),
+});
+export type ExportAuditLogsQuery = z.infer<typeof ExportAuditLogsQuerySchema>;
+
 export const AdminDashboardDtoSchema = z.object({
   institutions: z.object({
     total: z.number().int().nonnegative(),

@@ -1351,6 +1351,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/admin/audit-logs/export',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'REPORTING',
+    execution: 'SYNC',
+    summary:
+      'CSV / JSON Lines export of the filtered audit log (≤100k rows); the export is itself audited.',
+  },
+  {
+    method: 'GET',
     path: '/admin/sessions',
     module: 'auth',
     owner: 'Vishal V',

@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   'session.read',
   'session.revoke',
   'audit.read',
+  'audit.export',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

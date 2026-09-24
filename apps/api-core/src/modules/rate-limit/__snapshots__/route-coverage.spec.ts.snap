@@ -14,6 +14,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "GET /admin/ai-health": "role.superAdmin",
   "GET /admin/ai-usage": "role.superAdmin",
   "GET /admin/audit-logs": "role.superAdmin",
+  "GET /admin/audit-logs/export": "role.superAdmin",
   "GET /admin/blocked-words": "role.superAdmin",
   "GET /admin/candidate-certificates/queue": "read.adminQueue",
   "GET /admin/companies": "role.superAdmin",

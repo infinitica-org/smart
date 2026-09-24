@@ -862,6 +862,19 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
+    /** S6-VV-101 — same filters as listAuditLogs; resolves to the CSV / JSON Lines file. */
+    exportAuditLogs: (query?: {
+      q?: string;
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+      actorId?: string;
+      section?: AuditLogSection;
+      from?: string;
+      to?: string;
+      format?: 'csv' | 'jsonl';
+    }) => client.getBlob(prefixed('/admin/audit-logs/export'), { query }),
+
     listActiveSessions: (query?: ListActiveSessionsQuery) =>
       client.get(prefixed('/admin/sessions'), {
         schema: z.array(ActiveSessionDtoSchema),

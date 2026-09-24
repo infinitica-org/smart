@@ -14,6 +14,7 @@ exports[`permission matrix (S6-VV-99) > changes only through a reviewed snapshot
     "session.read",
     "session.revoke",
     "audit.read",
+    "audit.export",
   ],
 }
 `;
