@@ -335,6 +335,139 @@ describe('AuthService.listSelectableInstitutions', () => {
   });
 });
 
+describe('AuthService session admin (S6-VV-93)', () => {
+  function sessionRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: randomUUID(),
+      familyId: randomUUID(),
+      userId: randomUUID(),
+      tokenHash: 'hash',
+      revokedAt: null as Date | null,
+      expiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date(),
+      user: { email: 'student@example.com', fullName: 'Test Student', role: 'STUDENT' },
+      ...overrides,
+    };
+  }
+
+  it('lists active sessions, excluding revoked/expired ones from the query itself', async () => {
+    const row = sessionRow();
+    const findMany = vi.fn(async () => [row]);
+    const prisma = { refreshToken: { findMany } };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    const result = await auth.listActiveSessions({});
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ revokedAt: null, expiresAt: { gt: expect.any(Date) } }),
+      }),
+    );
+    expect(result).toEqual([
+      {
+        id: row.id,
+        userId: row.userId,
+        userEmail: row.user.email,
+        userFullName: row.user.fullName,
+        userRole: row.user.role,
+        familyId: row.familyId,
+        createdAt: row.createdAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
+      },
+    ]);
+  });
+
+  it('filters the list by userId when given', async () => {
+    const userId = randomUUID();
+    const findMany = vi.fn(async () => []);
+    const prisma = { refreshToken: { findMany } };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await auth.listActiveSessions({ userId });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId }) }),
+    );
+  });
+
+  it('revokes the whole session family and audits it', async () => {
+    const row = sessionRow();
+    const prisma = {
+      refreshToken: {
+        findUnique: vi.fn(async () => row),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+    const adminId = randomUUID();
+
+    await auth.revokeSession(row.id, adminId, 'user reported a stolen device');
+
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { familyId: row.familyId, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: adminId,
+        action: 'auth.session_revoked',
+        resourceId: row.userId,
+        reasonCode: 'user reported a stolen device',
+      }),
+    );
+  });
+
+  it('rejects revoking a session that is already revoked', async () => {
+    const row = sessionRow({ revokedAt: new Date() });
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => row), updateMany: vi.fn() },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(auth.revokeSession(row.id, randomUUID(), 'reason enough')).rejects.toMatchObject({
+      response: { error: 'session_already_inactive' },
+    });
+    expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects revoking a session that does not exist', async () => {
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => null), updateMany: vi.fn() },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.revokeSession(randomUUID(), randomUUID(), 'reason enough'),
+    ).rejects.toMatchObject({ response: { error: 'not_found' } });
+  });
+});
+
 describe('password hashing', () => {
   it('verifies a round-trip hash', async () => {
     const stored = await hashPassword('ChangeMe!Dev');

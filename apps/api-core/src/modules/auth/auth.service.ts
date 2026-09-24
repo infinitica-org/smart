@@ -19,9 +19,11 @@ import { JwtService } from '@nestjs/jwt';
 import {
   CompanyPortalAccountSchema,
   isDisallowedEndorserEmailDomain,
+  type ActiveSessionDto,
   type AuthTokenResponse,
   type AuthenticatedUser,
   type CompanyPortalAccount,
+  type ListActiveSessionsQuery,
   type RegisterRequest,
   type RegisterStudentRequest,
   type SelectableInstitutionDto,
@@ -353,6 +355,60 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  /** S6-VV-93 — one row per active session, for the SUPER_ADMIN sessions panel. */
+  async listActiveSessions(filter: ListActiveSessionsQuery): Promise<ActiveSessionDto[]> {
+    const rows = await this.prisma.refreshToken.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        ...(filter.userId ? { userId: filter.userId } : {}),
+        ...(filter.email ? { user: { email: filter.email.toLowerCase() } } : {}),
+      },
+      include: { user: { select: { email: true, fullName: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      userEmail: row.user.email,
+      userFullName: row.user.fullName,
+      userRole: row.user.role,
+      familyId: row.familyId,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    }));
+  }
+
+  /** S6-VV-93 — forcefully terminates a session (its whole refresh-token family), audited. */
+  async revokeSession(sessionId: string, actorId: string, reason: string): Promise<void> {
+    const session = await this.prisma.refreshToken.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Session not found.',
+        statusCode: 404,
+      });
+    }
+    if (session.revokedAt || session.expiresAt < new Date()) {
+      throw new ConflictException({
+        error: 'session_already_inactive',
+        message: 'This session is already inactive.',
+        statusCode: 409,
+      });
+    }
+
+    await this.revokeFamily(session.familyId);
+    await this.auditPublisher.record({
+      actorId,
+      action: 'auth.session_revoked',
+      resourceType: 'user',
+      resourceId: session.userId,
+      reasonCode: reason,
+      metadata: { sessionId, familyId: session.familyId },
     });
   }
 
