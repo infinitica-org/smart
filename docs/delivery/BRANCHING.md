@@ -23,11 +23,11 @@ main  ──── always production-ready. Only @brittytino may push / merge.
            └── chore/S0-TN-03-enterprise-branches
 ```
 
-| Branch     | Purpose                                                              | Who reviews            | Who merges                                          | Deploy target                                             |
-| ---------- | -------------------------------------------------------------------- | ---------------------- | --------------------------------------------------- | --------------------------------------------------------- |
-| **`dev`**  | Daily integration. CI must be green.                                 | Module owner of paths  | Module owner (or Vishal V for backend escalation)   | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI) |
-| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (release gate)| **Tino** only                                       | **kvm2** `smart-qa`                                       |
-| **`main`** | Production / GA truth. Always deployable.                            | **Tino**               | **Only `@brittytino`**                              | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI)|
+| Branch     | Purpose                                                             | Who reviews             | Who merges                                        | Deploy target                                              |
+| ---------- | ------------------------------------------------------------------- | ----------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| **`dev`**  | Daily integration. CI must be green.                                | Module owner of paths   | Module owner (or Vishal V for backend escalation) | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI)  |
+| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (release gate) | **Tino** only                                     | **kvm2** `smart-qa`                                        |
+| **`main`** | Production / GA truth. Always deployable.                           | **Tino**                | **Only `@brittytino`**                            | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI) |
 
 Engineers **never** commit directly to `main`, `qa`, or `dev`.
 Every change lands via a **pull request**.
@@ -63,7 +63,7 @@ Initials: `TN` · `VV` · `SV` · `VB` · `RM` · `VG`
 
 | Promotion     | When                                             | How                                                                           |
 | ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `dev` → `qa`  | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges                |
+| `dev` → `qa`  | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges                 |
 | `qa` → `main` | GA cut, or approved production release           | PR titled `chore(repo): promote qa to main (S#)` — **only brittytino merges** |
 
 Hotfix on production: branch from `main` → PR to `main` (brittytino) → cherry-pick / back-merge into `qa` and `dev`.
