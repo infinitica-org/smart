@@ -8,24 +8,24 @@
 
 SMART is currently on the **GitHub Free** organisational plan.
 
-| Limit                            | Value                              |
-| -------------------------------- | ---------------------------------- |
-| CI minutes (Linux runners)       | **2,000 minutes / month**          |
-| Concurrent jobs                  | 20                                 |
-| CODEOWNERS enforcement           | ❌ Not available (Teams+ required) |
+| Limit                            | Value                                     |
+| -------------------------------- | ----------------------------------------- |
+| CI minutes (Linux runners)       | **2,000 minutes / month**                 |
+| Concurrent jobs                  | 20                                        |
+| CODEOWNERS enforcement           | ❌ Not available (Teams+ required)        |
 | Required reviewers (branch rule) | ✅ Available (any user, not owner-scoped) |
-| Self-hosted runners              | ✅ Unlimited                       |
+| Self-hosted runners              | ✅ Unlimited                              |
 
 > [!WARNING]
 > The 2,000 monthly minutes are **already exhausted** as of September 2026. Until the plan is upgraded or a self-hosted runner is added, new CI runs will queue without starting.
 
 ### Immediate options (pick one)
 
-| Option | Effort | Cost | Notes |
-|--------|--------|------|-------|
-| **A. Upgrade to GitHub Teams** | Low (billing change) | $4/user/month (~$24/mo for 6 users) | 3,000 minutes/month + CODEOWNERS enforcement unlocked — **recommended** |
-| **B. Add a self-hosted runner** | Medium (VPS setup) | ~$0 (use an idle VM) | Unlimited minutes; do NOT run on the same VPS as a live environment |
-| **C. Reduce CI trigger frequency** | Low (config change) | Free | Skip CI on `[skip ci]` commits; use `paths` filters to avoid running on docs-only changes |
+| Option                             | Effort               | Cost                                | Notes                                                                                     |
+| ---------------------------------- | -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| **A. Upgrade to GitHub Teams**     | Low (billing change) | $4/user/month (~$24/mo for 6 users) | 3,000 minutes/month + CODEOWNERS enforcement unlocked — **recommended**                   |
+| **B. Add a self-hosted runner**    | Medium (VPS setup)   | ~$0 (use an idle VM)                | Unlimited minutes; do NOT run on the same VPS as a live environment                       |
+| **C. Reduce CI trigger frequency** | Low (config change)  | Free                                | Skip CI on `[skip ci]` commits; use `paths` filters to avoid running on docs-only changes |
 
 ---
 
@@ -73,8 +73,8 @@ Label completeness is checked by `.github/workflows/pr-label-check.yml` (warning
 
 ## 5. Automated Deployments
 
-| Branch | Workflow | Trigger | Target |
-|--------|----------|---------|--------|
+| Branch | Workflow          | Trigger                 | Target            |
+| ------ | ----------------- | ----------------------- | ----------------- |
 | `dev`  | `deploy-dev.yml`  | Successful CI on `dev`  | kvm2 `smart-dev`  |
 | `qa`   | `deploy-qa.yml`   | Successful CI on `qa`   | kvm2 `smart-qa`   |
 | `main` | `deploy-prod.yml` | Successful CI on `main` | kvm4 `smart-prod` |
