@@ -8,7 +8,7 @@ Public marketing / landing site (no auth). Owner: Satheswaran V.
 pnpm --filter @smart/web-landing dev
 ```
 
-Open http://localhost:3006
+Open http://localhost:3007
 
 Included in `pnpm dev:web` (`@smart/web-*`).
 
