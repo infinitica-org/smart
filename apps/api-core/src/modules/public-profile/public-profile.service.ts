@@ -423,6 +423,7 @@ export class PublicProfileService {
             grade: edu.grade ?? null,
           })),
       showInProgressItems: showInProgress,
+      hiddenSections,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
       lastUpdatedAt,
     };

@@ -385,7 +385,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       expect(result.certificate).not.toBeNull();
       expect(result.externalCertificates.length).toBe(1);
       expect(result.skills.length).toBe(1);
-      expect(result).not.toHaveProperty('hiddenSections');
+      expect(result.hiddenSections).toEqual([]);
     });
 
     it('omits education section when hiddenSections contains "education"', async () => {

@@ -17,6 +17,8 @@ import { AssessmentResultSchema } from '../domain/evidence/assessment-result.js'
 import { SKILL_TAXONOMY_DOMAINS } from '../domain/skills.js';
 import { IsoDateSchema, IsoDateTimeSchema, ScoreSchema, UuidSchema } from './common.js';
 import { PublicCompetencyEvidenceSummarySchema } from './public-candidate-profile.dto.js';
+import { CandidateEducationSchema } from './candidate-profile.dto.js';
+import { EvidenceProvenanceItemDtoSchema } from './evidence.dto.js';
 import { SkillCategoryIdSchema, TaxonomySkillCodeSchema } from './catalog.dto.js';
 
 /**
@@ -722,3 +724,66 @@ export const CohortReadinessRowSchema = z.object({
   averageScore: ScoreSchema.nullable(),
 });
 export type CohortReadinessRow = z.infer<typeof CohortReadinessRowSchema>;
+
+/* -------------------- employer candidate views (T2/T3) -------------------- */
+
+export const PlacementCandidateEducationDtoSchema = CandidateEducationSchema.extend({
+  relatedEvidence: z.array(EvidenceProvenanceItemDtoSchema).default([]),
+});
+export type PlacementCandidateEducationDto = z.infer<typeof PlacementCandidateEducationDtoSchema>;
+
+export const CandidateEducationEvidenceResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  education: z.array(PlacementCandidateEducationDtoSchema),
+});
+export type CandidateEducationEvidenceResponse = z.infer<
+  typeof CandidateEducationEvidenceResponseSchema
+>;
+
+export const CandidateSkillClaimStatusDtoSchema = z.object({
+  claimId: UuidSchema,
+  studentId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  skillName: z.string(),
+  category: z.string().optional(),
+  status: SkillClaimStatusSchema,
+  claimedProficiency: SkillProficiencySchema,
+  verifiedProficiency: SkillProficiencySchema.nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type CandidateSkillClaimStatusDto = z.infer<typeof CandidateSkillClaimStatusDtoSchema>;
+
+export const CandidateSkillClaimsResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  claims: z.array(CandidateSkillClaimStatusDtoSchema),
+});
+export type CandidateSkillClaimsResponse = z.infer<typeof CandidateSkillClaimsResponseSchema>;
+
+export const PlacementCandidateDemonstratedSkillDtoSchema = z.object({
+  claimId: UuidSchema.optional(),
+  studentId: UuidSchema,
+  skillCode: z.string().min(2).max(64),
+  skillName: z.string(),
+  category: z.string().optional(),
+  status: SkillClaimStatusSchema,
+  claimedProficiency: SkillProficiencySchema,
+  verifiedProficiency: SkillProficiencySchema.nullable().optional(),
+  evidenceSummary: z.record(z.string(), z.unknown()).nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type PlacementCandidateDemonstratedSkillDto = z.infer<
+  typeof PlacementCandidateDemonstratedSkillDtoSchema
+>;
+
+export const CandidateDemonstratedSkillsResponseSchema = z.object({
+  studentId: UuidSchema,
+  total: z.number().int().min(0),
+  skills: z.array(PlacementCandidateDemonstratedSkillDtoSchema),
+});
+export type CandidateDemonstratedSkillsResponse = z.infer<
+  typeof CandidateDemonstratedSkillsResponseSchema
+>;

@@ -112,4 +112,170 @@ describe('SkillLevelExplanationService', () => {
     expect(result.verifiedVsAi.verified?.proficiency).toBe('INTERMEDIATE');
     expect(result.reportRefs.some((row) => row.kind === 'ASSESSMENT_ATTEMPT')).toBe(true);
   });
+
+  describe('getCandidateSkillExplanation (T5)', () => {
+    it('rejects unauthorized callers', async () => {
+      const prisma = {
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: '11111111-1111-4111-8111-111111111111',
+            role: 'STUDENT',
+            institutionId: 'inst-1',
+          }),
+        },
+      };
+      const service = new SkillLevelExplanationService(
+        prisma as never,
+        { getForStudent: vi.fn() } as never,
+      );
+
+      const foreignStaff = {
+        sub: 'staff-2',
+        role: 'PLACEMENT_STAFF',
+        inst: 'inst-2',
+      } as any;
+
+      await expect(
+        service.getCandidateSkillExplanation(
+          foreignStaff,
+          '11111111-1111-4111-8111-111111111111',
+          'REACT',
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('returns explanation when caller is authorized', async () => {
+      const prisma = {
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: '11111111-1111-4111-8111-111111111111',
+            role: 'STUDENT',
+            institutionId: 'inst-1',
+          }),
+        },
+        skillClaim: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+        evidenceRecord: { findMany: vi.fn().mockResolvedValue([]) },
+      };
+
+      const inference = {
+        studentId: '11111111-1111-4111-8111-111111111111',
+        skillCode: 'REACT',
+        outcome: 'INFERRED',
+        inferredProficiency: 'INTERMEDIATE',
+        confidence: 'HIGH',
+        confidenceReason: 'Aligned signals.',
+        proficiencyInferenceReason: null,
+        evidenceCount: 0,
+        provenance: {
+          ruleSetVersion: 'v1',
+          taxonomyVersion: 'skill@1',
+          promptRefs: ['secret-prompt-ref-123'],
+          evidenceRecordIds: [],
+          computedAt: '2026-01-01T00:00:00.000Z',
+        },
+        fusion: {
+          skillCode: 'REACT',
+          capabilityProfile: [],
+          inferredDomainProficiency: 'INTERMEDIATE',
+          ruleSetVersion: 'v1',
+          capabilityGaps: [],
+          confidence: 'HIGH',
+          confidenceReason: 'Aligned signals.',
+          activeSources: [],
+          conflicts: [],
+          fusionTrace: [],
+          assessmentComplete: true,
+          recommendedNextStep: 'NONE',
+        },
+      };
+
+      const skillInference = { getForStudent: vi.fn().mockResolvedValue(inference) };
+      const service = new SkillLevelExplanationService(prisma as never, skillInference as never);
+
+      // Institution admin has full access
+      const adminCaller = {
+        sub: 'admin-1',
+        role: 'INSTITUTION_ADMIN',
+        inst: 'inst-1',
+      } as any;
+
+      const fullResult = await service.getCandidateSkillExplanation(
+        adminCaller,
+        '11111111-1111-4111-8111-111111111111',
+        'REACT',
+      );
+
+      expect(fullResult.skillCode).toBe('REACT');
+      expect(fullResult.whyThisLevel).toBeDefined();
+      expect(fullResult.verifiedVsAi).toBeDefined();
+    });
+
+    it('redacts internal promptRef for COMPANY callers', async () => {
+      const prisma = {
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: '11111111-1111-4111-8111-111111111111',
+            role: 'STUDENT',
+            institutionId: 'inst-1',
+          }),
+        },
+        skillClaim: { findFirst: vi.fn().mockResolvedValue(null) },
+        evidenceRecord: { findMany: vi.fn().mockResolvedValue([]) },
+        application: { count: vi.fn().mockResolvedValue(1) },
+      };
+
+      const inference = {
+        studentId: '11111111-1111-4111-8111-111111111111',
+        skillCode: 'REACT',
+        outcome: 'INFERRED',
+        inferredProficiency: 'INTERMEDIATE',
+        confidence: 'HIGH',
+        confidenceReason: 'Aligned signals.',
+        proficiencyInferenceReason: null,
+        evidenceCount: 0,
+        provenance: {
+          ruleSetVersion: 'v1',
+          taxonomyVersion: 'skill@1',
+          promptRefs: ['secret-prompt-ref-123'],
+          evidenceRecordIds: [],
+          computedAt: '2026-01-01T00:00:00.000Z',
+        },
+        fusion: {
+          skillCode: 'REACT',
+          capabilityProfile: [],
+          inferredDomainProficiency: 'INTERMEDIATE',
+          ruleSetVersion: 'v1',
+          capabilityGaps: [],
+          confidence: 'HIGH',
+          confidenceReason: 'Aligned signals.',
+          activeSources: [],
+          conflicts: [],
+          fusionTrace: [],
+          assessmentComplete: true,
+          recommendedNextStep: 'NONE',
+        },
+      };
+
+      const skillInference = { getForStudent: vi.fn().mockResolvedValue(inference) };
+      const service = new SkillLevelExplanationService(prisma as never, skillInference as never);
+
+      const companyCaller = {
+        sub: 'comp-1',
+        role: 'COMPANY',
+        companyId: 'comp-org-1',
+      } as any;
+
+      const result = await service.getCandidateSkillExplanation(
+        companyCaller,
+        '11111111-1111-4111-8111-111111111111',
+        'REACT',
+      );
+
+      expect(result.skillCode).toBe('REACT');
+      expect((result as any).promptRefs).toBeUndefined();
+      expect(JSON.stringify(result)).not.toContain('secret-prompt-ref-123');
+    });
+  });
 });

@@ -30,7 +30,6 @@ import type {
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
-  ReviewEvidenceRequest,
   IntegrityQueueStatus,
   SaveDraftRequest,
   StartAttemptRequest,
@@ -138,10 +137,12 @@ import {
   CareerDomainDtoSchema,
   TargetRoleDtoSchema,
   RecommendedSkillsResponseSchema,
-  ReviewEvidenceResponseSchema,
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
   CandidateEvidenceProvenanceResponseSchema,
+  CandidateEducationEvidenceResponseSchema,
+  CandidateSkillClaimsResponseSchema,
+  CandidateDemonstratedSkillsResponseSchema,
   EvidenceRecordDtoSchema,
   EvidenceRecordVersionDtoSchema,
   EvidenceRecordVersionRedactedDtoSchema,
@@ -149,6 +150,7 @@ import {
   ListEvidenceRecordVersionsRedactedResponseSchema,
   GetSkillEvidenceInferenceResponseSchema,
   GetSkillLevelExplanationResponseSchema,
+  GetEmployerSkillInspectionResponseSchema,
   ListCapabilityInferenceReviewQueueResponseSchema,
   CorrectStudentCapabilityResponseSchema,
   ProfessionalCredentialDtoSchema,
@@ -1469,6 +1471,36 @@ export function placementApi(client: SmartApiClient) {
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
 
+    getCandidateEvidenceProvenance: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence`), {
+        schema: CandidateEvidenceProvenanceResponseSchema,
+      }),
+
+    getCandidateEducation: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/education`), {
+        schema: CandidateEducationEvidenceResponseSchema,
+      }),
+
+    getCandidateSkillClaims: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/claims`), {
+        schema: CandidateSkillClaimsResponseSchema,
+      }),
+
+    getCandidateDemonstratedSkills: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/skills`), {
+        schema: CandidateDemonstratedSkillsResponseSchema,
+      }),
+
+    getCandidateSkillExplanation: (studentId: string, skillCode: string) =>
+      client.get(
+        prefixed(
+          `/placement/candidates/${studentId}/skills/${encodeURIComponent(skillCode)}/explanation`,
+        ),
+        {
+          schema: GetEmployerSkillInspectionResponseSchema,
+        },
+      ),
+
     listCandidateEvidenceVersions: (studentId: string, evidenceId: string) =>
       client.get(prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/versions`), {
         schema: z.union([
@@ -1484,20 +1516,6 @@ export function placementApi(client: SmartApiClient) {
         ),
         {
           schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
-        },
-      ),
-
-    getCandidateEvidenceProvenance: (studentId: string) =>
-      client.get(prefixed(`/placement/candidates/${studentId}/evidence/provenance`), {
-        schema: CandidateEvidenceProvenanceResponseSchema,
-      }),
-
-    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
-      client.post(
-        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
-        body,
-        {
-          schema: ReviewEvidenceResponseSchema,
         },
       ),
   };

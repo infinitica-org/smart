@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { TierBadge, useQuery } from '@smart/ui';
 import {
   Award,
+  Briefcase,
   CheckCircle2,
+  Clock,
   Code2,
   ExternalLink,
   FolderGit2,
   GitBranch,
+  GraduationCap,
   Link2,
   Loader2,
   Share2,
@@ -21,6 +24,20 @@ const VERIFICATION_METHOD_LABELS: Record<string, string> = {
   ENDORSEMENT: 'Endorsed',
   LLM: 'AI-verified',
 };
+
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  INTERNSHIP: 'Internship',
+  CONTRACT: 'Contract',
+};
+
+function formatDate(isoString?: string | null): string {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return isoString;
+  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
 
 export default function PublicProfilePreviewPage() {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
@@ -138,6 +155,12 @@ export default function PublicProfilePreviewPage() {
                       {profile.fullName}
                     </h1>
                     <p className="mt-1 font-medium text-gray-600 dark:text-gray-400">{headline}</p>
+                    {profile.lastUpdatedAt ? (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <Clock className="h-3.5 w-3.5 text-gray-400" />
+                        <span>Last updated {formatDate(profile.lastUpdatedAt)}</span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {profile.certificate ? (
@@ -161,7 +184,11 @@ export default function PublicProfilePreviewPage() {
                       ({profile.skills.length} of {profile.declaredSkillsCount} declared)
                     </span>
                   </h3>
-                  {profile.skills.length === 0 ? (
+                  {profile.hiddenSections?.includes('skills') ? (
+                    <p className="text-sm italic text-gray-400 dark:text-gray-500">
+                      Hidden by your section privacy settings.
+                    </p>
+                  ) : profile.skills.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       No verified skills yet.
                     </p>
@@ -184,13 +211,110 @@ export default function PublicProfilePreviewPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Work Experience */}
+                <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
+                  <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <Briefcase className="h-4 w-4 text-gray-500" />
+                    Work Experience
+                  </h3>
+                  {profile.hiddenSections?.includes('workExperience') ? (
+                    <p className="text-sm italic text-gray-400 dark:text-gray-500">
+                      Hidden by your section privacy settings.
+                    </p>
+                  ) : profile.workExperience.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No employer-verified work experience yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {profile.workExperience.map((entry, idx) => (
+                        <div
+                          key={`${entry.companyName}-${String(idx)}`}
+                          className="flex items-start gap-3 rounded-[20px] border border-gray-100 bg-gray-50/50 p-5 dark:border-white/5 dark:bg-white/[0.02]"
+                        >
+                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-foreground">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {entry.role} · {entry.companyName}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                              {EMPLOYMENT_TYPE_LABELS[entry.employmentType] ?? entry.employmentType}
+                              {' · '}
+                              {formatDate(entry.startDate)} –{' '}
+                              {entry.isCurrent
+                                ? 'Present'
+                                : entry.endDate
+                                  ? formatDate(entry.endDate)
+                                  : '—'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Education */}
+                <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
+                  <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <GraduationCap className="h-4 w-4 text-gray-500" />
+                    Education
+                  </h3>
+                  {profile.hiddenSections?.includes('education') ? (
+                    <p className="text-sm italic text-gray-400 dark:text-gray-500">
+                      Hidden by your section privacy settings.
+                    </p>
+                  ) : profile.education.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No verified education entries yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {profile.education.map((entry, idx) => (
+                        <div
+                          key={`${entry.institutionName}-${String(idx)}`}
+                          className="flex items-start gap-3 rounded-[20px] border border-gray-100 bg-gray-50/50 p-5 dark:border-white/5 dark:bg-white/[0.02]"
+                        >
+                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-foreground">
+                            <GraduationCap className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {entry.degree} {entry.fieldOfStudy ? `in ${entry.fieldOfStudy}` : ''}
+                            </p>
+                            <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
+                              {entry.institutionName}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                              {formatDate(entry.startDate)} –{' '}
+                              {entry.isCurrent
+                                ? 'Present'
+                                : entry.endDate
+                                  ? formatDate(entry.endDate)
+                                  : '—'}
+                              {entry.grade ? ` · Grade: ${entry.grade}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Projects */}
                 <div className="mt-10 border-t border-gray-100 pt-10 dark:border-white/5">
                   <h3 className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                     <FolderGit2 className="h-4 w-4 text-gray-500" />
                     Projects
                   </h3>
-                  {profile.projects.length === 0 ? (
+                  {profile.hiddenSections?.includes('projects') ? (
+                    <p className="text-sm italic text-gray-400 dark:text-gray-500">
+                      Hidden by your section privacy settings.
+                    </p>
+                  ) : profile.projects.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       No projects submitted yet.
                     </p>
@@ -267,7 +391,11 @@ export default function PublicProfilePreviewPage() {
                     <Award className="h-4 w-4 text-gray-500" />
                     Certifications
                   </h3>
-                  {profile.externalCertificates.length === 0 ? (
+                  {profile.hiddenSections?.includes('certifications') ? (
+                    <p className="text-sm italic text-gray-400 dark:text-gray-500">
+                      Hidden by your section privacy settings.
+                    </p>
+                  ) : profile.externalCertificates.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       No verified certifications yet.
                     </p>

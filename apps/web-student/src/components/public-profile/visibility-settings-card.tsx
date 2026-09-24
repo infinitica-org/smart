@@ -129,7 +129,7 @@ export function VisibilitySettingsCard() {
       await api.users.updateProfileVisibility({
         profileVisible: visibility?.profileVisible ?? false,
         showInProgressItems: visibility?.showInProgressItems,
-        hiddenSections: nextHidden as any,
+        hiddenSections: nextHidden as never,
       });
       await Promise.all([
         refetchVisibility(),
