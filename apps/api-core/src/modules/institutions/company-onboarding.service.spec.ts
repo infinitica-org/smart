@@ -392,6 +392,44 @@ describe('CompanyOnboardingService', () => {
       ).rejects.toThrow();
     });
 
+    it('tells the user to add verification details instead of a generic validation failure', async () => {
+      prisma.companyOnboardingSession.findUnique.mockResolvedValue({
+        ...verifiedSession,
+        profileDraft: { profile: fullProfile() },
+      });
+
+      const error = await service
+        .submit(raw, { attestations: { authorizedToRepresent: true, informationAccurate: true } })
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(UnprocessableEntityException);
+      const body = (error as UnprocessableEntityException).getResponse() as {
+        message: string;
+        details: { path: string; message: string }[];
+      };
+      expect(body.message).toBe(
+        'Add your verification details (registered address and business registration information) before submitting.',
+      );
+      expect(body.details.map((d) => d.path)).toContain('verification.registeredAddress');
+      expect(prisma.company.create).not.toHaveBeenCalled();
+      expect(prisma.companyVerification.create).not.toHaveBeenCalled();
+    });
+
+    it('names the incomplete sections when the saved draft is incomplete', async () => {
+      prisma.companyOnboardingSession.findUnique.mockResolvedValue({
+        ...verifiedSession,
+        profileDraft: { verification: fullVerification() },
+      });
+
+      const error = await service
+        .submit(raw, { attestations: { authorizedToRepresent: true, informationAccurate: true } })
+        .catch((e: unknown) => e);
+
+      const body = (error as UnprocessableEntityException).getResponse() as { message: string };
+      expect(body.message).toBe('Complete your company profile before submitting.');
+      expect(prisma.company.create).not.toHaveBeenCalled();
+    });
+
     it('rolls back when verification insert fails', async () => {
       prisma.companyOnboardingSession.findUnique.mockResolvedValue(verifiedSession);
       prisma.company.create.mockResolvedValue({ id: COMPANY_ID });

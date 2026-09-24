@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { ChipGroup, PageHeader, SkillsEditor, type SkillReq } from '../../../../components/ui';
+import { LocationInput } from '../../../../components/location-input';
+import { toRequiredSkills } from '../../../../lib/skill-catalog';
 import { companyJobsApi, formatApiError } from '../../../../lib/api';
 import { getCurrentUser } from '../../../../lib/auth';
 import {
@@ -69,17 +71,7 @@ export default function PostJobPage() {
         location: location.trim() || 'Remote',
         salaryDetails: pay.trim() || undefined,
         roleDetails: description.trim() || undefined,
-        requiredSkills: skills.map((s) => ({
-          skillCode: s.name.toUpperCase().replace(/\s+/g, '_'),
-          minProficiency:
-            s.level === 'Advanced'
-              ? 'ADVANCED'
-              : s.level === 'Professional'
-                ? 'PROFESSIONAL'
-                : s.level === 'Beginner'
-                  ? 'BEGINNER'
-                  : 'INTERMEDIATE',
-        })),
+        requiredSkills: toRequiredSkills(skills),
       });
 
       router.push('/jobs');
@@ -139,10 +131,10 @@ export default function PostJobPage() {
               <label htmlFor="job-location" className={label}>
                 Location / Work Mode
               </label>
-              <input
+              <LocationInput
                 id="job-location"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
                 placeholder="e.g. Bengaluru, Remote, or Hybrid"
                 className={input}
               />

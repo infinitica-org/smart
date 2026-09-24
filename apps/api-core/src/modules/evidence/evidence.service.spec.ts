@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { CandidateEvidenceProvenanceResponseSchema as _CandidateEvidenceProvenanceResponseSchema } from '@smart/contracts';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -69,14 +74,21 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     syncProjectEvidenceRecord: vi.fn().mockResolvedValue(undefined),
     linkProjectEvidenceToTaggedClaims: vi.fn().mockResolvedValue(undefined),
   };
-  const evidenceVersions = {
-    createInitialVersion: vi.fn().mockResolvedValue('created'),
-    appendVersion: vi.fn().mockResolvedValue('appended'),
-    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
-    contentEquals: vi.fn().mockReturnValue(false),
-  };
   const skillInference = {
     recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+  };
+  const evidenceVersions = {
+    resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
+    createInitialVersion: vi.fn().mockResolvedValue('created'),
+    appendVersion: vi.fn().mockResolvedValue('appended'),
+    contentEquals: vi.fn().mockReturnValue(false),
+    hashContent: vi.fn().mockReturnValue('hash'),
+    listStudentEvidenceVersions: vi.fn().mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getStudentEvidenceVersion: vi.fn(),
+    listCandidateEvidenceVersions: vi
+      .fn()
+      .mockResolvedValue({ evidenceId: '', total: 0, items: [] }),
+    getCandidateEvidenceVersion: vi.fn(),
   };
   const service = new EvidenceService(
     prisma as any,
@@ -101,6 +113,7 @@ function buildService(overrides?: { prisma?: Record<string, unknown> }) {
     dedup,
     skillClaimAutoDeclare,
     evidenceSync,
+    skillInference,
     evidenceVersions,
     auditPublisher,
   };
@@ -544,6 +557,35 @@ describe('EvidenceService.getCandidateEducation (T2)', () => {
   });
 });
 
+describe('EvidenceService credentials: isolation and validation (STU-02)', () => {
+  const pdf = { buffer: Buffer.from('%PDF'), fileName: 'cert.pdf', mimeType: 'application/pdf' };
+
+  it('lists only the caller’s credentials', async () => {
+    const { service, prisma } = buildService();
+
+    await service.listCredentials('student-1');
+
+    expect(prisma.professionalCredential.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { studentId: 'student-1' } }),
+    );
+  });
+
+  it('does not let a student attach a document to someone else’s credential', async () => {
+    const { service, storageService } = buildService({
+      prisma: {
+        professionalCredential: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          update: vi.fn(),
+        },
+      },
+    });
+
+    await expect(
+      service.uploadCredentialDocument('student-1', 'cred-other', pdf),
+    ).rejects.toThrow();
+  });
+});
+
 describe('EvidenceService.getCandidateSkillClaims (T3)', () => {
   const staffCaller: RequestUser = {
     sub: 'staff-1',
@@ -779,5 +821,65 @@ describe('EvidenceService.getCandidateSkillClaims (T3)', () => {
         service.getCandidateDemonstratedSkills(foreignStaff, STUDENT_ID),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
+  });
+});
+
+describe('EvidenceService credential upload validation', () => {
+  const pdf = { buffer: Buffer.from('%PDF'), fileName: 'cert.pdf', mimeType: 'application/pdf' };
+
+  it('rejects uploading credential document for non-owned credential', async () => {
+    const { service, prisma, storageService } = buildService({
+      prisma: {
+        professionalCredential: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          update: vi.fn(),
+        },
+      },
+    });
+
+    await expect(
+      service.uploadCredentialDocument('student-2', 'cred-1', pdf),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.professionalCredential.findFirst).toHaveBeenCalledWith({
+      where: { id: 'cred-1', studentId: 'student-2' },
+    });
+    expect(storageService.upload).not.toHaveBeenCalled();
+    expect(prisma.professionalCredential.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsupported document types before storing anything', async () => {
+    const { service, storageService } = buildService();
+
+    await expect(
+      service.uploadCredentialDocument('student-1', 'cred-1', {
+        ...pdf,
+        fileName: 'cert.exe',
+        mimeType: 'application/x-msdownload',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(storageService.upload).not.toHaveBeenCalled();
+  });
+
+  it('rejects documents over the 5MB limit before storing anything', async () => {
+    const { service, storageService } = buildService();
+
+    await expect(
+      service.uploadCredentialDocument('student-1', 'cred-1', {
+        ...pdf,
+        buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(storageService.upload).not.toHaveBeenCalled();
+  });
+
+  it('does not create a credential from an invalid payload', async () => {
+    const { service, prisma } = buildService();
+
+    await expect(service.createCredential('student-1', { issuer: '' })).rejects.toBeDefined();
+
+    expect(prisma.professionalCredential.create).not.toHaveBeenCalled();
   });
 });

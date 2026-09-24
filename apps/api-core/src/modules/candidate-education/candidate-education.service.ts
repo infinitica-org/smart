@@ -16,6 +16,7 @@ import {
   UpdateCandidateEducationSchema,
 } from '@smart/contracts';
 import { Prisma } from '../../generated/prisma/index.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 
@@ -25,7 +26,26 @@ export function isEducationEligible(education: { status: string }): boolean {
 
 @Injectable()
 export class CandidateEducationService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+  ) {}
+
+  private recordAudit(
+    actorId: string,
+    action: string,
+    resourceId: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    return this.auditPublisher.record({
+      actorId,
+      action,
+      resourceType: 'candidate_education',
+      resourceId,
+      reasonCode: null,
+      metadata,
+    });
+  }
 
   isEducationEligible(education: { status: string }): boolean {
     return isEducationEligible(education);
@@ -126,11 +146,14 @@ export class CandidateEducationService {
       },
     });
 
+    await this.recordAudit(userId, 'candidate_education.created', created.id, {
+      status: created.status,
+    });
     return this.mapToDto(created);
   }
 
   async update(userId: string, id: string, body: unknown): Promise<CandidateEducationDto> {
-    await this.getForStudent(userId, id);
+    const before = await this.getForStudent(userId, id);
     const parsed = UpdateCandidateEducationSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -165,12 +188,17 @@ export class CandidateEducationService {
       },
     });
 
+    await this.recordAudit(userId, 'candidate_education.updated', id, {
+      priorStatus: before.status,
+      newStatus: updated.status,
+    });
     return this.mapToDto(updated);
   }
 
   async delete(userId: string, id: string): Promise<void> {
     await this.getForStudent(userId, id);
     await this.prisma.candidateEducation.delete({ where: { id } });
+    await this.recordAudit(userId, 'candidate_education.deleted', id, {});
   }
 
   async attachDocument(
@@ -200,6 +228,10 @@ export class CandidateEducationService {
       },
     });
 
+    await this.recordAudit(userId, 'candidate_education.document_attached', educationId, {
+      documentId: doc.id,
+      documentType: doc.documentType,
+    });
     return this.mapDocumentToDto(doc);
   }
 
@@ -217,6 +249,9 @@ export class CandidateEducationService {
     }
 
     await this.prisma.candidateEducationDocument.delete({ where: { id: documentId } });
+    await this.recordAudit(userId, 'candidate_education.document_removed', educationId, {
+      documentId,
+    });
   }
 
   async confirmByHomeCollege(id: string, user: RequestUser): Promise<CandidateEducationDto> {
@@ -239,6 +274,11 @@ export class CandidateEducationService {
       },
     });
 
+    await this.recordAudit(user.sub, 'candidate_education.confirmed', id, {
+      studentId: record.studentId,
+      priorStatus: record.status,
+      newStatus: 'verified',
+    });
     return this.mapToDto(updated);
   }
 
@@ -276,6 +316,11 @@ export class CandidateEducationService {
       },
     });
 
+    await this.recordAudit(user.sub, 'candidate_education.rejected', id, {
+      studentId: record.studentId,
+      priorStatus: record.status,
+      newStatus: 'rejected',
+    });
     return this.mapToDto(updated);
   }
 

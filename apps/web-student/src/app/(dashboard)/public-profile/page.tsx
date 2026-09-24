@@ -161,6 +161,11 @@ export default function PublicProfilePreviewPage() {
                         <span>Last updated {formatDate(profile.lastUpdatedAt)}</span>
                       </div>
                     ) : null}
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {profile.acceptsEmployerMessages
+                        ? 'Open to employer messages'
+                        : 'Not accepting employer messages'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {profile.certificate ? (

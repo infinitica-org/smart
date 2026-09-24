@@ -59,6 +59,7 @@ import {
   requireOnboardingSessionByToken,
   resolveCurrentSessionVerification,
 } from './company-onboarding-session.access.js';
+import { incompleteSubmissionError } from './company-onboarding-submit-issues.js';
 import { OrganizationsService } from './organizations.service.js';
 
 const EDITABLE_STATUSES = new Set([
@@ -320,15 +321,29 @@ export class CompanyOnboardingService {
     }
 
     const draft = parseDraftStore(session.profileDraft);
-    const representative = CompanyRepresentativeSchema.parse({
+    const representativeResult = CompanyRepresentativeSchema.safeParse({
       ...(session.representativeSnapshot as object),
       workEmail: session.representativeEmail,
     });
-    const profile = CompanySignupProfileSchema.parse({
+    const profileResult = CompanySignupProfileSchema.safeParse({
       ...draft.profile,
       legalName: draft.profile?.legalName ?? draft.verification?.legalName,
     });
-    const verification = CompanyVerificationSchema.parse(draft.verification ?? {});
+    const verificationResult = CompanyVerificationSchema.safeParse(draft.verification ?? {});
+    if (!representativeResult.success || !profileResult.success || !verificationResult.success) {
+      // A clear, actionable 422 instead of a raw Zod error surfacing as "Request failed validation."
+      throw incompleteSubmissionError({
+        results: {
+          representative: representativeResult,
+          profile: profileResult,
+          verification: verificationResult,
+        },
+        hasVerificationData: draft.verification != null,
+      });
+    }
+    const representative = representativeResult.data;
+    const profile = profileResult.data;
+    const verification = verificationResult.data;
 
     await this.assertSubmitDuplicates(profile, verification, session);
 

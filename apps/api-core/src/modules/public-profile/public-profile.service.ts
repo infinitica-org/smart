@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import {
+  EMPLOYER_VIEWER_ROLES,
   SKILL_DEFINITIONS,
   TRACK_DEFINITIONS,
   type PublicCandidateProfileDto,
@@ -8,12 +9,16 @@ import {
   type TrackCode,
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
 import { TrustService } from '../trust/trust.service.js';
+
+/** One counted view per employer per student per day. */
+const PROFILE_VIEW_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
@@ -173,6 +178,35 @@ export class PublicProfileService {
     return this.build(user.id);
   }
 
+  /**
+   * STU-03 — count an authenticated employer opening this profile: who (viewer + organisation),
+   * when, and from where. One row per employer per student per 24h so refreshes don't inflate it.
+   * Anonymous visitors and institution staff are never counted here, and a tracking failure
+   * must never break the profile read.
+   */
+  private async recordEmployerView(studentId: string, viewer: RequestUser | null): Promise<void> {
+    if (!viewer || !(EMPLOYER_VIEWER_ROLES as readonly string[]).includes(viewer.role)) return;
+    try {
+      const since = new Date(Date.now() - PROFILE_VIEW_DEDUPE_WINDOW_MS);
+      const recent = await this.prisma.profileView.findFirst({
+        where: { studentId, viewerId: viewer.sub, createdAt: { gte: since } },
+        select: { id: true },
+      });
+      if (recent) return;
+      await this.prisma.profileView.create({
+        data: {
+          studentId,
+          viewerId: viewer.sub,
+          viewerRole: viewer.role,
+          viewerOrganizationId: viewer.companyId ?? null,
+          source: 'public_link',
+        },
+      });
+    } catch {
+      // Best effort: a failed counter write is not a reason to fail the public lookup.
+    }
+  }
+
   async getForOwner(userId: string): Promise<PublicCandidateProfileDto> {
     return this.build(userId);
   }
@@ -255,12 +289,11 @@ export class PublicProfileService {
         createdAt: true,
         fullName: true,
         profilePhotoObjectKey: true,
-        primaryTrack: { select: { code: true } },
-        showInProgressItems: true,
         hiddenSections: true,
+        allowEmployerMessages: true,
       },
     });
-    const showInProgress = owner.showInProgressItems;
+    const showInProgress = false;
     const hiddenSections = owner.hiddenSections ?? [];
 
     const [
@@ -320,9 +353,7 @@ export class PublicProfileService {
         : Promise.resolve({ _max: { updatedAt: null } }),
     ]);
 
-    const track = owner.primaryTrack
-      ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)
-      : undefined;
+    const track: { name: string; category: 'TECH' | 'MBA' } | undefined = undefined;
 
     const isSkillsHidden = hiddenSections.includes('skills');
     const isProjectsHidden = hiddenSections.includes('projects');
@@ -382,8 +413,8 @@ export class PublicProfileService {
     return {
       fullName: owner.fullName,
       profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, owner.profilePhotoObjectKey),
-      trackName: track?.name ?? null,
-      trackCategory: track?.category ?? null,
+      trackName: certificate?.track?.name ?? null,
+      trackCategory: null,
       skills: isSkillsHidden
         ? []
         : skillClaims.map((claim) => ({
@@ -444,6 +475,7 @@ export class PublicProfileService {
           })),
       showInProgressItems: showInProgress,
       hiddenSections,
+      acceptsEmployerMessages: owner.allowEmployerMessages ?? true,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
       lastUpdatedAt,
     };

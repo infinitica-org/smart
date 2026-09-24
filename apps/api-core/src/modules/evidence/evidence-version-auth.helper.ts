@@ -8,7 +8,8 @@ export interface EvidenceVersionReadAccess {
 
 /**
  * Placement/staff read authorization for candidate evidence versions (VER-01).
- * COMPANY / B2B_PARTNER receive redacted snapshots (no sourcePayload / verifier contact).
+ * COMPANY / B2B_PARTNER receive redacted snapshots (no sourcePayload / verifier contact),
+ * and are blocked entirely unless their company has cleared verification (S6-VV-91).
  */
 export async function assertCanReadCandidateEvidenceVersions(
   prisma: PrismaService,
@@ -49,6 +50,18 @@ export async function assertCanReadCandidateEvidenceVersions(
       throw new ForbiddenException({
         error: 'forbidden',
         message: 'Company account is not associated with a registered company.',
+        statusCode: 403,
+      });
+    }
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { verificationStatus: true },
+    });
+    if (company?.verificationStatus !== 'APPROVED') {
+      throw new ForbiddenException({
+        error: 'forbidden',
+        message: 'Your company account must be verified before you can access candidate evidence.',
         statusCode: 403,
       });
     }

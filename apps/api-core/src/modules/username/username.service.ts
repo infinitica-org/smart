@@ -145,11 +145,11 @@ export class UsernameService {
   async getVisibility(userId: string): Promise<ProfileVisibilityResponse> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { profileVisible: true, showInProgressItems: true, hiddenSections: true },
+      select: { profileVisible: true, hiddenSections: true },
     });
     return {
       profileVisible: user.profileVisible,
-      showInProgressItems: user.showInProgressItems,
+      showInProgressItems: false,
       hiddenSections: user.hiddenSections ?? [],
     };
   }
@@ -183,9 +183,6 @@ export class UsernameService {
       where: { id: userId },
       data: {
         profileVisible: body.profileVisible,
-        ...(body.showInProgressItems !== undefined
-          ? { showInProgressItems: body.showInProgressItems }
-          : {}),
         ...(body.hiddenSections !== undefined ? { hiddenSections: body.hiddenSections } : {}),
         ...(activating ? { usernameStatus: 'ACTIVE', usernameActivatedAt: new Date() } : {}),
       },
@@ -199,14 +196,13 @@ export class UsernameService {
       reasonCode: null,
       metadata: {
         profileVisible: updated.profileVisible,
-        showInProgressItems: updated.showInProgressItems,
         hiddenSections: updated.hiddenSections,
       },
     });
 
     return {
       profileVisible: updated.profileVisible,
-      showInProgressItems: updated.showInProgressItems,
+      showInProgressItems: false,
       hiddenSections: updated.hiddenSections ?? [],
     };
   }

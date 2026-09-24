@@ -9,28 +9,29 @@
 ## 1. The three long-lived branches
 
 ```
-main  ──── always production-ready. Only @brittytino may push / merge.
+main  ──── always production-ready. Gated & merged by @brittytino (or release lead).
  │
- └── qa ── release candidate. Promoted from `dev` after CI + smoke.
-      │     Tino reviews and merges. Engineers do not merge here.
+ └── qa ── release candidate (UAT/staging). Promoted from `dev` after validation.
+      │     Gated & merged by @brittytino. Engineers do not merge here directly.
       │
       └── dev ── team integration branch. Everyone's default base.
-           │     Module owners review and merge feature PRs here.
-           │     Tino is NOT required on every feature PR.
+           │     **No direct pushes — feature branch PRs only.**
+           │     Module owners review and approve domain PRs.
+           │     System Architect signs off on contracts, build configs, and releases.
            │
-           ├── feat/S6-VV-84-org-unification-schema
-           ├── fix/S6-RM-21-gemini-failover-timeout
-           └── chore/S0-TN-03-enterprise-branches
+           ├── feat/S6-VV-92-account-lockout
+           ├── fix/S6-VV-96-dashboard-query-client
+           └── chore/S6-TN-00-decentralised-review-model
 ```
 
-| Branch     | Purpose                                                              | Who reviews            | Who merges                                          | Deploy target                                             |
-| ---------- | -------------------------------------------------------------------- | ---------------------- | --------------------------------------------------- | --------------------------------------------------------- |
-| **`dev`**  | Daily integration. CI must be green.                                 | Module owner of paths  | Module owner (or Vishal V for backend escalation)   | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI) |
-| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (release gate)| **Tino** only                                       | **kvm2** `smart-qa`                                       |
-| **`main`** | Production / GA truth. Always deployable.                            | **Tino**               | **Only `@brittytino`**                              | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI)|
+| Branch     | Purpose                                                             | Who reviews                                             | Who merges                           | Deploy target                                              |
+| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| **`dev`**  | Daily integration. Feature PRs require module owner approval.       | **Module Owner** (per CODEOWNERS) + Architect for seams | **Author / Module Owner** (after CI) | **kvm2** `smart-dev` (Caddy TLS, auto-deploy on green CI)  |
+| **`qa`**   | Freeze candidate for UAT / pilot. No feature work — promotion only. | **Tino** (System Architect)                             | **Tino** only                        | **kvm2** `smart-qa`                                        |
+| **`main`** | Production / GA truth. Always deployable.                           | **Tino** (System Architect)                             | **Only `@brittytino`**               | **kvm4** `smart-prod` (Caddy TLS, auto-deploy on green CI) |
 
 Engineers **never** commit directly to `main`, `qa`, or `dev`.
-Every change lands via a **pull request**.
+Every change lands via a **pull request**, verified by CI and reviewed per the ownership matrix.
 
 ---
 
@@ -46,16 +47,29 @@ Every change lands via a **pull request**.
    ```bash
    git checkout -b feat/S6-VV-84-org-unification-schema
    ```
-3. Work, commit with Conventional Commits + ticket ID.
-4. Push and open a PR **into `dev`** (not `main`, not `qa`).
-5. CI green → **module owner** (or Vishal V as backend escalation) approves → **squash-merge** into `dev`.
-6. Move Zoho ticket: In Review → Verified → Done.
+3. Work, commit with Conventional Commits + ticket ID (`≤ 400 LOC`).
+4. Keep branch updated with `dev` locally:
+   ```bash
+   git fetch origin dev
+   git merge origin/dev # or git rebase origin/dev
+   # Resolve any conflicts hunk-by-hunk. NEVER use blind --strategy-option=theirs.
+   # Run tests locally to ensure clean integration.
+   ```
+5. Push and open a PR **into `dev`** (not `main`, not `qa`).
+6. Automated Quality Gate:
+   - CI runs (`lint`, `format:check`, `typecheck`, `unit tests`, `build`).
+   - PR flow check verifies branch name and conventional title.
+7. Review & Approval:
+   - **Domain feature PRs:** Reviewed and approved by the assigned Module Code Owner (`TEAM.md` §3).
+   - **Contract & Architecture PRs:** Any change to `@smart/contracts`, CI/CD, or build graph requires System Architect (`@brittytino`) approval.
+8. Merge:
+   - Squash-and-merge into `dev`.
+9. Move Zoho ticket: In Review → Verified → Done.
 
 Branch name: `<type>/S<sprint>-<INITIALS>-<nn>-<slug>`
 Initials: `TN` · `VV` · `SV` · `VB` · `RM` · `VG`
 
-> **When does Tino need to review a `dev` PR?**
-> Only when the PR touches **architect-owned paths**: `packages/contracts/`, `.github/workflows/`, `.github/CODEOWNERS`, `ARCHITECTURE.md`, `docs/adr/`, `docs/delivery/`, `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `package.json`. All other PRs are owned by the module owner. See [`.github/CODEOWNERS`](../../.github/CODEOWNERS).
+> **Review policy:** Day-to-day module code reviews are federated to designated module owners to prevent bottlenecks and ensure domain accountability. Cross-cutting contracts and release promotions remain strictly gated by the System Architect.
 
 ---
 
@@ -63,7 +77,7 @@ Initials: `TN` · `VV` · `SV` · `VB` · `RM` · `VG`
 
 | Promotion     | When                                             | How                                                                           |
 | ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `dev` → `qa`  | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges                |
+| `dev` → `qa`  | Sprint midpoint / freeze candidate / pilot build | PR titled `chore(repo): promote dev to qa (S#)` — Tino merges                 |
 | `qa` → `main` | GA cut, or approved production release           | PR titled `chore(repo): promote qa to main (S#)` — **only brittytino merges** |
 
 Hotfix on production: branch from `main` → PR to `main` (brittytino) → cherry-pick / back-merge into `qa` and `dev`.

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import { SKILL_LEVELS, type SkillLevel } from '../lib/types';
+import { SKILL_CATALOG_GROUPS, skillNameForCode, type SkillReq } from '../lib/skill-catalog';
 import {
   chip,
   input,
@@ -95,9 +96,12 @@ export function Modal({
   );
 }
 
-export type SkillReq = { name: string; level: SkillLevel };
+export type { SkillReq };
 
-/** Removable skill tags with a minimum level, plus "+ Add skill". */
+/**
+ * Removable skill tags with a minimum level. Skills can only be chosen from the SMART skill
+ * catalog, so the API always receives a real skill code.
+ */
 export function SkillsEditor({
   skills,
   onChange,
@@ -106,17 +110,15 @@ export function SkillsEditor({
   onChange: (next: SkillReq[]) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [level, setLevel] = useState<SkillLevel>('Intermediate');
 
+  const chosen = new Set(skills.map((skill) => skill.code));
+
   function commit() {
-    const trimmed = name.trim();
-    if (!trimmed || skills.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
-      setName('');
-      return;
-    }
-    onChange([...skills, { name: trimmed, level }]);
-    setName('');
+    if (!code || chosen.has(code)) return;
+    onChange([...skills, { code, name: skillNameForCode(code), level }]);
+    setCode('');
     setAdding(false);
   }
 
@@ -125,14 +127,14 @@ export function SkillsEditor({
       <div className="flex flex-wrap items-center gap-2">
         {skills.map((skill) => (
           <span
-            key={skill.name}
+            key={skill.code}
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--co-primary)] px-3 py-1.5 text-[12px] font-semibold text-white"
           >
             {skill.name} · {skill.level}
             <button
               type="button"
               aria-label={`Remove ${skill.name}`}
-              onClick={() => onChange(skills.filter((s) => s.name !== skill.name))}
+              onClick={() => onChange(skills.filter((s) => s.code !== skill.code))}
               className="rounded-full p-0.5 hover:bg-white/20"
             >
               <X className="size-3" />
@@ -152,20 +154,28 @@ export function SkillsEditor({
 
       {adding ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
+          <select
             autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commit();
-              }
-            }}
-            placeholder="Skill name"
-            aria-label="Skill name"
-            className={`${input} max-w-[200px]`}
-          />
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            aria-label="Skill"
+            className={`${input} max-w-[280px]`}
+          >
+            <option value="">Choose a skill from the SMART catalog…</option>
+            {SKILL_CATALOG_GROUPS.map((group) => {
+              const available = group.skills.filter((skill) => !chosen.has(skill.code));
+              if (available.length === 0) return null;
+              return (
+                <optgroup key={group.categoryName} label={group.categoryName}>
+                  {available.map((skill) => (
+                    <option key={skill.code} value={skill.code}>
+                      {skill.name}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
+          </select>
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value as SkillLevel)}
@@ -178,14 +188,19 @@ export function SkillsEditor({
               </option>
             ))}
           </select>
-          <button type="button" onClick={commit} className={secondaryButton}>
+          <button
+            type="button"
+            onClick={commit}
+            disabled={!code}
+            className={`${secondaryButton} disabled:opacity-50`}
+          >
             Add
           </button>
           <button
             type="button"
             onClick={() => {
               setAdding(false);
-              setName('');
+              setCode('');
             }}
             className="text-[13px] font-semibold text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]"
           >

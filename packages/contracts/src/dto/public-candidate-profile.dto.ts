@@ -115,6 +115,8 @@ export const PublicCandidateProfileDtoSchema = z.object({
   hiddenSections: z.array(z.string()).default([]),
   /** T10 — latest committed change timestamp relevant to the candidate profile. */
   lastUpdatedAt: z.string().optional(),
+  /** STU-02 — false when the student has turned employer messages off. */
+  acceptsEmployerMessages: z.boolean().default(true),
 });
 export type PublicCandidateProfileDto = z.infer<typeof PublicCandidateProfileDtoSchema>;
 

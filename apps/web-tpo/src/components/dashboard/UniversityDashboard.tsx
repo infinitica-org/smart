@@ -119,19 +119,19 @@ export function UniversityDashboard({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
           {
-            label: 'Whitelisted Candidates',
+            label: 'Whitelisted',
             value: metrics.whitelisted,
             subtext: 'Enrolled institutional cohort',
             icon: UserCheck,
           },
           {
-            label: 'Fully Verified',
+            label: 'Fully verified',
             value: metrics.fullyVerified,
             subtext: 'Certified skill credentials',
             icon: ShieldCheck,
           },
           {
-            label: 'Opportunities Matched',
+            label: 'Opportunities matched',
             value: metrics.opportunitiesMatched,
             subtext: 'Active placement drives',
             icon: Briefcase,
@@ -175,7 +175,7 @@ export function UniversityDashboard({
             </p>
           </div>
           <Link href="/students" className={dashboardPrimaryButtonClass}>
-            View all candidates
+            View all students
             <ArrowRight className="size-3.5" />
           </Link>
         </div>

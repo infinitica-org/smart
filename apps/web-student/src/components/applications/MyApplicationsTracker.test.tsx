@@ -5,11 +5,15 @@ import type { CandidateApplicationDto } from '@smart/contracts';
 import { MyApplicationsTracker } from './MyApplicationsTracker';
 
 const listMyApplications = vi.fn();
+const listWorkExperiences = vi.fn().mockResolvedValue([]);
 
 vi.mock('@/lib/api', () => ({
   api: {
     placement: {
       listMyApplications: (...args: unknown[]) => listMyApplications(...args),
+    },
+    users: {
+      listWorkExperiences: (...args: unknown[]) => listWorkExperiences(...args),
     },
   },
 }));
@@ -38,11 +42,15 @@ function renderTracker(pollIntervalMs = 60_000): ReturnType<typeof render> {
       queries: { retry: false, refetchOnWindowFocus: false, refetchIntervalInBackground: true },
     },
   });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MyApplicationsTracker pollIntervalMs={pollIntervalMs} />
     </QueryClientProvider>,
   );
+  // Every test in this file exercises the ATS pipeline, which now lives behind
+  // its own tab (the component defaults to the Endorsements tab).
+  fireEvent.click(screen.getByRole('button', { name: /ATS Applications Pipeline/i }));
+  return view;
 }
 
 describe('MyApplicationsTracker', () => {
@@ -151,7 +159,7 @@ describe('MyApplicationsTracker', () => {
 
     renderTracker();
 
-    await waitFor(() => expect(screen.getByText('No applications yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No applications in pipeline')).toBeTruthy());
     expect(screen.queryByText('Backend Engineer')).toBeNull();
   });
 
@@ -163,7 +171,7 @@ describe('MyApplicationsTracker', () => {
     renderTracker();
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
     await waitFor(() => expect(screen.getAllByText('Backend Engineer').length).toBeGreaterThan(0));
     expect(listMyApplications).toHaveBeenCalledWith();
   });

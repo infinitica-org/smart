@@ -15,6 +15,7 @@ describe('PublicProfileService project portfolio filter', () => {
     certificate: { findFirst: vi.fn() },
     candidateCertificate: { findMany: vi.fn() },
     candidateEducation: { findMany: vi.fn() },
+    studentCapability: { findMany: vi.fn() },
   };
   const storage = { getSignedUrl: vi.fn() };
 
@@ -27,6 +28,7 @@ describe('PublicProfileService project portfolio filter', () => {
       profilePhotoObjectKey: null,
       primaryTrack: null,
       showInProgressItems: false,
+      allowEmployerMessages: true,
     });
     prisma.skillClaim.findMany.mockResolvedValue([]);
     prisma.skillClaim.count.mockResolvedValue(0);
@@ -35,6 +37,7 @@ describe('PublicProfileService project portfolio filter', () => {
     prisma.certificate.findFirst.mockResolvedValue(null);
     prisma.candidateCertificate.findMany.mockResolvedValue([]);
     prisma.candidateEducation.findMany.mockResolvedValue([]);
+    prisma.studentCapability.findMany.mockResolvedValue([]);
     service = new PublicProfileService(prisma as never, storage as never);
   });
 
@@ -45,5 +48,20 @@ describe('PublicProfileService project portfolio filter', () => {
         where: { studentId: userId, isActive: true, status: { not: 'REJECTED' } },
       }),
     );
+  });
+
+  it('tells employers whether the student accepts messages (STU-02)', async () => {
+    const on = await service.getForOwner(userId);
+    expect(on.acceptsEmployerMessages).toBe(true);
+
+    prisma.user.findUniqueOrThrow.mockResolvedValue({
+      fullName: 'Ada',
+      profilePhotoObjectKey: null,
+      primaryTrack: null,
+      showInProgressItems: false,
+      allowEmployerMessages: false,
+    });
+    const off = await service.getForOwner(userId);
+    expect(off.acceptsEmployerMessages).toBe(false);
   });
 });

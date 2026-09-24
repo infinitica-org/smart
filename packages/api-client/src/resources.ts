@@ -17,6 +17,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  ListActiveSessionsQuery,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
   SetFeatureFlagOverrideRequest,
@@ -46,6 +47,11 @@ import type {
   RunSdeSkillFormCodeRequest,
   ReserveUsernameRequest,
   UpdateProfileVisibilityRequest,
+  UpdatePersonalInfoRequest,
+  UpdateMessagingPreferenceRequest,
+  DeactivateAccountRequest,
+  CreateDataRequest,
+  UpdateProfileViewSettingRequest,
   CreateCandidateEducationDocumentDto,
   CreateCandidateEducationDto,
   UpdateCandidateEducationDto,
@@ -90,6 +96,7 @@ import {
   CompleteSkillVerifyResponseSchema,
   CertVerifyPrepareDtoSchema,
   CertVerifySessionDtoSchema,
+  ActiveSessionDtoSchema,
   AuditLogDtoSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
@@ -232,6 +239,14 @@ import {
   type SubmitManagerEndorsementDto,
   UsernameStatusResponseSchema,
   ProfileVisibilityResponseSchema,
+  PersonalInfoResponseSchema,
+  MessagingPreferenceResponseSchema,
+  DeactivateAccountResponseSchema,
+  DataRequestResponseSchema,
+  DataRequestListResponseSchema,
+  StudentDashboardSummarySchema,
+  StudentReadinessSummarySchema,
+  ProfileViewSettingSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
   ListAdminLevelsResponseSchema,
@@ -480,6 +495,64 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/visibility'),
         body,
         schema: ProfileVisibilityResponseSchema,
+      }),
+
+    getReadiness: () =>
+      client.get(prefixed('/users/me/readiness'), { schema: StudentReadinessSummarySchema }),
+
+    getDashboard: () =>
+      client.get(prefixed('/users/me/dashboard'), { schema: StudentDashboardSummarySchema }),
+
+    getProfileViewSetting: () =>
+      client.get(prefixed('/users/me/profile-views-setting'), { schema: ProfileViewSettingSchema }),
+
+    updateProfileViewSetting: (body: UpdateProfileViewSettingRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/profile-views-setting'),
+        body,
+        schema: ProfileViewSettingSchema,
+      }),
+
+    getPersonalInfo: () =>
+      client.get(prefixed('/users/me/personal'), { schema: PersonalInfoResponseSchema }),
+
+    updatePersonalInfo: (body: UpdatePersonalInfoRequest) =>
+      client.request({
+        method: 'PATCH',
+        path: prefixed('/users/me/personal'),
+        body,
+        schema: PersonalInfoResponseSchema,
+      }),
+
+    getMessagingPreference: () =>
+      client.get(prefixed('/users/me/messaging'), { schema: MessagingPreferenceResponseSchema }),
+
+    updateMessagingPreference: (body: UpdateMessagingPreferenceRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/messaging'),
+        body,
+        schema: MessagingPreferenceResponseSchema,
+      }),
+
+    deactivateAccount: (body: DeactivateAccountRequest) =>
+      client.request({
+        method: 'POST',
+        path: prefixed('/users/me/deactivate'),
+        body,
+        schema: DeactivateAccountResponseSchema,
+      }),
+
+    listDataRequests: () =>
+      client.get(prefixed('/users/me/data-requests'), { schema: DataRequestListResponseSchema }),
+
+    createDataRequest: (body: CreateDataRequest) =>
+      client.request({
+        method: 'POST',
+        path: prefixed('/users/me/data-requests'),
+        body,
+        schema: DataRequestResponseSchema,
       }),
 
     listWorkExperiences: () =>
@@ -836,6 +909,15 @@ export function onboardingApi(client: SmartApiClient) {
         schema: z.array(AuditLogDtoSchema),
         query,
       }),
+
+    listActiveSessions: (query?: ListActiveSessionsQuery) =>
+      client.get(prefixed('/admin/sessions'), {
+        schema: z.array(ActiveSessionDtoSchema),
+        query,
+      }),
+
+    revokeSession: (sessionId: string, body: TenantActionReason) =>
+      client.post<void>(prefixed(`/admin/sessions/${sessionId}/revoke`), body),
 
     viewCandidateProfile: (userId: string, body: ViewCandidateRequest) =>
       client.post(prefixed(`/admin/students/${userId}/profile`), body, {

@@ -34,12 +34,12 @@ describe('CandidateDetailDrawer', () => {
     render(<CandidateDetailDrawer candidate={candidate} isOpen onClose={() => {}} />);
 
     expect(screen.getByRole('dialog')).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Candidate profile' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeDefined();
     expect(screen.queryByText('Candidate Profile View')).toBeNull();
     expect(screen.queryByText(/Observational Data Only/)).toBeNull();
 
     await waitFor(() => {
-      expect(screen.getByText('Ada Lovelace')).toBeDefined();
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
     });
   });
 

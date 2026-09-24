@@ -11,6 +11,8 @@ import {
   SkillsEditor,
   type SkillReq,
 } from '../../../../../components/ui';
+import { LocationInput } from '../../../../../components/location-input';
+import { fromRequiredSkills, toRequiredSkills } from '../../../../../lib/skill-catalog';
 import { companyJobsApi, formatApiError } from '../../../../../lib/api';
 import type { JobStatus } from '../../../../../lib/types';
 import {
@@ -71,19 +73,7 @@ export default function EditJobPage() {
             ]);
           }
           if (res.requiredSkills) {
-            setSkills(
-              res.requiredSkills.map((s) => ({
-                name: s.skillCode,
-                level:
-                  s.minProficiency === 'ADVANCED'
-                    ? 'Advanced'
-                    : s.minProficiency === 'PROFESSIONAL'
-                      ? 'Professional'
-                      : s.minProficiency === 'BEGINNER'
-                        ? 'Beginner'
-                        : 'Intermediate',
-              })),
-            );
+            setSkills(fromRequiredSkills(res.requiredSkills));
           }
         }
       } catch {
@@ -107,19 +97,7 @@ export default function EditJobPage() {
               ]);
             }
             if (found.requiredSkills) {
-              setSkills(
-                found.requiredSkills.map((s) => ({
-                  name: s.skillCode,
-                  level:
-                    s.minProficiency === 'ADVANCED'
-                      ? 'Advanced'
-                      : s.minProficiency === 'PROFESSIONAL'
-                        ? 'Professional'
-                        : s.minProficiency === 'BEGINNER'
-                          ? 'Beginner'
-                          : 'Intermediate',
-                })),
-              );
+              setSkills(fromRequiredSkills(found.requiredSkills));
             }
           }
         } catch {
@@ -151,17 +129,7 @@ export default function EditJobPage() {
         location: location.trim() || 'Remote',
         salaryDetails: pay.trim() || undefined,
         roleDetails: description.trim() || undefined,
-        requiredSkills: skills.map((s) => ({
-          skillCode: s.name.toUpperCase().replace(/\s+/g, '_'),
-          minProficiency:
-            s.level === 'Advanced'
-              ? 'ADVANCED'
-              : s.level === 'Professional'
-                ? 'PROFESSIONAL'
-                : s.level === 'Beginner'
-                  ? 'BEGINNER'
-                  : 'INTERMEDIATE',
-        })),
+        requiredSkills: toRequiredSkills(skills),
       });
       setSaved(true);
     } catch (err) {
@@ -201,17 +169,7 @@ export default function EditJobPage() {
         location: location.trim() || 'Remote',
         salaryDetails: pay.trim() || undefined,
         roleDetails: description.trim() || undefined,
-        requiredSkills: skills.map((s) => ({
-          skillCode: s.name.toUpperCase().replace(/\s+/g, '_'),
-          minProficiency:
-            s.level === 'Advanced'
-              ? 'ADVANCED'
-              : s.level === 'Professional'
-                ? 'PROFESSIONAL'
-                : s.level === 'Beginner'
-                  ? 'BEGINNER'
-                  : 'INTERMEDIATE',
-        })),
+        requiredSkills: toRequiredSkills(skills),
       });
       setDeleteOpen(false);
       router.push('/jobs');
@@ -275,11 +233,11 @@ export default function EditJobPage() {
               <label htmlFor="edit-location" className={label}>
                 Location / Work Mode
               </label>
-              <input
+              <LocationInput
                 id="edit-location"
                 value={location}
-                onChange={(e) => {
-                  setLocation(e.target.value);
+                onChange={(next) => {
+                  setLocation(next);
                   setSaved(false);
                 }}
                 placeholder="e.g. Bengaluru, Remote, or Hybrid"

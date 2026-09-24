@@ -203,3 +203,27 @@ export const AssignRoleRequestSchema = z.object({
   role: UserRoleSchema,
 });
 export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;
+
+/* ------------------------------ admin: sessions ---------------------------- */
+
+/** S6-VV-93 — one row per live login (a RefreshToken family with an unrevoked, unexpired token). */
+export const ActiveSessionDtoSchema = z.object({
+  id: UuidSchema,
+  userId: UuidSchema,
+  userEmail: EmailSchema,
+  userFullName: z.string(),
+  userRole: UserRoleSchema,
+  familyId: UuidSchema,
+  createdAt: IsoDateTimeSchema,
+  expiresAt: IsoDateTimeSchema,
+});
+export type ActiveSessionDto = z.infer<typeof ActiveSessionDtoSchema>;
+
+export const ListActiveSessionsQuerySchema = z.object({
+  email: EmailSchema.optional(),
+  userId: UuidSchema.optional(),
+});
+export type ListActiveSessionsQuery = z.infer<typeof ListActiveSessionsQuerySchema>;
+
+export const ListActiveSessionsResponseSchema = z.array(ActiveSessionDtoSchema);
+export type ListActiveSessionsResponse = z.infer<typeof ListActiveSessionsResponseSchema>;

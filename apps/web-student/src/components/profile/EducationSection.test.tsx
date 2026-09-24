@@ -189,4 +189,82 @@ describe('EducationSection', () => {
       expect(screen.getByText(/1 document\(s\)/i)).toBeTruthy();
     });
   });
+
+  async function openCreateModalAndFill() {
+    fireEvent.click(await screen.findByRole('button', { name: /Add your first education/i }));
+    await screen.findByPlaceholderText(/RV College/i);
+    fireEvent.change(screen.getByPlaceholderText(/RV College/i), { target: { value: 'MIT' } });
+    fireEvent.change(screen.getByLabelText('Program / Degree *'), { target: { value: 'B.Tech' } });
+    fireEvent.change(screen.getByLabelText('Board / University *'), { target: { value: 'CBSE' } });
+    fireEvent.change(screen.getByLabelText('Start year *'), { target: { value: '2020' } });
+    fireEvent.change(screen.getByLabelText('End year *'), { target: { value: '2024' } });
+    fireEvent.change(screen.getByLabelText('Study mode *'), { target: { value: 'Full-time' } });
+    fireEvent.change(screen.getByTestId('education-score-input'), { target: { value: '8.5' } });
+    fireEvent.change(screen.getByLabelText(/Institute roll no/i), {
+      target: { value: '22ALR110' },
+    });
+    fireEvent.change(screen.getByLabelText(/Current semester/i), { target: { value: '7' } });
+  }
+
+  it('shows an empty state when there are no education entries', async () => {
+    listEducation.mockResolvedValue([]);
+    renderWithQueryClient(<EducationSection />);
+    expect(await screen.findByText('No education entries yet')).toBeTruthy();
+  });
+
+  it('shows a specific error when education cannot be loaded', async () => {
+    listEducation.mockRejectedValue(new Error('Education service unavailable'));
+    renderWithQueryClient(<EducationSection />);
+    expect(await screen.findByText('Education service unavailable')).toBeTruthy();
+  });
+
+  it('does not save when required fields are missing', async () => {
+    listEducation.mockResolvedValue([]);
+    renderWithQueryClient(<EducationSection />);
+    fireEvent.click(await screen.findByRole('button', { name: /Add your first education/i }));
+    await screen.findByPlaceholderText(/RV College/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(createEducation).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/RV College/i)).toBeTruthy();
+  });
+
+  it('keeps the entered data and reports the error when saving fails, then succeeds on retry', async () => {
+    listEducation.mockResolvedValue([]);
+    createEducation
+      .mockRejectedValueOnce(new Error('Could not reach server'))
+      .mockResolvedValueOnce(mockEduItem);
+    renderWithQueryClient(<EducationSection />);
+    await openCreateModalAndFill();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+    expect(await screen.findByText('Could not reach server')).toBeTruthy();
+    expect((screen.getByPlaceholderText(/RV College/i) as HTMLInputElement).value).toBe('MIT');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+    await waitFor(() => expect(createEducation).toHaveBeenCalledTimes(2));
+  });
+
+  it('asks for confirmation before deleting and skips the API call when cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderWithQueryClient(<EducationSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete education' }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(deleteEducation).not.toHaveBeenCalled();
+  });
+
+  it('deletes the entry once confirmed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    deleteEducation.mockResolvedValue(undefined);
+    renderWithQueryClient(<EducationSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete education' }));
+
+    await waitFor(() => expect(deleteEducation).toHaveBeenCalledWith('edu-123'));
+  });
 });
