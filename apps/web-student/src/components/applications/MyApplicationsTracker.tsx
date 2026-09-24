@@ -49,10 +49,12 @@ export interface EndorsementRecord {
 
 export function MyApplicationsTracker({
   pollIntervalMs = MY_APPLICATIONS_POLL_MS,
+  initialTab = 'applications',
 }: {
   pollIntervalMs?: number;
+  initialTab?: 'endorsements' | 'applications';
 }) {
-  const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>('endorsements');
+  const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>(initialTab);
   const [endorsementFilter, setEndorsementFilter] = useState<EndorsementFilter>('All');
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [experiencesLoading, setExperiencesLoading] = useState(true);
