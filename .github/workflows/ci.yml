@@ -2,18 +2,15 @@ name: CI
 
 on:
   pull_request:
+    branches: [dev, qa, main]
+  push:
     branches: [dev]
-    # Only run CI on feature PRs into dev — not on promotion merges to qa/main.
-    # This conserves GitHub Actions minutes on the Free plan.
-    # Deploy workflows (deploy-qa.yml, deploy-prod.yml) handle qa/main separately.
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Free org plan: hosted minutes are billed per job. Four parallel pnpm installs
-# used ~4× the install time. One job = one install. See
-# docs/delivery/GITHUB_ACTIONS_FREE.md
+# Enterprise Quality Gate: single fast job with Turbo caching across all targets
 jobs:
   ci:
     name: ci
@@ -27,14 +24,16 @@ jobs:
       - name: lockfile
         run: node scripts/check-lockfile.mjs
 
-      - name: merge-main
-        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+      - name: verify-target-mergeability
+        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
-          if ! git merge-tree --write-tree origin/main HEAD >/dev/null; then
-            echo "::error::This branch conflicts with origin/main. Merge main into this branch before landing."
-            git merge-tree --write-tree --messages origin/main HEAD || true
+          TARGET_BASE="${{ github.base_ref }}"
+          echo "Verifying PR cleanly merges with base: origin/${TARGET_BASE}"
+          git fetch --no-tags origin "${TARGET_BASE}"
+          if ! git merge-tree --write-tree "origin/${TARGET_BASE}" HEAD >/dev/null; then
+            echo "::error::This branch has merge conflicts with origin/${TARGET_BASE}. Rebase or merge origin/${TARGET_BASE} locally before landing."
+            git merge-tree --write-tree --messages "origin/${TARGET_BASE}" HEAD || true
             exit 1
           fi
 

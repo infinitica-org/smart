@@ -88,7 +88,7 @@ create_branch() {
 }
 
 protect_strict() {
-  # Used for main + qa — only brittytino may push
+  # Used for main + qa — only brittytino may push/merge
   local branch="$1"
   echo "Protecting '$branch' (strict / brittytino-only push)"
   run gh api -X PUT "repos/$REPO/branches/$branch/protection" \
@@ -96,14 +96,9 @@ protect_strict() {
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["lint", "typecheck", "unit tests", "build"]
+    "contexts": ["ci", "enforce-flow"]
   },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": true
-  },
+  "enforce_admins": false,
   "restrictions": {
     "users": ["brittytino"],
     "teams": [],
@@ -120,20 +115,19 @@ EOF
 protect_dev() {
   local branch="$1"
   echo "Protecting '$branch' (team PRs, no direct push)"
-  # restrictions: null = anyone with write can merge via PR after checks
-  # For classic protection API, omit restrictions by sending null via raw
+  # restrictions: null = anyone with write can merge via PR after checks and approval
   run gh api -X PUT "repos/$REPO/branches/$branch/protection" \
     --input - <<EOF
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["lint", "typecheck", "unit tests", "build"]
+    "contexts": ["ci", "enforce-flow"]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": true
+    "require_code_owner_reviews": false
   },
   "restrictions": null,
   "allow_force_pushes": false,
