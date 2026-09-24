@@ -22,6 +22,7 @@ import {
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { InstitutionsService } from './institutions.service.js';
 
 function compactQuery(
@@ -45,6 +46,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('partnerships/requests/:id')
+  @AuditAccess('partnership_request', 'id')
   getPartnershipRequest(@Param('id') id: string) {
     return this.institutions.getPartnershipRequestById(id);
   }
@@ -167,6 +169,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('verification-queue/:tenantId/review')
+  @AuditAccess('tenant_verification', 'tenantId')
   verificationReview(
     @Param('tenantId') tenantId: string,
     @Query() query: Record<string, string | undefined>,
@@ -265,6 +268,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('institutions/:institutionId/students')
+  @AuditAccess('institution_students', 'institutionId')
   listStudents(
     @Param('institutionId') institutionId: string,
     @Query() query: Record<string, string | undefined>,
@@ -317,6 +321,7 @@ export class InstitutionsAdminController {
   }
 
   @Get('institutions/:institutionId/admins')
+  @AuditAccess('institution_admins', 'institutionId')
   listAdmins(@Param('institutionId') institutionId: string) {
     return this.institutions.listInstitutionAdmins(institutionId);
   }

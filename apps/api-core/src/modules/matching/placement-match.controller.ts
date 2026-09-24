@@ -20,6 +20,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { MatchingService } from './matching.service.js';
 import { SkillLevelExplanationService } from '../evidence/skill-level-explanation.service.js';
 
@@ -82,6 +83,7 @@ export class PlacementMatchController {
   }
 
   @Get('match-runs/:runId/candidates/:studentId')
+  @AuditAccess('user', 'studentId')
   @HttpCode(200)
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({ summary: 'Single candidate fit from a completed match run snapshot.' })
@@ -113,6 +115,7 @@ export class PlacementMatchController {
   }
 
   @Get('candidates/:studentId/skills/:skillCode/inspection')
+  @AuditAccess('user', 'studentId')
   @HttpCode(200)
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({

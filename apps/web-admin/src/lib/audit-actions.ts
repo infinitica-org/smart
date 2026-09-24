@@ -49,6 +49,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'admin.item.updated': 'Updated assessment item',
   'admin.cut_score.upserted': 'Upserted cut score',
   'admin.response.graded': 'Manually graded response',
+
+  // audit-access.interceptor.ts (S6-VV-103)
+  'admin.data_accessed': 'Viewed personal data',
   'admin.skill_retake_policy.updated': 'Updated skill retake policy',
 
   // candidate-certificates.service.ts
@@ -143,6 +146,10 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   'sourceId',
   'externalAccountId',
   'message',
+
+  // audit-access.interceptor.ts (S6-VV-103)
+  'actorRole',
+  'route',
 
   // work-experience.service.ts
   'attemptId',

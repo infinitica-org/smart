@@ -9,6 +9,7 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { SessionHoldGuard } from './common/guards/session-hold.guard.js';
 import { ObservabilityInterceptor } from './common/interceptors/observability.interceptor.js';
 import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor.js';
+import { AuditAccessInterceptor } from './common/interceptors/audit-access.interceptor.js';
 import { AiGatewayModule } from './modules/ai-gateway/ai-gateway.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AssessmentModule } from './modules/assessment/assessment.module.js';
@@ -106,6 +107,7 @@ import { StorageModule } from './platform/storage/storage.module.js';
     { provide: APP_GUARD, useClass: FeatureFlagGuard },
     { provide: APP_INTERCEPTOR, useClass: ObservabilityInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: AuditAccessInterceptor },
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
   ],
 })
