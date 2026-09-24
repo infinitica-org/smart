@@ -142,7 +142,7 @@ describe('SkillRepositoryPage', () => {
 
   it('renders the Skill Repository heading and catalog skills', async () => {
     render(<SkillRepositoryPage />);
-    expect(await screen.findByRole('heading', { name: 'Skill Repository' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Skill Assessments' })).toBeDefined();
     expect(screen.getByText('Python')).toBeDefined();
     expect(screen.getByText('JavaScript / TypeScript')).toBeDefined();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
