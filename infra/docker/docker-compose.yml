@@ -23,6 +23,7 @@ x-app-env: &app-env
   STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
   TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
   ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+  COMPANY_APP_URL: ${COMPANY_APP_URL:-http://localhost:3006}
   METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
@@ -320,6 +321,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -327,6 +329,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -344,6 +347,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -351,6 +355,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -368,6 +373,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -375,6 +381,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -408,6 +415,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -415,10 +423,38 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
       - "127.0.0.1:${AUTH_PORT:-3005}:3000"
+    profiles: ["apps"]
+
+  # S6-VV-147 — employer portal (was built by CI but never deployed).
+  web-company:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        APP: web-company
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_AUTH_URL: ${AUTH_APP_URL:-http://localhost:3005}
+        NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+        NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+        NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_AUTH_URL: ${AUTH_APP_URL:-http://localhost:3005}
+      NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${COMPANY_PORT:-3006}:3000"
     profiles: ["apps"]
 
   caddy:
@@ -433,6 +469,7 @@ services:
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
+      COMPANY_HOST: ${COMPANY_HOST:-company.localhost}
       API_HOST: ${API_HOST:-api.localhost}
       STUDIO_HOST: ${STUDIO_HOST:-studio.localhost}
       DB_HOST: ${DB_HOST:-db.localhost}
@@ -449,6 +486,7 @@ services:
       - web-admin
       - web-verify
       - web-auth
+      - web-company
       - prisma-studio
       - adminer
     # Only one stack per host should enable profile `vps` (binds :80/:443).
