@@ -17,6 +17,7 @@ describe('WorkExperienceService', () => {
   let prisma: any;
   let auditPublisher: any;
   let aiGateway: any;
+  let notifications: any;
   let publicProfileService: any;
   let evidenceSync: any;
   let storage: any;
@@ -104,7 +105,8 @@ describe('WorkExperienceService', () => {
         create: vi.fn(),
         findFirst: vi.fn(),
         findUnique: vi.fn(),
-        findFirst: vi.fn(),
+        findMany: vi.fn(),
+        count: vi.fn(),
         update: vi.fn(),
       },
       workExperienceResponsibility: {

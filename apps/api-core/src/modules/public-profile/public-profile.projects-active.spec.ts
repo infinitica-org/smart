@@ -15,6 +15,7 @@ describe('PublicProfileService project portfolio filter', () => {
     certificate: { findFirst: vi.fn() },
     candidateCertificate: { findMany: vi.fn() },
     candidateEducation: { findMany: vi.fn() },
+    studentCapability: { findMany: vi.fn() },
   };
   const storage = { getSignedUrl: vi.fn() };
 
@@ -35,6 +36,7 @@ describe('PublicProfileService project portfolio filter', () => {
     prisma.certificate.findFirst.mockResolvedValue(null);
     prisma.candidateCertificate.findMany.mockResolvedValue([]);
     prisma.candidateEducation.findMany.mockResolvedValue([]);
+    prisma.studentCapability.findMany.mockResolvedValue([]);
     service = new PublicProfileService(prisma as never, storage as never);
   });
 
