@@ -49,6 +49,7 @@ import type {
   UpdateMessagingPreferenceRequest,
   DeactivateAccountRequest,
   CreateDataRequest,
+  UpdateProfileViewSettingRequest,
   CreateCandidateEducationDocumentDto,
   CreateCandidateEducationDto,
   UpdateCandidateEducationDto,
@@ -221,6 +222,8 @@ import {
   DeactivateAccountResponseSchema,
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
+  StudentDashboardSummarySchema,
+  ProfileViewSettingSchema,
   ListBlockedWordsResponseSchema,
   BlockedWordDtoSchema,
   ListAdminLevelsResponseSchema,
@@ -464,6 +467,20 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/visibility'),
         body,
         schema: ProfileVisibilityResponseSchema,
+      }),
+
+    getDashboard: () =>
+      client.get(prefixed('/users/me/dashboard'), { schema: StudentDashboardSummarySchema }),
+
+    getProfileViewSetting: () =>
+      client.get(prefixed('/users/me/profile-views-setting'), { schema: ProfileViewSettingSchema }),
+
+    updateProfileViewSetting: (body: UpdateProfileViewSettingRequest) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed('/users/me/profile-views-setting'),
+        body,
+        schema: ProfileViewSettingSchema,
       }),
 
     getPersonalInfo: () =>

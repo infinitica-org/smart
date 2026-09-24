@@ -8,24 +8,6 @@ export interface ActivityFeedItem {
   text: string;
 }
 
-const _DEFAULT_ACTIVITIES: ActivityFeedItem[] = [
-  {
-    id: 'a1',
-    icon: 'eye',
-    text: 'Bellstone LaunchPad viewed your profile',
-  },
-  {
-    id: 'a2',
-    icon: 'file',
-    text: 'You applied to Product Analyst — Regal Corp',
-  },
-  {
-    id: 'a3',
-    icon: 'trending',
-    text: 'Your project defense raised "React" to Advanced',
-  },
-];
-
 export function StudentActivityFeedPanel({ activities = [] }: { activities?: ActivityFeedItem[] }) {
   return (
     <section className="relative overflow-hidden rounded-md border border-zinc-200/80 bg-white p-5 shadow-2xs font-sans select-none dark:border-zinc-800 dark:bg-[#161616]">

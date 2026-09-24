@@ -433,7 +433,9 @@ model User {
   allowEmployerMessages  Boolean         @default(true) @map("allow_employer_messages")
   /// STU-02 — self-service deactivation; blocks sign-in and hides the profile until cleared.
   deactivatedAt          DateTime?       @map("deactivated_at") @db.Timestamptz(6)
-  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// STU-03 — student opt-in: show the count of employer profile views on the dashboard.
+  showEmployerViewCount  Boolean         @default(false) @map("show_employer_view_count")
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   refreshTokens                        RefreshToken[]
   emailVerificationTokens              EmailVerificationToken[]
@@ -468,6 +470,8 @@ model User {
   studentCapabilities                  StudentCapability[]
   universityContactRequests            UniversityContactRequest[]
   dataSubjectRequests                  DataSubjectRequest[]
+  profileViewsReceived                 ProfileView[]                 @relation("ProfileViewStudent")
+  profileViewsMade                     ProfileView[]                 @relation("ProfileViewViewer")
   companyOnboardingSessions            CompanyOnboardingSession[]    @relation("CompanyOnboardingUser")
   companyVerificationsReviewed         CompanyVerification[]         @relation("CompanyVerificationReviewedBy")
   companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
@@ -2184,4 +2188,23 @@ model DataSubjectRequest {
 
   @@index([userId, type, status])
   @@map("data_subject_requests")
+}
+
+/// STU-03 — an authenticated employer/recruiter opening a student's public profile.
+/// Institution-staff views are audited separately (`candidate.profile_viewed`) and never counted here.
+model ProfileView {
+  id                   String   @id @default(uuid()) @db.Uuid
+  studentId            String   @map("student_id") @db.Uuid
+  student              User     @relation("ProfileViewStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  viewerId             String?  @map("viewer_id") @db.Uuid
+  viewer               User?    @relation("ProfileViewViewer", fields: [viewerId], references: [id], onDelete: SetNull)
+  viewerRole           String   @map("viewer_role")
+  viewerOrganizationId String?  @map("viewer_organization_id") @db.Uuid
+  /// Where the view came from, e.g. `public_link`.
+  source               String   @default("public_link")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([studentId, createdAt])
+  @@index([studentId, viewerId, createdAt])
+  @@map("profile_views")
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  EMPLOYER_VIEWER_ROLES,
   SKILL_DEFINITIONS,
   TRACK_DEFINITIONS,
   type PublicCandidateProfileDto,
@@ -8,10 +9,14 @@ import {
   type TrackCode,
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
+
+/** One counted view per employer per student per day. */
+const PROFILE_VIEW_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
@@ -71,7 +76,10 @@ export class PublicProfileService {
    * lookup, so the frontend (and anyone with an old link) never needs to know which
    * kind of identifier they're holding.
    */
-  async getBySlug(identifier: string): Promise<PublicCandidateProfileDto> {
+  async getBySlug(
+    identifier: string,
+    viewer: RequestUser | null = null,
+  ): Promise<PublicCandidateProfileDto> {
     const cleanIdentifier = identifier.trim().replace(/^@/, '');
     const bySlug = await this.prisma.user.findUnique({
       where: { publicProfileSlug: cleanIdentifier },
@@ -98,7 +106,37 @@ export class PublicProfileService {
         statusCode: 404,
       });
     }
+    await this.recordEmployerView(user.id, viewer);
     return this.build(user.id);
+  }
+
+  /**
+   * STU-03 — count an authenticated employer opening this profile: who (viewer + organisation),
+   * when, and from where. One row per employer per student per 24h so refreshes don't inflate it.
+   * Anonymous visitors and institution staff are never counted here, and a tracking failure
+   * must never break the profile read.
+   */
+  private async recordEmployerView(studentId: string, viewer: RequestUser | null): Promise<void> {
+    if (!viewer || !(EMPLOYER_VIEWER_ROLES as readonly string[]).includes(viewer.role)) return;
+    try {
+      const since = new Date(Date.now() - PROFILE_VIEW_DEDUPE_WINDOW_MS);
+      const recent = await this.prisma.profileView.findFirst({
+        where: { studentId, viewerId: viewer.sub, createdAt: { gte: since } },
+        select: { id: true },
+      });
+      if (recent) return;
+      await this.prisma.profileView.create({
+        data: {
+          studentId,
+          viewerId: viewer.sub,
+          viewerRole: viewer.role,
+          viewerOrganizationId: viewer.companyId ?? null,
+          source: 'public_link',
+        },
+      });
+    } catch {
+      // Best effort: a failed counter write is not a reason to fail the public lookup.
+    }
   }
 
   async getForOwner(userId: string): Promise<PublicCandidateProfileDto> {

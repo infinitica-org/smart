@@ -3825,6 +3825,45 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Request correction or deletion of my data.',
   },
 
+  /* ------------------------ student dashboard (STU-03) ------------------------- */
+  {
+    method: 'GET',
+    path: '/users/me/dashboard',
+    module: 'users',
+    owner: 'Satheshwaran V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Get my dashboard summary (completion, attention items, matches, opportunities, applications, activity, views).',
+  },
+  {
+    method: 'GET',
+    path: '/users/me/profile-views-setting',
+    module: 'users',
+    owner: 'Satheshwaran V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 50,
+    summary: 'Get whether I see the employer profile-view count.',
+  },
+  {
+    method: 'PUT',
+    path: '/users/me/profile-views-setting',
+    module: 'users',
+    owner: 'Satheshwaran V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 100,
+    summary: 'Choose whether I see the employer profile-view count.',
+  },
+
   /* ----------------------- candidate certificate verification ---------------------- */
   {
     method: 'POST',

@@ -69,6 +69,7 @@ export * from './dto/work-experience-letter-authenticity.dto.js';
 export * from './dto/organization.dto.js';
 export * from './dto/username.dto.js';
 export * from './dto/account.dto.js';
+export * from './dto/student-dashboard.dto.js';
 export * from './dto/void.dto.js';
 export * from './dto/candidate-degree-details.dto.js';
 export * from './dto/candidate-profile.dto.js';

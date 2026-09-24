@@ -31,6 +31,7 @@ import { AuditPublisherService } from '../../platform/audit/audit-publisher.serv
 import { env } from '../../platform/config/env.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { resolveSessionHold } from '../../common/session-hold.js';
 import { toAuthenticatedUserWithPhoto } from '../users/profile-photo.util.js';
 import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
@@ -100,6 +101,19 @@ export class AuthService {
       reasonCode: null,
     });
     return this.issueSession(user, reply);
+  }
+
+  /**
+   * Best-effort identification of an optional caller on a public route. A missing, malformed
+   * or expired token yields `null`; it never throws and never grants access to anything.
+   */
+  tryVerifyAccessToken(authorization: string | undefined): RequestUser | null {
+    if (typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) return null;
+    try {
+      return this.jwt.verify<RequestUser>(authorization.slice('Bearer '.length));
+    } catch {
+      return null;
+    }
   }
 
   async listSelectableInstitutions(): Promise<SelectableInstitutionDto[]> {
