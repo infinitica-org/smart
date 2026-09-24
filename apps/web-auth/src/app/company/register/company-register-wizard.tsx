@@ -2,9 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { isSmartApiError } from '@smart/api-client';
+import { describeApiError } from '@smart/api-client';
+import {
+  COMPANY_SIZE_BANDS,
+  COMPANY_SIZE_BAND_LABELS,
+  type CompanySizeBand,
+} from '@smart/contracts';
 import { SmartLogo } from '@smart/ui';
 import { api } from '../../../lib/api';
+import { sanitizePhoneInput } from '../../../lib/phone-input';
 import {
   clearCompanyOnboardingSessionToken,
   readCompanyOnboardingSessionToken,
@@ -19,9 +25,7 @@ const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider 
 type Step = 'start' | 'details' | 'email' | 'documents' | 'submit' | 'done';
 
 function errorMessage(err: unknown, fallback: string): string {
-  if (isSmartApiError(err)) return err.message;
-  if (err instanceof Error) return err.message;
-  return fallback;
+  return describeApiError(err, fallback);
 }
 
 export function CompanyRegisterWizard() {
@@ -39,7 +43,7 @@ export function CompanyRegisterWizard() {
   const [legalName, setLegalName] = useState('');
   const [sector, setSector] = useState('Software');
   const [mode, setMode] = useState<'PRODUCT' | 'SERVICE'>('PRODUCT');
-  const [sizeBand, setSizeBand] = useState('51-200');
+  const [sizeBand, setSizeBand] = useState<CompanySizeBand>('51-200');
   const [publicEmail, setPublicEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [city, setCity] = useState('');
@@ -321,13 +325,19 @@ export function CompanyRegisterWizard() {
                 <option value="PRODUCT">Product company</option>
                 <option value="SERVICE">Service company</option>
               </select>
-              <input
+              <select
                 required
-                placeholder="Size band (e.g. 51-200)"
+                aria-label="Number of employees"
                 className={inputClass}
                 value={sizeBand}
-                onChange={(e) => setSizeBand(e.target.value)}
-              />
+                onChange={(e) => setSizeBand(e.target.value as CompanySizeBand)}
+              >
+                {COMPANY_SIZE_BANDS.map((band) => (
+                  <option key={band} value={band}>
+                    {COMPANY_SIZE_BAND_LABELS[band]}
+                  </option>
+                ))}
+              </select>
             </div>
             <input
               type="email"
@@ -364,10 +374,17 @@ export function CompanyRegisterWizard() {
           <FieldGroup title="Your role">
             <input
               required
-              placeholder="Phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              maxLength={16}
+              pattern="\+?[0-9]{8,15}"
+              title="Digits only, 8 to 15 digits, with an optional leading +"
+              placeholder="Phone (digits only, e.g. +919876543210)"
+              aria-label="Phone number"
               className={inputClass}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
             />
             <input
               required

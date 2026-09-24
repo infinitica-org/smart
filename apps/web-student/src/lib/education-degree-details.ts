@@ -80,12 +80,15 @@ export function computeTotalSemesters(input: {
   lateralEntry: boolean;
 }): number {
   const perYear = Math.min(4, Math.max(1, input.semestersPerYear || DEFAULT_SEMESTERS_PER_YEAR));
-  const years = computeCourseDurationYears(
+  // A course never has more semesters than its standard duration, whatever years were typed.
+  const standardYears = PROGRAM_DURATION_YEARS[input.program];
+  const enteredYears = computeCourseDurationYears(
     input.program,
     input.startYear,
     input.endYear,
     input.currentlyStudying,
   );
+  const years = standardYears === undefined ? enteredYears : Math.min(enteredYears, standardYears);
   let total = years * perYear;
   if (input.lateralEntry && total > perYear) {
     total -= perYear;

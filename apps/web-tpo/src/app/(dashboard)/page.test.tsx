@@ -74,9 +74,9 @@ describe('DashboardPage', () => {
     render(<DashboardPage />);
 
     await screen.findByText('Pilot TPO');
-    expect(screen.getByRole('link', { name: /View all students/i }).getAttribute('href')).toBe(
-      '/students',
-    );
+    expect(
+      screen.getByRole('link', { name: /View all (students|candidates)/i }).getAttribute('href'),
+    ).toBe('/students');
   });
 
   it('shows empty cohort copy when there are no students', async () => {

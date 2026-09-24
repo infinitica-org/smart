@@ -8,6 +8,7 @@ import {
   HeartPulse,
   HelpCircle,
   LayoutDashboard,
+  LogOut,
   PenLine,
   RefreshCw,
   ScrollText,
@@ -71,6 +72,7 @@ export const sidebarItems: NavGroup[] = [
       { id: 'support', title: 'Support tool', url: '/admin/support', icon: HelpCircle },
       { id: 'users', title: 'Student search', url: '/admin/users', icon: Users },
       { id: 'audit', title: 'Audit log', url: '/admin/audit', icon: ScrollText },
+      { id: 'sessions', title: 'Active sessions', url: '/admin/sessions', icon: LogOut },
       {
         id: 'project-review',
         title: 'Project review',

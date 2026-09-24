@@ -48,6 +48,7 @@ describe('EvidenceSyncService versioning', () => {
     };
 
     const reconciliation = { reconcileForStudent: vi.fn() };
+    const skillInference = { recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined) };
     const evidenceVersions = {
       resolveStudentOrganizationId: vi.fn().mockResolvedValue('inst-1'),
       contentEquals: vi.fn().mockReturnValue(true),
@@ -56,9 +57,14 @@ describe('EvidenceSyncService versioning', () => {
       appendVersion: vi.fn(),
     };
 
+    const skillInference = {
+      recomputeForStudentSkills: vi.fn().mockResolvedValue(undefined),
+    };
+
     const service = new EvidenceSyncService(
       prisma as never,
       reconciliation as never,
+      skillInference as never,
       evidenceVersions as never,
     );
 

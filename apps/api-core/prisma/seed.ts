@@ -43,6 +43,7 @@ interface RawItem {
   itemWeight: number;
 }
 
+// Matches DATABASE_URL's default in platform/config/env.ts — local Docker Compose Postgres.
 const DATABASE_URL =
   process.env['DATABASE_URL'] ?? 'postgresql://smart:CHANGE_ME@127.0.0.1:5433/smart?schema=public';
 

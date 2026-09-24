@@ -49,10 +49,12 @@ export interface EndorsementRecord {
 
 export function MyApplicationsTracker({
   pollIntervalMs = MY_APPLICATIONS_POLL_MS,
+  initialTab = 'applications',
 }: {
   pollIntervalMs?: number;
+  initialTab?: 'endorsements' | 'applications';
 }) {
-  const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>('endorsements');
+  const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>(initialTab);
   const [endorsementFilter, setEndorsementFilter] = useState<EndorsementFilter>('All');
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [experiencesLoading, setExperiencesLoading] = useState(true);
@@ -494,7 +496,10 @@ export function MyApplicationsTracker({
               Loading your applications…
             </div>
           ) : isError ? (
-            <div className="rounded-md border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800">
+            <div
+              role="alert"
+              className="rounded-md border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800"
+            >
               Could not load your applications from placement service.
               <button
                 type="button"
