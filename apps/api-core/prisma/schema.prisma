@@ -260,6 +260,7 @@ enum NotificationKind {
   STAGE_CHANGE
   VERIFICATION_RESULT
   INVITATION
+  TRUST_ENFORCEMENT
 }
 
 enum ProjectStatus {
@@ -468,6 +469,16 @@ model User {
   companyOnboardingSessions CompanyOnboardingSession[] @relation("CompanyOnboardingUser")
   companyVerificationsReviewed CompanyVerification[] @relation("CompanyVerificationReviewedBy")
   companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
+
+  trustCasesAsCandidate        TrustCase[]               @relation("UserTrustCases")
+  trustCasesAsAdmin            TrustCase[]               @relation("UserAssignedTrustCases")
+  accountHolds                 UserAccountHold[]
+  enforcementActions           EnforcementAction[]
+  trustAppeals                 TrustAppeal[]
+  profileAccessLogsAsCandidate ProfileAccessLog[]        @relation("UserProfileAccessCandidate")
+  profileAccessLogsAsViewer    ProfileAccessLog[]        @relation("UserProfileAccessViewer")
+  trustReportsTargeted         TrustReport[]             @relation("UserReportsTargeted")
+  trustReportsCreated          TrustReport[]             @relation("UserReportsCreated")
 
   careerDomainId String? @map("career_domain_id")
   targetRoleId   String? @map("target_role_id")
@@ -804,14 +815,17 @@ model PlacementRecord {
 }
 
 model IntegrityEvent {
-  id        String        @id @default(uuid()) @db.Uuid
-  attemptId String        @map("attempt_id") @db.Uuid
-  attempt   Attempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  flag      IntegrityFlag
-  detail    Json?
-  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String        @id @default(uuid()) @db.Uuid
+  attemptId   String        @map("attempt_id") @db.Uuid
+  attempt     Attempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  flag        IntegrityFlag
+  detail      Json?
+  trustCaseId String?       @map("trust_case_id") @db.Uuid
+  trustCase   TrustCase?    @relation(fields: [trustCaseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([attemptId])
+  @@index([trustCaseId])
   @@map("integrity_events")
 }
 
@@ -2136,23 +2150,211 @@ model CorroborationSnapshot {
 }
 
 model CorroborationReviewFlag {
-  id                String   @id @default(uuid()) @db.Uuid
-  userId            String   @map("user_id") @db.Uuid
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  institutionId     String?  @map("institution_id") @db.Uuid
-  claimId           String?  @map("claim_id") @db.Uuid
-  skillCode         String   @map("skill_code")
+  id                String     @id @default(uuid()) @db.Uuid
+  userId            String     @map("user_id") @db.Uuid
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId     String?    @map("institution_id") @db.Uuid
+  claimId           String?    @map("claim_id") @db.Uuid
+  skillCode         String     @map("skill_code")
   severity          String
   reason            String
-  passiveScore      Decimal  @map("passive_score") @db.Decimal(5, 4)
-  assessmentScore   Decimal  @map("assessment_score") @db.Decimal(5, 4)
-  createdAt         DateTime @map("created_at") @db.Timestamptz(6)
-  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz(6)
-  resolutionNote    String?  @map("resolution_note")
+  passiveScore      Decimal    @map("passive_score") @db.Decimal(5, 4)
+  assessmentScore   Decimal    @map("assessment_score") @db.Decimal(5, 4)
+  trustCaseId       String?    @map("trust_case_id") @db.Uuid
+  trustCase         TrustCase? @relation(fields: [trustCaseId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @map("created_at") @db.Timestamptz(6)
+  resolvedAt        DateTime?  @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote    String?    @map("resolution_note")
 
   @@index([userId])
   @@index([claimId, skillCode])
   @@index([resolvedAt])
+  @@index([trustCaseId])
   @@map("corroboration_review_flags")
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        Trust & Enforcement Engine                         */
+/* -------------------------------------------------------------------------- */
+
+enum TrustCaseStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  ACTION_TAKEN
+  DISMISSED
+}
+
+enum TrustCaseSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum EnforcementActionType {
+  DISMISS
+  WARN
+  RESTRICT_ASSESSMENTS
+  SUSPEND_VERIFICATION
+  VOID_CREDENTIAL
+  VOID_ATTEMPT
+  BAN_ACCOUNT
+}
+
+enum EnforcementStatus {
+  ACTIVE
+  EXPIRED
+  REVERSED
+}
+
+enum AppealStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  UPHELD
+  REJECTED
+}
+
+enum TrustReportStatus {
+  RECEIVED
+  INVESTIGATING
+  ACTION_TAKEN
+  DISMISSED_INVALID
+}
+
+enum TrustReportCategory {
+  FRAUD
+  IMPERSONATION
+  PLAGIARISM
+  SPAM
+  OTHER
+}
+
+model TrustCase {
+  id              String            @id @default(uuid()) @db.Uuid
+  candidateId     String            @map("candidate_id") @db.Uuid
+  candidate       User              @relation("UserTrustCases", fields: [candidateId], references: [id], onDelete: Cascade)
+  status          TrustCaseStatus   @default(OPEN)
+  severity        TrustCaseSeverity @default(MEDIUM)
+  summary         String            @db.VarChar(500)
+  assignedAdminId String?           @map("assigned_admin_id") @db.Uuid
+  assignedAdmin   User?             @relation("UserAssignedTrustCases", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  openedAt        DateTime          @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt        DateTime?         @map("closed_at") @db.Timestamptz(6)
+  resolutionNotes String?           @map("resolution_notes") @db.Text
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  integrityEvents    IntegrityEvent[]
+  corroborationFlags CorroborationReviewFlag[]
+  enforcementActions EnforcementAction[]
+  trustReports       TrustReport[]
+  userAccountHolds   UserAccountHold[]
+
+  @@index([candidateId])
+  @@index([status])
+  @@index([severity])
+  @@map("trust_cases")
+}
+
+model UserAccountHold {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trustCaseId String?    @map("trust_case_id") @db.Uuid
+  trustCase   TrustCase? @relation(fields: [trustCaseId], references: [id], onDelete: SetNull)
+  reason      String     @db.VarChar(500)
+  placedBy    String     @map("placed_by") @db.Uuid
+  placedAt    DateTime   @default(now()) @map("placed_at") @db.Timestamptz(6)
+  expiresAt   DateTime?  @map("expires_at") @db.Timestamptz(6)
+  liftedAt    DateTime?  @map("lifted_at") @db.Timestamptz(6)
+  liftedBy    String?    @map("lifted_by") @db.Uuid
+  liftReason  String?    @map("lift_reason") @db.VarChar(500)
+
+  @@index([userId, liftedAt])
+  @@map("user_account_holds")
+}
+
+model EnforcementAction {
+  id             String                @id @default(uuid()) @db.Uuid
+  trustCaseId    String                @map("trust_case_id") @db.Uuid
+  trustCase      TrustCase             @relation(fields: [trustCaseId], references: [id], onDelete: Cascade)
+  candidateId    String                @map("candidate_id") @db.Uuid
+  candidate      User                  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  actionType     EnforcementActionType @map("action_type")
+  status         EnforcementStatus     @default(ACTIVE)
+  reason         String                @db.Text
+  appliedBy      String                @map("applied_by") @db.Uuid
+  appliedAt      DateTime              @default(now()) @map("applied_at") @db.Timestamptz(6)
+  expiresAt      DateTime?             @map("expires_at") @db.Timestamptz(6)
+  reversedAt     DateTime?             @map("reversed_at") @db.Timestamptz(6)
+  reversedBy     String?               @map("reversed_by") @db.Uuid
+  reversalReason String?               @map("reversal_reason") @db.Text
+  metadata       Json?
+
+  appeals TrustAppeal[]
+
+  @@index([candidateId, status])
+  @@index([trustCaseId])
+  @@map("enforcement_actions")
+}
+
+model ProfileAccessLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  candidateId  String   @map("candidate_id") @db.Uuid
+  candidate    User     @relation("UserProfileAccessCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  viewerId     String?  @map("viewer_id") @db.Uuid
+  viewer       User?    @relation("UserProfileAccessViewer", fields: [viewerId], references: [id], onDelete: SetNull)
+  viewerIp     String   @map("viewer_ip")
+  userAgent    String?  @map("user_agent")
+  accessedSlug String   @map("accessed_slug")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([candidateId, createdAt])
+  @@index([viewerIp, createdAt])
+  @@map("profile_access_logs")
+}
+
+model TrustAppeal {
+  id                  String            @id @default(uuid()) @db.Uuid
+  enforcementActionId String            @map("enforcement_action_id") @db.Uuid
+  enforcementAction   EnforcementAction @relation(fields: [enforcementActionId], references: [id], onDelete: Cascade)
+  candidateId         String            @map("candidate_id") @db.Uuid
+  candidate           User              @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  reason              String            @db.Text
+  supportingDocKeys   String[]          @default([]) @map("supporting_doc_keys")
+  status              AppealStatus      @default(SUBMITTED)
+  reviewedBy          String?           @map("reviewed_by") @db.Uuid
+  reviewNotes         String?           @map("review_notes") @db.Text
+  submittedAt         DateTime          @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  resolvedAt          DateTime?         @map("resolved_at") @db.Timestamptz(6)
+
+  @@index([enforcementActionId])
+  @@index([candidateId, status])
+  @@map("trust_appeals")
+}
+
+model TrustReport {
+  id                 String              @id @default(uuid()) @db.Uuid
+  reporterId         String?             @map("reporter_id") @db.Uuid
+  reporter           User?               @relation("UserReportsCreated", fields: [reporterId], references: [id], onDelete: SetNull)
+  reporterEmail      String?             @map("reporter_email")
+  targetUserId       String?             @map("target_user_id") @db.Uuid
+  targetUser         User?               @relation("UserReportsTargeted", fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetResourceType String?             @map("target_resource_type")
+  targetResourceId   String?             @map("target_resource_id")
+  category           TrustReportCategory @default(OTHER)
+  description        String              @db.Text
+  evidenceUrls       String[]            @default([]) @map("evidence_urls")
+  status             TrustReportStatus   @default(RECEIVED)
+  trustCaseId        String?             @map("trust_case_id") @db.Uuid
+  trustCase          TrustCase?          @relation(fields: [trustCaseId], references: [id], onDelete: SetNull)
+  resolvedAt         DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  resolutionSummary  String?             @map("resolution_summary") @db.Text
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([targetUserId])
+  @@index([status])
+  @@map("trust_reports")
 }
 

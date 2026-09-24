@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import {
   SKILL_DEFINITIONS,
   TRACK_DEFINITIONS,
@@ -13,6 +13,7 @@ import { StorageService } from '../../platform/storage/storage.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
+import { TrustService } from '../trust/trust.service.js';
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
 const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
@@ -35,6 +36,9 @@ export class PublicProfileService {
     @Optional()
     @Inject(AuditPublisherService)
     private readonly auditPublisher?: AuditPublisherService,
+    @Optional()
+    @Inject(forwardRef(() => TrustService))
+    private readonly trustService?: TrustService,
   ) {}
 
   /**
@@ -123,7 +127,10 @@ export class PublicProfileService {
    * lookup, so the frontend (and anyone with an old link) never needs to know which
    * kind of identifier they're holding.
    */
-  async getBySlug(identifier: string): Promise<PublicCandidateProfileDto> {
+  async getBySlug(
+    identifier: string,
+    viewerInfo?: { viewerId?: string; viewerIp?: string; userAgent?: string },
+  ): Promise<PublicCandidateProfileDto> {
     const cleanIdentifier = identifier.trim().replace(/^@/, '');
     const bySlug = await this.prisma.user.findUnique({
       where: { publicProfileSlug: cleanIdentifier },
@@ -150,6 +157,19 @@ export class PublicProfileService {
         statusCode: 404,
       });
     }
+
+    if (viewerInfo?.viewerIp && this.trustService) {
+      this.trustService
+        .logProfileAccess(
+          user.id,
+          viewerInfo.viewerId,
+          viewerInfo.viewerIp,
+          viewerInfo.userAgent,
+          cleanIdentifier,
+        )
+        .catch(() => {});
+    }
+
     return this.build(user.id);
   }
 

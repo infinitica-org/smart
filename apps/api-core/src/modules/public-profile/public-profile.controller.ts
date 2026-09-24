@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { API_PREFIX } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -47,7 +47,24 @@ export class PublicProfileController {
     summary:
       "Look up a candidate's public profile by share slug or claimed username. No auth required.",
   })
-  getPublicProfile(@Param('slug') slug: string) {
-    return this.service.getBySlug(slug);
+  getPublicProfile(
+    @Param('slug') slug: string,
+    @Req() req: { headers: Record<string, string | string[] | undefined>; ip?: string },
+    @CurrentUser() user?: RequestUser,
+  ) {
+    const rawIp =
+      (Array.isArray(req.headers['x-forwarded-for'])
+        ? req.headers['x-forwarded-for'][0]
+        : req.headers['x-forwarded-for']) ||
+      req.ip ||
+      '127.0.0.1';
+    const viewerIp = rawIp.split(',')[0]?.trim() || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] as string | undefined;
+
+    return this.service.getBySlug(slug, {
+      viewerId: user?.sub,
+      viewerIp,
+      userAgent,
+    });
   }
 }

@@ -63,9 +63,21 @@ import type {
   SubmitCompanyOnboardingRequest,
   VerifyCorporateEmailRequest,
   GetAdminDashboardQuery,
+  CreateTrustCaseRequestDto,
+  AssignTrustCaseRequestDto,
+  ApplyEnforcementRequestDto,
+  ReverseEnforcementRequestDto,
+  SubmitTrustAppealRequestDto,
+  ResolveTrustAppealRequestDto,
+  SubmitTrustReportRequestDto,
+  ResolveTrustReportRequestDto,
 } from '@smart/contracts';
 import {
   API_PREFIX,
+  TrustCaseDtoSchema,
+  EnforcementActionDtoSchema,
+  TrustAppealDtoSchema,
+  TrustReportDtoSchema,
   AdminDashboardDtoSchema,
   FlaggedOrganizationDtoSchema,
   VerificationEventDtoSchema,
@@ -1783,6 +1795,85 @@ export function evaluationApi(client: SmartApiClient) {
   };
 }
 
+export function trustApi(client: SmartApiClient) {
+  return {
+    listCases: (query?: { status?: string; severity?: string; candidateId?: string }) =>
+      client.get(prefixed('/admin/trust/cases'), {
+        schema: z.array(TrustCaseDtoSchema),
+        query,
+      }),
+
+    createCase: (body: CreateTrustCaseRequestDto) =>
+      client.post(prefixed('/admin/trust/cases'), body, {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    getCaseDetail: (caseId: string) =>
+      client.get(prefixed(`/admin/trust/cases/${caseId}`), {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    assignCase: (caseId: string, body: AssignTrustCaseRequestDto) =>
+      client.post(prefixed(`/admin/trust/cases/${caseId}/assign`), body, {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    applyEnforcement: (caseId: string, body: ApplyEnforcementRequestDto) =>
+      client.post(prefixed(`/admin/trust/cases/${caseId}/enforce`), body, {
+        schema: EnforcementActionDtoSchema,
+      }),
+
+    reverseEnforcement: (enforcementId: string, body: ReverseEnforcementRequestDto) =>
+      client.post(prefixed(`/admin/trust/enforcements/${enforcementId}/reverse`), body, {
+        schema: EnforcementActionDtoSchema,
+      }),
+
+    forceRecalculation: (candidateId: string) =>
+      client.post(prefixed(`/admin/trust/candidates/${candidateId}/recalculate`), {}),
+
+    submitAppeal: (body: SubmitTrustAppealRequestDto) =>
+      client.post(prefixed('/trust/appeals'), body, {
+        schema: TrustAppealDtoSchema,
+      }),
+
+    listAppeals: (query?: { status?: string }) =>
+      client.get(prefixed('/admin/trust/appeals'), {
+        schema: z.array(TrustAppealDtoSchema),
+        query,
+      }),
+
+    resolveAppeal: (appealId: string, body: ResolveTrustAppealRequestDto) =>
+      client.post(prefixed(`/admin/trust/appeals/${appealId}/resolve`), body, {
+        schema: TrustAppealDtoSchema,
+      }),
+
+    submitReport: (body: SubmitTrustReportRequestDto) =>
+      client.post(prefixed('/trust/reports'), body, {
+        schema: TrustReportDtoSchema,
+        anonymous: true,
+      }),
+
+    listReports: (query?: { status?: string; category?: string }) =>
+      client.get(prefixed('/admin/trust/reports'), {
+        schema: z.array(TrustReportDtoSchema),
+        query,
+      }),
+
+    resolveReport: (reportId: string, body: ResolveTrustReportRequestDto) =>
+      client.post(prefixed(`/admin/trust/reports/${reportId}/resolve`), body, {
+        schema: TrustReportDtoSchema,
+      }),
+
+    getTrustNotifications: () =>
+      client.get(prefixed('/users/me/trust-notifications'), {
+        schema: z.array(NotificationDtoSchema),
+      }),
+
+    markTrustNotificationRead: (id: string) =>
+      client.post<void>(prefixed(`/users/me/trust-notifications/${id}/read`), {}),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -1800,6 +1891,7 @@ export function createSmartApi(client: SmartApiClient) {
     notifications: notificationsApi(client),
     public: publicApi(client),
     system: systemApi(client),
+    trust: trustApi(client),
   };
 }
 
