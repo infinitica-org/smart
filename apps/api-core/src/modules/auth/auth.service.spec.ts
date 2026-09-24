@@ -28,6 +28,8 @@ function userRow(overrides: Record<string, unknown> = {}) {
     institution: null,
     primaryTrack: null,
     secondaryTrack: null,
+    failedLoginAttempts: 0,
+    loginLockedUntil: null as Date | null,
     ...overrides,
   };
 }
@@ -215,6 +217,123 @@ describe('AuthService refresh rotation', () => {
         },
       },
     );
+  });
+});
+
+describe('AuthService.login lockout (S6-VV-92)', () => {
+  it('increments failedLoginAttempts on a wrong password without locking below the threshold', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 2,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update,
+      },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 3, loginLockedUntil: undefined },
+    });
+  });
+
+  it('locks the account once failed attempts reach the threshold, and audits it', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 4,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update,
+      },
+    };
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      auditPublisher as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, loginLockedUntil: expect.any(Date) },
+    });
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: user.id, action: 'auth.account_locked' }),
+    );
+  });
+
+  it('rejects login while locked, even with the correct password', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      loginLockedUntil: new Date(Date.now() + 60_000),
+    });
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => user),
+        update: vi.fn(),
+      },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await expect(
+      auth.login('student@example.com', 'correct-password', {} as never),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'account_locked' }),
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('clears failedLoginAttempts and any lock on a successful login', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      failedLoginAttempts: 3,
+    });
+    const update = vi.fn();
+    const prisma = {
+      user: { findUnique: vi.fn(async () => user), update },
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      mockAuditPublisher() as never,
+    );
+
+    await auth.login('student@example.com', 'correct-password', {
+      setCookie: vi.fn(),
+    } as never);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, loginLockedUntil: null },
+    });
   });
 });
 
