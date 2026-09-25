@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
@@ -5,6 +6,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
@@ -13,6 +15,7 @@ import {
   AssociateEvidenceWithClaimRequestSchema,
   CreateEvidenceRequestSchema,
   CreateVerificationDecisionRequestSchema,
+  LinkEvidenceToClaimRequestSchema,
   ProfessionalCredentialSchema,
   ProjectSkillMappingSchema,
   ReviewEvidenceRequestSchema,
@@ -33,7 +36,10 @@ import {
   type ProfessionalCredentialDto,
   type ProjectSkillMappingDto,
   type ReviewEvidenceResponse,
+  type SkillClaimEvidenceLinkDto,
   type VerificationDecisionDto,
+  type EvidenceSkillDisputeRequest,
+  type EvidenceSkillDisputeResponse,
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -83,6 +89,8 @@ const CREDENTIAL_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class EvidenceService {
+  private readonly logger = new Logger(EvidenceService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
@@ -395,17 +403,74 @@ export class EvidenceService {
         studentId,
       },
     });
+    if (evidenceRecords.length !== input.evidenceIds.length) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'One or more evidence records not found.',
+        statusCode: 404,
+      });
+    }
+
+    const links: SkillClaimEvidenceLinkDto[] = [];
+    for (const record of evidenceRecords) {
+      const link = await this.prisma.skillClaimEvidenceLink.upsert({
+        where: { claimId_evidenceId: { claimId: claim.id, evidenceId: record.id } },
+        create: { claimId: claim.id, evidenceId: record.id, weight: 1 },
+        update: { weight: 1 },
+      });
+      links.push({
+        linkId: link.id,
+        claimId: link.claimId,
+        evidenceId: link.evidenceId,
+        weight: Number(link.weight),
+        createdAt: link.createdAt.toISOString(),
+      });
+    }
+
     await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
+    const reconciliation = await this.reconciliation.reconcileForStudent(studentId);
     return {
       claimId: claim.id,
-      associatedCount: evidenceRecords.length,
-      links: evidenceRecords.map((r) => ({
-        linkId: r.id,
-        claimId: claim.id,
-        evidenceId: r.id,
-        weight: 1.0,
-        createdAt: r.createdAt.toISOString(),
-      })),
+      associatedCount: links.length,
+      links,
+      reconciliation,
+    };
+  }
+
+  async linkEvidenceToClaim(
+    studentId: string,
+    evidenceId: string,
+    body: unknown,
+  ): Promise<SkillClaimEvidenceLinkDto> {
+    await this.getEvidence(studentId, evidenceId);
+    const input = LinkEvidenceToClaimRequestSchema.parse(body);
+    const claim = await this.prisma.skillClaim.findFirst({
+      where: { id: input.claimId, studentId },
+      include: { skill: { select: { code: true } } },
+    });
+    if (!claim) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Skill claim not found.',
+        statusCode: 404,
+      });
+    }
+    const link = await this.prisma.skillClaimEvidenceLink.upsert({
+      where: { claimId_evidenceId: { claimId: input.claimId, evidenceId } },
+      create: {
+        claimId: input.claimId,
+        evidenceId,
+        weight: input.weight,
+      },
+      update: { weight: input.weight },
+    });
+    await this.recomputeInferenceForSkills(studentId, [claim.skill.code]);
+    return {
+      linkId: link.id,
+      claimId: link.claimId,
+      evidenceId: link.evidenceId,
+      weight: Number(link.weight),
+      createdAt: link.createdAt.toISOString(),
     };
   }
 
@@ -1001,6 +1066,14 @@ export class EvidenceService {
 
     const reconciliation = await this.ensureEvidenceReconciliationQueued(studentId, evidenceId);
 
+    if (targetStatus === 'VERIFIED' && updated.relatedSkillCodes?.length > 0) {
+      this.recomputeInferenceForSkills(studentId, updated.relatedSkillCodes).catch((err) => {
+        this.logger.warn(
+          `Failed cascading skill inference recomputation for student ${studentId}: ${err}`,
+        );
+      });
+    }
+
     return {
       evidence: toEvidenceRecordDto(updated),
       decision: input.decision,
@@ -1048,5 +1121,48 @@ export class EvidenceService {
       }
       return { status: 'FAILED', jobId };
     }
+  }
+
+  async submitEvidenceSkillDispute(
+    studentId: string,
+    body: EvidenceSkillDisputeRequest,
+  ): Promise<EvidenceSkillDisputeResponse> {
+    const record = await this.prisma.evidenceRecord.findFirst({
+      where: { id: body.evidenceId, studentId },
+    });
+    if (!record) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Evidence record not found.',
+        statusCode: 404,
+      });
+    }
+
+    const disputeId = randomUUID ? randomUUID() : (await import('node:crypto')).randomUUID();
+    const now = new Date().toISOString();
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: studentId,
+        action: 'evidence.disputed',
+        resourceType: 'evidence_record',
+        resourceId: body.evidenceId,
+        reasonCode: 'STUDENT_DISPUTE',
+        metadata: {
+          disputeId,
+          skillCode: body.skillCode,
+          reason: body.reason,
+          submittedAt: now,
+        },
+      });
+    }
+
+    return {
+      disputeId,
+      evidenceId: body.evidenceId,
+      skillCode: body.skillCode,
+      status: 'UNDER_REVIEW',
+      submittedAt: now,
+    };
   }
 }

@@ -22,6 +22,10 @@
 	reverse_proxy web-auth:3000
 }
 
+{$COMPANY_HOST} {
+	reverse_proxy web-company:3000
+}
+
 {$STUDIO_HOST} {
 	basic_auth {
 		{$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_HASH}

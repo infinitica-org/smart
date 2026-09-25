@@ -100,8 +100,10 @@ export class AuthService {
       where: { email: email.toLowerCase() },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+    const ip = (reply as { request?: { ip?: string } }).request?.ip ?? null;
 
     if (user?.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      await this.recordLoginFailure('locked', email, user.id, ip);
       const retryAfterSeconds = Math.ceil((user.loginLockedUntil.getTime() - Date.now()) / 1000);
       throw new HttpException(
         {
@@ -118,14 +120,26 @@ export class AuthService {
       if (user) {
         await this.registerFailedLoginAttempt(user.id, user.failedLoginAttempts);
       }
+      await this.recordLoginFailure(
+        !user ? 'unknown_email' : user.passwordHash ? 'bad_password' : 'no_password',
+        email,
+        user?.id ?? null,
+        ip,
+      );
       throw new UnauthorizedException({
         error: 'unauthorized',
         message: 'Email or password is incorrect.',
         statusCode: 401,
       });
     }
-    assertTenantLoginAllowed(user);
+    try {
+      assertTenantLoginAllowed(user);
+    } catch (error) {
+      await this.recordLoginFailure('tenant_blocked', email, user.id, ip);
+      throw error;
+    }
     if (user.deactivatedAt) {
+      await this.recordLoginFailure('deactivated', email, user.id, ip);
       throw unauthorized('This account has been deactivated.');
     }
 
@@ -144,6 +158,38 @@ export class AuthService {
       reasonCode: null,
     });
     return this.issueSession(user, reply);
+  }
+
+  /**
+   * S6-VV-143 — every refused sign-in leaves a trail. The caller is not
+   * authenticated, so actorId stays null and the targeted account (if any) is the
+   * resource. An unknown email is stored only as a SHA-256 hash, never in plain text.
+   */
+  private async recordLoginFailure(
+    reason:
+      | 'unknown_email'
+      | 'no_password'
+      | 'bad_password'
+      | 'locked'
+      | 'tenant_blocked'
+      | 'deactivated',
+    email: string,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<void> {
+    await this.auditPublisher.record({
+      actorId: null,
+      action: 'auth.login_failed',
+      resourceType: 'user',
+      resourceId: userId,
+      reasonCode: reason,
+      metadata: {
+        ip,
+        ...(userId
+          ? {}
+          : { emailSha256: createHash('sha256').update(email.toLowerCase()).digest('hex') }),
+      },
+    });
   }
 
   /** S6-VV-92 — locks the account for LOCKOUT_MINUTES once MAX_FAILED_LOGIN_ATTEMPTS is reached. */
@@ -509,7 +555,8 @@ export class AuthService {
     const base = await toAuthenticatedUserWithPhoto(this.storage, user);
     return CompanyPortalAccountSchema.parse({
       ...base,
-      companyVerificationStatus: user.company?.verificationStatus ?? 'APPROVED',
+      // Fail closed: a COMPANY user without a company is never reported as approved (S6-VV-139).
+      companyVerificationStatus: user.company?.verificationStatus ?? 'PENDING',
       companyWebsite: user.company?.website ?? null,
       companyIndustry: user.company?.taxonomyDomain ?? null,
       companyLocation: user.company?.location ?? null,
@@ -662,6 +709,7 @@ export function toAuthenticatedUser(user: {
       ? {
           heldAt: user.company.heldAt ?? null,
           deactivatedAt: user.company.deactivatedAt ?? null,
+          verificationStatus: user.company.verificationStatus ?? null,
         }
       : null,
   });

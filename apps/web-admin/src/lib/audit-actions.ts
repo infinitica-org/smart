@@ -52,6 +52,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
 
   // audit-access.interceptor.ts (S6-VV-103)
   'admin.data_accessed': 'Viewed personal data',
+
+  // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
+  'score.recalculated': 'Recalculated attempt score',
+  'score.recalibration_run': 'Ran scoring recalibration',
   'admin.skill_retake_policy.updated': 'Updated skill retake policy',
 
   // candidate-certificates.service.ts
@@ -150,6 +154,21 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   // audit-access.interceptor.ts (S6-VV-103)
   'actorRole',
   'route',
+
+  // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
+  'trigger',
+  'levelId',
+  'previousScorePercent',
+  'nextScorePercent',
+  'previousTier',
+  'nextTier',
+  'predictor',
+  'sampleSize',
+  'correlation',
+  'auc',
+  'previousWeight',
+  'nextWeight',
+  'published',
 
   // work-experience.service.ts
   'attemptId',

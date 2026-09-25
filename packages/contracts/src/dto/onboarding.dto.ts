@@ -142,6 +142,13 @@ export const TenantActionReasonSchema = z.object({
 });
 export type TenantActionReason = z.infer<typeof TenantActionReasonSchema>;
 
+/** Persistable roles only — PUBLIC is traffic-only and never stored on a User row. */
+export const ASSIGNABLE_USER_ROLES = [
+  'SUPER_ADMIN',
+  'INSTITUTION_ADMIN',
+  'PLACEMENT_STAFF',
+] as const;
+
 export const ListInstitutionsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   planCode: PlanCodeSchema.optional(),
@@ -494,6 +501,12 @@ export const ListAuditLogsQuerySchema = z.object({
   to: IsoDateTimeSchema.optional(),
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
+
+/** S6-VV-101 — same filters as the list, plus the file format. */
+export const ExportAuditLogsQuerySchema = ListAuditLogsQuerySchema.extend({
+  format: z.enum(['csv', 'jsonl']).default('csv'),
+});
+export type ExportAuditLogsQuery = z.infer<typeof ExportAuditLogsQuerySchema>;
 
 export const AdminDashboardDtoSchema = z.object({
   institutions: z.object({
