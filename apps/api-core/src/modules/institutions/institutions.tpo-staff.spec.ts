@@ -3,6 +3,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { InstitutionsTpoController } from './institutions-tpo.controller.js';
 import { InstitutionsService } from './institutions.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const actorId = randomUUID();
@@ -26,14 +27,16 @@ describe('InstitutionsTpoController Staff Management', () => {
     const listInstitutionStaff = vi.fn().mockResolvedValue(mockStaff);
     const controller = new InstitutionsTpoController({ listInstitutionStaff } as never);
 
-    const result = await controller.listStaff(user as never);
+    const result = await controller.listStaff(resolveTenantId(user as never));
     expect(result).toEqual(mockStaff);
     expect(listInstitutionStaff).toHaveBeenCalledWith(institutionId);
   });
 
   it('listStaff throws ForbiddenException when user has no institution ID', () => {
     const controller = new InstitutionsTpoController({} as never);
-    expect(() => controller.listStaff({ sub: actorId } as never)).toThrow(ForbiddenException);
+    expect(() => controller.listStaff(resolveTenantId({ sub: actorId } as never))).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('inviteStaff parses request schema and passes payload to service', async () => {
@@ -59,7 +62,11 @@ describe('InstitutionsTpoController Staff Management', () => {
       department: 'Placement Cell',
     };
 
-    const result = await controller.inviteStaff(payload, user as never);
+    const result = await controller.inviteStaff(
+      payload,
+      user as never,
+      resolveTenantId(user as never),
+    );
     expect(result).toEqual(inviteResponse);
     expect(inviteStaff).toHaveBeenCalledWith(
       institutionId,
@@ -82,7 +89,9 @@ describe('InstitutionsTpoController Staff Management', () => {
       lastName: '',
       role: 'SUPER_ADMIN',
     };
-    expect(() => controller.inviteStaff(invalidPayload, user as never)).toThrow();
+    expect(() =>
+      controller.inviteStaff(invalidPayload, user as never, resolveTenantId(user as never)),
+    ).toThrow();
   });
 
   it('updateStaffRole parses body and delegates to service', async () => {
@@ -105,6 +114,7 @@ describe('InstitutionsTpoController Staff Management', () => {
       targetUserId,
       { role: 'INSTITUTION_ADMIN' },
       user as never,
+      resolveTenantId(user as never),
     );
 
     expect(result).toEqual(updatedResponse);

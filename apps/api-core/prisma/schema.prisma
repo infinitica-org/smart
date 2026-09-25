@@ -289,6 +289,11 @@ model Institution {
   organizationId     String?                  @map("organization_id") @db.Uuid
   organization       Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// S6-VV-105 (#168) — who created / last changed this record; null for rows that predate tracking.
+  createdById        String?                  @map("created_by_id") @db.Uuid
+  createdBy          User?                    @relation("InstitutionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById        String?                  @map("updated_by_id") @db.Uuid
+  updatedBy          User?                    @relation("InstitutionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   users                User[]
   batches              Batch[]
@@ -479,6 +484,13 @@ model User {
   companyOnboardingSessions            CompanyOnboardingSession[]    @relation("CompanyOnboardingUser")
   companyVerificationsReviewed         CompanyVerification[]         @relation("CompanyVerificationReviewedBy")
   companyVerificationDocumentsReviewed CompanyVerificationDocument[] @relation("CompanyVerificationDocumentReviewedBy")
+  organizationsCreated                 Organization[]                @relation("OrganizationCreatedBy")
+  organizationsUpdated                 Organization[]                @relation("OrganizationUpdatedBy")
+  institutionsCreated                  Institution[]                 @relation("InstitutionCreatedBy")
+  institutionsUpdated                  Institution[]                 @relation("InstitutionUpdatedBy")
+  companiesCreated                     Company[]                     @relation("CompanyCreatedBy")
+  companiesUpdated                     Company[]                     @relation("CompanyUpdatedBy")
+
 
 
   careerDomainId String? @map("career_domain_id")
@@ -911,6 +923,11 @@ model Organization {
   verificationReason String?                  @map("verification_reason")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// S6-VV-105 (#168) — who created / last changed this record; null for rows that predate tracking.
+  createdById        String?                  @map("created_by_id") @db.Uuid
+  createdBy          User?                    @relation("OrganizationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById        String?                  @map("updated_by_id") @db.Uuid
+  updatedBy          User?                    @relation("OrganizationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   companies       Company[]
   institutions    Institution[]
@@ -940,6 +957,11 @@ model Company {
   planId             String                   @map("plan_id") @db.Uuid
   plan               SubscriptionPlan         @relation(fields: [planId], references: [id])
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// S6-VV-105 (#168) — who created / last changed this record; null for rows that predate tracking.
+  createdById        String?                  @map("created_by_id") @db.Uuid
+  createdBy          User?                    @relation("CompanyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById        String?                  @map("updated_by_id") @db.Uuid
+  updatedBy          User?                    @relation("CompanyUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   users                 User[]
   jobOpenings           JobOpening[]

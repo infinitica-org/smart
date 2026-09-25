@@ -40,6 +40,25 @@ export const RegisterRequestSchema = z.object({
 });
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 
+/**
+ * Registration no longer signs the student in: a STUDENT can't sign in until the emailed link
+ * is confirmed, so the response only says where the link went.
+ */
+export const RegisterResponseSchema = z.object({
+  email: EmailSchema,
+  verificationRequired: z.literal(true),
+});
+export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
+
+/** Error code for a correct-password sign-in by a STUDENT whose email isn't verified yet. */
+export const EMAIL_NOT_VERIFIED_ERROR = 'email_not_verified';
+
+/** Public, because an unverified student can't sign in to ask. Always 204. */
+export const ResendEmailVerificationRequestSchema = z.object({
+  email: EmailSchema,
+});
+export type ResendEmailVerificationRequest = z.infer<typeof ResendEmailVerificationRequestSchema>;
+
 export const SelectableInstitutionDtoSchema = z.object({
   id: UuidSchema,
   name: z.string(),
@@ -203,6 +222,22 @@ export const AssignRoleRequestSchema = z.object({
   role: UserRoleSchema,
 });
 export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;
+
+/** Roles an admin can move an institution staff member between (#169). */
+export const INSTITUTION_STAFF_ROLES = ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'] as const;
+export type InstitutionStaffRole = (typeof INSTITUTION_STAFF_ROLES)[number];
+
+export const AssignRoleResponseSchema = z.object({
+  userId: UuidSchema,
+  role: UserRoleSchema,
+});
+export type AssignRoleResponse = z.infer<typeof AssignRoleResponseSchema>;
+
+export const UserHoldResponseSchema = z.object({
+  userId: UuidSchema,
+  heldAt: IsoDateTimeSchema.nullable(),
+});
+export type UserHoldResponse = z.infer<typeof UserHoldResponseSchema>;
 
 /* ------------------------------ admin: sessions ---------------------------- */
 

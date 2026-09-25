@@ -115,4 +115,30 @@ describe('renderEmailTemplate', () => {
     const bodies = [aiVerified.text, offer.text, hired.text, rejected.text];
     expect(new Set(bodies).size).toBe(bodies.length);
   });
+
+  it('renders the company resubmission email with escaped reviewer notes and a resume link', () => {
+    const email = renderEmailTemplate('company-verification-resubmit', {
+      fullName: 'Jane Rep',
+      companyName: 'Acme <Corp>',
+      reason: 'Registration number does not match the <certificate>.',
+      rejectedDocuments: [
+        { label: 'Tax document (gst.pdf)', reason: 'Blurry scan.' },
+        { label: 'Government id (id.png)', reason: null },
+      ],
+      resumeUrl: 'http://localhost:3005/company/register?session=abc',
+      expiresAtFormatted: 'Thu, 01 Oct 2026 00:00:00 GMT',
+    });
+
+    expect(email.subject).toBe('Changes needed for Acme <Corp> on SMART');
+    expect(email.html).toContain('Acme &lt;Corp&gt;');
+    expect(email.html).toContain('the &lt;certificate&gt;.');
+    expect(email.html).not.toContain('<certificate>');
+    expect(email.html).toContain('Tax document (gst.pdf): Blurry scan.');
+    expect(email.html).toContain('http://localhost:3005/company/register?session=abc');
+    expect(email.text).toContain('- Tax document (gst.pdf): Blurry scan.');
+    expect(email.text).toContain('- Government id (id.png)');
+    expect(email.text).toContain(
+      'Reopen your application: http://localhost:3005/company/register?session=abc',
+    );
+  });
 });

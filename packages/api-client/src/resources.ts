@@ -17,6 +17,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  InstitutionStaffRole,
   ListActiveSessionsQuery,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
@@ -83,9 +84,12 @@ import {
   CertVerifySessionDtoSchema,
   ActiveSessionDtoSchema,
   AuditLogDtoSchema,
+  AssignRoleResponseSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
   CompanyPortalAccountSchema,
+  UserHoldResponseSchema,
+  RegisterResponseSchema,
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
@@ -269,7 +273,7 @@ export function authApi(client: SmartApiClient) {
 
     registerStudent: (body: RegisterStudentRequest) =>
       client.post(prefixed('/auth/register'), body, {
-        schema: AuthTokenResponseSchema,
+        schema: RegisterResponseSchema,
         anonymous: true,
       }),
 
@@ -320,7 +324,7 @@ export function authApi(client: SmartApiClient) {
       institutionId: string;
     }) =>
       client.post(prefixed('/auth/register'), body, {
-        schema: AuthTokenResponseSchema,
+        schema: RegisterResponseSchema,
         anonymous: true,
       }),
 
@@ -328,6 +332,10 @@ export function authApi(client: SmartApiClient) {
       client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
         anonymous: true,
       }),
+
+    /** Always resolves (204), whether or not the address has an unverified account. */
+    resendEmailVerification: (body: { email: string }) =>
+      client.post<void>(prefixed('/auth/verify-email/resend'), body, { anonymous: true }),
 
     requestPasswordReset: (body: { email: string }) =>
       client.post<void>(prefixed('/auth/password-reset/request'), body, {
@@ -864,6 +872,19 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
+    /** S6-VV-101 — same filters as listAuditLogs; resolves to the CSV / JSON Lines file. */
+    exportAuditLogs: (query?: {
+      q?: string;
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+      actorId?: string;
+      section?: AuditLogSection;
+      from?: string;
+      to?: string;
+      format?: 'csv' | 'jsonl';
+    }) => client.getBlob(prefixed('/admin/audit-logs/export'), { query }),
+
     listActiveSessions: (query?: ListActiveSessionsQuery) =>
       client.get(prefixed('/admin/sessions'), {
         schema: z.array(ActiveSessionDtoSchema),
@@ -1092,6 +1113,22 @@ export function onboardingApi(client: SmartApiClient) {
     listInstitutionAdmins: (institutionId: string) =>
       client.get(prefixed(`/admin/institutions/${institutionId}/admins`), {
         schema: z.array(InstitutionAdminDtoSchema),
+      }),
+
+    /** Switch an institution staff member between INSTITUTION_ADMIN and PLACEMENT_STAFF. */
+    assignUserRole: (userId: string, body: { role: InstitutionStaffRole }) =>
+      client.post(prefixed(`/admin/users/${userId}/role`), body, {
+        schema: AssignRoleResponseSchema,
+      }),
+
+    holdUser: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/users/${userId}/hold`), body, {
+        schema: UserHoldResponseSchema,
+      }),
+
+    releaseUserHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/users/${userId}/release-hold`), body, {
+        schema: UserHoldResponseSchema,
       }),
 
     resendAdminInvitation: (invitationId: string) =>

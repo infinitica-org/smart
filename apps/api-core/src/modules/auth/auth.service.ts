@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
+  EMAIL_NOT_VERIFIED_ERROR,
   CompanyPortalAccountSchema,
   isDisallowedEndorserEmailDomain,
   type ActiveSessionDto,
@@ -100,8 +101,10 @@ export class AuthService {
       where: { email: email.toLowerCase() },
       include: { institution: true, company: true, primaryTrack: true, secondaryTrack: true },
     });
+    const ip = (reply as { request?: { ip?: string } }).request?.ip ?? null;
 
     if (user?.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      await this.recordLoginFailure('locked', email, user.id, ip);
       const retryAfterSeconds = Math.ceil((user.loginLockedUntil.getTime() - Date.now()) / 1000);
       throw new HttpException(
         {
@@ -118,16 +121,30 @@ export class AuthService {
       if (user) {
         await this.registerFailedLoginAttempt(user.id, user.failedLoginAttempts);
       }
+      await this.recordLoginFailure(
+        !user ? 'unknown_email' : user.passwordHash ? 'bad_password' : 'no_password',
+        email,
+        user?.id ?? null,
+        ip,
+      );
       throw new UnauthorizedException({
         error: 'unauthorized',
         message: 'Email or password is incorrect.',
         statusCode: 401,
       });
     }
-    assertTenantLoginAllowed(user);
+    try {
+      assertTenantLoginAllowed(user);
+    } catch (error) {
+      await this.recordLoginFailure('tenant_blocked', email, user.id, ip);
+      throw error;
+    }
     if (user.deactivatedAt) {
+      await this.recordLoginFailure('deactivated', email, user.id, ip);
       throw unauthorized('This account has been deactivated.');
     }
+    // Only after the password checks out, so this never reveals whether an email is registered.
+    assertEmailVerified(user);
 
     if (user.failedLoginAttempts > 0 || user.loginLockedUntil) {
       await this.prisma.user.update({
@@ -144,6 +161,38 @@ export class AuthService {
       reasonCode: null,
     });
     return this.issueSession(user, reply);
+  }
+
+  /**
+   * S6-VV-143 — every refused sign-in leaves a trail. The caller is not
+   * authenticated, so actorId stays null and the targeted account (if any) is the
+   * resource. An unknown email is stored only as a SHA-256 hash, never in plain text.
+   */
+  private async recordLoginFailure(
+    reason:
+      | 'unknown_email'
+      | 'no_password'
+      | 'bad_password'
+      | 'locked'
+      | 'tenant_blocked'
+      | 'deactivated',
+    email: string,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<void> {
+    await this.auditPublisher.record({
+      actorId: null,
+      action: 'auth.login_failed',
+      resourceType: 'user',
+      resourceId: userId,
+      reasonCode: reason,
+      metadata: {
+        ip,
+        ...(userId
+          ? {}
+          : { emailSha256: createHash('sha256').update(email.toLowerCase()).digest('hex') }),
+      },
+    });
   }
 
   /** S6-VV-92 — locks the account for LOCKOUT_MINUTES once MAX_FAILED_LOGIN_ATTEMPTS is reached. */
@@ -181,7 +230,8 @@ export class AuthService {
     });
   }
 
-  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+  /** Creates the STUDENT without a session: they sign in once the emailed link is confirmed. */
+  async register(body: RegisterRequest): Promise<UserWithAuthIncludes> {
     const email = body.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -223,7 +273,7 @@ export class AuthService {
       resourceId: user.id,
       reasonCode: null,
     });
-    return this.issueSession(user, reply);
+    return user;
   }
 
   /** Issues tokens without re-checking password; caller must enforce tenant gates when appropriate. */
@@ -380,6 +430,10 @@ export class AuthService {
     }
 
     assertTenantLoginAllowed(existing.user);
+    if (!isEmailVerifiedForLogin(existing.user)) {
+      clearRefreshCookie(reply);
+      assertEmailVerified(existing.user);
+    }
 
     const nextRaw = createRefreshToken();
     const expiresAt = new Date(Date.now() + env.REFRESH_TTL_SECONDS * 1000);
@@ -509,7 +563,8 @@ export class AuthService {
     const base = await toAuthenticatedUserWithPhoto(this.storage, user);
     return CompanyPortalAccountSchema.parse({
       ...base,
-      companyVerificationStatus: user.company?.verificationStatus ?? 'APPROVED',
+      // Fail closed: a COMPANY user without a company is never reported as approved (S6-VV-139).
+      companyVerificationStatus: user.company?.verificationStatus ?? 'PENDING',
       companyWebsite: user.company?.website ?? null,
       companyIndustry: user.company?.taxonomyDomain ?? null,
       companyLocation: user.company?.location ?? null,
@@ -551,6 +606,24 @@ function unauthorized(message: string): UnauthorizedException {
     error: 'unauthorized',
     message,
     statusCode: 401,
+  });
+}
+
+/** Students must confirm their email before they can sign in (#156). Other roles are invited. */
+function isEmailVerifiedForLogin(user: {
+  role: AuthenticatedUser['role'];
+  emailVerified: boolean;
+}): boolean {
+  return user.role !== 'STUDENT' || user.emailVerified;
+}
+
+function assertEmailVerified(user: { role: AuthenticatedUser['role']; emailVerified: boolean }) {
+  if (isEmailVerifiedForLogin(user)) return;
+  throw new ForbiddenException({
+    error: EMAIL_NOT_VERIFIED_ERROR,
+    message:
+      'Verify your email before signing in. Use the link we emailed you, or ask for a new one.',
+    statusCode: 403,
   });
 }
 
@@ -662,6 +735,7 @@ export function toAuthenticatedUser(user: {
       ? {
           heldAt: user.company.heldAt ?? null,
           deactivatedAt: user.company.deactivatedAt ?? null,
+          verificationStatus: user.company.verificationStatus ?? null,
         }
       : null,
   });
