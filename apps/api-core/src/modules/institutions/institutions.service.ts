@@ -13,7 +13,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import { AddBatchMemberRequestSchema } from '@smart/contracts';
+import { AddBatchMemberRequestSchema, INSTITUTION_STAFF_ROLES } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
   AuthenticatedUser,
@@ -1583,7 +1583,7 @@ export class InstitutionsService {
   async listInstitutionAdmins(institutionId: string): Promise<InstitutionAdminDto[]> {
     await this.requireInstitution(institutionId);
     const users = await this.prisma.user.findMany({
-      where: { institutionId, role: 'INSTITUTION_ADMIN' },
+      where: { institutionId, role: { in: [...INSTITUTION_STAFF_ROLES] } },
       orderBy: { createdAt: 'desc' },
     });
     const result: InstitutionAdminDto[] = [];
@@ -1598,6 +1598,9 @@ export class InstitutionsService {
         fullName: user.fullName,
         emailVerified: user.emailVerified,
         invitation: invitation ? toInvitationDto(invitation) : null,
+        role: user.role,
+        heldAt: user.heldAt?.toISOString() ?? null,
+        heldReason: user.heldReason,
       });
     }
     return result;

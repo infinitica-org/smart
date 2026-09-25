@@ -37,6 +37,7 @@ import {
   controlButtonClassName,
 } from '@/components/admin-ui';
 import { api } from '@/lib/api';
+import { StaffTable } from './staff-table';
 import { formatRecordActors } from '@/lib/record-actors';
 
 function formatApiError(error: unknown, fallback: string): string {
@@ -320,37 +321,7 @@ export default function InstitutionDetailPage() {
               </form>
             </CardContent>
           </Card>
-          <DataTable headers={['Admin', 'Email', 'Status', '']}>
-            {admins.map((admin) => (
-              <TableRow key={admin.userId}>
-                <TableCell className="font-medium">{admin.fullName}</TableCell>
-                <TableCell>{admin.email}</TableCell>
-                <TableCell>
-                  {admin.emailVerified ? 'Active' : (admin.invitation?.status ?? '—')}
-                </TableCell>
-                <TableCell>
-                  {admin.invitation?.status === 'PENDING' ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const invitationId = admin.invitation?.invitationId;
-                        if (invitationId) {
-                          void api.onboarding.resendAdminInvitation(invitationId).then(async () => {
-                            setMessage('Invitation resent.');
-                            await load();
-                          });
-                        }
-                      }}
-                    >
-                      Resend
-                    </Button>
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            ))}
-          </DataTable>
+          <StaffTable staff={admins} onChanged={load} onMessage={setMessage} onError={setError} />
           <Card>
             <CardHeader>
               <CardTitle>Students</CardTitle>

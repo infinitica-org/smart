@@ -223,6 +223,22 @@ export const AssignRoleRequestSchema = z.object({
 });
 export type AssignRoleRequest = z.infer<typeof AssignRoleRequestSchema>;
 
+/** Roles an admin can move an institution staff member between (#169). */
+export const INSTITUTION_STAFF_ROLES = ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'] as const;
+export type InstitutionStaffRole = (typeof INSTITUTION_STAFF_ROLES)[number];
+
+export const AssignRoleResponseSchema = z.object({
+  userId: UuidSchema,
+  role: UserRoleSchema,
+});
+export type AssignRoleResponse = z.infer<typeof AssignRoleResponseSchema>;
+
+export const UserHoldResponseSchema = z.object({
+  userId: UuidSchema,
+  heldAt: IsoDateTimeSchema.nullable(),
+});
+export type UserHoldResponse = z.infer<typeof UserHoldResponseSchema>;
+
 /* ------------------------------ admin: sessions ---------------------------- */
 
 /** S6-VV-93 — one row per live login (a RefreshToken family with an unrevoked, unexpired token). */
