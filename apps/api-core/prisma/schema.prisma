@@ -2748,6 +2748,8 @@ model ProfileView {
   viewer               User?    @relation("ProfileViewViewer", fields: [viewerId], references: [id], onDelete: SetNull)
   viewerRole           String   @map("viewer_role")
   viewerOrganizationId String?  @map("viewer_organization_id") @db.Uuid
+  /// Where the view came from, e.g. `public_link`.
+  source               String   @default("public_link")
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([studentId, createdAt])
