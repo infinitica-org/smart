@@ -43,6 +43,24 @@ export class AiGatewayController {
     return this.usage.getUsageSummary();
   }
 
+  @Get(`${API_PREFIX}/admin/ai-prompts`)
+  @Roles('SUPER_ADMIN')
+  adminListPrompts() {
+    return this.service.listRegisteredPrompts();
+  }
+
+  @Get(`${API_PREFIX}/admin/ai-audit-logs`)
+  @Roles('SUPER_ADMIN')
+  adminListAuditLogs() {
+    return this.service.listAuditLogs();
+  }
+
+  @Post(`${API_PREFIX}/admin/ai-models/toggle`)
+  @Roles('SUPER_ADMIN')
+  adminToggleModel(@Body() body: unknown) {
+    return this.service.toggleModelVersion(body);
+  }
+
   @Get(`${API_PREFIX}/ai-gateway/_meta`)
   meta() {
     return {

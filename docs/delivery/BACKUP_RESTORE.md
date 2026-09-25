@@ -93,6 +93,7 @@ Alert (S6-VV-125): `time() - smart_backup_last_success_timestamp_seconds > 26h`,
 
 ## Restoring
 
+<<<<<<< HEAD
 A backup is only as good as its last restore. `infra/backup/restore.sh` (in the same
 image) does both the routine drill and a real disaster recovery. It always:
 
@@ -147,3 +148,4 @@ Only when the live data is lost or corrupted. **This drops and recreates the liv
 | Date (UTC) | Environment                                                    | Backup                         | Result | Notes                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ---------- | -------------------------------------------------------------- | ------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-24 | local throwaway stack (`pgvector:pg16` + MinIO, 67 migrations) | `drill/daily/20260924T192408Z` | PASS   | 7/7 row counts + latest migration matched; 3/3 objects. Also passed: a tampered artifact is rejected by checksum; a wrong key fails to decrypt; restoring over `smart` without `--force-live` is refused; a full `--force-live --restore-objects` recovery brought 14 → 25 users and 2 → 3 objects back, and `prisma migrate status` was up to date afterwards. First real-environment drill pending D1 (off-site target). |
+

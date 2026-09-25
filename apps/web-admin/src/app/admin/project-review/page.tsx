@@ -106,12 +106,71 @@ export default function ProjectReviewPage() {
             <CardTitle>{selected.queue.title}</CardTitle>
             <CardDescription>{selected.verificationExplanation}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Defense score: {selected.grade.defenseScore} · Ownership concern:{' '}
-              {selected.grade.ownershipConcern ? 'yes' : 'no'}
-            </p>
-            <div className="flex gap-2">
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-muted/40 rounded-lg text-sm">
+              <div>
+                <span className="text-muted-foreground block text-xs">Defense Score</span>
+                <span className="text-lg font-bold">{selected.grade.defenseScore}/100</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Ownership Concern</span>
+                <span
+                  className={`text-sm font-semibold ${selected.grade.ownershipConcern ? 'text-destructive' : 'text-emerald-600'}`}
+                >
+                  {selected.grade.ownershipConcern ? 'Yes' : 'No'}
+                </span>
+                {selected.grade.ownershipConcernReason ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selected.grade.ownershipConcernReason}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Dimensions</span>
+                <span className="text-xs">
+                  Understanding: {selected.grade.dimensions?.depthOfUnderstanding ?? '—'}% ·
+                  Defense: {selected.grade.dimensions?.defenseQuality ?? '—'}%
+                </span>
+              </div>
+            </div>
+
+            {/* Competency Evidence / Demonstrated claims */}
+            {selected.grade.demonstratedClaims?.length ? (
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Demonstrated Claims
+                </h4>
+                <ul className="list-disc list-inside space-y-1 text-xs text-foreground">
+                  {selected.grade.demonstratedClaims.map((claim, idx) => (
+                    <li key={idx}>{claim}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {/* Transcript */}
+            {selected.transcript?.length ? (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Defense Transcript
+                </h4>
+                <div className="max-h-64 overflow-y-auto space-y-2 border rounded-md p-3 text-xs">
+                  {selected.transcript.map((t, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded ${t.role === 'EXAMINER' ? 'bg-muted/60' : 'bg-background border'}`}
+                    >
+                      <span className="font-semibold block mb-0.5 text-[11px] text-muted-foreground">
+                        {t.role}
+                      </span>
+                      <p>{t.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex gap-2 pt-2 border-t">
               <Button type="button" onClick={() => resolve(selected.queue.projectId, 'APPROVE')}>
                 Approve
               </Button>
