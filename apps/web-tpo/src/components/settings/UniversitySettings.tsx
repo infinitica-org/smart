@@ -14,13 +14,12 @@ import {
   Trash2,
   Users,
   Briefcase,
-  Layers,
   Sparkles,
-  ArrowUpRight,
 } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
-import type { BatchDto, PlacementEmployerSummary, TenantEntitlementsDto } from '@smart/contracts';
+import type { PlacementEmployerSummary, TenantEntitlementsDto } from '@smart/contracts';
 import { StaffManagementWorkspace } from '../staff/StaffManagementWorkspace';
+import { CampusesSection } from './CampusesSection';
 import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api, employersApi } from '../../lib/api';
 import { normalizeEmailDomain } from '../../lib/domain-validation';
@@ -88,17 +87,15 @@ function Toggle({
 export function UniversitySettings() {
   const [institutionId, setInstitutionId] = useState<string | null>(null);
   const [entitlements, setEntitlements] = useState<TenantEntitlementsDto | null>(null);
-  const [batches, setBatches] = useState<BatchDto[]>([]);
+  const [campusCount, setCampusCount] = useState(0);
   const [employers, setEmployers] = useState<PlacementEmployerSummary[]>([]);
   const [extraDomains, setExtraDomains] = useState<string[]>([]);
   const [autoApprove, setAutoApprove] = useState(true);
   const [dismissedEmployerIds, setDismissedEmployerIds] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
-  const [campusName, setCampusName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [savingCampus, setSavingCampus] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>('all');
 
   const primaryDomain = entitlements?.domain ?? null;
@@ -107,16 +104,14 @@ export function UniversitySettings() {
     setLoading(true);
     setError(null);
     try {
-      const [me, ent, batchList, employerRes] = await Promise.all([
+      const [me, ent, employerRes] = await Promise.all([
         api.auth.me(),
         api.onboarding.tpoEntitlements(),
-        api.onboarding.listBatches(),
         employersApi.list().catch(() => ({ employers: [] as PlacementEmployerSummary[] })),
       ]);
       const inst = me.institutionId ?? null;
       setInstitutionId(inst);
       setEntitlements(ent);
-      setBatches(batchList);
       setEmployers(employerRes.employers);
       if (inst) {
         setExtraDomains(loadExtraEmailDomains(inst));
@@ -180,25 +175,6 @@ export function UniversitySettings() {
         ? 'New whitelist uploads will automatically queue invitation emails.'
         : 'Invitations will stay pending until you send them from Whitelist.',
     );
-  }
-
-  async function handleCreateCampus(e: React.FormEvent) {
-    e.preventDefault();
-    const name = campusName.trim();
-    if (!name) return;
-    setSavingCampus(true);
-    setError(null);
-    try {
-      await api.onboarding.createBatch({ name });
-      setCampusName('');
-      setNotice(`Campus "${name}" created.`);
-      const batchList = await api.onboarding.listBatches();
-      setBatches(batchList);
-    } catch {
-      setError('Could not create campus batch.');
-    } finally {
-      setSavingCampus(false);
-    }
   }
 
   function handleDismissEmployer(employerId: string) {
@@ -312,7 +288,7 @@ export function UniversitySettings() {
             { id: 'all', label: 'All Settings' },
             { id: 'staff', label: 'Staff & Access' },
             { id: 'domains', label: 'Verified Domains' },
-            { id: 'campuses', label: `Campuses (${batches.length})` },
+            { id: 'campuses', label: `Campuses (${campusCount})` },
             { id: 'employers', label: `Employer Queue (${employerQueue.length})` },
             { id: 'plan', label: 'Plan & Profile' },
           ].map((tab) => (
@@ -436,85 +412,12 @@ export function UniversitySettings() {
         </section>
       ) : null}
 
-      {/* Section: Multi-Campus System */}
+      {/* Section: Campuses (S6-VV-112) */}
       {showCampuses ? (
-        <section id="settings-campuses" className={bentoCardClass}>
-          <div className="flex items-center gap-2">
-            <Layers className="size-4 text-zinc-700" />
-            <h2 className={dashboardSectionTitleClass}>Multi-campus system</h2>
-          </div>
-          <p className={`mt-1 ${dashboardSectionSubtitleClass}`}>
-            Manage cohorts and campus divisions under{' '}
-            <strong className="text-zinc-900">
-              {entitlements?.institutionName ?? 'your institution'}
-            </strong>
-            . Each campus maintains an isolated candidate roster and placement records.
-          </p>
-
-          {loading ? (
-            <p className="mt-4 text-xs text-zinc-400">Loading campuses…</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {batches.length === 0 ? (
-                <div
-                  className={`${bentoCardMutedClass} col-span-full py-6 text-center text-xs text-zinc-500`}
-                >
-                  No campuses configured yet. Add your first campus batch below.
-                </div>
-              ) : (
-                batches.map((batch) => (
-                  <div
-                    key={batch.batchId}
-                    className={`${bentoCardMutedClass} flex items-center justify-between gap-3 !p-4`}
-                  >
-                    <div>
-                      <div className="font-bold text-zinc-900 text-sm">{batch.name}</div>
-                      <div className="mt-0.5 text-xs text-zinc-500">
-                        {batch.memberCount.toLocaleString('en-US')} students enrolled
-                        {batch.pendingInviteCount > 0
-                          ? ` · ${batch.pendingInviteCount} pending invites`
-                          : ''}
-                      </div>
-                    </div>
-                    <Link
-                      href={`/batches/${batch.batchId}`}
-                      className={`${secondaryButtonClass} !py-1.5 !px-3 text-xs inline-flex items-center gap-1`}
-                    >
-                      Manage
-                      <ArrowUpRight className="size-3" />
-                    </Link>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          <form
-            onSubmit={handleCreateCampus}
-            className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end border-t border-zinc-200/80 pt-5"
-          >
-            <div className="flex-1">
-              <label className={labelClass} htmlFor="campus-name">
-                Add new campus or cohort batch
-              </label>
-              <input
-                id="campus-name"
-                value={campusName}
-                onChange={(e) => setCampusName(e.target.value)}
-                placeholder="e.g. Riverdale — North Campus"
-                className={`${inputClass} mt-1.5`}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={savingCampus || !campusName.trim()}
-              className={dashboardPrimaryButtonClass}
-            >
-              <Plus className="size-4" aria-hidden />
-              Add campus
-            </button>
-          </form>
-        </section>
+        <CampusesSection
+          institutionName={entitlements?.institutionName ?? null}
+          onCountChange={setCampusCount}
+        />
       ) : null}
 
       {/* Section: Employer Approval Queue */}

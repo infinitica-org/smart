@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { BatchDto } from '@smart/contracts';
-import { LayoutGrid, Loader2, Plus, Search, Users, Clock } from 'lucide-react';
+import type { BatchDto, CampusDto } from '@smart/contracts';
+import { LayoutGrid, Loader2, MapPin, Plus, Search, Users, Clock } from 'lucide-react';
 import { TpoBentoPageHeader } from '../tpo-bento/TpoBentoPageHeader';
 import { api } from '../../lib/api';
 
@@ -22,13 +22,22 @@ export function BatchesWorkspace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  // S6-VV-112 — '' means the primary campus (create) or every campus (filter).
+  const [campuses, setCampuses] = useState<CampusDto[]>([]);
+  const [campusId, setCampusId] = useState('');
+  const [campusFilter, setCampusFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredBatches = useMemo(
-    () => batches.filter((batch) => matchesBatchQuery(batch, searchQuery)),
-    [batches, searchQuery],
+    () =>
+      batches.filter(
+        (batch) =>
+          matchesBatchQuery(batch, searchQuery) &&
+          (!campusFilter || batch.campusId === campusFilter),
+      ),
+    [batches, searchQuery, campusFilter],
   );
 
   const totalMembers = useMemo(
@@ -56,6 +65,11 @@ export function BatchesWorkspace() {
 
   useEffect(() => {
     void load();
+    // Campuses only label and filter batches, so a failure here must not hide the list.
+    api.onboarding
+      .listCampuses()
+      .then(setCampuses)
+      .catch(() => setCampuses([]));
   }, []);
 
   async function onCreate(event: React.FormEvent) {
@@ -64,9 +78,14 @@ export function BatchesWorkspace() {
 
     setIsSubmitting(true);
     try {
-      await api.onboarding.createBatch({ name: name.trim(), code: code.trim() || undefined });
+      await api.onboarding.createBatch({
+        name: name.trim(),
+        code: code.trim() || undefined,
+        campusId: campusId || undefined,
+      });
       setName('');
       setCode('');
+      setCampusId('');
       await load();
       setError(null);
     } catch {
@@ -200,6 +219,29 @@ export function BatchesWorkspace() {
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
             </div>
+            {campuses.length > 1 ? (
+              <div>
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-zinc-700"
+                  htmlFor="batch-campus"
+                >
+                  Campus
+                </label>
+                <select
+                  id="batch-campus"
+                  value={campusId}
+                  onChange={(e) => setCampusId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-xs text-zinc-900 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                >
+                  {campuses.map((campus) => (
+                    <option key={campus.campusId} value={campus.isPrimary ? '' : campus.campusId}>
+                      {campus.name}
+                      {campus.isPrimary ? ' (primary)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
@@ -248,6 +290,21 @@ export function BatchesWorkspace() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            {campuses.length > 1 ? (
+              <select
+                aria-label="Filter batches by campus"
+                value={campusFilter}
+                onChange={(e) => setCampusFilter(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-xs text-zinc-900 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:w-64"
+              >
+                <option value="">All campuses</option>
+                {campuses.map((campus) => (
+                  <option key={campus.campusId} value={campus.campusId}>
+                    {campus.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
 
           {loading ? (
@@ -267,7 +324,7 @@ export function BatchesWorkspace() {
             </div>
           ) : filteredBatches.length === 0 ? (
             <div className="rounded-xl border border-zinc-200/80 bg-white py-12 text-center text-xs text-zinc-500 shadow-2xs">
-              No batches match &quot;{searchQuery.trim()}&quot;.
+              No batches match your search or campus filter.
             </div>
           ) : (
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
@@ -289,6 +346,11 @@ export function BatchesWorkspace() {
                       <h3 className="line-clamp-2 text-sm font-bold leading-snug text-zinc-900 group-hover:text-zinc-700 transition-colors">
                         {batch.name}
                       </h3>
+                      {batch.campusName && campuses.length > 1 ? (
+                        <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-zinc-500">
+                          <MapPin className="size-3" aria-hidden /> {batch.campusName}
+                        </p>
+                      ) : null}
                     </div>
 
                     <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-zinc-100 pt-3">

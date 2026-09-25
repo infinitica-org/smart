@@ -16,18 +16,20 @@ vi.mock('../../lib/api', () => ({
         candidateUsage: 12,
         candidateCapacity: 500,
       }),
-      listBatches: vi.fn().mockResolvedValue([
+      listCampuses: vi.fn().mockResolvedValue([
         {
-          batchId: '22222222-2222-4222-8222-222222222222',
-          institutionId: '11111111-1111-4111-8111-111111111111',
+          campusId: '22222222-2222-4222-8222-222222222222',
           name: 'Main Campus',
           code: null,
-          memberCount: 100,
-          pendingInviteCount: 2,
+          city: 'Riverdale',
+          isPrimary: true,
+          archivedAt: null,
+          batchCount: 3,
           createdAt: '2026-01-01T00:00:00.000Z',
         },
       ]),
-      createBatch: vi.fn(),
+      createCampus: vi.fn(),
+      updateCampus: vi.fn(),
     },
   },
   employersApi: {
@@ -58,8 +60,10 @@ describe('UniversitySettings', () => {
       expect(screen.getByText('Verified student email domains')).toBeDefined();
     });
     expect(screen.getByText('@riverdale.edu')).toBeDefined();
-    expect(screen.getByText('Multi-campus system')).toBeDefined();
-    expect(screen.getByText('Main Campus')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Campuses' })).toBeDefined();
+    expect(await screen.findByText('Main Campus')).toBeDefined();
+    expect(screen.getByText('Primary')).toBeDefined();
+    expect(screen.getByText('Riverdale · 3 batches')).toBeDefined();
     expect(screen.getByText('Employer approval queue')).toBeDefined();
     expect(screen.getByText('Northline Corp')).toBeDefined();
   });
