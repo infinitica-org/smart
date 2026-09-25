@@ -77,6 +77,12 @@ const MIGRATED: Array<{
     method: 'GET',
     path: '/admin/audit-logs',
   },
+  {
+    controller: InstitutionsAdminController,
+    handler: 'exportAuditLogs',
+    method: 'GET',
+    path: '/admin/audit-logs/export',
+  },
 ];
 
 describe('routes migrated to @RequirePermission', () => {
