@@ -1,11 +1,12 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import type {
   ImpersonateRequest,
   SupportDiagnosticResponse,
@@ -18,9 +19,9 @@ import type {
 import { SUPPORT_TICKET_ID_REGEX } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
-import type { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
-import type { RedisService } from '../../platform/redis/redis.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { RedisService } from '../../platform/redis/redis.service.js';
 
 interface RedisGrantPayload {
   grantId: string;
@@ -45,10 +46,10 @@ interface RedisSessionPayload {
 @Injectable()
 export class SupportService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
-    private readonly audit: AuditPublisherService,
-    private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(AuditPublisherService) private readonly audit: AuditPublisherService,
+    @Inject(JwtService) private readonly jwt: JwtService,
   ) {}
 
   /**
