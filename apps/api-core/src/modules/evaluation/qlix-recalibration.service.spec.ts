@@ -11,6 +11,7 @@ describe('QlixRecalibrationService', () => {
     publishModel: vi.fn(),
     saveLastReport: vi.fn(),
   };
+  const audit = { record: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,11 +38,23 @@ describe('QlixRecalibrationService', () => {
       },
     ]);
 
-    const service = new QlixRecalibrationService(prisma as never, weightModels as never);
+    const service = new QlixRecalibrationService(
+      prisma as never,
+      weightModels as never,
+      audit as never,
+    );
     const report = await service.runBatch();
 
     expect(report.published).toBe(false);
     expect(weightModels.publishModel).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: null,
+        action: 'score.recalibration_run',
+        reasonCode: 'skipped',
+        metadata: expect.objectContaining({ published: false, sampleSize: report.sampleSize }),
+      }),
+    );
     expect(weightModels.saveLastReport).toHaveBeenCalledWith(report);
   });
 
@@ -65,10 +78,24 @@ describe('QlixRecalibrationService', () => {
       })),
     );
 
-    const service = new QlixRecalibrationService(prisma as never, weightModels as never);
+    const service = new QlixRecalibrationService(
+      prisma as never,
+      weightModels as never,
+      audit as never,
+    );
     const report = await service.runBatch();
 
     expect(report.published).toBe(true);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'score.recalibration_run',
+        reasonCode: 'published',
+        metadata: expect.objectContaining({
+          previousWeight: report.previousWeight,
+          nextWeight: report.nextWeight,
+        }),
+      }),
+    );
     expect(weightModels.publishModel).toHaveBeenCalledWith(
       expect.objectContaining({ modelVersion: 'qlix-trained-v1' }),
     );
