@@ -226,8 +226,6 @@ export default function JobDetailPage() {
           onReported={() => router.push('/jobs')}
         />
       ) : null}
-
-      <ApplyJobDialog open={applyOpen} jobId={job.id} onClose={() => setApplyOpen(false)} />
     </div>
   );
 }
