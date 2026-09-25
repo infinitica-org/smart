@@ -176,6 +176,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "PATCH /admin/levels/:levelId": "role.superAdmin",
   "PATCH /admin/plans/:planId/capacity": "role.superAdmin",
   "PATCH /admin/plans/:planId/entitlements": "role.superAdmin",
+  "PATCH /admin/plans/:planId/price": "role.superAdmin",
   "PATCH /admin/skills/:skillId/retake-policy": "role.superAdmin",
   "PATCH /candidate-certificates/:id": "role.student",
   "PATCH /certificates/:certificateId/visibility": "role.student",

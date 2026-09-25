@@ -28,6 +28,7 @@ import type {
   UpdateInstitutionRequest,
   UpdatePlanCapacityRequest,
   UpdatePlanEntitlementsRequest,
+  UpdatePlanPriceRequest,
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
@@ -848,6 +849,11 @@ export function onboardingApi(client: SmartApiClient) {
 
     updatePlanCapacity: (planId: string, body: UpdatePlanCapacityRequest) =>
       client.patch(prefixed(`/admin/plans/${planId}/capacity`), body, {
+        schema: SubscriptionPlanDtoSchema,
+      }),
+
+    updatePlanPrice: (planId: string, body: UpdatePlanPriceRequest) =>
+      client.patch(prefixed(`/admin/plans/${planId}/price`), body, {
         schema: SubscriptionPlanDtoSchema,
       }),
 
@@ -1979,7 +1985,7 @@ export function trustApi(client: SmartApiClient) {
 export function supportApi(client: SmartApiClient) {
   return {
     lookupUser: (q: string) =>
-      client.get<any[]>(prefixed('/admin/support/lookup'), { query: { q } }),
+      client.get<unknown[]>(prefixed('/admin/support/lookup'), { query: { q } }),
 
     createGrant: (dto: SupportGrantRequest) =>
       client.post<SupportGrantResponse>(prefixed('/admin/support/grants'), dto, {

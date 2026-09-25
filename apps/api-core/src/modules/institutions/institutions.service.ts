@@ -62,6 +62,7 @@ import type {
   CompanyVerificationReviewDetailDto,
   ResolveVerificationRequest,
   UpdatePlanCapacityRequest,
+  UpdatePlanPriceRequest,
   VerificationQueueItemDto,
   FeatureFlagDto,
   FeatureFlagOverrideDto,
@@ -914,6 +915,8 @@ export class InstitutionsService {
       code: plan.code,
       name: plan.name,
       candidateCapacity: plan.candidateCapacity,
+      priceInr: plan.priceInr,
+      isCustomPrice: plan.isCustomPrice,
       institutionCount: plan._count.institutions,
       entitlements: plan.entitlements.map((row) => ({
         key: row.featureFlag.key,
@@ -985,6 +988,45 @@ export class InstitutionsService {
     // Plan-level edits are rare admin actions; tenants on this plan see the
     // change once their 60s entitlement cache entry naturally expires rather
     // than us enumerating and busting every tenant's key here.
+    const updated = (await this.listPlans()).find((row) => row.planId === planId);
+    if (!updated) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    return updated;
+  }
+
+  async updatePlanPrice(
+    planId: string,
+    body: UpdatePlanPriceRequest,
+    actorId: string,
+  ): Promise<SubscriptionPlanDto> {
+    const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) {
+      throw new NotFoundException({
+        error: 'not_found',
+        message: 'Plan not found.',
+        statusCode: 404,
+      });
+    }
+    const prevPriceInr = plan.priceInr;
+    const prevIsCustomPrice = plan.isCustomPrice;
+    await this.prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        ...(body.priceInr !== undefined ? { priceInr: body.priceInr } : {}),
+        ...(body.isCustomPrice !== undefined ? { isCustomPrice: body.isCustomPrice } : {}),
+      },
+    });
+    await this.writeAudit(actorId, 'plan.price_updated', 'plan', planId, 'plan price', {
+      priceInr: body.priceInr ?? null,
+      isCustomPrice: body.isCustomPrice ?? null,
+      previousPriceInr: prevPriceInr,
+      previousIsCustomPrice: prevIsCustomPrice,
+    });
     const updated = (await this.listPlans()).find((row) => row.planId === planId);
     if (!updated) {
       throw new NotFoundException({

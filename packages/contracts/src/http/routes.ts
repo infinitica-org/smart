@@ -1253,6 +1253,19 @@ export const ROUTES: readonly RouteSpec[] = [
     summary: 'Update the candidate capacity quota for a subscription plan.',
   },
   {
+    method: 'PATCH',
+    path: '/admin/plans/:planId/price',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['SUPER_ADMIN'],
+    rateLimit: 'role.superAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 150,
+    summary: 'Update base price or custom pricing state for a subscription plan.',
+  },
+
+  {
     method: 'PUT',
     path: '/admin/institutions/:institutionId/feature-flags',
     module: 'institutions',

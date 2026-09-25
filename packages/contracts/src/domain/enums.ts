@@ -141,7 +141,7 @@ export const AUTH_PROVIDERS = ['PASSWORD', 'GOOGLE', 'GITHUB', 'SAML', 'OIDC'] a
 export const AuthProviderSchema = z.enum(AUTH_PROVIDERS);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
-export const PLAN_CODES = ['FREE', 'BASIC', 'PRO'] as const;
+export const PLAN_CODES = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'] as const;
 export const PlanCodeSchema = z.enum(PLAN_CODES);
 export type PlanCode = z.infer<typeof PlanCodeSchema>;
 

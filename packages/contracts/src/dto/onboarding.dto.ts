@@ -228,6 +228,10 @@ export const SubscriptionPlanDtoSchema = z.object({
   code: PlanCodeSchema,
   name: z.string(),
   candidateCapacity: z.number().int().positive().nullable(),
+  /** Price in Indian Rupees (full rupees, not paise). NULL = not yet configured. */
+  priceInr: z.number().int().nonnegative().nullable(),
+  /** True for the Talent Intelligence Suite tier which has custom / negotiated pricing. */
+  isCustomPrice: z.boolean(),
   entitlements: z.array(PlanEntitlementDtoSchema),
   institutionCount: z.number().int().nonnegative(),
 });
@@ -629,6 +633,22 @@ export const UpdatePlanCapacityRequestSchema = z.object({
   candidateCapacity: z.number().int().positive().nullable(),
 });
 export type UpdatePlanCapacityRequest = z.infer<typeof UpdatePlanCapacityRequestSchema>;
+
+export const UpdatePlanPriceRequestSchema = z
+  .object({
+    /**
+     * Base price in full Indian Rupees (e.g. 7500 for ₹7,500).
+     * Must be a non-negative integer; null clears the configured price.
+     * Not applicable when isCustomPrice is true.
+     */
+    priceInr: z.number().int().nonnegative().nullable().optional(),
+    /** Set true to mark a plan as using custom / negotiated pricing (Talent Intelligence Suite). */
+    isCustomPrice: z.boolean().optional(),
+  })
+  .refine((v) => v.priceInr !== undefined || v.isCustomPrice !== undefined, {
+    message: 'Provide at least one of priceInr or isCustomPrice.',
+  });
+export type UpdatePlanPriceRequest = z.infer<typeof UpdatePlanPriceRequestSchema>;
 
 export const SetFeatureFlagOverrideRequestSchema = z.object({
   key: z.string().min(2).max(80),

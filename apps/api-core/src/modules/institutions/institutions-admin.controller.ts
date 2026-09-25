@@ -18,6 +18,7 @@ import {
   UpdateInstitutionRequestSchema,
   UpdatePlanCapacityRequestSchema,
   UpdatePlanEntitlementsRequestSchema,
+  UpdatePlanPriceRequestSchema,
   ViewCandidateRequestSchema,
   GetAdminDashboardQuerySchema,
 } from '@smart/contracts';
@@ -155,6 +156,19 @@ export class InstitutionsAdminController {
     return this.institutions.updatePlanCapacity(
       planId,
       UpdatePlanCapacityRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Patch('plans/:planId/price')
+  updatePlanPrice(
+    @Param('planId') planId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.institutions.updatePlanPrice(
+      planId,
+      UpdatePlanPriceRequestSchema.parse(body),
       user.sub,
     );
   }

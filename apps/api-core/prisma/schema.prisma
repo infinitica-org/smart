@@ -276,6 +276,7 @@ enum PlanCode {
   FREE
   BASIC
   PRO
+  ENTERPRISE
 }
 
 model Institution {
@@ -1456,6 +1457,10 @@ model SubscriptionPlan {
   code              PlanCode @unique
   name              String
   candidateCapacity Int?     @map("candidate_capacity")
+  /// Base price in Indian Rupees (minor-unit paise: 750000 = ₹7,500). NULL means price not set.
+  priceInr          Int?     @map("price_inr")
+  /// True for the Talent Intelligence Suite (custom pricing — no public rate card).
+  isCustomPrice     Boolean  @default(false) @map("is_custom_price")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   institutions Institution[]
