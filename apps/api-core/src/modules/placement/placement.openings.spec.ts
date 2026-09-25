@@ -11,6 +11,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementService } from './placement.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -164,7 +165,12 @@ describe('CO-T01 opening authorization', () => {
   it('refuses a TPO token that carries no institution claim', async () => {
     const { controller, prisma } = setup();
     await expect(
-      controller.createOpening({ ...tpoAdmin, inst: null } as never, validBody),
+      (async () =>
+        controller.createOpening(
+          { ...tpoAdmin, inst: null } as never,
+          validBody,
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.jobOpening.create).not.toHaveBeenCalled();
   });
@@ -174,7 +180,11 @@ describe('CO-T01 create opening', () => {
   it('creates a DRAFT opening and returns the contract DTO', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.createOpening(tpoAdmin as never, validBody);
+    const dto = await controller.createOpening(
+      tpoAdmin as never,
+      validBody,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(dto).toMatchObject({
       openingId,
@@ -196,11 +206,15 @@ describe('CO-T01 create opening', () => {
   it('takes institutionId and createdById from the JWT, never from the body', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createOpening(tpoAdmin as never, {
-      ...validBody,
-      institutionId: otherInstitutionId,
-      createdById: randomUUID(),
-    });
+    await controller.createOpening(
+      tpoAdmin as never,
+      {
+        ...validBody,
+        institutionId: otherInstitutionId,
+        createdById: randomUUID(),
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     const { data } = prisma.jobOpening.create.mock.calls[0][0];
     expect(data.institutionId).toBe(institutionId);
@@ -210,7 +224,11 @@ describe('CO-T01 create opening', () => {
   it('persists both experience bounds and every requested proficiency', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createOpening(tpoAdmin as never, validBody);
+    await controller.createOpening(
+      tpoAdmin as never,
+      validBody,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     const { data } = prisma.jobOpening.create.mock.calls[0][0];
     expect(data.minYearsExperience).toBe(1);
@@ -227,20 +245,24 @@ describe('CO-T01 create opening', () => {
   it('persists extended job posting fields on create', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createOpening(tpoAdmin as never, {
-      ...validBody,
-      categoryId: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
-      aboutCompany: 'About the org',
-      companyOffers: 'Perks list',
-      additionalCompanyDetails: 'More info',
-      roleDetails: 'Role JD',
-      salaryDetails: '6 LPA',
-      roundDetails: '3 rounds',
-      hiringDetails: 'Process notes',
-      driveSpoc: 'hr@acme.com',
-      driveDate: '2026-11-01',
-      lastDateToApply: '2026-10-20',
-    });
+    await controller.createOpening(
+      tpoAdmin as never,
+      {
+        ...validBody,
+        categoryId: 'SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN',
+        aboutCompany: 'About the org',
+        companyOffers: 'Perks list',
+        additionalCompanyDetails: 'More info',
+        roleDetails: 'Role JD',
+        salaryDetails: '6 LPA',
+        roundDetails: '3 rounds',
+        hiringDetails: 'Process notes',
+        driveSpoc: 'hr@acme.com',
+        driveDate: '2026-11-01',
+        lastDateToApply: '2026-10-20',
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     const { data } = prisma.jobOpening.create.mock.calls[0][0];
     expect(data.categoryCode).toBe('SOFTWARE_ARCHITECTURE_SYSTEM_DESIGN');
@@ -254,19 +276,23 @@ describe('CO-T01 create opening', () => {
     const { controller, prisma } = setup();
     const { headcount: _omit, ...bodyWithoutHeadcount } = validBody;
 
-    await controller.createOpening(tpoAdmin as never, {
-      ...bodyWithoutHeadcount,
-      companyLogoStorageKey: 'job-opening-logos/inst/logo.png',
-      attachedDocuments: [
-        {
-          documentId: '33333333-3333-4333-8333-333333333333',
-          fileName: 'jd.pdf',
-          fileUrl: 'job-opening-docs/inst/jd.pdf',
-          mimeType: 'application/pdf',
-          fileSizeBytes: 1024,
-        },
-      ],
-    });
+    await controller.createOpening(
+      tpoAdmin as never,
+      {
+        ...bodyWithoutHeadcount,
+        companyLogoStorageKey: 'job-opening-logos/inst/logo.png',
+        attachedDocuments: [
+          {
+            documentId: '33333333-3333-4333-8333-333333333333',
+            fileName: 'jd.pdf',
+            fileUrl: 'job-opening-docs/inst/jd.pdf',
+            mimeType: 'application/pdf',
+            fileSizeBytes: 1024,
+          },
+        ],
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     const { data } = prisma.jobOpening.create.mock.calls[0][0];
     expect(data.headcount).toBe(1);
@@ -277,7 +303,11 @@ describe('CO-T01 create opening', () => {
   it('resolves every skillCode against Skill.code without upserting taxonomy rows', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createOpening(tpoAdmin as never, validBody);
+    await controller.createOpening(
+      tpoAdmin as never,
+      validBody,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(prisma.skill.findMany).toHaveBeenCalledWith({
       where: {
@@ -293,9 +323,9 @@ describe('CO-T01 create opening', () => {
       seededCodes: ['ALGORITHMIC_COMPLEXITY_PERFORMANCE_OPTIMIZATION'],
     });
 
-    await expect(controller.createOpening(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(
+      controller.createOpening(tpoAdmin as never, validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
     expect(prisma.jobOpening.create).not.toHaveBeenCalled();
   });
 
@@ -322,7 +352,11 @@ describe('CO-T01 create opening', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.createOpening(tpoAdmin as never, { ...validBody, ...patch }),
+      controller.createOpening(
+        tpoAdmin as never,
+        { ...validBody, ...patch },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.jobOpening.create).not.toHaveBeenCalled();
   });
@@ -332,7 +366,7 @@ describe('CO-T01 list openings', () => {
   it('scopes the query to the caller institution', async () => {
     const { controller, prisma } = setup();
 
-    const result = await controller.listOpenings(tpoAdmin as never, {});
+    const result = await controller.listOpenings({}, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.jobOpening.findMany.mock.calls[0][0].where).toEqual({ institutionId });
     expect(result.openings).toHaveLength(1);
@@ -343,14 +377,17 @@ describe('CO-T01 list openings', () => {
     const { controller } = setup({ rows: [] });
 
     await expect(
-      controller.listOpenings({ ...tpoAdmin, inst: otherInstitutionId } as never, {}),
+      controller.listOpenings(
+        {},
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).resolves.toEqual({ openings: [] });
   });
 
   it('applies the contract status filter', async () => {
     const { controller, prisma } = setup();
 
-    await controller.listOpenings(tpoAdmin as never, { status: 'OPEN' });
+    await controller.listOpenings({ status: 'OPEN' }, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.jobOpening.findMany.mock.calls[0][0].where).toEqual({
       institutionId,
@@ -360,7 +397,9 @@ describe('CO-T01 list openings', () => {
 
   it('returns an empty list rather than an error when nothing is posted yet', async () => {
     const { controller } = setup({ rows: [] });
-    await expect(controller.listOpenings(tpoAdmin as never, {})).resolves.toEqual({ openings: [] });
+    await expect(controller.listOpenings({}, resolveTenantId(tpoAdmin as never))).resolves.toEqual({
+      openings: [],
+    });
   });
 
   it('coerces legacy rows with null placement fields instead of failing the list', async () => {
@@ -376,7 +415,7 @@ describe('CO-T01 list openings', () => {
       ],
     });
 
-    const result = await controller.listOpenings(tpoAdmin as never, {});
+    const result = await controller.listOpenings({}, resolveTenantId(tpoAdmin as never));
 
     expect(result.openings).toHaveLength(1);
     expect(result.openings[0]?.location).toBe('Unspecified');
@@ -389,7 +428,7 @@ describe('CO-T01 get one opening', () => {
   it('returns required skills as taxonomy code plus proficiency', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.getOpening(tpoAdmin as never, openingId);
+    const dto = await controller.getOpening(openingId, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where).toEqual({
       id: openingId,
@@ -408,7 +447,10 @@ describe('CO-T01 get one opening', () => {
     const { controller, prisma } = setup({ row: null });
 
     await expect(
-      controller.getOpening({ ...tpoAdmin, inst: otherInstitutionId } as never, openingId),
+      controller.getOpening(
+        openingId,
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where.institutionId).toBe(
       otherInstitutionId,
@@ -417,9 +459,9 @@ describe('CO-T01 get one opening', () => {
 
   it('returns not found for an unknown opening id', async () => {
     const { controller } = setup({ row: null });
-    await expect(controller.getOpening(tpoAdmin as never, randomUUID())).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.getOpening(randomUUID(), resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

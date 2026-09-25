@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Inject,
   Param,
@@ -11,6 +10,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import {
   API_PREFIX,
@@ -32,32 +32,28 @@ import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { InstitutionsService } from './institutions.service.js';
-
-function requireInstitutionId(user: RequestUser): string {
-  if (!user.inst) {
-    throw new ForbiddenException({
-      error: 'forbidden',
-      message: 'Institution admin must belong to an institution.',
-      statusCode: 403,
-    });
-  }
-  return user.inst;
-}
+import { TenantId } from '../../common/decorators/tenant-id.decorator.js';
+import { TenantScopeGuard } from '../../common/guards/tenant-scope.guard.js';
 
 @Controller(`${API_PREFIX}/tpo`)
+@UseGuards(TenantScopeGuard)
 @Roles('INSTITUTION_ADMIN')
 export class InstitutionsTpoController {
   constructor(@Inject(InstitutionsService) private readonly institutions: InstitutionsService) {}
 
   @Get('entitlements')
-  entitlements(@CurrentUser() user: RequestUser) {
-    return this.institutions.resolveInstitutionEntitlements(requireInstitutionId(user));
+  entitlements(@TenantId() institutionId: string) {
+    return this.institutions.resolveInstitutionEntitlements(institutionId);
   }
 
   @Patch('institution/settings')
-  updateInstitutionSettings(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+  updateInstitutionSettings(
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
+  ) {
     return this.institutions.updateInstitutionConfiguration(
-      requireInstitutionId(user),
+      institutionId,
       ConfigureInstitutionSettingsSchema.parse(body),
       user.sub,
     );
@@ -65,11 +61,11 @@ export class InstitutionsTpoController {
 
   @Get('students')
   listStudents(
-    @CurrentUser() user: RequestUser,
     @Query() query: Record<string, string | undefined>,
+    @TenantId() institutionId: string,
   ) {
     return this.institutions.listInstitutionStudents(
-      requireInstitutionId(user),
+      institutionId,
       ListInstitutionStudentsQuerySchema.parse(
         Object.fromEntries(Object.entries(query).filter(([, value]) => value)),
       ),
@@ -78,8 +74,8 @@ export class InstitutionsTpoController {
 
   @Get('students/assigned-to-me')
   @Roles('PLACEMENT_STAFF', 'INSTITUTION_ADMIN')
-  listAssignedStudents(@CurrentUser() user: RequestUser) {
-    return this.institutions.listAssignedStudents(requireInstitutionId(user), user.sub);
+  listAssignedStudents(@CurrentUser() user: RequestUser, @TenantId() institutionId: string) {
+    return this.institutions.listAssignedStudents(institutionId, user.sub);
   }
 
   @Post('students/:userId/hold')
@@ -87,12 +83,13 @@ export class InstitutionsTpoController {
     @Param('userId') userId: string,
     @Body() body: unknown,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     return this.institutions.holdStudent(
       userId,
       TenantActionReasonSchema.parse(body),
       user.sub,
-      requireInstitutionId(user),
+      institutionId,
     );
   }
 
@@ -101,23 +98,27 @@ export class InstitutionsTpoController {
     @Param('userId') userId: string,
     @Body() body: unknown,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     return this.institutions.releaseStudent(
       userId,
       TenantActionReasonSchema.parse(body),
       user.sub,
-      requireInstitutionId(user),
+      institutionId,
     );
   }
 
   @Post('students/:userId/invite-link')
-  getStudentInviteLink(@Param('userId') userId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.getStudentInviteLink(userId, requireInstitutionId(user));
+  getStudentInviteLink(@Param('userId') userId: string, @TenantId() institutionId: string) {
+    return this.institutions.getStudentInviteLink(userId, institutionId);
   }
 
   @Post('batches')
-  createBatch(@Body() body: unknown, @CurrentUser() user: RequestUser) {
-    const institutionId = requireInstitutionId(user);
+  createBatch(
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
+  ) {
     return this.institutions.createBatch(
       institutionId,
       CreateBatchRequestSchema.parse(body),
@@ -126,24 +127,24 @@ export class InstitutionsTpoController {
   }
 
   @Get('batches')
-  listBatches(@CurrentUser() user: RequestUser) {
-    return this.institutions.listBatches(requireInstitutionId(user));
+  listBatches(@TenantId() institutionId: string) {
+    return this.institutions.listBatches(institutionId);
   }
 
   @Get('batches/:batchId')
-  getBatch(@Param('batchId') batchId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.getBatch(batchId, requireInstitutionId(user));
+  getBatch(@Param('batchId') batchId: string, @TenantId() institutionId: string) {
+    return this.institutions.getBatch(batchId, institutionId);
   }
 
   @Patch('batches/:batchId')
   updateBatch(
     @Param('batchId') batchId: string,
     @Body() body: unknown,
-    @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     return this.institutions.updateBatch(
       batchId,
-      requireInstitutionId(user),
+      institutionId,
       UpdateBatchRequestSchema.parse(body),
     );
   }
@@ -153,18 +154,19 @@ export class InstitutionsTpoController {
     @Param('batchId') batchId: string,
     @Body() body: unknown,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     return this.institutions.addBatchMember(
       batchId,
-      requireInstitutionId(user),
+      institutionId,
       AddBatchMemberRequestSchema.parse(body),
       user.sub,
     );
   }
 
   @Get('batches/:batchId/members')
-  listMembers(@Param('batchId') batchId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.listBatchMembers(batchId, requireInstitutionId(user));
+  listMembers(@Param('batchId') batchId: string, @TenantId() institutionId: string) {
+    return this.institutions.listBatchMembers(batchId, institutionId);
   }
 
   @Post('batches/:batchId/members/import')
@@ -174,9 +176,8 @@ export class InstitutionsTpoController {
     @Query('dryRun') dryRun: string | undefined,
     @Req() request: FastifyRequest,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
-    const institutionId = requireInstitutionId(user);
-
     const partsIter = (
       request as FastifyRequest & {
         parts: () => AsyncIterableIterator<Multipart>;
@@ -246,10 +247,10 @@ export class InstitutionsTpoController {
   @Get('batches/:batchId/import-template')
   async importTemplate(
     @Param('batchId') batchId: string,
-    @CurrentUser() user: RequestUser,
     @Res() reply: FastifyReply,
+    @TenantId() institutionId: string,
   ) {
-    await this.institutions.getBatch(batchId, requireInstitutionId(user));
+    await this.institutions.getBatch(batchId, institutionId);
     const buffer = await this.institutions.buildImportTemplate();
     reply
       .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -258,29 +259,33 @@ export class InstitutionsTpoController {
   }
 
   @Post('batches/:batchId/invites/send')
-  sendInvites(@Param('batchId') batchId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.sendBatchInvites(batchId, requireInstitutionId(user));
+  sendInvites(@Param('batchId') batchId: string, @TenantId() institutionId: string) {
+    return this.institutions.sendBatchInvites(batchId, institutionId);
   }
 
   @Post('invitations/:invitationId/resend')
-  resendInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.resendStudentInvitation(invitationId, requireInstitutionId(user));
+  resendInvitation(@Param('invitationId') invitationId: string, @TenantId() institutionId: string) {
+    return this.institutions.resendStudentInvitation(invitationId, institutionId);
   }
 
   @Post('invitations/:invitationId/revoke')
-  revokeInvitation(@Param('invitationId') invitationId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.revokeStudentInvitation(invitationId, requireInstitutionId(user));
+  revokeInvitation(@Param('invitationId') invitationId: string, @TenantId() institutionId: string) {
+    return this.institutions.revokeStudentInvitation(invitationId, institutionId);
   }
 
   @Get('staff')
-  listStaff(@CurrentUser() user: RequestUser) {
-    return this.institutions.listInstitutionStaff(requireInstitutionId(user));
+  listStaff(@TenantId() institutionId: string) {
+    return this.institutions.listInstitutionStaff(institutionId);
   }
 
   @Post('staff/invitations')
-  inviteStaff(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+  inviteStaff(
+    @Body() body: unknown,
+    @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
+  ) {
     const parsed = InviteStaffRequestSchema.parse(body);
-    return this.institutions.inviteStaff(requireInstitutionId(user), parsed, user.sub);
+    return this.institutions.inviteStaff(institutionId, parsed, user.sub);
   }
 
   @Patch('staff/:userId/role')
@@ -288,23 +293,19 @@ export class InstitutionsTpoController {
     @Param('userId') targetUserId: string,
     @Body() body: unknown,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     const parsed = UpdateStaffRoleRequestSchema.parse(body);
-    return this.institutions.updateStaffRole(
-      requireInstitutionId(user),
-      targetUserId,
-      parsed.role,
-      user.sub,
-    );
+    return this.institutions.updateStaffRole(institutionId, targetUserId, parsed.role, user.sub);
   }
 
   @Post('staff/:userId/deactivate')
-  deactivateStaffAccess(@Param('userId') targetUserId: string, @CurrentUser() user: RequestUser) {
-    return this.institutions.deactivateStaffAccess(
-      requireInstitutionId(user),
-      targetUserId,
-      user.sub,
-    );
+  deactivateStaffAccess(
+    @Param('userId') targetUserId: string,
+    @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
+  ) {
+    return this.institutions.deactivateStaffAccess(institutionId, targetUserId, user.sub);
   }
 
   @Patch('staff/:userId/campus')
@@ -312,10 +313,11 @@ export class InstitutionsTpoController {
     @Param('userId') targetUserId: string,
     @Body() body: unknown,
     @CurrentUser() user: RequestUser,
+    @TenantId() institutionId: string,
   ) {
     const parsed = UpdateStaffCampusRequestSchema.parse(body);
     return this.institutions.updateStaffCampusAccess(
-      requireInstitutionId(user),
+      institutionId,
       targetUserId,
       parsed.campus,
       user.sub,

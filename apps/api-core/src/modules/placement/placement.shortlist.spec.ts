@@ -13,6 +13,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementService } from './placement.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -167,7 +168,11 @@ describe('AC-T05 shortlist authorization', () => {
     const { controller, prisma, outbox } = setup();
 
     await expect(
-      controller.createApplication({ ...tpoAdmin, inst: null } as never, validBody),
+      (async () =>
+        controller.createApplication(
+          validBody,
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.application.create).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -178,7 +183,7 @@ describe('AC-T05 create application', () => {
   it('shortlists the candidate and returns the contract DTO', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.createApplication(tpoAdmin as never, validBody);
+    const dto = await controller.createApplication(validBody, resolveTenantId(tpoAdmin as never));
 
     expect(dto).toEqual({
       applicationId,
@@ -195,7 +200,7 @@ describe('AC-T05 create application', () => {
   it('creates the row in SHORTLISTED, never APPLIED', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createApplication(tpoAdmin as never, validBody);
+    await controller.createApplication(validBody, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.application.create.mock.calls[0][0].data.stage).toBe('SHORTLISTED');
   });
@@ -203,7 +208,10 @@ describe('AC-T05 create application', () => {
   it('persists the AC-T04 match score the TPO actually saw', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createApplication(tpoAdmin as never, { ...validBody, matchScore: 0.75 });
+    await controller.createApplication(
+      { ...validBody, matchScore: 0.75 },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(prisma.application.create.mock.calls[0][0].data.matchScore).toBe(0.75);
   });
@@ -211,7 +219,10 @@ describe('AC-T05 create application', () => {
   it('stores null when matchScore is omitted', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.createApplication(tpoAdmin as never, { openingId, studentId });
+    const dto = await controller.createApplication(
+      { openingId, studentId },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(prisma.application.create.mock.calls[0][0].data.matchScore).toBeNull();
     expect(dto.matchScore).toBeNull();
@@ -220,7 +231,7 @@ describe('AC-T05 create application', () => {
   it('writes the opening stage event alongside the application', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createApplication(tpoAdmin as never, validBody);
+    await controller.createApplication(validBody, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.applicationStageEvent.create).toHaveBeenCalledWith({
@@ -231,10 +242,13 @@ describe('AC-T05 create application', () => {
   it('scopes both lookups to the JWT institution, never one from the body', async () => {
     const { controller, prisma } = setup();
 
-    await controller.createApplication(tpoAdmin as never, {
-      ...validBody,
-      institutionId: otherInstitutionId,
-    });
+    await controller.createApplication(
+      {
+        ...validBody,
+        institutionId: otherInstitutionId,
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where).toEqual({
       id: openingId,
@@ -258,7 +272,7 @@ describe('AC-T05 create application', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.createApplication(tpoAdmin as never, { ...validBody, ...patch }),
+      controller.createApplication({ ...validBody, ...patch }, resolveTenantId(tpoAdmin as never)),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
     expect(prisma.application.create).not.toHaveBeenCalled();
@@ -267,18 +281,18 @@ describe('AC-T05 create application', () => {
   it('returns 409 when the candidate is already shortlisted for this opening', async () => {
     const { controller, outbox } = setup({ createError: uniqueViolation() });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(ConflictException);
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
   it('does not disguise an unrelated database failure as a duplicate', async () => {
     const { controller } = setup({ createError: new Error('connection reset') });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toThrow(
-      'connection reset',
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toThrow('connection reset');
   });
 });
 
@@ -304,9 +318,9 @@ describe('AC-T05 drive eligibility', () => {
       },
     });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      UnprocessableEntityException,
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.application.create).not.toHaveBeenCalled();
   });
 });
@@ -316,7 +330,10 @@ describe('AC-T05 tenant isolation', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.createApplication({ ...tpoAdmin, inst: otherInstitutionId } as never, validBody),
+      controller.createApplication(
+        validBody,
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.create).not.toHaveBeenCalled();
   });
@@ -326,9 +343,9 @@ describe('AC-T05 tenant isolation', () => {
       student: { id: studentId, institutionId: otherInstitutionId, role: 'STUDENT' },
     });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.create).not.toHaveBeenCalled();
   });
 
@@ -337,9 +354,9 @@ describe('AC-T05 tenant isolation', () => {
       student: { id: studentId, institutionId, role: 'PLACEMENT_STAFF' },
     });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.create).not.toHaveBeenCalled();
   });
 
@@ -347,7 +364,10 @@ describe('AC-T05 tenant isolation', () => {
     const { controller, prisma } = setup({ student: null });
 
     await expect(
-      controller.createApplication(tpoAdmin as never, { ...validBody, studentId: randomUUID() }),
+      controller.createApplication(
+        { ...validBody, studentId: randomUUID() },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.create).not.toHaveBeenCalled();
   });
@@ -356,7 +376,10 @@ describe('AC-T05 tenant isolation', () => {
     const { controller, prisma } = setup({ opening: null });
 
     await expect(
-      controller.createApplication(tpoAdmin as never, { ...validBody, openingId: randomUUID() }),
+      controller.createApplication(
+        { ...validBody, openingId: randomUUID() },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
@@ -366,7 +389,7 @@ describe('AC-T05 SE-T07 handoff', () => {
   it('enqueues smart.application.stage_changed for the new shortlist row', async () => {
     const { controller, outbox } = setup();
 
-    await controller.createApplication(tpoAdmin as never, validBody);
+    await controller.createApplication(validBody, resolveTenantId(tpoAdmin as never));
 
     expect(outbox.enqueueEnvelope).toHaveBeenCalledTimes(1);
     expect(outbox.enqueueEnvelope).toHaveBeenCalledWith({
@@ -388,9 +411,9 @@ describe('AC-T05 SE-T07 handoff', () => {
   it('emits nothing when the shortlist row was never created', async () => {
     const { controller, outbox } = setup({ opening: null });
 
-    await expect(controller.createApplication(tpoAdmin as never, validBody)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.createApplication(validBody, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 });
