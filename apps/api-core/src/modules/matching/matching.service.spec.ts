@@ -66,9 +66,17 @@ function setup(
     students?: unknown[];
     matchRun?: unknown;
     useRulesRanker?: boolean;
+    /** Students that are now deactivated or held (S6-VV-148). */
+    hiddenStudentIds?: string[];
   } = {},
 ) {
+  const hidden = new Set(options.hiddenStudentIds ?? []);
   const prisma = {
+    user: {
+      findMany: vi.fn(({ where }: { where: { id: { in: string[] } } }) =>
+        Promise.resolve(where.id.in.filter((id) => !hidden.has(id)).map((id) => ({ id }))),
+      ),
+    },
     jobOpening: {
       findFirst: vi
         .fn()
@@ -487,3 +495,53 @@ function contextWithUser(user: { role: string } | undefined): ExecutionContext {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
   } as ExecutionContext;
 }
+
+describe('S6-VV-148 employer visibility', () => {
+  const hiddenStudentId = randomUUID();
+
+  async function storedShortlist() {
+    const { controller } = setup({
+      students: [verifiedStudent(), verifiedStudent({ id: hiddenStudentId, fullName: 'Gone' })],
+    });
+    return controller.match(tpoAdmin as never, { jdId: openingId });
+  }
+
+  it('keeps deactivated and held students out of the eligible pool', async () => {
+    const { controller, prisma } = setup();
+
+    await controller.match(tpoAdmin as never, { jdId: openingId });
+
+    const sqlArg = prisma.$queryRaw.mock.calls[0][0];
+    expect(sqlArg.sql).toContain('u.deactivated_at IS NULL AND u.held_at IS NULL');
+  });
+
+  it('drops a candidate from a stored run once they become hidden', async () => {
+    const shortlist = await storedShortlist();
+    expect(shortlist.candidates.map((row) => row.studentId)).toContain(hiddenStudentId);
+    const { service } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', resultSnapshot: shortlist }),
+      hiddenStudentIds: [hiddenStudentId],
+    });
+
+    const dto = await service.getMatchRun(institutionId, 'run-1');
+
+    expect(dto.shortlist?.candidates.map((row) => row.studentId)).toEqual([studentId]);
+  });
+
+  it('404s the fit view for a hidden candidate still present in a stored run', async () => {
+    const shortlist = await storedShortlist();
+    const { service } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', resultSnapshot: shortlist }),
+      hiddenStudentIds: [hiddenStudentId],
+    });
+
+    const runId = randomUUID();
+
+    await expect(
+      service.getCandidateFit(institutionId, runId, hiddenStudentId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getCandidateFit(institutionId, runId, studentId)).resolves.toMatchObject({
+      studentId,
+    });
+  });
+});
