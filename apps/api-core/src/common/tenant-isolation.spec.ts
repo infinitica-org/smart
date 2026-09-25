@@ -57,9 +57,9 @@ describe('tenant isolation between institutions (#166)', () => {
     await expect(service.getBatch('batch-b', INSTITUTION_A)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(batch.findFirst).toHaveBeenCalledWith({
-      where: { id: 'batch-b', institutionId: INSTITUTION_A },
-    });
+    expect(batch.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'batch-b', institutionId: INSTITUTION_A } }),
+    );
   });
 
   it("treats another institution's job opening as not found", async () => {
