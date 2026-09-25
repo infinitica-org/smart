@@ -21,8 +21,13 @@ export interface EmployerVisibilityFields {
 
 export const EMPLOYER_VISIBILITY_SELECT = { deactivatedAt: true, heldAt: true } as const;
 
-/** Raw-SQL twin for queries that alias `users` as `u`. */
-export const EMPLOYER_VISIBLE_STUDENT_SQL = Prisma.sql`u.deactivated_at IS NULL AND u.held_at IS NULL`;
+/**
+ * S6-VV-113 — employer *discovery* (match runs, stored shortlists, company search) also honours the
+ * student's own opt-out. Account-level visibility above still governs everything else (send-to-company
+ * and evidence reads follow an application the student made, so an opt-out doesn't break them).
+ * Raw-SQL form for queries that alias `users` as `u`.
+ */
+export const EMPLOYER_DISCOVERABLE_STUDENT_SQL = Prisma.sql`u.deactivated_at IS NULL AND u.held_at IS NULL AND u.discoverable_to_employers`;
 
 export function isEmployerVisibleStudent(
   student: Partial<EmployerVisibilityFields> | null | undefined,
@@ -30,14 +35,19 @@ export function isEmployerVisibleStudent(
   return Boolean(student) && !student?.deactivatedAt && !student?.heldAt;
 }
 
-/** Ids from `studentIds` that employers may currently see. */
-export async function filterEmployerVisibleStudentIds(
+/** Ids from `studentIds` that employers may currently discover. */
+export async function filterEmployerDiscoverableStudentIds(
   prisma: PrismaService,
   studentIds: readonly string[],
 ): Promise<Set<string>> {
   if (studentIds.length === 0) return new Set();
   const rows = await prisma.user.findMany({
-    where: { id: { in: [...studentIds] }, deactivatedAt: null, heldAt: null },
+    where: {
+      id: { in: [...studentIds] },
+      deactivatedAt: null,
+      heldAt: null,
+      discoverableToEmployers: true,
+    },
     select: { id: true },
   });
   return new Set(rows.map((row) => row.id));

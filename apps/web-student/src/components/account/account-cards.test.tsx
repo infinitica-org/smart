@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataRequestsCard } from './DataRequestsCard';
 import { DeactivateAccountCard } from './DeactivateAccountCard';
+import { DiscoverabilityCard } from './DiscoverabilityCard';
 import { MessagingPreferenceCard } from './MessagingPreferenceCard';
 import { PersonalInfoCard } from './PersonalInfoCard';
 
@@ -13,6 +14,8 @@ const { users, signOut } = vi.hoisted(() => ({
     updatePersonalInfo: vi.fn(),
     getMessagingPreference: vi.fn(),
     updateMessagingPreference: vi.fn(),
+    getDiscoverability: vi.fn(),
+    updateDiscoverability: vi.fn(),
     listDataRequests: vi.fn(),
     createDataRequest: vi.fn(),
     downloadDataExport: vi.fn(),
@@ -139,6 +142,23 @@ describe('MessagingPreferenceCard', () => {
       expect(users.updateMessagingPreference).toHaveBeenCalledWith({
         allowEmployerMessages: false,
       }),
+    );
+  });
+});
+
+describe('DiscoverabilityCard (S6-VV-113)', () => {
+  it('opts out of employer discovery', async () => {
+    users.getDiscoverability.mockResolvedValue({ discoverableToEmployers: true });
+    users.updateDiscoverability.mockResolvedValue({ discoverableToEmployers: false });
+    renderWithClient(<DiscoverabilityCard />);
+
+    const toggle = await screen.findByRole('switch', { name: /let employers find me/i });
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
+    expect(screen.getByText(/placement cell always sees you/i)).toBeTruthy();
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(users.updateDiscoverability).toHaveBeenCalledWith({ discoverableToEmployers: false }),
     );
   });
 });

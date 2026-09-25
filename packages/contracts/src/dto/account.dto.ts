@@ -56,6 +56,15 @@ export const MessagingPreferenceResponseSchema = z.object({
 });
 export type MessagingPreferenceResponse = z.infer<typeof MessagingPreferenceResponseSchema>;
 
+/**
+ * S6-VV-113 (#552) — whether employers can find the student in match runs, shortlists and
+ * candidate search. Their own institution (TPO) sees them either way.
+ */
+export const DiscoverabilityPreferenceSchema = z.object({
+  discoverableToEmployers: z.boolean(),
+});
+export type DiscoverabilityPreference = z.infer<typeof DiscoverabilityPreferenceSchema>;
+
 /** STU-02 — self-service account deactivation; the literal confirmation guards against misclicks. */
 export const DeactivateAccountRequestSchema = z.object({
   confirmation: z.literal('DEACTIVATE', { message: 'Type DEACTIVATE to confirm.' }),

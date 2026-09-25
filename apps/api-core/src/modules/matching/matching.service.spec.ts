@@ -575,6 +575,23 @@ describe('S6-VV-148 employer visibility', () => {
 
     const sqlArg = prisma.$queryRaw.mock.calls[0][0];
     expect(sqlArg.sql).toContain('u.deactivated_at IS NULL AND u.held_at IS NULL');
+    // S6-VV-113 — a student who opted out of employer discovery is not matched either.
+    expect(sqlArg.sql).toContain('u.discoverable_to_employers');
+  });
+
+  it('re-checks discoverability when serving a stored run (S6-VV-113)', async () => {
+    const shortlist = await storedShortlist();
+    const { service, prisma } = setup({
+      matchRun: matchRunRow({ status: 'SUCCEEDED', resultSnapshot: shortlist }),
+    });
+
+    await service.getMatchRun(institutionId, 'run-1');
+
+    expect(prisma.user.findMany.mock.calls[0]?.[0].where).toMatchObject({
+      deactivatedAt: null,
+      heldAt: null,
+      discoverableToEmployers: true,
+    });
   });
 
   it('drops a candidate from a stored run once they become hidden', async () => {
@@ -660,6 +677,7 @@ describe('S6-VV-148 employer visibility', () => {
       const sqlText = sqlArg.sql;
       expect(sqlText).toContain('u.deactivated_at IS NULL');
       expect(sqlText).toContain('u.held_at IS NULL');
+      expect(sqlText).toContain('u.discoverable_to_employers');
       expect(sqlText).toContain('u.profile_visible = TRUE');
       expect(sqlText).toContain("ILIKE '%immediate%'");
       expect(sqlText).toContain('projects p_def');
