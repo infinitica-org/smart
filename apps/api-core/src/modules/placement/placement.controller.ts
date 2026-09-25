@@ -453,12 +453,13 @@ export class PlacementController {
     description: 'Unknown application, or owned by another institution.',
   })
   async patchApplicationStage(
+    @CurrentUser() user: RequestUser,
     @Param('applicationId') applicationId: string,
     @Body() body: unknown,
     @TenantId() institutionId: string,
   ): Promise<ApplicationDto> {
     const parsed = PatchApplicationStageRequestSchema.parse(body);
-    return this.service.patchApplicationStage(institutionId, applicationId, parsed.stage);
+    return this.service.patchApplicationStage(institutionId, applicationId, parsed.stage, user.sub);
   }
 
   @Get('applications/:applicationId/confidence')

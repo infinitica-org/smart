@@ -163,6 +163,7 @@ describe('CO-T02 patch application stage', () => {
     const { controller, prisma, outbox } = setup();
 
     const result = await controller.patchApplicationStage(
+      tpoAdmin as never,
       applicationId,
       {
         stage: 'SHORTLISTED',
@@ -210,6 +211,7 @@ describe('CO-T02 patch application stage', () => {
     const { controller, prisma, outbox } = setup();
 
     const result = await controller.patchApplicationStage(
+      tpoAdmin as never,
       applicationId,
       {
         stage: 'APPLIED',
@@ -230,6 +232,7 @@ describe('CO-T02 patch application stage', () => {
 
     await expect(
       controller.patchApplicationStage(
+        tpoAdmin as never,
         applicationId,
         {
           stage: 'SHORTLISTED',
@@ -244,6 +247,7 @@ describe('CO-T02 patch application stage', () => {
 
     await expect(
       controller.patchApplicationStage(
+        tpoAdmin as never,
         applicationId,
         {
           stage: 'INVALID_STAGE',
@@ -260,6 +264,7 @@ describe('CO-T02 patch application stage', () => {
     await expect(
       (async () =>
         controller.patchApplicationStage(
+          tpoAdmin as never,
           applicationId,
           {
             stage: 'SHORTLISTED',
