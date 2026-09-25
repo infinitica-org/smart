@@ -11,7 +11,7 @@ body {
 :root {
   color-scheme: light;
 
-  --ds-canvas: #f7f8fa;
+  --ds-canvas: #ffffff;
   --ds-surface: #ffffff;
   --ds-surface-muted: #f7f8fa;
   --ds-surface-hover: #f8fafc;

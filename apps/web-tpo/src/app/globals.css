@@ -20,7 +20,7 @@ body {
 :root {
   color-scheme: light;
 
-  --ds-canvas: #f8fafc;
+  --ds-canvas: #ffffff;
   --ds-surface: #ffffff;
   --ds-surface-muted: #f5f7fa;
   --ds-surface-hover: #f8fafc;
@@ -137,7 +137,7 @@ body {
  * Home dashboard refinements live under `.tpo-dashboard` only.
  */
 .tpo-bento-theme {
-  --ds-canvas: #f7f8fa;
+  --ds-canvas: #ffffff;
   --ds-surface: #ffffff;
   --ds-surface-muted: #f7f8fa;
   --ds-text: #0f172a;
@@ -176,7 +176,7 @@ body {
  * TPO home dashboard — premium SaaS palette (color-only). No neon cyan.
  */
 .tpo-dashboard {
-  --ds-canvas: #f6f8fb;
+  --ds-canvas: #ffffff;
   --ds-surface: #ffffff;
   --ds-surface-muted: #f8fafc;
   --ds-text: #0f172a;

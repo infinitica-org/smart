@@ -22,7 +22,7 @@ body {
     'Manrope', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
     system-ui, sans-serif;
 
-  --ds-canvas: #f8fafc;
+  --ds-canvas: #ffffff;
   --ds-surface: #ffffff;
   --ds-surface-muted: #f5f7fa;
   --ds-surface-hover: #f8fafc;
@@ -59,7 +59,7 @@ body,
 .admin-canvas,
 .admin-console {
   font-family: var(--admin-font-sans);
-  background-color: var(--ds-canvas, #f8fafc);
+  background-color: var(--ds-canvas, #ffffff);
   color: var(--ds-text, #101828);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -78,7 +78,7 @@ h6,
 @layer components {
   .admin-canvas,
   .admin-console {
-    background-color: var(--ds-canvas, #f8fafc);
+    background-color: var(--ds-canvas, #ffffff);
     font-family: var(--admin-font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
