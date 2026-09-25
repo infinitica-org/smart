@@ -806,7 +806,8 @@ export const ROUTES: readonly RouteSpec[] = [
     criticality: 'INTERACTIVE',
     execution: 'SYNC',
     slaMs: 200,
-    summary: 'Self-serve registration; creates a STUDENT account and issues an access token.',
+    summary:
+      'Self-serve registration; creates a STUDENT account and emails a verification link. No session until verified.',
   },
   {
     method: 'POST',
@@ -819,6 +820,19 @@ export const ROUTES: readonly RouteSpec[] = [
     execution: 'SYNC',
     slaMs: 150,
     summary: 'Confirm a self-serve registration email-verification token.',
+  },
+  {
+    method: 'POST',
+    path: '/auth/verify-email/resend',
+    module: 'auth',
+    owner: 'Vishal V',
+    roles: ['PUBLIC'],
+    rateLimit: 'auth.verifyEmailResend',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 200,
+    summary:
+      'Send a fresh verification link to an unverified account. Always 204; never reveals whether the email exists.',
   },
   {
     method: 'POST',

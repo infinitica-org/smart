@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
+  EMAIL_NOT_VERIFIED_ERROR,
   CompanyPortalAccountSchema,
   isDisallowedEndorserEmailDomain,
   type ActiveSessionDto,
@@ -128,6 +129,8 @@ export class AuthService {
     if (user.deactivatedAt) {
       throw unauthorized('This account has been deactivated.');
     }
+    // Only after the password checks out, so this never reveals whether an email is registered.
+    assertEmailVerified(user);
 
     if (user.failedLoginAttempts > 0 || user.loginLockedUntil) {
       await this.prisma.user.update({
@@ -181,7 +184,8 @@ export class AuthService {
     });
   }
 
-  async register(body: RegisterRequest, reply: FastifyReply): Promise<AuthTokenResponse> {
+  /** Creates the STUDENT without a session: they sign in once the emailed link is confirmed. */
+  async register(body: RegisterRequest): Promise<UserWithAuthIncludes> {
     const email = body.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -223,7 +227,7 @@ export class AuthService {
       resourceId: user.id,
       reasonCode: null,
     });
-    return this.issueSession(user, reply);
+    return user;
   }
 
   /** Issues tokens without re-checking password; caller must enforce tenant gates when appropriate. */
@@ -380,6 +384,10 @@ export class AuthService {
     }
 
     assertTenantLoginAllowed(existing.user);
+    if (!isEmailVerifiedForLogin(existing.user)) {
+      clearRefreshCookie(reply);
+      assertEmailVerified(existing.user);
+    }
 
     const nextRaw = createRefreshToken();
     const expiresAt = new Date(Date.now() + env.REFRESH_TTL_SECONDS * 1000);
@@ -551,6 +559,24 @@ function unauthorized(message: string): UnauthorizedException {
     error: 'unauthorized',
     message,
     statusCode: 401,
+  });
+}
+
+/** Students must confirm their email before they can sign in (#156). Other roles are invited. */
+function isEmailVerifiedForLogin(user: {
+  role: AuthenticatedUser['role'];
+  emailVerified: boolean;
+}): boolean {
+  return user.role !== 'STUDENT' || user.emailVerified;
+}
+
+function assertEmailVerified(user: { role: AuthenticatedUser['role']; emailVerified: boolean }) {
+  if (isEmailVerifiedForLogin(user)) return;
+  throw new ForbiddenException({
+    error: EMAIL_NOT_VERIFIED_ERROR,
+    message:
+      'Verify your email before signing in. Use the link we emailed you, or ask for a new one.',
+    statusCode: 403,
   });
 }
 

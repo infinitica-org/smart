@@ -11,6 +11,9 @@ import {
   hashEmailVerificationToken,
 } from './email-verification-token.util.js';
 
+/** One verification email per account per minute, whatever the caller's IP. */
+const RESEND_COOLDOWN_MS = 60_000;
+
 @Injectable()
 export class EmailVerificationService {
   constructor(
@@ -35,6 +38,27 @@ export class EmailVerificationService {
         expiresAtFormatted: `${env.EMAIL_VERIFICATION_TTL_HOURS} hours`,
       },
     });
+  }
+
+  /**
+   * Sends a fresh link to an unverified, self-registered account and retires the old ones. Silent
+   * for unknown, already-verified or just-emailed addresses, so the caller can always answer 204.
+   */
+  async resend(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    // Invited users with no password yet verify by accepting the invite, not by this link.
+    if (!user?.passwordHash || user.emailVerified) return;
+
+    const latest = await this.prisma.emailVerificationToken.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (latest && Date.now() - latest.createdAt.getTime() < RESEND_COOLDOWN_MS) return;
+
+    await this.prisma.emailVerificationToken.deleteMany({
+      where: { userId: user.id, consumedAt: null },
+    });
+    await this.sendForUser(user.id, user.email, user.fullName);
   }
 
   async confirm(rawToken: string): Promise<void> {

@@ -6,6 +6,8 @@ import {
   PasswordResetConfirmRequestSchema,
   PasswordResetRequestSchema,
   RegisterRequestSchema,
+  RegisterResponseSchema,
+  ResendEmailVerificationRequestSchema,
 } from '@smart/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/guards/public.decorator.js';
@@ -54,15 +56,19 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  async register(@Body() body: unknown, @Res({ passthrough: true }) reply: FastifyReply) {
+  async register(@Body() body: unknown) {
     const parsed = RegisterRequestSchema.parse(body);
-    const result = await this.auth.register(parsed, reply);
-    await this.emailVerification.sendForUser(
-      result.user.userId,
-      result.user.email,
-      result.user.fullName,
-    );
-    return result;
+    const user = await this.auth.register(parsed);
+    await this.emailVerification.sendForUser(user.id, user.email, user.fullName);
+    return RegisterResponseSchema.parse({ email: user.email, verificationRequired: true });
+  }
+
+  @Public()
+  @Post('verify-email/resend')
+  @HttpCode(204)
+  async resendEmailVerification(@Body() body: unknown) {
+    const parsed = ResendEmailVerificationRequestSchema.parse(body);
+    await this.emailVerification.resend(parsed.email);
   }
 
   @Public()
