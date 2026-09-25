@@ -19,6 +19,8 @@ enum UserRole {
   STUDENT
   B2B_PARTNER
   COMPANY
+  SUPPORT_AGENT
+  SUPPORT_LEAD
 }
 
 enum AuthProvider {

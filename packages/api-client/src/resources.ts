@@ -77,9 +77,22 @@ import type {
   ResolveTrustAppealRequestDto,
   SubmitTrustReportRequestDto,
   ResolveTrustReportRequestDto,
+  ReviewEvidenceResponse,
+  ImpersonateRequest,
+  SupportDiagnosticResponse,
+  SupportGrantRequest,
+  SupportGrantResponse,
+  SupportHistoryQuery,
+  SupportHistoryResponse,
+  SupportSessionResponse,
 } from '@smart/contracts';
 import {
   API_PREFIX,
+  ReviewEvidenceResponseSchema,
+  SupportDiagnosticResponseSchema,
+  SupportGrantResponseSchema,
+  SupportHistoryResponseSchema,
+  SupportSessionResponseSchema,
   TrustCaseDtoSchema,
   EnforcementActionDtoSchema,
   TrustAppealDtoSchema,
@@ -1651,6 +1664,13 @@ export function placementApi(client: SmartApiClient) {
           schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
         },
       ),
+
+    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: unknown) =>
+      client.post<ReviewEvidenceResponse>(
+        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
+        body,
+        { schema: ReviewEvidenceResponseSchema },
+      ),
   };
 }
 
@@ -1956,6 +1976,39 @@ export function trustApi(client: SmartApiClient) {
   };
 }
 
+export function supportApi(client: SmartApiClient) {
+  return {
+    lookupUser: (q: string) =>
+      client.get<any[]>(prefixed('/admin/support/lookup'), { query: { q } }),
+
+    createGrant: (dto: SupportGrantRequest) =>
+      client.post<SupportGrantResponse>(prefixed('/admin/support/grants'), dto, {
+        schema: SupportGrantResponseSchema,
+      }),
+
+    revokeGrant: (grantId: string) =>
+      client.post<{ success: true }>(prefixed(`/admin/support/grants/${grantId}/revoke`), {}),
+
+    impersonate: (dto: ImpersonateRequest) =>
+      client.post<SupportSessionResponse>(prefixed('/admin/support/impersonate'), dto, {
+        schema: SupportSessionResponseSchema,
+      }),
+
+    endSession: () => client.post<{ success: true }>(prefixed('/admin/support/session/end'), {}),
+
+    getDiagnostics: (userId: string) =>
+      client.get<SupportDiagnosticResponse>(prefixed(`/admin/support/diagnostics/${userId}`), {
+        schema: SupportDiagnosticResponseSchema,
+      }),
+
+    getHistory: (params?: SupportHistoryQuery) =>
+      client.get<SupportHistoryResponse>(prefixed('/admin/support/history'), {
+        query: params as Record<string, string | number | boolean | undefined>,
+        schema: SupportHistoryResponseSchema,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -1974,6 +2027,7 @@ export function createSmartApi(client: SmartApiClient) {
     public: publicApi(client),
     system: systemApi(client),
     trust: trustApi(client),
+    support: supportApi(client),
   };
 }
 

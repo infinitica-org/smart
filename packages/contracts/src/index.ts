@@ -86,6 +86,7 @@ export * from './dto/evidence-review.dto.js';
 export * from './dto/evidence-version.dto.js';
 export * from './dto/capability-inference-review.dto.js';
 export * from './dto/trust.dto.js';
+export * from './dto/support.dto.js';
 
 /* -------------------------------- events ---------------------------------- */
 export * from './events/topics.js';

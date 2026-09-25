@@ -130,6 +130,8 @@ export const USER_ROLES = [
   'STUDENT',
   'B2B_PARTNER', // X-SMART-API-KEY holder
   'COMPANY', // B2B company portal representative (tenant = User.companyId)
+  'SUPPORT_AGENT',
+  'SUPPORT_LEAD',
   'PUBLIC', // unauthenticated verification traffic
 ] as const;
 export const UserRoleSchema = z.enum(USER_ROLES);
