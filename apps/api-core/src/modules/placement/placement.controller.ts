@@ -496,10 +496,11 @@ export class PlacementController {
   })
   @ApiResponse({ status: 422, description: 'SE-T02 confidence result is missing or incomplete.' })
   async sendToCompany(
+    @CurrentUser() user: RequestUser,
     @Param('applicationId') applicationId: string,
     @TenantId() institutionId: string,
   ): Promise<ApplicationDto> {
-    return this.service.sendToCompany(institutionId, applicationId);
+    return this.service.sendToCompany(institutionId, applicationId, user.sub);
   }
 
   @Post('outcomes')
