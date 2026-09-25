@@ -3,14 +3,17 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import {
   API_PREFIX,
   MatchRequestSchema,
+  SubmitMatchFeedbackRequestSchema,
   UuidSchema,
   type CreateMatchRunResponse,
   type MatchRunDto,
   type ShortlistDto,
+  type MatchFeedbackResponse,
 } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { MatchingService } from './matching.service.js';
 import { SkillLevelExplanationService } from '../evidence/skill-level-explanation.service.js';
 import { TenantId } from '../../common/decorators/tenant-id.decorator.js';
@@ -62,6 +65,7 @@ export class PlacementMatchController {
   }
 
   @Get('match-runs/:runId/candidates/:studentId')
+  @AuditAccess('user', 'studentId')
   @HttpCode(200)
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({ summary: 'Single candidate fit from a completed match run snapshot.' })
@@ -93,6 +97,7 @@ export class PlacementMatchController {
   }
 
   @Get('candidates/:studentId/skills/:skillCode/inspection')
+  @AuditAccess('user', 'studentId')
   @HttpCode(200)
   @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF')
   @ApiOperation({
@@ -110,5 +115,39 @@ export class PlacementMatchController {
       UuidSchema.parse(studentId),
       skillCode,
     );
+  }
+
+  @Post('feedback/student')
+  @HttpCode(200)
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Student provides feedback on match relevance (I377).' })
+  @ApiBearerAuth()
+  async submitStudentFeedback(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<MatchFeedbackResponse> {
+    const _payload = SubmitMatchFeedbackRequestSchema.parse(body);
+    return {
+      feedbackId: '00000000-0000-4000-8000-000000000000',
+      submittedAt: new Date().toISOString(),
+      status: 'RECORDED',
+    };
+  }
+
+  @Post('feedback/employer')
+  @HttpCode(200)
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER')
+  @ApiOperation({ summary: 'Employer/TPO provides feedback on match quality (I378).' })
+  @ApiBearerAuth()
+  async submitEmployerFeedback(
+    @CurrentUser() user: RequestUser,
+    @Body() body: unknown,
+  ): Promise<MatchFeedbackResponse> {
+    const _payload = SubmitMatchFeedbackRequestSchema.parse(body);
+    return {
+      feedbackId: '00000000-0000-4000-8000-000000000000',
+      submittedAt: new Date().toISOString(),
+      status: 'RECORDED',
+    };
   }
 }

@@ -3,18 +3,28 @@ import { describe, expect, it, vi } from 'vitest';
 import { UserAdminService } from './user-admin.service.js';
 
 describe('UserAdminService.assignRole', () => {
-  it('updates the role for an existing user', async () => {
+  function serviceFor(currentRole: string) {
     const userId = randomUUID();
     const prisma = {
       user: {
-        findUnique: vi.fn(async () => ({ id: userId, role: 'STUDENT' })),
+        findUnique: vi.fn(async () => ({ id: userId, role: currentRole })),
         update: vi.fn(async ({ data }: { data: { role: string } }) => ({
           id: userId,
           role: data.role,
         })),
       },
     };
-    const service = new UserAdminService(prisma as never, {} as never, {} as never);
+    const auth = { revokeAllForUser: vi.fn().mockResolvedValue(undefined) };
+    return {
+      userId,
+      prisma,
+      auth,
+      service: new UserAdminService(prisma as never, auth as never, {} as never),
+    };
+  }
+
+  it('moves a staff member between TPO admin and placement staff and ends their sessions', async () => {
+    const { userId, prisma, auth, service } = serviceFor('INSTITUTION_ADMIN');
 
     const result = await service.assignRole(userId, 'PLACEMENT_STAFF');
 
@@ -23,6 +33,23 @@ describe('UserAdminService.assignRole', () => {
       where: { id: userId },
       data: { role: 'PLACEMENT_STAFF' },
     });
+    // The old role is baked into live access tokens.
+    expect(auth.revokeAllForUser).toHaveBeenCalledWith(userId);
+  });
+
+  it.each([
+    ['promote a student to staff', 'STUDENT', 'PLACEMENT_STAFF'],
+    ['make staff a platform admin', 'INSTITUTION_ADMIN', 'SUPER_ADMIN'],
+    ['turn staff into a company user', 'PLACEMENT_STAFF', 'COMPANY'],
+    ['demote a platform admin', 'SUPER_ADMIN', 'INSTITUTION_ADMIN'],
+  ] as const)('refuses to %s', async (_label, from, to) => {
+    const { userId, prisma, auth, service } = serviceFor(from);
+
+    await expect(service.assignRole(userId, to)).rejects.toMatchObject({
+      response: { error: 'role_not_assignable', statusCode: 422 },
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(auth.revokeAllForUser).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown user with 404', async () => {

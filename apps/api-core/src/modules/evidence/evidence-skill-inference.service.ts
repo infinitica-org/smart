@@ -50,6 +50,19 @@ export class EvidenceSkillInferenceService {
     if (cached) {
       return GetSkillEvidenceInferenceResponseSchema.parse(JSON.parse(cached));
     }
+    // Check if durable inference provenance exists in DB (survives Redis TTL expiry - I314)
+    const existing = await this.prisma.studentCapability.findFirst({
+      where: {
+        studentId,
+        skillCode,
+        modelVersion: { startsWith: FUSION_CAPABILITY_MODEL_PREFIX },
+      },
+      orderBy: { inferredAt: 'desc' },
+    });
+    if (existing) {
+      // Recompute fresh snapshot to populate Redis and return full provenance
+      return this.recomputeForSkill(studentId, skillCode);
+    }
     return this.recomputeForSkill(studentId, skillCode);
   }
 

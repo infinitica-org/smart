@@ -708,6 +708,46 @@ describe('onboardingApi education verification contracts', () => {
   });
 });
 
+describe('admin user role and access bindings (#169 / #171)', () => {
+  const userId = '11111111-1111-4111-8111-111111111111';
+
+  function apiWith(body: unknown) {
+    const { fetchImpl, calls } = stubFetch([{ status: 200, body }]);
+    const api = createSmartApi(
+      new SmartApiClient({
+        baseUrl: 'https://api.smart.test/',
+        getAccessToken: () => 'token',
+        fetchImpl,
+      }),
+    );
+    return { api, calls };
+  }
+
+  it('posts /admin/users/:id/role', async () => {
+    const { api, calls } = apiWith({ userId, role: 'PLACEMENT_STAFF' });
+    const result = await api.onboarding.assignUserRole(userId, { role: 'PLACEMENT_STAFF' });
+    expect(calls[0]?.url).toBe(`https://api.smart.test/api/v1/admin/users/${userId}/role`);
+    expect(calls[0]?.init.body).toBe(JSON.stringify({ role: 'PLACEMENT_STAFF' }));
+    expect(result.role).toBe('PLACEMENT_STAFF');
+  });
+
+  it('posts /admin/users/:id/hold and /release-hold with the reason', async () => {
+    const held = apiWith({ userId, heldAt: '2026-09-25T10:00:00.000Z' });
+    await held.api.onboarding.holdUser(userId, { reason: 'Left the placement cell' });
+    expect(held.calls[0]?.url).toBe(`https://api.smart.test/api/v1/admin/users/${userId}/hold`);
+    expect(held.calls[0]?.init.body).toBe(JSON.stringify({ reason: 'Left the placement cell' }));
+
+    const released = apiWith({ userId, heldAt: null });
+    const result = await released.api.onboarding.releaseUserHold(userId, {
+      reason: 'Back on the team',
+    });
+    expect(released.calls[0]?.url).toBe(
+      `https://api.smart.test/api/v1/admin/users/${userId}/release-hold`,
+    );
+    expect(result.heldAt).toBeNull();
+  });
+});
+
 describe('public company onboarding', () => {
   it('starts a session without Authorization header', async () => {
     const body = {

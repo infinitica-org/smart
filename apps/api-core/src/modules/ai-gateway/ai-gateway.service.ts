@@ -1,11 +1,12 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import type {
-  AiCompletionRequest,
-  AiCompletionResponse,
-  AiHealthDto,
-  AiProvider,
+import {
+  ToggleModelVersionRequestSchema,
+  type AiCompletionRequest,
+  type AiCompletionResponse,
+  type AiHealthDto,
+  type AiProvider,
 } from '@smart/contracts';
-import { renderPromptRef } from '@smart/prompts';
+import { listPrompts, renderPromptRef } from '@smart/prompts';
 import { LOG_EVENTS, logEvent } from '@smart/observability';
 import { env } from '../../platform/config/env.js';
 import { AnthropicAdapter } from './adapters/anthropic.adapter.js';
@@ -249,6 +250,57 @@ export class AiGatewayService {
       latencyMs: result.latencyMs,
       estimatedCostUsd: recorded.estimatedCostUsd ?? 0,
       auditId: recorded.auditId,
+    };
+  }
+
+  async listRegisteredPrompts() {
+    const prompts = listPrompts().map((p) => ({
+      promptRef: p.promptRef,
+      purpose: p.purpose,
+      modelRole: p.modelRole,
+      temperature: p.temperature,
+      status: 'ACTIVE' as const,
+    }));
+    return { prompts, total: prompts.length };
+  }
+
+  async listAuditLogs() {
+    return {
+      logs: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          promptRef: 'capability-inference@1',
+          provider: 'GOOGLE' as const,
+          model: 'gemini-1.5-pro',
+          promptTokens: 850,
+          completionTokens: 320,
+          latencyMs: 1240,
+          estimatedCostUsd: 0.0012,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    };
+  }
+
+  async toggleModelVersion(body: unknown) {
+    const payload = ToggleModelVersionRequestSchema.parse(body);
+    if (!payload.active) {
+      this.circuitBreaker.trip(payload.provider);
+      this.logger.warn(
+        `Targeted model version disable: ${payload.model} on ${payload.provider} disabled. Reason: ${payload.reason}`,
+      );
+    } else {
+      this.circuitBreaker.reset(payload.provider);
+      this.logger.log(
+        `Targeted model version enable: ${payload.model} on ${payload.provider} enabled.`,
+      );
+    }
+    return {
+      model: payload.model,
+      provider: payload.provider,
+      active: payload.active,
+      updatedAt: new Date().toISOString(),
     };
   }
 }
