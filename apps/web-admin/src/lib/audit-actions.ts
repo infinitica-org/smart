@@ -50,6 +50,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'admin.cut_score.upserted': 'Upserted cut score',
   'admin.response.graded': 'Manually graded response',
 
+  // audit-access.interceptor.ts (S6-VV-103)
+  'admin.data_accessed': 'Viewed personal data',
+
   // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
   'score.recalculated': 'Recalculated attempt score',
   'score.recalibration_run': 'Ran scoring recalibration',
@@ -147,6 +150,10 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   'sourceId',
   'externalAccountId',
   'message',
+
+  // audit-access.interceptor.ts (S6-VV-103)
+  'actorRole',
+  'route',
 
   // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
   'trigger',
