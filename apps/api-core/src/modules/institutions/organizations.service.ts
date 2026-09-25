@@ -112,6 +112,7 @@ export class OrganizationsService {
       data: {
         verificationStatus,
         verificationReason: verificationReason ?? null,
+        ...(actorId ? { updatedById: actorId } : {}),
       },
     });
 

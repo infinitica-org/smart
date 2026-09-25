@@ -4,6 +4,7 @@ node_modules/
 
 # --- build output ---
 dist/
+dist-test/
 build/
 out/
 .next/
@@ -84,3 +85,4 @@ kvm4-prod.env.txt
 
 # --- k6 run output (tools/load-tests) ---
 tools/load-tests/summary-*.json
+docs/item_45711000000070512.csv
