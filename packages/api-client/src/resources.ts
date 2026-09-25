@@ -67,6 +67,7 @@ import type {
   UpdateCompanyOnboardingDraftRequest,
   SubmitCompanyOnboardingRequest,
   VerifyCorporateEmailRequest,
+  EvidenceSkillDisputeRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
@@ -162,6 +163,7 @@ import {
   PassiveSignalEvidenceDtoSchema,
   ProjectSkillMappingDtoSchema,
   VerificationDecisionDtoSchema,
+  EvidenceSkillDisputeResponseSchema,
   SkillVerifyInterviewDtoSchema,
   SkillVerifyPrepareDtoSchema,
   SkillVerifySessionDtoSchema,
@@ -862,6 +864,19 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
+    /** S6-VV-101 — same filters as listAuditLogs; resolves to the CSV / JSON Lines file. */
+    exportAuditLogs: (query?: {
+      q?: string;
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+      actorId?: string;
+      section?: AuditLogSection;
+      from?: string;
+      to?: string;
+      format?: 'csv' | 'jsonl';
+    }) => client.getBlob(prefixed('/admin/audit-logs/export'), { query }),
+
     listActiveSessions: (query?: ListActiveSessionsQuery) =>
       client.get(prefixed('/admin/sessions'), {
         schema: z.array(ActiveSessionDtoSchema),
@@ -1290,6 +1305,11 @@ export function evidenceApi(client: SmartApiClient) {
       client.patch(prefixed(`/users/me/projects/${projectId}/skill-mappings`), body, {
         schema: z.array(ProjectSkillMappingDtoSchema),
       }),
+
+    disputeEvidenceMapping: (body: EvidenceSkillDisputeRequest) =>
+      client.post(prefixed('/users/me/evidence-skill-disputes'), body, {
+        schema: EvidenceSkillDisputeResponseSchema,
+      }),
   };
 }
 
@@ -1546,6 +1566,18 @@ export function placementApi(client: SmartApiClient) {
     listMyApplications: () =>
       client.get(prefixed('/me/applications'), { schema: ListMyApplicationsResponseSchema }),
 
+    getCandidateEvidenceProvenance: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/evidence`), {
+        schema: CandidateEvidenceProvenanceResponseSchema,
+      }),
+
+    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
+      client.post(
+        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
+        body,
+        { schema: ReviewEvidenceResponseSchema },
+      ),
+
     listCandidateEvidenceVersions: (studentId: string, evidenceId: string) =>
       client.get(prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/versions`), {
         schema: z.union([
@@ -1561,20 +1593,6 @@ export function placementApi(client: SmartApiClient) {
         ),
         {
           schema: z.union([EvidenceRecordVersionDtoSchema, EvidenceRecordVersionRedactedDtoSchema]),
-        },
-      ),
-
-    getCandidateEvidenceProvenance: (studentId: string) =>
-      client.get(prefixed(`/placement/candidates/${studentId}/evidence/provenance`), {
-        schema: CandidateEvidenceProvenanceResponseSchema,
-      }),
-
-    reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
-      client.post(
-        prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
-        body,
-        {
-          schema: ReviewEvidenceResponseSchema,
         },
       ),
   };

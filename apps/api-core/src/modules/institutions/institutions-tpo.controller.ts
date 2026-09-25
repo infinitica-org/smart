@@ -31,6 +31,7 @@ import { RequireFlag } from '../../common/guards/feature-flag.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { InstitutionsService } from './institutions.service.js';
 
 function requireInstitutionId(user: RequestUser): string {
@@ -163,6 +164,7 @@ export class InstitutionsTpoController {
   }
 
   @Get('batches/:batchId/members')
+  @AuditAccess('batch_members', 'batchId')
   listMembers(@Param('batchId') batchId: string, @CurrentUser() user: RequestUser) {
     return this.institutions.listBatchMembers(batchId, requireInstitutionId(user));
   }

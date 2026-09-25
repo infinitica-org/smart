@@ -514,3 +514,57 @@ export const ManualGradeResponseResultSchema = z.object({
   tierAwarded: TierSchema.nullable(),
 });
 export type ManualGradeResponseResult = z.infer<typeof ManualGradeResponseResultSchema>;
+
+/* ------------------ governance: prompts, audit & models (I560, I562, I567) ---- */
+
+export const RegisteredPromptDtoSchema = z.object({
+  promptRef: z.string(),
+  purpose: z.string(),
+  modelRole: z.string(),
+  temperature: z.number(),
+  status: z.enum(['ACTIVE', 'DISABLED']).default('ACTIVE'),
+});
+export type RegisteredPromptDto = z.infer<typeof RegisteredPromptDtoSchema>;
+
+export const ListRegisteredPromptsResponseSchema = z.object({
+  prompts: z.array(RegisteredPromptDtoSchema),
+  total: z.number().int().nonnegative(),
+});
+export type ListRegisteredPromptsResponse = z.infer<typeof ListRegisteredPromptsResponseSchema>;
+
+export const ToggleModelVersionRequestSchema = z.object({
+  model: z.string(),
+  provider: AiProviderSchema,
+  active: z.boolean(),
+  reason: z.string().min(5).max(1000),
+});
+export type ToggleModelVersionRequest = z.infer<typeof ToggleModelVersionRequestSchema>;
+
+export const ToggleModelVersionResponseSchema = z.object({
+  model: z.string(),
+  provider: AiProviderSchema,
+  active: z.boolean(),
+  updatedAt: IsoDateTimeSchema,
+});
+export type ToggleModelVersionResponse = z.infer<typeof ToggleModelVersionResponseSchema>;
+
+export const AiAuditLogItemDtoSchema = z.object({
+  id: UuidSchema,
+  promptRef: z.string(),
+  provider: AiProviderSchema,
+  model: z.string(),
+  promptTokens: z.number().int().nonnegative(),
+  completionTokens: z.number().int().nonnegative(),
+  latencyMs: z.number().int().nonnegative(),
+  estimatedCostUsd: z.number().nonnegative(),
+  responseId: UuidSchema.nullable().optional(),
+  attemptId: UuidSchema.nullable().optional(),
+  createdAt: IsoDateTimeSchema,
+});
+export type AiAuditLogItemDto = z.infer<typeof AiAuditLogItemDtoSchema>;
+
+export const ListAiAuditLogsResponseSchema = z.object({
+  logs: z.array(AiAuditLogItemDtoSchema),
+  total: z.number().int().nonnegative(),
+});
+export type ListAiAuditLogsResponse = z.infer<typeof ListAiAuditLogsResponseSchema>;

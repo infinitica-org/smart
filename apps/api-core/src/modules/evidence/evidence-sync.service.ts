@@ -35,10 +35,10 @@ export class EvidenceSyncService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EvidenceReconciliationService)
     private readonly reconciliation: EvidenceReconciliationService,
-    @Inject(EvidenceSkillInferenceService)
-    private readonly skillInference: EvidenceSkillInferenceService,
     @Inject(EvidenceVersionService)
     private readonly evidenceVersions: EvidenceVersionService,
+    @Inject(EvidenceSkillInferenceService)
+    private readonly skillInference: EvidenceSkillInferenceService,
   ) {}
 
   async syncWorkExperienceEvidenceRecord(

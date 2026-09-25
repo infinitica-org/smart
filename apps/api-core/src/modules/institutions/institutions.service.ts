@@ -54,7 +54,6 @@ import type {
   CandidateBriefDto,
   AdminDashboardDto,
   AuditLogDto,
-  AuditLogSection,
   InvitePlatformAdminRequest,
   PlatformAdminDto,
   PlanCode,
@@ -68,12 +67,12 @@ import type {
   FeatureFlagOverrideTenantType,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
-import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
+import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
-import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { resolveRecordActors } from './record-actors.js';
+import { buildAuditLogWhere } from './audit-log-query.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 import { toAuthenticatedUser } from '../auth/auth.service.js';
@@ -87,13 +86,6 @@ import {
 const MAX_BATCH_IMPORT_ROWS = 10_000;
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
   `entitlements:institution:${institutionId}`;
-
-/** Groups the raw UserRole enum into the three audit-log tabs the superadmin UI shows. */
-const AUDIT_LOG_SECTION_ROLES: Record<AuditLogSection, PrismaUserRole[]> = {
-  STUDENT: ['STUDENT'],
-  TPO: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
-  SUPER_ADMIN: ['SUPER_ADMIN'],
-};
 
 interface ParsedBatchImport {
   rows: BatchImportPreviewRowDto[];
@@ -1241,27 +1233,7 @@ export class InstitutionsService {
   }
 
   async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {
-    const where: Prisma.AuditLogWhereInput = {};
-    if (query.action) where.action = { contains: query.action, mode: 'insensitive' };
-    if (query.resourceType) where.resourceType = query.resourceType;
-    if (query.resourceId) where.resourceId = query.resourceId;
-    if (query.actorId) where.actorId = query.actorId;
-    if (query.section) {
-      where.actor = { is: { role: { in: AUDIT_LOG_SECTION_ROLES[query.section] } } };
-    }
-    if (query.from || query.to) {
-      where.createdAt = {
-        ...(query.from ? { gte: new Date(query.from) } : {}),
-        ...(query.to ? { lte: new Date(query.to) } : {}),
-      };
-    }
-    if (query.q) {
-      where.OR = [
-        { action: { contains: query.q, mode: 'insensitive' } },
-        { reasonCode: { contains: query.q, mode: 'insensitive' } },
-        { resourceId: { contains: query.q, mode: 'insensitive' } },
-      ];
-    }
+    const where = buildAuditLogWhere(query);
     const rows = await this.prisma.auditLog.findMany({
       where,
       include: { actor: { select: { email: true, role: true } } },

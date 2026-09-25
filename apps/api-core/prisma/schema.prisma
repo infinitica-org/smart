@@ -491,6 +491,7 @@ model User {
   companiesCreated                     Company[]                     @relation("CompanyCreatedBy")
   companiesUpdated                     Company[]                     @relation("CompanyUpdatedBy")
 
+
   careerDomainId String? @map("career_domain_id")
   targetRoleId   String? @map("target_role_id")
 
