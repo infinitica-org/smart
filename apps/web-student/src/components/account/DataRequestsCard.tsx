@@ -3,13 +3,18 @@
 import { useState } from 'react';
 import { useQuery } from '@smart/ui';
 import { isSmartApiError } from '@smart/api-client';
-import { CreateDataRequestSchema, type DataRequestType } from '@smart/contracts';
+import {
+  CreateDataRequestSchema,
+  type DataExportDownload,
+  type DataRequestType,
+} from '@smart/contracts';
 import { api } from '@/lib/api';
 import { fieldClass, primaryButtonClass, SettingsCard, StatusMessage } from './account-ui';
 
 const TYPE_LABEL: Record<DataRequestType, string> = {
   CORRECTION: 'Correct my data',
   DELETION: 'Delete my data',
+  EXPORT: 'Download a copy of my data',
 };
 
 export function DataRequestsCard() {
@@ -22,6 +27,18 @@ export function DataRequestsCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [download, setDownload] = useState<DataExportDownload | null>(null);
+
+  async function openExport(requestId: string) {
+    setError(null);
+    try {
+      const links = await api.users.downloadDataExport(requestId);
+      setDownload(links);
+      window.open(links.bundleUrl, '_blank', 'noopener');
+    } catch (err) {
+      setError(isSmartApiError(err) ? err.message : 'Could not open this export.');
+    }
+  }
 
   async function submit() {
     setError(null);
@@ -49,7 +66,7 @@ export function DataRequestsCard() {
   return (
     <SettingsCard
       title="Your data"
-      description="Ask us to correct or delete the personal data we hold about you."
+      description="Download a copy of the personal data we hold about you, or ask us to correct or delete it."
     >
       <div className="grid gap-3">
         <label className="grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -66,15 +83,22 @@ export function DataRequestsCard() {
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-          Details
-          <textarea
-            className={fieldClass}
-            rows={3}
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-          />
-        </label>
+        {type === 'EXPORT' ? (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            We prepare a file with your profile, evidence, applications and other records, and
+            notify you when it is ready. You can request one export a day.
+          </p>
+        ) : (
+          <label className="grid gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            Details
+            <textarea
+              className={fieldClass}
+              rows={3}
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+            />
+          </label>
+        )}
       </div>
       {error && <StatusMessage kind="error">{error}</StatusMessage>}
       {submitted && <StatusMessage kind="success">Request submitted.</StatusMessage>}
@@ -99,13 +123,37 @@ export function DataRequestsCard() {
           {requests.map((r) => (
             <li key={r.id} className="flex items-center justify-between py-2">
               <span className="text-zinc-700 dark:text-zinc-300">{TYPE_LABEL[r.type]}</span>
-              <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                {r.status.replace('_', ' ')}
-              </span>
+              {r.exportAvailableUntil ? (
+                <button
+                  type="button"
+                  className="rounded-md bg-zinc-900 px-2 py-0.5 font-bold text-white dark:bg-white dark:text-zinc-950"
+                  onClick={() => void openExport(r.id)}
+                >
+                  Download
+                </button>
+              ) : (
+                <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  {r.status.replace('_', ' ')}
+                </span>
+              )}
             </li>
           ))}
         </ul>
       )}
+      {download && download.files.length > 0 ? (
+        <div className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
+          <p className="font-semibold">Your uploaded files (links work for a few minutes):</p>
+          <ul className="mt-1 grid gap-1">
+            {download.files.map((file) => (
+              <li key={file.objectKey}>
+                <a className="underline" href={file.url} target="_blank" rel="noopener noreferrer">
+                  {file.objectKey.split('/').pop()}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </SettingsCard>
   );
 }

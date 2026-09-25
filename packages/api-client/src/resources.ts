@@ -332,6 +332,7 @@ import {
   DeactivateAccountResponseSchema,
   DataRequestResponseSchema,
   DataRequestListResponseSchema,
+  DataExportDownloadSchema,
   StudentDashboardSummarySchema,
   StudentReadinessSummarySchema,
   ProfileViewSettingSchema,
@@ -650,6 +651,12 @@ export function usersApi(client: SmartApiClient) {
         path: prefixed('/users/me/data-requests'),
         body,
         schema: DataRequestResponseSchema,
+      }),
+
+    /** S6-VV-115 — fresh short-lived links to a finished export. */
+    downloadDataExport: (requestId: string) =>
+      client.get(prefixed(`/users/me/data-requests/${requestId}/download`), {
+        schema: DataExportDownloadSchema,
       }),
 
     listWorkExperiences: () =>

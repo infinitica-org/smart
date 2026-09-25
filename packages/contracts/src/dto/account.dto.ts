@@ -69,20 +69,27 @@ export const DeactivateAccountResponseSchema = z.object({
 export type DeactivateAccountResponse = z.infer<typeof DeactivateAccountResponseSchema>;
 
 /** STU-02 — DPDP data-principal requests (correction / erasure). */
-export const DataRequestTypeSchema = z.enum(['CORRECTION', 'DELETION']);
+export const DataRequestTypeSchema = z.enum(['CORRECTION', 'DELETION', 'EXPORT']);
 export type DataRequestType = z.infer<typeof DataRequestTypeSchema>;
 
 export const DataRequestStatusSchema = z.enum(['OPEN', 'IN_REVIEW', 'COMPLETED', 'REJECTED']);
 export type DataRequestStatus = z.infer<typeof DataRequestStatusSchema>;
 
-export const CreateDataRequestSchema = z.object({
-  type: DataRequestTypeSchema,
-  details: z
-    .string()
-    .trim()
-    .min(10, 'Please describe the request in at least 10 characters.')
-    .max(2000, 'Details must be at most 2000 characters.'),
-});
+/** Correction and deletion need a description; an EXPORT (S6-VV-115) needs none. */
+export const CreateDataRequestSchema = z
+  .object({
+    type: DataRequestTypeSchema,
+    details: z.string().trim().max(2000, 'Details must be at most 2000 characters.').default(''),
+  })
+  .superRefine((body, ctx) => {
+    if (body.type !== 'EXPORT' && body.details.length < 10) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['details'],
+        message: 'Please describe the request in at least 10 characters.',
+      });
+    }
+  });
 export type CreateDataRequest = z.infer<typeof CreateDataRequestSchema>;
 
 export const DataRequestResponseSchema = z.object({
@@ -92,6 +99,8 @@ export const DataRequestResponseSchema = z.object({
   details: z.string(),
   createdAt: IsoDateTimeSchema,
   resolvedAt: IsoDateTimeSchema.nullable(),
+  /** S6-VV-115 — set on a finished EXPORT while its bundle can still be downloaded. */
+  exportAvailableUntil: IsoDateTimeSchema.nullable(),
 });
 export type DataRequestResponse = z.infer<typeof DataRequestResponseSchema>;
 
@@ -99,3 +108,11 @@ export const DataRequestListResponseSchema = z.object({
   requests: z.array(DataRequestResponseSchema),
 });
 export type DataRequestListResponse = z.infer<typeof DataRequestListResponseSchema>;
+
+/** S6-VV-115 — short-lived links to the export bundle and to every file the student uploaded. */
+export const DataExportDownloadSchema = z.object({
+  bundleUrl: z.string(),
+  files: z.array(z.object({ objectKey: z.string(), url: z.string() })),
+  linksExpireInSeconds: z.number().int().positive(),
+});
+export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;

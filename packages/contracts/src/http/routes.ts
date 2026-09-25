@@ -4625,6 +4625,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/users/me/data-requests/:requestId/download',
+    module: 'users',
+    owner: 'Vishal V',
+    roles: ['STUDENT'],
+    rateLimit: 'role.student',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 300,
+    summary: 'Short-lived links to my finished data export (S6-VV-115).',
+  },
+  {
+    method: 'GET',
     path: '/users/me/data-requests',
     module: 'users',
     owner: 'Satheshwaran V',

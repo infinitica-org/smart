@@ -10,6 +10,7 @@ export const MATCH_RUN_QUEUE = 'match_run' as const;
 export const JD_PARSE_QUEUE = 'jd_parse' as const;
 export const SKILL_VERIFY_GRADE_QUEUE = 'skill_verify_grade' as const;
 export const SCORE_RECALCULATION_QUEUE = 'score_recalculation' as const;
+export const DSR_EXPORT_QUEUE = 'dsr_export' as const;
 
 export const SANDBOX_EXECUTION_DLQ = 'sandbox_execution.dlq' as const;
 export const AUDIO_EVALUATION_DLQ = 'audio_evaluation.dlq' as const;
@@ -21,6 +22,7 @@ export const MATCH_RUN_DLQ = 'match_run.dlq' as const;
 export const JD_PARSE_DLQ = 'jd_parse.dlq' as const;
 export const SKILL_VERIFY_GRADE_DLQ = 'skill_verify_grade.dlq' as const;
 export const SCORE_RECALCULATION_DLQ = 'score_recalculation.dlq' as const;
+export const DSR_EXPORT_DLQ = 'dsr_export.dlq' as const;
 
 /** Playbook OQ-5: monthly batch — never intra-week. */
 export const QLIX_RECALIBRATION_JOB_ID = 'qlix-recalibration-monthly' as const;

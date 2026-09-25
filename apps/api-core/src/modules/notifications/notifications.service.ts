@@ -19,13 +19,14 @@ import type { Prisma } from '../../generated/prisma/index.js';
 
 export interface NotifyParams {
   readonly userId: string;
-  readonly email: string;
+  /** Without an email template the notification is in-app only. */
+  readonly email?: string;
   readonly kind: NotificationKind;
   readonly title: string;
   readonly body: string;
   readonly linkUrl?: string | null;
-  readonly emailTemplate: EmailTemplateName;
-  readonly emailData: EmailTemplateData;
+  readonly emailTemplate?: EmailTemplateName;
+  readonly emailData?: EmailTemplateData;
   readonly metadata?: Record<string, unknown>;
   /** One notification per event: a second call with the same key returns the first and sends nothing. */
   readonly dedupeKey?: string;
@@ -75,11 +76,13 @@ export class NotificationsService {
       throw error;
     }
 
-    await this.emailQueue.add('send', {
-      to: params.email,
-      template: params.emailTemplate,
-      data: params.emailData,
-    });
+    if (params.email && params.emailTemplate && params.emailData) {
+      await this.emailQueue.add('send', {
+        to: params.email,
+        template: params.emailTemplate,
+        data: params.emailData,
+      });
+    }
 
     this.logger.log(`Notification queued for user ${params.userId} (${params.kind})`);
     return toNotificationDto(row);
