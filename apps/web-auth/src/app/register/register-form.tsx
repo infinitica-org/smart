@@ -6,7 +6,8 @@ import { isDisallowedEndorserEmailDomain } from '@smart/contracts';
 import type { SelectableInstitutionDto } from '@smart/contracts';
 import { SmartLogo } from '@smart/ui';
 import { EyeIcon, EyeOffIcon } from '../../components/auth-icons';
-import { api, redirectForRole, storeSession } from '../../lib/api';
+import { ResendVerification } from '../../components/resend-verification';
+import { api } from '../../lib/api';
 
 const COUNTRY_CODES = [
   { label: 'IN +91', value: '+91' },
@@ -30,6 +31,7 @@ export function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -81,8 +83,8 @@ export function RegisterForm() {
         fullName,
         ...(institutionId ? { institutionId } : {}),
       });
-      storeSession(result.accessToken);
-      redirectForRole(result.user.role, result.accessToken);
+      // No session yet: the account is usable once the emailed link is confirmed.
+      setRegisteredEmail(result.email);
     } catch (err) {
       if (isSmartApiError(err)) {
         if (err.code === 'unregistered_university_domain') {
@@ -106,6 +108,10 @@ export function RegisterForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (registeredEmail) {
+    return <CheckInbox email={registeredEmail} />;
   }
 
   return (
@@ -359,6 +365,33 @@ export function RegisterForm() {
       <footer className="mx-auto w-full max-w-5xl py-2 text-left text-xs text-[#9ca3af]">
         © 2026 All Rights Reserved
       </footer>
+    </div>
+  );
+}
+
+/** Shown after registration: the account can't sign in until the emailed link is confirmed. */
+function CheckInbox({ email }: { email: string }) {
+  return (
+    <div className="flex min-h-dvh w-full flex-col bg-white px-6 py-8 text-[#111827] font-sans sm:px-12 sm:py-10">
+      <header className="mx-auto flex w-full max-w-5xl items-center">
+        <SmartLogo tone="on-light" className="h-8 w-auto" />
+      </header>
+      <main className="mx-auto my-auto w-full max-w-[460px] py-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-[2.25rem]">
+          Check your inbox
+        </h1>
+        <p className="mt-2.5 text-[15px] leading-relaxed text-[#6b7280]">
+          We sent a verification link to <strong className="text-[#111827]">{email}</strong>. Open
+          it to activate your account, then sign in.
+        </p>
+        <ResendVerification email={email} />
+        <a
+          href="/login"
+          className="mt-8 flex h-11 w-full items-center justify-center rounded-[11px] bg-black px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800"
+        >
+          Go to sign in
+        </a>
+      </main>
     </div>
   );
 }

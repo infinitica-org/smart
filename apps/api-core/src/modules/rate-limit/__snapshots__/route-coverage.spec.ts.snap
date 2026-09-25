@@ -250,6 +250,7 @@ exports[`declarative throttle matrix (S1-VV-05) > snapshots method+path → poli
   "POST /auth/sso/callback": "auth.login",
   "POST /auth/sso/start": "auth.login",
   "POST /auth/verify-email/:token": "auth.invite",
+  "POST /auth/verify-email/resend": "auth.verifyEmailResend",
   "POST /calibration/cut-scores/publish": "role.superAdmin",
   "POST /calibration/estimates": "role.superAdmin",
   "POST /calibration/panels": "role.superAdmin",

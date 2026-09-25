@@ -12,6 +12,7 @@ vi.mock('../../lib/api', () => ({
   api: {
     auth: {
       register: vi.fn(),
+      resendEmailVerification: vi.fn(),
       listInstitutions: vi.fn().mockResolvedValue([{ id: 'inst_1', name: 'PSG Tech' }]),
     },
   },
@@ -91,31 +92,12 @@ describe('RegisterPage', () => {
     });
   });
 
-  it('submits valid registration, stores session and redirects to onboarding', async () => {
+  it('submits a valid registration and asks the student to verify before signing in', async () => {
     vi.mocked(api.auth.register).mockResolvedValue({
-      accessToken: 'access_token_mock_123',
-      tokenType: 'Bearer',
-      expiresInSeconds: 900,
-      user: {
-        userId: 'usr_mock_1',
-        email: 'jane@psgtech.ac.in',
-        fullName: 'Jane Doe',
-        role: 'STUDENT',
-        institutionId: 'inst_1',
-        institutionName: 'PSG Tech',
-        primaryTrack: null,
-        secondaryTrack: null,
-        provider: 'PASSWORD',
-        emailVerified: false,
-        createdAt: '2026-09-23T14:00:00.000Z',
-        onboardingCompleted: false,
-        profilePhotoUrl: null,
-        cgpa: null,
-        sscPercentage: null,
-        hscPercentage: null,
-        sessionHold: null,
-      },
+      email: 'jane@psgtech.ac.in',
+      verificationRequired: true,
     });
+    vi.mocked(api.auth.resendEmailVerification).mockResolvedValue(undefined);
 
     render(<RegisterPage />);
 
@@ -131,16 +113,22 @@ describe('RegisterPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Get started/i }));
 
-    await waitFor(() => {
-      expect(api.auth.register).toHaveBeenCalledWith({
-        fullName: 'Jane Doe',
-        email: 'jane@psgtech.ac.in',
-        password: 'Password123!',
-        institutionId: 'inst_1',
-      });
+    expect(await screen.findByRole('heading', { name: /Check your inbox/i })).toBeDefined();
+    expect(api.auth.register).toHaveBeenCalledWith({
+      fullName: 'Jane Doe',
+      email: 'jane@psgtech.ac.in',
+      password: 'Password123!',
+      institutionId: 'inst_1',
     });
+    expect(storeSession).not.toHaveBeenCalled();
+    expect(redirectForRole).not.toHaveBeenCalled();
 
-    expect(storeSession).toHaveBeenCalledWith('access_token_mock_123');
-    expect(redirectForRole).toHaveBeenCalledWith('STUDENT', 'access_token_mock_123');
+    fireEvent.click(screen.getByRole('button', { name: /Send a new verification link/i }));
+    await waitFor(() =>
+      expect(api.auth.resendEmailVerification).toHaveBeenCalledWith({
+        email: 'jane@psgtech.ac.in',
+      }),
+    );
+    expect(await screen.findByRole('status')).toBeDefined();
   });
 });

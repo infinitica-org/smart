@@ -86,6 +86,7 @@ import {
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
   CompanyPortalAccountSchema,
+  RegisterResponseSchema,
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
@@ -269,7 +270,7 @@ export function authApi(client: SmartApiClient) {
 
     registerStudent: (body: RegisterStudentRequest) =>
       client.post(prefixed('/auth/register'), body, {
-        schema: AuthTokenResponseSchema,
+        schema: RegisterResponseSchema,
         anonymous: true,
       }),
 
@@ -320,7 +321,7 @@ export function authApi(client: SmartApiClient) {
       institutionId: string;
     }) =>
       client.post(prefixed('/auth/register'), body, {
-        schema: AuthTokenResponseSchema,
+        schema: RegisterResponseSchema,
         anonymous: true,
       }),
 
@@ -328,6 +329,10 @@ export function authApi(client: SmartApiClient) {
       client.post<void>(prefixed(`/auth/verify-email/${token}`), undefined, {
         anonymous: true,
       }),
+
+    /** Always resolves (204), whether or not the address has an unverified account. */
+    resendEmailVerification: (body: { email: string }) =>
+      client.post<void>(prefixed('/auth/verify-email/resend'), body, { anonymous: true }),
 
     requestPasswordReset: (body: { email: string }) =>
       client.post<void>(prefixed('/auth/password-reset/request'), body, {

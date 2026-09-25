@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isSmartApiError } from '@smart/api-client';
+import { EMAIL_NOT_VERIFIED_ERROR } from '@smart/contracts';
 import { SmartLogo } from '@smart/ui';
 import { ArrowUpRightIcon, EyeIcon, EyeOffIcon } from '../../components/auth-icons';
+import { ResendVerification } from '../../components/resend-verification';
 import { api, redirectForRole, storeSession } from '../../lib/api';
 
 const inputClass =
@@ -19,18 +21,23 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setUnverifiedEmail(null);
     try {
       const result = await api.auth.login({ email, password });
       storeSession(result.accessToken);
       redirectForRole(result.user.role, result.accessToken, searchParams.get('returnTo'));
     } catch (err) {
-      if (
+      if (isSmartApiError(err) && err.code === EMAIL_NOT_VERIFIED_ERROR) {
+        setError(err.message);
+        setUnverifiedEmail(email);
+      } else if (
         isSmartApiError(err) &&
         (err.code === 'institution_held' ||
           err.code === 'institution_deactivated' ||
@@ -79,6 +86,7 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
+      {unverifiedEmail ? <ResendVerification email={unverifiedEmail} /> : null}
 
       <div className="mt-8 w-full space-y-4">
         <button

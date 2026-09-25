@@ -431,7 +431,7 @@ describe('AuthService.login failure audit (S6-VV-143)', () => {
 });
 
 describe('AuthService.register', () => {
-  it('creates a STUDENT user, hashes the password, and issues a session', async () => {
+  it('creates an unverified STUDENT and does not sign them in', async () => {
     const institutionId = randomUUID();
     const prisma = {
       user: {
@@ -454,19 +454,16 @@ describe('AuthService.register', () => {
       storage as never,
       mockAuditPublisher() as never,
     );
-    const reply = { setCookie: vi.fn() };
 
-    const result = await auth.register(
-      {
-        email: 'New@Example.com',
-        password: 'password1',
-        fullName: 'New Student',
-        institutionId,
-      },
-      reply as never,
-    );
+    const user = await auth.register({
+      email: 'New@Example.com',
+      password: 'password1',
+      fullName: 'New Student',
+      institutionId,
+    });
 
-    expect(result.accessToken).toBe('access.jwt');
+    expect(user.email).toBe('new@example.com');
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     expect(prisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -489,15 +486,12 @@ describe('AuthService.register', () => {
     );
 
     await expect(
-      auth.register(
-        {
-          email: 'student@example.com',
-          password: 'password1',
-          fullName: 'X',
-          institutionId: randomUUID(),
-        },
-        {} as never,
-      ),
+      auth.register({
+        email: 'student@example.com',
+        password: 'password1',
+        fullName: 'X',
+        institutionId: randomUUID(),
+      }),
     ).rejects.toMatchObject({ response: { statusCode: 409 } });
   });
 
@@ -514,15 +508,12 @@ describe('AuthService.register', () => {
     );
 
     await expect(
-      auth.register(
-        {
-          email: 'x@example.com',
-          password: 'password1',
-          fullName: 'X',
-          institutionId: randomUUID(),
-        },
-        {} as never,
-      ),
+      auth.register({
+        email: 'x@example.com',
+        password: 'password1',
+        fullName: 'X',
+        institutionId: randomUUID(),
+      }),
     ).rejects.toMatchObject({ response: { statusCode: 404 } });
   });
 });
@@ -686,6 +677,93 @@ describe('password hashing', () => {
     const { verifyPassword } = await import('./auth.service.js');
     expect(await verifyPassword('ChangeMe!Dev', stored)).toBe(true);
     expect(await verifyPassword('wrong-password', stored)).toBe(false);
+  });
+});
+
+describe('AuthService email verification gate (#156)', () => {
+  function authFor(user: ReturnType<typeof userRow>) {
+    const prisma = {
+      user: { findUnique: vi.fn(async () => user), update: vi.fn() },
+      refreshToken: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn(async () => 'access.jwt') } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      mockAuditPublisher() as never,
+    );
+    return { auth, prisma };
+  }
+
+  it('refuses a correct-password sign-in by an unverified student', async () => {
+    const user = userRow({
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth, prisma } = authFor(user);
+
+    await expect(
+      auth.login('student@example.com', 'correct-password', { setCookie: vi.fn() } as never),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'email_not_verified', statusCode: 403 }),
+    });
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('still answers a wrong password with the generic 401, not the verification error', async () => {
+    const user = userRow({
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth } = authFor(user);
+
+    await expect(
+      auth.login('student@example.com', 'wrong-password', {} as never),
+    ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'unauthorized' }) });
+  });
+
+  it('does not gate invited staff roles', async () => {
+    const user = userRow({
+      role: 'INSTITUTION_ADMIN',
+      emailVerified: false,
+      passwordHash: await hashPassword('correct-password'),
+    });
+    const { auth } = authFor(user);
+
+    const result = await auth.login('student@example.com', 'correct-password', {
+      setCookie: vi.fn(),
+    } as never);
+    expect(result.accessToken).toBe('access.jwt');
+  });
+
+  it('ends an existing session on refresh while the student is unverified', async () => {
+    const raw = 'refresh-token';
+    const existing = {
+      id: randomUUID(),
+      familyId: randomUUID(),
+      userId: randomUUID(),
+      tokenHash: hashRefreshToken(raw),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      user: userRow({ emailVerified: false }),
+    };
+    const prisma = {
+      refreshToken: { findUnique: vi.fn(async () => existing), update: vi.fn(), create: vi.fn() },
+      $transaction: vi.fn(),
+    };
+    const auth = new AuthService(
+      prisma as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn() } as never,
+      mockAuditPublisher() as never,
+    );
+    const reply = { setCookie: vi.fn(), clearCookie: vi.fn() };
+
+    await expect(
+      auth.refresh({ cookies: { smart_refresh: raw } } as never, reply as never),
+    ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'email_not_verified' }) });
+    expect(reply.clearCookie).toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
 
