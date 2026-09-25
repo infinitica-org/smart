@@ -14,6 +14,8 @@ x-app-env: &app-env
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-smart}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
   S3_BUCKET: smart
+  # S6-VV-119: `required` only after MinIO has a KMS key and the bucket encrypts by default.
+  S3_ENCRYPTION: ${S3_ENCRYPTION:-off}
   LOG_PRETTY: "false"
   LOG_LEVEL: ${LOG_LEVEL:-info}
   SMTP_HOST: mailpit
@@ -163,6 +165,9 @@ services:
       # Metrics scraped in-network only (127.0.0.1-bound Prometheus) — public
       # auth mode is acceptable here, but do not expose this port beyond that.
       MINIO_PROMETHEUS_AUTH_TYPE: public
+      # S6-VV-119: `<key-name>:<base64 32 bytes>` turns on SSE-S3. Empty = no KMS (today's behavior).
+      # LOSING THIS KEY MAKES EVERY ENCRYPTED OBJECT UNREADABLE. See docs/delivery/STORAGE_ENCRYPTION.md.
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:-}
     ports:
       - "127.0.0.1:${MINIO_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -185,10 +190,14 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      # S6-VV-119: only a flag, never the key itself.
+      KMS_ENABLED: ${MINIO_KMS_SECRET_KEY:+true}
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-smart} ${MINIO_ROOT_PASSWORD:-smartsecret} &&
-      mc mb --ignore-existing local/smart
+      mc mb --ignore-existing local/smart &&
+      if [ \"$$KMS_ENABLED\" = true ]; then mc encrypt set sse-s3 local/smart; fi
       "
 
   mailpit:

@@ -79,6 +79,11 @@ const EnvSchema = z.object({
   S3_BUCKET: z.string().default('smart'),
   S3_ACCESS_KEY: z.string().default('smart'),
   S3_SECRET_KEY: z.string().default('smartsecret'),
+  /**
+   * S6-VV-119 — `required`: every server-side write asks for SSE and boot fails unless the bucket has
+   * default encryption. Only switch it on after MinIO has a KMS key (docs/delivery/STORAGE_ENCRYPTION.md).
+   */
+  S3_ENCRYPTION: z.enum(['off', 'required']).default('off'),
 
   /**
    * CN-T01 GitHub identity/repo-picker proxy. Unauthenticated GitHub REST calls
