@@ -1,4 +1,14 @@
 import {
+  JobFlagResponseSchema,
+  ListSavedJobsResponseSchema,
+  ListStudentJobsResponseSchema,
+  ReportSchema,
+  StudentJobDetailSchema,
+  type CreateReportRequest,
+  type HideJobRequest,
+  type ListStudentJobsQuery,
+} from '@smart/contracts';
+import {
   CompanyMemberSchema,
   CompanyProfileSchema,
   ListCompanyMembersResponseSchema,
@@ -1898,6 +1908,50 @@ function employerApi(client: SmartApiClient) {
   };
 }
 
+/** JOB-02 — student job discovery. PUT/DELETE are idempotent; the report POST carries a key. */
+function studentJobsApi(client: SmartApiClient) {
+  return {
+    list: (query: Partial<ListStudentJobsQuery> = {}) =>
+      client.get(prefixed('/student/jobs'), {
+        query: {
+          fit: query.fit,
+          type: query.type,
+          location: query.location,
+          mode: query.mode,
+          cursor: query.cursor,
+          limit: query.limit,
+        },
+        schema: ListStudentJobsResponseSchema,
+      }),
+    detail: (jobId: string) =>
+      client.get(prefixed(`/student/jobs/${jobId}`), { schema: StudentJobDetailSchema }),
+    listSaved: () =>
+      client.get(prefixed('/student/saved-jobs'), { schema: ListSavedJobsResponseSchema }),
+    save: (jobId: string) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/student/saved-jobs/${jobId}`),
+        schema: JobFlagResponseSchema,
+      }),
+    unsave: (jobId: string) =>
+      client.delete(prefixed(`/student/saved-jobs/${jobId}`), { schema: JobFlagResponseSchema }),
+    hide: (jobId: string, body: HideJobRequest = {}) =>
+      client.request({
+        method: 'PUT',
+        path: prefixed(`/student/hidden-jobs/${jobId}`),
+        body,
+        schema: JobFlagResponseSchema,
+      }),
+    unhide: (jobId: string) =>
+      client.delete(prefixed(`/student/hidden-jobs/${jobId}`), { schema: JobFlagResponseSchema }),
+    report: (body: CreateReportRequest, idempotencyKey: string) =>
+      client.post(prefixed('/reports'), body, {
+        schema: ReportSchema,
+        headers: { 'idempotency-key': idempotencyKey },
+      }),
+  };
+}
+
 /** Public company profile (verified companies only; anyone may read). */
 function companiesApi(client: SmartApiClient) {
   return {
@@ -1935,6 +1989,7 @@ export function createSmartApi(client: SmartApiClient) {
     system: systemApi(client),
     employer: employerApi(client),
     companies: companiesApi(client),
+    studentJobs: studentJobsApi(client),
   };
 }
 

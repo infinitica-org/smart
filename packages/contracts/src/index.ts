@@ -44,6 +44,7 @@ export * from './dto/common.js';
 export * from './dto/auth.dto.js';
 export * from './dto/company-team.dto.js';
 export * from './dto/company-review.dto.js';
+export * from './dto/student-jobs.dto.js';
 export * from './dto/catalog.dto.js';
 export * from './dto/assessment.dto.js';
 export * from './dto/proctoring.dto.js';

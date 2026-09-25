@@ -24,6 +24,10 @@ import {
   type RankerJob,
 } from '../matching/rules-ranker.js';
 import { ProfileCompletionService } from '../users/profile-completion.service.js';
+import {
+  COMPANY_VISIBLE_WHERE,
+  passesStudentEligibility,
+} from '../student-jobs/job-eligibility.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
@@ -528,6 +532,9 @@ export class DashboardService {
         AND: [
           { OR: [{ lastDateToApply: null }, { lastDateToApply: { gte: today } }] },
           { applications: { none: { studentId } } },
+          // JOB-02: a job the student hid (Th6-385) never comes back, and unverified companies never show.
+          { hiddenBy: { none: { studentId } } },
+          COMPANY_VISIBLE_WHERE,
         ],
       },
       orderBy: { createdAt: 'desc' },
@@ -549,16 +556,7 @@ export class DashboardService {
       },
     });
 
-    return rows.filter((row) => {
-      if (row.minSscPercentage !== null && student.sscPercentage !== null) {
-        if (Number(student.sscPercentage) < Number(row.minSscPercentage)) return false;
-      }
-      if (row.minHscPercentage !== null && student.hscPercentage !== null) {
-        if (Number(student.hscPercentage) < Number(row.minHscPercentage)) return false;
-      }
-      if (!row.backlogsAllowed && student.hasActiveBacklog === true) return false;
-      return true;
-    });
+    return rows.filter((row) => passesStudentEligibility(row, student));
   }
 
   async getActiveApplications(

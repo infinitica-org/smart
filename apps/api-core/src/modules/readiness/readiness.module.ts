@@ -5,5 +5,6 @@ import { ReadinessService } from './readiness.service.js';
 @Module({
   controllers: [ReadinessController],
   providers: [ReadinessService],
+  exports: [ReadinessService],
 })
 export class ReadinessModule {}

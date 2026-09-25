@@ -33,6 +33,7 @@ export {
   type CardVariant,
   type CardProps,
 } from './components/card';
+export { AppliedBadge, type AppliedBadgeProps } from './components/applied-badge';
 export {
   VerifiedBadge,
   verifiedTooltip,
