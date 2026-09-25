@@ -337,6 +337,99 @@ describe('AuthService.login lockout (S6-VV-92)', () => {
   });
 });
 
+describe('AuthService.login failure audit (S6-VV-143)', () => {
+  function service(user: unknown) {
+    const auditPublisher = mockAuditPublisher();
+    const auth = new AuthService(
+      { user: { findUnique: vi.fn(async () => user), update: vi.fn() } } as never,
+      { signAsync: vi.fn() } as never,
+      { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) } as never,
+      auditPublisher as never,
+    );
+    return { auth, auditPublisher };
+  }
+  const reply = { request: { ip: '203.0.113.7' } } as never;
+
+  it('records an unknown email only as a hash', async () => {
+    const { auth, auditPublisher } = service(null);
+
+    await expect(auth.login('Nobody@Example.com', 'x', reply)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    const call = auditPublisher.record.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      actorId: null,
+      action: 'auth.login_failed',
+      resourceId: null,
+      reasonCode: 'unknown_email',
+      metadata: { ip: '203.0.113.7', emailSha256: expect.stringMatching(/^[0-9a-f]{64}$/) },
+    });
+    expect(JSON.stringify(call)).not.toContain('nobody@example.com');
+  });
+
+  it('records a wrong password against the targeted account', async () => {
+    const user = userRow({ passwordHash: await hashPassword('correct-password') });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'wrong', reply)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: null,
+        action: 'auth.login_failed',
+        resourceId: user.id,
+        reasonCode: 'bad_password',
+      }),
+    );
+  });
+
+  it('records an attempt against a locked account', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      loginLockedUntil: new Date(Date.now() + 60_000),
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'locked' }),
+    );
+  });
+
+  it('records a sign-in blocked by a tenant hold', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      institutionId: randomUUID(),
+      institution: { name: 'Held College', heldAt: new Date(), deactivatedAt: null },
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'tenant_blocked' }),
+    );
+  });
+
+  it('records a sign-in to a deactivated account', async () => {
+    const user = userRow({
+      passwordHash: await hashPassword('correct-password'),
+      deactivatedAt: new Date(),
+    });
+    const { auth, auditPublisher } = service(user);
+
+    await expect(auth.login('student@example.com', 'correct-password', reply)).rejects.toThrow();
+
+    expect(auditPublisher.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_failed', reasonCode: 'deactivated' }),
+    );
+  });
+});
+
 describe('AuthService.register', () => {
   it('creates an unverified STUDENT and does not sign them in', async () => {
     const institutionId = randomUUID();
@@ -671,5 +764,42 @@ describe('AuthService email verification gate (#156)', () => {
     ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'email_not_verified' }) });
     expect(reply.clearCookie).toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('company portal account status (S6-VV-139)', () => {
+  function service(user: unknown) {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    return new AuthService(
+      prisma as never,
+      {} as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
+  }
+
+  it('never reports a COMPANY user without a company as approved', async () => {
+    const auth = service(userRow({ role: 'COMPANY', email: 'rep@acme.example', company: null }));
+
+    const account = await auth.getCompanyPortalAccount('user-1');
+
+    expect(account.companyVerificationStatus).toBe('PENDING');
+  });
+
+  it('reports a company hold when verification was revoked after sign-in', () => {
+    const user = _toAuthenticatedUser(
+      userRow({
+        role: 'COMPANY',
+        company: {
+          name: 'Acme',
+          heldAt: null,
+          deactivatedAt: null,
+          verificationStatus: 'REJECTED',
+        },
+      }) as never,
+    );
+
+    expect(user.sessionHold).toMatchObject({ code: 'company_held' });
   });
 });

@@ -8,6 +8,7 @@ import {
 } from '@smart/scoring-engine';
 import type { CertifiableTier } from '@smart/contracts';
 import { Effect, Either } from 'effect';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 
 export type AttemptRecalculationResult = {
@@ -18,6 +19,13 @@ export type AttemptRecalculationResult = {
   tierAwarded: string | null;
   confidenceBand: string | null;
   borderline: boolean;
+};
+
+/** Who/what caused a recalculation — recorded on the `score.recalculated` audit row. */
+export type RecalculationContext = {
+  actorId: string | null;
+  trigger: 'manual_grade' | 'system';
+  reasonCode?: string | null;
 };
 
 function num(value: { toNumber?: () => number } | number | null | undefined): number {
@@ -38,13 +46,19 @@ function toCutScore(tier: CertifiableTier, mean: number, sd: number): CutScore {
 
 @Injectable()
 export class AttemptResultRecalculationService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
+  ) {}
 
   /**
    * Recomputes attempt aggregate score from persisted Response rows.
    * Uses the same mark-weighted semantics as AssessmentService.completeAttempt.
    */
-  async recalculateForAttempt(attemptId: string): Promise<AttemptRecalculationResult> {
+  async recalculateForAttempt(
+    attemptId: string,
+    context: RecalculationContext = { actorId: null, trigger: 'system' },
+  ): Promise<AttemptRecalculationResult> {
     const attempt = await this.prisma.attempt.findUnique({
       where: { id: attemptId },
       include: {
@@ -114,6 +128,13 @@ export class AttemptResultRecalculationService {
       }
     }
 
+    const previous = attempt.result
+      ? {
+          scorePercent: num(attempt.result.rawScore),
+          tierAwarded: (attempt.result.tierAwarded as string | null) ?? null,
+        }
+      : null;
+
     if (attempt.result) {
       await this.prisma.levelResult.update({
         where: { attemptId },
@@ -133,6 +154,29 @@ export class AttemptResultRecalculationService {
           tierAwarded: (tierAwarded ?? null) as never,
           confidenceBand: confidenceBand ?? `${scorePercent}%`,
           borderline,
+        },
+      });
+    }
+
+    // S6-VV-102 (#492) — a score or tier change is auditable; a no-op recalculation is not.
+    if (
+      !previous ||
+      previous.scorePercent !== scorePercent ||
+      previous.tierAwarded !== (tierAwarded ?? null)
+    ) {
+      await this.auditPublisher.record({
+        actorId: context.actorId,
+        action: 'score.recalculated',
+        resourceType: 'Attempt',
+        resourceId: attemptId,
+        reasonCode: context.reasonCode ?? null,
+        metadata: {
+          trigger: context.trigger,
+          levelId: attempt.levelId,
+          previousScorePercent: previous?.scorePercent ?? null,
+          nextScorePercent: scorePercent,
+          previousTier: previous?.tierAwarded ?? null,
+          nextTier: tierAwarded ?? null,
         },
       });
     }

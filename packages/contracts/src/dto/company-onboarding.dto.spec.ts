@@ -6,8 +6,9 @@ import {
   VerificationQueueItemDtoSchema,
 } from './onboarding.dto.js';
 import {
-  COMPANY_SIZE_BANDS,
   COMPANY_SIZE_BAND_LABELS,
+  COMPANY_SIZE_BANDS,
+  COMPANY_WORK_EMAIL_REQUIRED_MESSAGE,
   CompanyOnboardingVerificationDocumentDtoSchema,
   CompanyRepresentativeSchema,
   CompanySignupProfileSchema,
@@ -16,6 +17,7 @@ import {
   MAX_COMPANY_VERIFICATION_DOCUMENT_BYTES,
   StartCompanyOnboardingRequestSchema,
   SubmitCompanyOnboardingRequestSchema,
+  UpdateCompanyOnboardingDraftRequestSchema,
 } from './company-onboarding.dto.js';
 
 const companyId = '11111111-1111-4111-8111-111111111111';
@@ -242,6 +244,28 @@ describe('StartCompanyOnboardingRequestSchema', () => {
         representative: { fullName: 'Ada Recruiter', workEmail: 'ada@acme.example' },
       }).success,
     ).toBe(true);
+  });
+
+  it.each(['ada@gmail.com', 'ADA@Yahoo.co.in', 'ada@outlook.com'])(
+    'rejects the free-mail address %s with a field error on workEmail',
+    (workEmail) => {
+      const result = StartCompanyOnboardingRequestSchema.safeParse({
+        representative: { fullName: 'Ada Recruiter', workEmail },
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual(['representative', 'workEmail']);
+      expect(result.error?.issues[0]?.message).toBe(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE);
+    },
+  );
+});
+
+describe('UpdateCompanyOnboardingDraftRequestSchema work email', () => {
+  it('rejects switching the representative to a free-mail address', () => {
+    expect(
+      UpdateCompanyOnboardingDraftRequestSchema.safeParse({
+        representative: { workEmail: 'ada@gmail.com' },
+      }).success,
+    ).toBe(false);
   });
 });
 

@@ -32,7 +32,7 @@ function setupCompanyEpicTest() {
         publicEmail: 'hr@acme.test',
         sector: 'SOFTWARE_ENGINEERING',
         mode: 'PRODUCT',
-        sizeBand: 'SIZE_51_200',
+        sizeBand: '51-200',
         address: {
           line1: '123 Tech Park',
           city: 'Bangalore',

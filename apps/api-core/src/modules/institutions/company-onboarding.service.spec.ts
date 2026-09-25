@@ -77,7 +77,8 @@ describe('CompanyOnboardingService', () => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
-      companyVerification: { create: vi.fn() },
+      companyVerification: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
+      companyVerificationDocument: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn(async (fn: (tx: any) => Promise<unknown>) => fn(prisma)),
     };
     audit = { record: vi.fn().mockResolvedValue(undefined) };
@@ -473,6 +474,41 @@ describe('CompanyOnboardingService', () => {
         }),
       );
       expect(prisma.companyVerification.create).toHaveBeenCalled();
+    });
+
+    it('carries re-uploaded and approved documents forward to the resubmission', async () => {
+      prisma.companyOnboardingSession.findUnique.mockResolvedValue({
+        ...verifiedSession,
+        onboardingStatus: 'RESUBMISSION_ALLOWED',
+        companyId: COMPANY_ID,
+        company: { verificationStatus: 'REJECTED' },
+      });
+      prisma.companyVerification.findFirst.mockResolvedValue({ id: 'ver-1' });
+      prisma.company.update.mockResolvedValue(undefined);
+      prisma.companyVerification.create.mockResolvedValue({ id: 'ver-2' });
+      prisma.companyOnboardingSession.update.mockResolvedValue(undefined);
+
+      await service.submit(raw, {
+        attestations: { authorizedToRepresent: true, informationAccurate: true },
+      });
+
+      expect(prisma.companyVerificationDocument.updateMany).toHaveBeenCalledWith({
+        where: { companyVerificationId: 'ver-1', reviewStatus: { not: 'REJECTED' } },
+        data: { companyVerificationId: 'ver-2' },
+      });
+    });
+
+    it('does not move documents on a first submission', async () => {
+      prisma.companyOnboardingSession.findUnique.mockResolvedValue(verifiedSession);
+      prisma.company.create.mockResolvedValue({ id: COMPANY_ID });
+      prisma.companyVerification.create.mockResolvedValue({ id: 'ver-1' });
+      prisma.companyOnboardingSession.update.mockResolvedValue(undefined);
+
+      await service.submit(raw, {
+        attestations: { authorizedToRepresent: true, informationAccurate: true },
+      });
+
+      expect(prisma.companyVerificationDocument.updateMany).not.toHaveBeenCalled();
     });
   });
 });
