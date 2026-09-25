@@ -3,7 +3,6 @@ import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -27,6 +26,12 @@ import {
   type AssociateEvidenceWithClaimResponse,
   type CandidateEvidenceProfileDto,
   type CandidateEvidenceProvenanceResponse,
+  type CandidateEducationEvidenceResponse,
+  type CandidateSkillClaimsResponse,
+  type CandidateSkillClaimStatusDto,
+  type CandidateDemonstratedSkillsResponse,
+  type PlacementCandidateDemonstratedSkillDto,
+  type PlacementCandidateEducationDto,
   type EvidenceProvenanceItemDto,
   type EvidenceProvenanceSummary,
   type EvidenceRecordDto,
@@ -43,6 +48,7 @@ import {
 } from '@smart/contracts';
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
+import type { EvidenceRecordRow } from './evidence-version.snapshot.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import {
@@ -53,7 +59,6 @@ import {
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { CredentialDedupService } from '../candidate-certificates/verification/credential-dedup.service.js';
 import { EvidenceReconciliationService } from './evidence-reconciliation.service.js';
-import type { EvidenceRecordRow } from './evidence-version.snapshot.js';
 import { deriveEvidenceCategories } from './evidence-provenance.helper.js';
 import {
   isIdempotentReviewRequest,
@@ -63,6 +68,8 @@ import {
   reviewDecisionConflict,
 } from './evidence-review.logic.js';
 import { assertReviewerCanMutateCandidateEvidence } from './evidence-reviewer-auth.helper.js';
+import { assertCanReadCandidateEvidenceVersions } from './evidence-version-auth.helper.js';
+import { EvidenceVersionService } from './evidence-version.service.js';
 import {
   evidenceReconciliationJobId,
   type EvidenceReconciliationJobPayload,
@@ -78,7 +85,6 @@ import type { CredentialVerificationJobPayload } from './verification/credential
 import { SkillClaimAutoDeclareService } from '../assessment/skill-claim-auto-declare.service.js';
 import { EvidenceSyncService } from './evidence-sync.service.js';
 import { EvidenceSkillInferenceService } from './evidence-skill-inference.service.js';
-import { EvidenceVersionService } from './evidence-version.service.js';
 
 const CREDENTIAL_DOCUMENT_ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -398,10 +404,7 @@ export class EvidenceService {
 
     // 3. Verify all evidence records exist, belong to studentId, and are in valid states
     const evidenceRecords = await this.prisma.evidenceRecord.findMany({
-      where: {
-        id: { in: input.evidenceIds },
-        studentId,
-      },
+      where: { id: { in: input.evidenceIds }, studentId },
     });
     if (evidenceRecords.length !== input.evidenceIds.length) {
       throw new NotFoundException({
@@ -766,62 +769,7 @@ export class EvidenceService {
     caller: RequestUser,
     studentId: string,
   ): Promise<CandidateEvidenceProvenanceResponse> {
-    const candidate = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { id: true, role: true, institutionId: true },
-    });
-
-    if (!candidate || candidate.role !== 'STUDENT') {
-      throw new NotFoundException({
-        error: 'not_found',
-        message: 'Candidate not found.',
-        statusCode: 404,
-      });
-    }
-
-    // Authorization checks
-    if (caller.role === 'SUPER_ADMIN') {
-      // Allowed
-    } else if (caller.role === 'INSTITUTION_ADMIN' || caller.role === 'PLACEMENT_STAFF') {
-      if (!caller.inst || caller.inst !== candidate.institutionId) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'You do not have access to candidate evidence outside your institution.',
-          statusCode: 403,
-        });
-      }
-    } else if (caller.role === 'COMPANY' || caller.role === 'B2B_PARTNER') {
-      if (!caller.companyId) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'Company account is not associated with a registered company.',
-          statusCode: 403,
-        });
-      }
-
-      const applicationCount = await this.prisma.application.count({
-        where: {
-          studentId,
-          opening: {
-            companyId: caller.companyId,
-          },
-        },
-      });
-
-      if (applicationCount === 0) {
-        throw new ForbiddenException({
-          error: 'forbidden',
-          message: 'You do not have authorization to view evidence for this candidate.',
-          statusCode: 403,
-        });
-      }
-    } else {
-      throw new ForbiddenException({
-        error: 'forbidden',
-        message: 'Unauthorized role to view candidate evidence provenance.',
-        statusCode: 403,
-      });
-    }
+    const access = await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
 
     const [evidenceRows, decisions] = await Promise.all([
       this.prisma.evidenceRecord.findMany({
@@ -839,6 +787,7 @@ export class EvidenceService {
           evidenceReliability: true,
           sourceOwner: true,
           sourceReference: true,
+          sourceEntityId: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -887,12 +836,30 @@ export class EvidenceService {
         evidenceReliability:
           (row.evidenceReliability as EvidenceProvenanceItemDto['evidenceReliability']) ??
           undefined,
-        sourceOwner: row.sourceOwner ?? undefined,
-        sourceReference: row.sourceReference ?? undefined,
+        sourceOwner: access.redacted ? undefined : (row.sourceOwner ?? undefined),
+        sourceReference: access.redacted ? undefined : (row.sourceReference ?? undefined),
+        sourceEntityId: row.sourceEntityId ?? undefined,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       };
     });
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: caller.sub,
+        action: 'evidence.accessed',
+        resourceType: 'candidate_evidence',
+        resourceId: studentId,
+        reasonCode: null,
+        metadata: {
+          studentId,
+          callerRole: caller.role,
+          companyId: caller.companyId ?? null,
+          redacted: access.redacted,
+          totalRecords: items.length,
+        },
+      });
+    }
 
     return {
       studentId,
@@ -1121,6 +1088,160 @@ export class EvidenceService {
       }
       return { status: 'FAILED', jobId };
     }
+  }
+
+  async getCandidateEducation(
+    caller: RequestUser,
+    studentId: string,
+  ): Promise<CandidateEducationEvidenceResponse> {
+    const access = await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
+
+    const [educationRows, evidenceResponse] = await Promise.all([
+      this.prisma.candidateEducation.findMany({
+        where: { studentId },
+        include: { documents: { orderBy: { createdAt: 'desc' } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.getCandidateEvidenceProvenance(caller, studentId),
+    ]);
+
+    const credentialItems = evidenceResponse.items.filter(
+      (item) => item.evidenceType === 'CREDENTIAL',
+    );
+
+    const educationItems: PlacementCandidateEducationDto[] = educationRows.map((r) => {
+      const relatedEvidence = credentialItems.filter(
+        (item) => item.sourceReference === r.id || item.sourceEntityId === r.id,
+      );
+      return {
+        id: r.id,
+        studentId: r.studentId,
+        institutionName: r.institutionName,
+        degree: r.degree,
+        fieldOfStudy: r.fieldOfStudy,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        current: r.current,
+        grade: r.grade,
+        status: r.status as PlacementCandidateEducationDto['status'],
+        rejectionReason: access.redacted ? null : r.rejectionReason,
+        documents: (r.documents ?? []).map((doc) => ({
+          id: doc.id,
+          educationId: doc.educationId,
+          documentType:
+            doc.documentType as PlacementCandidateEducationDto['documents'][number]['documentType'],
+          fileUrl: access.redacted ? '' : doc.fileUrl,
+          fileName: doc.fileName,
+          fileSizeBytes: doc.fileSizeBytes,
+          mimeType: doc.mimeType,
+          createdAt: doc.createdAt.toISOString(),
+        })),
+        relatedEvidence,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      };
+    });
+
+    return {
+      studentId,
+      total: educationItems.length,
+      education: educationItems,
+    };
+  }
+
+  async getCandidateSkillClaims(
+    caller: RequestUser,
+    studentId: string,
+  ): Promise<CandidateSkillClaimsResponse> {
+    await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
+
+    const claims = await this.prisma.skillClaim.findMany({
+      where: { studentId },
+      include: { skill: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const claimDtos: CandidateSkillClaimStatusDto[] = claims.map((claim) => ({
+      claimId: claim.id,
+      studentId: claim.studentId,
+      skillCode: claim.skill.code,
+      skillName: claim.skill.name,
+      category: claim.skill.domain ?? undefined,
+      status: claim.status,
+      claimedProficiency: claim.proficiency,
+      verifiedProficiency: claim.finalProficiency ?? undefined,
+      createdAt: claim.createdAt.toISOString(),
+      updatedAt: claim.updatedAt.toISOString(),
+    }));
+
+    return {
+      studentId,
+      total: claimDtos.length,
+      claims: claimDtos,
+    };
+  }
+
+  async getCandidateDemonstratedSkills(
+    caller: RequestUser,
+    studentId: string,
+  ): Promise<CandidateDemonstratedSkillsResponse> {
+    await assertCanReadCandidateEvidenceVersions(this.prisma, caller, studentId);
+
+    const claims = await this.prisma.skillClaim.findMany({
+      where: {
+        studentId,
+        OR: [{ status: 'VERIFIED' }, { finalProficiency: { not: null } }],
+      },
+      include: {
+        skill: true,
+        evidenceLinks: {
+          include: {
+            evidence: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const skills: PlacementCandidateDemonstratedSkillDto[] = claims.map((claim) => {
+      const evidenceTypes = Array.from(
+        new Set(
+          (claim.evidenceLinks ?? [])
+            .map((link) => link.evidence?.evidenceType)
+            .filter((t): t is NonNullable<typeof t> => Boolean(t)),
+        ),
+      );
+      const summary =
+        claim.evidenceSummary && typeof claim.evidenceSummary === 'object'
+          ? (claim.evidenceSummary as Record<string, unknown>)
+          : claim.evidenceLinks && claim.evidenceLinks.length > 0
+            ? {
+                totalItems: claim.evidenceLinks.length,
+                types: evidenceTypes,
+              }
+            : null;
+
+      return {
+        claimId: claim.id,
+        studentId: claim.studentId,
+        skillCode: claim.skill.code,
+        skillName: claim.skill.name,
+        category: claim.skill.domain ?? undefined,
+        status: claim.status,
+        claimedProficiency: claim.proficiency,
+        verifiedProficiency:
+          claim.finalProficiency ?? (claim.status === 'VERIFIED' ? claim.proficiency : null),
+        evidenceSummary: summary,
+        createdAt: claim.createdAt.toISOString(),
+        updatedAt: claim.updatedAt.toISOString(),
+      };
+    });
+
+    return {
+      studentId,
+      total: skills.length,
+      skills,
+    };
   }
 
   async submitEvidenceSkillDispute(

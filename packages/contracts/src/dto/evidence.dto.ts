@@ -183,6 +183,7 @@ export const EvidenceProvenanceItemDtoSchema = z.object({
   evidenceReliability: EvidenceReliabilitySchema.optional(),
   sourceOwner: z.string().optional(),
   sourceReference: z.string().optional(),
+  sourceEntityId: z.string().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
 });

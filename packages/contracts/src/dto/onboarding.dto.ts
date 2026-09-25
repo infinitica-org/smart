@@ -242,6 +242,10 @@ export const SubscriptionPlanDtoSchema = z.object({
   code: PlanCodeSchema,
   name: z.string(),
   candidateCapacity: z.number().int().positive().nullable(),
+  /** Price in Indian Rupees (full rupees, not paise). NULL = not yet configured. */
+  priceInr: z.number().int().nonnegative().nullable(),
+  /** True for the Talent Intelligence Suite tier which has custom / negotiated pricing. */
+  isCustomPrice: z.boolean(),
   entitlements: z.array(PlanEntitlementDtoSchema),
   institutionCount: z.number().int().nonnegative(),
 });
@@ -513,6 +517,39 @@ export const ListAuditLogsQuerySchema = z.object({
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
+export const GetAdminDashboardQuerySchema = z
+  .object({
+    from: IsoDateTimeSchema.optional(),
+    to: IsoDateTimeSchema.optional(),
+    institutionId: UuidSchema.optional(),
+    companyId: UuidSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.from && data.to && new Date(data.from) > new Date(data.to)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'from date must be prior to or equal to to date',
+        path: ['from'],
+      });
+    }
+  });
+export type GetAdminDashboardQuery = z.infer<typeof GetAdminDashboardQuerySchema>;
+
+export const QueuePerformanceMetricsSchema = z.object({
+  companyVerification: z.object({
+    pending: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    oldestPendingSeconds: z.number().int().nonnegative().nullable(),
+    avgProcessingTimeMs: z.number().int().nonnegative().nullable(),
+  }),
+  kafkaOutbox: z.object({
+    pending: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    avgProcessingTimeMs: z.number().int().nonnegative().nullable(),
+  }),
+});
+export type QueuePerformanceMetrics = z.infer<typeof QueuePerformanceMetricsSchema>;
+
 /** S6-VV-101 — same filters as the list, plus the file format. */
 export const ExportAuditLogsQuerySchema = ListAuditLogsQuerySchema.extend({
   format: z.enum(['csv', 'jsonl']).default('csv'),
@@ -543,8 +580,46 @@ export const AdminDashboardDtoSchema = z.object({
   pendingVerifications: z.number().int().nonnegative(),
   flaggedAttempts: z.number().int().nonnegative(),
   recentAudit: z.array(AuditLogDtoSchema),
+  queuePerformance: QueuePerformanceMetricsSchema.optional(),
 });
 export type AdminDashboardDto = z.infer<typeof AdminDashboardDtoSchema>;
+
+export const FlaggedOrganizationCategorySchema = z.enum([
+  'EMPLOYER_HELD',
+  'EMPLOYER_VERIFICATION_REJECTED',
+  'UNIVERSITY_HELD',
+  'UNIVERSITY_DEACTIVATED',
+]);
+export type FlaggedOrganizationCategory = z.infer<typeof FlaggedOrganizationCategorySchema>;
+
+export const FlaggedOrganizationDtoSchema = z.object({
+  organizationId: UuidSchema,
+  name: z.string(),
+  domain: z.string().nullable(),
+  tenantType: z.enum(['institution', 'company']),
+  status: z.string(),
+  category: FlaggedOrganizationCategorySchema,
+  reason: z.string().nullable(),
+  createdAt: IsoDateTimeSchema,
+  flaggedAt: IsoDateTimeSchema,
+});
+export type FlaggedOrganizationDto = z.infer<typeof FlaggedOrganizationDtoSchema>;
+
+export const VerificationEventStatusSchema = z.enum(['PENDING', 'FAILED', 'PUBLISHED']);
+export type VerificationEventStatus = z.infer<typeof VerificationEventStatusSchema>;
+
+export const VerificationEventDtoSchema = z.object({
+  id: UuidSchema,
+  topic: z.string(),
+  partitionKey: z.string(),
+  source: z.string(),
+  status: VerificationEventStatusSchema,
+  attempts: z.number().int().nonnegative(),
+  lastError: z.string().nullable(),
+  publishedAt: IsoDateTimeSchema.nullable(),
+  createdAt: IsoDateTimeSchema,
+});
+export type VerificationEventDto = z.infer<typeof VerificationEventDtoSchema>;
 
 export const ViewCandidateRequestSchema = z.object({
   reasonCode: CandidateViewReasonCodeSchema,
@@ -582,6 +657,22 @@ export const UpdatePlanCapacityRequestSchema = z.object({
   candidateCapacity: z.number().int().positive().nullable(),
 });
 export type UpdatePlanCapacityRequest = z.infer<typeof UpdatePlanCapacityRequestSchema>;
+
+export const UpdatePlanPriceRequestSchema = z
+  .object({
+    /**
+     * Base price in full Indian Rupees (e.g. 7500 for ₹7,500).
+     * Must be a non-negative integer; null clears the configured price.
+     * Not applicable when isCustomPrice is true.
+     */
+    priceInr: z.number().int().nonnegative().nullable().optional(),
+    /** Set true to mark a plan as using custom / negotiated pricing (Talent Intelligence Suite). */
+    isCustomPrice: z.boolean().optional(),
+  })
+  .refine((v) => v.priceInr !== undefined || v.isCustomPrice !== undefined, {
+    message: 'Provide at least one of priceInr or isCustomPrice.',
+  });
+export type UpdatePlanPriceRequest = z.infer<typeof UpdatePlanPriceRequestSchema>;
 
 export const SetFeatureFlagOverrideRequestSchema = z.object({
   key: z.string().min(2).max(80),
@@ -770,3 +861,49 @@ export const ResolveIntegrityRequestSchema = z.object({
   reason: z.string().trim().min(8).max(500),
 });
 export type ResolveIntegrityRequest = z.infer<typeof ResolveIntegrityRequestSchema>;
+
+export const BulkResolveCompanyVerificationsRequestSchema = z.object({
+  tenantType: z.literal('company'),
+  decision: z.enum(['APPROVED', 'REJECTED']),
+  reason: z.string().trim().min(3).max(500),
+  items: z
+    .array(
+      z.object({
+        tenantId: UuidSchema,
+        submissionId: UuidSchema.optional(),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+export type BulkResolveCompanyVerificationsRequest = z.infer<
+  typeof BulkResolveCompanyVerificationsRequestSchema
+>;
+
+export const BulkResolveIntegrityRequestSchema = z.object({
+  resolution: z.enum(['CLEAR', 'VOID', 'ESCALATE']),
+  reason: z.string().trim().min(8).max(500),
+  attemptIds: z.array(UuidSchema).min(1).max(50),
+});
+export type BulkResolveIntegrityRequest = z.infer<typeof BulkResolveIntegrityRequestSchema>;
+
+export const BulkOperationResultItemSchema = z.object({
+  id: z.string(),
+  success: z.boolean(),
+  data: z.unknown().optional(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      statusCode: z.number().int(),
+    })
+    .optional(),
+});
+
+export const BulkOperationResultSchema = z.object({
+  total: z.number().int().nonnegative(),
+  succeeded: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  results: z.array(BulkOperationResultItemSchema),
+});
+export type BulkOperationResult = z.infer<typeof BulkOperationResultSchema>;

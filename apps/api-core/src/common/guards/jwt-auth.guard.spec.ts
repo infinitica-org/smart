@@ -17,23 +17,25 @@ function contextWithAuth(authorization: string | undefined): ExecutionContext {
 }
 
 describe('JwtAuthGuard', () => {
-  it('allows public routes without a bearer token', () => {
+  it('allows public routes without a bearer token', async () => {
     const publicReflector = {
       getAllAndOverride: vi.fn(() => true),
     };
     const guard = new JwtAuthGuard({ verify: vi.fn() } as never, publicReflector as never);
-    expect(guard.canActivate(contextWithAuth(undefined))).toBe(true);
+    expect(await guard.canActivate(contextWithAuth(undefined))).toBe(true);
   });
 
-  it('rejects a missing bearer token with 401', () => {
+  it('rejects a missing bearer token with 401', async () => {
     const privateReflector = {
       getAllAndOverride: vi.fn(() => false),
     };
     const guard = new JwtAuthGuard({ verify: vi.fn() } as never, privateReflector as never);
-    expect(() => guard.canActivate(contextWithAuth(undefined))).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(contextWithAuth(undefined))).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 
-  it('attaches verified claims for a valid bearer token', () => {
+  it('attaches verified claims for a valid bearer token', async () => {
     const privateReflector = {
       getAllAndOverride: vi.fn(() => false),
     };
@@ -41,12 +43,12 @@ describe('JwtAuthGuard', () => {
     const jwt = { verify: vi.fn(() => user) };
     const ctx = contextWithAuth('Bearer access.jwt');
     const guard = new JwtAuthGuard(jwt as never, privateReflector as never);
-    expect(guard.canActivate(ctx)).toBe(true);
+    expect(await guard.canActivate(ctx)).toBe(true);
     expect(jwt.verify).toHaveBeenCalledWith('access.jwt');
     expect((ctx.switchToHttp().getRequest() as { user?: RequestUser }).user).toEqual(user);
   });
 
-  it('rejects an invalid token with 401', () => {
+  it('rejects an invalid token with 401', async () => {
     const privateReflector = {
       getAllAndOverride: vi.fn(() => false),
     };
@@ -58,6 +60,8 @@ describe('JwtAuthGuard', () => {
       } as never,
       privateReflector as never,
     );
-    expect(() => guard.canActivate(contextWithAuth('Bearer stale'))).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(contextWithAuth('Bearer stale'))).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 });

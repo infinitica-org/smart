@@ -254,7 +254,9 @@ describe('AC-T06 send-to-company', () => {
   ])('refuses to send a %s student to the company (S6-VV-148)', async (_label, student) => {
     const { controller, prisma, outbox } = setup({ student });
 
-    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toMatchObject({
+    await expect(
+      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toMatchObject({
       constructor: ConflictException,
     });
     expect(prisma.application.update).not.toHaveBeenCalled();

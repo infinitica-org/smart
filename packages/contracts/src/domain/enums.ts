@@ -130,6 +130,8 @@ export const USER_ROLES = [
   'STUDENT',
   'B2B_PARTNER', // X-SMART-API-KEY holder
   'COMPANY', // B2B company portal representative (tenant = User.companyId)
+  'SUPPORT_AGENT',
+  'SUPPORT_LEAD',
   'PUBLIC', // unauthenticated verification traffic
 ] as const;
 export const UserRoleSchema = z.enum(USER_ROLES);
@@ -139,7 +141,7 @@ export const AUTH_PROVIDERS = ['PASSWORD', 'GOOGLE', 'GITHUB', 'SAML', 'OIDC'] a
 export const AuthProviderSchema = z.enum(AUTH_PROVIDERS);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
-export const PLAN_CODES = ['FREE', 'BASIC', 'PRO'] as const;
+export const PLAN_CODES = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'] as const;
 export const PlanCodeSchema = z.enum(PLAN_CODES);
 export type PlanCode = z.infer<typeof PlanCodeSchema>;
 
@@ -691,3 +693,17 @@ export const SHARED_VERIFICATION_STATUSES = [
 ] as const;
 export const SharedVerificationStatusSchema = z.enum(SHARED_VERIFICATION_STATUSES);
 export type SharedVerificationStatus = z.infer<typeof SharedVerificationStatusSchema>;
+
+/* -------------------------------------------------------------------------- */
+/*                         Profile Section Visibility                          */
+/* -------------------------------------------------------------------------- */
+
+export const PROFILE_SECTIONS = [
+  'education',
+  'projects',
+  'workExperience',
+  'certifications',
+  'skills',
+] as const;
+export const ProfileSectionSchema = z.enum(PROFILE_SECTIONS);
+export type ProfileSection = z.infer<typeof ProfileSectionSchema>;

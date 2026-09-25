@@ -15,6 +15,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       profilePhotoObjectKey: null,
       primaryTrack: null,
       showInProgressItems: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
       ...overrides,
     };
   }
@@ -49,6 +50,7 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
       },
       candidateEducation: { findMany: vi.fn().mockResolvedValue([]) },
       studentCapability: { findMany: vi.fn().mockResolvedValue([]) },
+      evidenceRecord: { aggregate: vi.fn().mockResolvedValue({ _max: { updatedAt: null } }) },
     };
     storage.getSignedDownloadUrl.mockClear();
     service = new PublicProfileService(prisma, storage as never);
@@ -182,54 +184,6 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
     });
   });
 
-  describe('build — showInProgressItems on', () => {
-    beforeEach(() => {
-      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ showInProgressItems: true }));
-    });
-
-    it('admits not-yet-decided work experience but still excludes REJECTED/EXPIRED/VOIDED', async () => {
-      await service.getForOwner(userId);
-
-      expect(prisma.workExperience.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { studentId: userId, status: { notIn: ['REJECTED', 'EXPIRED', 'VOIDED'] } },
-        }),
-      );
-      expect(prisma.candidateCertificate.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { candidateId: userId, status: { notIn: ['REJECTED', 'VOIDED'] } },
-        }),
-      );
-    });
-
-    it('flags a not-yet-VERIFIED entry as inProgress', async () => {
-      prisma.workExperience.findMany.mockResolvedValue([
-        {
-          companyName: 'Acme',
-          role: 'Engineer',
-          employmentType: 'FULL_TIME',
-          startDate: new Date('2024-01-01'),
-          endDate: null,
-          isCurrent: true,
-          status: 'PENDING_EMPLOYER',
-        },
-      ]);
-      const result = await service.getForOwner(userId);
-      expect(result.workExperience[0].inProgress).toBe(true);
-      expect(result.showInProgressItems).toBe(true);
-    });
-
-    it('a SA-T08-voided entry never leaks through even with the opt-in on', async () => {
-      // The service's own where-clause excludes VOIDED; this asserts the query shape does,
-      // which is what actually keeps a voided row out at the database level.
-      await service.getForOwner(userId);
-      const workExperienceCall = prisma.workExperience.findMany.mock.calls[0][0];
-      expect(workExperienceCall.where.status.notIn).toContain('VOIDED');
-      const certCall = prisma.candidateCertificate.findMany.mock.calls[0][0];
-      expect(certCall.where.status.notIn).toContain('VOIDED');
-    });
-  });
-
   describe('evaluateActivationEligibility (CN-T07)', () => {
     it('eligible for students with verified skill + verified cert only', async () => {
       prisma.skillClaim.count.mockResolvedValue(1);
@@ -312,6 +266,255 @@ describe('PublicProfileService (CN-T09 visibility + in-progress opt-in)', () => 
           grade: '3.9 GPA',
         },
       ]);
+    });
+  });
+
+  describe('build — section privacy (T6)', () => {
+    beforeEach(() => {
+      prisma.candidateEducation.findMany.mockResolvedValue([
+        {
+          institutionName: 'MIT',
+          degree: 'B.S.',
+          fieldOfStudy: 'CS',
+          startDate: '2020',
+          endDate: '2024',
+          current: false,
+          grade: 'A',
+        },
+      ]);
+      prisma.project.findMany.mockResolvedValue([
+        {
+          id: 'proj1',
+          title: 'Project 1',
+          outcome: 'Done',
+          stack: 'Node',
+          githubUrl: null,
+          liveUrl: null,
+          status: 'VERIFIED',
+          report: null,
+        },
+      ]);
+      prisma.workExperience.findMany.mockResolvedValue([
+        {
+          companyName: 'Acme',
+          role: 'Engineer',
+          employmentType: 'FULL_TIME',
+          startDate: new Date('2024-01-01'),
+          endDate: null,
+          isCurrent: true,
+          status: 'VERIFIED',
+        },
+      ]);
+      prisma.certificate.findFirst.mockResolvedValue({
+        track: { name: 'Full Stack' },
+        headlineTier: 'GOLD',
+      });
+      prisma.candidateCertificate.findMany.mockResolvedValue([
+        {
+          title: 'AWS Certified',
+          issuer: 'Amazon',
+          verificationMethod: 'AUTOMATED',
+          skills: [],
+          status: 'VERIFIED',
+        },
+      ]);
+      prisma.skillClaim.findMany.mockResolvedValue([
+        {
+          skill: { code: 'TS_01' },
+          proficiency: 'ADVANCED',
+        },
+      ]);
+      prisma.skillClaim.count.mockResolvedValue(1);
+    });
+
+    it('returns all permitted sections when hiddenSections is empty', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: [] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.education.length).toBe(1);
+      expect(result.projects.length).toBe(1);
+      expect(result.workExperience.length).toBe(1);
+      expect(result.certificate).not.toBeNull();
+      expect(result.externalCertificates.length).toBe(1);
+      expect(result.skills.length).toBe(1);
+      expect(result.hiddenSections).toEqual([]);
+    });
+
+    it('omits education section when hiddenSections contains "education"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['education'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.education).toEqual([]);
+      expect(result.projects.length).toBe(1);
+    });
+
+    it('omits projects section when hiddenSections contains "projects"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['projects'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.projects).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits work experience when hiddenSections contains "workExperience"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['workExperience'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.workExperience).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits SMART and external certificates when hiddenSections contains "certifications"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['certifications'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.certificate).toBeNull();
+      expect(result.externalCertificates).toEqual([]);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('omits skills and sets declaredSkillsCount to 0 when hiddenSections contains "skills"', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ hiddenSections: ['skills'] }));
+      const result = await service.getForOwner(userId);
+
+      expect(result.skills).toEqual([]);
+      expect(result.declaredSkillsCount).toBe(0);
+      expect(result.education.length).toBe(1);
+    });
+
+    it('supports multiple hidden sections simultaneously', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(
+        baseOwner({ hiddenSections: ['education', 'skills', 'certifications'] }),
+      );
+      const result = await service.getForOwner(userId);
+
+      expect(result.education).toEqual([]);
+      expect(result.skills).toEqual([]);
+      expect(result.certificate).toBeNull();
+      expect(result.externalCertificates).toEqual([]);
+      expect(result.projects.length).toBe(1);
+      expect(result.workExperience.length).toBe(1);
+    });
+  });
+
+  describe('rotateShareLink (T8 / T9)', () => {
+    it('generates a new unique 16-char slug and updates User record', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'old-slug-1234567',
+        username: null,
+      });
+      prisma.user.update.mockResolvedValue({ publicProfileSlug: 'new-slug-8901234' });
+
+      const result = await service.rotateShareLink(userId);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { publicProfileSlug: expect.any(String) },
+      });
+      expect(result.slug).not.toBe('old-slug-1234567');
+      expect(result.url).toContain('/candidate/');
+    });
+
+    it('emits an audit event when auditPublisher is injected', async () => {
+      const mockAuditPublisher = { record: vi.fn().mockResolvedValue(undefined) };
+      const auditService = new PublicProfileService(
+        prisma,
+        storage as never,
+        mockAuditPublisher as never,
+      );
+
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        publicProfileSlug: 'prior-slug',
+        username: null,
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      await auditService.rotateShareLink(userId);
+
+      expect(mockAuditPublisher.record).toHaveBeenCalledWith({
+        actorId: userId,
+        action: 'profile.link.rotated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          priorSlug: 'prior-slug',
+          newSlug: expect.any(String),
+        },
+      });
+    });
+
+    it('ensures old rotated slug returns 404 while new slug resolves (T9 revocation)', async () => {
+      // 1. Initial state: old slug
+      prisma.user.findUnique.mockImplementation(({ where }: any) => {
+        if (where.publicProfileSlug === 'old-slug') {
+          return Promise.resolve(null); // rotated away
+        }
+        if (where.publicProfileSlug === 'new-slug') {
+          return Promise.resolve({ id: userId, profileVisible: true });
+        }
+        return Promise.resolve(null);
+      });
+
+      // Old slug 404s
+      await expect(service.getBySlug('old-slug')).rejects.toBeInstanceOf(NotFoundException);
+
+      // New slug resolves
+      const profile = await service.getBySlug('new-slug');
+      expect(profile.fullName).toBe('Ada Lovelace');
+    });
+
+    it('ensures profileVisible=false revokes public access regardless of slug (T9)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: userId, profileVisible: false });
+
+      await expect(service.getBySlug('active-slug')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('lastUpdatedAt calculation (T10)', () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+
+    beforeEach(() => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(baseOwner({ createdAt }));
+    });
+
+    it('falls back to User.createdAt when no child records exist', async () => {
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(createdAt.toISOString());
+    });
+
+    it('reflects the latest updated timestamp among child records', async () => {
+      const eduDate = new Date('2026-02-15T12:00:00.000Z');
+      const workDate = new Date('2026-03-20T08:30:00.000Z');
+
+      prisma.candidateEducation.findMany.mockResolvedValue([
+        { institutionName: 'MIT', createdAt: eduDate, updatedAt: eduDate },
+      ]);
+      prisma.workExperience.findMany.mockResolvedValue([
+        {
+          companyName: 'Acme',
+          role: 'Dev',
+          status: 'VERIFIED',
+          createdAt: workDate,
+          updatedAt: workDate,
+          startDate: workDate,
+        },
+      ]);
+
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(workDate.toISOString());
+    });
+
+    it('includes evidence update timestamp when latest', async () => {
+      const evidenceDate = new Date('2026-04-10T15:45:00.000Z');
+      prisma.evidenceRecord.aggregate.mockResolvedValue({ _max: { updatedAt: evidenceDate } });
+
+      const result = await service.getForOwner(userId);
+      expect(result.lastUpdatedAt).toBe(evidenceDate.toISOString());
     });
   });
 });

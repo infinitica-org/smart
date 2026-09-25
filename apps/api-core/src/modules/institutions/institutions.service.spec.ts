@@ -484,6 +484,15 @@ describe('InstitutionsService.getDashboard', () => {
       attempt: { count: vi.fn().mockResolvedValue(0) },
       subscriptionPlan: { findMany: vi.fn().mockResolvedValue([]) },
       auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+      companyVerification: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      kafkaOutbox: {
+        count: vi.fn().mockResolvedValue(0),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     };
     const service = new InstitutionsService(
       prisma as never,

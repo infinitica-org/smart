@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   type AssessmentSubmittedEvent,
   AssessmentSubmittedEventSchema,
   SMART_TOPICS,
+  type VerificationEventDto,
+  type VerificationEventStatus,
 } from '@smart/contracts';
 import { getContext } from '@smart/observability';
 import { env } from '../config/env.js';
@@ -84,6 +86,77 @@ export class KafkaOutboxService implements OnModuleInit, OnModuleDestroy {
         data: params.data,
       },
     });
+  }
+
+  async listVerificationEvents(): Promise<VerificationEventDto[]> {
+    const rows = await this.prisma.kafkaOutbox.findMany({
+      where: {
+        OR: [{ publishedAt: null }, { lastError: { not: null } }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return rows.map((row) => {
+      let status: VerificationEventStatus = 'PENDING';
+      if (row.publishedAt !== null) {
+        status = 'PUBLISHED';
+      } else if (row.attempts > 0 || row.lastError !== null) {
+        status = 'FAILED';
+      }
+
+      return {
+        id: row.id,
+        topic: row.topic,
+        partitionKey: row.partitionKey,
+        source: row.source,
+        status,
+        attempts: row.attempts,
+        lastError: row.lastError,
+        publishedAt: row.publishedAt?.toISOString() ?? null,
+        createdAt: row.createdAt.toISOString(),
+      };
+    });
+  }
+
+  async retryEvent(id: string): Promise<VerificationEventDto> {
+    const updated = await this.prisma.kafkaOutbox.updateMany({
+      where: { id, publishedAt: null },
+      data: { attempts: 0, lastError: null },
+    });
+
+    if (updated.count === 0) {
+      const existing = await this.prisma.kafkaOutbox.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundException({
+          error: 'not_found',
+          message: `Outbox event ${id} not found.`,
+          statusCode: 404,
+        });
+      }
+      if (existing.publishedAt !== null) {
+        throw new NotFoundException({
+          error: 'already_published',
+          message: `Outbox event ${id} has already been published.`,
+          statusCode: 400,
+        });
+      }
+    }
+
+    void this.drain();
+
+    const row = await this.prisma.kafkaOutbox.findUniqueOrThrow({ where: { id } });
+    return {
+      id: row.id,
+      topic: row.topic,
+      partitionKey: row.partitionKey,
+      source: row.source,
+      status: 'PENDING',
+      attempts: row.attempts,
+      lastError: row.lastError,
+      publishedAt: row.publishedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+    };
   }
 
   async drain(): Promise<void> {

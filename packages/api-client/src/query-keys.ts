@@ -64,6 +64,13 @@ export const queryKeys = {
   jobDescription: (jdId: string) => ['placement', 'jds', jdId] as const,
   shortlist: (filters: Readonly<Record<string, unknown>>) =>
     ['placement', 'shortlist', filters] as const,
+  candidateEducation: (studentId: string) =>
+    ['placement', 'candidates', studentId, 'education'] as const,
+  candidateClaims: (studentId: string) => ['placement', 'candidates', studentId, 'claims'] as const,
+  candidateDemonstratedSkills: (studentId: string) =>
+    ['placement', 'candidates', studentId, 'skills'] as const,
+  candidateSkillExplanation: (studentId: string, skillCode: string) =>
+    ['placement', 'candidates', studentId, 'skills', skillCode, 'explanation'] as const,
 
   /* ------------------------------- analytics ------------------------------ */
   cohortReadiness: (params: Readonly<Record<string, unknown>>) =>

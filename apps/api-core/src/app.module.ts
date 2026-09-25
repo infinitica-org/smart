@@ -10,6 +10,7 @@ import { SessionHoldGuard } from './common/guards/session-hold.guard.js';
 import { ObservabilityInterceptor } from './common/interceptors/observability.interceptor.js';
 import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor.js';
 import { AuditAccessInterceptor } from './common/interceptors/audit-access.interceptor.js';
+import { SupportModule } from './modules/support/support.module.js';
 import { AiGatewayModule } from './modules/ai-gateway/ai-gateway.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AssessmentModule } from './modules/assessment/assessment.module.js';
@@ -39,6 +40,7 @@ import { ReadinessModule } from './modules/readiness/readiness.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { WorkExperienceModule } from './modules/work-experience/work-experience.module.js';
 import { WebhooksModule } from './modules/webhooks/webhooks.module.js';
+import { TrustModule } from './modules/trust/trust.module.js';
 import { ConfigModule } from './platform/config/config.module.js';
 import { AuditModule } from './platform/audit/audit.module.js';
 import { env } from './platform/config/env.js';
@@ -99,6 +101,8 @@ import { StorageModule } from './platform/storage/storage.module.js';
     PublicProfileModule,
     AnalyticsModule,
     WebhooksModule,
+    TrustModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

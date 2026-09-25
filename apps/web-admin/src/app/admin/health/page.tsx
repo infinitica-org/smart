@@ -1,13 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AiHealthDto, AiUsageSummaryDto, AiUsageWindow } from '@smart/contracts';
-import { GitBranch, HeartPulse, ServerCrash, Timer } from 'lucide-react';
+import type {
+  AiHealthDto,
+  AiUsageSummaryDto,
+  AiUsageWindow,
+  VerificationEventDto,
+} from '@smart/contracts';
+import { GitBranch, HeartPulse, RefreshCw, ServerCrash, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@smart/ui/card';
+import { Button } from '@smart/ui/button';
 import { Progress } from '@smart/ui/progress';
 
 import { PageHeader } from '@/components/page-header';
-import { InlineAlert, PageStack, EmptyState } from '@/components/admin-ui';
+import {
+  InlineAlert,
+  PageStack,
+  EmptyState,
+  DataTable,
+  TableRow,
+  TableCell,
+} from '@/components/admin-ui';
 import { api } from '@/lib/api';
 
 function UsageStat({ label, value }: { label: string; value: string }) {
@@ -70,8 +83,29 @@ function UsageWindowCard({ title, window }: { title: string; window?: AiUsageWin
 export default function MonitoringPage() {
   const [health, setHealth] = useState<AiHealthDto | null>(null);
   const [usage, setUsage] = useState<AiUsageSummaryDto | null>(null);
+  const [verificationEvents, setVerificationEvents] = useState<VerificationEventDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryNotice, setRetryNotice] = useState<string | null>(null);
+
+  async function loadVerificationEvents() {
+    try {
+      const events = await api.onboarding.verificationEvents();
+      setVerificationEvents(events ?? []);
+    } catch {
+      // ignore event fetching error if not available
+    }
+  }
+
+  async function handleRetry(id: string) {
+    try {
+      await api.onboarding.retryVerificationEvent(id);
+      setRetryNotice(`Outbox event ${id} queued for immediate retry.`);
+      await loadVerificationEvents();
+    } catch {
+      setError(`Failed to retry outbox event ${id}.`);
+    }
+  }
 
   useEffect(() => {
     async function loadHealth() {
@@ -90,6 +124,7 @@ export default function MonitoringPage() {
         if (healthRes.status === 'rejected' && usageRes.status === 'rejected') {
           setError('AI Gateway telemetry is currently unavailable.');
         }
+        await loadVerificationEvents();
       } catch {
         setError('Failed to fetch system monitoring telemetry.');
       } finally {
@@ -269,6 +304,105 @@ export default function MonitoringPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 📬 Background Verification Event Queue & Retry (T14) */}
+          <div className="space-y-3 pt-4 border-t border-zinc-100">
+            <div className="flex items-center justify-between px-0.5">
+              <div>
+                <h3 className="font-heading text-sm font-bold tracking-tight text-zinc-900">
+                  Background Verification Event Outbox Queue
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  Pending and failed asynchronous event dispatches. Admins can trigger manual
+                  retries.
+                </p>
+              </div>
+              <span className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-mono text-[11px] font-semibold text-zinc-700">
+                {verificationEvents.length} {verificationEvents.length === 1 ? 'event' : 'events'}
+              </span>
+            </div>
+
+            {retryNotice ? (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-900 flex justify-between items-center">
+                <span>{retryNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setRetryNotice(null)}
+                  className="hover:underline text-[11px]"
+                >
+                  Dismiss
+                </button>
+              </div>
+            ) : null}
+
+            <DataTable
+              headers={[
+                'Topic / Source',
+                'Partition Key',
+                'Status',
+                'Attempts',
+                'Last Error',
+                'Created',
+                'Action',
+              ]}
+              empty={verificationEvents.length === 0}
+              emptyIcon={ServerCrash}
+            >
+              {verificationEvents.map((evt) => (
+                <TableRow key={evt.id}>
+                  <TableCell>
+                    <div className="min-w-0">
+                      <div className="font-bold text-zinc-900 text-xs font-mono">{evt.topic}</div>
+                      <div className="text-[11px] text-zinc-500">Source: {evt.source}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs text-zinc-700">{evt.partitionKey}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 font-mono text-[11px] font-bold ${
+                        evt.status === 'PUBLISHED'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : evt.status === 'FAILED'
+                            ? 'border-rose-200 bg-rose-50 text-rose-800'
+                            : 'border-amber-200 bg-amber-50 text-amber-800'
+                      }`}
+                    >
+                      {evt.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs text-zinc-700">{evt.attempts}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-zinc-600 max-w-xs truncate block font-mono">
+                      {evt.lastError ?? 'None'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-zinc-600 font-mono">
+                    {new Date(evt.createdAt).toLocaleTimeString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {evt.status !== 'PUBLISHED' ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-900 hover:bg-zinc-50 shadow-2xs gap-1"
+                        onClick={() => void handleRetry(evt.id)}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 text-zinc-700" />
+                        Retry Event
+                      </Button>
+                    ) : (
+                      <span className="text-[11px] text-zinc-400 font-semibold">Published</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </DataTable>
           </div>
         </>
       )}

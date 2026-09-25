@@ -29,10 +29,12 @@ import type {
   UpdateInstitutionRequest,
   UpdatePlanCapacityRequest,
   UpdatePlanEntitlementsRequest,
+  UpdatePlanPriceRequest,
   ViewCandidateRequest,
   ResolveVerificationRequest,
   ResolveIntegrityRequest,
-  ReviewEvidenceRequest,
+  BulkResolveCompanyVerificationsRequest,
+  BulkResolveIntegrityRequest,
   IntegrityQueueStatus,
   SaveDraftRequest,
   StartAttemptRequest,
@@ -61,6 +63,7 @@ import type {
   CreateBlockedWordRequest,
   VoidRequest,
   CreateEvidenceRequest,
+  ReviewEvidenceRequest,
   SaveOnboardingSelectionRequest,
   CreateVerificationDecisionRequest,
   RegisterStudentRequest,
@@ -68,11 +71,38 @@ import type {
   UpdateCompanyOnboardingDraftRequest,
   SubmitCompanyOnboardingRequest,
   VerifyCorporateEmailRequest,
+  GetAdminDashboardQuery,
+  CreateTrustCaseRequestDto,
+  AssignTrustCaseRequestDto,
+  ApplyEnforcementRequestDto,
+  ReverseEnforcementRequestDto,
+  SubmitTrustAppealRequestDto,
+  ResolveTrustAppealRequestDto,
+  SubmitTrustReportRequestDto,
+  ResolveTrustReportRequestDto,
+  ImpersonateRequest,
+  SupportDiagnosticResponse,
+  SupportGrantRequest,
+  SupportGrantResponse,
+  SupportHistoryQuery,
+  SupportHistoryResponse,
+  SupportSessionResponse,
   EvidenceSkillDisputeRequest,
 } from '@smart/contracts';
 import {
   API_PREFIX,
+  ReviewEvidenceResponseSchema,
+  SupportDiagnosticResponseSchema,
+  SupportGrantResponseSchema,
+  SupportHistoryResponseSchema,
+  SupportSessionResponseSchema,
+  TrustCaseDtoSchema,
+  EnforcementActionDtoSchema,
+  TrustAppealDtoSchema,
+  TrustReportDtoSchema,
   AdminDashboardDtoSchema,
+  FlaggedOrganizationDtoSchema,
+  VerificationEventDtoSchema,
   AiHealthDtoSchema,
   AiUsageSummaryDtoSchema,
   AttemptSessionDtoSchema,
@@ -118,6 +148,7 @@ import {
   PlatformAdminDtoSchema,
   InstitutionStudentDtoSchema,
   IntegrityQueueItemDtoSchema,
+  BulkOperationResultSchema,
   InvitationDtoSchema,
   InvitationPreviewDtoSchema,
   JobAcceptedSchema,
@@ -150,10 +181,12 @@ import {
   CareerDomainDtoSchema,
   TargetRoleDtoSchema,
   RecommendedSkillsResponseSchema,
-  ReviewEvidenceResponseSchema,
   SkillBlueprintDtoSchema,
   CandidateEvidenceProfileDtoSchema,
   CandidateEvidenceProvenanceResponseSchema,
+  CandidateEducationEvidenceResponseSchema,
+  CandidateSkillClaimsResponseSchema,
+  CandidateDemonstratedSkillsResponseSchema,
   EvidenceRecordDtoSchema,
   EvidenceRecordVersionDtoSchema,
   EvidenceRecordVersionRedactedDtoSchema,
@@ -161,6 +194,7 @@ import {
   ListEvidenceRecordVersionsRedactedResponseSchema,
   GetSkillEvidenceInferenceResponseSchema,
   GetSkillLevelExplanationResponseSchema,
+  GetEmployerSkillInspectionResponseSchema,
   ListCapabilityInferenceReviewQueueResponseSchema,
   CorrectStudentCapabilityResponseSchema,
   ProfessionalCredentialDtoSchema,
@@ -447,6 +481,11 @@ export function usersApi(client: SmartApiClient) {
 
     getPublicProfileLink: () =>
       client.get(prefixed('/users/me/public-profile-link'), {
+        schema: PublicProfileLinkResponseSchema,
+      }),
+
+    rotatePublicProfileLink: () =>
+      client.post(prefixed('/users/me/public-profile-link/rotate'), undefined, {
         schema: PublicProfileLinkResponseSchema,
       }),
 
@@ -802,6 +841,9 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
+    listAvailablePlans: () =>
+      client.get(prefixed('/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
     listPlans: () =>
       client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
 
@@ -820,6 +862,11 @@ export function onboardingApi(client: SmartApiClient) {
 
     updatePlanCapacity: (planId: string, body: UpdatePlanCapacityRequest) =>
       client.patch(prefixed(`/admin/plans/${planId}/capacity`), body, {
+        schema: SubscriptionPlanDtoSchema,
+      }),
+
+    updatePlanPrice: (planId: string, body: UpdatePlanPriceRequest) =>
+      client.patch(prefixed(`/admin/plans/${planId}/price`), body, {
         schema: SubscriptionPlanDtoSchema,
       }),
 
@@ -855,7 +902,30 @@ export function onboardingApi(client: SmartApiClient) {
     studentEntitlements: () =>
       client.get(prefixed('/student/entitlements'), { schema: TenantEntitlementsDtoSchema }),
 
-    dashboard: () => client.get(prefixed('/admin/dashboard'), { schema: AdminDashboardDtoSchema }),
+    dashboard: (query?: GetAdminDashboardQuery) =>
+      client.get(prefixed('/admin/dashboard'), {
+        schema: AdminDashboardDtoSchema,
+        query: query as Record<string, string | undefined>,
+      }),
+
+    flaggedOrganizations: () =>
+      client.get(prefixed('/admin/flagged-organizations'), {
+        schema: z.array(FlaggedOrganizationDtoSchema),
+      }),
+
+    verificationEvents: () =>
+      client.get(prefixed('/admin/verification-events'), {
+        schema: z.array(VerificationEventDtoSchema),
+      }),
+
+    retryVerificationEvent: (id: string) =>
+      client.post(
+        prefixed(`/admin/verification-events/${id}/retry`),
+        {},
+        {
+          schema: VerificationEventDtoSchema,
+        },
+      ),
 
     listAuditLogs: (query?: {
       q?: string;
@@ -944,6 +1014,11 @@ export function onboardingApi(client: SmartApiClient) {
         schema: VerificationQueueItemDtoSchema,
       }),
 
+    bulkResolveVerification: (body: BulkResolveCompanyVerificationsRequest) =>
+      client.post(prefixed('/admin/verification-queue/bulk-resolve'), body, {
+        schema: BulkOperationResultSchema,
+      }),
+
     companyVerificationReview: (companyId: string) =>
       client.get(prefixed(`/admin/verification-queue/${companyId}/review`), {
         schema: CompanyVerificationReviewDetailDtoSchema,
@@ -959,6 +1034,11 @@ export function onboardingApi(client: SmartApiClient) {
     resolveIntegrity: (attemptId: string, body: ResolveIntegrityRequest) =>
       client.post(prefixed(`/admin/integrity-queue/${attemptId}/resolve`), body, {
         schema: IntegrityQueueItemDtoSchema,
+      }),
+
+    bulkResolveIntegrity: (body: BulkResolveIntegrityRequest) =>
+      client.post(prefixed('/admin/integrity-queue/bulk-resolve'), body, {
+        schema: BulkOperationResultSchema,
       }),
 
     projectReviewQueue: () =>
@@ -1595,6 +1675,31 @@ export function placementApi(client: SmartApiClient) {
         schema: CandidateEvidenceProvenanceResponseSchema,
       }),
 
+    getCandidateEducation: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/education`), {
+        schema: CandidateEducationEvidenceResponseSchema,
+      }),
+
+    getCandidateSkillClaims: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/claims`), {
+        schema: CandidateSkillClaimsResponseSchema,
+      }),
+
+    getCandidateDemonstratedSkills: (studentId: string) =>
+      client.get(prefixed(`/placement/candidates/${studentId}/skills`), {
+        schema: CandidateDemonstratedSkillsResponseSchema,
+      }),
+
+    getCandidateSkillExplanation: (studentId: string, skillCode: string) =>
+      client.get(
+        prefixed(
+          `/placement/candidates/${studentId}/skills/${encodeURIComponent(skillCode)}/explanation`,
+        ),
+        {
+          schema: GetEmployerSkillInspectionResponseSchema,
+        },
+      ),
+
     reviewCandidateEvidence: (studentId: string, evidenceId: string, body: ReviewEvidenceRequest) =>
       client.post(
         prefixed(`/placement/candidates/${studentId}/evidence/${evidenceId}/review`),
@@ -1845,6 +1950,118 @@ export function evaluationApi(client: SmartApiClient) {
   };
 }
 
+export function trustApi(client: SmartApiClient) {
+  return {
+    listCases: (query?: { status?: string; severity?: string; candidateId?: string }) =>
+      client.get(prefixed('/admin/trust/cases'), {
+        schema: z.array(TrustCaseDtoSchema),
+        query,
+      }),
+
+    createCase: (body: CreateTrustCaseRequestDto) =>
+      client.post(prefixed('/admin/trust/cases'), body, {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    getCaseDetail: (caseId: string) =>
+      client.get(prefixed(`/admin/trust/cases/${caseId}`), {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    assignCase: (caseId: string, body: AssignTrustCaseRequestDto) =>
+      client.post(prefixed(`/admin/trust/cases/${caseId}/assign`), body, {
+        schema: TrustCaseDtoSchema,
+      }),
+
+    applyEnforcement: (caseId: string, body: ApplyEnforcementRequestDto) =>
+      client.post(prefixed(`/admin/trust/cases/${caseId}/enforce`), body, {
+        schema: EnforcementActionDtoSchema,
+      }),
+
+    reverseEnforcement: (enforcementId: string, body: ReverseEnforcementRequestDto) =>
+      client.post(prefixed(`/admin/trust/enforcements/${enforcementId}/reverse`), body, {
+        schema: EnforcementActionDtoSchema,
+      }),
+
+    forceRecalculation: (candidateId: string) =>
+      client.post(prefixed(`/admin/trust/candidates/${candidateId}/recalculate`), {}),
+
+    submitAppeal: (body: SubmitTrustAppealRequestDto) =>
+      client.post(prefixed('/trust/appeals'), body, {
+        schema: TrustAppealDtoSchema,
+      }),
+
+    listAppeals: (query?: { status?: string }) =>
+      client.get(prefixed('/admin/trust/appeals'), {
+        schema: z.array(TrustAppealDtoSchema),
+        query,
+      }),
+
+    resolveAppeal: (appealId: string, body: ResolveTrustAppealRequestDto) =>
+      client.post(prefixed(`/admin/trust/appeals/${appealId}/resolve`), body, {
+        schema: TrustAppealDtoSchema,
+      }),
+
+    submitReport: (body: SubmitTrustReportRequestDto) =>
+      client.post(prefixed('/trust/reports'), body, {
+        schema: TrustReportDtoSchema,
+        anonymous: true,
+      }),
+
+    listReports: (query?: { status?: string; category?: string }) =>
+      client.get(prefixed('/admin/trust/reports'), {
+        schema: z.array(TrustReportDtoSchema),
+        query,
+      }),
+
+    resolveReport: (reportId: string, body: ResolveTrustReportRequestDto) =>
+      client.post(prefixed(`/admin/trust/reports/${reportId}/resolve`), body, {
+        schema: TrustReportDtoSchema,
+      }),
+
+    getTrustNotifications: () =>
+      client.get(prefixed('/users/me/trust-notifications'), {
+        schema: z.array(NotificationDtoSchema),
+      }),
+
+    markTrustNotificationRead: (id: string) =>
+      client.post<void>(prefixed(`/users/me/trust-notifications/${id}/read`), {}),
+  };
+}
+
+export function supportApi(client: SmartApiClient) {
+  return {
+    lookupUser: (q: string) =>
+      client.get<unknown[]>(prefixed('/admin/support/lookup'), { query: { q } }),
+
+    createGrant: (dto: SupportGrantRequest) =>
+      client.post<SupportGrantResponse>(prefixed('/admin/support/grants'), dto, {
+        schema: SupportGrantResponseSchema,
+      }),
+
+    revokeGrant: (grantId: string) =>
+      client.post<{ success: true }>(prefixed(`/admin/support/grants/${grantId}/revoke`), {}),
+
+    impersonate: (dto: ImpersonateRequest) =>
+      client.post<SupportSessionResponse>(prefixed('/admin/support/impersonate'), dto, {
+        schema: SupportSessionResponseSchema,
+      }),
+
+    endSession: () => client.post<{ success: true }>(prefixed('/admin/support/session/end'), {}),
+
+    getDiagnostics: (userId: string) =>
+      client.get<SupportDiagnosticResponse>(prefixed(`/admin/support/diagnostics/${userId}`), {
+        schema: SupportDiagnosticResponseSchema,
+      }),
+
+    getHistory: (params?: SupportHistoryQuery) =>
+      client.get<SupportHistoryResponse>(prefixed('/admin/support/history'), {
+        query: params as Record<string, string | number | boolean | undefined>,
+        schema: SupportHistoryResponseSchema,
+      }),
+  };
+}
+
 export function createSmartApi(client: SmartApiClient) {
   return {
     auth: authApi(client),
@@ -1862,6 +2079,8 @@ export function createSmartApi(client: SmartApiClient) {
     notifications: notificationsApi(client),
     public: publicApi(client),
     system: systemApi(client),
+    trust: trustApi(client),
+    support: supportApi(client),
   };
 }
 

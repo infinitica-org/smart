@@ -1,25 +1,24 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import {
   EMPLOYER_VIEWER_ROLES,
   SKILL_DEFINITIONS,
-  TRACK_DEFINITIONS,
   type PublicCandidateProfileDto,
   type PublicProfileLinkResponse,
-  type TrackCode,
 } from '@smart/contracts';
 import { env } from '../../platform/config/env.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
+import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { mapStudentCapabilitiesToSummaries } from '../../common/competency-evidence-summary.js';
 import { resolveProfilePhotoUrl } from '../users/profile-photo.util.js';
+import { TrustService } from '../trust/trust.service.js';
 
 /** One counted view per employer per student per day. */
 const PROFILE_VIEW_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const SKILL_NAME_BY_CODE = new Map(SKILL_DEFINITIONS.map((skill) => [skill.code, skill.name]));
-const TRACK_BY_CODE = new Map(TRACK_DEFINITIONS.map((track) => [track.code, track]));
 
 /**
  * The public, unauthenticated "know the candidate in one shot" profile —
@@ -36,6 +35,12 @@ export class PublicProfileService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Optional()
+    @Inject(AuditPublisherService)
+    private readonly auditPublisher?: AuditPublisherService,
+    @Optional()
+    @Inject(forwardRef(() => TrustService))
+    private readonly trustService?: TrustService,
   ) {}
 
   /**
@@ -72,14 +77,70 @@ export class PublicProfileService {
   }
 
   /**
+   * T8 / T9 — Rotates (regenerates) the public profile share slug for a student.
+   * Overwrites the previous `publicProfileSlug`, invalidating any previous link (T9).
+   */
+  async rotateShareLink(userId: string): Promise<PublicProfileLinkResponse> {
+    const priorUser = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { publicProfileSlug: true, username: true },
+    });
+
+    let newSlug = randomUUID().replace(/-/g, '').slice(0, 16);
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { publicProfileSlug: newSlug },
+        });
+        break;
+      } catch (err) {
+        attempts++;
+        if (attempts >= 3) throw err;
+        newSlug = randomUUID().replace(/-/g, '').slice(0, 16);
+      }
+    }
+
+    if (this.auditPublisher) {
+      await this.auditPublisher.record({
+        actorId: userId,
+        action: 'profile.link.rotated',
+        resourceType: 'user',
+        resourceId: userId,
+        reasonCode: null,
+        metadata: {
+          priorSlug: priorUser.publicProfileSlug ?? null,
+          newSlug,
+        },
+      });
+    }
+
+    const slug = priorUser.username ?? newSlug;
+    const url = priorUser.username
+      ? `${env.VERIFY_APP_URL}/@${priorUser.username}`
+      : `${env.VERIFY_APP_URL}/candidate/${newSlug}`;
+
+    return { slug, url };
+  }
+
+  /**
    * Resolves either the opaque share slug, `@username`, or an active claimed username — one public
    * lookup, so the frontend (and anyone with an old link) never needs to know which
    * kind of identifier they're holding.
    */
   async getBySlug(
     identifier: string,
-    viewer: RequestUser | null = null,
+    viewerInfo?: { viewerId?: string; viewerIp?: string; userAgent?: string } | RequestUser | null,
+    viewer?: RequestUser | null,
   ): Promise<PublicCandidateProfileDto> {
+    const actualViewer =
+      viewer ?? (viewerInfo && 'role' in viewerInfo ? (viewerInfo as RequestUser) : null);
+    const actualViewerInfo =
+      viewerInfo && 'role' in viewerInfo
+        ? undefined
+        : (viewerInfo as { viewerId?: string; viewerIp?: string; userAgent?: string } | undefined);
+
     const cleanIdentifier = identifier.trim().replace(/^@/, '');
     const bySlug = await this.prisma.user.findUnique({
       where: { publicProfileSlug: cleanIdentifier },
@@ -106,7 +167,21 @@ export class PublicProfileService {
         statusCode: 404,
       });
     }
-    await this.recordEmployerView(user.id, viewer);
+
+    if (actualViewerInfo?.viewerIp && this.trustService) {
+      this.trustService
+        .logProfileAccess(
+          user.id,
+          actualViewerInfo.viewerId,
+          actualViewerInfo.viewerIp,
+          actualViewerInfo.userAgent,
+          cleanIdentifier,
+        )
+        .catch(() => {});
+    }
+
+    await this.recordEmployerView(user.id, actualViewer);
+
     return this.build(user.id);
   }
 
@@ -218,14 +293,15 @@ export class PublicProfileService {
     const owner = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
+        createdAt: true,
         fullName: true,
         profilePhotoObjectKey: true,
-        primaryTrack: { select: { code: true } },
-        showInProgressItems: true,
+        hiddenSections: true,
         allowEmployerMessages: true,
       },
     });
-    const showInProgress = owner.showInProgressItems;
+    const showInProgress = false;
+    const hiddenSections = owner.hiddenSections ?? [];
 
     const [
       skillClaims,
@@ -236,6 +312,7 @@ export class PublicProfileService {
       externalCertificates,
       educationRecords,
       capabilityRows,
+      maxEvidenceAgg,
     ] = await Promise.all([
       this.prisma.skillClaim.findMany({
         where: { studentId: userId, status: 'VERIFIED' },
@@ -268,72 +345,144 @@ export class PublicProfileService {
         where: { studentId: userId },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.studentCapability.findMany({
-        where: { studentId: userId },
-        take: 20,
-        orderBy: { confidenceScore: 'desc' },
-      }),
+      this.prisma.studentCapability?.findMany
+        ? this.prisma.studentCapability.findMany({
+            where: { studentId: userId },
+            take: 20,
+            orderBy: { confidenceScore: 'desc' },
+          })
+        : Promise.resolve([]),
+      this.prisma.evidenceRecord?.aggregate
+        ? this.prisma.evidenceRecord.aggregate({
+            where: { studentId: userId },
+            _max: { updatedAt: true },
+          })
+        : Promise.resolve({ _max: { updatedAt: null } }),
     ]);
 
-    const track = owner.primaryTrack
-      ? TRACK_BY_CODE.get(owner.primaryTrack.code as TrackCode)
-      : undefined;
+    const isSkillsHidden = hiddenSections.includes('skills');
+    const isProjectsHidden = hiddenSections.includes('projects');
+    const isWorkExperienceHidden = hiddenSections.includes('workExperience');
+    const isCertificationsHidden = hiddenSections.includes('certifications');
+    const isEducationHidden = hiddenSections.includes('education');
+
+    // T10 — Calculate latest committed change timestamp relevant to profile sections
+    const timestamps: (Date | undefined | null)[] = [owner.createdAt];
+    for (const item of skillClaims) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of projects) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of workExperience) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    if (certificate) {
+      const cert = certificate as unknown as {
+        updatedAt?: Date;
+        issuedAt?: Date;
+        createdAt?: Date;
+      };
+      const ts = cert.updatedAt ?? cert.issuedAt ?? cert.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of externalCertificates) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    for (const item of educationRecords) {
+      const ts =
+        (item as unknown as { updatedAt?: Date; createdAt?: Date }).updatedAt ?? item.createdAt;
+      timestamps.push(ts);
+    }
+    if (maxEvidenceAgg._max.updatedAt) {
+      timestamps.push(maxEvidenceAgg._max.updatedAt);
+    }
+
+    const validTimestamps = timestamps.filter(
+      (d): d is Date => d instanceof Date && !isNaN(d.getTime()),
+    );
+    const latestDate =
+      validTimestamps.length > 0
+        ? new Date(Math.max(...validTimestamps.map((d) => d.getTime())))
+        : new Date();
+    const lastUpdatedAt = latestDate.toISOString();
 
     return {
       fullName: owner.fullName,
       profilePhotoUrl: await resolveProfilePhotoUrl(this.storage, owner.profilePhotoObjectKey),
-      trackName: track?.name ?? null,
-      trackCategory: track?.category ?? null,
-      skills: skillClaims.map((claim) => ({
-        skillCode: claim.skill.code,
-        skillName: SKILL_NAME_BY_CODE.get(claim.skill.code) ?? claim.skill.code,
-        proficiency: claim.proficiency,
-      })),
-      declaredSkillsCount: declaredCount,
-      projects: projects.map((project) => ({
-        projectId: project.id,
-        title: project.title,
-        outcome: project.outcome,
-        stack: project.stack,
-        githubUrl: project.githubUrl,
-        liveUrl: project.liveUrl,
-        status: project.status,
-        score: project.report ? Number(project.report.score) : null,
-      })),
-      workExperience: workExperience.map((entry) => ({
-        companyName: entry.companyName,
-        role: entry.role,
-        employmentType: entry.employmentType,
-        startDate: entry.startDate.toISOString(),
-        endDate: entry.endDate?.toISOString() ?? null,
-        isCurrent: entry.isCurrent,
-        inProgress: entry.status !== 'VERIFIED',
-      })),
-      certificate: certificate
-        ? { trackName: certificate.track.name, tier: certificate.headlineTier }
-        : null,
-      externalCertificates: externalCertificates.map((cert) => ({
-        title: cert.title,
-        issuer: cert.issuer,
-        verificationMethod: cert.verificationMethod,
-        skills: cert.skills.map((skill) => ({
-          skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
-          proficiency: skill.selfAssessedProficiency,
-        })),
-        inProgress: cert.status !== 'VERIFIED',
-      })),
-      education: educationRecords.map((edu) => ({
-        institutionName: edu.institutionName,
-        degree: edu.degree ?? null,
-        fieldOfStudy: edu.fieldOfStudy ?? null,
-        startDate: edu.startDate ?? null,
-        endDate: edu.endDate ?? null,
-        current: edu.current,
-        grade: edu.grade ?? null,
-      })),
+      trackName: certificate?.track?.name ?? null,
+      trackCategory: null,
+      skills: isSkillsHidden
+        ? []
+        : skillClaims.map((claim) => ({
+            skillCode: claim.skill.code,
+            skillName: SKILL_NAME_BY_CODE.get(claim.skill.code) ?? claim.skill.code,
+            proficiency: claim.proficiency,
+          })),
+      declaredSkillsCount: isSkillsHidden ? 0 : declaredCount,
+      projects: isProjectsHidden
+        ? []
+        : projects.map((project) => ({
+            projectId: project.id,
+            title: project.title,
+            outcome: project.outcome,
+            stack: project.stack,
+            githubUrl: project.githubUrl,
+            liveUrl: project.liveUrl,
+            status: project.status,
+            score: project.report ? Number(project.report.score) : null,
+          })),
+      workExperience: isWorkExperienceHidden
+        ? []
+        : workExperience.map((entry) => ({
+            companyName: entry.companyName,
+            role: entry.role,
+            employmentType: entry.employmentType,
+            startDate: entry.startDate.toISOString(),
+            endDate: entry.endDate?.toISOString() ?? null,
+            isCurrent: entry.isCurrent,
+            inProgress: entry.status !== 'VERIFIED',
+          })),
+      certificate:
+        isCertificationsHidden || !certificate
+          ? null
+          : { trackName: certificate.track.name, tier: certificate.headlineTier },
+      externalCertificates: isCertificationsHidden
+        ? []
+        : externalCertificates.map((cert) => ({
+            title: cert.title,
+            issuer: cert.issuer,
+            verificationMethod: cert.verificationMethod,
+            skills: cert.skills.map((skill) => ({
+              skillName: SKILL_NAME_BY_CODE.get(skill.skillCode) ?? skill.skillCode,
+              proficiency: skill.selfAssessedProficiency,
+            })),
+            inProgress: cert.status !== 'VERIFIED',
+          })),
+      education: isEducationHidden
+        ? []
+        : educationRecords.map((edu) => ({
+            institutionName: edu.institutionName,
+            degree: edu.degree ?? null,
+            fieldOfStudy: edu.fieldOfStudy ?? null,
+            startDate: edu.startDate ?? null,
+            endDate: edu.endDate ?? null,
+            current: edu.current,
+            grade: edu.grade ?? null,
+          })),
       showInProgressItems: showInProgress,
-      acceptsEmployerMessages: owner.allowEmployerMessages,
+      hiddenSections,
+      acceptsEmployerMessages: owner.allowEmployerMessages ?? true,
       competencyEvidenceSummaries: mapStudentCapabilitiesToSummaries(capabilityRows),
+      lastUpdatedAt,
     };
   }
 }

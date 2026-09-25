@@ -514,13 +514,13 @@ describe('S6-VV-148 employer visibility', () => {
     const { controller } = setup({
       students: [verifiedStudent(), verifiedStudent({ id: hiddenStudentId, fullName: 'Gone' })],
     });
-    return controller.match(tpoAdmin as never, { jdId: openingId });
+    return controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
   }
 
   it('keeps deactivated and held students out of the eligible pool', async () => {
     const { controller, prisma } = setup();
 
-    await controller.match(tpoAdmin as never, { jdId: openingId });
+    await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     const sqlArg = prisma.$queryRaw.mock.calls[0][0];
     expect(sqlArg.sql).toContain('u.deactivated_at IS NULL AND u.held_at IS NULL');

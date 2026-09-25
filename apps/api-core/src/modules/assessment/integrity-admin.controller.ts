@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   IntegrityQueueStatusSchema,
   ResolveIntegrityRequestSchema,
+  BulkResolveIntegrityRequestSchema,
 } from '@smart/contracts';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -30,6 +31,14 @@ export class IntegrityAdminController {
     return this.assessment.resolveIntegrity(
       attemptId,
       ResolveIntegrityRequestSchema.parse(body),
+      user.sub,
+    );
+  }
+
+  @Post('bulk-resolve')
+  bulkResolve(@Body() body: unknown, @CurrentUser() user: RequestUser) {
+    return this.assessment.bulkResolveIntegrity(
+      BulkResolveIntegrityRequestSchema.parse(body),
       user.sub,
     );
   }

@@ -45,6 +45,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
+import { SkillLevelExplanationService } from '../evidence/skill-level-explanation.service.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
 import { PlacementService } from './placement.service.js';
 import { TenantId } from '../../common/decorators/tenant-id.decorator.js';
@@ -59,6 +60,8 @@ export class PlacementController {
     @Inject(PlacementService) private readonly service: PlacementService,
     @Inject(PlacementEmployersService) private readonly employers: PlacementEmployersService,
     @Inject(EvidenceService) private readonly evidence: EvidenceService,
+    @Inject(SkillLevelExplanationService)
+    private readonly skillExplanation: SkillLevelExplanationService,
   ) {}
 
   @Get('candidates/:studentId/evidence')
@@ -70,6 +73,45 @@ export class PlacementController {
     @Param('studentId') studentId: string,
   ) {
     return this.evidence.getCandidateEvidenceProvenance(user, studentId);
+  }
+
+  @Get('candidates/:studentId/education')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a candidate's relevant education and evidence (T2)." })
+  getCandidateEducation(@CurrentUser() user: RequestUser, @Param('studentId') studentId: string) {
+    return this.evidence.getCandidateEducation(user, studentId);
+  }
+
+  @Get('candidates/:studentId/claims')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get verification status for candidate individual skill claims (T3).' })
+  getCandidateSkillClaims(@CurrentUser() user: RequestUser, @Param('studentId') studentId: string) {
+    return this.evidence.getCandidateSkillClaims(user, studentId);
+  }
+
+  @Get('candidates/:studentId/skills')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a candidate's demonstrated skills and proficiency level (T4)." })
+  getCandidateDemonstratedSkills(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.evidence.getCandidateDemonstratedSkills(user, studentId);
+  }
+
+  @Get('candidates/:studentId/skills/:skillCode/explanation')
+  @Roles('INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'COMPANY', 'B2B_PARTNER', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get explanation for a candidate skill (T5).' })
+  getCandidateSkillExplanation(
+    @CurrentUser() user: RequestUser,
+    @Param('studentId') studentId: string,
+    @Param('skillCode') skillCode: string,
+  ) {
+    return this.skillExplanation.getCandidateSkillExplanation(user, studentId, skillCode);
   }
 
   @Post('candidates/:studentId/evidence/:evidenceId/review')

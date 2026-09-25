@@ -36,20 +36,20 @@ function setupCompanyEpicTest() {
         address: {
           line1: '123 Tech Park',
           city: 'Bangalore',
-          state: 'Karnataka',
+          stateProvince: 'Karnataka',
           country: 'IN',
           postalCode: '560001',
         },
       },
       verification: {
         legalName: 'Acme Corporation Pvt Ltd',
-        registrationNumber: 'CIN123456789',
+        businessRegistrationNumber: 'CIN123456789',
         taxId: '29ABCDE1234F1Z5',
         registrationCountry: 'IN',
         registeredAddress: {
           line1: '123 Tech Park',
           city: 'Bangalore',
-          state: 'Karnataka',
+          stateProvince: 'Karnataka',
           country: 'IN',
           postalCode: '560001',
         },
