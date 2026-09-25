@@ -127,7 +127,7 @@ export class StorageService implements OnModuleInit {
     return Buffer.from(byteArray);
   }
 
-  /** Deletes an object by key. */
+  /** Deletes an object by key (S3 delete is idempotent — missing keys succeed). */
   async deleteObject(objectKey: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
   }

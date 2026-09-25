@@ -60,6 +60,10 @@ import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { StorageService } from '../../platform/storage/storage.service.js';
 import { JD_PARSE_QUEUE } from '../../platform/queue/queue.names.js';
 import { PlacementEmployersService } from './placement-employers.service.js';
+import {
+  EMPLOYER_VISIBILITY_SELECT,
+  isEmployerVisibleStudent,
+} from '../../common/employer-visibility.js';
 
 const JOB_OPENING_DOC_MAX_BYTES = 10 * 1024 * 1024;
 const JOB_OPENING_LOGO_MAX_BYTES = 2 * 1024 * 1024;
@@ -739,6 +743,18 @@ export class PlacementService {
     actorId?: string,
   ): Promise<ApplicationDto> {
     const application = await this.requireApplication(institutionId, applicationId);
+    const student = await this.prisma.user.findUnique({
+      where: { id: application.studentId },
+      select: EMPLOYER_VISIBILITY_SELECT,
+    });
+    if (!isEmployerVisibleStudent(student)) {
+      // S6-VV-148 — a deactivated or held student must never reach a company.
+      throw new ConflictException({
+        error: 'conflict',
+        message: 'This student is deactivated or on hold and cannot be sent to a company.',
+        statusCode: 409,
+      });
+    }
     const requiredSkillCodes = await this.openingRequiredSkillCodes(application.openingId);
     const confidence = await this.toConfidenceDto(
       application.id,

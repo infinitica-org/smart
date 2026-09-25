@@ -140,6 +140,16 @@ export const ENDPOINT_RATE_LIMITS: readonly RateLimitPolicy[] = [
     onViolation: 'ALERT',
   },
   {
+    key: 'auth.verifyEmailResend',
+    scope: 'IP',
+    limit: 5,
+    windowSeconds: 60,
+    burst: 2,
+    redisKey: 'rl:auth_verify_email_resend:ip:{id}',
+    rationale: 'Caps verification-email bombing; the service also enforces a per-account cooldown.',
+    onViolation: 'ALERT',
+  },
+  {
     key: 'auth.passwordResetRequest',
     scope: 'IP',
     limit: 5,

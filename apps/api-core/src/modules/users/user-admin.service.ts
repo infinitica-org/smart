@@ -1,5 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AssignRoleRequest } from '@smart/contracts';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { INSTITUTION_STAFF_ROLES, type AssignRoleRequest } from '@smart/contracts';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -24,12 +29,24 @@ export class UserAdminService {
     role: AssignableRole,
   ): Promise<{ userId: string; role: AssignableRole }> {
     const user = await this.requireUser(userId);
+    // Only moves between institution staff roles: students, company users and platform admins
+    // get their role from how their account was created, never from this switch.
+    const staffRoles: readonly string[] = INSTITUTION_STAFF_ROLES;
+    if (!staffRoles.includes(user.role) || !staffRoles.includes(role)) {
+      throw new UnprocessableEntityException({
+        error: 'role_not_assignable',
+        message: `Only ${INSTITUTION_STAFF_ROLES.join(' and ')} can be switched between institution staff.`,
+        statusCode: 422,
+      });
+    }
 
     const updated = await this.prisma.user.update({
       where: { id: user.id },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: { role: role as any },
     });
+    // The role is baked into access tokens; revoke them so the new role applies now.
+    await this.auth.revokeAllForUser(user.id);
     return { userId: updated.id, role: updated.role as AssignableRole };
   }
 

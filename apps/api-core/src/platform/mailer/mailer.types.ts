@@ -28,11 +28,22 @@ export type EmailTemplateName =
   /** APP-01: a company member is told a student applied to their job. */
   | 'application-received'
   /** APP-01: a company member is told an applicant withdrew. */
-  | 'application-withdrawn';
+  | 'application-withdrawn'
+  /** EMP-01 #348: reviewer rejected / requested changes; link back into the application. */
+  | 'company-verification-resubmit';
 
 export interface CompanyOnboardingEmailVerifyData {
   readonly fullName: string;
   readonly verificationCode: string;
+  readonly expiresAtFormatted: string;
+}
+
+export interface CompanyVerificationResubmitEmailData {
+  readonly fullName: string;
+  readonly companyName: string;
+  readonly reason: string;
+  readonly rejectedDocuments: readonly { readonly label: string; readonly reason: string | null }[];
+  readonly resumeUrl: string;
   readonly expiresAtFormatted: string;
 }
 
@@ -136,7 +147,8 @@ export type EmailTemplateData =
   | WorkExperienceVerifierReminderEmailData
   | CertificateEndorsementRequestEmailData
   | WorkExperienceManagerEndorsementEmailData
-  | CompanyOnboardingEmailVerifyData;
+  | CompanyOnboardingEmailVerifyData
+  | CompanyVerificationResubmitEmailData;
 
 export interface EmailJobPayload {
   readonly to: string;

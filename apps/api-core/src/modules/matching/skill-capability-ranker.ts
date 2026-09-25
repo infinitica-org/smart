@@ -18,6 +18,8 @@ import {
   type TransferSkillReason,
 } from '@smart/contracts';
 
+export const SKILL_CAPABILITY_RANKER_VERSION = 'v1.2.0' as const;
+
 /** Millipoints at exactly the asked proficiency. Credit above the ask stops here. */
 export const HELD_AT_ASK_MP = 1000;
 export const HELD_ABOVE_ASK_CAP_MP = 1500;

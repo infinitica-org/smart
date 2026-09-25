@@ -4,6 +4,7 @@ import { API_PREFIX } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
+import { AuditAccess } from '../../common/decorators/audit-access.decorator.js';
 import { ProjectReviewService } from './project-review.service.js';
 
 @ApiTags('project-review')
@@ -20,6 +21,7 @@ export class ProjectReviewAdminController {
   }
 
   @Get(':projectId')
+  @AuditAccess('project', 'projectId')
   @ApiOperation({ summary: 'Transcript, grade, and evidence for reviewer.' })
   detail(@Param('projectId') projectId: string) {
     return this.reviews.getDetail(projectId);

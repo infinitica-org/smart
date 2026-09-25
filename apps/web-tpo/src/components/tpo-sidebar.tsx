@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { SmartLogo, cn } from '@smart/ui';
+import { cn } from '@smart/ui';
 
 import smartLogoImg from '@smart/ui/assets/images/Logos/WebP/Smart-logo.png';
 import { isNavLinkActive, isPlacementTopNavActive } from '../lib/tpo-nav';

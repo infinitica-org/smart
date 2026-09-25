@@ -12,12 +12,29 @@ export type CvAnalyzeResult = {
   faceCount?: number;
 };
 
+/**
+ * SEC-02 / I565: Responsible AI Governance restriction.
+ * Prohibits facial-expression, emotion, attention, and personality inference.
+ * Only physical presence (face count, gaze direction/head pose, hardware absence) is permissible.
+ */
+export const PROHIBITED_INFERENCES = new Set([
+  'EMOTION',
+  'EXPRESSION',
+  'PERSONALITY',
+  'STRESS_LEVEL',
+  'DECEPTION_DETECTION',
+]);
+
 function coerceViolations(raw: unknown): ProctoringViolationKind[] {
   if (!Array.isArray(raw)) return [];
 
   const kinds: ProctoringViolationKind[] = [];
 
   for (const entry of raw) {
+    if (typeof entry === 'string' && PROHIBITED_INFERENCES.has(entry.toUpperCase())) {
+      // Guardrail active: ignore prohibited emotion/personality inference
+      continue;
+    }
     const parsed = ProctoringViolationKindSchema.safeParse(entry);
 
     if (parsed.success) kinds.push(parsed.data);

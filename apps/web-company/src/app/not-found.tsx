@@ -1,11 +1,7 @@
+import { resolvePortalOriginsFromEnv } from '@smart/api-client';
 import { NotFoundWall } from '@smart/ui';
 
-const PORTAL_ORIGINS = {
-  student: process.env.NEXT_PUBLIC_STUDENT_URL ?? 'http://localhost:3001',
-  tpo: process.env.NEXT_PUBLIC_TPO_URL ?? 'http://localhost:3002',
-  admin: process.env.NEXT_PUBLIC_ADMIN_URL ?? 'http://localhost:3003',
-  company: process.env.NEXT_PUBLIC_COMPANY_URL ?? 'http://localhost:3006',
-};
+const PORTAL_ORIGINS = resolvePortalOriginsFromEnv();
 
 export default function NotFound() {
   return <NotFoundWall homeHref="/" portalOrigins={PORTAL_ORIGINS} />;

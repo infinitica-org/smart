@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { SmartLogo } from '@smart/ui';
+import { ResendVerification } from '../../../components/resend-verification';
 import { api } from '../../../lib/api';
 import { LoginShell } from '../../login/login-shell';
 
@@ -12,6 +13,7 @@ export default function VerifyEmailPage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
   const [status, setStatus] = useState<Status>('pending');
+  const [resendEmail, setResendEmail] = useState('');
   // The confirm endpoint is single-use (a second call 410s even on success),
   // so this must fire at most once per token — React's dev-mode StrictMode
   // double-invokes effects, which would otherwise race a real 204 against a
@@ -34,7 +36,7 @@ export default function VerifyEmailPage() {
     status === 'success'
       ? 'Your email is confirmed. You can sign in now.'
       : status === 'error'
-        ? 'This verification link is invalid or has expired.'
+        ? 'This verification link is invalid or has expired. Enter your email to get a new one.'
         : 'Give us a moment.';
 
   return (
@@ -46,6 +48,25 @@ export default function VerifyEmailPage() {
           {heading}
         </h1>
         <p className="mt-2.5 text-[15px] leading-relaxed text-[#6b7280]">{message}</p>
+
+        {status === 'error' ? (
+          <div className="mt-6 w-full text-left">
+            <label
+              htmlFor="resend-email"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6b7280]"
+            >
+              Your email
+            </label>
+            <input
+              id="resend-email"
+              type="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              className="h-11 w-full rounded-[11px] border border-[#e5e7eb] bg-white px-3.5 text-sm text-[#111827] focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10"
+            />
+            <ResendVerification email={resendEmail} />
+          </div>
+        ) : null}
 
         {status === 'pending' ? (
           <span
