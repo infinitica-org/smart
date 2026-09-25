@@ -6,6 +6,7 @@ import { CompanyOnboardingDocumentService } from './company-onboarding-document.
 import { CompanyOnboardingService } from './company-onboarding.service.js';
 import { CompaniesService } from './companies.service.js';
 import { PublicCompanyOnboardingController } from './public-company-onboarding.controller.js';
+import { PlansController } from './plans.controller.js';
 import { InstitutionsAdminController } from './institutions-admin.controller.js';
 import { InstitutionsPublicController } from './institutions-public.controller.js';
 import { InstitutionsPartnershipController } from './institutions-partnership.controller.js';
@@ -17,6 +18,7 @@ import { OrganizationsService } from './organizations.service.js';
 @Module({
   imports: [InvitationsModule, StorageModule],
   controllers: [
+    PlansController,
     InstitutionsAdminController,
     InstitutionsTpoController,
     InstitutionsStudentController,

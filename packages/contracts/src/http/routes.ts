@@ -1194,6 +1194,18 @@ export const ROUTES: readonly RouteSpec[] = [
   },
   {
     method: 'GET',
+    path: '/plans',
+    module: 'institutions',
+    owner: 'Vishal V',
+    roles: ['COMPANY', 'INSTITUTION_ADMIN', 'PLACEMENT_STAFF', 'SUPER_ADMIN'],
+    rateLimit: 'role.institutionAdmin',
+    criticality: 'INTERACTIVE',
+    execution: 'SYNC',
+    slaMs: 100,
+    summary: 'List available employer subscription plans.',
+  },
+  {
+    method: 'GET',
     path: '/admin/plans',
     module: 'institutions',
     owner: 'Vishal V',

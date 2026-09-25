@@ -831,6 +831,9 @@ export function onboardingApi(client: SmartApiClient) {
         query,
       }),
 
+    listAvailablePlans: () =>
+      client.get(prefixed('/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
+
     listPlans: () =>
       client.get(prefixed('/admin/plans'), { schema: z.array(SubscriptionPlanDtoSchema) }),
 
