@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  getCompanyVerificationReviewDetail,
   mapCompanyVerificationQueueItems,
   resolveCompanyVerification,
 } from './company-verification-review.js';
@@ -83,6 +84,58 @@ describe('company verification review', () => {
       expect(rows[0]?.submissionId).toBe(VERIFICATION_ID);
       expect(rows[0]?.documentCount).toBe(2);
       expect(rows[0]?.representativeEmail).toBe('hr@acme.example');
+    });
+  });
+
+  describe('getCompanyVerificationReviewDetail', () => {
+    const storage = { getSignedDownloadUrl: vi.fn() } as any;
+
+    async function detailFor(representativeEmail: string, website: string | null) {
+      prisma.company.findUnique.mockResolvedValue({
+        id: COMPANY_ID,
+        name: 'Acme',
+        website,
+        verificationStatus: 'PENDING',
+      });
+      prisma.companyVerification.findFirst.mockResolvedValue({
+        id: VERIFICATION_ID,
+        companyId: COMPANY_ID,
+        onboardingSessionId: null,
+        registrationCountry: 'IN',
+        legalName: 'Acme Pvt Ltd',
+        registeredAddress: null,
+        businessRegistrationNumber: null,
+        taxId: null,
+        submittedAt: new Date('2026-09-21T11:00:00.000Z'),
+        createdAt: new Date('2026-09-21T11:00:00.000Z'),
+        documents: [],
+      });
+      prisma.companyOnboardingSession.findFirst.mockResolvedValue({
+        onboardingStatus: 'PENDING_REVIEW',
+        representativeEmail,
+      });
+      return getCompanyVerificationReviewDetail(prisma, storage, COMPANY_ID);
+    }
+
+    it('reports a match when the email domain is the website domain or a subdomain of it', async () => {
+      expect(
+        (await detailFor('hr@acme.example', 'https://www.acme.example'))
+          .representativeEmailMatchesWebsite,
+      ).toBe(true);
+      expect(
+        (await detailFor('hr@careers.acme.example', 'https://acme.example'))
+          .representativeEmailMatchesWebsite,
+      ).toBe(true);
+    });
+
+    it('flags a representative whose email domain differs from the website', async () => {
+      const detail = await detailFor('hr@acme-group.example', 'https://acme.example');
+      expect(detail.representativeEmailMatchesWebsite).toBe(false);
+    });
+
+    it('reports null when the company has no website to compare against', async () => {
+      const detail = await detailFor('hr@acme.example', null);
+      expect(detail.representativeEmailMatchesWebsite).toBeNull();
     });
   });
 
