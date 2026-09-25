@@ -79,6 +79,15 @@ export function JobCard({ job, onToggleSave, onHide, onReport }: JobCardProps) {
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {job.applied ? null : (
+          <Link
+            href={`/jobs/${job.id}?apply=1`}
+            aria-label={`Apply to ${job.roleTitle}`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800"
+          >
+            Apply
+          </Link>
+        )}
         <button
           type="button"
           aria-pressed={job.saved}

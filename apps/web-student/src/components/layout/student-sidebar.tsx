@@ -19,7 +19,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { cn } from '@smart/ui';
+import { cn, useUnreadMessageCount } from '@smart/ui';
 import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
 
 interface NavItem {
@@ -52,6 +52,7 @@ export type StudentSidebarProps = {
 
 export function StudentSidebar({ mobileOpen, onMobileOpenChange }: StudentSidebarProps) {
   const pathname = usePathname();
+  const unreadMessages = useUnreadMessageCount();
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -143,6 +144,14 @@ export function StudentSidebar({ mobileOpen, onMobileOpenChange }: StudentSideba
                       )}
                     />
                     <span className="truncate">{item.name}</span>
+                    {item.href === '/messages' && unreadMessages > 0 ? (
+                      <span
+                        aria-label={`${unreadMessages} unread messages`}
+                        className="ml-auto rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white"
+                      >
+                        {unreadMessages > 99 ? '99+' : unreadMessages}
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               );

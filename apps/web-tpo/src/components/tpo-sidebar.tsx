@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { cn } from '@smart/ui';
-import textLogo from '@smart/ui/assets/images/Logos/WebP/Text-logo.png';
+import { SmartLogo, cn } from '@smart/ui';
+
+import smartLogoImg from '@smart/ui/assets/images/Logos/WebP/Smart-logo.png';
 import { isNavLinkActive, isPlacementTopNavActive } from '../lib/tpo-nav';
 import {
   LayoutDashboard,
@@ -99,12 +100,12 @@ export function TpoSidebar({ mobileOpen, onMobileOpenChange }: TpoSidebarProps) 
             aria-label="SMART home"
           >
             <Image
-              src={textLogo}
-              alt="SMART"
-              width={110}
-              height={30}
+              src={smartLogoImg}
+              alt="SMART logo"
+              width={32}
+              height={32}
               priority
-              className="h-7 w-auto object-contain"
+              className="h-8 w-8 shrink-0 object-contain"
             />
           </Link>
         </div>

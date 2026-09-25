@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Bookmark, BookmarkCheck, EyeOff, Flag, MapPin } from 'lucide-react';
 import { isSmartApiError } from '@smart/api-client';
 import { Alert, AppliedBadge, Button, ErrorState, LoadingState, VerifiedBadge } from '@smart/ui';
 import { api } from '@/lib/api';
 import { EMPLOYMENT_TYPE_LABELS, WORK_MODE_LABELS } from '@/lib/jobs-url-state';
+import { ApplyJobDialog } from '@/components/applications/ApplyJobDialog';
 import { HideJobDialog } from '@/components/jobs/HideJobDialog';
 import { JobRequirements } from '@/components/jobs/JobRequirements';
 import { ReportJobDialog } from '@/components/jobs/ReportJobDialog';
@@ -22,6 +23,8 @@ export default function JobDetailPage() {
   const router = useRouter();
   const id = params.id;
 
+  // A job card's Apply button opens this page with ?apply=1 so the dialog is already open.
+  const [applyOpen, setApplyOpen] = useState(useSearchParams().get('apply') === '1');
   const [hideOpen, setHideOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const actions = useJobActions(() => router.push('/jobs'));
@@ -122,8 +125,13 @@ export default function JobDetailPage() {
             View application
           </Link>
         ) : (
-          // Applying is not part of job discovery (no student apply endpoint exists yet).
-          <Button disabled title="Applying opens with the applications release">
+          <Button
+            disabled={!job.acceptingApplications}
+            title={
+              job.acceptingApplications ? undefined : 'This job is no longer accepting applications'
+            }
+            onClick={() => setApplyOpen(true)}
+          >
             Apply
           </Button>
         )}
@@ -197,6 +205,9 @@ export default function JobDetailPage() {
         </div>
       </section>
 
+      {applyOpen ? (
+        <ApplyJobDialog open jobId={job.id} onClose={() => setApplyOpen(false)} />
+      ) : null}
       <HideJobDialog
         open={hideOpen}
         jobTitle={job.roleTitle}
@@ -215,6 +226,8 @@ export default function JobDetailPage() {
           onReported={() => router.push('/jobs')}
         />
       ) : null}
+
+      <ApplyJobDialog open={applyOpen} jobId={job.id} onClose={() => setApplyOpen(false)} />
     </div>
   );
 }

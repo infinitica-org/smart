@@ -192,3 +192,13 @@ export {
 } from './components/ui/table';
 
 export const UI_VERSION = '0.1.0';
+
+/* COM-01 — direct messaging (Th6-422 to Th6-430). */
+export { MessagesWorkspace, type MessagesWorkspaceProps } from './messaging/messages-workspace';
+export {
+  StartConversationDialog,
+  type StartConversationDialogProps,
+} from './messaging/start-conversation-dialog';
+export { ReportMessageDialog } from './messaging/report-message-dialog';
+export { ReportedConversationView } from './messaging/reported-conversation-view';
+export { useUnreadMessageCount, MessageText, SnippetText } from './messaging/messaging-utils';

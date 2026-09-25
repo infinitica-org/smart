@@ -13,6 +13,7 @@
     "clean": "rimraf .next .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
     "@smart/api-client": "workspace:*",
     "@smart/contracts": "workspace:*",
     "@smart/ui": "workspace:*",

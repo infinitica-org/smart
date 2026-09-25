@@ -229,7 +229,7 @@ export function CompanyRegisterWizard() {
   return (
     <section className="mx-auto w-full max-w-xl px-4 py-10">
       <div className="flex flex-col items-center text-center">
-        <SmartLogo kind="wordmark" tone="on-light" className="h-8 w-auto" title="SMART" />
+        <SmartLogo kind="text" tone="on-light" className="h-8 w-auto" title="SMART" />
         <h1 className="mt-8 text-2xl font-bold tracking-tight text-[#111827]">
           Register your company
         </h1>

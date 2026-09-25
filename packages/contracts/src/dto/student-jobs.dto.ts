@@ -130,7 +130,7 @@ export type ReportReason = z.infer<typeof ReportReasonSchema>;
 export const REPORT_DETAILS_MAX_LENGTH = 1000;
 export const CreateReportRequestSchema = z
   .object({
-    targetType: z.enum(['JOB']),
+    targetType: z.enum(['JOB', 'MESSAGE']),
     targetId: UuidSchema,
     reason: ReportReasonSchema,
     details: z.string().trim().max(REPORT_DETAILS_MAX_LENGTH).optional(),
@@ -143,7 +143,7 @@ export type CreateReportRequest = z.infer<typeof CreateReportRequestSchema>;
 
 export const ReportSchema = z.object({
   id: UuidSchema,
-  targetType: z.enum(['JOB']),
+  targetType: z.enum(['JOB', 'MESSAGE']),
   targetId: UuidSchema,
   reason: ReportReasonSchema,
   status: z.enum(['OPEN', 'REVIEWING', 'RESOLVED', 'DISMISSED']),

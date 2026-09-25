@@ -5,6 +5,7 @@ import { ZodError } from 'zod';
 import { SMART_TOPICS } from '@smart/contracts';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
+import { ApplicationService } from '../applications/application.service.js';
 import { PlacementService } from './placement.service.js';
 
 const institutionId = randomUUID();
@@ -67,12 +68,27 @@ function setup(options: { opening?: unknown; application?: unknown } = {}) {
     applicationStageEvent: {
       create: vi.fn().mockResolvedValue({ id: randomUUID() }),
     },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
 
   const outbox = { enqueueEnvelope: vi.fn().mockResolvedValue(undefined) };
   const jdParseQueue = { add: vi.fn().mockResolvedValue(undefined) };
-  const service = new PlacementService(prisma as never, outbox as never, jdParseQueue as never);
+  const applications = new ApplicationService(
+    prisma as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    outbox as never,
+  );
+  const service = new PlacementService(
+    prisma as never,
+    outbox as never,
+    jdParseQueue as never,
+    undefined,
+    undefined,
+    applications,
+  );
   const controller = new PlacementController(service);
 
   return { prisma, outbox, service, controller };
@@ -152,8 +168,15 @@ describe('CO-T02 patch application stage', () => {
     expect(prisma.applicationStageEvent.create).toHaveBeenCalledWith({
       data: {
         applicationId,
+        orgId: institutionId,
         fromStage: 'APPLIED',
         toStage: 'SHORTLISTED',
+        fromStatus: 'APPLIED',
+        toStatus: 'REVIEWING',
+        actorId,
+        actorType: 'INSTITUTION',
+        note: null,
+        source: 'tpo_board',
       },
     });
     expect(outbox.enqueueEnvelope).toHaveBeenCalledTimes(1);
@@ -161,7 +184,7 @@ describe('CO-T02 patch application stage', () => {
       topic: SMART_TOPICS.applicationStageChanged,
       partitionKey: applicationId,
       eventType: SMART_TOPICS.applicationStageChanged,
-      source: 'placement',
+      source: 'applications',
       data: expect.objectContaining({
         applicationId,
         openingId,

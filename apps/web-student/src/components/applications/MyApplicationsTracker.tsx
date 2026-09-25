@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   Briefcase,
-  MapPin,
   Send,
   RotateCcw,
   CheckCircle2,
@@ -18,20 +16,12 @@ import {
   AlertCircle,
   Info,
 } from 'lucide-react';
-import { queryKeys } from '@smart/api-client';
 import type { WorkExperienceDto } from '@smart/contracts';
-import { cn, useQuery, VerifiedBadge } from '@smart/ui';
+import { cn, useQuery } from '@smart/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../../lib/api';
-import {
-  ATS_STAGE_LABELS,
-  MY_APPLICATIONS_POLL_MS,
-  formatAppliedOn,
-  matchPercent,
-  sortApplications,
-} from '../../lib/my-applications';
-import { ApplicationStageTimeline } from './ApplicationStageTimeline';
-import { ReviewCompanyDialog } from './ReviewCompanyDialog';
+import { MY_APPLICATIONS_POLL_MS } from '../../lib/my-applications';
+import { ApplicationsPanel, STUDENT_APPLICATIONS_KEY } from './ApplicationsPanel';
 
 export type EndorsementFilter = 'All' | 'Confirmed' | 'Awaiting' | 'Declined/Expired';
 
@@ -56,7 +46,6 @@ export function MyApplicationsTracker({
   initialTab?: 'endorsements' | 'applications';
 }) {
   const [activeTab, setActiveTab] = useState<'endorsements' | 'applications'>(initialTab);
-  const [reviewOpen, setReviewOpen] = useState(false);
   const [endorsementFilter, setEndorsementFilter] = useState<EndorsementFilter>('All');
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [experiencesLoading, setExperiencesLoading] = useState(true);
@@ -120,18 +109,12 @@ export function MyApplicationsTracker({
   }, []);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.myApplications(),
-    queryFn: () => api.placement.listMyApplications(),
+    queryKey: STUDENT_APPLICATIONS_KEY,
+    queryFn: () => api.studentApplications.list(),
     refetchInterval: pollIntervalMs,
   });
 
-  const applications = useMemo(
-    () => sortApplications(data?.applications ?? []),
-    [data?.applications],
-  );
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const selectedApp =
-    applications.find((row) => row.applicationId === selectedAppId) ?? applications[0] ?? null;
+  const applications = useMemo(() => data?.applications ?? [], [data?.applications]);
 
   const isCorporateEmail = (email: string): boolean => {
     const personalDomains = [
@@ -490,151 +473,15 @@ export function MyApplicationsTracker({
         </section>
       )}
 
-      {/* TAB 2: ATS Placement Applications Pipeline */}
+      {/* TAB 2: My applications (student-facing status labels) */}
       {activeTab === 'applications' && (
         <section className="space-y-4">
-          {isLoading ? (
-            <div className="py-12 text-center text-xs text-zinc-400">
-              Loading your applications…
-            </div>
-          ) : isError ? (
-            <div
-              role="alert"
-              className="rounded-md border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800"
-            >
-              Could not load your applications from placement service.
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="ml-2 font-bold underline"
-              >
-                Retry
-              </button>
-            </div>
-          ) : applications.length === 0 ? (
-            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/60 px-6 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-              <Briefcase className="mx-auto size-8 text-zinc-400 mb-2" />
-              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                No applications in pipeline
-              </p>
-              <p className="text-xs text-zinc-500 mt-1 max-w-md mx-auto">
-                When you apply to placement drives or get shortlisted by campus partners, live ATS
-                progression shows here.
-              </p>
-              <Link
-                href="/matches"
-                className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-              >
-                Explore Job Matches
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-              <div className="space-y-3 lg:col-span-4">
-                {applications.map((app) => {
-                  const active = app.applicationId === selectedApp?.applicationId;
-                  const score = matchPercent(app.matchScore);
-                  return (
-                    <button
-                      key={app.applicationId}
-                      type="button"
-                      onClick={() => setSelectedAppId(app.applicationId)}
-                      className={cn(
-                        'w-full rounded-md border p-4 text-left transition-all shadow-2xs',
-                        active
-                          ? 'border-zinc-900 bg-white ring-2 ring-zinc-900/10 dark:border-white dark:bg-[#1c1c1c]'
-                          : 'border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-[#161616]',
-                      )}
-                    >
-                      <div className="flex gap-3 items-start justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-bold text-zinc-900 dark:text-white">
-                            {app.roleTitle}
-                          </p>
-                          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                            {app.companyName}
-                            <VerifiedBadge
-                              verified={app.companyVerified === true}
-                              verifiedAt={app.companyVerifiedAt}
-                              variant="icon"
-                            />
-                          </p>
-                        </div>
-                        {score && (
-                          <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                            {score}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-3">
-                        <ApplicationStageTimeline stage={app.stage} labels={false} />
-                      </div>
-                      <p className="mt-2 text-[10px] font-semibold text-zinc-400">
-                        {ATS_STAGE_LABELS[app.stage]}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {selectedApp && (
-                <div className="rounded-md border border-zinc-200/80 bg-white p-6 shadow-2xs lg:col-span-8 dark:border-zinc-800 dark:bg-[#161616]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                      {selectedApp.companyName}
-                    </span>
-                    <VerifiedBadge
-                      verified={selectedApp.companyVerified === true}
-                      verifiedAt={selectedApp.companyVerifiedAt}
-                    />
-                    {selectedApp.location && (
-                      <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                        <MapPin className="size-3.5 text-zinc-400" /> {selectedApp.location}
-                      </span>
-                    )}
-                    <span className="text-xs text-zinc-400">
-                      Applied {formatAppliedOn(selectedApp.createdAt)}
-                    </span>
-                    {selectedApp.companyId ? (
-                      <button
-                        type="button"
-                        className="ml-auto text-xs font-semibold text-blue-700 hover:underline"
-                        onClick={() => setReviewOpen(true)}
-                      >
-                        Review this company
-                      </button>
-                    ) : null}
-                  </div>
-                  {selectedApp.companyId ? (
-                    <ReviewCompanyDialog
-                      open={reviewOpen}
-                      onClose={() => setReviewOpen(false)}
-                      companyId={selectedApp.companyId}
-                      companyName={selectedApp.companyName}
-                    />
-                  ) : null}
-
-                  <h2 className="mt-4 font-heading text-xl font-bold text-zinc-950 dark:text-white sm:text-2xl">
-                    {selectedApp.roleTitle}
-                  </h2>
-
-                  <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                    Current ATS stage:{' '}
-                    <strong className="text-zinc-900 dark:text-white">
-                      {ATS_STAGE_LABELS[selectedApp.stage]}
-                    </strong>
-                  </p>
-
-                  <div className="mt-6 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                    <p className="mb-3 text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                      ATS Stage Progression
-                    </p>
-                    <ApplicationStageTimeline stage={selectedApp.stage} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <ApplicationsPanel
+            applications={applications}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={() => void refetch()}
+          />
         </section>
       )}
 

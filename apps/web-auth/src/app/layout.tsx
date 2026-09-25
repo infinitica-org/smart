@@ -6,6 +6,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Sign in · SMART',
   description: 'Login and account setup.',
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

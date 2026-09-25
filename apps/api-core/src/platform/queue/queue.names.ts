@@ -2,6 +2,7 @@ export const SANDBOX_EXECUTION_QUEUE = 'sandbox_execution' as const;
 export const AUDIO_EVALUATION_QUEUE = 'audio_evaluation' as const;
 export const PDF_GENERATION_QUEUE = 'pdf_generation' as const;
 export const AUDIT_LOG_PURGE_QUEUE = 'audit_log_purge' as const;
+export const MESSAGE_MODERATION_PURGE_QUEUE = 'message_moderation_purge' as const;
 export const CREDENTIAL_VERIFICATION_QUEUE = 'credential_verification' as const;
 export const QLIX_POLL_QUEUE = 'qlix_poll' as const;
 export const QLIX_RECALIBRATION_QUEUE = 'qlix_recalibration' as const;

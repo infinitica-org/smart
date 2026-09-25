@@ -15,6 +15,8 @@ export const COMPANY_PERMISSIONS = [
   'company.team.invite',
   'company.team.manage',
   'company.reviews.respond',
+  'company.applicants.view',
+  'company.applicants.manage',
 ] as const;
 export type CompanyPermission = (typeof COMPANY_PERMISSIONS)[number];
 
@@ -22,7 +24,13 @@ export const COMPANY_ROLE_PERMISSIONS: Readonly<
   Record<CompanyMemberRole, readonly CompanyPermission[]>
 > = {
   OWNER: COMPANY_PERMISSIONS,
-  RECRUITER: ['company.profile.edit', 'company.team.view', 'company.reviews.respond'],
+  RECRUITER: [
+    'company.profile.edit',
+    'company.team.view',
+    'company.reviews.respond',
+    'company.applicants.view',
+    'company.applicants.manage',
+  ],
 };
 
 export function companyRoleHasPermission(

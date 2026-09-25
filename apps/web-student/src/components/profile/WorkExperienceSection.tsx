@@ -359,7 +359,7 @@ export function WorkExperienceSection() {
         : [];
       const editingExp = editingId ? experiences.find((exp) => exp.id === editingId) : undefined;
 
-      let allPendingDocs = [...modalPendingDocs];
+      const allPendingDocs = [...modalPendingDocs];
       if (modalNewProofFile) {
         const fileError = validateProofFile(modalNewProofFile);
         if (fileError) {

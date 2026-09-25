@@ -18,7 +18,8 @@ const WORDMARK_MARK_PATH =
 const MARK_PATH =
   'M138.45,73.34l-24.78,25.1c3.92,5.59,3.41,13.35-1.56,18.38-4.96,5.02-12.71,5.63-18.34,1.78l-35.17,35.63-35.29,35.79h48.38l11.43-11.57,30.73-31.18,24.22-24.42,46.91,46.35v-49.9l-46.51-45.97ZM131.32,23.09l-11.43,11.57-30.72,31.18-24.22,24.42L18.03,43.9v49.89l46.51,45.97,25.11-25.44c-3.47-5.54-2.81-12.91,1.97-17.76,4.78-4.83,12.14-5.57,17.72-2.19l35.05-35.51,35.3-35.79h-48.38Z';
 
-export type SmartLogoKind = 'wordmark' | 'mark';
+/** `text` is the plain lowercase "smart" wordmark (no diamond) and the default everywhere. */
+export type SmartLogoKind = 'text' | 'wordmark' | 'mark';
 export type SmartLogoTone = 'auto' | 'on-light' | 'on-dark';
 
 export interface SmartLogoProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'children'> {
@@ -47,6 +48,24 @@ function markFillForTone(tone: SmartLogoTone): string {
 
 function wordmarkMarkFill(lettersFill: string): string {
   return lettersFill === '#131313' ? '#131313' : SMART_MARK_TEAL;
+}
+
+function TextSvg({ fill, title }: { fill: string; title: string }) {
+  return (
+    <svg
+      viewBox="205 18 403 118"
+      role="img"
+      aria-label={title}
+      className="block h-full w-auto shrink-0"
+    >
+      <title>{title}</title>
+      <g fill={fill}>
+        {WORD_PATHS.map((d) => (
+          <path key={d.slice(0, 24)} d={d} />
+        ))}
+      </g>
+    </svg>
+  );
 }
 
 function WordmarkSvg({ lettersFill, title }: { lettersFill: string; title: string }) {
@@ -84,16 +103,25 @@ function MarkSvg({ title, fill }: { title: string; fill: string }) {
 }
 
 /**
- * COLOURED SMART lockup. The diamond uses SMART brand teal; the word tracks the
- * surrounding text colour so it stays visible on light and dark chrome.
+ * SMART logo. The default is the plain text logo ("smart"), which follows the surrounding
+ * text colour (`auto`) or locks to black / white (`on-light` / `on-dark`). The diamond lockup
+ * (`wordmark`) and icon-only `mark` remain for favicons and special cases.
  */
 export function SmartLogo({
-  kind = 'wordmark',
+  kind = 'text',
   tone = 'auto',
   title = 'SMART',
   className,
   ...props
 }: SmartLogoProps) {
+  if (kind === 'text') {
+    return (
+      <span className={cn('inline-flex h-8 w-auto shrink-0 items-center', className)} {...props}>
+        <TextSvg fill={lettersFillForTone(tone)} title={title} />
+      </span>
+    );
+  }
+
   if (kind === 'mark') {
     return (
       <span

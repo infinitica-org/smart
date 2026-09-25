@@ -173,6 +173,7 @@ import {
 } from './work-experience-document-authenticity.util.js';
 
 import { PublicProfileService } from '../public-profile/public-profile.service.js';
+import { EvidenceSnapshotGuard } from '../applications/evidence-snapshot.guard.js';
 import { EvidenceSyncService } from '../evidence/evidence-sync.service.js';
 import {
   buildEvidenceFromWorkExperienceRow,
@@ -205,6 +206,9 @@ export class WorkExperienceService {
     @Inject(PublicProfileService) private readonly publicProfileService?: PublicProfileService,
     @Inject(EvidenceSyncService) private readonly evidenceSync?: EvidenceSyncService,
     @Optional() @Inject(StorageService) private readonly storageService?: StorageService,
+    @Optional()
+    @Inject(EvidenceSnapshotGuard)
+    private readonly snapshotGuard?: EvidenceSnapshotGuard,
   ) {}
 
   private readonly evidenceInclude = {
@@ -796,6 +800,11 @@ export class WorkExperienceService {
       });
     }
 
+    // Th6-394: evidence a submitted application's snapshot points at stays while that application exists.
+    if (this.snapshotGuard) {
+      await this.snapshotGuard.assertNotReferenced(studentId, { type: 'work_experience', id });
+    }
+
     await this.prisma.workExperience.delete({
       where: { id },
     });
@@ -1094,6 +1103,13 @@ export class WorkExperienceService {
         error: 'not_found',
         message: 'Document attachment not found.',
         statusCode: 404,
+      });
+    }
+
+    if (this.snapshotGuard) {
+      await this.snapshotGuard.assertNotReferenced(studentId, {
+        type: 'work_experience_document',
+        id: documentId,
       });
     }
 

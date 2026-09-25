@@ -5,6 +5,7 @@ import {
   Landmark,
   LayoutDashboard,
   LayoutGrid,
+  MessageSquare,
   ShieldCheck,
   UserPlus,
   UserSearch,
@@ -140,6 +141,7 @@ export const TPO_NAV: TpoNavItem[] = [
   { kind: 'link', name: 'Students', href: '/students', icon: Users },
   { kind: 'link', name: 'Whitelist', href: '/whitelist', icon: UserPlus },
   { kind: 'link', name: 'Employers', href: '/companies', icon: Briefcase },
+  { kind: 'link', name: 'Messages', href: '/messages', icon: MessageSquare },
   { kind: 'link', name: 'Reports', href: '/reports', icon: BarChart3 },
 ];
 

@@ -391,6 +391,7 @@ export class PlacementController {
       requireInstitutionId(user),
       applicationId,
       parsed.stage,
+      user.sub,
     );
   }
 
@@ -432,7 +433,7 @@ export class PlacementController {
     @CurrentUser() user: RequestUser,
     @Param('applicationId') applicationId: string,
   ): Promise<ApplicationDto> {
-    return this.service.sendToCompany(requireInstitutionId(user), applicationId);
+    return this.service.sendToCompany(requireInstitutionId(user), applicationId, user.sub);
   }
 
   @Post('outcomes')

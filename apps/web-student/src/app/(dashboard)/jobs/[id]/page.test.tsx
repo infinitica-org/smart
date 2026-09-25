@@ -16,7 +16,8 @@ const studentJobs = vi.hoisted(() => ({
   unhide: vi.fn(),
   report: vi.fn(),
 }));
-vi.mock('@/lib/api', () => ({ api: { studentJobs } }));
+const studentApplications = vi.hoisted(() => ({ preview: vi.fn(), apply: vi.fn() }));
+vi.mock('@/lib/api', () => ({ api: { studentJobs, studentApplications } }));
 
 const JOB = '00000000-0000-4000-8000-000000000001';
 const COMPANY = '11111111-1111-4111-8111-111111111111';
@@ -245,8 +246,18 @@ describe('Job detail page (Th6-382/383)', () => {
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith('/jobs'));
   });
 
-  it('keeps Apply disabled: applying is not part of job discovery', async () => {
+  it('enables Apply for an open job and opens the apply dialog', async () => {
     studentJobs.detail.mockResolvedValue(detail());
+    studentApplications.preview.mockResolvedValue(new Promise(() => undefined));
+    renderPage();
+    const apply = (await screen.findByRole('button', { name: 'Apply' })) as HTMLButtonElement;
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(apply);
+    expect(await screen.findByText('Preparing what the employer will see…')).toBeTruthy();
+  });
+
+  it('disables Apply for a job that is no longer accepting applications', async () => {
+    studentJobs.detail.mockResolvedValue(detail({ acceptingApplications: false, saved: true }));
     renderPage();
     const apply = (await screen.findByRole('button', { name: 'Apply' })) as HTMLButtonElement;
     expect(apply.disabled).toBe(true);

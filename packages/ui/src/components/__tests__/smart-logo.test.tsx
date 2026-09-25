@@ -3,9 +3,26 @@ import { describe, expect, it } from 'vitest';
 import { SmartLogo } from '../smart-logo';
 
 describe('SmartLogo', () => {
-  it('renders the SMART wordmark', () => {
-    render(<SmartLogo />);
+  it('renders the plain text logo by default (letters only, no diamond)', () => {
+    const { container } = render(<SmartLogo />);
     expect(screen.getAllByRole('img', { name: 'SMART' }).length).toBeGreaterThan(0);
+    expect(container.querySelector('path[d*="120.42"]')).toBeNull(); // the diamond
+    expect(container.querySelectorAll('g path')).toHaveLength(5); // s m a r t
+  });
+
+  it('follows the surrounding text colour, or locks to black / white by tone', () => {
+    const fillOf = (tone?: 'auto' | 'on-light' | 'on-dark') =>
+      render(<SmartLogo tone={tone} />)
+        .container.querySelector('g')
+        ?.getAttribute('fill');
+    expect(fillOf()).toBe('currentColor');
+    expect(fillOf('on-light')).toBe('#131313');
+    expect(fillOf('on-dark')).toBe('#ffffff');
+  });
+
+  it('still offers the diamond lockup for special cases', () => {
+    const { container } = render(<SmartLogo kind="wordmark" />);
+    expect(container.querySelector('path[d*="120.42"]')).not.toBeNull();
   });
 
   it('renders the compact mark', () => {
@@ -26,7 +43,7 @@ describe('SmartLogo', () => {
   });
 
   it('renders a monochrome black wordmark on light backgrounds when tone is on-light', () => {
-    const { container } = render(<SmartLogo tone="on-light" />);
+    const { container } = render(<SmartLogo kind="wordmark" tone="on-light" />);
     const group = container.querySelector('g');
     const mark = container.querySelector('path[d*="120.42"]');
     expect(group?.getAttribute('fill')).toBe('#131313');

@@ -11,7 +11,7 @@ import { COMPANY_VISIBLE_WHERE, isJobAllowedForStudent } from './job-eligibility
 
 interface ReportRow {
   id: string;
-  targetType: 'JOB';
+  targetType: 'JOB' | 'MESSAGE';
   targetId: string;
   reason: CreateReportRequest['reason'];
   status: Report['status'];

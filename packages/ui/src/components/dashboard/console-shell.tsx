@@ -41,8 +41,8 @@ export function ConsoleShell({
   return (
     <div className="flex min-h-dvh bg-[var(--surface-muted)] text-[var(--text-primary)]">
       <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--surface-border)] bg-[var(--surface)]">
-        <a href={homeHref} className="flex items-center px-5 py-5" aria-label={brand}>
-          <SmartLogo kind="wordmark" className="h-7" title={brand} />
+        <a href={homeHref} className="flex items-center gap-2.5 px-5 py-5" aria-label={brand}>
+          <SmartLogo kind="mark" className="h-6 w-6 shrink-0" />
         </a>
         <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Console">
           {items.map((item) => {
@@ -100,7 +100,7 @@ export function ConsolePromoCard({ title = 'Stronger placements. Together.' }: {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
       <BorderBeam size={70} duration={9} />
-      <SmartLogo kind="mark" className="h-7" />
+      <SmartLogo kind="text" className="h-7" />
       <p className="mt-2 text-sm font-medium leading-snug">{title}</p>
     </div>
   );
