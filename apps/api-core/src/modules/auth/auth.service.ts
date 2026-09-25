@@ -555,7 +555,8 @@ export class AuthService {
     const base = await toAuthenticatedUserWithPhoto(this.storage, user);
     return CompanyPortalAccountSchema.parse({
       ...base,
-      companyVerificationStatus: user.company?.verificationStatus ?? 'APPROVED',
+      // Fail closed: a COMPANY user without a company is never reported as approved (S6-VV-139).
+      companyVerificationStatus: user.company?.verificationStatus ?? 'PENDING',
       companyWebsite: user.company?.website ?? null,
       companyIndustry: user.company?.taxonomyDomain ?? null,
       companyLocation: user.company?.location ?? null,
@@ -708,6 +709,7 @@ export function toAuthenticatedUser(user: {
       ? {
           heldAt: user.company.heldAt ?? null,
           deactivatedAt: user.company.deactivatedAt ?? null,
+          verificationStatus: user.company.verificationStatus ?? null,
         }
       : null,
   });

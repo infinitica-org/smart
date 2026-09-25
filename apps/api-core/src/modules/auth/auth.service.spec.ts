@@ -688,3 +688,40 @@ describe('password hashing', () => {
     expect(await verifyPassword('wrong-password', stored)).toBe(false);
   });
 });
+
+describe('company portal account status (S6-VV-139)', () => {
+  function service(user: unknown) {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) } };
+    const storage = { getSignedDownloadUrl: vi.fn().mockResolvedValue(null) };
+    return new AuthService(
+      prisma as never,
+      {} as never,
+      storage as never,
+      mockAuditPublisher() as never,
+    );
+  }
+
+  it('never reports a COMPANY user without a company as approved', async () => {
+    const auth = service(userRow({ role: 'COMPANY', email: 'rep@acme.example', company: null }));
+
+    const account = await auth.getCompanyPortalAccount('user-1');
+
+    expect(account.companyVerificationStatus).toBe('PENDING');
+  });
+
+  it('reports a company hold when verification was revoked after sign-in', () => {
+    const user = _toAuthenticatedUser(
+      userRow({
+        role: 'COMPANY',
+        company: {
+          name: 'Acme',
+          heldAt: null,
+          deactivatedAt: null,
+          verificationStatus: 'REJECTED',
+        },
+      }) as never,
+    );
+
+    expect(user.sessionHold).toMatchObject({ code: 'company_held' });
+  });
+});

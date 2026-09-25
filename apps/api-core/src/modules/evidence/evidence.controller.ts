@@ -13,7 +13,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Multipart, MultipartFile } from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
-import { API_PREFIX } from '@smart/contracts';
+import { API_PREFIX, EvidenceSkillDisputeRequestSchema } from '@smart/contracts';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
@@ -253,5 +253,14 @@ export class EvidenceController {
     @Body() body: unknown,
   ) {
     return this.evidence.replaceProjectSkillMappings(user.sub, id, body);
+  }
+
+  @Post('evidence-skill-disputes')
+  @Roles('STUDENT')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit a dispute on an incorrect evidence-to-skill mapping.' })
+  disputeEvidenceMapping(@CurrentUser() user: RequestUser, @Body() body: unknown) {
+    const input = EvidenceSkillDisputeRequestSchema.parse(body);
+    return this.evidence.submitEvidenceSkillDispute(user.sub, input);
   }
 }

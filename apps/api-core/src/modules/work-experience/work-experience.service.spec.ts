@@ -22,7 +22,6 @@ describe('WorkExperienceService', () => {
   let evidenceSync: any;
   let storage: any;
   let emailQueue: any;
-  let notifications: any;
   let service: WorkExperienceService;
 
   const mockStudentId = randomUUID();
