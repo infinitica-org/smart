@@ -340,6 +340,10 @@ export const InstitutionAdminDtoSchema = z.object({
   fullName: z.string(),
   emailVerified: z.boolean(),
   invitation: InvitationDtoSchema.nullable(),
+  /** INSTITUTION_ADMIN or PLACEMENT_STAFF: the list covers all institution staff. */
+  role: UserRoleSchema.optional(),
+  heldAt: IsoDateTimeSchema.nullable().optional(),
+  heldReason: z.string().nullable().optional(),
 });
 export type InstitutionAdminDto = z.infer<typeof InstitutionAdminDtoSchema>;
 

@@ -17,6 +17,7 @@ import type {
   ListGithubReposRequest,
   ParseResumeRequest,
   RepoLanguagesRequest,
+  InstitutionStaffRole,
   ListActiveSessionsQuery,
   ReverseGeocodeRequest,
   SaveCandidateOnboardingDraftRequest,
@@ -82,9 +83,11 @@ import {
   CertVerifySessionDtoSchema,
   ActiveSessionDtoSchema,
   AuditLogDtoSchema,
+  AssignRoleResponseSchema,
   AuthTokenResponseSchema,
   AuthenticatedUserSchema,
   CompanyPortalAccountSchema,
+  UserHoldResponseSchema,
   BatchDtoSchema,
   BatchMemberDtoSchema,
   CandidateBriefDtoSchema,
@@ -1090,6 +1093,22 @@ export function onboardingApi(client: SmartApiClient) {
     listInstitutionAdmins: (institutionId: string) =>
       client.get(prefixed(`/admin/institutions/${institutionId}/admins`), {
         schema: z.array(InstitutionAdminDtoSchema),
+      }),
+
+    /** Switch an institution staff member between INSTITUTION_ADMIN and PLACEMENT_STAFF. */
+    assignUserRole: (userId: string, body: { role: InstitutionStaffRole }) =>
+      client.post(prefixed(`/admin/users/${userId}/role`), body, {
+        schema: AssignRoleResponseSchema,
+      }),
+
+    holdUser: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/users/${userId}/hold`), body, {
+        schema: UserHoldResponseSchema,
+      }),
+
+    releaseUserHold: (userId: string, body: TenantActionReason) =>
+      client.post(prefixed(`/admin/users/${userId}/release-hold`), body, {
+        schema: UserHoldResponseSchema,
       }),
 
     resendAdminInvitation: (invitationId: string) =>
