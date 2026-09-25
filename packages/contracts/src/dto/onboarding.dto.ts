@@ -677,6 +677,12 @@ export const CompanyVerificationReviewDetailDtoSchema = z.object({
   verificationStatus: TenantVerificationStatusSchema,
   onboardingStatus: CompanyOnboardingStatusSchema.nullable(),
   representativeEmail: EmailSchema.optional(),
+  /**
+   * Whether the representative's email domain matches the company website (subdomains count).
+   * `false` is a signal for the reviewer, not a block: subsidiaries often use a parent domain.
+   * `null` when either side is missing.
+   */
+  representativeEmailMatchesWebsite: z.boolean().nullable().optional(),
   registrationCountry: z.string().trim().length(2).optional(),
   legalName: z.string(),
   submittedAt: IsoDateTimeSchema,

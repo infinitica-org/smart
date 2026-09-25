@@ -8,6 +8,7 @@ import { CompanyAddressSchema, CompanyVerificationReviewDetailDtoSchema } from '
 import type { Prisma } from '../../generated/prisma/index.js';
 import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 import type { StorageService } from '../../platform/storage/storage.service.js';
+import { validateEmployerDomain } from '../work-experience/company-name.util.js';
 import {
   provisionCompanyRepresentative,
   type CompanyActivationEmailPayload,
@@ -124,6 +125,9 @@ export async function getCompanyVerificationReviewDetail(
   );
 
   const registeredAddress = CompanyAddressSchema.safeParse(verification.registeredAddress);
+  const emailDomain = validateEmployerDomain(session?.representativeEmail, company.website);
+  const representativeEmailMatchesWebsite =
+    emailDomain.verifierDomain && emailDomain.companyDomain ? emailDomain.domainMatch : null;
 
   return CompanyVerificationReviewDetailDtoSchema.parse({
     tenantType: 'company',
@@ -134,6 +138,7 @@ export async function getCompanyVerificationReviewDetail(
     verificationStatus: company.verificationStatus,
     onboardingStatus: session?.onboardingStatus ?? null,
     representativeEmail: session?.representativeEmail,
+    representativeEmailMatchesWebsite,
     registrationCountry: verification.registrationCountry,
     legalName: verification.legalName,
     submittedAt: verification.submittedAt?.toISOString() ?? verification.createdAt.toISOString(),

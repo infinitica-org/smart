@@ -7,6 +7,7 @@ import {
   RepresentativeRelationshipSchema,
   TenantVerificationStatusSchema,
 } from '../domain/enums.js';
+import { isFreeMailDomain } from '../domain/disallowed-email-domains.js';
 import { EmailSchema, IsoDateTimeSchema, UuidSchema } from './common.js';
 
 /**
@@ -58,9 +59,17 @@ export const CompanyPhoneSchema = z
     'Enter a valid phone number: digits only, 8 to 15 digits, with an optional leading +.',
   );
 
+export const COMPANY_WORK_EMAIL_REQUIRED_MESSAGE =
+  'Use your company email address. Personal addresses (e.g. Gmail, Yahoo, Outlook) are not accepted.';
+
+/** A company representative must sign up from a company mailbox, never a free-mail one. */
+export const CompanyWorkEmailSchema = EmailSchema.refine((email) => !isFreeMailDomain(email), {
+  message: COMPANY_WORK_EMAIL_REQUIRED_MESSAGE,
+});
+
 export const CompanyRepresentativeSchema = z.object({
   fullName: z.string().trim().min(2).max(200),
-  workEmail: EmailSchema,
+  workEmail: CompanyWorkEmailSchema,
   phone: CompanyPhoneSchema,
   jobTitle: z.string().trim().min(1).max(120),
   department: z.string().trim().max(120).optional(),

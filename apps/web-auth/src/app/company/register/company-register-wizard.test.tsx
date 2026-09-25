@@ -1,15 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { COMPANY_SIZE_BANDS } from '@smart/contracts';
+import { COMPANY_SIZE_BANDS, COMPANY_WORK_EMAIL_REQUIRED_MESSAGE } from '@smart/contracts';
 import { SmartApiError } from '@smart/api-client';
 
 const getSession = vi.fn();
 const updateDraft = vi.fn();
 const sendVerification = vi.fn();
+const startOnboarding = vi.fn();
 
 vi.mock('../../../lib/api', () => ({
   api: {
     public: {
+      startCompanyOnboarding: (...a: unknown[]) => startOnboarding(...a),
       getCompanyOnboardingSession: (...a: unknown[]) => getSession(...a),
       updateCompanyOnboardingDraft: (...a: unknown[]) => updateDraft(...a),
       sendCompanyOnboardingEmailVerification: (...a: unknown[]) => sendVerification(...a),
@@ -41,6 +43,7 @@ beforeEach(() => {
   getSession.mockReset();
   updateDraft.mockReset();
   sendVerification.mockReset();
+  startOnboarding.mockReset();
 });
 afterEach(() => {
   cleanup();
@@ -79,5 +82,21 @@ describe('CompanyRegisterWizard details step', () => {
     const alert = await screen.findByRole('alert');
     await waitFor(() => expect(alert.textContent).toContain('Phone: Enter a valid phone number.'));
     expect(alert.textContent).not.toBe('Request failed validation.');
+  });
+});
+
+describe('CompanyRegisterWizard start step', () => {
+  it('rejects a personal email address before calling the API', async () => {
+    render(<CompanyRegisterWizard />);
+    const email = await screen.findByLabelText('Work email');
+    fireEvent.change(email, { target: { value: 'ada@gmail.com' } });
+    expect(screen.getByText(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE)).toBeTruthy();
+
+    const form = email.closest('form');
+    if (!form) throw new Error('form missing');
+    fireEvent.submit(form);
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(COMPANY_WORK_EMAIL_REQUIRED_MESSAGE);
+    expect(startOnboarding).not.toHaveBeenCalled();
   });
 });

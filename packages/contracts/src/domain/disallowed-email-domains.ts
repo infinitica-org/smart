@@ -1,10 +1,11 @@
 /**
- * Certificate endorsement requires a work email — a personal/free-provider
- * address is too easy for a candidate to control themselves and self-endorse.
- * This is a denylist heuristic (anything not on it is accepted), not an
- * exhaustive allowlist of real companies.
+ * Free / personal mailbox providers. Anywhere SMART needs a work email
+ * (certificate endorsers, student registration, employer onboarding), an
+ * address at one of these is rejected: anyone can create one, so it proves
+ * nothing about the organization behind it. This is a denylist heuristic
+ * (anything not on it is accepted), not an exhaustive allowlist of companies.
  */
-export const DISALLOWED_ENDORSER_EMAIL_DOMAINS: readonly string[] = [
+export const FREE_MAIL_DOMAINS: readonly string[] = [
   'gmail.com',
   'googlemail.com',
   'yahoo.com',
@@ -34,8 +35,15 @@ export const DISALLOWED_ENDORSER_EMAIL_DOMAINS: readonly string[] = [
   'tutanota.com',
 ];
 
-export function isDisallowedEndorserEmailDomain(email: string): boolean {
+/** True for a free/personal mailbox domain, or an address with no domain at all. */
+export function isFreeMailDomain(email: string): boolean {
   const domain = email.trim().toLowerCase().split('@')[1];
   if (!domain) return true;
-  return DISALLOWED_ENDORSER_EMAIL_DOMAINS.includes(domain);
+  return FREE_MAIL_DOMAINS.includes(domain);
 }
+
+/** @deprecated Use `FREE_MAIL_DOMAINS`; kept so existing endorser imports keep working. */
+export const DISALLOWED_ENDORSER_EMAIL_DOMAINS = FREE_MAIL_DOMAINS;
+
+/** @deprecated Use `isFreeMailDomain`; kept so existing endorser imports keep working. */
+export const isDisallowedEndorserEmailDomain = isFreeMailDomain;
