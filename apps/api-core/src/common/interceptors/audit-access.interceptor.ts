@@ -50,12 +50,14 @@ export class AuditAccessInterceptor implements NestInterceptor {
     request: FastifyRequest & { user?: RequestUser; routeOptions?: { url?: string } },
     options: AuditAccessOptions,
   ): Promise<void> {
-    const actor = request.user;
-    const resourceId = (request.params as Record<string, string> | undefined)?.[options.idParam];
-    if (!actor?.sub || !resourceId || actor.sub === resourceId) return;
+    const params = request.params as Record<string, string> | undefined;
+    const resourceId = params?.[options.idParam];
+    const subjectId = options.subjectParam ? params?.[options.subjectParam] : resourceId;
+    if (!actor?.sub || !resourceId || actor.sub === subjectId) return;
+    const action = options.action ?? 'admin.data_accessed';
 
     try {
-      const key = `audit:access:${actor.sub}:${options.resourceType}:${resourceId}`;
+      const key = `audit:access:${action}:${actor.sub}:${options.resourceType}:${resourceId}`;
       const first = await this.redis
         .set(key, '1', 'EX', AUDIT_ACCESS_THROTTLE_SECONDS, 'NX')
         .catch(() => 'OK'); // Redis down: record rather than silently skip
@@ -63,11 +65,12 @@ export class AuditAccessInterceptor implements NestInterceptor {
 
       await this.auditPublisher.record({
         actorId: actor.sub,
-        action: 'admin.data_accessed',
+        action,
         resourceType: options.resourceType,
         resourceId,
         reasonCode: null,
         metadata: {
+          ...(options.subjectParam ? { subjectId } : {}),
           actorRole: actor.role,
           route: `${request.method} ${request.routeOptions?.url ?? request.url.split('?')[0]}`,
         },

@@ -52,6 +52,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
 
   // audit-access.interceptor.ts (S6-VV-103)
   'admin.data_accessed': 'Viewed personal data',
+  'evidence.accessed': 'Accessed sensitive evidence',
 
   // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
   'score.recalculated': 'Recalculated attempt score',
@@ -151,9 +152,11 @@ export const ALLOWED_AUDIT_METADATA_KEYS = new Set<string>([
   'externalAccountId',
   'message',
 
-  // audit-access.interceptor.ts (S6-VV-103)
+  // audit-access.interceptor.ts (S6-VV-103, S6-VV-104)
   'actorRole',
   'route',
+  'subjectId',
+  'endorsementId',
 
   // attempt-result-recalculation.service.ts / qlix-recalibration.service.ts (S6-VV-102)
   'trigger',
