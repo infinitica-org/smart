@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Query,
@@ -20,12 +21,12 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard, type RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/guards/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
-import type { InterviewsService } from './interviews.service.js';
+import { InterviewsService } from './interviews.service.js';
 
 @Controller(`${API_PREFIX}/interviews`)
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class InterviewsController {
-  constructor(private readonly interviewsService: InterviewsService) {}
+  constructor(@Inject(InterviewsService) private readonly interviewsService: InterviewsService) {}
 
   /** Recruiter creates a new interview slot */
   @Post('slots')

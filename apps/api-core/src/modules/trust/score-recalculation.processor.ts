@@ -1,9 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { SCORE_RECALCULATION_QUEUE } from '../../platform/queue/queue.names.js';
-import type { PrismaService } from '../../platform/prisma/prisma.service.js';
-import type { PublicProfileService } from '../public-profile/public-profile.service.js';
+import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { PublicProfileService } from '../public-profile/public-profile.service.js';
 
 export interface ScoreRecalculationJobData {
   candidateId: string;
@@ -16,8 +16,10 @@ export interface ScoreRecalculationJobData {
 export class ScoreRecalculationProcessor extends WorkerHost {
   private readonly logger = new Logger(ScoreRecalculationProcessor.name);
 
+  // Explicit tokens: tsx and a type-only import give Nest no constructor metadata to resolve.
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PublicProfileService))
     private readonly publicProfileService: PublicProfileService,
   ) {
     super();
