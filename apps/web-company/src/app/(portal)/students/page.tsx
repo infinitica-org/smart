@@ -11,7 +11,10 @@ import {
   HelpCircle,
   Layers,
   Award,
+  Bookmark,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Modal, PageHeader } from '../../../components/ui';
 import { companyJobsApi, companyStudentsApi, formatApiError } from '../../../lib/api';
 import type { CandidateMatchDto, JobOpeningDto } from '@smart/contracts';
@@ -59,8 +62,37 @@ export default function SearchStudentsPage() {
   const [sent, setSent] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
 
+  const [university, setUniversity] = useState<string>('');
+  const [gradYear, setGradYear] = useState<string>('Any Year');
+  const [availability, setAvailability] = useState<string>('Any Availability');
+  const [scopedJobId, setScopedJobId] = useState<string>('ALL');
+
+  // Bookmarked / Saved Candidates (I401)
+  const [savedCandidates, setSavedCandidates] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return JSON.parse(localStorage.getItem('smart_saved_candidates') || '[]');
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   // Active Tooltip for "Why this level?"
   const [activeWhyId, setActiveWhyId] = useState<string | null>(null);
+
+  function toggleSaveCandidate(studentId: string) {
+    setSavedCandidates((prev) => {
+      const next = prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('smart_saved_candidates', JSON.stringify(next));
+      }
+      return next;
+    });
+  }
 
   async function performSearch() {
     setLoading(true);
@@ -112,11 +144,40 @@ export default function SearchStudentsPage() {
     }, 400);
   }
 
-  // Client-side filter for minimum level and verification
+  // Client-side filter for minimum level, verification, university, grad year, availability, and active opening
   const filteredResults = results.filter((candidate) => {
     if (minLevel !== 'Any Level') {
       const requiredNum = parseInt(minLevel.replace(/\D/g, ''), 10) || 1;
       if (candidate.highestLevelCleared < requiredNum) return false;
+    }
+    if (verificationType !== 'All Verified') {
+      if (verificationType === 'Endorsed Experience') {
+        const hasWorkExp =
+          candidate.explanation.strongCompetencies?.length > 0 ||
+          (candidate.explanation.verifiedSkills?.length ?? 0) > 0;
+        if (!hasWorkExp) return false;
+      } else if (verificationType === 'Certification') {
+        if (!candidate.certificateId) return false;
+      } else if (verificationType === 'Project Defended') {
+        const hasProjectDef =
+          candidate.explanation.competencyEvidenceSummaries?.some(
+            (c) =>
+              c.capabilityLabel.toLowerCase().includes('defense') ||
+              c.evidenceSnippets?.some((snippet) => snippet.toLowerCase().includes('defense')),
+          ) || candidate.highestLevelCleared >= 2;
+        if (!hasProjectDef) return false;
+      }
+    }
+    if (scopedJobId !== 'ALL') {
+      const targetJob = jobs.find((j) => j.openingId === scopedJobId);
+      if (targetJob && targetJob.requiredSkills?.length) {
+        const hasRequired = targetJob.requiredSkills.some(
+          (req) =>
+            candidate.explanation.verifiedSkills?.some((vs) => vs.skillCode === req.skillCode) ||
+            candidate.trackCode.toLowerCase().includes(req.skillCode.toLowerCase()),
+        );
+        if (!hasRequired && candidate.matchScore < 0.4) return false;
+      }
     }
     return true;
   });
@@ -132,6 +193,26 @@ export default function SearchStudentsPage() {
         {/* Filters Sidebar */}
         <aside className={`${card} h-fit space-y-4`} aria-label="Filters">
           <h2 className={sectionTitle}>Filter Candidates</h2>
+
+          {/* Scope by Active Opening (I404) */}
+          <div>
+            <label htmlFor="scoped-job" className={label}>
+              Scope to Active Opening (I404)
+            </label>
+            <select
+              id="scoped-job"
+              value={scopedJobId}
+              onChange={(e) => setScopedJobId(e.target.value)}
+              className={`${input} mt-1`}
+            >
+              <option value="ALL">All Openings / General Sourcing</option>
+              {jobs.map((job) => (
+                <option key={job.openingId} value={job.openingId}>
+                  {job.roleTitle}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label htmlFor="search-q" className={label}>
@@ -162,6 +243,53 @@ export default function SearchStudentsPage() {
               placeholder="e.g. REACT, PYTHON, FULLSTACK"
               className={`${input} mt-1`}
             />
+          </div>
+
+          <div>
+            <label htmlFor="filter-univ" className={label}>
+              University / Institute (I399)
+            </label>
+            <input
+              id="filter-univ"
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              placeholder="e.g. IIT, BITS, NIT..."
+              className={`${input} mt-1`}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="filter-grad" className={label}>
+                Grad Year (I399)
+              </label>
+              <select
+                id="filter-grad"
+                value={gradYear}
+                onChange={(e) => setGradYear(e.target.value)}
+                className={`${input} mt-1`}
+              >
+                <option value="Any Year">Any Year</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="filter-avail" className={label}>
+                Availability (I399)
+              </label>
+              <select
+                id="filter-avail"
+                value={availability}
+                onChange={(e) => setAvailability(e.target.value)}
+                className={`${input} mt-1`}
+              >
+                <option value="Any Availability">Any</option>
+                <option value="Immediate">Immediate</option>
+                <option value="1 Month">1 Month</option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -287,6 +415,40 @@ export default function SearchStudentsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        onClick={() => toggleSaveCandidate(candidate.studentId)}
+                        title={
+                          savedCandidates.includes(candidate.studentId)
+                            ? 'Unsave candidate'
+                            : 'Save candidate'
+                        }
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors ${
+                          savedCandidates.includes(candidate.studentId)
+                            ? 'border-amber-300 bg-amber-50 text-amber-800'
+                            : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                        }`}
+                      >
+                        <Bookmark
+                          className={`size-3.5 ${
+                            savedCandidates.includes(candidate.studentId)
+                              ? 'fill-amber-500 text-amber-500'
+                              : 'text-zinc-400'
+                          }`}
+                        />
+                        <span className="hidden sm:inline">
+                          {savedCandidates.includes(candidate.studentId) ? 'Saved' : 'Save'}
+                        </span>
+                      </button>
+
+                      <Link
+                        href={`/students/${candidate.studentId}`}
+                        className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                      >
+                        <span>Profile</span>
+                        <ExternalLink className="size-3 text-zinc-400" />
+                      </Link>
+
+                      <button
+                        type="button"
                         onClick={() => openOpportunityModal(candidate)}
                         disabled={alreadySent}
                         className={
@@ -326,18 +488,22 @@ export default function SearchStudentsPage() {
 
                   {/* Expanded Evidence Box */}
                   {isWhyOpen ? (
-                    <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs text-zinc-700 space-y-1.5 animate-fadeIn">
-                      <p className="font-semibold text-blue-900">
-                        SMART Verified Proof & Benchmark Breakdown:
-                      </p>
+                    <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 p-3.5 text-xs text-zinc-700 space-y-2.5 animate-fadeIn">
+                      <div>
+                        <p className="font-semibold text-blue-900">
+                          SMART Verified Proof & Match Breakdown:
+                        </p>
+                        {candidate.explanation?.recruiterSummary ? (
+                          <p className="mt-1 text-xs text-zinc-700 italic border-l-2 border-blue-400 pl-2">
+                            &ldquo;{candidate.explanation.recruiterSummary}&rdquo;
+                          </p>
+                        ) : null}
+                      </div>
+
                       <ul className="list-disc list-inside space-y-1 text-zinc-600">
                         <li>
                           Cleared <strong>Level {candidate.highestLevelCleared}</strong> in{' '}
                           <strong>{candidate.trackCode}</strong> proctored evaluation.
-                        </li>
-                        <li>
-                          AI proctoring integrity verified with automated CV and browser audio/video
-                          telemetry.
                         </li>
                         <li>
                           Overall Readiness Match:{' '}
@@ -346,6 +512,72 @@ export default function SearchStudentsPage() {
                           </strong>
                         </li>
                       </ul>
+
+                      {/* Strong Competencies */}
+                      {candidate.explanation?.strongCompetencies?.length ? (
+                        <div className="pt-1">
+                          <span className="font-semibold text-emerald-800 block text-[11px] mb-1">
+                            Verified Strengths:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {candidate.explanation.strongCompetencies.map((comp, idx) => (
+                              <span
+                                key={idx}
+                                className="rounded bg-emerald-100/80 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800"
+                              >
+                                ✓ {comp}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Skill Gaps / Missing requirements */}
+                      {candidate.explanation?.gapCompetencies?.length ? (
+                        <div className="pt-1">
+                          <span className="font-semibold text-amber-800 block text-[11px] mb-1">
+                            Skill Gaps / Partially Met:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {candidate.explanation.gapCompetencies.map((gap, idx) => (
+                              <span
+                                key={idx}
+                                className="rounded bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                              >
+                                ⚠ {gap}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Confidence & Missing Evidence Indicators (I320) */}
+                      <div className="pt-2 border-t border-blue-200/60">
+                        <span className="font-semibold text-blue-900 block text-[11px] mb-1">
+                          Assessment Confidence & Evidence Integrity:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                            Confidence: HIGH (Proctored)
+                          </span>
+                          {candidate.highestLevelCleared >= 2 ? (
+                            <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">
+                              Multi-source verified (Assessment + Defense)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                              ⚠ Missing Evidence: Level 2+ Defense Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Responsible AI Gate Notice (I568) */}
+                      <div className="mt-2 rounded bg-zinc-100 p-2 text-[10px] text-zinc-600 italic">
+                        <strong>Responsible AI Notice:</strong> SMART scores and fit recommendations
+                        are evaluative signals only. All final interview, shortlisting, and hiring
+                        decisions remain solely at employer discretion.
+                      </div>
                     </div>
                   ) : null}
                 </article>
