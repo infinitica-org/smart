@@ -393,6 +393,17 @@ export class CandidateCertificatesService {
 
     const certificate = endorsement.candidateCertificate;
     const isExpired = endorsement.status === 'PENDING' && endorsement.expiresAt < new Date();
+    if (certificate.certificateFileUrl) {
+      // S6-VV-104 (#558) — an external endorser is being handed the student's certificate file.
+      await this.auditPublisher.record({
+        actorId: null,
+        action: 'evidence.accessed',
+        resourceType: 'candidate_certificate',
+        resourceId: certificate.id,
+        reasonCode: 'endorsement_link',
+        metadata: { subjectId: certificate.candidateId, endorsementId: endorsement.id },
+      });
+    }
 
     return {
       candidateName: certificate.candidate.fullName,

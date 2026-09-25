@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   ConflictException,
@@ -8,8 +9,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import { AddBatchMemberRequestSchema, INSTITUTION_STAFF_ROLES } from '@smart/contracts';
 import type {
   AddBatchMemberRequest,
@@ -54,7 +57,6 @@ import type {
   CandidateBriefDto,
   AdminDashboardDto,
   AuditLogDto,
-  AuditLogSection,
   InvitePlatformAdminRequest,
   PlatformAdminDto,
   PlanCode,
@@ -68,11 +70,18 @@ import type {
   FeatureFlagOverrideTenantType,
 } from '@smart/contracts';
 import { REDIS_TTL_SECONDS } from '@smart/contracts';
-import type { Prisma, UserRole as PrismaUserRole } from '../../generated/prisma/index.js';
+import type { Prisma } from '../../generated/prisma/index.js';
 import ExcelJS from 'exceljs';
 import { batchImportRows, cacheOperations, quotaExceeded } from '@smart/observability';
 import { AuditPublisherService } from '../../platform/audit/audit-publisher.service.js';
+import {
+  EMAIL_QUEUE,
+  type CompanyVerificationResubmitEmailData,
+  type EmailJobPayload,
+} from '../../platform/mailer/mailer.types.js';
 import { PrismaService } from '../../platform/prisma/prisma.service.js';
+import { resolveRecordActors } from './record-actors.js';
+import { buildAuditLogWhere } from './audit-log-query.js';
 import { RedisService } from '../../platform/redis/redis.service.js';
 import { InvitationsService, toInvitationDto } from '../invitations/invitations.service.js';
 import { toAuthenticatedUser } from '../auth/auth.service.js';
@@ -81,18 +90,18 @@ import {
   getCompanyVerificationReviewDetail,
   mapCompanyVerificationQueueItems,
   resolveCompanyVerification,
+  type CompanyResubmissionEmailPayload,
 } from './company-verification-review.js';
 
 const MAX_BATCH_IMPORT_ROWS = 10_000;
+
+/** `BUSINESS_REGISTRATION` → "Business registration". */
+function humanizeEnum(value: string): string {
+  const words = value.toLowerCase().split('_').join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 const ENTITLEMENTS_CACHE_KEY = (institutionId: string): string =>
   `entitlements:institution:${institutionId}`;
-
-/** Groups the raw UserRole enum into the three audit-log tabs the superadmin UI shows. */
-const AUDIT_LOG_SECTION_ROLES: Record<AuditLogSection, PrismaUserRole[]> = {
-  STUDENT: ['STUDENT'],
-  TPO: ['INSTITUTION_ADMIN', 'PLACEMENT_STAFF'],
-  SUPER_ADMIN: ['SUPER_ADMIN'],
-};
 
 interface ParsedBatchImport {
   rows: BatchImportPreviewRowDto[];
@@ -110,6 +119,9 @@ export class InstitutionsService {
     @Inject(AuditPublisherService) private readonly auditPublisher: AuditPublisherService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Optional()
+    @InjectQueue(EMAIL_QUEUE)
+    private readonly emailQueue?: Queue<EmailJobPayload>,
   ) {}
 
   /* -------------------------- partnership requests -------------------------- */
@@ -287,6 +299,7 @@ export class InstitutionsService {
       data: {
         name: body.name ?? institution.name,
         domain: primaryDomain,
+        updatedById: adminUserId,
       },
       include: { plan: true },
     });
@@ -308,7 +321,10 @@ export class InstitutionsService {
 
   /* ----------------------------- platform admin ----------------------------- */
 
-  async createInstitution(body: CreateInstitutionRequest): Promise<InstitutionDto> {
+  async createInstitution(
+    body: CreateInstitutionRequest,
+    actorId: string | null = null,
+  ): Promise<InstitutionDto> {
     const domain = body.domain.toLowerCase();
     const existing = await this.prisma.institution.findUnique({ where: { domain } });
     if (existing) {
@@ -327,7 +343,13 @@ export class InstitutionsService {
       });
     }
     const institution = await this.prisma.institution.create({
-      data: { name: body.name, domain, planId: freePlan.id },
+      data: {
+        name: body.name,
+        domain,
+        planId: freePlan.id,
+        createdById: actorId,
+        updatedById: actorId,
+      },
       include: { plan: true },
     });
     const [created] = await this.toInstitutionDtos([institution]);
@@ -572,8 +594,11 @@ export class InstitutionsService {
     if (!dto) {
       throw new Error('Institution DTO mapping returned no rows for an existing institution');
     }
-    const activeStudents30d = await this.countActiveStudents30d(institutionId);
-    return { ...dto, activeStudents30d };
+    const [activeStudents30d, actors] = await Promise.all([
+      this.countActiveStudents30d(institutionId),
+      resolveRecordActors(this.prisma, institution),
+    ]);
+    return { ...dto, activeStudents30d, ...actors };
   }
 
   /**
@@ -627,6 +652,7 @@ export class InstitutionsService {
       }
       data.plan = { connect: { id: plan.id } };
     }
+    data.updatedBy = { connect: { id: actorId } };
     await this.prisma.institution.update({ where: { id: institutionId }, data });
     if (body.planCode) {
       // A plan reassignment changes this institution's effective entitlements
@@ -653,7 +679,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { heldAt: new Date() },
+      data: { heldAt: new Date(), updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -674,7 +700,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { heldAt: null },
+      data: { heldAt: null, updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -695,7 +721,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { deactivatedAt: new Date() },
+      data: { deactivatedAt: new Date(), updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -716,7 +742,7 @@ export class InstitutionsService {
     await this.requireInstitution(institutionId);
     await this.prisma.institution.update({
       where: { id: institutionId },
-      data: { deactivatedAt: null, heldAt: null },
+      data: { deactivatedAt: null, heldAt: null, updatedById: actorId },
     });
     await this.writeAudit(
       actorId,
@@ -1226,27 +1252,7 @@ export class InstitutionsService {
   }
 
   async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<AuditLogDto[]> {
-    const where: Prisma.AuditLogWhereInput = {};
-    if (query.action) where.action = { contains: query.action, mode: 'insensitive' };
-    if (query.resourceType) where.resourceType = query.resourceType;
-    if (query.resourceId) where.resourceId = query.resourceId;
-    if (query.actorId) where.actorId = query.actorId;
-    if (query.section) {
-      where.actor = { is: { role: { in: AUDIT_LOG_SECTION_ROLES[query.section] } } };
-    }
-    if (query.from || query.to) {
-      where.createdAt = {
-        ...(query.from ? { gte: new Date(query.from) } : {}),
-        ...(query.to ? { lte: new Date(query.to) } : {}),
-      };
-    }
-    if (query.q) {
-      where.OR = [
-        { action: { contains: query.q, mode: 'insensitive' } },
-        { reasonCode: { contains: query.q, mode: 'insensitive' } },
-        { resourceId: { contains: query.q, mode: 'insensitive' } },
-      ];
-    }
+    const where = buildAuditLogWhere(query);
     const rows = await this.prisma.auditLog.findMany({
       where,
       include: { actor: { select: { email: true, role: true } } },
@@ -1340,6 +1346,7 @@ export class InstitutionsService {
         data: {
           verificationStatus: body.decision,
           verificationReason: body.reason,
+          updatedById: actorId,
           ...(plan ? { planId: plan.id } : {}),
         },
       });
@@ -1378,8 +1385,36 @@ export class InstitutionsService {
       if (resolved.activationEmail) {
         await this.invitations.enqueueCompanyActivationEmail(resolved.activationEmail);
       }
+    } else if (resolved.resubmissionEmail) {
+      await this.enqueueCompanyResubmissionEmail(resolved.resubmissionEmail);
     }
     return resolved.queueItem;
+  }
+
+  /** Tells the applicant why the company was sent back and how to reopen the application. */
+  private async enqueueCompanyResubmissionEmail(
+    payload: CompanyResubmissionEmailPayload,
+  ): Promise<void> {
+    if (!this.emailQueue) {
+      this.logger.warn('Email queue unavailable; company resubmission email not sent.');
+      return;
+    }
+    const data: CompanyVerificationResubmitEmailData = {
+      fullName: payload.fullName,
+      companyName: payload.companyName,
+      reason: payload.reason,
+      rejectedDocuments: payload.rejectedDocuments.map((doc) => ({
+        label: `${humanizeEnum(doc.documentType)} (${doc.fileName})`,
+        reason: doc.reason,
+      })),
+      resumeUrl: payload.resumeUrl,
+      expiresAtFormatted: payload.expiresAt.toUTCString(),
+    };
+    await this.emailQueue.add('send', {
+      to: payload.to,
+      template: 'company-verification-resubmit',
+      data,
+    });
   }
 
   private toAuditDto(row: {

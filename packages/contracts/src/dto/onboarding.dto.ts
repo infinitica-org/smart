@@ -106,6 +106,10 @@ export const ConfigureInstitutionSettingsSchema = z.object({
 });
 export type ConfigureInstitutionSettings = z.infer<typeof ConfigureInstitutionSettingsSchema>;
 
+/** S6-VV-105 — the user behind a create / last change; null for rows that predate tracking. */
+export const RecordActorDtoSchema = z.object({ userId: UuidSchema, email: z.string() }).nullable();
+export type RecordActorDto = z.infer<typeof RecordActorDtoSchema>;
+
 export const InstitutionDtoSchema = z.object({
   institutionId: UuidSchema,
   name: z.string(),
@@ -127,6 +131,9 @@ export const InstitutionDtoSchema = z.object({
    */
   activeStudents30d: z.number().int().nonnegative().optional(),
   createdAt: IsoDateTimeSchema,
+  /** Detail response only (like activeStudents30d). */
+  createdBy: RecordActorDtoSchema.optional(),
+  updatedBy: RecordActorDtoSchema.optional(),
 });
 export type InstitutionDto = z.infer<typeof InstitutionDtoSchema>;
 
@@ -141,6 +148,13 @@ export const TenantActionReasonSchema = z.object({
   reason: z.string().trim().min(8).max(500),
 });
 export type TenantActionReason = z.infer<typeof TenantActionReasonSchema>;
+
+/** Persistable roles only — PUBLIC is traffic-only and never stored on a User row. */
+export const ASSIGNABLE_USER_ROLES = [
+  'SUPER_ADMIN',
+  'INSTITUTION_ADMIN',
+  'PLACEMENT_STAFF',
+] as const;
 
 export const ListInstitutionsQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
@@ -499,6 +513,12 @@ export const ListAuditLogsQuerySchema = z.object({
 });
 export type ListAuditLogsQuery = z.infer<typeof ListAuditLogsQuerySchema>;
 
+/** S6-VV-101 — same filters as the list, plus the file format. */
+export const ExportAuditLogsQuerySchema = ListAuditLogsQuerySchema.extend({
+  format: z.enum(['csv', 'jsonl']).default('csv'),
+});
+export type ExportAuditLogsQuery = z.infer<typeof ExportAuditLogsQuerySchema>;
+
 export const AdminDashboardDtoSchema = z.object({
   institutions: z.object({
     total: z.number().int().nonnegative(),
@@ -622,6 +642,9 @@ export const CompanyDtoSchema = z.object({
   deactivatedAt: IsoDateTimeSchema.nullable(),
   userCount: z.number().int().nonnegative(),
   createdAt: IsoDateTimeSchema,
+  /** Detail response only. */
+  createdBy: RecordActorDtoSchema.optional(),
+  updatedBy: RecordActorDtoSchema.optional(),
 });
 export type CompanyDto = z.infer<typeof CompanyDtoSchema>;
 
@@ -681,6 +704,12 @@ export const CompanyVerificationReviewDetailDtoSchema = z.object({
   verificationStatus: TenantVerificationStatusSchema,
   onboardingStatus: CompanyOnboardingStatusSchema.nullable(),
   representativeEmail: EmailSchema.optional(),
+  /**
+   * Whether the representative's email domain matches the company website (subdomains count).
+   * `false` is a signal for the reviewer, not a block: subsidiaries often use a parent domain.
+   * `null` when either side is missing.
+   */
+  representativeEmailMatchesWebsite: z.boolean().nullable().optional(),
   registrationCountry: z.string().trim().length(2).optional(),
   legalName: z.string(),
   submittedAt: IsoDateTimeSchema,
