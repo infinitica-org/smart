@@ -23,6 +23,7 @@ x-app-env: &app-env
   STUDENT_APP_URL: ${STUDENT_APP_URL:-http://localhost:3001}
   TPO_APP_URL: ${TPO_APP_URL:-http://localhost:3002}
   ADMIN_APP_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+  COMPANY_APP_URL: ${COMPANY_APP_URL:-http://localhost:3006}
   METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
@@ -320,6 +321,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -327,6 +329,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -344,6 +347,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -351,6 +355,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -368,6 +373,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -375,6 +381,7 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
@@ -408,6 +415,7 @@ services:
         NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
         NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
@@ -415,11 +423,82 @@ services:
       NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
       NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
     depends_on:
       - api
     ports:
       - "127.0.0.1:${AUTH_PORT:-3005}:3000"
     profiles: ["apps"]
+
+  # S6-VV-147 — employer portal (was built by CI but never deployed).
+  web-company:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        APP: web-company
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_AUTH_URL: ${AUTH_APP_URL:-http://localhost:3005}
+        NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+        NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+        NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+        NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_AUTH_URL: ${AUTH_APP_URL:-http://localhost:3005}
+      NEXT_PUBLIC_STUDENT_URL: ${STUDENT_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_TPO_URL: ${TPO_APP_URL:-http://localhost:3002}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3003}
+      NEXT_PUBLIC_COMPANY_URL: ${COMPANY_APP_URL:-http://localhost:3006}
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${COMPANY_PORT:-3006}:3000"
+    profiles: ["apps"]
+
+  # S6-VV-97 — nightly encrypted, off-box backup of Postgres + MinIO objects.
+  # Idles (smart_backup_enabled 0) until BACKUP_ENABLED=true and the BACKUP_*
+  # vars are set; see docs/delivery/BACKUP_RESTORE.md. On demand:
+  #   docker compose ... --profile vps run --rm backup backup.sh
+  backup:
+    build:
+      context: ../backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-false}
+      BACKUP_ENV_NAME: ${BACKUP_ENV_NAME:-local}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-30 20 * * *}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_DEST: ${BACKUP_DEST:-offsite:smart-backups}
+      BACKUP_INCLUDE_OBJECTS: ${BACKUP_INCLUDE_OBJECTS:-true}
+      PGHOST: postgres
+      PGUSER: smart
+      PGDATABASE: smart
+      PGPASSWORD: ${POSTGRES_PASSWORD:-smart}
+      MINIO_BUCKET: smart
+      RCLONE_CONFIG_MINIO_TYPE: s3
+      RCLONE_CONFIG_MINIO_PROVIDER: Minio
+      RCLONE_CONFIG_MINIO_ENDPOINT: http://minio:9000
+      RCLONE_CONFIG_MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-smart}
+      RCLONE_CONFIG_MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-smartsecret}
+      RCLONE_CONFIG_OFFSITE_TYPE: s3
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${BACKUP_S3_PROVIDER:-Other}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      RCLONE_CONFIG_OFFSITE_REGION: ${BACKUP_S3_REGION:-}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      # Upload without needing bucket-create/list-buckets permission.
+      RCLONE_CONFIG_OFFSITE_NO_CHECK_BUCKET: "true"
+    volumes:
+      - backup_work:/work
+      - backup_metrics:/metrics
+    profiles: ["vps"]
 
   caddy:
     image: caddy:2.10-alpine
@@ -433,6 +512,7 @@ services:
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       VERIFY_HOST: ${VERIFY_HOST:-verify.localhost}
       AUTH_HOST: ${AUTH_HOST:-auth.localhost}
+      COMPANY_HOST: ${COMPANY_HOST:-company.localhost}
       API_HOST: ${API_HOST:-api.localhost}
       STUDIO_HOST: ${STUDIO_HOST:-studio.localhost}
       DB_HOST: ${DB_HOST:-db.localhost}
@@ -449,6 +529,7 @@ services:
       - web-admin
       - web-verify
       - web-auth
+      - web-company
       - prisma-studio
       - adminer
     # Only one stack per host should enable profile `vps` (binds :80/:443).
@@ -582,11 +663,14 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - backup_metrics:/textfile:ro
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
       - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+      # S6-VV-97: exposes smart_backup_* written by the backup service.
+      - --collector.textfile.directory=/textfile
     ports:
       - "127.0.0.1:${NODE_EXPORTER_PORT:-9101}:9100"
     profiles: ["obs"]
@@ -627,3 +711,5 @@ volumes:
   loki_data:
   alloy_data:
   tempo_data:
+  backup_work:
+  backup_metrics:

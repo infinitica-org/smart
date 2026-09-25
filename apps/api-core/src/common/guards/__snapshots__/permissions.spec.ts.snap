@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`permission matrix (S6-VV-99) > changes only through a reviewed snapshot 1`] = `
+{
+  "B2B_PARTNER": [],
+  "COMPANY": [],
+  "INSTITUTION_ADMIN": [],
+  "PLACEMENT_STAFF": [],
+  "PUBLIC": [],
+  "STUDENT": [],
+  "SUPER_ADMIN": [
+    "user.role.assign",
+    "user.access.manage",
+    "session.read",
+    "session.revoke",
+    "audit.read",
+  ],
+}
+`;

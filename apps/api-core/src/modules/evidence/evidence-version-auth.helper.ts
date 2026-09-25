@@ -1,4 +1,9 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  EMPLOYER_VISIBILITY_SELECT,
+  isEmployerVisibleStudent,
+  studentUnavailableToEmployers,
+} from '../../common/employer-visibility.js';
 import type { RequestUser } from '../../common/guards/jwt-auth.guard.js';
 import type { PrismaService } from '../../platform/prisma/prisma.service.js';
 
@@ -18,7 +23,7 @@ export async function assertCanReadCandidateEvidenceVersions(
 ): Promise<EvidenceVersionReadAccess> {
   const candidate = await prisma.user.findUnique({
     where: { id: studentId },
-    select: { id: true, role: true, institutionId: true },
+    select: { id: true, role: true, institutionId: true, ...EMPLOYER_VISIBILITY_SELECT },
   });
 
   if (!candidate || candidate.role !== 'STUDENT') {
@@ -65,6 +70,9 @@ export async function assertCanReadCandidateEvidenceVersions(
         statusCode: 403,
       });
     }
+
+    // S6-VV-148 — a deactivated or held student's evidence is closed to employers.
+    if (!isEmployerVisibleStudent(candidate)) throw studentUnavailableToEmployers();
 
     const applicationCount = await prisma.application.count({
       where: {
