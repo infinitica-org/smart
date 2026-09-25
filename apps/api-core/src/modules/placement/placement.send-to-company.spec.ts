@@ -12,6 +12,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementService } from './placement.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -133,7 +134,11 @@ describe('AC-T06 authorization', () => {
     const { controller, prisma, outbox } = setup();
 
     await expect(
-      controller.sendToCompany({ ...tpoAdmin, inst: null } as never, applicationId),
+      (async () =>
+        controller.sendToCompany(
+          applicationId,
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.application.findUnique).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -147,7 +152,7 @@ describe('AC-T06 confidence result display', () => {
       requiredSkills: [{ skill: { code: 'PYTHON_APPLICATION_BACKEND_DEVELOPMENT' } }],
     });
 
-    await controller.getApplicationConfidence(tpoStaff as never, applicationId);
+    await controller.getApplicationConfidence(applicationId, resolveTenantId(tpoStaff as never));
 
     expect(prisma.skillVerificationAttempt.findFirst).toHaveBeenCalledWith({
       where: {
@@ -164,7 +169,10 @@ describe('AC-T06 confidence result display', () => {
   it('returns the persisted passed + explanation without inventing a score', async () => {
     const { controller, prisma } = setup();
 
-    const result = await controller.getApplicationConfidence(tpoStaff as never, applicationId);
+    const result = await controller.getApplicationConfidence(
+      applicationId,
+      resolveTenantId(tpoStaff as never),
+    );
 
     expect(prisma.skillVerificationAttempt.findFirst).toHaveBeenCalledWith({
       where: { claim: { studentId } },
@@ -191,7 +199,10 @@ describe('AC-T06 confidence result display', () => {
   it('surfaces a missing result so the TPO can see why send is blocked', async () => {
     const { controller } = setup({ attempt: null });
 
-    const result = await controller.getApplicationConfidence(tpoAdmin as never, applicationId);
+    const result = await controller.getApplicationConfidence(
+      applicationId,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.available).toBe(false);
     expect(result.complete).toBe(false);
@@ -203,7 +214,10 @@ describe('AC-T06 confidence result display', () => {
   it('treats a pass/fail without an explanation as incomplete', async () => {
     const { controller } = setup({ attempt: { passed: true, explanation: 'too short' } });
 
-    const result = await controller.getApplicationConfidence(tpoAdmin as never, applicationId);
+    const result = await controller.getApplicationConfidence(
+      applicationId,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.available).toBe(true);
     expect(result.complete).toBe(false);
@@ -215,9 +229,9 @@ describe('AC-T06 send-to-company', () => {
   it('blocks send when the confidence result is missing', async () => {
     const { controller, prisma, outbox } = setup({ attempt: null });
 
-    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toBeInstanceOf(
-      UnprocessableEntityException,
-    );
+    await expect(
+      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.application.update).not.toHaveBeenCalled();
     expect(prisma.applicationStageEvent.create).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -226,7 +240,9 @@ describe('AC-T06 send-to-company', () => {
   it('blocks send when the confidence result is incomplete', async () => {
     const { controller, outbox } = setup({ attempt: { passed: null, explanation: null } });
 
-    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toMatchObject({
+    await expect(
+      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toMatchObject({
       constructor: UnprocessableEntityException,
     });
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
@@ -248,7 +264,10 @@ describe('AC-T06 send-to-company', () => {
   it('moves SHORTLISTED → AI_VERIFIED and reuses smart.application.stage_changed', async () => {
     const { controller, prisma, outbox } = setup();
 
-    const result = await controller.sendToCompany(tpoAdmin as never, applicationId);
+    const result = await controller.sendToCompany(
+      applicationId,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.stage).toBe('AI_VERIFIED');
     expect(prisma.application.update).toHaveBeenCalledWith({
@@ -284,7 +303,10 @@ describe('AC-T06 send-to-company', () => {
       application: storedApplication({ stage: 'AI_VERIFIED' }),
     });
 
-    const result = await controller.sendToCompany(tpoAdmin as never, applicationId);
+    const result = await controller.sendToCompany(
+      applicationId,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.applicationId).toBe(applicationId);
     expect(result.stage).toBe('AI_VERIFIED');
@@ -298,9 +320,9 @@ describe('AC-T06 send-to-company', () => {
       application: storedApplication({ opening: { institutionId: otherInstitutionId } }),
     });
 
-    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.application.update).not.toHaveBeenCalled();
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
@@ -311,7 +333,7 @@ describe('AC-T06 send-to-company', () => {
     });
 
     await expect(
-      controller.getApplicationConfidence(tpoAdmin as never, applicationId),
+      controller.getApplicationConfidence(applicationId, resolveTenantId(tpoAdmin as never)),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.skillVerificationAttempt.findFirst).not.toHaveBeenCalled();
   });
@@ -321,9 +343,9 @@ describe('AC-T06 send-to-company', () => {
       application: storedApplication({ stage: 'OFFER' }),
     });
 
-    await expect(controller.sendToCompany(tpoAdmin as never, applicationId)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      controller.sendToCompany(applicationId, resolveTenantId(tpoAdmin as never)),
+    ).rejects.toBeInstanceOf(ConflictException);
     expect(outbox.enqueueEnvelope).not.toHaveBeenCalled();
   });
 
@@ -332,7 +354,7 @@ describe('AC-T06 send-to-company', () => {
       application: storedApplication({ stage: 'AI_VERIFIED' }),
     });
 
-    const listed = await controller.listApplications(tpoAdmin as never, openingId);
+    const listed = await controller.listApplications(openingId, resolveTenantId(tpoAdmin as never));
 
     expect(prisma.application.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { openingId } }),

@@ -7,6 +7,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { MatchingService } from './matching.service.js';
 import { PlacementMatchController } from './placement-match.controller.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -188,7 +189,11 @@ describe('SE-T05 match authorization', () => {
   it('refuses a TPO token that carries no institution claim', async () => {
     const { controller, prisma } = setup();
     await expect(
-      controller.match({ ...tpoAdmin, inst: null } as never, { jdId: openingId }),
+      (async () =>
+        controller.match(
+          { jdId: openingId },
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
   });
@@ -198,7 +203,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('returns a contract ShortlistDto ranked from verified claims', async () => {
     const { controller, prisma } = setup();
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(ShortlistDtoSchema.parse(dto).candidates).toHaveLength(1);
     expect(dto.jdId).toBe(openingId);
@@ -233,7 +238,10 @@ describe('SE-T05 POST /placement/match', () => {
     const { controller, prisma } = setup({ opening: null, jd: null });
 
     await expect(
-      controller.match({ ...tpoAdmin, inst: otherInstitutionId } as never, { jdId: openingId }),
+      controller.match(
+        { jdId: openingId },
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.jobOpening.findFirst.mock.calls[0][0].where.institutionId).toBe(
       otherInstitutionId,
@@ -243,7 +251,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('does not return declared-only students because the pool requires VERIFIED', async () => {
     const { controller, prisma } = setup({ students: [] });
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.candidates).toEqual([]);
     expect(dto.totalCandidatesConsidered).toBe(0);
@@ -270,10 +278,13 @@ describe('SE-T05 POST /placement/match', () => {
       ],
     });
 
-    const dto = await controller.match(tpoAdmin as never, {
-      jdId: openingId,
-      minSkillCoverage: 0.6,
-    });
+    const dto = await controller.match(
+      {
+        jdId: openingId,
+        minSkillCoverage: 0.6,
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(dto.candidates).toHaveLength(1);
     expect(dto.candidatesScoredCount).toBe(1);
@@ -333,7 +344,7 @@ describe('SE-T05 POST /placement/match', () => {
       },
     ]);
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.candidates[0]?.explanation.gapCompetencies).toContain('Missing Dockerfile');
     expect(dto.candidates[0]?.explanation.strongCompetencies).toContain(
@@ -346,7 +357,7 @@ describe('SE-T05 POST /placement/match', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.match(tpoAdmin as never, { jdId: 'not-a-uuid' }),
+      controller.match({ jdId: 'not-a-uuid' }, resolveTenantId(tpoAdmin as never)),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.jobOpening.findFirst).not.toHaveBeenCalled();
   });
@@ -354,7 +365,7 @@ describe('SE-T05 POST /placement/match', () => {
   it('reports the pre-ranking eligible pool size alongside the ranked candidates', async () => {
     const { controller } = setup();
 
-    const dto = await controller.match(tpoAdmin as never, { jdId: openingId });
+    const dto = await controller.match({ jdId: openingId }, resolveTenantId(tpoAdmin as never));
 
     expect(dto.eligiblePoolCount).toBe(1);
   });

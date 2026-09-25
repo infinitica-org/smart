@@ -6,6 +6,7 @@ import { SMART_TOPICS } from '@smart/contracts';
 import { ROLES_KEY } from '../../common/guards/roles.decorator.js';
 import { PlacementController } from './placement.controller.js';
 import { PlacementService } from './placement.service.js';
+import { resolveTenantId } from '../../common/decorators/tenant-id.decorator.js';
 
 const institutionId = randomUUID();
 const otherInstitutionId = randomUUID();
@@ -94,7 +95,10 @@ describe('CO-T02 list applications', () => {
   it('returns applications for a valid opening owned by caller institution', async () => {
     const { controller, prisma } = setup();
 
-    const response = await controller.listApplications(tpoAdmin as never, openingId);
+    const response = await controller.listApplications(
+      openingId,
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(prisma.jobOpening.findFirst).toHaveBeenCalledWith({
       where: { id: openingId, institutionId },
@@ -130,7 +134,10 @@ describe('CO-T02 list applications', () => {
     const { controller } = setup({ opening: null });
 
     await expect(
-      controller.listApplications({ ...tpoAdmin, inst: otherInstitutionId } as never, openingId),
+      controller.listApplications(
+        openingId,
+        resolveTenantId({ ...tpoAdmin, inst: otherInstitutionId } as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
@@ -139,9 +146,13 @@ describe('CO-T02 patch application stage', () => {
   it('updates stage, creates ApplicationStageEvent, and enqueues smart.application.stage_changed', async () => {
     const { controller, prisma, outbox } = setup();
 
-    const result = await controller.patchApplicationStage(tpoAdmin as never, applicationId, {
-      stage: 'SHORTLISTED',
-    });
+    const result = await controller.patchApplicationStage(
+      applicationId,
+      {
+        stage: 'SHORTLISTED',
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.stage).toBe('SHORTLISTED');
     expect(prisma.application.update).toHaveBeenCalledWith({
@@ -175,9 +186,13 @@ describe('CO-T02 patch application stage', () => {
   it('performs no-op when requested stage equals current stage', async () => {
     const { controller, prisma, outbox } = setup();
 
-    const result = await controller.patchApplicationStage(tpoAdmin as never, applicationId, {
-      stage: 'APPLIED',
-    });
+    const result = await controller.patchApplicationStage(
+      applicationId,
+      {
+        stage: 'APPLIED',
+      },
+      resolveTenantId(tpoAdmin as never),
+    );
 
     expect(result.stage).toBe('APPLIED');
     expect(prisma.application.update).not.toHaveBeenCalled();
@@ -191,9 +206,13 @@ describe('CO-T02 patch application stage', () => {
     });
 
     await expect(
-      controller.patchApplicationStage(tpoAdmin as never, applicationId, {
-        stage: 'SHORTLISTED',
-      }),
+      controller.patchApplicationStage(
+        applicationId,
+        {
+          stage: 'SHORTLISTED',
+        },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -201,9 +220,13 @@ describe('CO-T02 patch application stage', () => {
     const { controller, prisma } = setup();
 
     await expect(
-      controller.patchApplicationStage(tpoAdmin as never, applicationId, {
-        stage: 'INVALID_STAGE',
-      }),
+      controller.patchApplicationStage(
+        applicationId,
+        {
+          stage: 'INVALID_STAGE',
+        },
+        resolveTenantId(tpoAdmin as never),
+      ),
     ).rejects.toBeInstanceOf(ZodError);
     expect(prisma.application.update).not.toHaveBeenCalled();
   });
@@ -212,9 +235,14 @@ describe('CO-T02 patch application stage', () => {
     const { controller } = setup();
 
     await expect(
-      controller.patchApplicationStage({ ...tpoAdmin, inst: null } as never, applicationId, {
-        stage: 'SHORTLISTED',
-      }),
+      (async () =>
+        controller.patchApplicationStage(
+          applicationId,
+          {
+            stage: 'SHORTLISTED',
+          },
+          resolveTenantId({ ...tpoAdmin, inst: null } as never),
+        ))(),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
